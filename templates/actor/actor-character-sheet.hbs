@@ -14,11 +14,15 @@
         and it will add a small amount of padding, a border, and will
         center all of its child elements content and text. --}}
         <div class="resource flex-group-center">
-          <label for="system.health.value" class="resource-label">Health</label>
+          <label class="resource-label">Health</label>
           <div class="resource-content flexrow flex-center flex-between">
-          <input type="text" name="system.health.value" value="{{system.health.value}}" data-dtype="Number"/>
-          <span> / </span>
-          <input type="text" name="system.health.max" value="{{system.health.max}}" data-dtype="Number"/>
+          {{#if system.health.totalHealth}}
+            <span>{{system.health.totalHealth.current}}</span>
+            <span> / </span>
+            <span>{{system.health.totalHealth.max}}</span>
+          {{else}}
+            <span>Loading...</span>
+          {{/if}}
           </div>
         </div>
 
@@ -49,6 +53,7 @@
     <a class="item" data-tab="description">Description</a>
     <a class="item" data-tab="items">Items</a>
     <a class="item" data-tab="spells">Spells</a>
+    <a class="item" data-tab="health">Health</a>
     <a class="item" data-tab="effects">Effects</a>
   </nav>
 
@@ -97,6 +102,11 @@
     {{!-- Owned Spells Tab --}}
     <div class="tab spells" data-group="primary" data-tab="spells">
       {{> "systems/spaceholder/templates/actor/parts/actor-spells.hbs"}}
+    </div>
+
+    {{!-- Health Tab --}}
+    <div class="tab health flexcol" data-group="primary" data-tab="health">
+      {{> "systems/spaceholder/templates/actor/parts/actor-health.hbs"}}
     </div>
 
     {{!-- Active Effects Tab --}}

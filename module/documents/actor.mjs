@@ -52,6 +52,176 @@ export class SpaceHolderActor extends Actor {
       // Calculate the modifier using d20 rules.
       ability.mod = Math.floor((ability.value - 10) / 2);
     }
+
+    // Process body parts health system
+    if (systemData.health && systemData.health.bodyParts) {
+      this._prepareBodyParts(systemData);
+    }
+  }
+
+  /**
+   * Prepare body parts health system
+   */
+  _prepareBodyParts(systemData) {
+    const bodyParts = systemData.health.bodyParts;
+    
+    // Build hierarchy - find children for each body part
+    for (let [partId, bodyPart] of Object.entries(bodyParts)) {
+      bodyPart.children = this._getChildrenParts(partId, bodyParts);
+      bodyPart.healthPercentage = Math.floor((bodyPart.currentHp / bodyPart.maxHp) * 100);
+      bodyPart.status = this._getBodyPartStatus(bodyPart);
+    }
+    
+    // Calculate total health
+    let totalCurrentHp = 0;
+    let totalMaxHp = 0;
+    
+    for (let bodyPart of Object.values(bodyParts)) {
+      totalCurrentHp += bodyPart.currentHp;
+      totalMaxHp += bodyPart.maxHp;
+    }
+    
+    systemData.health.totalHealth = {
+      current: totalCurrentHp,
+      max: totalMaxHp,
+      percentage: Math.floor((totalCurrentHp / totalMaxHp) * 100)
+    };
+  }
+
+  /**
+   * Get all children parts for a given parent part
+   */
+  _getChildrenParts(parentId, bodyParts) {
+    const children = [];
+    for (let [partId, bodyPart] of Object.entries(bodyParts)) {
+      if (bodyPart.parent === parentId) {
+        children.push({
+          id: partId,
+          coverage: bodyPart.coverage,
+          name: bodyPart.name
+        });
+      }
+    }
+    // Sort by coverage descending for better hit distribution
+    return children.sort((a, b) => b.coverage - a.coverage);
+  }
+
+  /**
+   * Get status description for body part
+   */
+  _getBodyPartStatus(bodyPart) {
+    const percentage = bodyPart.healthPercentage;
+    
+    if (percentage === 0) return "destroyed";
+    if (percentage < 25) return "badly_injured";
+    if (percentage < 50) return "injured";
+    if (percentage < 75) return "bruised";
+    return "healthy";
+  }
+
+  /**
+   * Recursive function to determine hit location
+   * @param {string} targetPartId - ID of the current target body part
+   * @param {number} roll - Random number from 0 to 9999 (for deterministic results)
+   * @returns {string} Final hit location ID
+   */
+  chanceHit(targetPartId, roll = null) {
+    const bodyParts = this.system.health?.bodyParts;
+    if (!bodyParts || !bodyParts[targetPartId]) return targetPartId;
+
+    const targetPart = bodyParts[targetPartId];
+    const children = targetPart.children || [];
+    
+    // If no children, we hit this part
+    if (children.length === 0) {
+      return targetPartId;
+    }
+
+    // Generate roll if not provided
+    if (roll === null) {
+      roll = Math.floor(Math.random() * 10000);
+    }
+
+    // Calculate cumulative coverage for children
+    let cumulativeCoverage = 0;
+    for (let child of children) {
+      cumulativeCoverage += child.coverage;
+      
+      // If roll falls within this child's coverage, recurse into it
+      if (roll < cumulativeCoverage) {
+        // Generate new roll for the child (scaled to 0-9999 range)
+        const childRoll = Math.floor(Math.random() * 10000);
+        return this.chanceHit(child.id, childRoll);
+      }
+    }
+
+    // If roll doesn't hit any child, we hit the parent part
+    return targetPartId;
+  }
+
+  /**
+   * Get the root body part (usually torso)
+   * @returns {string} Root body part ID
+   */
+  getRootBodyPart() {
+    const bodyParts = this.system.health?.bodyParts;
+    if (!bodyParts) return null;
+
+    // Find part with no parent
+    for (let [partId, bodyPart] of Object.entries(bodyParts)) {
+      if (!bodyPart.parent) {
+        return partId;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Perform a hit against this actor
+   * @param {number} damage - Amount of damage to deal
+   * @param {string} targetPart - Optional specific target part (defaults to root)
+   * @returns {Object} Hit result with final target and damage dealt
+   */
+  async performHit(damage, targetPart = null) {
+    // Get root part if no specific target
+    if (!targetPart) {
+      targetPart = this.getRootBodyPart();
+    }
+    
+    if (!targetPart) {
+      console.warn("No valid body parts found for hit");
+      return null;
+    }
+
+    // Determine final hit location
+    const finalTarget = this.chanceHit(targetPart);
+    
+    // Apply damage
+    const result = await this.applyBodyPartDamage(finalTarget, damage);
+    
+    return {
+      targetPart: finalTarget,
+      damage: damage,
+      success: result,
+      bodyPart: this.system.health.bodyParts[finalTarget]
+    };
+  }
+
+  /**
+   * Apply damage to a specific body part
+   * @param {string} partId - Body part ID
+   * @param {number} damage - Damage amount
+   * @returns {boolean} Success
+   */
+  async applyBodyPartDamage(partId, damage) {
+    const bodyPart = this.system.health?.bodyParts?.[partId];
+    if (!bodyPart) return false;
+
+    const newHp = Math.max(0, bodyPart.currentHp - damage);
+    const updatePath = `system.health.bodyParts.${partId}.currentHp`;
+    
+    await this.update({ [updatePath]: newHp });
+    return true;
   }
 
   /**

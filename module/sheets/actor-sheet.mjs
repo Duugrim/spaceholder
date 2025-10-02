@@ -94,6 +94,34 @@ export class SpaceHolderActorSheet extends ActorSheet {
   _prepareCharacterData(context) {
     // This is where you can enrich character-specific editor fields
     // or setup anything else that's specific to this type
+    
+    // Prepare health data for UI
+    this._prepareHealthData(context);
+  }
+
+  /**
+   * Prepare health data for the health tab UI
+   * @param {object} context The context object to mutate
+   */
+  _prepareHealthData(context) {
+    const bodyParts = context.system.health?.bodyParts;
+    if (!bodyParts) return;
+
+    // Mark injured parts and collect them
+    const injuredParts = {};
+    
+    for (let [partId, part] of Object.entries(bodyParts)) {
+      // Mark as injured if not at full health
+      part.isInjured = part.currentHp < part.maxHp;
+      
+      // Add to injured parts if damaged
+      if (part.isInjured) {
+        injuredParts[partId] = part;
+      }
+    }
+    
+    // Add injured parts to context
+    context.injuredParts = Object.keys(injuredParts).length > 0 ? injuredParts : null;
   }
 
   /**
@@ -184,6 +212,9 @@ export class SpaceHolderActorSheet extends ActorSheet {
     // Rollable abilities.
     html.on('click', '.rollable', this._onRoll.bind(this));
 
+    // Health debug toggle
+    html.on('change', 'input[name="flags.spaceholder.healthDebug"]', this._onHealthDebugToggle.bind(this));
+
     // Drag events for macros.
     if (this.actor.isOwner) {
       let handler = (ev) => this._onDragStart(ev);
@@ -193,6 +224,21 @@ export class SpaceHolderActorSheet extends ActorSheet {
         li.addEventListener('dragstart', handler, false);
       });
     }
+  }
+
+  /**
+   * Handle health debug mode toggle
+   * @param {Event} event   The originating change event
+   */
+  _onHealthDebugToggle(event) {
+    event.preventDefault();
+    const element = event.currentTarget;
+    const value = element.checked;
+    
+    // Update the flag
+    this.actor.update({
+      'flags.spaceholder.healthDebug': value
+    });
   }
 
   /**

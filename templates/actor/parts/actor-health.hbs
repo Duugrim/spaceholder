@@ -1,0 +1,113 @@
+{{!-- Health Tab Content --}}
+<div class="health-container">
+
+  {{!-- Debug Toggle --}}
+  <div class="health-debug-toggle">
+    <label class="checkbox">
+      <input type="checkbox" name="flags.spaceholder.healthDebug" {{checked flags.spaceholder.healthDebug}}>
+      Debug Mode
+    </label>
+  </div>
+
+  {{!-- Health Status Summary --}}
+  {{#if system.health.totalHealth}}
+  <div class="health-summary">
+    <div class="total-health">
+      <h3>Overall Health: {{system.health.totalHealth.percentage}}%</h3>
+      <div class="health-bar">
+        <div class="health-fill" style="width: {{system.health.totalHealth.percentage}}%"></div>
+      </div>
+      <span class="health-numbers">{{system.health.totalHealth.current}} / {{system.health.totalHealth.max}}</span>
+    </div>
+  </div>
+  {{else}}
+  <div class="health-summary">
+    <div class="total-health">
+      <h3>Health System Loading...</h3>
+      <p><em>Please refresh the character sheet if this persists.</em></p>
+    </div>
+  </div>
+  {{/if}}
+
+  {{!-- Injured Parts (always shown if any) --}}
+  {{#if injuredParts}}
+  <div class="injured-parts">
+    <h3>Injuries:</h3>
+    {{#each injuredParts as |part partId|}}
+    <div class="body-part injured">
+      <div class="part-info">
+        <span class="part-name">{{part.name}}</span>
+        <span class="part-status status-{{part.status}}">{{part.status}}</span>
+      </div>
+      <div class="part-health">
+        <div class="health-bar small">
+          <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
+        </div>
+        <span class="health-numbers">{{part.currentHp}} / {{part.maxHp}}</span>
+      </div>
+      {{#if ../flags.spaceholder.healthDebug}}
+      <div class="debug-info">
+        <small>
+          ID: {{part.id}} | 
+          Parent: {{#if part.parent}}{{part.parent}}{{else}}none{{/if}} | 
+          Coverage: {{part.coverage}}
+        </small>
+      </div>
+      {{/if}}
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  {{!-- No Injuries Message (shown when healthy and not in debug mode) --}}
+  {{#unless injuredParts}}
+    {{#unless flags.spaceholder.healthDebug}}
+    <div class="no-injuries">
+      <p><em>No injuries</em></p>
+    </div>
+    {{/unless}}
+  {{/unless}}
+
+  {{!-- Debug Mode: All Body Parts --}}
+  {{#if flags.spaceholder.healthDebug}}
+  <div class="debug-parts">
+    <h3>All Body Parts (Debug):</h3>
+    {{#if system.health.bodyParts}}
+    {{#each system.health.bodyParts as |part partId|}}
+    <div class="body-part debug {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
+      <div class="part-info">
+        <span class="part-name">{{part.name}}</span>
+        <span class="part-status status-{{part.status}}">{{part.status}}</span>
+      </div>
+      <div class="part-health">
+        <div class="health-bar small">
+          <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
+        </div>
+        <span class="health-numbers">{{part.currentHp}} / {{part.maxHp}}</span>
+      </div>
+      <div class="debug-info">
+        <small>
+          ID: {{part.id}} | 
+          Parent: {{#if part.parent}}{{part.parent}}{{else}}none{{/if}} | 
+          Coverage: {{part.coverage}} |
+          Children: {{#if part.children}}{{part.children.length}}{{else}}0{{/if}}
+        </small>
+      </div>
+      {{#if part.children}}
+      <div class="children-list">
+        <small><strong>Children:</strong>
+          {{#each part.children as |child|}}
+            {{child.name}} ({{child.coverage}}){{#unless @last}}, {{/unless}}
+          {{/each}}
+        </small>
+      </div>
+      {{/if}}
+    </div>
+    {{/each}}
+    {{else}}
+    <p><em>No body parts data found</em></p>
+    {{/if}}
+  </div>
+  {{/if}}
+
+</div>
