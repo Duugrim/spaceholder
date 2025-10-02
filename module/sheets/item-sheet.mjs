@@ -3,72 +3,48 @@ import {
   prepareActiveEffectCategories,
 } from '../helpers/effects.mjs';
 
-/**
- * Extend the basic ItemSheet with some very simple modifications
- * @extends {ItemSheet}
- */
-export class SpaceHolderItemSheet extends ItemSheet {
-  /** @override */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ['spaceholder', 'sheet', 'item'],
-      width: 520,
-      height: 480,
+// Base V2 Item Sheet with Handlebars rendering
+export class SpaceHolderBaseItemSheet extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.sheets.ItemSheet
+) {
+  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+    classes: ['spaceholder', 'sheet', 'item'],
+    position: { width: 520, height: 480 }
+  });
+
+  // Native tabs configuration (Application V2)
+  static TABS = {
+    primary: {
       tabs: [
-        {
-          navSelector: '.sheet-tabs',
-          contentSelector: '.sheet-body',
-          initial: 'description',
-        },
+        { id: 'description' },
+        { id: 'attributes' },
+        { id: 'effects' }
       ],
-    });
-  }
-
-  /** @override */
-  get template() {
-    const path = 'systems/spaceholder/templates/item';
-    // Return a single sheet for all item types.
-    // return `${path}/item-sheet.hbs`;
-
-    // Alternatively, you could use the following return statement to do a
-    // unique item sheet by type, like `weapon-sheet.hbs`.
-    return `${path}/item-${this.item.type}-sheet.hbs`;
-  }
+      initial: 'description'
+    }
+  };
 
   /* -------------------------------------------- */
 
-  /** @override */
-  async getData() {
-    // Retrieve base data structure.
-    const context = super.getData();
+  /** @inheritDoc */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
 
-    // Use a safe clone of the item data for further operations.
     const itemData = this.document.toObject(false);
 
     // Enrich description info for display
-    // Enrichment turns text like `[[/r 1d20]]` into buttons
-    context.enrichedDescription = await TextEditor.enrichHTML(
-      this.item.system.description,
-      {
-        // Whether to show secret blocks in the finished html
-        secrets: this.document.isOwner,
-        // Necessary in v11, can be removed in v12
-        async: true,
-        // Data to fill in for inline rolls
-        rollData: this.item.getRollData(),
-        // Relative UUID resolution
-        relativeTo: this.item,
-      }
-    );
+    context.enrichedDescription = await foundry.applications.ux.TextEditor.implementation.enrichHTML(this.item.system.description, {
+      secrets: this.document.isOwner,
+      async: true,
+      rollData: this.item.getRollData(),
+      relativeTo: this.item,
+    });
 
-    // Add the item's data to context.data for easier access, as well as flags.
     context.system = itemData.system;
     context.flags = itemData.flags;
 
-    // Adding a pointer to CONFIG.SPACEHOLDER
     context.config = CONFIG.SPACEHOLDER;
 
-    // Prepare active effects for easier access
     context.effects = prepareActiveEffectCategories(this.item.effects);
 
     return context;
@@ -76,18 +52,51 @@ export class SpaceHolderItemSheet extends ItemSheet {
 
   /* -------------------------------------------- */
 
-  /** @override */
-  activateListeners(html) {
-    super.activateListeners(html);
+  /** @inheritDoc */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
 
-    // Everything below here is only needed if the sheet is editable
+    // Tabs for item sheets
+    const el = this.element;
+    const group = 'primary';
+    const nav = el.querySelector(`.sheet-tabs[data-group="${group}"]`);
+    const sections = Array.from(el.querySelectorAll(`.sheet-body .tab[data-group="${group}"]`));
+    const anchors = Array.from(nav?.querySelectorAll('.item') ?? []);
+    const initialTab = 'description';
+    const activate = (tabId) => {
+      anchors.forEach(a => a.classList.toggle('active', a.dataset.tab === tabId));
+      sections.forEach(s => {
+        const isActive = s.dataset.tab === tabId;
+        s.classList.toggle('active', isActive);
+        s.hidden = !isActive;
+      });
+    };
+    const currentActive = anchors.find(a => a.classList.contains('active'))?.dataset.tab;
+    activate(currentActive || initialTab);
+    anchors.forEach(a => a.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      activate(a.dataset.tab);
+    }));
+
     if (!this.isEditable) return;
 
-    // Roll handlers, click handlers, etc. would go here.
-
     // Active Effect management
-    html.on('click', '.effect-control', (ev) =>
-      onManageActiveEffect(ev, this.item)
+    this.element.querySelectorAll('.effect-control').forEach(btn =>
+      btn.addEventListener('click', (ev) => onManageActiveEffect(ev, this.item))
     );
   }
+}
+
+// Item sheets per type (Application V2)
+export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
+  static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-item-sheet.hbs' } };
+}
+export class SpaceHolderItemSheet_Feature extends SpaceHolderBaseItemSheet {
+  static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-feature-sheet.hbs' } };
+}
+export class SpaceHolderItemSheet_Spell extends SpaceHolderBaseItemSheet {
+  static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-spell-sheet.hbs' } };
+}
+export class SpaceHolderItemSheet_Generic extends SpaceHolderBaseItemSheet {
+  static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-sheet.hbs' } };
 }

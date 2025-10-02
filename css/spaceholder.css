@@ -754,6 +754,12 @@
 .spaceholder .sheet-body {
   background: #000000;
   color: #e0e0e0;
+  overflow: auto;
+}
+
+/* Ensure v2 window content scrolls for our sheets */
+.window-app.spaceholder .window-content {
+  overflow: auto;
 }
 
 /* Input fields */

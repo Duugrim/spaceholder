@@ -3,7 +3,7 @@
  * Pre-loaded templates are compiled and cached for fast access when rendering
  */
 export const preloadHandlebarsTemplates = async function () {
-  return loadTemplates([
+  return foundry.applications.handlebars.loadTemplates([
     // Actor partials.
     'systems/spaceholder/templates/actor/parts/actor-features.hbs',
     'systems/spaceholder/templates/actor/parts/actor-items.hbs',

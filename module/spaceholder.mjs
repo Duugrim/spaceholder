@@ -1,9 +1,9 @@
 // Import document classes.
 import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
-// Import sheet classes.
-import { SpaceHolderActorSheet } from './sheets/actor-sheet.mjs';
-import { SpaceHolderItemSheet } from './sheets/item-sheet.mjs';
+// Import sheet classes (Application V2)
+import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet } from './sheets/actor-sheet.mjs';
+import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
 import { SPACEHOLDER } from './helpers/config.mjs';
@@ -45,15 +45,42 @@ Hooks.once('init', function () {
   // if the transfer property on the Active Effect is true.
   CONFIG.ActiveEffect.legacyTransferral = false;
 
-  // Register sheet application classes
-  Actors.unregisterSheet('core', ActorSheet);
-  Actors.registerSheet('spaceholder', SpaceHolderActorSheet, {
+  // Register sheet application classes (Application V2)
+  // Unregister core v2 sheets
+  foundry.documents.collections.Actors.unregisterSheet('core', foundry.applications.sheets.ActorSheet);
+  foundry.documents.collections.Items.unregisterSheet('core', foundry.applications.sheets.ItemSheet);
+
+  // Register Actor sheets by type
+  foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderCharacterSheet, {
+    types: ['character'],
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.Actor',
   });
-  Items.unregisterSheet('core', ItemSheet);
-  Items.registerSheet('spaceholder', SpaceHolderItemSheet, {
+  foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderNPCSheet, {
+    types: ['npc'],
     makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Actor',
+  });
+
+  // Register Item sheets by type (fallback generic)
+  foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Item, {
+    types: ['item'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Item',
+  });
+  foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Feature, {
+    types: ['feature'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Item',
+  });
+  foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Spell, {
+    types: ['spell'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Item',
+  });
+  // Generic fallback for any other item types
+  foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Generic, {
+    makeDefault: false,
     label: 'SPACEHOLDER.SheetLabels.Item',
   });
 

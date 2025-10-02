@@ -4,95 +4,68 @@ import {
 } from '../helpers/effects.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
 
-/**
- * Extend the basic ActorSheet with some very simple modifications
- * @extends {ActorSheet}
- */
-export class SpaceHolderActorSheet extends ActorSheet {
-  /** @override */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ['spaceholder', 'sheet', 'actor'],
-      width: 600,
-      height: 600,
-      tabs: [
-        {
-          navSelector: '.sheet-tabs',
-          contentSelector: '.sheet-body',
-          initial: 'features',
-        },
-      ],
-    });
-  }
+// Base V2 Actor Sheet with Handlebars rendering
+export class SpaceHolderBaseActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.sheets.ActorSheet
+) {
+  // Default options for both character and npc
+  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+    classes: ['spaceholder', 'sheet', 'actor'],
+    position: { width: 600, height: 'auto' },
+    window: {
+      resizable: true,
+      contentClasses: ['standard-form']
+    }
+  });
 
-  /** @override */
-  get template() {
-    return `systems/spaceholder/templates/actor/actor-${this.actor.type}-sheet.hbs`;
-  }
 
   /* -------------------------------------------- */
 
-  /** @override */
-  async getData() {
-    // Retrieve the data structure from the base sheet. You can inspect or log
-    // the context variable to see the structure, but some key properties for
-    // sheets are the actor object, the data object, whether or not it's
-    // editable, the items array, and the effects array.
-    const context = super.getData();
+  /** @inheritDoc */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
 
     // Use a safe clone of the actor data for further operations.
     const actorData = this.document.toObject(false);
 
-    // Add the actor's data to context.data for easier access, as well as flags.
+    // Add the actor's data to context for easier access, as well as flags.
     context.system = actorData.system;
     context.flags = actorData.flags;
-    
+
     // Обновляем данные здоровья в контексте со свежими данными из this.actor.system
-    if (context.system.health) {
+    if (context.system?.health) {
       context.system.health.totalHealth = this.actor.system.health?.totalHealth || context.system.health.totalHealth;
     }
 
     // Adding a pointer to CONFIG.SPACEHOLDER
     context.config = CONFIG.SPACEHOLDER;
 
-    // Prepare character data and items.
-    if (actorData.type == 'character') {
+    // Provide actor reference for templates (compat layer with v1 templates)
+    context.actor = this.actor;
+    context.editable = this.isEditable;
+
+    // Prepare data per type
+    if (actorData.type === 'character') {
       this._prepareItems(context);
       this._prepareCharacterData(context);
-      // Prepare anatomy data
       await this._prepareAnatomyData(context);
-    }
-
-    // Prepare NPC data and items.
-    if (actorData.type == 'npc') {
+    } else if (actorData.type === 'npc') {
       this._prepareItems(context);
     }
-    
+
     // Всегда обновляем данные здоровья при каждой перерисовке
     this._prepareHealthData(context);
 
     // Enrich biography info for display
-    // Enrichment turns text like `[[/r 1d20]]` into buttons
-    context.enrichedBiography = await TextEditor.enrichHTML(
-      this.actor.system.biography,
-      {
-        // Whether to show secret blocks in the finished html
-        secrets: this.document.isOwner,
-        // Necessary in v11, can be removed in v12
-        async: true,
-        // Data to fill in for inline rolls
-        rollData: this.actor.getRollData(),
-        // Relative UUID resolution
-        relativeTo: this.actor,
-      }
-    );
+    context.enrichedBiography = await foundry.applications.ux.TextEditor.implementation.enrichHTML(this.actor.system.biography, {
+      secrets: this.document.isOwner,
+      async: true,
+      rollData: this.actor.getRollData(),
+      relativeTo: this.actor,
+    });
 
     // Prepare active effects
-    context.effects = prepareActiveEffectCategories(
-      // A generator that returns all effects stored on the actor
-      // as well as any items
-      this.actor.allApplicableEffects()
-    );
+    context.effects = prepareActiveEffectCategories(this.actor.allApplicableEffects());
 
     return context;
   }
@@ -272,8 +245,13 @@ export class SpaceHolderActorSheet extends ActorSheet {
       9: [],
     };
 
+    // Get items from the actor (v2: context.items не предоставляется базовым классом)
+    const items = this.actor.items;
+    // Сохраняем для шаблонов, если где-то используются
+    context.items = Array.from(items);
+
     // Iterate through items, allocating to containers
-    for (let i of context.items) {
+    for (let i of items) {
       i.img = i.img || Item.DEFAULT_ICON;
       // Append to gear.
       if (i.type === 'item') {
@@ -299,57 +277,92 @@ export class SpaceHolderActorSheet extends ActorSheet {
 
   /* -------------------------------------------- */
 
-  /** @override */
-  activateListeners(html) {
-    super.activateListeners(html);
+  /** @inheritDoc */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    const el = this.element;
+
+    // Tabs: simple controller for v2 to work with existing markup
+    const group = 'primary';
+    const nav = el.querySelector(`.sheet-tabs[data-group="${group}"]`);
+    const sections = Array.from(el.querySelectorAll(`.sheet-body .tab[data-group="${group}"]`));
+    const anchors = Array.from(nav?.querySelectorAll('.item') ?? []);
+    // Prefer opening Health first if нет анатомии, чтобы кнопку было видно
+    const hasAnyParts = !!(this.actor.system?.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
+    // Persist active tab across re-renders; default to 'stats' for character, else 'description'
+    const defaultInitial = this.actor?.type === 'character' ? 'stats' : 'description';
+    const initialTab = this._activeTabPrimary || (hasAnyParts ? defaultInitial : 'health');
+    const activate = (tabId) => {
+      anchors.forEach(a => a.classList.toggle('active', a.dataset.tab === tabId));
+      sections.forEach(s => {
+        const isActive = s.dataset.tab === tabId;
+        s.classList.toggle('active', isActive);
+        s.hidden = !isActive; // hide non-active to bypass legacy .tab CSS
+      });
+    };
+    // Инициализация вкладок только если есть навигация и секции
+    if (nav && anchors.length && sections.length) {
+      const currentActive = anchors.find(a => a.classList.contains('active'))?.dataset.tab;
+      activate(currentActive || initialTab);
+      anchors.forEach(a => a.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        this._activeTabPrimary = a.dataset.tab;
+        activate(this._activeTabPrimary);
+      }));
+    }
+    // Если навигация не найдена, ничего не скрываем — показываем всё содержимое
 
     // Render the item sheet for viewing/editing prior to the editable check.
-    html.on('click', '.item-edit', (ev) => {
-      const li = $(ev.currentTarget).parents('.item');
-      const item = this.actor.items.get(li.data('itemId'));
-      item.sheet.render(true);
+    el.querySelectorAll('.item-edit').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        const li = ev.currentTarget.closest('.item');
+        const item = this.actor.items.get(li.dataset.itemId);
+        item?.sheet?.render(true);
+      });
     });
 
-    // -------------------------------------------------------------
     // Everything below here is only needed if the sheet is editable
     if (!this.isEditable) return;
 
     // Add Inventory Item
-    html.on('click', '.item-create', this._onItemCreate.bind(this));
+    el.querySelectorAll('.item-create').forEach(btn => {
+      btn.addEventListener('click', this._onItemCreate.bind(this));
+    });
 
     // Delete Inventory Item
-    html.on('click', '.item-delete', (ev) => {
-      const li = $(ev.currentTarget).parents('.item');
-      const item = this.actor.items.get(li.data('itemId'));
-      item.delete();
-      li.slideUp(200, () => this.render(false));
+    el.querySelectorAll('.item-delete').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        const li = ev.currentTarget.closest('.item');
+        const item = this.actor.items.get(li.dataset.itemId);
+        item?.delete();
+        this.render(false);
+      });
     });
 
     // Active Effect management
-    html.on('click', '.effect-control', (ev) => {
-      const row = ev.currentTarget.closest('li');
-      const document =
-        row.dataset.parentId === this.actor.id
-          ? this.actor
-          : this.actor.items.get(row.dataset.parentId);
-      onManageActiveEffect(ev, document);
+    el.querySelectorAll('.effect-control').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        const row = ev.currentTarget.closest('li');
+        const document = row.dataset.parentId === this.actor.id ? this.actor : this.actor.items.get(row.dataset.parentId);
+        onManageActiveEffect(ev, document);
+      });
     });
 
     // Rollable abilities.
-    html.on('click', '.rollable', this._onRoll.bind(this));
-    
+    el.querySelectorAll('.rollable').forEach(btn => btn.addEventListener('click', this._onRoll.bind(this)));
+
     // Anatomy toggle button (choose/delete)
-    html.on('click', '.anatomy-toggle-btn', this._onAnatomyToggleClick.bind(this));
+    el.querySelectorAll('.anatomy-toggle-btn').forEach(btn => btn.addEventListener('click', this._onAnatomyToggleClick.bind(this)));
 
     // Health debug toggle
-    html.on('change', 'input[name="flags.spaceholder.healthDebug"]', this._onHealthDebugToggle.bind(this));
+    el.querySelectorAll('input[name="flags.spaceholder.healthDebug"]').forEach(inp => inp.addEventListener('change', this._onHealthDebugToggle.bind(this)));
 
     // Drag events for macros.
     if (this.actor.isOwner) {
-      let handler = (ev) => this._onDragStart(ev);
-      html.find('li.item').each((i, li) => {
+      const handler = (ev) => this._onDragStart(ev);
+      el.querySelectorAll('li.item').forEach((li) => {
         if (li.classList.contains('inventory-header')) return;
-        li.setAttribute('draggable', true);
+        li.setAttribute('draggable', 'true');
         li.addEventListener('dragstart', handler, false);
       });
     }
@@ -587,4 +600,25 @@ export class SpaceHolderActorSheet extends ActorSheet {
       return roll;
     }
   }
+}
+
+// Character-specific sheet (Application V2)
+export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
+  // Native tabs for character sheet: stats (Характеристики) and health (Здоровье)
+  static TABS = {
+    primary: {
+      tabs: [ { id: 'stats' }, { id: 'health' } ],
+      initial: 'stats'
+    }
+  };
+  static PARTS = {
+    body: { root: true, template: 'systems/spaceholder/templates/actor/actor-character-sheet.hbs' }
+  };
+}
+
+// NPC-specific sheet (Application V2)
+export class SpaceHolderNPCSheet extends SpaceHolderBaseActorSheet {
+  static PARTS = {
+    body: { root: true, template: 'systems/spaceholder/templates/actor/actor-npc-sheet.hbs' }
+  };
 }
