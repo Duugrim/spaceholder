@@ -260,11 +260,8 @@ export class SpaceHolderActor extends Actor {
     
     await this.update(updatePaths);
     
-    // Принудительная перерисовка листа персонажа
-    if (this.sheet?.rendered) {
-      this.sheet.render(false); // false = не принудительно, только обновить данные
-    }
-    
+    // Перерисовка листа будет инициирована самим Foundry через update
+    // Избегаем ручного рендера без нужных опций вкладок, чтобы не терять активную вкладку
     return true;
   }
 

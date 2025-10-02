@@ -24,6 +24,18 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     }
   };
 
+  /** @inheritDoc */
+  async _onFirstRender(context, options) {
+    await super._onFirstRender(context, options);
+    try { this.changeTab('description', 'primary', { updatePosition: false }); } catch (e) { /* ignore */ }
+  }
+
+  /** @inheritDoc */
+  _configureRenderOptions(options) {
+    super._configureRenderOptions(options);
+    options.tab = { primary: this.tabGroups?.primary || 'description' };
+  }
+
   /* -------------------------------------------- */
 
   /** @inheritDoc */
@@ -56,27 +68,7 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
   async _onRender(context, options) {
     await super._onRender(context, options);
 
-    // Tabs for item sheets
-    const el = this.element;
-    const group = 'primary';
-    const nav = el.querySelector(`.sheet-tabs[data-group="${group}"]`);
-    const sections = Array.from(el.querySelectorAll(`.sheet-body .tab[data-group="${group}"]`));
-    const anchors = Array.from(nav?.querySelectorAll('.item') ?? []);
-    const initialTab = 'description';
-    const activate = (tabId) => {
-      anchors.forEach(a => a.classList.toggle('active', a.dataset.tab === tabId));
-      sections.forEach(s => {
-        const isActive = s.dataset.tab === tabId;
-        s.classList.toggle('active', isActive);
-        s.hidden = !isActive;
-      });
-    };
-    const currentActive = anchors.find(a => a.classList.contains('active'))?.dataset.tab;
-    activate(currentActive || initialTab);
-    anchors.forEach(a => a.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      activate(a.dataset.tab);
-    }));
+    // Tabs: use native ApplicationV2 changeTab via [data-action=\"tab\"] in templates
 
     if (!this.isEditable) return;
 

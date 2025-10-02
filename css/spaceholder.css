@@ -762,6 +762,14 @@
   overflow: auto;
 }
 
+/* Application v2 tabs: show only active tab section */
+.window-app.spaceholder .sheet-body .tab {
+  display: none;
+}
+.window-app.spaceholder .sheet-body .tab.active {
+  display: block;
+}
+
 /* Input fields */
 .spaceholder input[type="text"],
 .spaceholder input[type="number"],

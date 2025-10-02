@@ -282,35 +282,12 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     await super._onRender(context, options);
     const el = this.element;
 
-    // Tabs: simple controller for v2 to work with existing markup
-    const group = 'primary';
-    const nav = el.querySelector(`.sheet-tabs[data-group="${group}"]`);
-    const sections = Array.from(el.querySelectorAll(`.sheet-body .tab[data-group="${group}"]`));
-    const anchors = Array.from(nav?.querySelectorAll('.item') ?? []);
-    // Prefer opening Health first if нет анатомии, чтобы кнопку было видно
+    // Re-apply active tab on every render to ensure section classes are correct
     const hasAnyParts = !!(this.actor.system?.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
-    // Persist active tab across re-renders; default to 'stats' for character, else 'description'
-    const defaultInitial = this.actor?.type === 'character' ? 'stats' : 'description';
-    const initialTab = this._activeTabPrimary || (hasAnyParts ? defaultInitial : 'health');
-    const activate = (tabId) => {
-      anchors.forEach(a => a.classList.toggle('active', a.dataset.tab === tabId));
-      sections.forEach(s => {
-        const isActive = s.dataset.tab === tabId;
-        s.classList.toggle('active', isActive);
-        s.hidden = !isActive; // hide non-active to bypass legacy .tab CSS
-      });
-    };
-    // Инициализация вкладок только если есть навигация и секции
-    if (nav && anchors.length && sections.length) {
-      const currentActive = anchors.find(a => a.classList.contains('active'))?.dataset.tab;
-      activate(currentActive || initialTab);
-      anchors.forEach(a => a.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        this._activeTabPrimary = a.dataset.tab;
-        activate(this._activeTabPrimary);
-      }));
-    }
-    // Если навигация не найдена, ничего не скрываем — показываем всё содержимое
+    const desiredTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? (hasAnyParts ? 'stats' : 'health');
+    try { this.changeTab(desiredTab, 'primary', { updatePosition: false, force: true }); } catch (e) { /* ignore */ }
+
+    // Tabs: use native ApplicationV2 changeTab via [data-action=\"tab\"] in templates.
 
     // Render the item sheet for viewing/editing prior to the editable check.
     el.querySelectorAll('.item-edit').forEach(btn => {
@@ -445,33 +422,26 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     `;
     
     // Show dialog
-    new Dialog({
-      title: currentType ? "Change Anatomy Type" : "Select Anatomy Type",
+    await foundry.applications.api.DialogV2.wait({
+      window: { title: currentType ? 'Change Anatomy Type' : 'Select Anatomy Type', icon: 'fa-solid fa-user' },
+      position: { width: 400 },
       content: dialogContent,
-      buttons: {
-        change: {
-          icon: '<i class="fas fa-check"></i>',
-          label: currentType ? "Change" : "Select",
-          callback: async (html) => {
-            const selectedType = html.find('#anatomy-select').val();
+      buttons: [
+        {
+          action: 'change',
+          label: currentType ? 'Change' : 'Select',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (event) => {
+            const selectedType = event.currentTarget.querySelector('#anatomy-select')?.value;
             if (selectedType && selectedType !== currentType) {
               await this._performAnatomyChange(selectedType);
             }
           }
         },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: "Cancel"
-        }
-      },
-      default: "change",
-      render: (html) => {
-        // Focus the select element
-        html.find('#anatomy-select').focus();
-      }
-    }, {
-      width: 400
-    }).render(true);
+        { action: 'cancel', label: 'Cancel', icon: 'fa-solid fa-times' }
+      ]
+    });
   }
   
   /**
@@ -486,8 +456,9 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       
       if (success) {
         ui.notifications.info(`Анатомия изменена на ${anatomyManager.getAnatomyDisplayName(newAnatomyType)}`);
-        // Принудительная полная перерисовка
-        this.render(true);
+        // Сохраняем активной вкладку "health" и принудительно перерисовываем
+        this._activeTabPrimary = 'health';
+        this.render({ force: true, tab: { primary: 'health' } });
       } else {
         ui.notifications.error('Не удалось изменить тип анатомии');
       }
@@ -531,42 +502,35 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       </div>
     `;
 
-    new Dialog({
-      title: 'Сброс анатомии',
+    await foundry.applications.api.DialogV2.confirm({
+      window: { title: 'Сброс анатомии', icon: 'fa-solid fa-trash' },
       content,
-      buttons: {
-        ok: {
-          icon: '<i class="fas fa-trash"></i>',
-          label: 'Сбросить',
-          callback: async () => {
-            try {
-              if (typeof this.actor.resetAnatomy === 'function') {
-                await this.actor.resetAnatomy(true);
-              } else {
-                // Запасной вариант: точечное удаление всех текущих частей и сброс типа
-                const currentParts = this.actor.system.health?.bodyParts || {};
-                const delUpdate = { 'system.anatomy.type': null, 'system.health.totalHealth': { current: 0, max: 0, percentage: 100 } };
-                for (const id of Object.keys(currentParts)) {
-                  delUpdate[`system.health.bodyParts.-=${id}`] = null;
-                }
-                await this.actor.update(delUpdate);
-                await this.actor.prepareData();
+      yes: {
+        label: 'Сбросить',
+        icon: 'fa-solid fa-trash',
+        callback: async () => {
+          try {
+            if (typeof this.actor.resetAnatomy === 'function') {
+              await this.actor.resetAnatomy(true);
+            } else {
+              const currentParts = this.actor.system.health?.bodyParts || {};
+              const delUpdate = { 'system.anatomy.type': null, 'system.health.totalHealth': { current: 0, max: 0, percentage: 100 } };
+              for (const id of Object.keys(currentParts)) {
+                delUpdate[`system.health.bodyParts.-=${id}`] = null;
               }
-              ui.notifications.info('Анатомия очищена');
-              this.render(true);
-            } catch (e) {
-              console.error('Ошибка при сбросе анатомии:', e);
-              ui.notifications.error('Не удалось очистить анатомию');
+              await this.actor.update(delUpdate);
+              await this.actor.prepareData();
             }
+            ui.notifications.info('Анатомия очищена');
+            this.render(true);
+          } catch (e) {
+            console.error('Ошибка при сбросе анатомии:', e);
+            ui.notifications.error('Не удалось очистить анатомию');
           }
-        },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: 'Отмена'
         }
       },
-      default: 'ok'
-    }).render(true);
+      no: { label: 'Отмена', icon: 'fa-solid fa-times' }
+    });
   }
 
   /**
@@ -614,6 +578,28 @@ export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
   static PARTS = {
     body: { root: true, template: 'systems/spaceholder/templates/actor/actor-character-sheet.hbs' }
   };
+
+  /** @inheritDoc */
+  async _onFirstRender(context, options) {
+    await super._onFirstRender(context, options);
+    const hasAnyParts = !!(this.actor.system?.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
+    const tabId = this._activeTabPrimary ?? (hasAnyParts ? 'stats' : 'health');
+    try { this.changeTab(tabId, 'primary', { updatePosition: true }); } catch (e) { /* ignore */ }
+  }
+
+  // Persist active tab whenever it changes
+  changeTab(tab, group, options={}) {
+    if (group === 'primary') this._activeTabPrimary = tab;
+    return super.changeTab(tab, group, options);
+  }
+
+  /** @inheritDoc */
+  _configureRenderOptions(options) {
+    super._configureRenderOptions(options);
+    const hasAnyParts = !!(this.actor.system?.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
+    const selected = this._activeTabPrimary ?? (hasAnyParts ? 'stats' : 'health');
+    options.tab = { primary: selected };
+  }
 }
 
 // NPC-specific sheet (Application V2)
