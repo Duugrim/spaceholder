@@ -37,13 +37,13 @@
     <div class="body-part injured">
       <div class="part-info">
         <span class="part-name">{{part.name}}</span>
-        <span class="part-status status-{{part.status}}">{{part.status}}</span>
-      </div>
-      <div class="part-health">
-        <div class="health-bar small">
-          <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
-        </div>
         <span class="health-numbers">{{part.currentHp}} / {{part.maxHp}}</span>
+        <span class="part-status status-{{part.status}}">{{part.status}}</span>
+        <div class="part-health">
+          <div class="health-bar small">
+            <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
+          </div>
+        </div>
       </div>
       {{#if ../flags.spaceholder.healthDebug}}
       <div class="debug-info">
@@ -77,13 +77,13 @@
     <div class="body-part debug {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
       <div class="part-info">
         <span class="part-name">{{part.name}}</span>
-        <span class="part-status status-{{part.status}}">{{part.status}}</span>
-      </div>
-      <div class="part-health">
-        <div class="health-bar small">
-          <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
-        </div>
         <span class="health-numbers">{{part.currentHp}} / {{part.maxHp}}</span>
+        <span class="part-status status-{{part.status}}">{{part.status}}</span>
+        <div class="part-health">
+          <div class="health-bar small">
+            <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
+          </div>
+        </div>
       </div>
       <div class="debug-info">
         <small>
