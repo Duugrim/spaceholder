@@ -2,6 +2,7 @@ import {
   onManageActiveEffect,
   prepareActiveEffectCategories,
 } from '../helpers/effects.mjs';
+import { anatomyManager } from '../anatomy-manager.mjs';
 
 /**
  * Extend the basic ActorSheet with some very simple modifications
@@ -45,6 +46,11 @@ export class SpaceHolderActorSheet extends ActorSheet {
     // Add the actor's data to context.data for easier access, as well as flags.
     context.system = actorData.system;
     context.flags = actorData.flags;
+    
+    // Обновляем данные здоровья в контексте со свежими данными из this.actor.system
+    if (context.system.health) {
+      context.system.health.totalHealth = this.actor.system.health?.totalHealth || context.system.health.totalHealth;
+    }
 
     // Adding a pointer to CONFIG.SPACEHOLDER
     context.config = CONFIG.SPACEHOLDER;
@@ -53,12 +59,17 @@ export class SpaceHolderActorSheet extends ActorSheet {
     if (actorData.type == 'character') {
       this._prepareItems(context);
       this._prepareCharacterData(context);
+      // Prepare anatomy data
+      await this._prepareAnatomyData(context);
     }
 
     // Prepare NPC data and items.
     if (actorData.type == 'npc') {
       this._prepareItems(context);
     }
+    
+    // Всегда обновляем данные здоровья при каждой перерисовке
+    this._prepareHealthData(context);
 
     // Enrich biography info for display
     // Enrichment turns text like `[[/r 1d20]]` into buttons
@@ -100,14 +111,46 @@ export class SpaceHolderActorSheet extends ActorSheet {
   }
 
   /**
+   * Prepare anatomy data for UI
+   * @param {object} context The context object to mutate
+   */
+  async _prepareAnatomyData(context) {
+    // Get available anatomies
+    const availableAnatomies = anatomyManager.getAvailableAnatomies();
+    
+    // Create choices array for dialog dropdown
+    context.anatomyChoices = {};
+    for (let [id, anatomy] of Object.entries(availableAnatomies)) {
+      context.anatomyChoices[id] = anatomyManager.getAnatomyDisplayName(id);
+    }
+    
+    // Current anatomy type from the actual actor data  
+    context.currentAnatomyType = this.actor.system.anatomy?.type;
+    context.anatomyDisplayName = context.currentAnatomyType ? 
+      anatomyManager.getAnatomyDisplayName(context.currentAnatomyType) : null;
+  }
+
+  /**
    * Prepare health data for the health tab UI
    * @param {object} context The context object to mutate
    */
   _prepareHealthData(context) {
-    const bodyParts = context.system.health?.bodyParts;
-    if (!bodyParts) return;
+    // Принудительно обновляем актера для получения свежих данных
+    const freshActorData = this.actor.system;
+    const bodyParts = freshActorData.anatomy?.bodyParts || freshActorData.health?.bodyParts;
+    
+    console.log('[DEBUG] _prepareHealthData: preparing health data...', {
+      totalHealth: freshActorData.health?.totalHealth,
+      bodyPartsCount: bodyParts ? Object.keys(bodyParts).length : 0
+    });
+    
+    if (!bodyParts) {
+      context.hierarchicalBodyParts = [];
+      context.injuredParts = null;
+      return;
+    }
 
-    // Mark injured parts and collect them
+    // Mark injured parts and prepare hierarchical structure
     const injuredParts = {};
     
     for (let [partId, part] of Object.entries(bodyParts)) {
@@ -120,8 +163,88 @@ export class SpaceHolderActorSheet extends ActorSheet {
       }
     }
     
-    // Add injured parts to context
+    // Add injured parts to context (for backward compatibility)
     context.injuredParts = Object.keys(injuredParts).length > 0 ? injuredParts : null;
+    
+    // Build hierarchical structure for all body parts using fresh data
+    context.hierarchicalBodyParts = this._buildHierarchicalBodyParts(bodyParts);
+    
+    console.log(`[DEBUG] Prepared ${context.hierarchicalBodyParts.length} body parts for display`);
+  }
+  
+  /**
+   * Build hierarchical structure of body parts for ASCII tree display
+   * @param {object} bodyParts - All body parts
+   * @returns {Array} Flat array with tree structure info
+   */
+  _buildHierarchicalBodyParts(bodyParts) {
+    if (!bodyParts) return [];
+    
+    const result = [];
+    
+    // Find root parts
+    const rootParts = [];
+    for (let [partId, part] of Object.entries(bodyParts)) {
+      if (!part.parent) {
+        rootParts.push({ ...part, id: partId });
+      }
+    }
+    
+    // Recursive function to build tree lines
+    const buildTreeLines = (parentId, prefix = '', isLast = true) => {
+      const children = [];
+      for (let [partId, part] of Object.entries(bodyParts)) {
+        if (part.parent === parentId) {
+          children.push({ ...part, id: partId });
+        }
+      }
+      
+      // Sort children by coverage (descending)
+      children.sort((a, b) => b.coverage - a.coverage);
+      
+      children.forEach((child, index) => {
+        const isLastChild = index === children.length - 1;
+        const currentPrefix = prefix + (isLastChild ? '└─ ' : '├─ ');
+        const nextPrefix = prefix + (isLastChild ? '   ' : '│  ');
+        
+        result.push({
+          ...child,
+          treePrefix: currentPrefix,
+          hasChildren: this._hasChildren(child.id, bodyParts)
+        });
+        
+        // Recursively add children
+        buildTreeLines(child.id, nextPrefix, isLastChild);
+      });
+    };
+    
+    // Add root parts and their children
+    rootParts.forEach((rootPart, index) => {
+      result.push({
+        ...rootPart,
+        treePrefix: '',
+        hasChildren: this._hasChildren(rootPart.id, bodyParts)
+      });
+      
+      buildTreeLines(rootPart.id, '', true);
+    });
+    
+    return result;
+  }
+  
+  /**
+   * Check if a body part has children
+   * @param {string} partId - Body part ID
+   * @param {object} bodyParts - All body parts
+   * @returns {boolean}
+   */
+  _hasChildren(partId, bodyParts) {
+    for (let part of Object.values(bodyParts)) {
+      if (part.parent === partId) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -211,6 +334,9 @@ export class SpaceHolderActorSheet extends ActorSheet {
 
     // Rollable abilities.
     html.on('click', '.rollable', this._onRoll.bind(this));
+    
+    // Change anatomy button
+    html.on('click', '.change-anatomy-btn', this._onChangeAnatomyClick.bind(this));
 
     // Health debug toggle
     html.on('change', 'input[name="flags.spaceholder.healthDebug"]', this._onHealthDebugToggle.bind(this));
@@ -266,6 +392,93 @@ export class SpaceHolderActorSheet extends ActorSheet {
 
     // Finally, create the item!
     return await Item.create(itemData, { parent: this.actor });
+  }
+
+  /**
+   * Handle anatomy change button click
+   * @param {Event} event   The originating click event
+   * @private
+   */
+  async _onChangeAnatomyClick(event) {
+    event.preventDefault();
+    
+    const availableAnatomies = anatomyManager.getAvailableAnatomies();
+    const currentType = this.actor.system.anatomy?.type;
+    
+    // Build options for the select
+    let optionsHTML = '';
+    for (let [id, anatomy] of Object.entries(availableAnatomies)) {
+      const selected = id === currentType ? 'selected' : '';
+      const displayName = anatomyManager.getAnatomyDisplayName(id);
+      optionsHTML += `<option value="${id}" ${selected}>${displayName}</option>`;
+    }
+    
+    const dialogContent = `
+      <div class="anatomy-change-dialog">
+        <p><strong>Выберите новый тип анатомии:</strong></p>
+        <div class="form-group">
+          <select id="anatomy-select" style="width: 100%; padding: 8px; margin: 10px 0; height: 40px; font-size: 14px;">
+            ${optionsHTML}
+          </select>
+        </div>
+        ${currentType ? 
+          '<p class="warning"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> This will replace all current body parts and reset health values.</p>' : 
+          '<p class="info"><i class="fas fa-info-circle"></i> This will initialize the anatomy system for this character.</p>'
+        }
+      </div>
+    `;
+    
+    // Show dialog
+    new Dialog({
+      title: currentType ? "Change Anatomy Type" : "Select Anatomy Type",
+      content: dialogContent,
+      buttons: {
+        change: {
+          icon: '<i class="fas fa-check"></i>',
+          label: currentType ? "Change" : "Select",
+          callback: async (html) => {
+            const selectedType = html.find('#anatomy-select').val();
+            if (selectedType && selectedType !== currentType) {
+              await this._performAnatomyChange(selectedType);
+            }
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancel"
+        }
+      },
+      default: "change",
+      render: (html) => {
+        // Focus the select element
+        html.find('#anatomy-select').focus();
+      }
+    }, {
+      width: 400
+    }).render(true);
+  }
+  
+  /**
+   * Perform the anatomy change with proper cleanup
+   * @param {string} newAnatomyType - New anatomy type ID
+   * @private
+   */
+  async _performAnatomyChange(newAnatomyType) {
+    try {
+      // changeAnatomyType теперь сам делает полную очистку
+      const success = await this.actor.changeAnatomyType(newAnatomyType);
+      
+      if (success) {
+        ui.notifications.info(`Анатомия изменена на ${anatomyManager.getAnatomyDisplayName(newAnatomyType)}`);
+        // Принудительная полная перерисовка
+        this.render(true);
+      } else {
+        ui.notifications.error('Не удалось изменить тип анатомии');
+      }
+    } catch (error) {
+      console.error('Ошибка при смене анатомии:', error);
+      ui.notifications.error('Произошла ошибка при смене анатомии');
+    }
   }
 
   /**

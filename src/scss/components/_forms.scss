@@ -53,3 +53,36 @@
     padding: 0 8px;
   }
 }
+
+// Anatomy selector styles
+.anatomy-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  
+  label {
+    font-weight: bold;
+    color: $c-dark;
+    white-space: nowrap;
+  }
+  
+  .anatomy-selector {
+    flex: 1;
+    min-width: 200px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    font-size: 14px;
+    
+    &:focus {
+      outline: none;
+      border-color: $c-primary;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+  }
+}

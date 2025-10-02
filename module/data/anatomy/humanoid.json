@@ -1,0 +1,186 @@
+{
+  "id": "humanoid",
+  "name": "Humanoid",
+  "description": "Standard human-like anatomy with head, torso, arms and legs",
+  "version": "1.0.0",
+  "bodyParts": {
+    "torso": {
+      "id": "torso",
+      "name": "Torso",
+      "parent": null,
+      "coverage": 10000,
+      "currentHp": 50,
+      "maxHp": 50,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["core", "vital", "armor_chest"]
+    },
+    "neck": {
+      "id": "neck",
+      "name": "Neck",
+      "parent": "torso",
+      "coverage": 750,
+      "currentHp": 15,
+      "maxHp": 15,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["vital", "vulnerable", "armor_neck"]
+    },
+    "head": {
+      "id": "head",
+      "name": "Head",
+      "parent": "neck",
+      "coverage": 8000,
+      "currentHp": 25,
+      "maxHp": 25,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["vital", "brain", "sensory", "armor_head"]
+    },
+    "leftShoulder": {
+      "id": "leftShoulder",
+      "name": "Left Shoulder",
+      "parent": "torso",
+      "coverage": 1500,
+      "currentHp": 20,
+      "maxHp": 20,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["joint", "left_side", "armor_shoulder"]
+    },
+    "leftArm": {
+      "id": "leftArm",
+      "name": "Left Arm",
+      "parent": "leftShoulder",
+      "coverage": 9000,
+      "currentHp": 30,
+      "maxHp": 30,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["limb", "left_side", "manipulator", "armor_arm"]
+    },
+    "leftHand": {
+      "id": "leftHand",
+      "name": "Left Hand",
+      "parent": "leftArm",
+      "coverage": 1500,
+      "currentHp": 15,
+      "maxHp": 15,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["extremity", "left_side", "manipulator", "dexterous", "armor_hand"]
+    },
+    "rightShoulder": {
+      "id": "rightShoulder",
+      "name": "Right Shoulder",
+      "parent": "torso",
+      "coverage": 1500,
+      "currentHp": 20,
+      "maxHp": 20,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["joint", "right_side", "armor_shoulder"]
+    },
+    "rightArm": {
+      "id": "rightArm",
+      "name": "Right Arm",
+      "parent": "rightShoulder",
+      "coverage": 9000,
+      "currentHp": 30,
+      "maxHp": 30,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["limb", "right_side", "manipulator", "armor_arm"]
+    },
+    "rightHand": {
+      "id": "rightHand",
+      "name": "Right Hand",
+      "parent": "rightArm",
+      "coverage": 1500,
+      "currentHp": 15,
+      "maxHp": 15,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["extremity", "right_side", "manipulator", "dexterous", "armor_hand"]
+    },
+    "leftHip": {
+      "id": "leftHip",
+      "name": "Left Hip",
+      "parent": "torso",
+      "coverage": 1000,
+      "currentHp": 25,
+      "maxHp": 25,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["joint", "left_side", "armor_hip"]
+    },
+    "leftLeg": {
+      "id": "leftLeg",
+      "name": "Left Leg",
+      "parent": "leftHip",
+      "coverage": 9000,
+      "currentHp": 35,
+      "maxHp": 35,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["limb", "left_side", "locomotion", "armor_leg"]
+    },
+    "leftFoot": {
+      "id": "leftFoot",
+      "name": "Left Foot",
+      "parent": "leftLeg",
+      "coverage": 1200,
+      "currentHp": 12,
+      "maxHp": 12,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["extremity", "left_side", "locomotion", "armor_foot"]
+    },
+    "rightHip": {
+      "id": "rightHip",
+      "name": "Right Hip",
+      "parent": "torso",
+      "coverage": 1000,
+      "currentHp": 25,
+      "maxHp": 25,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["joint", "right_side", "armor_hip"]
+    },
+    "rightLeg": {
+      "id": "rightLeg",
+      "name": "Right Leg",
+      "parent": "rightHip",
+      "coverage": 9000,
+      "currentHp": 35,
+      "maxHp": 35,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["limb", "right_side", "locomotion", "armor_leg"]
+    },
+    "rightFoot": {
+      "id": "rightFoot",
+      "name": "Right Foot",
+      "parent": "rightLeg",
+      "coverage": 1200,
+      "currentHp": 12,
+      "maxHp": 12,
+      "status": "healthy",
+      "internal": false,
+      "tags": ["extremity", "right_side", "locomotion", "armor_foot"]
+    }
+  },
+  "meta": {
+    "totalCoverage": 10000,
+    "totalBodyParts": 15,
+    "rootPart": "torso",
+    "supportedStatuses": ["healthy", "bruised", "injured", "badly_injured", "destroyed", "missing"],
+    "commonTags": {
+      "functionality": ["vital", "core", "limb", "extremity", "joint", "manipulator", "locomotion", "sensory"],
+      "position": ["left_side", "right_side", "center"],
+      "vulnerability": ["vulnerable", "protected", "armored"],
+      "armor_locations": ["armor_head", "armor_neck", "armor_chest", "armor_shoulder", "armor_arm", "armor_hand", "armor_hip", "armor_leg", "armor_foot"],
+      "special": ["brain", "dexterous", "internal"]
+    }
+  }
+}

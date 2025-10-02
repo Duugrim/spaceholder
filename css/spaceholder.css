@@ -1002,3 +1002,317 @@
 .window-app.spaceholder ::-webkit-scrollbar-thumb:hover {
   background: #888888;
 }
+
+/* === HIERARCHICAL HEALTH SYSTEM STYLES === */
+
+/* Anatomy management styles */
+.spaceholder .anatomy-management-container {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border: 1px solid #404040;
+}
+
+.spaceholder .current-anatomy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spaceholder .current-anatomy label {
+  font-weight: bold;
+  color: #ffffff !important;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.spaceholder .anatomy-name {
+  color: #4CAF50 !important;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: rgba(76, 175, 80, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.spaceholder .no-anatomy {
+  color: #ff9800 !important;
+  font-style: italic;
+  padding: 4px 8px;
+  background: rgba(255, 152, 0, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.spaceholder .change-anatomy-btn {
+  background: #0078d4 !important;
+  color: white !important;
+  border: 1px solid #106ebe;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spaceholder .change-anatomy-btn:hover {
+  background: #106ebe !important;
+  border-color: #005a9e;
+  transform: translateY(-1px);
+}
+
+.spaceholder .change-anatomy-btn:active {
+  transform: translateY(0);
+}
+
+.spaceholder .change-anatomy-btn i {
+  font-size: 12px;
+}
+
+/* Health summary */
+.spaceholder .health-container .health-summary {
+  margin-bottom: 20px;
+}
+
+.spaceholder .health-container .total-health {
+  text-align: center;
+}
+
+.spaceholder .health-container .total-health h3 {
+  margin-bottom: 10px;
+  color: #ffffff !important;
+}
+
+.spaceholder .health-container .health-bar {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #555;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.spaceholder .health-container .health-fill {
+  height: 100%;
+  background: linear-gradient(90deg, 
+    #e74c3c 0%, 
+    #f39c12 25%, 
+    #f1c40f 50%, 
+    #27ae60 75%, 
+    #2ecc71 100%);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.spaceholder .health-container .health-numbers {
+  font-weight: bold;
+  color: #ffffff !important;
+}
+
+/* ASCII Tree body parts styles */
+.spaceholder .body-parts-hierarchy {
+  margin-top: 20px;
+}
+
+.spaceholder .body-parts-hierarchy h3 {
+  margin-bottom: 15px;
+  color: #ffffff !important;
+  border-bottom: 2px solid #0078d4;
+  padding-bottom: 5px;
+}
+
+.spaceholder .parts-tree {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.spaceholder .body-part-line {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 2px 0;
+  white-space: pre;
+}
+
+/* Tree structure characters */
+.spaceholder .tree-structure {
+  color: #666 !important;
+  white-space: pre;
+  flex-shrink: 0;
+}
+
+/* Part name */
+.spaceholder .part-name {
+  color: #fff !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  flex-shrink: 0;
+}
+
+/* Spacer to push right-aligned content */
+.spaceholder .part-spacer {
+  flex: 1;
+  min-width: 20px;
+}
+
+/* Part indicator */
+.spaceholder .part-indicator {
+  color: #ccc !important;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+
+/* Health numbers */
+.spaceholder .health-numbers {
+  color: #ccc !important;
+  margin-right: 5px;
+  min-width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Status text */
+.spaceholder .part-status-text {
+  color: #888 !important;
+  flex-shrink: 0;
+}
+
+/* Color coding for different health statuses */
+.spaceholder .body-part-line.healthy {
+  color: #aaa !important;
+}
+
+.spaceholder .body-part-line.healthy .part-name {
+  color: #aaa !important;
+}
+
+.spaceholder .body-part-line.healthy .health-numbers {
+  color: #888 !important;
+}
+
+.spaceholder .body-part-line.healthy .part-status-text {
+  color: #666 !important;
+}
+
+/* Injured parts */
+.spaceholder .body-part-line.injured.status-bruised .part-name {
+  color: #ffc107 !important;
+}
+
+.spaceholder .body-part-line.injured.status-bruised .health-numbers {
+  color: #ffc107 !important;
+}
+
+.spaceholder .body-part-line.injured.status-bruised .part-status-text {
+  color: #ffc107 !important;
+}
+
+.spaceholder .body-part-line.injured.status-injured .part-name {
+  color: #ff9800 !important;
+}
+
+.spaceholder .body-part-line.injured.status-injured .health-numbers {
+  color: #ff9800 !important;
+}
+
+.spaceholder .body-part-line.injured.status-injured .part-status-text {
+  color: #ff9800 !important;
+}
+
+.spaceholder .body-part-line.injured.status-badly_injured .part-name {
+  color: #f44336 !important;
+}
+
+.spaceholder .body-part-line.injured.status-badly_injured .health-numbers {
+  color: #f44336 !important;
+}
+
+.spaceholder .body-part-line.injured.status-badly_injured .part-status-text {
+  color: #f44336 !important;
+}
+
+.spaceholder .body-part-line.injured.status-destroyed .part-name {
+  color: #9c27b0 !important;
+}
+
+.spaceholder .body-part-line.injured.status-destroyed .health-numbers {
+  color: #9c27b0 !important;
+}
+
+.spaceholder .body-part-line.injured.status-destroyed .part-status-text {
+  color: #9c27b0 !important;
+}
+
+.spaceholder .body-part-line.injured.status-missing .part-name {
+  color: #607d8b !important;
+  text-decoration: line-through;
+}
+
+.spaceholder .body-part-line.injured.status-missing .health-numbers {
+  color: #607d8b !important;
+  text-decoration: line-through;
+}
+
+.spaceholder .body-part-line.injured.status-missing .part-status-text {
+  color: #607d8b !important;
+}
+
+/* Debug info */
+.spaceholder .body-part-line .debug-info {
+  margin-top: 3px;
+  padding-left: 20px;
+}
+
+.spaceholder .body-part-line .debug-info small {
+  color: #666 !important;
+  font-size: 0.75em;
+}
+
+/* Debug toggle */
+.spaceholder .health-debug-toggle {
+  margin-bottom: 15px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #404040;
+  border-radius: 4px;
+}
+
+.spaceholder .health-debug-toggle .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.spaceholder .health-debug-toggle input[type="checkbox"] {
+  margin: 0;
+}
+
+.spaceholder .health-debug-toggle label {
+  margin: 0;
+  font-size: 0.9em;
+  color: #ccc !important;
+}
+
+/* No body parts message */
+.spaceholder .no-body-parts {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999 !important;
+}
+
+.spaceholder .no-body-parts p {
+  margin: 0;
+  font-style: italic;
+  color: #999 !important;
+}

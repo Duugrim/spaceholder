@@ -1,12 +1,22 @@
 {{!-- Health Tab Content --}}
 <div class="health-container">
 
-  {{!-- Debug Toggle --}}
-  <div class="health-debug-toggle">
-    <label class="checkbox">
-      <input type="checkbox" name="flags.spaceholder.healthDebug" {{checked flags.spaceholder.healthDebug}}>
-      Debug Mode
-    </label>
+  {{!-- Anatomy Management --}}
+  <div class="anatomy-management-container">
+    <div class="current-anatomy">
+      <label>Current Anatomy:</label>
+      {{#if currentAnatomyType}}
+        <span class="anatomy-name">{{anatomyDisplayName}}</span>
+        <button type="button" class="change-anatomy-btn" title="Change anatomy type">
+          <i class="fas fa-exchange-alt"></i> Change
+        </button>
+      {{else}}
+        <span class="no-anatomy">No anatomy selected</span>
+        <button type="button" class="change-anatomy-btn" title="Select anatomy type">
+          <i class="fas fa-plus"></i> Select Anatomy
+        </button>
+      {{/if}}
+    </div>
   </div>
 
   {{!-- Health Status Summary --}}
@@ -29,84 +39,29 @@
   </div>
   {{/if}}
 
-  {{!-- Injured Parts (always shown if any) --}}
-  {{#if injuredParts}}
-  <div class="injured-parts">
-    <h3>Injuries:</h3>
-    {{#each injuredParts as |part partId|}}
-    <div class="body-part injured">
-      <div class="part-info">
-        <span class="part-name">{{part.name}}</span>
-        <span class="health-numbers">{{part.currentHp}} / {{part.maxHp}}</span>
-        <span class="part-status status-{{part.status}}">{{part.status}}</span>
-        <div class="part-health">
-          <div class="health-bar small">
-            <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
-          </div>
-        </div>
+  {{!-- Hierarchical Body Parts Tree --}}
+  {{#if hierarchicalBodyParts}}
+  <div class="body-parts-hierarchy">
+    <h3>Body Parts:</h3>
+    <div class="parts-tree">
+      {{#each hierarchicalBodyParts as |part|}}
+      <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
+        <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
+        <span class="part-spacer"></span>
+        <span class="part-indicator">[{{#if part.hasChildren}}▼{{else}}●{{/if}}]</span>
+        <span class="health-numbers">{{part.currentHp}}/{{part.maxHp}} HP</span>
+        {{#if part.isInjured}}
+          <span class="part-status-text">- {{part.status}}</span>
+        {{else}}
+          <span class="part-status-text">- healthy</span>
+        {{/if}}
       </div>
-      {{#if ../flags.spaceholder.healthDebug}}
-      <div class="debug-info">
-        <small>
-          ID: {{part.id}} | 
-          Parent: {{#if part.parent}}{{part.parent}}{{else}}none{{/if}} | 
-          Coverage: {{part.coverage}}
-        </small>
-      </div>
-      {{/if}}
+      {{/each}}
     </div>
-    {{/each}}
   </div>
-  {{/if}}
-
-  {{!-- No Injuries Message (shown when healthy and not in debug mode) --}}
-  {{#unless injuredParts}}
-    {{#unless flags.spaceholder.healthDebug}}
-    <div class="no-injuries">
-      <p><em>No injuries</em></p>
-    </div>
-    {{/unless}}
-  {{/unless}}
-
-  {{!-- Debug Mode: All Body Parts --}}
-  {{#if flags.spaceholder.healthDebug}}
-  <div class="debug-parts">
-    <h3>All Body Parts (Debug):</h3>
-    {{#if system.health.bodyParts}}
-    {{#each system.health.bodyParts as |part partId|}}
-    <div class="body-part debug {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
-      <div class="part-info">
-        <span class="part-name">{{part.name}}</span>
-        <span class="health-numbers">{{part.currentHp}} / {{part.maxHp}}</span>
-        <span class="part-status status-{{part.status}}">{{part.status}}</span>
-        <div class="part-health">
-          <div class="health-bar small">
-            <div class="health-fill" style="width: {{part.healthPercentage}}%"></div>
-          </div>
-        </div>
-      </div>
-      <div class="debug-info">
-        <small>
-          ID: {{part.id}} | 
-          Parent: {{#if part.parent}}{{part.parent}}{{else}}none{{/if}} | 
-          Coverage: {{part.coverage}} |
-          Children: {{#if part.children}}{{part.children.length}}{{else}}0{{/if}}
-        </small>
-      </div>
-      {{#if part.children}}
-      <div class="children-list">
-        <small><strong>Children:</strong>
-          {{#each part.children as |child|}}
-            {{child.name}} ({{child.coverage}}){{#unless @last}}, {{/unless}}
-          {{/each}}
-        </small>
-      </div>
-      {{/if}}
-    </div>
-    {{/each}}
-    {{else}}
-    <p><em>No body parts data found</em></p>
-    {{/if}}
+  {{else}}
+  <div class="no-body-parts">
+    <p><em>No body parts data available</em></p>
   </div>
   {{/if}}
 

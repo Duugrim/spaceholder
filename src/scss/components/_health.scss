@@ -1,0 +1,283 @@
+// Health system styles
+
+.health-container {
+  .health-summary {
+    margin-bottom: 20px;
+    
+    .total-health {
+      text-align: center;
+      
+      h3 {
+        margin-bottom: 10px;
+        color: $c-dark;
+      }
+      
+      .health-bar {
+        width: 100%;
+        height: 20px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 5px;
+        
+        .health-fill {
+          height: 100%;
+          background: linear-gradient(90deg, 
+            #e74c3c 0%, 
+            #f39c12 25%, 
+            #f1c40f 50%, 
+            #27ae60 75%, 
+            #2ecc71 100%);
+          border-radius: 10px;
+          transition: width 0.3s ease;
+        }
+      }
+      
+      .health-numbers {
+        font-weight: bold;
+        color: $c-dark;
+      }
+    }
+  }
+}
+
+// Hierarchical body parts styles
+.body-parts-hierarchy {
+  margin-top: 20px;
+  
+  h3 {
+    margin-bottom: 15px;
+    color: $c-dark;
+    border-bottom: 2px solid $c-primary;
+    padding-bottom: 5px;
+  }
+  
+  .parts-list {
+    .body-part.hierarchical {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      margin-bottom: 2px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+      
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+      
+      // Healthy parts - subdued gray
+      &.healthy {
+        color: #6c757d;
+        background: rgba(0, 0, 0, 0.02);
+        border-left-color: #dee2e6;
+        
+        .part-indicator {
+          color: #adb5bd;
+        }
+        
+        .health-numbers {
+          color: #868e96;
+          font-size: 0.9em;
+        }
+      }
+      
+      // Injured parts - color coded by severity
+      &.injured {
+        &.status-bruised {
+          background: rgba(255, 193, 7, 0.1);
+          border-left-color: #ffc107;
+          color: #856404;
+          
+          .part-status {
+            background: #ffc107;
+            color: white;
+          }
+        }
+        
+        &.status-injured {
+          background: rgba(255, 152, 0, 0.15);
+          border-left-color: #ff9800;
+          color: #e65100;
+          
+          .part-status {
+            background: #ff9800;
+            color: white;
+          }
+        }
+        
+        &.status-badly_injured {
+          background: rgba(244, 67, 54, 0.15);
+          border-left-color: #f44336;
+          color: #c62828;
+          
+          .part-status {
+            background: #f44336;
+            color: white;
+          }
+        }
+        
+        &.status-destroyed {
+          background: rgba(156, 39, 176, 0.15);
+          border-left-color: #9c27b0;
+          color: #6a1b9a;
+          
+          .part-status {
+            background: #9c27b0;
+            color: white;
+          }
+        }
+        
+        &.status-missing {
+          background: rgba(96, 125, 139, 0.15);
+          border-left-color: #607d8b;
+          color: #37474f;
+          text-decoration: line-through;
+          
+          .part-status {
+            background: #607d8b;
+            color: white;
+          }
+        }
+      }
+      
+      .part-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        
+        .part-main {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          
+          .part-indicator {
+            font-size: 12px;
+            width: 12px;
+            text-align: center;
+            flex-shrink: 0;
+          }
+          
+          .part-name {
+            font-weight: 500;
+            flex-grow: 1;
+          }
+          
+          .health-numbers {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 6px;
+            border-radius: 3px;
+            min-width: 60px;
+            text-align: center;
+          }
+          
+          .part-status {
+            font-size: 0.8em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            text-transform: capitalize;
+            margin-left: 5px;
+          }
+        }
+        
+        .part-health {
+          margin-top: 4px;
+          
+          .health-bar.mini {
+            width: 100px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            
+            .health-fill {
+              height: 100%;
+              border-radius: 4px;
+              transition: width 0.3s ease;
+              
+              // Color based on percentage
+              background: #e74c3c; // Default red
+              
+              .healthy & {
+                background: #2ecc71; // Green for healthy
+              }
+            }
+          }
+        }
+      }
+      
+      .debug-info {
+        margin-top: 5px;
+        padding-top: 5px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        
+        small {
+          color: #6c757d;
+          font-size: 0.75em;
+        }
+      }
+      
+      // Level-based indentation styling
+      &.level-0 {
+        font-weight: 600;
+        
+        .part-name {
+          font-size: 1.05em;
+        }
+      }
+      
+      &.level-1 {
+        .part-name {
+          font-size: 0.95em;
+        }
+      }
+      
+      &.level-2 {
+        .part-name {
+          font-size: 0.9em;
+          font-style: italic;
+        }
+      }
+    }
+  }
+}
+
+// Debug mode adjustments
+.health-debug-toggle {
+  margin-bottom: 15px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  
+  .checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    
+    input[type="checkbox"] {
+      margin: 0;
+    }
+    
+    label {
+      margin: 0;
+      font-size: 0.9em;
+      color: #6c757d;
+    }
+  }
+}
+
+// No body parts message
+.no-body-parts {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+  
+  p {
+    margin: 0;
+    font-style: italic;
+  }
+}

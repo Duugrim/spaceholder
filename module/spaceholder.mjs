@@ -7,6 +7,8 @@ import { SpaceHolderItemSheet } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
 import { SPACEHOLDER } from './helpers/config.mjs';
+// Import anatomy manager
+import { anatomyManager } from './anatomy-manager.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -19,6 +21,7 @@ Hooks.once('init', function () {
     SpaceHolderActor,
     SpaceHolderItem,
     rollItemMacro,
+    anatomyManager,
   };
 
   // Add custom constants for configuration.
@@ -67,11 +70,33 @@ Handlebars.registerHelper('toLowerCase', function (str) {
   return str.toLowerCase();
 });
 
+// Helper for multiplying numbers (for indentation)
+Handlebars.registerHelper('multiply', function (a, b) {
+  return a * b;
+});
+
+// Helper for joining arrays
+Handlebars.registerHelper('join', function (array, separator) {
+  if (Array.isArray(array)) {
+    return array.join(separator);
+  }
+  return '';
+});
+
 /* -------------------------------------------- */
 /*  Ready Hook                                  */
 /* -------------------------------------------- */
 
-Hooks.once('ready', function () {
+Hooks.once('ready', async function () {
+  // Initialize anatomy manager
+  try {
+    await anatomyManager.initialize();
+    console.log('SpaceHolder | Anatomy system initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize anatomy system:', error);
+    ui.notifications.error('Failed to initialize anatomy system. Check console for details.');
+  }
+  
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
   Hooks.on('hotbarDrop', (bar, data, slot) => createItemMacro(data, slot));
 });

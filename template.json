@@ -3,128 +3,15 @@
     "types": ["character", "npc"],
     "templates": {
       "base": {
+        "anatomy": {
+          "type": null,
+          "bodyParts": {}
+        },
         "health": {
-          "bodyParts": {
-            "torso": {
-              "id": "torso",
-              "name": "Torso",
-              "parent": null,
-              "coverage": 10000,
-              "currentHp": 50,
-              "maxHp": 50
-            },
-            "neck": {
-              "id": "neck",
-              "name": "Neck",
-              "parent": "torso",
-              "coverage": 750,
-              "currentHp": 15,
-              "maxHp": 15
-            },
-            "head": {
-              "id": "head",
-              "name": "Head",
-              "parent": "neck",
-              "coverage": 8000,
-              "currentHp": 25,
-              "maxHp": 25
-            },
-            "leftShoulder": {
-              "id": "leftShoulder",
-              "name": "Left Shoulder",
-              "parent": "torso",
-              "coverage": 1500,
-              "currentHp": 20,
-              "maxHp": 20
-            },
-            "leftArm": {
-              "id": "leftArm",
-              "name": "Left Arm",
-              "parent": "leftShoulder",
-              "coverage": 9000,
-              "currentHp": 30,
-              "maxHp": 30
-            },
-            "leftHand": {
-              "id": "leftHand",
-              "name": "Left Hand",
-              "parent": "leftArm",
-              "coverage": 1500,
-              "currentHp": 15,
-              "maxHp": 15
-            },
-            "rightShoulder": {
-              "id": "rightShoulder",
-              "name": "Right Shoulder",
-              "parent": "torso",
-              "coverage": 1500,
-              "currentHp": 20,
-              "maxHp": 20
-            },
-            "rightArm": {
-              "id": "rightArm",
-              "name": "Right Arm",
-              "parent": "rightShoulder",
-              "coverage": 9000,
-              "currentHp": 30,
-              "maxHp": 30
-            },
-            "rightHand": {
-              "id": "rightHand",
-              "name": "Right Hand",
-              "parent": "rightArm",
-              "coverage": 1500,
-              "currentHp": 15,
-              "maxHp": 15
-            },
-            "leftHip": {
-              "id": "leftHip",
-              "name": "Left Hip",
-              "parent": "torso",
-              "coverage": 1000,
-              "currentHp": 25,
-              "maxHp": 25
-            },
-            "leftLeg": {
-              "id": "leftLeg",
-              "name": "Left Leg",
-              "parent": "leftHip",
-              "coverage": 9000,
-              "currentHp": 35,
-              "maxHp": 35
-            },
-            "leftFoot": {
-              "id": "leftFoot",
-              "name": "Left Foot",
-              "parent": "leftLeg",
-              "coverage": 1200,
-              "currentHp": 12,
-              "maxHp": 12
-            },
-            "rightHip": {
-              "id": "rightHip",
-              "name": "Right Hip",
-              "parent": "torso",
-              "coverage": 1000,
-              "currentHp": 25,
-              "maxHp": 25
-            },
-            "rightLeg": {
-              "id": "rightLeg",
-              "name": "Right Leg",
-              "parent": "rightHip",
-              "coverage": 9000,
-              "currentHp": 35,
-              "maxHp": 35
-            },
-            "rightFoot": {
-              "id": "rightFoot",
-              "name": "Right Foot",
-              "parent": "rightLeg",
-              "coverage": 1200,
-              "currentHp": 12,
-              "maxHp": 12
-            }
+          "totalHealth": {
+            "current": 0,
+            "max": 0,
+            "percentage": 100
           }
         },
         "power": {

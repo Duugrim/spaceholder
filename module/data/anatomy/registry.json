@@ -1,0 +1,56 @@
+{
+  "anatomies": {
+    "humanoid": {
+      "name": "Humanoid",
+      "nameLocalized": "SPACEHOLDER.Anatomy.Humanoid",
+      "file": "humanoid.json",
+      "description": "Standard human-like anatomy with head, torso, arms and legs",
+      "descriptionLocalized": "SPACEHOLDER.Anatomy.Humanoid.Desc",
+      "category": "basic",
+      "icon": "fas fa-male"
+    },
+    "quadruped": {
+      "name": "Quadruped",
+      "nameLocalized": "SPACEHOLDER.Anatomy.Quadruped",
+      "file": "quadruped.json",
+      "description": "Four-legged creature anatomy",
+      "descriptionLocalized": "SPACEHOLDER.Anatomy.Quadruped.Desc",
+      "category": "basic",
+      "icon": "fas fa-horse"
+    },
+    "_serpentine": {
+      "name": "Serpentine",
+      "nameLocalized": "SPACEHOLDER.Anatomy.Serpentine",
+      "file": "serpentine.json",
+      "description": "Snake-like creature with segmented body",
+      "descriptionLocalized": "SPACEHOLDER.Anatomy.Serpentine.Desc",
+      "category": "basic",
+      "icon": "fas fa-snake",
+      "disabled": true
+    },
+    "_arachnid": {
+      "name": "Arachnid",
+      "nameLocalized": "SPACEHOLDER.Anatomy.Arachnid",
+      "file": "arachnid.json",
+      "description": "Eight-legged spider-like creature",
+      "descriptionLocalized": "SPACEHOLDER.Anatomy.Arachnid.Desc",
+      "category": "basic",
+      "icon": "fas fa-spider",
+      "disabled": true
+    }
+  },
+  "version": "1.0.0",
+  "meta": {
+    "lastUpdated": "2025-10-02",
+    "categories": {
+      "basic": {
+        "name": "Basic Anatomies",
+        "nameLocalized": "SPACEHOLDER.Anatomy.Categories.Basic"
+      },
+      "custom": {
+        "name": "Custom Anatomies",
+        "nameLocalized": "SPACEHOLDER.Anatomy.Categories.Custom"
+      }
+    }
+  }
+}
