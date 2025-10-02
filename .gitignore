@@ -1,0 +1,3 @@
+﻿# Test files
+test-*.js
+templates/actor/actor-character-sheet-test.hbs
