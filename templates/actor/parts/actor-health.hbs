@@ -4,16 +4,16 @@
   {{!-- Anatomy Management --}}
   <div class="anatomy-management-container">
     <div class="current-anatomy">
-      <label>Current Anatomy:</label>
-      {{#if currentAnatomyType}}
+      <label>Анатомия:</label>
+      {{#if hasAnatomy}}
         <span class="anatomy-name">{{anatomyDisplayName}}</span>
-        <button type="button" class="change-anatomy-btn" title="Change anatomy type">
-          <i class="fas fa-exchange-alt"></i> Change
+        <button type="button" class="anatomy-toggle-btn" title="Удалить анатомию (очистить части тела)">
+          <i class="fas fa-trash"></i> Удалить анатомию
         </button>
       {{else}}
-        <span class="no-anatomy">No anatomy selected</span>
-        <button type="button" class="change-anatomy-btn" title="Select anatomy type">
-          <i class="fas fa-plus"></i> Select Anatomy
+        <span class="no-anatomy">Анатомия не выбрана</span>
+        <button type="button" class="anatomy-toggle-btn" title="Выбрать тип анатомии">
+          <i class="fas fa-plus"></i> Выбрать анатомию
         </button>
       {{/if}}
     </div>

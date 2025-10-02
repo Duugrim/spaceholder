@@ -127,18 +127,30 @@ export class AnatomyManager {
     const anatomyTemplate = await this.loadAnatomy(anatomyId);
     const actorAnatomy = foundry.utils.deepClone(anatomyTemplate);
     
-    // Применяем модификаторы и переопределения
+    // Применяем модификаторы и переопределения. currentHp не хранится в шаблоне и инициализируется из maxHp
     for (let [partId, part] of Object.entries(actorAnatomy.bodyParts)) {
-      // Применяем множитель здоровья
+      // Базовый максимум с учётом множителя
+      let newMax = part.maxHp;
       if (healthMultiplier !== 1.0) {
-        part.maxHp = Math.ceil(part.maxHp * healthMultiplier);
-        part.currentHp = Math.ceil(part.currentHp * healthMultiplier);
+        newMax = Math.ceil(newMax * healthMultiplier);
       }
+      part.maxHp = newMax;
+      
+      // Текущее здоровье = максимум по умолчанию
+      part.currentHp = newMax;
       
       // Применяем переопределения
       if (overrides[partId]) {
-        Object.assign(part, overrides[partId]);
+        const ov = overrides[partId];
+        Object.assign(part, ov);
+        // Если переопределили maxHp, но не currentHp — синхронизируем currentHp с maxHp
+        if ('maxHp' in ov && !('currentHp' in ov)) {
+          part.currentHp = part.maxHp;
+        }
       }
+      
+      // Гарантируем, что currentHp не превышает maxHp
+      if (part.currentHp > part.maxHp) part.currentHp = part.maxHp;
     }
     
     return actorAnatomy;
@@ -186,23 +198,23 @@ export class AnatomyManager {
       }
     }
     
-    // Проверяем части тела
-    const bodyParts = anatomyData.bodyParts;
-    if (!bodyParts || typeof bodyParts !== 'object') {
-      console.error("bodyParts must be an object");
-      return false;
-    }
-    
-    let rootFound = false;
-    for (let [partId, part] of Object.entries(bodyParts)) {
-      // Проверяем обязательные поля части тела
-      const partRequired = ['id', 'name', 'coverage', 'maxHp', 'currentHp'];
-      for (const field of partRequired) {
-        if (!(field in part)) {
-          console.error(`Body part '${partId}' missing required field: ${field}`);
-          return false;
-        }
+      // Проверяем части тела
+      const bodyParts = anatomyData.bodyParts;
+      if (!bodyParts || typeof bodyParts !== 'object') {
+        console.error("bodyParts must be an object");
+        return false;
       }
+      
+      let rootFound = false;
+      for (let [partId, part] of Object.entries(bodyParts)) {
+        // Проверяем обязательные поля части тела (currentHp больше не обязателен)
+        const partRequired = ['id', 'name', 'coverage', 'maxHp'];
+        for (const field of partRequired) {
+          if (!(field in part)) {
+            console.error(`Body part '${partId}' missing required field: ${field}`);
+            return false;
+          }
+        }
       
       // Ищем корневую часть
       if (!part.parent) {

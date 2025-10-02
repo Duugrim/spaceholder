@@ -63,7 +63,6 @@ module/data/anatomy/
       "name": "Torso", 
       "parent": null,
       "coverage": 10000,
-      "currentHp": 50,
       "maxHp": 50,
       "status": "healthy",
       "internal": false,
@@ -72,6 +71,8 @@ module/data/anatomy/
   }
 }
 ```
+
+Примечание: currentHp не хранится в файлах анатомии. Он инициализируется автоматически из maxHp при применении анатомии к актёру. Контейнер system.health.bodyParts является единственным источником правды для текущего состояния частей тела.
 
 ### Новые поля частей тела
 - **status** (string): Текущее состояние ("healthy", "bruised", "injured", "badly_injured", "destroyed", "missing")

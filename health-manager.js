@@ -86,7 +86,7 @@
     }
     
     async function healCompletely() {
-        const bodyParts = actor.system.anatomy?.bodyParts || actor.system.health?.bodyParts;
+        const bodyParts = actor.system.health?.bodyParts;
         if (!bodyParts) {
             ui.notifications.warn("Нет частей тела для исцеления");
             return;
@@ -110,7 +110,7 @@
     
     function showHealthStatus() {
         const totalHealth = actor.system.health?.totalHealth;
-        const bodyParts = actor.system.anatomy?.bodyParts || actor.system.health?.bodyParts;
+        const bodyParts = actor.system.health?.bodyParts;
         
         let statusHTML = `
             <div style="font-family: monospace;">

@@ -137,12 +137,15 @@ export class SpaceHolderActorSheet extends ActorSheet {
   _prepareHealthData(context) {
     // Принудительно обновляем актера для получения свежих данных
     const freshActorData = this.actor.system;
-    const bodyParts = freshActorData.anatomy?.bodyParts || freshActorData.health?.bodyParts;
+    const bodyParts = freshActorData.health?.bodyParts;
     
+    const count = bodyParts ? Object.keys(bodyParts).length : 0;
     console.log('[DEBUG] _prepareHealthData: preparing health data...', {
       totalHealth: freshActorData.health?.totalHealth,
-      bodyPartsCount: bodyParts ? Object.keys(bodyParts).length : 0
+      bodyPartsCount: count
     });
+    // Флаг наличия анатомии для UI-тоггла
+    context.hasAnatomy = count > 0;
     
     if (!bodyParts) {
       context.hierarchicalBodyParts = [];
@@ -335,8 +338,8 @@ export class SpaceHolderActorSheet extends ActorSheet {
     // Rollable abilities.
     html.on('click', '.rollable', this._onRoll.bind(this));
     
-    // Change anatomy button
-    html.on('click', '.change-anatomy-btn', this._onChangeAnatomyClick.bind(this));
+    // Anatomy toggle button (choose/delete)
+    html.on('click', '.anatomy-toggle-btn', this._onAnatomyToggleClick.bind(this));
 
     // Health debug toggle
     html.on('change', 'input[name="flags.spaceholder.healthDebug"]', this._onHealthDebugToggle.bind(this));
@@ -479,6 +482,78 @@ export class SpaceHolderActorSheet extends ActorSheet {
       console.error('Ошибка при смене анатомии:', error);
       ui.notifications.error('Произошла ошибка при смене анатомии');
     }
+  }
+  
+  /**
+   * Handle anatomy toggle click: choose new anatomy if none, otherwise delete existing
+   * @param {Event} event
+   * @private
+   */
+  async _onAnatomyToggleClick(event) {
+    event.preventDefault();
+    const hasAnatomy = !!(this.actor.system.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
+    if (hasAnatomy) {
+      // Delegate to reset handler
+      return this._onResetAnatomyClick(event);
+    }
+    // Otherwise open selection dialog
+    return this._onChangeAnatomyClick(event);
+  }
+  
+  /**
+   * Handle anatomy reset button click (full cleanup with confirmation)
+   * @param {Event} event   The originating click event
+   * @private
+   */
+  async _onResetAnatomyClick(event) {
+    event.preventDefault();
+
+    const hasAnyParts = !!(this.actor.system.anatomy?.bodyParts && Object.keys(this.actor.system.anatomy.bodyParts).length)
+      || !!(this.actor.system.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
+
+    const content = `
+      <div>
+        <p><strong>Вы уверены, что хотите полностью очистить анатомию?</strong></p>
+        <p>Будут удалены все части тела и сброшено общее здоровье. ${this.actor.system.anatomy?.type ? `Текущий тип анатомии: <em>${anatomyManager.getAnatomyDisplayName(this.actor.system.anatomy.type)}</em>.` : ''}</p>
+      </div>
+    `;
+
+    new Dialog({
+      title: 'Сброс анатомии',
+      content,
+      buttons: {
+        ok: {
+          icon: '<i class="fas fa-trash"></i>',
+          label: 'Сбросить',
+          callback: async () => {
+            try {
+              if (typeof this.actor.resetAnatomy === 'function') {
+                await this.actor.resetAnatomy(true);
+              } else {
+                // Запасной вариант: точечное удаление всех текущих частей и сброс типа
+                const currentParts = this.actor.system.health?.bodyParts || {};
+                const delUpdate = { 'system.anatomy.type': null, 'system.health.totalHealth': { current: 0, max: 0, percentage: 100 } };
+                for (const id of Object.keys(currentParts)) {
+                  delUpdate[`system.health.bodyParts.-=${id}`] = null;
+                }
+                await this.actor.update(delUpdate);
+                await this.actor.prepareData();
+              }
+              ui.notifications.info('Анатомия очищена');
+              this.render(true);
+            } catch (e) {
+              console.error('Ошибка при сбросе анатомии:', e);
+              ui.notifications.error('Не удалось очистить анатомию');
+            }
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Отмена'
+        }
+      },
+      default: 'ok'
+    }).render(true);
   }
 
   /**

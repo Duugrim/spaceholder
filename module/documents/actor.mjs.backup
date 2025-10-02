@@ -29,21 +29,21 @@ export class SpaceHolderActor extends Actor {
    * available both inside and outside of character sheets (such as if an actor
    * is queried and has a roll executed directly from it).
    */
-  prepareDerivedData() {
+  async prepareDerivedData() {
     const actorData = this;
     const systemData = actorData.system;
     const flags = actorData.flags.spaceholder || {};
 
     // Make separate methods for each Actor type (character, npc, etc.) to keep
     // things organized.
-    this._prepareCharacterData(actorData);
+    await this._prepareCharacterData(actorData);
     this._prepareNpcData(actorData);
   }
 
   /**
    * Prepare Character type specific data
    */
-  _prepareCharacterData(actorData) {
+  async _prepareCharacterData(actorData) {
     if (actorData.type !== 'character') return;
 
     // Make modifications to data here. For example:
@@ -55,27 +55,36 @@ export class SpaceHolderActor extends Actor {
       ability.mod = Math.floor((ability.value - 10) / 2);
     }
 
-    // Process body parts health system (always based on health)
-    this._prepareBodyParts(systemData);
+    // Process body parts health system
+    if (systemData.anatomy) {
+      await this._prepareBodyParts(systemData);
+    }
   }
 
   /**
    * Prepare body parts health system
    */
-  _prepareBodyParts(systemData) {
-    // health.bodyParts — единственный источник
-    const bodyParts = systemData.health?.bodyParts || {};
-
-    // Если контейнер пуст — выставляем totalHealth по умолчанию и выходим
-    if (!bodyParts || Object.keys(bodyParts).length === 0) {
-      systemData.health.totalHealth = {
-        current: 0,
-        max: 0,
-        percentage: 100
-      };
-      return;
+  async _prepareBodyParts(systemData) {
+    // Check if anatomy needs to be loaded
+    const anatomyType = systemData.anatomy?.type || 'humanoid';
+    
+    // If bodyParts is empty or anatomy type changed, load new anatomy
+    if (!systemData.anatomy.bodyParts || Object.keys(systemData.anatomy.bodyParts).length === 0) {
+      try {
+        const anatomy = await anatomyManager.createActorAnatomy(anatomyType);
+        systemData.anatomy.bodyParts = anatomy.bodyParts;
+        // Save the changes to the actor
+        await this.update({
+          'system.anatomy.bodyParts': anatomy.bodyParts
+        });
+      } catch (error) {
+        console.error(`Failed to load anatomy '${anatomyType}' for actor ${this.name}:`, error);
+        return;
+      }
     }
-
+    
+    const bodyParts = systemData.anatomy.bodyParts;
+    
     // Build hierarchy - find children for each body part
     for (let [partId, bodyPart] of Object.entries(bodyParts)) {
       bodyPart.children = this._getChildrenParts(partId, bodyParts);
@@ -85,24 +94,26 @@ export class SpaceHolderActor extends Actor {
         bodyPart.status = this._getBodyPartStatus(bodyPart);
       }
     }
-
+    
     // Calculate total health
     let totalCurrentHp = 0;
     let totalMaxHp = 0;
-
+    
     for (let bodyPart of Object.values(bodyParts)) {
       totalCurrentHp += bodyPart.currentHp;
       totalMaxHp += bodyPart.maxHp;
     }
-
+    
     systemData.health.totalHealth = {
       current: totalCurrentHp,
       max: totalMaxHp,
-      percentage: totalMaxHp > 0 ? Math.floor((totalCurrentHp / totalMaxHp) * 100) : 100
+      percentage: Math.floor((totalCurrentHp / totalMaxHp) * 100)
     };
+    
+    // Copy bodyParts reference to health for backward compatibility
+    systemData.health.bodyParts = bodyParts;
   }
 
-  
   /**
    * Get all children parts for a given parent part
    */
@@ -214,12 +225,11 @@ export class SpaceHolderActor extends Actor {
     // Apply damage
     const result = await this.applyBodyPartDamage(finalTarget, damage);
     
-    const bodyParts = this.system.health?.bodyParts;
     return {
       targetPart: finalTarget,
       damage: damage,
       success: result,
-      bodyPart: bodyParts[finalTarget]
+      bodyPart: this.system.health.bodyParts[finalTarget]
     };
   }
 
@@ -230,137 +240,14 @@ export class SpaceHolderActor extends Actor {
    * @returns {boolean} Success
    */
   async applyBodyPartDamage(partId, damage) {
-    const bodyParts = this.system.health?.bodyParts;
-    const bodyPart = bodyParts?.[partId];
+    const bodyPart = this.system.health?.bodyParts?.[partId];
     if (!bodyPart) return false;
 
     const newHp = Math.max(0, bodyPart.currentHp - damage);
+    const updatePath = `system.health.bodyParts.${partId}.currentHp`;
     
-    // Определяем пути обновления
-    const updatePaths = {};
-    
-    // Обновляем HP части тела только в health
-    updatePaths[`system.health.bodyParts.${partId}.currentHp`] = newHp;
-    
-    // Пересчитываем общее здоровье
-    let totalCurrentHp = 0;
-    let totalMaxHp = 0;
-    
-    for (let [id, part] of Object.entries(bodyParts)) {
-      const currentHp = id === partId ? newHp : part.currentHp;
-      totalCurrentHp += currentHp;
-      totalMaxHp += part.maxHp;
-    }
-    
-    updatePaths['system.health.totalHealth'] = {
-      current: totalCurrentHp,
-      max: totalMaxHp,
-      percentage: totalMaxHp > 0 ? Math.floor((totalCurrentHp / totalMaxHp) * 100) : 100
-    };
-    
-    await this.update(updatePaths);
-    
-    // Принудительная перерисовка листа персонажа
-    if (this.sheet?.rendered) {
-      this.sheet.render(false); // false = не принудительно, только обновить данные
-    }
-    
+    await this.update({ [updatePath]: newHp });
     return true;
-  }
-
-  /**
-   * Change anatomy type for this actor
-   * @param {string} newAnatomyType - New anatomy type ID
-   * @returns {boolean} Success
-   */
-  async changeAnatomyType(newAnatomyType) {
-    // Для обратной совместимости: перенаправляем на setAnatomy
-    return this.setAnatomy(newAnatomyType);
-  }
-
-  /**
-   * Установить анатомию актёру (основной API)
-   * @param {string} anatomyId 
-   */
-  async setAnatomy(anatomyId) {
-    try {
-      const anatomy = await anatomyManager.createActorAnatomy(anatomyId);
-      
-      // Подсчитываем общее здоровье новой анатомии
-      let totalCurrentHp = 0;
-      let totalMaxHp = 0;
-      
-      for (let bodyPart of Object.values(anatomy.bodyParts)) {
-        totalCurrentHp += (bodyPart.currentHp ?? bodyPart.maxHp);
-        totalMaxHp += bodyPart.maxHp;
-      }
-      
-      const totalHealth = {
-        current: totalCurrentHp,
-        max: totalMaxHp,
-        percentage: totalMaxHp > 0 ? Math.floor((totalCurrentHp / totalMaxHp) * 100) : 100
-      };
-      
-      // Удаляем существующие части точечно (без слияния)
-      const currentParts = this.system.health?.bodyParts || {};
-      const delUpdate = {};
-      for (const id of Object.keys(currentParts)) {
-        delUpdate[`system.health.bodyParts.-=${id}`] = null;
-      }
-      if (Object.keys(delUpdate).length) {
-        await this.update(delUpdate);
-      }
-      
-      // Устанавливаем тип и новые части
-      await this.update({
-        'system.anatomy.type': anatomyId,
-        'system.health.bodyParts': anatomy.bodyParts,
-        'system.health.totalHealth': totalHealth
-      });
-      
-      // Пересчёт данных
-      await this.prepareData();
-      
-      console.log(`Set anatomy '${anatomyId}' for actor ${this.name}`);
-      console.log(`Total health: ${totalHealth.current}/${totalHealth.max} (${totalHealth.percentage}%)`);
-      return true;
-    } catch (error) {
-      console.error(`Failed to set anatomy for actor ${this.name}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Полный сброс анатомии (очистка всех частей тела и здоровья)
-   * @param {boolean} clearType - также очистить system.anatomy.type
-   * @returns {Promise<boolean>}
-   */
-  async resetAnatomy(clearType = true) {
-    try {
-      // Точечное удаление всех текущих частей
-      const currentParts = this.system.health?.bodyParts || {};
-      const delUpdate = {};
-      for (const id of Object.keys(currentParts)) {
-        delUpdate[`system.health.bodyParts.-=${id}`] = null;
-      }
-      if (clearType) delUpdate['system.anatomy.type'] = null;
-      delUpdate['system.health.totalHealth'] = { current: 0, max: 0, percentage: 100 };
-      await this.update(delUpdate);
-
-      await this.prepareData();
-      console.log(`Anatomy reset for actor ${this.name}${clearType ? ' (type cleared)' : ''}`);
-      return true;
-    } catch (error) {
-      console.error(`Failed to reset anatomy for actor ${this.name}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Alias для совместимости
-   */
-  async clearAnatomy(clearType = true) {
-    return this.resetAnatomy(clearType);
   }
 
   /**
