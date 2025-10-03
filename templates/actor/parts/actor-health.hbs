@@ -1,7 +1,90 @@
 {{!-- Health Tab Content --}}
 <div class="health-container">
 
-  {{!-- Anatomy Management --}}
+  {{!-- Main Health Layout: Two Columns --}}
+  <div class="health-main-layout">
+    
+    {{!-- Left Column: Stats --}}
+    <div class="health-stats-column">
+      
+      {{!-- Physical Capacities & Vital Status Section --}}
+      {{#if system.physicalCapacities}}
+      <div class="rimworld-health-section">
+        
+        {{!-- Vital Status --}}
+        <div class="vital-status-list">
+          {{!-- Blood Status --}}
+          <div class="vital-stat-line">
+            <span class="vital-stat-label">
+              <i class="fas fa-tint"></i> Blood:
+            </span>
+            <span class="vital-stat-value">{{system.health.blood.current}}/{{system.health.blood.max}} ({{system.health.blood.percentage}}%)</span>
+            {{#if system.health.blood.bleeding}}
+              <span class="vital-warning">
+                <i class="fas fa-exclamation-triangle"></i> Bleeding: {{system.health.blood.bleeding}}
+              </span>
+            {{/if}}
+          </div>
+          
+          {{!-- Pain Status --}}
+          <div class="vital-stat-line">
+            <span class="vital-stat-label">
+              <i class="fas fa-bolt"></i> Pain:
+            </span>
+            <span class="vital-stat-value">{{system.health.pain.current}}/100</span>
+            {{#if system.health.pain.shock}}
+              <span class="vital-warning pain-shock">
+                <i class="fas fa-exclamation-triangle"></i> Pain Shock!
+              </span>
+            {{/if}}
+          </div>
+        </div>
+        
+        {{!-- Physical Capacities List --}}
+        <div class="capacities-list">
+          {{#each system.physicalCapacities as |capacity key|}}
+          <div class="capacity-line {{#if (lt capacity.percentage 50)}}impaired{{/if}} {{#if (lt capacity.percentage 25)}}critical{{/if}}">
+            <span class="capacity-name">{{localize (lookup @root.config.physicalCapacities key)}}:</span>
+            <span class="capacity-value">{{capacity.percentage}}%</span>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+      
+    </div>
+    
+    {{!-- Right Column: Body Parts --}}
+    <div class="health-bodyparts-column">
+      
+      <div class="body-parts-hierarchy">
+        {{#if hierarchicalBodyParts}}
+        <div class="parts-tree">
+          {{#each hierarchicalBodyParts as |part|}}
+          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
+            <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
+            <span class="part-spacer"></span>
+            {{#if part.isInjured}}
+              <span class="part-status-text">{{part.status}}</span>
+            {{else}}
+              <span class="part-status-text">healthy</span>
+            {{/if}}
+            <span class="health-numbers">{{part.currentHp}}/{{part.maxHp}}</span>
+          </div>
+          {{/each}}
+        </div>
+        {{else}}
+        <div class="no-body-parts">
+          <p><em>No body parts data available</em></p>
+        </div>
+        {{/if}}
+      </div>
+      
+    </div>
+    
+  </div>
+  
+  {{!-- Bottom: Anatomy Management --}}
   <div class="anatomy-management-container">
     <div class="current-anatomy">
       <label>Анатомия:</label>
@@ -18,51 +101,5 @@
       {{/if}}
     </div>
   </div>
-
-  {{!-- Health Status Summary --}}
-  {{#if system.health.totalHealth}}
-  <div class="health-summary">
-    <div class="total-health">
-      <h3>Overall Health: {{system.health.totalHealth.percentage}}%</h3>
-      <div class="health-bar">
-        <div class="health-fill" style="width: {{system.health.totalHealth.percentage}}%"></div>
-      </div>
-      <span class="health-numbers">{{system.health.totalHealth.current}} / {{system.health.totalHealth.max}}</span>
-    </div>
-  </div>
-  {{else}}
-  <div class="health-summary">
-    <div class="total-health">
-      <h3>Health System Loading...</h3>
-      <p><em>Please refresh the character sheet if this persists.</em></p>
-    </div>
-  </div>
-  {{/if}}
-
-  {{!-- Hierarchical Body Parts Tree --}}
-  {{#if hierarchicalBodyParts}}
-  <div class="body-parts-hierarchy">
-    <h3>Body Parts:</h3>
-    <div class="parts-tree">
-      {{#each hierarchicalBodyParts as |part|}}
-      <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
-        <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
-        <span class="part-spacer"></span>
-        <span class="part-indicator">[{{#if part.hasChildren}}▼{{else}}●{{/if}}]</span>
-        <span class="health-numbers">{{part.currentHp}}/{{part.maxHp}} HP</span>
-        {{#if part.isInjured}}
-          <span class="part-status-text">- {{part.status}}</span>
-        {{else}}
-          <span class="part-status-text">- healthy</span>
-        {{/if}}
-      </div>
-      {{/each}}
-    </div>
-  </div>
-  {{else}}
-  <div class="no-body-parts">
-    <p><em>No body parts data available</em></p>
-  </div>
-  {{/if}}
 
 </div>

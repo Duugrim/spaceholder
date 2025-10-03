@@ -598,6 +598,615 @@
   background: none;
   border: none;
   color: #666;
+}
+
+/* ========================================= */
+/* Health Layout: Two Columns + Bottom      */
+/* ========================================= */
+
+.spaceholder .health-main-layout {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+  align-items: flex-start;
+}
+
+.spaceholder .health-stats-column {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.spaceholder .health-bodyparts-column {
+  width: 420px;
+  flex-shrink: 0;
+}
+
+/* Dark theme for body parts hierarchy - Override existing styles */
+.spaceholder .health-bodyparts-column .body-parts-hierarchy {
+  background: rgba(0,0,0,0.4) !important;
+  border: 1px solid #444 !important;
+  border-radius: 6px;
+  padding: 15px;
+  min-width: 400px;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.spaceholder .health-bodyparts-column .body-parts-hierarchy .rimworld-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 15px 0;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #2c4a2d 0%, #3d5a3e 100%);
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  border: 1px solid #4a6e4a;
+}
+
+.spaceholder .health-bodyparts-column .body-parts-hierarchy .rimworld-header i {
+  font-size: 16px;
+  color: #8fb98f;
+}
+
+.spaceholder .health-bodyparts-column .parts-tree {
+  background: transparent !important;
+  border: none !important;
+  padding: 0;
+}
+
+.spaceholder .health-bodyparts-column .body-part-line {
+  background: transparent !important;
+  color: #cccccc;
+  padding: 2px 0;
+  border-bottom: none !important;
+  white-space: nowrap;
+  min-height: 18px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.spaceholder .health-bodyparts-column .part-name {
+  color: #cccccc !important;
+  font-weight: bold;
+}
+
+.spaceholder .health-bodyparts-column .health-numbers {
+  color: #aaaaaa !important;
+  font-size: 12px;
+}
+
+.spaceholder .health-bodyparts-column .part-status-text {
+  color: #aaaaaa !important;
+  font-size: 12px;
+}
+
+.spaceholder .health-bodyparts-column .tree-structure {
+  color: #666 !important;
+  margin-right: 0;
+}
+
+.spaceholder .health-bodyparts-column .part-indicator {
+  color: #666 !important;
+  margin: 0 5px;
+}
+
+.spaceholder .health-bodyparts-column .part-spacer {
+  flex-grow: 1;
+}
+
+.spaceholder .health-bodyparts-column .no-body-parts {
+  background: rgba(0,0,0,0.4) !important;
+  border: 1px solid #444 !important;
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+  color: #888;
+}
+
+/* ========================================= */
+/* RimWorld-style Physical Capacities       */
+/* ========================================= */
+
+.spaceholder .rimworld-health-section {
+  margin: 0;
+  padding: 15px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border: 1px solid #444;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.spaceholder .rimworld-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 15px 0;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #2c4a2d 0%, #3d5a3e 100%);
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  border: 1px solid #4a6e4a;
+}
+
+.spaceholder .rimworld-header i {
+  font-size: 16px;
+  color: #8fb98f;
+}
+
+/* Vital Status List */
+.spaceholder .vital-status-list {
+  margin: 0 0 15px 0;
+}
+
+.spaceholder .vital-stat-line {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.spaceholder .vital-stat-line:last-child {
+  border-bottom: none;
+}
+
+.spaceholder .vital-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #cccccc;
+  min-width: 80px;
+}
+
+.spaceholder .vital-stat-label i {
+  font-size: 14px;
+  width: 16px;
+}
+
+.spaceholder .vital-stat-value {
+  flex: 1;
+  font-size: 12px;
+  color: #aaaaaa;
+  margin-left: 10px;
+}
+
+.spaceholder .vital-warning {
+  margin-left: 10px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #ff6b6b;
+  animation: pulse-warning 2s infinite;
+}
+
+.spaceholder .vital-warning.pain-shock {
+  color: #ffa500;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Physical Capacities List */
+.spaceholder .capacities-list {
+  /* No special styling needed - just a container */
+}
+
+.spaceholder .capacity-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.spaceholder .capacity-line:last-child {
+  border-bottom: none;
+}
+
+.spaceholder .capacity-name {
+  font-size: 12px;
+  color: #cccccc;
+  font-weight: normal;
+}
+
+.spaceholder .capacity-value {
+  font-size: 12px;
+  color: #88cc88;
+  font-weight: bold;
+}
+
+.spaceholder .capacity-line.impaired .capacity-name {
+  color: #ffcc66;
+}
+
+.spaceholder .capacity-line.impaired .capacity-value {
+  color: #ffaa00;
+}
+
+.spaceholder .capacity-line.critical .capacity-name {
+  color: #ff9999;
+}
+
+.spaceholder .capacity-line.critical .capacity-value {
+  color: #ff6666;
+}
+
+/* Section Headers */
+.spaceholder .section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem 0;
+  padding: 0.5rem;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: white;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.spaceholder .section-header i {
+  font-size: 1.1em;
+}
+
+/* Health Overview */
+.spaceholder .health-overview {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.spaceholder .anatomy-management,
+.spaceholder .vital-signs {
+  flex: 1;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.spaceholder .anatomy-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spaceholder .anatomy-name {
+  flex: 1;
+  font-weight: bold;
+  color: #495057;
+}
+
+.spaceholder .no-anatomy {
+  flex: 1;
+  font-style: italic;
+  color: #6c757d;
+}
+
+.spaceholder .anatomy-toggle-btn {
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.spaceholder .anatomy-toggle-btn.primary {
+  background: #007bff;
+  color: white;
+}
+
+.spaceholder .anatomy-toggle-btn.primary:hover {
+  background: #0056b3;
+}
+
+.spaceholder .anatomy-toggle-btn.danger {
+  background: #dc3545;
+  color: white;
+}
+
+.spaceholder .anatomy-toggle-btn.danger:hover {
+  background: #c82333;
+}
+
+/* Vital Signs */
+.spaceholder .vital-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.spaceholder .vital-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.spaceholder .vital-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.spaceholder .vital-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.spaceholder .vital-value {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+/* Health Bars Override */
+.spaceholder .health-bar.large {
+  height: 24px;
+}
+
+.spaceholder .blood-fill {
+  background: linear-gradient(90deg, #dc3545 0%, #fd7e14 50%, #ffc107 100%);
+}
+
+.spaceholder .pain-fill {
+  background: linear-gradient(90deg, #6c757d 0%, #fd7e14 50%, #dc3545 100%);
+}
+
+/* Status Indicators */
+.spaceholder .status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.spaceholder .status-indicator.bleeding {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.spaceholder .status-indicator.pain-shock {
+  background: rgba(255, 193, 7, 0.1);
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Physical Capacities */
+.spaceholder .physical-capacities-section {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.spaceholder .capacities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.spaceholder .capacity-item {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 0.5rem;
+  transition: all 0.2s;
+}
+
+.spaceholder .capacity-item:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.spaceholder .capacity-item.impaired {
+  border-color: #ffc107;
+  background: rgba(255, 193, 7, 0.05);
+}
+
+.spaceholder .capacity-item.critical {
+  border-color: #dc3545;
+  background: rgba(220, 53, 69, 0.05);
+}
+
+.spaceholder .capacity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.spaceholder .capacity-label {
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: #495057;
+}
+
+.spaceholder .capacity-value {
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: #6c757d;
+}
+
+.spaceholder .capacity-item.impaired .capacity-value {
+  color: #856404;
+}
+
+.spaceholder .capacity-item.critical .capacity-value {
+  color: #721c24;
+}
+
+.spaceholder .capacity-bar {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.spaceholder .capacity-fill {
+  height: 100%;
+  background: #28a745;
+  transition: width 0.3s ease;
+}
+
+.spaceholder .capacity-item.impaired .capacity-fill {
+  background: #ffc107;
+}
+
+.spaceholder .capacity-item.critical .capacity-fill {
+  background: #dc3545;
+}
+
+/* Body Parts Section */
+.spaceholder .body-parts-section {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.spaceholder .body-parts-hierarchy {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.spaceholder .parts-tree {
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.1;
+}
+
+.spaceholder .body-part-line {
+  display: flex;
+  align-items: baseline;
+  padding: 0;
+  margin: 0;
+  line-height: 1.1;
+  border-bottom: none;
+  transition: background-color 0.2s;
+}
+
+.spaceholder .body-part-line:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+.spaceholder .body-part-line:last-child {
+  border-bottom: none;
+}
+
+/* Ensure tight vertical alignment of ASCII tree lines */
+.spaceholder .part-status-text,
+.spaceholder .health-numbers {
+  line-height: 1.1;
+}
+
+.spaceholder .tree-structure {
+  color: #6c757d;
+  margin-right: 0.25rem;
+  white-space: pre;
+  line-height: 1.1;
+}
+
+.spaceholder .part-name {
+  flex: 1;
+  font-weight: 500;
+  color: #495057;
+  line-height: 1.1;
+}
+
+.spaceholder .part-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spaceholder .part-health-bar {
+  width: 60px;
+  height: 12px;
+  background: #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.spaceholder .part-health-fill {
+  height: 100%;
+  background: #28a745;
+  transition: width 0.3s ease;
+}
+
+.spaceholder .body-part-line.injured .part-health-fill {
+  background: linear-gradient(90deg, #dc3545 0%, #fd7e14 50%, #ffc107 75%, #28a745 100%);
+}
+
+.spaceholder .part-status.healthy {
+  background: rgba(40, 167, 69, 0.1);
+  color: #155724;
+  border: 1px solid rgba(40, 167, 69, 0.2);
+  text-shadow: none;
+}
+
+.spaceholder .part-status.injured {
+  background: rgba(220, 53, 69, 0.1);
+  color: #721c24;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  text-shadow: none;
+}
+
+.spaceholder .part-hp {
+  font-size: 0.75rem;
+  color: #6c757d;
+  min-width: 50px;
+  text-align: right;
+  line-height: 1.1;
+}
+
+/* Empty State */
+.spaceholder .empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #6c757d;
+}
+
+.spaceholder .empty-state i {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+.spaceholder .empty-state p {
+  margin: 0.5rem 0;
+  font-weight: bold;
+}
+
+.spaceholder .empty-state small {
+  font-style: italic;
+  opacity: 0.8;
+}
   cursor: pointer;
   padding: 0;
   margin: 0 5px 0 0;
@@ -1143,7 +1752,7 @@
 .spaceholder .parts-tree {
   font-family: 'Courier New', monospace;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.1;
   background: rgba(0, 0, 0, 0.1);
   padding: 15px;
   border-radius: 8px;
@@ -1152,9 +1761,10 @@
 
 .spaceholder .body-part-line {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   margin: 0;
-  padding: 2px 0;
+  padding: 0;
+  line-height: 1.1;
   white-space: pre;
 }
 
@@ -1162,6 +1772,8 @@
 .spaceholder .tree-structure {
   color: #666 !important;
   white-space: pre;
+  line-height: 1.1;
+  margin-right: 6px;
   flex-shrink: 0;
 }
 
@@ -1170,6 +1782,7 @@
   color: #fff !important;
   font-weight: normal !important;
   font-style: normal !important;
+  line-height: 1.1;
   flex-shrink: 0;
 }
 
@@ -1192,12 +1805,14 @@
   margin-right: 5px;
   min-width: 70px;
   text-align: right;
+  line-height: 1.1;
   flex-shrink: 0;
 }
 
 /* Status text */
 .spaceholder .part-status-text {
   color: #888 !important;
+  line-height: 1.1;
   flex-shrink: 0;
 }
 
