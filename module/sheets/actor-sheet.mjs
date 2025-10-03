@@ -11,7 +11,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   // Default options for both character and npc
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
     classes: ['spaceholder', 'sheet', 'actor'],
-    position: { width: 600, height: 'auto' },
+    position: { width: 800, height: 'auto' },
     window: {
       resizable: true,
       contentClasses: ['standard-form']
@@ -144,6 +144,16 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     
     // Build hierarchical structure for all body parts using fresh data
     context.hierarchicalBodyParts = this._buildHierarchicalBodyParts(bodyParts);
+    
+    // Update fresh data for physical capacities, blood, and pain in context
+    if (context.system.health) {
+      context.system.health.blood = freshActorData.health?.blood || context.system.health.blood;
+      context.system.health.pain = freshActorData.health?.pain || context.system.health.pain;
+    }
+    
+    if (context.system.physicalCapacities) {
+      context.system.physicalCapacities = freshActorData.physicalCapacities || context.system.physicalCapacities;
+    }
     
     console.log(`[DEBUG] Prepared ${context.hierarchicalBodyParts.length} body parts for display`);
   }

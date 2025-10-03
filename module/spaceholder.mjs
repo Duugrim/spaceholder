@@ -110,6 +110,19 @@ Handlebars.registerHelper('join', function (array, separator) {
   return '';
 });
 
+// Helper for numeric comparisons
+Handlebars.registerHelper('lt', function (a, b) {
+  return a < b;
+});
+
+Handlebars.registerHelper('gt', function (a, b) {
+  return a > b;
+});
+
+Handlebars.registerHelper('eq', function (a, b) {
+  return a === b;
+});
+
 /* -------------------------------------------- */
 /*  Ready Hook                                  */
 /* -------------------------------------------- */

@@ -8,9 +8,28 @@
       "Wis": { "long": "Wisdom", "abbr": "wis" },
       "Cha": { "long": "Charisma", "abbr": "cha" }
     },
+    "PhysicalCapacity": {
+      "Consciousness": { "long": "Consciousness", "abbr": "con" },
+      "Sight": { "long": "Sight", "abbr": "sgt" },
+      "Hearing": { "long": "Hearing", "abbr": "hrg" },
+      "Manipulation": { "long": "Manipulation", "abbr": "man" },
+      "Movement": { "long": "Movement", "abbr": "mov" },
+      "Breathing": { "long": "Breathing", "abbr": "brt" },
+      "BloodPumping": { "long": "Blood Pumping", "abbr": "bld" },
+      "BloodFiltration": { "long": "Blood Filtration", "abbr": "flt" },
+      "Metabolism": { "long": "Metabolism", "abbr": "met" },
+      "Talking": { "long": "Talking", "abbr": "tlk" }
+    },
     "SheetLabels": {
       "Actor": "SpaceHolder Actor Sheet",
       "Item": "SpaceHolder Item Sheet"
+    },
+    "Health": {
+      "Blood": "Blood",
+      "Pain": "Pain",
+      "Bleeding": "Bleeding",
+      "PainShock": "Pain Shock",
+      "PhysicalCapacities": "Physical Capacities"
     },
     "Item": {
       "Spell": {

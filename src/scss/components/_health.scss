@@ -245,6 +245,34 @@
   }
 }
 
+// Adjust spacing for current markup of body parts tree
+.body-parts-hierarchy {
+  .parts-tree {
+    .body-part-line {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      line-height: 1.1;
+      margin: 0;
+      padding: 2px 0;
+    }
+    .tree-structure {
+      font-family: 'Courier New', monospace;
+      white-space: pre;
+      line-height: 1.1;
+      margin-right: 4px;
+    }
+    .part-status-text {
+      font-size: 0.85em;
+      color: #6c757d;
+    }
+    .health-numbers {
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+  }
+}
+
 // Debug mode adjustments
 .health-debug-toggle {
   margin-bottom: 15px;
