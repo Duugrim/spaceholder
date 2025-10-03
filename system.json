@@ -24,10 +24,10 @@
       "thumbnail": "systems/spaceholder/assets/anvil-impact.png"
     }
   ],
-  "version": "2.1.1",
+  "version": "1.0",
   "compatibility": {
-    "minimum": 11,
-    "verified": "11.315"
+    "minimum": 13,
+    "verified": "13"
   },
   "esmodules": ["module/spaceholder.mjs"],
   "styles": ["css/spaceholder.css"],
