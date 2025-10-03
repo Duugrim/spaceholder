@@ -1,67 +1,15 @@
 {{!-- Health Tab Content --}}
 <div class="health-container">
 
-  {{!-- Main Health Layout: Two Columns --}}
-  <div class="health-main-layout">
-    
-    {{!-- Left Column: Stats --}}
-    <div class="health-stats-column">
-      
-      {{!-- Physical Capacities & Vital Status Section --}}
-      {{#if system.physicalCapacities}}
-      <div class="rimworld-health-section">
-        
-        {{!-- Vital Status --}}
-        <div class="vital-status-list">
-          {{!-- Blood Status --}}
-          <div class="vital-stat-line">
-            <span class="vital-stat-label">
-              <i class="fas fa-tint"></i> Blood:
-            </span>
-            <span class="vital-stat-value">{{system.health.blood.current}}/{{system.health.blood.max}} ({{system.health.blood.percentage}}%)</span>
-            {{#if system.health.blood.bleeding}}
-              <span class="vital-warning">
-                <i class="fas fa-exclamation-triangle"></i> Bleeding: {{system.health.blood.bleeding}}
-              </span>
-            {{/if}}
-          </div>
-          
-          {{!-- Pain Status --}}
-          <div class="vital-stat-line">
-            <span class="vital-stat-label">
-              <i class="fas fa-bolt"></i> Pain:
-            </span>
-            <span class="vital-stat-value">{{system.health.pain.current}}/100</span>
-            {{#if system.health.pain.shock}}
-              <span class="vital-warning pain-shock">
-                <i class="fas fa-exclamation-triangle"></i> Pain Shock!
-              </span>
-            {{/if}}
-          </div>
-        </div>
-        
-        {{!-- Physical Capacities List --}}
-        <div class="capacities-list">
-          {{#each system.physicalCapacities as |capacity key|}}
-          <div class="capacity-line {{#if (lt capacity.percentage 50)}}impaired{{/if}} {{#if (lt capacity.percentage 25)}}critical{{/if}}">
-            <span class="capacity-name">{{localize (lookup @root.config.physicalCapacities key)}}:</span>
-            <span class="capacity-value">{{capacity.percentage}}%</span>
-          </div>
-          {{/each}}
-        </div>
-      </div>
-      {{/if}}
-      
-    </div>
-    
+  <div class="health-main-layout" style="display: block; width: 100%;">
+
     {{!-- Right Column: Body Parts --}}
-    <div class="health-bodyparts-column">
-      
-      <div class="body-parts-hierarchy">
+    <div class="health-bodyparts-column" style="flex: 1 1 auto; width: 100%; max-width: 100%; min-width: 0;">
+      <div class="body-parts-hierarchy" style="width: 100%;">
         {{#if hierarchicalBodyParts}}
-        <div class="parts-tree">
-          {{#each hierarchicalBodyParts as |part|}}
-          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
+        <div class="parts-tree" style="width: 100%; overflow-x: auto;">
+{{#each hierarchicalBodyParts as |part|}}
+          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}" style="flex-wrap: wrap;">
             <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
             <span class="part-spacer"></span>
             {{#if part.isInjured}}
@@ -79,11 +27,10 @@
         </div>
         {{/if}}
       </div>
-      
     </div>
-    
+
   </div>
-  
+
   {{!-- Bottom: Anatomy Management --}}
   <div class="anatomy-management-container">
     <div class="current-anatomy">

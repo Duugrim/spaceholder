@@ -12,75 +12,12 @@
             "current": 0,
             "max": 0,
             "percentage": 100
-          },
-          "blood": {
-            "current": 100,
-            "max": 100,
-            "percentage": 100,
-            "bleeding": 0
-          },
-          "pain": {
-            "current": 0,
-            "max": 100,
-            "shock": false
           }
         },
         "power": {
           "value": 5,
           "min": 0,
           "max": 5
-        },
-        "physicalCapacities": {
-          "consciousness": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "sight": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "hearing": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "manipulation": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "movement": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "breathing": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "bloodPumping": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "bloodFiltration": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "metabolism": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          },
-          "talking": {
-            "base": 100,
-            "current": 100,
-            "percentage": 100
-          }
         },
         "biography": ""
       }

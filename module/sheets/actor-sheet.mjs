@@ -11,7 +11,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   // Default options for both character and npc
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
     classes: ['spaceholder', 'sheet', 'actor'],
-    position: { width: 800, height: 'auto' },
+    position: { width: 640, height: 'auto' },
     window: {
       resizable: true,
       contentClasses: ['standard-form']
@@ -145,15 +145,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Build hierarchical structure for all body parts using fresh data
     context.hierarchicalBodyParts = this._buildHierarchicalBodyParts(bodyParts);
     
-    // Update fresh data for physical capacities, blood, and pain in context
-    if (context.system.health) {
-      context.system.health.blood = freshActorData.health?.blood || context.system.health.blood;
-      context.system.health.pain = freshActorData.health?.pain || context.system.health.pain;
-    }
-    
-    if (context.system.physicalCapacities) {
-      context.system.physicalCapacities = freshActorData.physicalCapacities || context.system.physicalCapacities;
-    }
     
     console.log(`[DEBUG] Prepared ${context.hierarchicalBodyParts.length} body parts for display`);
   }
@@ -341,8 +332,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Anatomy toggle button (choose/delete)
     el.querySelectorAll('.anatomy-toggle-btn').forEach(btn => btn.addEventListener('click', this._onAnatomyToggleClick.bind(this)));
 
-    // Health debug toggle
-    el.querySelectorAll('input[name="flags.spaceholder.healthDebug"]').forEach(inp => inp.addEventListener('change', this._onHealthDebugToggle.bind(this)));
 
     // Drag events for macros.
     if (this.actor.isOwner) {
@@ -359,16 +348,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * Handle health debug mode toggle
    * @param {Event} event   The originating change event
    */
-  _onHealthDebugToggle(event) {
-    event.preventDefault();
-    const element = event.currentTarget;
-    const value = element.checked;
-    
-    // Update the flag
-    this.actor.update({
-      'flags.spaceholder.healthDebug': value
-    });
-  }
 
   /**
    * Handle creating a new Owned Item for the actor using initial data defined in the HTML dataset
