@@ -5,20 +5,22 @@ export const SPACEHOLDER = {};
  * @type {Object}
  */
 SPACEHOLDER.abilities = {
+  end: 'SPACEHOLDER.Ability.End.long',
   str: 'SPACEHOLDER.Ability.Str.long',
   dex: 'SPACEHOLDER.Ability.Dex.long',
-  con: 'SPACEHOLDER.Ability.Con.long',
+  cor: 'SPACEHOLDER.Ability.Cor.long',
+  per: 'SPACEHOLDER.Ability.Per.long',
   int: 'SPACEHOLDER.Ability.Int.long',
-  wis: 'SPACEHOLDER.Ability.Wis.long',
-  cha: 'SPACEHOLDER.Ability.Cha.long',
+  luc: 'SPACEHOLDER.Ability.Luc.long',
 };
 
 SPACEHOLDER.abilityAbbreviations = {
+  end: 'SPACEHOLDER.Ability.End.abbr',
   str: 'SPACEHOLDER.Ability.Str.abbr',
   dex: 'SPACEHOLDER.Ability.Dex.abbr',
-  con: 'SPACEHOLDER.Ability.Con.abbr',
+  cor: 'SPACEHOLDER.Ability.Cor.abbr',
+  per: 'SPACEHOLDER.Ability.Per.abbr',
   int: 'SPACEHOLDER.Ability.Int.abbr',
-  wis: 'SPACEHOLDER.Ability.Wis.abbr',
-  cha: 'SPACEHOLDER.Ability.Cha.abbr',
+  luc: 'SPACEHOLDER.Ability.Luc.abbr',
 };
 

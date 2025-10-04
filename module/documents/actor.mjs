@@ -64,46 +64,113 @@ export class SpaceHolderActor extends Actor {
    * Prepare body parts health system
    */
   _prepareBodyParts(systemData) {
-    // health.bodyParts — единственный источник
+    // Основной источник состояния — травмы.
     const bodyParts = systemData.health?.bodyParts || {};
+    const injuries = systemData.health?.injuries || [];
 
-    // Если контейнер пуст — выставляем totalHealth по умолчанию и выходим
     if (!bodyParts || Object.keys(bodyParts).length === 0) {
-      systemData.health.totalHealth = {
-        current: 0,
-        max: 0,
-        percentage: 100
-      };
       return;
     }
 
-    // Build hierarchy - find children for each body part
+    // Предварительно собираем сумму урона по частям (amount хранится в масштабе x100)
+    const sumDamageByPart = {};
+    for (const inj of injuries) {
+      if (!inj?.partId || typeof inj.amount !== 'number') continue;
+      sumDamageByPart[inj.partId] = (sumDamageByPart[inj.partId] || 0) + Math.max(0, inj.amount | 0);
+    }
+
+    // Обновляем производные поля частей тела
     for (let [partId, bodyPart] of Object.entries(bodyParts)) {
+      // Дети для выбора попаданий
       bodyPart.children = this._getChildrenParts(partId, bodyParts);
-      bodyPart.healthPercentage = Math.floor((bodyPart.currentHp / bodyPart.maxHp) * 100);
-      // Update status based on current health if not manually set
+
+      // Вычисляем текущее здоровье из травм: current = maxHp - floor(sum(amount)/100)
+      const sumAmt = sumDamageByPart[partId] || 0;
+      const dmgUnits = Math.floor(sumAmt / 100); // Масштаб: x100 => целые единицы HP
+      const currentHpDerived = Math.max(0, bodyPart.maxHp - dmgUnits);
+
+      // Процент здоровья и статус — производные
+      bodyPart.healthPercentage = bodyPart.maxHp > 0 ? Math.floor((currentHpDerived * 100) / bodyPart.maxHp) : 100;
       if (!bodyPart.status || bodyPart.status === 'healthy') {
-        bodyPart.status = this._getBodyPartStatus(bodyPart);
+        bodyPart.status = this._getBodyPartStatus({ healthPercentage: bodyPart.healthPercentage });
       }
     }
-
-    // Calculate total health
-    let totalCurrentHp = 0;
-    let totalMaxHp = 0;
-
-    for (let bodyPart of Object.values(bodyParts)) {
-      totalCurrentHp += bodyPart.currentHp;
-      totalMaxHp += bodyPart.maxHp;
-    }
-
-    systemData.health.totalHealth = {
-      current: totalCurrentHp,
-      max: totalMaxHp,
-      percentage: totalMaxHp > 0 ? Math.floor((totalCurrentHp / totalMaxHp) * 100) : 100
-    };
   }
 
-  
+  /**
+   * Добавить травму
+   * amount хранится как целое число в масштабе x100 (например, 125 = 1.25 урона)
+   */
+  async addInjury({ partId, amount, type = 'unknown', status = 'raw', source = '' } = {}) {
+    const bodyParts = this.system.health?.bodyParts || {};
+    if (!partId || !bodyParts[partId]) return false;
+
+    // Гарантируем целое и неотрицательное значение
+    const amt = Math.max(0, (amount ?? 0) | 0);
+    const injury = {
+      id: foundry.utils.randomID?.() || randomID?.() || crypto.randomUUID?.() || String(Date.now()),
+      partId,
+      amount: amt, // x100
+      type,
+      status,
+      source,
+      createdAt: Date.now()
+    };
+
+    const injuries = Array.isArray(this.system.health?.injuries) ? foundry.utils.deepClone(this.system.health.injuries) : [];
+    injuries.push(injury);
+    await this.update({ 'system.health.injuries': injuries });
+    return true;
+  }
+
+  /** Обновить травму по id */
+  async updateInjury(injuryId, patch = {}) {
+    if (!injuryId) return false;
+    const injuries = Array.isArray(this.system.health?.injuries) ? foundry.utils.deepClone(this.system.health.injuries) : [];
+    const idx = injuries.findIndex(i => i.id === injuryId);
+    if (idx === -1) return false;
+
+    // Масштаб amount сохраняем x100, если передан
+    if (patch.hasOwnProperty('amount')) {
+      patch.amount = Math.max(0, (patch.amount ?? 0) | 0);
+    }
+
+    injuries[idx] = { ...injuries[idx], ...patch };
+    await this.update({ 'system.health.injuries': injuries });
+    return true;
+  }
+
+  /** Удалить травму по id */
+  async removeInjury(injuryId) {
+    if (!injuryId) return false;
+    const injuries = Array.isArray(this.system.health?.injuries) ? this.system.health.injuries : [];
+    const filtered = injuries.filter(i => i.id !== injuryId);
+    if (filtered.length === injuries.length) return false;
+    await this.update({ 'system.health.injuries': filtered });
+    return true;
+  }
+
+  /** Получить травмы по части тела */
+  getInjuriesByPart(partId) {
+    const injuries = Array.isArray(this.system.health?.injuries) ? this.system.health.injuries : [];
+    return injuries.filter(i => i.partId === partId);
+  }
+
+  /** Текущее здоровье части тела (derived, без сохранения) */
+  getCurrentHpForPart(partId) {
+    const bodyPart = this.system.health?.bodyParts?.[partId];
+    if (!bodyPart) return 0;
+    const injuries = this.getInjuriesByPart(partId);
+    const sumAmt = injuries.reduce((acc, i) => acc + (i.amount|0), 0);
+    const dmgUnits = Math.floor(sumAmt / 100);
+    return Math.max(0, bodyPart.maxHp - dmgUnits);
+  }
+
+  /** Заглушка форматирования травмы для UI */
+  formatInjuryForDisplay(injury) {
+    return injury; // позже заменим на человекочитаемое описание
+  }
+
   /**
    * Get all children parts for a given parent part
    */
@@ -216,15 +283,15 @@ export class SpaceHolderActor extends Actor {
     // Determine final hit location
     const finalTarget = this.chanceHit(targetPart);
     
-    // Apply damage
-    const result = await this.applyBodyPartDamage(finalTarget, damage);
+    // Добавляем травму вместо прямого уменьшения HP
+    const success = await this.applyBodyPartDamage(finalTarget, damage);
     
     const bodyParts = this.system.health?.bodyParts;
     return {
       targetPart: finalTarget,
       damage: damage,
-      success: result,
-      bodyPart: bodyParts[finalTarget]
+      success,
+      bodyPart: bodyParts?.[finalTarget]
     };
   }
 
@@ -240,33 +307,18 @@ export class SpaceHolderActor extends Actor {
     const bodyPart = bodyParts?.[partId];
     if (!bodyPart) return false;
 
-    const oldHp = bodyPart.currentHp;
-    const newHp = Math.max(0, oldHp - damage);
-    
-    // Пути обновления
-    const updatePaths = {};
-    
-    // Обновляем HP части тела
-    updatePaths[`system.health.bodyParts.${partId}.currentHp`] = newHp;
-    
-    // Пересчитываем общее здоровье
-    let totalCurrentHp = 0;
-    let totalMaxHp = 0;
-    
-    for (let [id, part] of Object.entries(bodyParts)) {
-      const currentHp = id === partId ? newHp : part.currentHp;
-      totalCurrentHp += currentHp;
-      totalMaxHp += part.maxHp;
-    }
-    
-    updatePaths['system.health.totalHealth'] = {
-      current: totalCurrentHp,
-      max: totalMaxHp,
-      percentage: totalMaxHp > 0 ? Math.floor((totalCurrentHp * 100) / totalMaxHp) : 100
-    };
-    
-    await this.update(updatePaths);
-    
+    // Конвертируем урон в масштаб x100 для избежания ошибок float.
+    // Пример: damage=1.25 => amount=125
+    const amount = Math.max(0, Math.floor((damage ?? 0) * 100));
+
+    await this.addInjury({
+      partId,
+      amount,
+      type: damageType || 'blunt',
+      status: 'raw',
+      source: 'direct'
+    });
+
     return true;
   }
 
@@ -288,21 +340,6 @@ export class SpaceHolderActor extends Actor {
     try {
       const anatomy = await anatomyManager.createActorAnatomy(anatomyId);
       
-      // Подсчитываем общее здоровье новой анатомии
-      let totalCurrentHp = 0;
-      let totalMaxHp = 0;
-      
-      for (let bodyPart of Object.values(anatomy.bodyParts)) {
-        totalCurrentHp += (bodyPart.currentHp ?? bodyPart.maxHp);
-        totalMaxHp += bodyPart.maxHp;
-      }
-      
-      const totalHealth = {
-        current: totalCurrentHp,
-        max: totalMaxHp,
-        percentage: totalMaxHp > 0 ? Math.floor((totalCurrentHp / totalMaxHp) * 100) : 100
-      };
-      
       // Удаляем существующие части точечно (без слияния)
       const currentParts = this.system.health?.bodyParts || {};
       const delUpdate = {};
@@ -313,18 +350,16 @@ export class SpaceHolderActor extends Actor {
         await this.update(delUpdate);
       }
       
-      // Устанавливаем тип и новые части
+      // Устанавливаем тип и новые части (totalHealth удалён из системы)
       await this.update({
         'system.anatomy.type': anatomyId,
-        'system.health.bodyParts': anatomy.bodyParts,
-        'system.health.totalHealth': totalHealth
+        'system.health.bodyParts': anatomy.bodyParts
       });
       
       // Пересчёт данных
       await this.prepareData();
       
       console.log(`Set anatomy '${anatomyId}' for actor ${this.name}`);
-      console.log(`Total health: ${totalHealth.current}/${totalHealth.max} (${totalHealth.percentage}%)`);
       return true;
     } catch (error) {
       console.error(`Failed to set anatomy for actor ${this.name}:`, error);
@@ -346,7 +381,6 @@ export class SpaceHolderActor extends Actor {
         delUpdate[`system.health.bodyParts.-=${id}`] = null;
       }
       if (clearType) delUpdate['system.anatomy.type'] = null;
-      delUpdate['system.health.totalHealth'] = { current: 0, max: 0, percentage: 100 };
       await this.update(delUpdate);
 
       await this.prepareData();

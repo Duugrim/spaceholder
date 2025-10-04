@@ -35,19 +35,19 @@
 - `module/documents/actor.mjs` (`SpaceHolderActor`):
   - Жизненный цикл: `prepareData/prepareDerivedData`; разветвление по типам (character/npc).
   - Механика «здоровья по частям тела»:
-    - Источник истины: `system.health.bodyParts` (объект с частями, их `maxHp/currentHp`, `coverage`, `parent`, `tags`, `status`).
-    - Расчёт общего здоровья (`totalHealth`) — сумма hp частей.
+    - Источник истины: `system.health.bodyParts` (объект с частями: `maxHp`, `coverage`, `parent`, `tags`, `status`). Текущее здоровье части НЕ хранится, а вычисляется из истории травм.
+    - Источником урона является `system.health.injuries` (массив записей травм).
     - Генерация иерархии частей (`children`) по `parent`, сортировка по `coverage` для распределения попаданий.
-    - Оценка статуса части по проценту hp.
+    - Оценка статуса части по проценту вычисленного hp.
   - Физические способности (`physicalCapacities`) в стиле RimWorld:
     - Рассчитываются из состояния частей тела, боли (`pain`) и крови (`blood`).
     - Используется целочисленная математика со шкалами `100/10000` для избежания ошибок плавающей точки.
   - Механики боя/урона:
     - `chanceHit`: рекурсивное распределение попадания по дочерним частям на основе `coverage`.
-    - `performHit/applyBodyPartDamage`: уменьшение hp части, перерасчёт `totalHealth`, увеличение `pain`, расчёт `bleeding`; обновление через точечные пути в `this.update()`.
-    - Расчёт pain/bleeding с учётом типа урона и тегов части (`brain`, `vital`, `manipulator`, `locomotion`, `sensory`, `extremity`), расчёты — на целых числах (scale).
+    - `performHit/applyBodyPartDamage`: теперь добавляют запись о травме (amount в масштабе x100), не изменяя сохранённые hp части. Текущее hp части вычисляется производно из суммы травм.
+    - Расчёты pain/bleeding запланированы и могут быть добавлены на основе типа урона и тегов части; расчёты — на целых числах (scale).
   - Анатомия актёра:
-    - `setAnatomy`/`changeAnatomyType`/`resetAnatomy` взаимодействуют с `anatomyManager`: загрузка пресета анатомии, установка `system.anatomy.type` и `system.health.bodyParts`, пересчёт `totalHealth`.
+    - `setAnatomy`/`changeAnatomyType`/`resetAnatomy` взаимодействуют с `anatomyManager`: загрузка пресета анатомии, установка `system.anatomy.type` и `system.health.bodyParts`. Поле `totalHealth` удалено из системы.
   - Данные для бросков:
     - `getRollData` копирует `system` и подготавливает удобные поля (например, `@str.mod`).
 - `module/documents/item.mjs` (`SpaceHolderItem`):
@@ -58,7 +58,7 @@
   - `initialize()` загружает реестр `module/data/anatomy/registry.json` (через `fetch`), кэширует, выставляет `initialized`.
   - `getAvailableAnatomies()` — фильтрует отключённые и служебные ключи.
   - `loadAnatomy(id)` — загрузка JSON файла анатомии, валидация структуры, кэширование.
-  - `createActorAnatomy(id, { healthMultiplier, overrides })` — готовит копию для актёра: `currentHp = maxHp` (с учётом множителя/оверрайдов).
+  - `createActorAnatomy(id, { healthMultiplier, overrides })` — готовит копию для актёра, устанавливая `maxHp` (с учётом множителя/оверрайдов). Текущее hp не сохраняется.
   - `validateAnatomyStructure` — простая валидация полей (id, name, bodyParts, обязательные поля части, наличие корневой части).
   - API утилиты: `getAnatomyInfo`, `getAnatomyDisplayName` (через i18n ключ), `clearCache`, `reload`, `getStats`.
 
@@ -68,7 +68,7 @@
     - Базовый класс `SpaceHolderBaseActorSheet`: собирает context (`system`, `flags`, `config`), обогащает биографию, готовит эффекты, поддерживает актуальные данные здоровья.
     - Характеристики: автозаполнение модификаторов, интеграция с бросками.
     - Анатомия: извлечение доступных типов из `anatomyManager`, диалоги на переключение/сброс анатомии, toggle-кнопка в UI.
-    - Здоровье: построение иерархии частей для отображения, маркировка повреждённых частей, синхронизация `blood/pain/physicalCapacities`.
+    - Здоровье: построение иерархии частей для отображения, маркировка повреждённых частей, синхронизация `blood/pain/physicalCapacities`. Текущее hp частей выводится как производное из травм.
     - Обработчики: создание/удаление предметов, клик по броскам, управление `Active Effects`, drag-and-drop в хотбар.
     - Табы: primary: `stats/health` (для персонажа), для NPC — свой шаблон и вкладки.
   - Item: `module/sheets/item-sheet.mjs`
@@ -77,7 +77,7 @@
 - Шаблоны:
   - Actor: `templates/actor/actor-character-sheet.hbs` и `actor-npc-sheet.hbs` + partials в `templates/actor/parts` (`health`, `items`, `features`, `spells`, `effects`).
   - Item: `templates/item/*.hbs` + partials.
-  - Предзагрузка partials — в `helpers/templates.mjs`.
+  - Предзагрузка partials — в `helpers/templates.mjs`. Вкладки листа: помимо "Здоровье" существует новая вкладка "Травмы" для CRUD травм.
 - Локализация:
   - `lang/en.json`: ключи для способностей, физических способностей, подписей листов и эффектов.
   - Константы с i18n-ключами — в `helpers/config.mjs` (`SPACEHOLDER.*`).
@@ -100,9 +100,9 @@
   - `init`: регистрация документов/листов, конфиг, шаблоны.
   - `ready`: загрузка реестра анатомий, регистрация хотбар-макросов.
 - Изменения анатомии:
-  - UI → `anatomyManager` → загрузка шаблона → `Actor.setAnatomy` → обновление `system.health.bodyParts/totalHealth` → `prepareDerivedData` → пересчёт способностей/статусов.
+  - UI → `anatomyManager` → загрузка шаблона → `Actor.setAnatomy` → обновление `system.health.bodyParts` → `prepareDerivedData` → пересчёт способностей/статусов.
 - Урон и состояние:
-  - `performHit/applyBodyPartDamage` → обновление части/`totalHealth` → `pain/bleeding` → `prepareDerivedData` → перерасчёт физических способностей и шока от боли.
+  - `performHit/applyBodyPartDamage` → добавление записи в `system.health.injuries` → `prepareDerivedData` на основе суммы травм → вычисление статусов/процентов и (в будущем) pain/bleeding.
 - Отрисовка листов:
   - `_prepareContext/_onRender` собирают свежие данные, вкладки, обработчики; partials предзагружаются для быстрых рендеров.
 

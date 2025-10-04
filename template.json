@@ -8,11 +8,7 @@
           "bodyParts": {}
         },
         "health": {
-          "totalHealth": {
-            "current": 0,
-            "max": 0,
-            "percentage": 100
-          }
+          "injuries": []
         },
         "power": {
           "value": 5,
@@ -30,24 +26,13 @@
         }
       },
       "abilities": {
-        "str": {
-          "value": 10
-        },
-        "dex": {
-          "value": 10
-        },
-        "con": {
-          "value": 10
-        },
-        "int": {
-          "value": 10
-        },
-        "wis": {
-          "value": 10
-        },
-        "cha": {
-          "value": 10
-        }
+        "end": { "value": 10 },
+        "str": { "value": 10 },
+        "dex": { "value": 10 },
+        "cor": { "value": 10 },
+        "per": { "value": 10 },
+        "int": { "value": 10 },
+        "luc": { "value": 10 }
       }
     },
     "npc": {

@@ -32,10 +32,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     context.system = actorData.system;
     context.flags = actorData.flags;
 
-    // Обновляем данные здоровья в контексте со свежими данными из this.actor.system
-    if (context.system?.health) {
-      context.system.health.totalHealth = this.actor.system.health?.totalHealth || context.system.health.totalHealth;
-    }
+    // Обновляем данные здоровья (totalHealth удалён из системы)
 
     // Adding a pointer to CONFIG.SPACEHOLDER
     context.config = CONFIG.SPACEHOLDER;
@@ -55,6 +52,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Всегда обновляем данные здоровья при каждой перерисовке
     this._prepareHealthData(context);
+    // Готовим данные для вкладки «Травмы»
+    this._prepareInjuriesData(context);
 
     // Enrich biography info for display
     context.enrichedBiography = await foundry.applications.ux.TextEditor.implementation.enrichHTML(this.actor.system.biography, {
@@ -108,15 +107,17 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * @param {object} context The context object to mutate
    */
   _prepareHealthData(context) {
-    // Принудительно обновляем актера для получения свежих данных
+    // Принудительно обновляем актёра для получения свежих данных
     const freshActorData = this.actor.system;
     const bodyParts = freshActorData.health?.bodyParts;
+    const injuries = Array.isArray(freshActorData.health?.injuries) ? freshActorData.health.injuries : [];
     
     const count = bodyParts ? Object.keys(bodyParts).length : 0;
     console.log('[DEBUG] _prepareHealthData: preparing health data...', {
-      totalHealth: freshActorData.health?.totalHealth,
-      bodyPartsCount: count
+      bodyPartsCount: count,
+      injuriesCount: injuries.length
     });
+
     // Флаг наличия анатомии для UI-тоггла
     context.hasAnatomy = count > 0;
     
@@ -126,25 +127,32 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       return;
     }
 
+    // Предрасчёт суммы урона по частям (amount хранится в масштабе x100)
+    const sumDamageByPart = {};
+    for (const inj of injuries) {
+      if (!inj?.partId || typeof inj.amount !== 'number') continue;
+      sumDamageByPart[inj.partId] = (sumDamageByPart[inj.partId] || 0) + Math.max(0, inj.amount|0);
+    }
+
     // Mark injured parts and prepare hierarchical structure
     const injuredParts = {};
-    
+    const currentHpMap = {};
     for (let [partId, part] of Object.entries(bodyParts)) {
-      // Mark as injured if not at full health
-      part.isInjured = part.currentHp < part.maxHp;
-      
-      // Add to injured parts if damaged
-      if (part.isInjured) {
-        injuredParts[partId] = part;
+      const sumAmt = sumDamageByPart[partId] || 0;
+      const dmgUnits = Math.floor(sumAmt / 100); // x100 -> единицы HP
+      const currentHpDerived = Math.max(0, part.maxHp - dmgUnits);
+      currentHpMap[partId] = currentHpDerived;
+      const isInjured = currentHpDerived < part.maxHp;
+      if (isInjured) {
+        injuredParts[partId] = { ...part, currentHp: currentHpDerived };
       }
     }
     
     // Add injured parts to context (for backward compatibility)
     context.injuredParts = Object.keys(injuredParts).length > 0 ? injuredParts : null;
     
-    // Build hierarchical structure for all body parts using fresh data
-    context.hierarchicalBodyParts = this._buildHierarchicalBodyParts(bodyParts);
-    
+    // Build hierarchical structure for all body parts using fresh data (подставляем currentHp из карты)
+    context.hierarchicalBodyParts = this._buildHierarchicalBodyParts(bodyParts, currentHpMap);
     
     console.log(`[DEBUG] Prepared ${context.hierarchicalBodyParts.length} body parts for display`);
   }
@@ -154,7 +162,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * @param {object} bodyParts - All body parts
    * @returns {Array} Flat array with tree structure info
    */
-  _buildHierarchicalBodyParts(bodyParts) {
+  _buildHierarchicalBodyParts(bodyParts, currentHpMap = {}) {
     if (!bodyParts) return [];
     
     const result = [];
@@ -163,7 +171,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const rootParts = [];
     for (let [partId, part] of Object.entries(bodyParts)) {
       if (!part.parent) {
-        rootParts.push({ ...part, id: partId });
+        const currentHp = currentHpMap[partId] ?? part.maxHp;
+        rootParts.push({ ...part, id: partId, currentHp });
       }
     }
     
@@ -172,7 +181,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const children = [];
       for (let [partId, part] of Object.entries(bodyParts)) {
         if (part.parent === parentId) {
-          children.push({ ...part, id: partId });
+          const currentHp = currentHpMap[partId] ?? part.maxHp;
+          children.push({ ...part, id: partId, currentHp });
         }
       }
       
@@ -187,7 +197,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         result.push({
           ...child,
           treePrefix: currentPrefix,
-          hasChildren: this._hasChildren(child.id, bodyParts)
+          hasChildren: this._hasChildren(child.id, bodyParts),
+          isInjured: (child.currentHp ?? child.maxHp) < child.maxHp
         });
         
         // Recursively add children
@@ -200,7 +211,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       result.push({
         ...rootPart,
         treePrefix: '',
-        hasChildren: this._hasChildren(rootPart.id, bodyParts)
+        hasChildren: this._hasChildren(rootPart.id, bodyParts),
+        isInjured: (rootPart.currentHp ?? rootPart.maxHp) < rootPart.maxHp
       });
       
       buildTreeLines(rootPart.id, '', true);
@@ -278,6 +290,28 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
   /* -------------------------------------------- */
 
+  /** Подготовка данных для вкладки «Травмы» */
+  _prepareInjuriesData(context) {
+    const system = this.actor.system;
+    const injuries = Array.isArray(system.health?.injuries) ? system.health.injuries : [];
+    const bodyParts = system.health?.bodyParts || {};
+
+    // Опции для выпадающего списка частей
+    context.bodyPartSelectOptions = Object.entries(bodyParts).map(([id, part]) => ({ id, name: part.name }));
+
+    // Представление травм для UI
+    context.injuriesList = injuries.map(inj => {
+      const part = bodyParts[inj.partId];
+      return {
+        ...this.actor.formatInjuryForDisplay?.(inj) ?? inj,
+        id: inj.id,
+        partName: part?.name || inj.partId,
+        amountDisplay: (Math.floor((inj.amount ?? 0)) / 100).toFixed(2), // amount хранится x100
+        createdAtText: inj.createdAt ? new Date(inj.createdAt).toLocaleString() : ''
+      };
+    });
+  }
+
   /** @inheritDoc */
   async _onRender(context, options) {
     await super._onRender(context, options);
@@ -301,6 +335,11 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Everything below here is only needed if the sheet is editable
     if (!this.isEditable) return;
+
+    // Injuries: add listeners
+    el.querySelectorAll('[data-action="injury-add"]').forEach(btn => btn.addEventListener('click', this._onInjuryAdd.bind(this)));
+    el.querySelectorAll('[data-action="injury-delete"]').forEach(btn => btn.addEventListener('click', this._onInjuryDelete.bind(this)));
+    el.querySelectorAll('[data-action="injury-edit"]').forEach(btn => btn.addEventListener('click', this._onInjuryEdit.bind(this)));
 
     // Add Inventory Item
     el.querySelectorAll('.item-create').forEach(btn => {
@@ -374,6 +413,88 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Finally, create the item!
     return await Item.create(itemData, { parent: this.actor });
+  }
+
+  /** Добавить травму */
+  async _onInjuryAdd(event) {
+    event.preventDefault();
+    const root = this.element;
+    const partId = root.querySelector('#injury-part')?.value;
+    const amountStr = root.querySelector('#injury-amount')?.value ?? '0';
+    const type = root.querySelector('#injury-type')?.value ?? '';
+    const status = root.querySelector('#injury-status')?.value ?? '';
+    const source = root.querySelector('#injury-source')?.value ?? '';
+
+    const parsed = Number.parseFloat(String(amountStr).replace(',', '.'));
+    if (!partId || Number.isNaN(parsed)) {
+      ui.notifications.warn('Укажите часть тела и корректный урон');
+      return;
+    }
+    const amount = Math.max(0, Math.floor(parsed * 100)); // масштаб x100
+
+    await this.actor.addInjury({ partId, amount, type, status, source });
+    this.render(false);
+  }
+
+  /** Удалить травму */
+  async _onInjuryDelete(event) {
+    event.preventDefault();
+    const btn = event.currentTarget;
+    const id = btn?.dataset?.injuryId;
+    if (!id) return;
+    await this.actor.removeInjury(id);
+    this.render(false);
+  }
+
+  /** Редактировать травму */
+  async _onInjuryEdit(event) {
+    event.preventDefault();
+    const btn = event.currentTarget;
+    const id = btn?.dataset?.injuryId;
+    if (!id) return;
+
+    const existing = (this.actor.system.health?.injuries || []).find(i => i.id === id);
+    if (!existing) return;
+
+    const partName = this.actor.system.health?.bodyParts?.[existing.partId]?.name || existing.partId;
+
+    const content = `
+      <div class="injury-edit-dialog">
+        <p><strong>Редактирование травмы (${partName})</strong></p>
+        <div class="form-group"><label>Урон</label><input id="inj-amount" type="number" step="0.01" value="${(existing.amount||0)/100}"/></div>
+        <div class="form-group"><label>Тип</label><input id="inj-type" type="text" value="${existing.type||''}"/></div>
+        <div class="form-group"><label>Статус</label><input id="inj-status" type="text" value="${existing.status||''}"/></div>
+        <div class="form-group"><label>Источник</label><input id="inj-source" type="text" value="${existing.source||''}"/></div>
+      </div>
+    `;
+
+    await foundry.applications.api.DialogV2.wait({
+      window: { title: 'Редактирование травмы', icon: 'fa-solid fa-bandage' },
+      position: { width: 400 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: 'Сохранить',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root = dlgEvent.currentTarget;
+            const amountStr = root.querySelector('#inj-amount')?.value ?? '0';
+            const type = root.querySelector('#inj-type')?.value ?? '';
+            const status = root.querySelector('#inj-status')?.value ?? '';
+            const source = root.querySelector('#inj-source')?.value ?? '';
+            const parsed = Number.parseFloat(String(amountStr).replace(',', '.'));
+            if (!Number.isNaN(parsed)) {
+              const amount = Math.max(0, Math.floor(parsed * 100));
+              await this.actor.updateInjury(id, { amount, type, status, source });
+              this.render(false);
+            }
+          }
+        },
+        { action: 'cancel', label: 'Отмена', icon: 'fa-solid fa-times' }
+      ]
+    });
   }
 
   /**
@@ -503,7 +624,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
               await this.actor.resetAnatomy(true);
             } else {
               const currentParts = this.actor.system.health?.bodyParts || {};
-              const delUpdate = { 'system.anatomy.type': null, 'system.health.totalHealth': { current: 0, max: 0, percentage: 100 } };
+              const delUpdate = { 'system.anatomy.type': null };
               for (const id of Object.keys(currentParts)) {
                 delUpdate[`system.health.bodyParts.-=${id}`] = null;
               }
@@ -560,7 +681,7 @@ export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
   // Native tabs for character sheet: stats (Характеристики) and health (Здоровье)
   static TABS = {
     primary: {
-      tabs: [ { id: 'stats' }, { id: 'health' } ],
+      tabs: [ { id: 'stats' }, { id: 'health' }, { id: 'injuries' } ],
       initial: 'stats'
     }
   };

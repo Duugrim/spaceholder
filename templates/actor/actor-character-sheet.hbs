@@ -9,31 +9,39 @@
   <nav class="sheet-tabs tabs" data-group="primary">
 <a class="item" data-action="tab" data-group="primary" data-tab="stats">Характеристики</a>
     <a class="item" data-action="tab" data-group="primary" data-tab="health">Здоровье</a>
+    <a class="item" data-action="tab" data-group="primary" data-tab="injuries">Травмы</a>
   </nav>
 
   <section class="sheet-body">
     <div class="tab stats" data-group="primary" data-tab="stats">
-      <h2>Тест</h2>
-      <section class="grid grid-3col">
-        <aside class="sidebar">
-          <div class="abilities flexcol">
-            {{#each system.abilities as |ability key|}}
-            <div class="ability flexrow flex-group-center">
-              <label for="system.abilities.{{key}}.value" class="resource-label rollable flexlarge align-left" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">{{localize (lookup @root.config.abilities key)}}</label>
+      <div class="rimworld-health-section">
+        <div class="rimworld-header">
+          <i class="fas fa-dumbbell"></i>
+          Характеристики
+        </div>
+        <div class="capacities-list">
+          {{#each system.abilities as |ability key|}}
+          <div class="capacity-line">
+            <div class="capacity-name rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">
+              <span class="abbr">{{localize (lookup @root.config.abilityAbbreviations key)}}</span>
+              {{localize (lookup @root.config.abilities key)}}
+            </div>
+            <div class="capacity-value flexrow flex-center flex-between">
               <input type="text" name="system.abilities.{{key}}.value" value="{{ability.value}}" data-dtype="Number"/>
               <span class="ability-mod rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">{{numberFormat ability.mod decimals=0 sign=true}}</span>
             </div>
-            {{/each}}
           </div>
-        </aside>
-        <section class="main grid-span-2">
-          {{!-- Здесь позже добавим дополнительные параметры персонажа --}}
-        </section>
-      </section>
+          {{/each}}
+        </div>
+      </div>
     </div>
 
     <div class="tab health flexcol" data-group="primary" data-tab="health">
       {{> "systems/spaceholder/templates/actor/parts/actor-health.hbs"}}
+    </div>
+
+    <div class="tab injuries flexcol" data-group="primary" data-tab="injuries">
+      {{> "systems/spaceholder/templates/actor/parts/actor-injuries.hbs"}}
     </div>
   </section>
 </form>

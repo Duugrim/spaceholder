@@ -127,7 +127,7 @@ export class AnatomyManager {
     const anatomyTemplate = await this.loadAnatomy(anatomyId);
     const actorAnatomy = foundry.utils.deepClone(anatomyTemplate);
     
-    // Применяем модификаторы и переопределения. currentHp не хранится в шаблоне и инициализируется из maxHp
+    // Применяем модификаторы и переопределения
     for (let [partId, part] of Object.entries(actorAnatomy.bodyParts)) {
       // Базовый максимум с учётом множителя
       let newMax = part.maxHp;
@@ -135,22 +135,12 @@ export class AnatomyManager {
         newMax = Math.ceil(newMax * healthMultiplier);
       }
       part.maxHp = newMax;
-      
-      // Текущее здоровье = максимум по умолчанию
-      part.currentHp = newMax;
-      
+
       // Применяем переопределения
       if (overrides[partId]) {
         const ov = overrides[partId];
         Object.assign(part, ov);
-        // Если переопределили maxHp, но не currentHp — синхронизируем currentHp с maxHp
-        if ('maxHp' in ov && !('currentHp' in ov)) {
-          part.currentHp = part.maxHp;
-        }
       }
-      
-      // Гарантируем, что currentHp не превышает maxHp
-      if (part.currentHp > part.maxHp) part.currentHp = part.maxHp;
     }
     
     return actorAnatomy;

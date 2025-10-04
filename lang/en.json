@@ -1,12 +1,13 @@
 {
   "SPACEHOLDER": {
     "Ability": {
-      "Str": { "long": "Strength", "abbr": "str" },
-      "Con": { "long": "Constitution", "abbr": "con" },
-      "Dex": { "long": "Dexterity", "abbr": "dex" },
-      "Int": { "long": "Intelligence", "abbr": "int" },
-      "Wis": { "long": "Wisdom", "abbr": "wis" },
-      "Cha": { "long": "Charisma", "abbr": "cha" }
+      "End": { "long": "Выносливость", "abbr": "END" },
+      "Str": { "long": "Сила",          "abbr": "STR" },
+      "Dex": { "long": "Подвижность",    "abbr": "DEX" },
+      "Cor": { "long": "Координация",    "abbr": "COR" },
+      "Per": { "long": "Восприятие",     "abbr": "PER" },
+      "Int": { "long": "Интеллект",      "abbr": "INT" },
+      "Luc": { "long": "Удача",          "abbr": "LUC" }
     },
     "SheetLabels": {
       "Actor": "SpaceHolder Actor Sheet",
