@@ -337,7 +337,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     if (!this.isEditable) return;
 
     // Injuries: add listeners
-    el.querySelectorAll('[data-action="injury-add"]').forEach(btn => btn.addEventListener('click', this._onInjuryAdd.bind(this)));
+    el.querySelectorAll('[data-action="injury-open-create"]').forEach(btn => btn.addEventListener('click', this._onInjuryCreateOpen.bind(this)));
     el.querySelectorAll('[data-action="injury-delete"]').forEach(btn => btn.addEventListener('click', this._onInjuryDelete.bind(this)));
     el.querySelectorAll('[data-action="injury-edit"]').forEach(btn => btn.addEventListener('click', this._onInjuryEdit.bind(this)));
 
@@ -415,25 +415,50 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     return await Item.create(itemData, { parent: this.actor });
   }
 
-  /** Добавить травму */
-  async _onInjuryAdd(event) {
+  /** Открыть диалог создания травмы */
+  async _onInjuryCreateOpen(event) {
     event.preventDefault();
-    const root = this.element;
-    const partId = root.querySelector('#injury-part')?.value;
-    const amountStr = root.querySelector('#injury-amount')?.value ?? '0';
-    const type = root.querySelector('#injury-type')?.value ?? '';
-    const status = root.querySelector('#injury-status')?.value ?? '';
-    const source = root.querySelector('#injury-source')?.value ?? '';
 
-    const parsed = Number.parseFloat(String(amountStr).replace(',', '.'));
-    if (!partId || Number.isNaN(parsed)) {
-      ui.notifications.warn('Укажите часть тела и корректный урон');
-      return;
-    }
-    const amount = Math.max(0, Math.floor(parsed * 100)); // масштаб x100
+    const bodyParts = this.actor.system.health?.bodyParts || {};
+    const optionsHTML = Object.entries(bodyParts).map(([id, p]) => `<option value="${id}">${p.name}</option>`).join('');
+    const content = `
+      <div class="injury-create-dialog">
+        <div class="form-group"><label>Часть</label>
+          <select id="inj-part" style="width:100%; height:32px;">${optionsHTML}</select>
+        </div>
+        <div class="form-group"><label>Урон</label><input id="inj-amount" type="number" step="0.01" min="0" placeholder="0.00"/></div>
+        <div class="form-group"><label>Тип</label><input id="inj-type" type="text" placeholder="(опционально)"/></div>
+        <div class="form-group"><label>Статус</label><input id="inj-status" type="text" placeholder="(опционально)"/></div>
+        <div class="form-group"><label>Источник</label><input id="inj-source" type="text" placeholder="(опционально)"/></div>
+      </div>`;
 
-    await this.actor.addInjury({ partId, amount, type, status, source });
-    this.render(false);
+    await foundry.applications.api.DialogV2.wait({
+      window: { title: 'Добавить травму', icon: 'fa-solid fa-plus' },
+      position: { width: 420 },
+      content,
+      buttons: [
+        {
+          action: 'create', label: 'Добавить', icon: 'fa-solid fa-check', default: true,
+          callback: async (dlgEvent) => {
+            const root = dlgEvent.currentTarget;
+            const partId = root.querySelector('#inj-part')?.value;
+            const amountStr = root.querySelector('#inj-amount')?.value ?? '0';
+            const type = root.querySelector('#inj-type')?.value ?? '';
+            const status = root.querySelector('#inj-status')?.value ?? '';
+            const source = root.querySelector('#inj-source')?.value ?? '';
+            const parsed = Number.parseFloat(String(amountStr).replace(',', '.'));
+            if (!partId || Number.isNaN(parsed)) {
+              ui.notifications.warn('Укажите часть тела и корректный урон');
+              return;
+            }
+            const amount = Math.max(0, Math.floor(parsed * 100));
+            await this.actor.addInjury({ partId, amount, type, status, source });
+            this.render(false);
+          }
+        },
+        { action: 'cancel', label: 'Отмена', icon: 'fa-solid fa-times' }
+      ]
+    });
   }
 
   /** Удалить травму */
