@@ -1,0 +1,101 @@
+<div class="inventory-section">
+  <div class="inventory-header">
+    <div class="inventory-stats">
+      <div class="total-weight">
+        <i class="fas fa-weight-hanging"></i>
+        <span class="weight-label">Общий вес:</span>
+        <span class="weight-value">{{totalWeight}} кг</span>
+      </div>
+      <div class="total-items">
+        <i class="fas fa-boxes"></i>
+        <span class="items-label">Предметов:</span>
+        <span class="items-count">{{totalItems}}</span>
+      </div>
+    </div>
+  </div>
+
+  <ol class='inventory-list items-list'>
+    <li class='item flexrow items-header'>
+      <div class='item-image'></div>
+      <div class='item-name'>Название</div>
+      <div class='item-quantity'>Кол-во</div>
+      <div class='item-weight'>Вес (шт)</div>
+      <div class='item-total-weight'>Общий вес</div>
+      <div class='item-controls'>
+        <a
+          class='item-control item-create'
+          title='Создать предмет'
+          data-type='item'
+        >
+          <i class='fas fa-plus'></i>
+          Новый предмет
+        </a>
+      </div>
+    </li>
+    {{#each gear as |item id|}}
+      <li class='item flexrow inventory-item' data-item-id='{{item._id}}'>
+        <div class='item-image'>
+          <a class='rollable' data-roll-type='item'>
+            <img
+              src='{{item.img}}'
+              title='{{item.name}}'
+              width='32'
+              height='32'
+            />
+          </a>
+        </div>
+        <div class='item-name'>
+          <h4>{{item.name}}</h4>
+          {{#if item.system.description}}
+            <div class='item-description'>{{item.system.description}}</div>
+          {{/if}}
+        </div>
+        <div class='item-quantity'>
+          <input 
+            type='number' 
+            name='items.{{item._id}}.system.quantity' 
+            value='{{item.system.quantity}}' 
+            min='0'
+            class='quantity-input'
+          />
+        </div>
+        <div class='item-weight'>
+          {{#if item.system.weight}}
+            {{numberFormat item.system.weight decimals=2}} кг
+          {{else}}
+            -
+          {{/if}}
+        </div>
+        <div class='item-total-weight'>
+          {{#if item.system.weight}}
+            {{numberFormat (multiply item.system.weight item.system.quantity) decimals=2}} кг
+          {{else}}
+            -
+          {{/if}}
+        </div>
+        <div class='item-controls'>
+          <a
+            class='item-control item-edit'
+            title='Редактировать предмет'
+          >
+            <i class='fas fa-edit'></i>
+          </a>
+          <a
+            class='item-control item-delete'
+            title='Удалить предмет'
+          >
+            <i class='fas fa-trash'></i>
+          </a>
+        </div>
+      </li>
+    {{/each}}
+    {{#unless gear.length}}
+      <li class='item flexrow empty-inventory'>
+        <div class='empty-message'>
+          <i class='fas fa-box-open'></i>
+          <p>Инвентарь пуст. Добавьте новый предмет, нажав кнопку "Новый предмет" выше.</p>
+        </div>
+      </li>
+    {{/unless}}
+  </ol>
+</div>

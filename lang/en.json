@@ -13,6 +13,9 @@
       "Actor": "SpaceHolder Actor Sheet",
       "Item": "SpaceHolder Item Sheet"
     },
+    "Tabs": {
+      "Inventory": "Инвентарь"
+    },
     "Item": {
       "Spell": {
         "SpellLVL": "Level {level} Spells",

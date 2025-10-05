@@ -282,10 +282,61 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       }
     }
 
+    // Calculate inventory totals
+    let totalWeight = 0;
+    let totalItems = 0;
+    
+    for (let item of gear) {
+      const quantity = item.system.quantity || 0;
+      const weight = item.system.weight || 0;
+      totalItems += quantity;
+      totalWeight += weight * quantity;
+    }
+    
     // Assign and return
     context.gear = gear;
     context.features = features;
     context.spells = spells;
+    context.totalWeight = Math.round(totalWeight * 100) / 100; // Round to 2 decimal places
+    context.totalItems = totalItems;
+  }
+
+  /**
+   * Update inventory totals in the DOM without full re-render
+   */
+  _updateInventoryTotals() {
+    const gear = this.actor.items.filter(i => i.type === 'item');
+    let totalWeight = 0;
+    let totalItems = 0;
+    
+    for (let item of gear) {
+      const quantity = item.system.quantity || 0;
+      const weight = item.system.weight || 0;
+      totalItems += quantity;
+      totalWeight += weight * quantity;
+    }
+    
+    totalWeight = Math.round(totalWeight * 100) / 100; // Round to 2 decimal places
+    
+    // Update DOM elements
+    const weightEl = this.element.querySelector('.weight-value');
+    const itemsEl = this.element.querySelector('.items-count');
+    
+    if (weightEl) weightEl.textContent = `${totalWeight} кг`;
+    if (itemsEl) itemsEl.textContent = totalItems;
+    
+    // Update total weight displays in individual rows
+    this.element.querySelectorAll('.inventory-item').forEach(row => {
+      const itemId = row.dataset.itemId;
+      const item = this.actor.items.get(itemId);
+      if (item && item.type === 'item') {
+        const totalWeightCell = row.querySelector('.item-total-weight');
+        if (totalWeightCell && item.system.weight) {
+          const totalItemWeight = (item.system.weight * item.system.quantity) || 0;
+          totalWeightCell.textContent = `${Math.round(totalItemWeight * 100) / 100} кг`;
+        }
+      }
+    });
   }
 
   /* -------------------------------------------- */
@@ -353,6 +404,22 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         const item = this.actor.items.get(li.dataset.itemId);
         item?.delete();
         this.render(false);
+      });
+    });
+
+    // Handle quantity changes
+    el.querySelectorAll('.quantity-input').forEach(input => {
+      input.addEventListener('change', async (ev) => {
+        const input = ev.currentTarget;
+        const li = input.closest('.item');
+        const item = this.actor.items.get(li.dataset.itemId);
+        if (!item) return;
+        
+        const newQuantity = Math.max(0, parseInt(input.value) || 0);
+        await item.update({ 'system.quantity': newQuantity });
+        
+        // Update totals without full re-render
+        this._updateInventoryTotals();
       });
     });
 

@@ -10,6 +10,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/actor/parts/actor-spells.hbs',
     'systems/spaceholder/templates/actor/parts/actor-health.hbs',
     'systems/spaceholder/templates/actor/parts/actor-injuries.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-inventory.hbs',
     'systems/spaceholder/templates/actor/parts/actor-effects.hbs',
     // Item partials
     'systems/spaceholder/templates/item/parts/item-effects.hbs',
