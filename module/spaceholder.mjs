@@ -9,12 +9,21 @@ import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
 import { SPACEHOLDER } from './helpers/config.mjs';
 // Import anatomy manager
 import { anatomyManager } from './anatomy-manager.mjs';
+// Token pointer integration
+import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks } from './helpers/token-pointer.mjs';
+import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
+import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
 /* -------------------------------------------- */
 
 Hooks.once('init', function () {
+  // Register SpaceHolder settings and menus early
+  registerTokenPointerSettings();
+  registerTokenRotatorSettings();
+  registerSpaceholderSettingsMenus();
+
   // Add utility classes to the global game object so that they're more easily
   // accessible in global contexts.
   game.spaceholder = {
@@ -23,6 +32,14 @@ Hooks.once('init', function () {
     rollItemMacro,
     anatomyManager,
   };
+
+  // Initialize Token Pointer and expose
+  game.spaceholder.tokenpointer = new TokenPointer();
+
+  // Install Token Pointer hooks
+  installTokenPointerHooks();
+  // Install Token Rotator keybindings and hooks
+  installTokenRotator();
 
   // Add custom constants for configuration.
   CONFIG.SPACEHOLDER = SPACEHOLDER;

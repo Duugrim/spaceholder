@@ -1,0 +1,22 @@
+<form>
+  <h2>Token Rotator Settings</h2>
+  <div class="form-group">
+    <label>Snap by Default</label>
+    <input type="checkbox" name="tokenrotator.altSnapByDefault" {{#if altSnapByDefault}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Smooth Rotation</label>
+    <input type="checkbox" name="tokenrotator.smoothRotation" {{#if smoothRotation}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Fast Preview</label>
+    <input type="checkbox" name="tokenrotator.fastPreview" {{#if fastPreview}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Update Frequency (Hz)</label>
+    <input type="number" name="tokenrotator.rotationUpdateFrequency" value="{{rotationUpdateFrequency}}" step="1" min="1" max="120" />
+  </div>
+  <footer class="sheet-footer flexrow">
+    <button type="submit" class="button">Save</button>
+  </footer>
+</form>
