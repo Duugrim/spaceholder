@@ -10,7 +10,7 @@ import { SPACEHOLDER } from './helpers/config.mjs';
 // Import anatomy manager
 import { anatomyManager } from './anatomy-manager.mjs';
 // Token pointer integration
-import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks } from './helpers/token-pointer.mjs';
+import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
 
@@ -23,6 +23,7 @@ Hooks.once('init', function () {
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
   registerSpaceholderSettingsMenus();
+  installTokenPointerTabs();
 
   // Add utility classes to the global game object so that they're more easily
   // accessible in global contexts.

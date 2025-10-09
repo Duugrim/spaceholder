@@ -109,9 +109,11 @@ function updateRotations() {
       if (tok.tokenPointerIndicator) {
         tok.tokenPointerIndicator.angle = target;
         // ensure visibility if mode allows it
-        if (tok.tokenPointerIndicator.graphics && tp) {
-          if (tp.mode === 0) tok.tokenPointerIndicator.graphics.visible = false;
-          else if (tp.mode === 1) tok.tokenPointerIndicator.graphics.visible = !!tok.hover;
+        if (tok.tokenPointerIndicator) {
+          const fp = tok.document.getFlag('spaceholder', 'tokenpointer') ?? {};
+          const mode = Number(fp.mode ?? tp?.mode ?? 2);
+          if (mode === 0) tok.tokenPointerIndicator.graphics.visible = false;
+          else if (mode === 1) tok.tokenPointerIndicator.graphics.visible = !!tok.hover;
           else tok.tokenPointerIndicator.graphics.visible = true;
         }
       }

@@ -4,7 +4,7 @@
 
 export class TokenPointer {
   constructor() {
-    // Settings snapshot
+    // Defaults (used as fallback for tokens without flags)
     this.color = this._getColorSetting(); // CSS string
     this.distance = game.settings.get('spaceholder', 'tokenpointer.distance'); // 1.0..2.0
     this.scale = game.settings.get('spaceholder', 'tokenpointer.scale'); // 0.5..2.0
@@ -15,8 +15,7 @@ export class TokenPointer {
     this.flipHorizontal = game.settings.get('spaceholder', 'tokenpointer.flipHorizontal');
     this.pointerType = game.settings.get('spaceholder', 'tokenpointer.pointerType'); // 'arrow' | 'line'
 
-    // At init time game.combats may be undefined; set false and update later on canvas hooks
-    this.combatRunning = false;
+    this.combatRunning = this.isCombatRunning();
 
     // Renderer registry for future extensibility
     this.renderers = new Map();
@@ -65,6 +64,15 @@ export class TokenPointer {
       const defeatedId = CONFIG.specialStatusEffects?.DEFEATED;
       const isDefeated = token.actor?.effects?.some((e) => e.statuses?.has?.(defeatedId));
 
+      // Resolve per-token options from flags with fallback to defaults
+      const fp = token.document.getFlag('spaceholder', 'tokenpointer') ?? {};
+      const color = fp.color ?? this.color;
+      const distanceFactor = Number(fp.distance ?? this.distance) || 1.0;
+      const scaleFactor = Number(fp.scale ?? this.scale) || 1.0;
+      const mode = Number(fp.mode ?? this.mode);
+      const pointerType = fp.pointerType ?? this.pointerType;
+
+      // Global gating still applies for combatOnly/hideOnDead
       if ((this.combatOnly && !this.combatRunning) || (this.hideOnDead && isDefeated)) {
         if (token.tokenPointerIndicator && !token.tokenPointerIndicator?._destroyed) {
           token.tokenPointerIndicator.graphics.visible = false;
@@ -77,11 +85,11 @@ export class TokenPointer {
 
       // Distance and scale
       const maxSize = Math.max(token.w, token.h);
-      const distance = (maxSize / 2) * (Number(this.distance) || 1.0);
+      const distance = (maxSize / 2) * distanceFactor;
 
       const tokenSize = Math.max(token.document.width, token.document.height);
       const tokenScale = Math.abs(token.document.texture.scaleX) + Math.abs(token.document.texture.scaleY);
-      const scale = ((tokenSize * tokenScale) / 2) * (Number(this.scale) || 1.0);
+      const scale = ((tokenSize * tokenScale) / 2) * scaleFactor;
 
       const width = token.w;
       const height = token.h;
@@ -94,11 +102,11 @@ export class TokenPointer {
         container.y = height / 2;
 
         const graphics = new PIXI.Graphics();
-        const hexColor = Number(`0x${(this.color ?? '#000000').substring(1, 7)}`);
+        const hexColor = Number(`0x${(color ?? '#000000').substring(1, 7)}`);
         graphics.beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
 
         // Draw pointer by type
-        const drawer = this.renderers.get(this.pointerType) || this.renderers.get('arrow');
+        const drawer = this.renderers.get(pointerType) || this.renderers.get('arrow');
         drawer(graphics);
         graphics.endFill();
 
@@ -106,6 +114,13 @@ export class TokenPointer {
         container.graphics = graphics;
         token.tokenPointerIndicator = container;
         token.addChild(container);
+      } else {
+        // Update color/type if changed
+        const hexColor = Number(`0x${(color ?? '#000000').substring(1, 7)}`);
+        container.graphics.clear().beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
+        const drawer = this.renderers.get(pointerType) || this.renderers.get('arrow');
+        drawer(container.graphics);
+        container.graphics.endFill();
       }
 
       // Update pose
@@ -116,8 +131,8 @@ export class TokenPointer {
       container.graphics.scale.set(scale, scale);
 
       // Visibility by mode
-      if (this.mode === 0) container.graphics.visible = false; // OFF
-      else if (this.mode === 1) container.graphics.visible = !!token.hover; // HOVER
+      if (mode === 0) container.graphics.visible = false; // OFF
+      else if (mode === 1) container.graphics.visible = !!token.hover; // HOVER
       else container.graphics.visible = true; // ALWAYS
     } catch (error) {
       console.error(`TokenPointer | Error drawing indicator for ${token?.name} (${token?.id})`, error);
@@ -300,6 +315,22 @@ export function registerTokenPointerSettings() {
   });
 }
 
+export function installTokenPointerTabs() {
+  try {
+    const cls1 = foundry.applications.sheets.TokenConfig;
+    const cls2 = foundry.applications.sheets.PrototypeTokenConfig;
+    const tabDef = { id: 'spaceholderPointer', label: 'Token Pointer', icon: 'fas fa-location-arrow fa-fw' };
+    if (cls1?.TABS?.sheet?.tabs && !cls1.TABS.sheet.tabs.find(t => t.id === 'spaceholderPointer')) {
+      cls1.TABS.sheet.tabs.push(tabDef);
+    }
+    if (cls2?.TABS?.sheet?.tabs && !cls2.TABS.sheet.tabs.find(t => t.id === 'spaceholderPointer')) {
+      cls2.TABS.sheet.tabs.push(tabDef);
+    }
+  } catch (e) {
+    console.error('TokenPointer | Failed to register TokenConfig tabs', e);
+  }
+}
+
 export function installTokenPointerHooks() {
   // Canvas lifecycle
   Hooks.on('canvasInit', () => {
@@ -327,11 +358,122 @@ export function installTokenPointerHooks() {
   // Token lifecycle
   Hooks.on('createToken', (td) => { const inst = game.spaceholder?.tokenpointer; if (td.object && inst) inst.drawForToken(td.object); });
   Hooks.on('updateToken', (td) => { const inst = game.spaceholder?.tokenpointer; if (td.object && inst) inst.drawForToken(td.object); });
-  Hooks.on('refreshToken', (token, opts) => { const inst = game.spaceholder?.tokenpointer; if (inst && opts?.redrawEffects) inst.drawForToken(token); });
+  Hooks.on('refreshToken', (token, opts) => { const inst = game.spaceholder?.tokenpointer; if (inst) inst.drawForToken(token); });
 
   // Hover / selection highlighting
   Hooks.on('hoverToken', (token, hovered) => { const inst = game.spaceholder?.tokenpointer; if (inst) inst.drawForToken(token); });
   Hooks.on('highlightObjects', (highlighted) => { const inst = game.spaceholder?.tokenpointer; if (!inst) return; canvas.scene?.tokens?.forEach((td) => td.object && inst.drawForToken(td.object)); });
+
+  // Inject per-token settings UI into Token Config and Prototype Token Config
+  const renderHandler = async (_app, formEl, data /*, options */) => {
+    try {
+      const root = formEl;
+      if (!root) return;
+
+      // Determine tab group from nav
+      const nav = root.querySelector('nav.sheet-tabs') || root.querySelector('nav.tabs');
+      const group = nav?.dataset?.group || 'sheet';
+
+      // Build context from data and token flags
+      const doc = data?.document ?? data?.source;
+      const fp = doc?.flags?.spaceholder?.tokenpointer ?? {};
+      const tab = data?.tabs?.spaceholderPointer ?? { active: false };
+      const ctx = {
+        tab,
+        group,
+        pointerType: fp.pointerType ?? game.spaceholder?.tokenpointer?.pointerType ?? 'arrow',
+        color: fp.color ?? game.spaceholder?.tokenpointer?.color ?? '#000000',
+        distance: Number(fp.distance ?? game.spaceholder?.tokenpointer?.distance ?? 1.4),
+        scale: Number(fp.scale ?? game.spaceholder?.tokenpointer?.scale ?? 1.0),
+        mode: Number(fp.mode ?? game.spaceholder?.tokenpointer?.mode ?? 2),
+        lockToGrid: !!(fp.lockToGrid ?? game.spaceholder?.tokenpointer?.lockToGrid ?? false),
+      };
+
+      // Render panel HTML
+      const tpl = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/token-pointer-config.hbs', ctx);
+      const wrap = document.createElement('div');
+      wrap.innerHTML = tpl;
+      const newPanel = wrap.firstElementChild;
+      if (!newPanel) return;
+
+      // Find existing panels of same group to place after
+      const existingTabs = Array.from(root.querySelectorAll(`.tab[data-group="${group}"]`));
+      if (existingTabs.length) {
+        const last = existingTabs[existingTabs.length - 1];
+        const existingOur = root.querySelector(`.tab[data-group="${group}"][data-tab="spaceholderPointer"]`);
+        if (existingOur) existingOur.replaceWith(newPanel);
+        else last.insertAdjacentElement('afterend', newPanel);
+      } else {
+        // Fallback to window-content
+        const winContent = root.querySelector('.window-content') || root;
+        const existingOur = winContent.querySelector(`.tab[data-tab="spaceholderPointer"]`);
+        if (existingOur) existingOur.replaceWith(newPanel);
+        else winContent.appendChild(newPanel);
+      }
+
+      // Live preview handlers inside the panel (if a token object exists)
+      const token = doc?.object;
+      if (token) {
+        const tp = game.spaceholder?.tokenpointer;
+        const getInputs = () => ({
+          colorInput: root.querySelector('input[name="flags.spaceholder.tokenpointer.color"]'),
+          distanceInput: root.querySelector('input[name="flags.spaceholder.tokenpointer.distance"]'),
+          scaleInput: root.querySelector('input[name="flags.spaceholder.tokenpointer.scale"]'),
+          modeSelect: root.querySelector('select[name="flags.spaceholder.tokenpointer.mode"]'),
+          typeSelect: root.querySelector('select[name="flags.spaceholder.tokenpointer.pointerType"]'),
+          lockCheck: root.querySelector('input[name="flags.spaceholder.tokenpointer.lockToGrid"]'),
+        });
+        const applyPreview = () => {
+          try {
+            const { colorInput, distanceInput, scaleInput, modeSelect, typeSelect } = getInputs();
+            const color = colorInput?.value || fp.color || tp?.color || '#000000';
+            const distance = Number(distanceInput?.value ?? fp.distance ?? tp?.distance ?? 1.4);
+            const scale = Number(scaleInput?.value ?? fp.scale ?? tp?.scale ?? 1.0);
+            const mode = Number(modeSelect?.value ?? fp.mode ?? tp?.mode ?? 2);
+            const type = typeSelect?.value ?? fp.pointerType ?? tp?.pointerType ?? 'arrow';
+
+            // Update pointer graphics directly without persisting flags
+            if (!token.tokenPointerIndicator || token.tokenPointerIndicator._destroyed) tp?.drawForToken(token);
+            const g = token.tokenPointerIndicator?.graphics;
+            if (g) {
+              const hexColor = Number(`0x${(color ?? '#000000').substring(1, 7)}`);
+              g.clear().beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
+              const drawer = tp?.renderers?.get(type) || tp?.renderers?.get('arrow');
+              drawer?.(g);
+              g.endFill();
+              // Recompute layout
+              const maxSize = Math.max(token.w, token.h);
+              g.x = (maxSize / 2) * distance;
+              const tokenSize = Math.max(token.document.width, token.document.height);
+              const tokenScale = Math.abs(token.document.texture.scaleX) + Math.abs(token.document.texture.scaleY);
+              g.scale.set(((tokenSize * tokenScale) / 2) * scale, ((tokenSize * tokenScale) / 2) * scale);
+              // Visibility by mode
+              g.visible = mode === 2 ? true : mode === 1 ? !!token.hover : false;
+            }
+          } catch(err) {
+            console.error('TokenPointer | preview apply failed', err);
+          }
+        };
+
+        const { colorInput, distanceInput, scaleInput, modeSelect, typeSelect, lockCheck } = getInputs();
+        colorInput?.addEventListener('input', applyPreview);
+        colorInput?.addEventListener('change', applyPreview);
+        distanceInput?.addEventListener('change', applyPreview);
+        scaleInput?.addEventListener('change', applyPreview);
+        modeSelect?.addEventListener('change', applyPreview);
+        typeSelect?.addEventListener('change', applyPreview);
+        lockCheck?.addEventListener('change', () => {/* no-op for preview */});
+
+        // Initial preview to keep indicator visible when config opens
+        applyPreview();
+      }
+    } catch (e) {
+      console.error('TokenPointer | renderTokenConfig injection failed', e);
+    }
+  };
+  Hooks.on('renderTokenConfig', renderHandler);
+  Hooks.on('renderPrototypeTokenConfig', renderHandler);
+  Hooks.on('closeTokenConfig', (app) => { try { const td = app?.document; if (td?.object) game.spaceholder?.tokenpointer?.drawForToken(td.object); } catch(_){} });
 
   // Pre-update: compute direction and optional horizontal flip
   Hooks.on('preUpdateToken', (tokenDocument, updates) => {
@@ -351,12 +493,12 @@ export function installTokenPointerHooks() {
 
         if (dx !== 0 || dy !== 0) {
           tokenDirection = (Math.atan2(dy, dx) * 180) / Math.PI;
-          const inst = game.spaceholder?.tokenpointer;
-          if (inst?.lockToGrid && canvas.grid?.type) {
-            tokenDirection = quantizeDirectionToGrid(tokenDirection);
-          }
+          const fp = tokenDocument.getFlag('spaceholder', 'tokenpointer') ?? {};
+          const lockToGrid = !!fp.lockToGrid || (!!game.spaceholder?.tokenpointer?.lockToGrid && !!canvas.grid?.type);
+          if (lockToGrid) tokenDirection = quantizeDirectionToGrid(tokenDirection);
 
-          // Optional horizontal flip
+          // Optional horizontal flip (global setting)
+          const inst = game.spaceholder?.tokenpointer;
           if (inst?.flipHorizontal && dx !== 0) {
             const source = tokenDocument.toObject();
             const scaleX = tokenDocument.texture?.scaleX ?? source.texture?.scaleX ?? 1;

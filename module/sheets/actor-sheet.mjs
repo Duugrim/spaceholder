@@ -113,10 +113,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const injuries = Array.isArray(freshActorData.health?.injuries) ? freshActorData.health.injuries : [];
     
     const count = bodyParts ? Object.keys(bodyParts).length : 0;
-    console.log('[DEBUG] _prepareHealthData: preparing health data...', {
-      bodyPartsCount: count,
-      injuriesCount: injuries.length
-    });
 
     // Флаг наличия анатомии для UI-тоггла
     context.hasAnatomy = count > 0;
@@ -154,7 +150,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Build hierarchical structure for all body parts using fresh data (подставляем currentHp из карты)
     context.hierarchicalBodyParts = this._buildHierarchicalBodyParts(bodyParts, currentHpMap);
     
-    console.log(`[DEBUG] Prepared ${context.hierarchicalBodyParts.length} body parts for display`);
   }
   
   /**
