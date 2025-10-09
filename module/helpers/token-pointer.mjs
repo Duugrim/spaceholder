@@ -287,7 +287,7 @@ export function registerTokenPointerSettings() {
     name: 'Token Pointer: Flip Token Horizontally',
     hint: 'Mirror token horizontally based on horizontal movement',
     scope: 'world',
-    config: true,
+    config: false,
     default: false,
     type: Boolean,
     onChange: (v) => {

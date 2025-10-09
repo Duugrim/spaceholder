@@ -111,11 +111,7 @@ export class TokenRotatorSettingsApp extends V2Base {
 }
 
 export function registerSpaceholderSettingsMenus() {
-  // Two submenus under system settings
-  game.settings.registerMenu(MODULE_NS, 'tokenpointer-menu', {
-    name: 'Token Pointer', label: 'Configure', hint: 'Configure Token Pointer settings',
-    type: TokenPointerSettingsApp, restricted: true,
-  });
+  // Submenus under system settings (Token Rotator only)
   game.settings.registerMenu(MODULE_NS, 'tokenrotator-menu', {
     name: 'Token Rotator', label: 'Configure', hint: 'Configure Token Rotator settings',
     type: TokenRotatorSettingsApp, restricted: false,
