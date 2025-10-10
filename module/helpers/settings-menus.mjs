@@ -44,6 +44,7 @@ export class TokenPointerSettingsApp extends V2Base {
     map['tokenpointer.hideOnDead'] = !!data['tokenpointer.hideOnDead'];
     map['tokenpointer.lockToGrid'] = !!data['tokenpointer.lockToGrid'];
     map['tokenpointer.flipHorizontal'] = !!data['tokenpointer.flipHorizontal'];
+    map['tokenpointer.underToken'] = !!data['tokenpointer.underToken'];
     map['tokenpointer.pointerType'] = String(data['tokenpointer.pointerType']);
     await V2Base._applySettings(map);
   }
@@ -66,6 +67,7 @@ export class TokenPointerSettingsApp extends V2Base {
       hideOnDead: game.settings.get(MODULE_NS, 'tokenpointer.hideOnDead'),
       lockToGrid: game.settings.get(MODULE_NS, 'tokenpointer.lockToGrid'),
       flipHorizontal: game.settings.get(MODULE_NS, 'tokenpointer.flipHorizontal'),
+      underToken: game.settings.get(MODULE_NS, 'tokenpointer.underToken'),
       pointerType: game.settings.get(MODULE_NS, 'tokenpointer.pointerType'),
     };
   }

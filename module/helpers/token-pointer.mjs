@@ -14,6 +14,7 @@ export class TokenPointer {
     this.lockToGrid = game.settings.get('spaceholder', 'tokenpointer.lockToGrid');
     this.flipHorizontal = game.settings.get('spaceholder', 'tokenpointer.flipHorizontal');
     this.pointerType = game.settings.get('spaceholder', 'tokenpointer.pointerType'); // 'arrow' | 'line'
+    this.underToken = !!game.settings.get('spaceholder', 'tokenpointer.underToken');
 
     this.combatRunning = this.isCombatRunning();
 
@@ -35,6 +36,64 @@ export class TokenPointer {
     // 'line' shape (simple line)
     this.renderers.set('line', (graphics) => {
       graphics.moveTo(0, 0).lineTo(-10, 0).closePath();
+    });
+    // 'marker' shape: circle (D=12, R=6) with front quarter replaced by a rotated square tip (side=6)
+    // The removed quarter is from -45° to +45°. We draw the remaining 270° arc and close via a diamond tip.
+    this.renderers.set('marker', (graphics) => {
+      const r = 6;
+      const s = 6; // square side
+      const toRad = Math.PI / 180;
+      const step = 10;
+
+      // Arc from +45° to +315° (i.e., skipping the front quarter [-45°, +45°])
+      const startDeg = 45;
+      const endDeg = 315;
+
+      const pointAt = (deg) => ({ x: r * Math.cos(deg * toRad), y: r * Math.sin(deg * toRad) });
+      const pStart = pointAt(startDeg); // at +45°
+      graphics.moveTo(pStart.x, pStart.y);
+
+      for (let a = startDeg + step; a <= endDeg; a += step) {
+        const p = pointAt(a);
+        graphics.lineTo(p.x, p.y);
+      }
+
+      // Tip of the rotated square (diamond). Place the back diagonal on the removed chord x = r/√2,
+      // which makes the square side s=6 match the chord length (6√2) across flats.
+      const c = r / Math.SQRT2;               // chord x-position and half-vertical span
+      const tipX = c + s / Math.SQRT2;        // diamond right vertex x
+      const tipY = 0;
+
+      // The arc loop ended at endDeg=315° (i.e., -45°), now draw to tip and back to start to form the nose
+      graphics.lineTo(tipX, tipY);
+      graphics.lineTo(pStart.x, pStart.y);
+      graphics.closePath();
+    });
+
+    // 'markerV2' shape: visually same as marker; origin will be recentered to shape bounds center after drawing
+    this.renderers.set('markerV2', (graphics) => {
+      const r = 6;
+      const s = 6; // square side
+      const toRad = Math.PI / 180;
+      const step = 10;
+
+      const startDeg = 45;
+      const endDeg = 315;
+
+      const pointAt = (deg) => ({ x: r * Math.cos(deg * toRad), y: r * Math.sin(deg * toRad) });
+      const pStart = pointAt(startDeg);
+      graphics.moveTo(pStart.x, pStart.y);
+
+      for (let a = startDeg + step; a <= endDeg; a += step) {
+        const p = pointAt(a);
+        graphics.lineTo(p.x, p.y);
+      }
+      const c = r / Math.SQRT2;
+      const tipX = c + s / Math.SQRT2;
+      const tipY = 0;
+      graphics.lineTo(tipX, tipY);
+      graphics.lineTo(pStart.x, pStart.y);
+      graphics.closePath();
     });
   }
 
@@ -67,10 +126,11 @@ export class TokenPointer {
       // Resolve per-token options from flags with fallback to defaults
       const fp = token.document.getFlag('spaceholder', 'tokenpointer') ?? {};
       const color = fp.color ?? this.color;
-      const distanceFactor = Number(fp.distance ?? this.distance) || 1.0;
+      const distanceFactor = Number(fp.distance ?? this.distance);
       const scaleFactor = Number(fp.scale ?? this.scale) || 1.0;
       const mode = Number(fp.mode ?? this.mode);
       const pointerType = fp.pointerType ?? this.pointerType;
+      const underToken = !!(fp.underToken ?? this.underToken ?? false);
 
       // Global gating still applies for combatOnly/hideOnDead
       if ((this.combatOnly && !this.combatRunning) || (this.hideOnDead && isDefeated)) {
@@ -103,24 +163,59 @@ export class TokenPointer {
 
         const graphics = new PIXI.Graphics();
         const hexColor = Number(`0x${(color ?? '#000000').substring(1, 7)}`);
-        graphics.beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
+        if (pointerType === 'markerV2') {
+          // Solid fill without stroke for Marker V2
+          graphics.beginFill(hexColor, 0.5);
+        } else {
+          graphics.beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
+        }
 
         // Draw pointer by type
         const drawer = this.renderers.get(pointerType) || this.renderers.get('arrow');
         drawer(graphics);
         graphics.endFill();
+        // Recenter origin for MarkerV2 so that distance=0 aligns to token center
+        if (pointerType === 'markerV2') {
+          try {
+            const b = graphics.getLocalBounds();
+            graphics.pivot.set(b.x + b.width / 2, b.y + b.height / 2);
+          } catch(_) {}
+        }
 
         container.addChild(graphics);
         container.graphics = graphics;
         token.tokenPointerIndicator = container;
-        token.addChild(container);
+        if (underToken && typeof token.addChildAt === 'function') token.addChildAt(container, 0);
+        else token.addChild(container);
       } else {
+        // Ensure pointer layer order according to underToken flag
+        if (token.children && typeof token.setChildIndex === 'function') {
+          if (underToken) {
+            if (token.children[0] !== container) token.setChildIndex(container, 0);
+          } else {
+            const topIndex = Math.max(0, token.children.length - 1);
+            if (token.children[topIndex] !== container) token.setChildIndex(container, topIndex);
+          }
+        }
         // Update color/type if changed
         const hexColor = Number(`0x${(color ?? '#000000').substring(1, 7)}`);
-        container.graphics.clear().beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
+        container.graphics.clear();
+        if (pointerType === 'markerV2') {
+          // Solid fill without stroke for Marker V2
+          container.graphics.beginFill(hexColor, 0.5);
+        } else {
+          container.graphics.beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
+        }
         const drawer = this.renderers.get(pointerType) || this.renderers.get('arrow');
         drawer(container.graphics);
         container.graphics.endFill();
+        // Recenter origin for MarkerV2 so that distance=0 aligns to token center
+        if (pointerType === 'markerV2') {
+          try {
+            const b = container.graphics.getLocalBounds();
+            container.graphics.pivot.set(b.x + b.width / 2, b.y + b.height / 2);
+          } catch(_) {}
+        }
       }
 
       // Update pose
@@ -193,9 +288,8 @@ export function registerTokenPointerSettings() {
     hint: 'Relative distance of pointer from token center',
     scope: 'world',
     config: false,
-    default: 1.4,
+    default: 0.25,
     type: Number,
-    range: { min: 1.0, max: 1.4, step: 0.05 },
     onChange: (v) => {
       const inst = game.spaceholder?.tokenpointer;
       if (!inst) return;
@@ -210,9 +304,8 @@ export function registerTokenPointerSettings() {
     hint: 'Relative size of the pointer',
     scope: 'world',
     config: false,
-    default: 1.0,
+    default: 8.0,
     type: Number,
-    range: { min: 0.5, max: 2.0, step: 0.05 },
     onChange: (v) => {
       const inst = game.spaceholder?.tokenpointer;
       if (!inst) return;
@@ -297,15 +390,40 @@ export function registerTokenPointerSettings() {
     },
   });
 
+  // Render under token (layer order)
+  game.settings.register('spaceholder', 'tokenpointer.underToken', {
+    name: 'Token Pointer: Render Under Token',
+    hint: 'If enabled, the pointer is drawn beneath the token sprite',
+    scope: 'world',
+    config: false,
+    default: true,
+    type: Boolean,
+    onChange: (v) => {
+      const inst = game.spaceholder?.tokenpointer;
+      if (!inst) return;
+      inst.underToken = !!v;
+      try {
+        if (canvas?.tokens?.placeables) {
+          for (const t of canvas.tokens.placeables) {
+            const c = t.tokenPointerIndicator;
+            if (c && typeof t.setChildIndex === 'function') {
+              t.setChildIndex(c, v ? 0 : Math.max(0, t.children.length - 1));
+            }
+          }
+        }
+      } catch(_) {}
+    },
+  });
+
   // Pointer type (renderer key)
   game.settings.register('spaceholder', 'tokenpointer.pointerType', {
     name: 'Token Pointer: Type',
     hint: 'Pointer drawing style',
     scope: 'world',
     config: false,
-    default: 'arrow',
+    default: 'markerV2',
     type: String,
-    choices: { arrow: 'Arrow', line: 'Line' },
+    choices: { arrow: 'Arrow', line: 'Line', marker: 'Marker', markerV2: 'Marker V2' },
     onChange: (v) => {
       const inst = game.spaceholder?.tokenpointer;
       if (!inst) return;
@@ -387,6 +505,7 @@ export function installTokenPointerHooks() {
         scale: Number(fp.scale ?? game.spaceholder?.tokenpointer?.scale ?? 1.0),
         mode: Number(fp.mode ?? game.spaceholder?.tokenpointer?.mode ?? 2),
         lockToGrid: !!(fp.lockToGrid ?? game.spaceholder?.tokenpointer?.lockToGrid ?? false),
+        underToken: !!(fp.underToken ?? game.spaceholder?.tokenpointer?.underToken ?? false),
       };
 
       // Render panel HTML
@@ -422,15 +541,17 @@ export function installTokenPointerHooks() {
           modeSelect: root.querySelector('select[name="flags.spaceholder.tokenpointer.mode"]'),
           typeSelect: root.querySelector('select[name="flags.spaceholder.tokenpointer.pointerType"]'),
           lockCheck: root.querySelector('input[name="flags.spaceholder.tokenpointer.lockToGrid"]'),
+          underCheck: root.querySelector('input[name="flags.spaceholder.tokenpointer.underToken"]'),
         });
         const applyPreview = () => {
           try {
-            const { colorInput, distanceInput, scaleInput, modeSelect, typeSelect } = getInputs();
+            const { colorInput, distanceInput, scaleInput, modeSelect, typeSelect, underCheck } = getInputs();
             const color = colorInput?.value || fp.color || tp?.color || '#000000';
             const distance = Number(distanceInput?.value ?? fp.distance ?? tp?.distance ?? 1.4);
             const scale = Number(scaleInput?.value ?? fp.scale ?? tp?.scale ?? 1.0);
             const mode = Number(modeSelect?.value ?? fp.mode ?? tp?.mode ?? 2);
             const type = typeSelect?.value ?? fp.pointerType ?? tp?.pointerType ?? 'arrow';
+            const under = !!(underCheck?.checked ?? fp.underToken ?? tp?.underToken ?? false);
 
             // Update pointer graphics directly without persisting flags
             if (!token.tokenPointerIndicator || token.tokenPointerIndicator._destroyed) tp?.drawForToken(token);
@@ -450,12 +571,17 @@ export function installTokenPointerHooks() {
               // Visibility by mode
               g.visible = mode === 2 ? true : mode === 1 ? !!token.hover : false;
             }
+            // Layer order preview
+            const c = token.tokenPointerIndicator;
+            if (c && typeof token.setChildIndex === 'function') {
+              token.setChildIndex(c, under ? 0 : Math.max(0, token.children.length - 1));
+            }
           } catch(err) {
             console.error('TokenPointer | preview apply failed', err);
           }
         };
 
-        const { colorInput, distanceInput, scaleInput, modeSelect, typeSelect, lockCheck } = getInputs();
+        const { colorInput, distanceInput, scaleInput, modeSelect, typeSelect, lockCheck, underCheck } = getInputs();
         colorInput?.addEventListener('input', applyPreview);
         colorInput?.addEventListener('change', applyPreview);
         distanceInput?.addEventListener('change', applyPreview);
@@ -463,6 +589,7 @@ export function installTokenPointerHooks() {
         modeSelect?.addEventListener('change', applyPreview);
         typeSelect?.addEventListener('change', applyPreview);
         lockCheck?.addEventListener('change', () => {/* no-op for preview */});
+        underCheck?.addEventListener('change', applyPreview);
 
         // Initial preview to keep indicator visible when config opens
         applyPreview();
