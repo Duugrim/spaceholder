@@ -13,6 +13,11 @@ import { anatomyManager } from './anatomy-manager.mjs';
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
+// Aiming system integration
+import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/aiming-system.mjs';
+import { injectAimingStyles } from './helpers/ray-renderer.mjs';
+import './helpers/test-aiming-system.mjs'; // Для отладки
+import './helpers/aiming-demo-macros.mjs'; // Демо макросы
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -22,6 +27,7 @@ Hooks.once('init', function () {
   // Register SpaceHolder settings and menus early
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
+  registerAimingSystemSettings();
   registerSpaceholderSettingsMenus();
   installTokenPointerTabs();
 
@@ -36,11 +42,16 @@ Hooks.once('init', function () {
 
   // Initialize Token Pointer and expose
   game.spaceholder.tokenpointer = new TokenPointer();
+  
+  // Initialize Aiming System
+  game.spaceholder.aimingSystem = new AimingSystem();
 
   // Install Token Pointer hooks
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks
   installTokenRotator();
+  // Install Aiming System hooks
+  installAimingSystemHooks();
 
   // Add custom constants for configuration.
   CONFIG.SPACEHOLDER = SPACEHOLDER;
@@ -153,6 +164,16 @@ Hooks.once('ready', async function () {
   } catch (error) {
     console.error('SpaceHolder | Failed to initialize anatomy system:', error);
     ui.notifications.error('Failed to initialize anatomy system. Check console for details.');
+  }
+  
+  // Initialize aiming system
+  try {
+    game.spaceholder.aimingSystem.initialize();
+    injectAimingStyles();
+    console.log('SpaceHolder | Aiming system initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize aiming system:', error);
+    ui.notifications.error('Failed to initialize aiming system. Check console for details.');
   }
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
