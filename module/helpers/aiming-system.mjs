@@ -270,10 +270,6 @@ export class AimingSystem {
     // Применяем чувствительность
     angle *= this.config.aimingSensitivity;
     
-    // Логируем только при значительных изменениях (каждые 5 градусов)
-    if (Math.abs(angle - this.currentAimDirection) > 5 || this.currentAimDirection === 0) {
-      console.log(`🎯 Aiming direction: ${Math.round(angle)}° (mouse: ${Math.round(mousePos.x)}, ${Math.round(mousePos.y)}, distance: ${Math.round(distance)}px)`);
-    }
     
     // Обновляем направление прицеливания
     this.currentAimDirection = angle;

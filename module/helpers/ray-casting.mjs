@@ -179,12 +179,6 @@ export class RayCaster {
           intersection.y - segment.start.y
         );
         
-        // Отладочное логирование
-        console.log(`🧯 Wall hit detected:`);
-        console.log(`   Wall segment: (${wallRay.A.x}, ${wallRay.A.y}) -> (${wallRay.B.x}, ${wallRay.B.y})`);
-        console.log(`   Ray segment: (${segment.start.x}, ${segment.start.y}) -> (${segment.end.x}, ${segment.end.y})`);
-        console.log(`   Intersection: (${Math.round(intersection.x)}, ${Math.round(intersection.y)})`);
-        console.log(`   Distance: ${Math.round(distance)}px`);
         
         collisions.push({
           type: 'wall',

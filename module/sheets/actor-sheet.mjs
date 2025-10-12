@@ -314,21 +314,25 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     totalWeight = Math.round(totalWeight * 100) / 100; // Round to 2 decimal places
     
     // Update DOM elements
-    const weightEl = this.element.querySelector('.weight-value');
-    const itemsEl = this.element.querySelector('.items-count');
+    const weightEl = this.element.querySelector('.stat-value');
+    const itemsEl = this.element.querySelector('.inventory-stat .stat-value');
     
-    if (weightEl) weightEl.textContent = `${totalWeight} кг`;
-    if (itemsEl) itemsEl.textContent = totalItems;
+    if (weightEl && weightEl.closest('.inventory-stat').querySelector('i.fa-weight-hanging')) {
+      weightEl.textContent = `${totalWeight} кг`;
+    }
+    if (itemsEl && itemsEl.closest('.inventory-stat').querySelector('i.fa-boxes')) {
+      itemsEl.textContent = totalItems;
+    }
     
     // Update total weight displays in individual rows
-    this.element.querySelectorAll('.inventory-item').forEach(row => {
+    this.element.querySelectorAll('.inventory-item-card').forEach(row => {
       const itemId = row.dataset.itemId;
       const item = this.actor.items.get(itemId);
       if (item && item.type === 'item') {
-        const totalWeightCell = row.querySelector('.item-total-weight');
-        if (totalWeightCell && item.system.weight) {
+        const weightSpan = row.querySelector('.item-weight');
+        if (weightSpan && item.system.weight) {
           const totalItemWeight = (item.system.weight * item.system.quantity) || 0;
-          totalWeightCell.textContent = `${Math.round(totalItemWeight * 100) / 100} кг`;
+          weightSpan.textContent = `Общий вес: ${Math.round(totalItemWeight * 100) / 100} кг`;
         }
       }
     });
@@ -373,8 +377,9 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Render the item sheet for viewing/editing prior to the editable check.
     el.querySelectorAll('.item-edit').forEach(btn => {
       btn.addEventListener('click', (ev) => {
-        const li = ev.currentTarget.closest('.item');
-        const item = this.actor.items.get(li.dataset.itemId);
+        const card = ev.currentTarget.closest('.inventory-item-card');
+        const itemId = card?.dataset?.itemId || btn.dataset?.itemId;
+        const item = this.actor.items.get(itemId);
         item?.sheet?.render(true);
       });
     });
@@ -388,35 +393,23 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     el.querySelectorAll('[data-action="injury-edit"]').forEach(btn => btn.addEventListener('click', this._onInjuryEdit.bind(this)));
 
     // Add Inventory Item
-    el.querySelectorAll('.item-create').forEach(btn => {
+    el.querySelectorAll('.item-create-btn').forEach(btn => {
       btn.addEventListener('click', this._onItemCreate.bind(this));
     });
 
     // Delete Inventory Item
     el.querySelectorAll('.item-delete').forEach(btn => {
       btn.addEventListener('click', (ev) => {
-        const li = ev.currentTarget.closest('.item');
-        const item = this.actor.items.get(li.dataset.itemId);
+        const card = ev.currentTarget.closest('.inventory-item-card');
+        const itemId = card?.dataset?.itemId || btn.dataset?.itemId;
+        const item = this.actor.items.get(itemId);
         item?.delete();
         this.render(false);
       });
     });
 
-    // Handle quantity changes
-    el.querySelectorAll('.quantity-input').forEach(input => {
-      input.addEventListener('change', async (ev) => {
-        const input = ev.currentTarget;
-        const li = input.closest('.item');
-        const item = this.actor.items.get(li.dataset.itemId);
-        if (!item) return;
-        
-        const newQuantity = Math.max(0, parseInt(input.value) || 0);
-        await item.update({ 'system.quantity': newQuantity });
-        
-        // Update totals without full re-render
-        this._updateInventoryTotals();
-      });
-    });
+    // Note: Quantity editing is now handled through the item sheet since we removed inline editing
+    // This keeps the interface cleaner and follows the new design pattern
 
     // Active Effect management
     el.querySelectorAll('.effect-control').forEach(btn => {
