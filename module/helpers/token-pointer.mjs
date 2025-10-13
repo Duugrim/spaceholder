@@ -460,6 +460,9 @@ export function installTokenPointerHooks() {
     const inst = game.spaceholder?.tokenpointer;
     if (!inst) return;
     canvas.scene?.tokens?.forEach((td) => td.object && inst.drawForToken(td.object));
+    
+    // Установка обработчиков клавиш для Shift+WASD
+    _setupPointerKeyHandlers();
   });
 
   // Combat changes
@@ -477,6 +480,7 @@ export function installTokenPointerHooks() {
   Hooks.on('createToken', (td) => { const inst = game.spaceholder?.tokenpointer; if (td.object && inst) inst.drawForToken(td.object); });
   Hooks.on('updateToken', (td) => { const inst = game.spaceholder?.tokenpointer; if (td.object && inst) inst.drawForToken(td.object); });
   Hooks.on('refreshToken', (token, opts) => { const inst = game.spaceholder?.tokenpointer; if (inst) inst.drawForToken(token); });
+  Hooks.on('deleteToken', (td) => { _clearPointerHistory(td.id); }); // Очистка истории при удалении токена
 
   // Hover / selection highlighting
   Hooks.on('hoverToken', (token, hovered) => { const inst = game.spaceholder?.tokenpointer; if (inst) inst.drawForToken(token); });
@@ -607,12 +611,36 @@ export function installTokenPointerHooks() {
     try {
       const hasXY = updates.x !== undefined || updates.y !== undefined;
       const noPosChange = !hasXY || ((updates.x ?? tokenDocument.x) === tokenDocument.x && (updates.y ?? tokenDocument.y) === tokenDocument.y);
-      const noRotChange = updates.rotation === undefined || tokenDocument.rotation === updates.rotation;
+      const hasRotation = updates.rotation !== undefined;
+      const noRotChange = !hasRotation || tokenDocument.rotation === updates.rotation;
+      
+      // Если нет изменений позиции и поворота - ничего не делаем
       if (noPosChange && noRotChange) return;
 
-      let tokenDirection = (updates.rotation ?? tokenDocument.rotation) + 90;
+      // Если есть только поворот токена (Ctrl+колёсико), НЕ обновляем направление указателя
+      // Указатель должен сохранять своё направление в мировых координатах
+      if (hasRotation && noPosChange) {
+        console.log('TokenPointer | Token rotation detected, preserving pointer direction');
+        return; // Не обновляем tokenpointerDirection при чистом повороте токена
+      }
+      
+      // Проверка на undo операцию (возврат токена на старое место)
+      if (hasXY && !hasRotation) {
+        const newX = updates.x ?? tokenDocument.x;
+        const newY = updates.y ?? tokenDocument.y;
+        const savedDirection = _findPointerStateForPosition(tokenDocument.id, newX, newY);
+        
+        if (savedDirection !== null) {
+          console.log(`TokenPointer | Undo detected: restoring pointer direction ${savedDirection}° for position (${newX},${newY})`);
+          foundry.utils.setProperty(updates, 'flags.spaceholder.tokenpointerDirection', savedDirection);
+          return;
+        }
+      }
 
-      if (hasXY && updates.rotation === undefined) {
+      let tokenDirection;
+      
+      // Только при движении токена пересчитываем направление указателя
+      if (hasXY && !hasRotation) {
         const prev = { x: tokenDocument.x, y: tokenDocument.y };
         const next = { x: updates.x ?? tokenDocument.x, y: updates.y ?? tokenDocument.y };
         const dx = next.x - prev.x;
@@ -633,12 +661,185 @@ export function installTokenPointerHooks() {
               updates['texture.scaleX'] = (source.texture?.scaleX ?? 1) * -1;
             }
           }
+          
+          foundry.utils.setProperty(updates, 'flags.spaceholder.tokenpointerDirection', tokenDirection);
+          
+          // Сохраняем состояние перед обновлением
+          const currentDirection = tokenDocument.getFlag('spaceholder', 'tokenpointerDirection') ?? 90;
+          _savePointerState(tokenDocument.id, tokenDocument.x, tokenDocument.y, currentDirection);
         }
       }
+      
+      // Если есть и движение, и поворот одновременно
+      if (hasXY && hasRotation) {
+        // В этом случае используем направление движения, игнорируя поворот токена
+        const prev = { x: tokenDocument.x, y: tokenDocument.y };
+        const next = { x: updates.x ?? tokenDocument.x, y: updates.y ?? tokenDocument.y };
+        const dx = next.x - prev.x;
+        const dy = next.y - prev.y;
 
-      foundry.utils.setProperty(updates, 'flags.spaceholder.tokenpointerDirection', tokenDirection);
+        if (dx !== 0 || dy !== 0) {
+          tokenDirection = (Math.atan2(dy, dx) * 180) / Math.PI;
+          const fp = tokenDocument.getFlag('spaceholder', 'tokenpointer') ?? {};
+          const lockToGrid = !!fp.lockToGrid || (!!game.spaceholder?.tokenpointer?.lockToGrid && !!canvas.grid?.type);
+          if (lockToGrid) tokenDirection = quantizeDirectionToGrid(tokenDirection);
+          
+          foundry.utils.setProperty(updates, 'flags.spaceholder.tokenpointerDirection', tokenDirection);
+          
+          // Сохраняем состояние перед обновлением
+          const currentDirection = tokenDocument.getFlag('spaceholder', 'tokenpointerDirection') ?? 90;
+          _savePointerState(tokenDocument.id, tokenDocument.x, tokenDocument.y, currentDirection);
+        }
+      }
     } catch (error) {
       console.error('TokenPointer | preUpdateToken error', error);
     }
   });
+}
+
+// Переменные для обработки Shift+WASD
+let pointerRotationActive = false;
+let pointerRotationDirection = null;
+const POINTER_ROTATION_SPEED = 15; // градусы за шаг
+
+// Система сохранения состояния указателя для undo
+const pointerStateHistory = new Map(); // tokenId -> Array of {position: {x, y}, direction: number, timestamp: number}
+const MAX_HISTORY_SIZE = 50; // максимальное количество сохраненных состояний для каждого токена
+
+/**
+ * Сохраняет текущее состояние указателя в историю
+ * @param {String} tokenId - ID токена
+ * @param {Number} x - координата X токена
+ * @param {Number} y - координата Y токена
+ * @param {Number} direction - направление указателя
+ */
+function _savePointerState(tokenId, x, y, direction) {
+  if (!pointerStateHistory.has(tokenId)) {
+    pointerStateHistory.set(tokenId, []);
+  }
+  
+  const history = pointerStateHistory.get(tokenId);
+  const state = {
+    position: { x, y },
+    direction,
+    timestamp: Date.now()
+  };
+  
+  // Добавляем новое состояние в начало
+  history.unshift(state);
+  
+  // Ограничиваем размер истории
+  if (history.length > MAX_HISTORY_SIZE) {
+    history.splice(MAX_HISTORY_SIZE);
+  }
+  
+  console.log(`TokenPointer | Saved state for ${tokenId}: pos(${x},${y}), direction=${direction}°`);
+}
+
+/**
+ * Получает предыдущее состояние указателя для заданной позиции токена
+ * @param {String} tokenId - ID токена
+ * @param {Number} x - целевая координата X
+ * @param {Number} y - целевая координата Y
+ * @returns {Number|null} - направление указателя или null
+ */
+function _findPointerStateForPosition(tokenId, x, y) {
+  if (!pointerStateHistory.has(tokenId)) {
+    return null;
+  }
+  
+  const history = pointerStateHistory.get(tokenId);
+  const tolerance = 5; // допустимое отклонение в пикселях
+  
+  // Ищем состояние с позицией, соответствующей целевой
+  for (const state of history) {
+    const dx = Math.abs(state.position.x - x);
+    const dy = Math.abs(state.position.y - y);
+    if (dx <= tolerance && dy <= tolerance) {
+      console.log(`TokenPointer | Found matching state for ${tokenId}: pos(${state.position.x},${state.position.y}), direction=${state.direction}°`);
+      return state.direction;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Очищает историю для токена (например, при удалении токена)
+ * @param {String} tokenId - ID токена
+ */
+function _clearPointerHistory(tokenId) {
+  pointerStateHistory.delete(tokenId);
+  console.log(`TokenPointer | Cleared history for ${tokenId}`);
+}
+
+/**
+ * Установка обработчиков клавиш для поворота указателя
+ */
+function _setupPointerKeyHandlers() {
+  // Обработчик нажатий клавиш
+  document.addEventListener('keydown', (event) => {
+    // Проверяем что нажат Shift
+    if (!event.shiftKey) return;
+    
+    // Получаем выбранные токены
+    const controlled = canvas.tokens?.controlled;
+    if (!controlled || controlled.length === 0) return;
+    
+    let direction = null;
+    switch (event.code) {
+      case 'KeyW': // Вверх
+        direction = -90; // Вверх в мировых координатах
+        break;
+      case 'KeyS': // Вниз  
+        direction = 90;
+        break;
+      case 'KeyA': // Влево
+        direction = 180;
+        break;
+      case 'KeyD': // Вправо
+        direction = 0;
+        break;
+      default:
+        return; // Не наша клавиша
+    }
+    
+    // Предотвращаем стандартную обработку клавиши
+    event.preventDefault();
+    event.stopPropagation();
+    
+    console.log(`TokenPointer | Shift+${event.code} pressed, rotating pointer to ${direction}°`);
+    
+    // Поворачиваем указатель для каждого выбранного токена
+    const updates = [];
+    for (const token of controlled) {
+      const currentDirection = token.document.getFlag('spaceholder', 'tokenpointerDirection') ?? 90;
+      let newDirection;
+      
+      if (event.ctrlKey) {
+        // Ctrl+Shift+WASD - плавный поворот на POINTER_ROTATION_SPEED градусов
+        newDirection = currentDirection + (direction === 0 ? POINTER_ROTATION_SPEED : 
+                                        direction === 90 ? POINTER_ROTATION_SPEED :
+                                        direction === 180 ? -POINTER_ROTATION_SPEED : 
+                                        -POINTER_ROTATION_SPEED);
+      } else {
+        // Просто Shift+WASD - мгновенный поворот в направление
+        newDirection = direction;
+      }
+      
+      // Нормализуем угол [-180, 180]
+      newDirection = ((newDirection % 360) + 360) % 360;
+      if (newDirection > 180) newDirection -= 360;
+      
+      updates.push({
+        _id: token.id,
+        'flags.spaceholder.tokenpointerDirection': newDirection
+      });
+    }
+    
+    // Применяем обновления
+    if (updates.length > 0) {
+      canvas.scene.updateEmbeddedDocuments('Token', updates, { animate: false });
+    }
+  }, true); // Используем capture фазу для перехвата событий раньше Foundry
 }
