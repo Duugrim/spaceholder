@@ -29,13 +29,15 @@ export class TokenPointer {
   }
 
   _registerBuiltInRenderers() {
-    // 'arrow' shape as in About Face
+    // 'arrow' shape: positioned at token edge (distance = 1.25 equivalent when user sets distance = 0)
     this.renderers.set('arrow', (graphics) => {
-      graphics.moveTo(0, 0).lineTo(0, -10).lineTo(10, 0).lineTo(0, 10).lineTo(0, 0).closePath();
+      const edgeOffset = 62.5; // 50px (token radius) + 12.5px (1.25 * 10px base)
+      graphics.moveTo(edgeOffset, 0).lineTo(edgeOffset, -10).lineTo(edgeOffset + 10, 0).lineTo(edgeOffset, 10).lineTo(edgeOffset, 0).closePath();
     });
-    // 'line' shape (simple line)
+    // 'line' shape: positioned at token edge (distance = 1.25 equivalent when user sets distance = 0)
     this.renderers.set('line', (graphics) => {
-      graphics.moveTo(0, 0).lineTo(-10, 0).closePath();
+      const edgeOffset = 62.5; // 50px (token radius) + 12.5px (1.25 * 10px base)
+      graphics.moveTo(edgeOffset - 10, 0).lineTo(edgeOffset, 0).closePath();
     });
     // 'marker' shape: circle (D=12, R=6) with front quarter replaced by a rotated square tip (side=6)
     // The removed quarter is from -45° to +45°. We draw the remaining 270° arc and close via a diamond tip.
@@ -70,13 +72,15 @@ export class TokenPointer {
       graphics.closePath();
     });
 
-    // 'markerV2' shape: visually same as marker; origin will be recentered to shape bounds center after drawing
+    // 'markerV2' shape: circle with diameter = token width, centered at origin
+    // Circle center is at (0,0), directional tip points right (0°)
     this.renderers.set('markerV2', (graphics) => {
-      const r = 6;
-      const s = 6; // square side
+      const r = 50; // radius = 50px for 100px grid (diameter = token width)
+      const tipLength = 20; // length of directional tip
       const toRad = Math.PI / 180;
       const step = 10;
 
+      // Draw circle arc from +45° to +315° (skip front quarter for directional tip)
       const startDeg = 45;
       const endDeg = 315;
 
@@ -84,15 +88,16 @@ export class TokenPointer {
       const pStart = pointAt(startDeg);
       graphics.moveTo(pStart.x, pStart.y);
 
+      // Draw the arc
       for (let a = startDeg + step; a <= endDeg; a += step) {
         const p = pointAt(a);
         graphics.lineTo(p.x, p.y);
       }
-      const c = r / Math.SQRT2;
-      const tipX = c + s / Math.SQRT2;
-      const tipY = 0;
-      graphics.lineTo(tipX, tipY);
-      graphics.lineTo(pStart.x, pStart.y);
+      
+      // Add directional tip pointing right
+      const tipX = r + tipLength; // tip extends beyond circle
+      graphics.lineTo(tipX, 0); // tip point
+      graphics.lineTo(pStart.x, pStart.y); // back to start
       graphics.closePath();
     });
   }
@@ -176,16 +181,10 @@ export class TokenPointer {
         }
 
         // Draw pointer by type
-        const drawer = this.renderers.get(pointerType) || this.renderers.get('arrow');
+        const drawer = this.renderers.get(pointerType) || this.renderers.get('markerV2');
         drawer(graphics);
         graphics.endFill();
-        // Recenter origin for MarkerV2 so that distance=0 aligns to token center
-        if (pointerType === 'markerV2') {
-          try {
-            const b = graphics.getLocalBounds();
-            graphics.pivot.set(b.x + b.width / 2, b.y + b.height / 2);
-          } catch(_) {}
-        }
+        // No pivot needed for MarkerV2 - it's already centered at origin
 
         container.addChild(graphics);
         container.graphics = graphics;
@@ -211,16 +210,10 @@ export class TokenPointer {
         } else {
           container.graphics.beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
         }
-        const drawer = this.renderers.get(pointerType) || this.renderers.get('arrow');
+        const drawer = this.renderers.get(pointerType) || this.renderers.get('markerV2');
         drawer(container.graphics);
         container.graphics.endFill();
-        // Recenter origin for MarkerV2 so that distance=0 aligns to token center
-        if (pointerType === 'markerV2') {
-          try {
-            const b = container.graphics.getLocalBounds();
-            container.graphics.pivot.set(b.x + b.width / 2, b.y + b.height / 2);
-          } catch(_) {}
-        }
+        // No pivot needed for MarkerV2 - it's already centered at origin
       }
 
       // Update pose
@@ -293,7 +286,7 @@ export function registerTokenPointerSettings() {
     hint: 'Relative distance of pointer from token center',
     scope: 'world',
     config: false,
-    default: 0.25,
+    default: 0.0,
     type: Number,
     onChange: (v) => {
       const inst = game.spaceholder?.tokenpointer;
@@ -526,7 +519,7 @@ export function installTokenPointerHooks() {
       const ctx = {
         tab,
         group,
-        pointerType: fp.pointerType ?? game.spaceholder?.tokenpointer?.pointerType ?? 'arrow',
+        pointerType: fp.pointerType ?? game.spaceholder?.tokenpointer?.pointerType ?? 'markerV2',
         color: fp.color ?? game.spaceholder?.tokenpointer?.color ?? '#000000',
         distance: Number(fp.distance ?? game.spaceholder?.tokenpointer?.distance ?? 1.4),
         scale: Number(fp.scale ?? game.spaceholder?.tokenpointer?.scale ?? 1.0),
@@ -577,7 +570,7 @@ export function installTokenPointerHooks() {
             const distance = Number(distanceInput?.value ?? fp.distance ?? tp?.distance ?? 1.4);
             const scale = Number(scaleInput?.value ?? fp.scale ?? tp?.scale ?? 1.0);
             const mode = Number(modeSelect?.value ?? fp.mode ?? tp?.mode ?? 2);
-            const type = typeSelect?.value ?? fp.pointerType ?? tp?.pointerType ?? 'arrow';
+            const type = typeSelect?.value ?? fp.pointerType ?? tp?.pointerType ?? 'markerV2';
             const under = !!(underCheck?.checked ?? fp.underToken ?? tp?.underToken ?? false);
 
             // Update pointer graphics directly without persisting flags
@@ -586,7 +579,7 @@ export function installTokenPointerHooks() {
             if (g) {
               const hexColor = Number(`0x${(color ?? '#000000').substring(1, 7)}`);
               g.clear().beginFill(hexColor, 0.5).lineStyle(2, hexColor, 1).moveTo(0, 0);
-              const drawer = tp?.renderers?.get(type) || tp?.renderers?.get('arrow');
+              const drawer = tp?.renderers?.get(type) || tp?.renderers?.get('markerV2');
               drawer?.(g);
               g.endFill();
               // Recompute layout
