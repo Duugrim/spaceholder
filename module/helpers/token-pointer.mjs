@@ -147,9 +147,14 @@ export class TokenPointer {
       const maxSize = Math.max(token.w, token.h);
       const distance = (maxSize / 2) * distanceFactor;
 
-      const tokenSize = Math.max(token.document.width, token.document.height);
+      // Scale pointer proportionally with grid size to match token scaling
+      // When grid is smaller (50px) -> pointer should be smaller (scale < 1.0)
+      // When grid is larger (150px) -> pointer should be larger (scale > 1.0)
+      const gridSize = canvas.grid?.size || 100;
+      const baseGridSize = 100; // reference grid size (100px)
       const tokenScale = Math.abs(token.document.texture.scaleX) + Math.abs(token.document.texture.scaleY);
-      const scale = ((tokenSize * tokenScale) / 2) * scaleFactor;
+      // Scale proportionally with grid size to match token appearance
+      const scale = (gridSize / baseGridSize) * scaleFactor;
 
       const width = token.w;
       const height = token.h;
@@ -304,7 +309,7 @@ export function registerTokenPointerSettings() {
     hint: 'Relative size of the pointer',
     scope: 'world',
     config: false,
-    default: 8.0,
+    default: 1.0,
     type: Number,
     onChange: (v) => {
       const inst = game.spaceholder?.tokenpointer;
@@ -587,9 +592,12 @@ export function installTokenPointerHooks() {
               // Recompute layout
               const maxSize = Math.max(token.w, token.h);
               g.x = (maxSize / 2) * distance;
-              const tokenSize = Math.max(token.document.width, token.document.height);
-              const tokenScale = Math.abs(token.document.texture.scaleX) + Math.abs(token.document.texture.scaleY);
-              g.scale.set(((tokenSize * tokenScale) / 2) * scale, ((tokenSize * tokenScale) / 2) * scale);
+              // Scale pointer proportionally with grid size to match token scaling
+              const gridSize = canvas.grid?.size || 100;
+              const baseGridSize = 100; // reference grid size (100px)
+              // Scale proportionally with grid size to match token appearance
+              const normalizedScale = (gridSize / baseGridSize) * scale;
+              g.scale.set(normalizedScale, normalizedScale);
               // Visibility by mode
               g.visible = mode === 2 ? true : mode === 1 ? !!token.hover : false;
             }
