@@ -485,6 +485,24 @@ export function installTokenPointerHooks() {
   // Hover / selection highlighting
   Hooks.on('hoverToken', (token, hovered) => { const inst = game.spaceholder?.tokenpointer; if (inst) inst.drawForToken(token); });
   Hooks.on('highlightObjects', (highlighted) => { const inst = game.spaceholder?.tokenpointer; if (!inst) return; canvas.scene?.tokens?.forEach((td) => td.object && inst.drawForToken(td.object)); });
+  
+  // Отслеживание undo/redo операций
+  // Пробуем различные способы отслеживания
+  if (typeof Hooks.on === 'function') {
+    // Основные хуки для undo/redo
+    Hooks.on('historyUndo', _markUndoOperationStart);
+    Hooks.on('historyRedo', _markUndoOperationStart);
+    Hooks.on('undoOperation', _markUndoOperationStart);
+    Hooks.on('redoOperation', _markUndoOperationStart);
+    
+    // Хуки завершения операций
+    Hooks.on('historyUndoComplete', _markUndoOperationEnd);
+    Hooks.on('historyRedoComplete', _markUndoOperationEnd);
+    Hooks.on('undoOperationComplete', _markUndoOperationEnd);
+    Hooks.on('redoOperationComplete', _markUndoOperationEnd);
+    
+    console.log('TokenPointer | Registered undo/redo hooks');
+  }
 
   // Inject per-token settings UI into Token Config and Prototype Token Config
   const renderHandler = async (_app, formEl, data /*, options */) => {
@@ -607,8 +625,17 @@ export function installTokenPointerHooks() {
   Hooks.on('closeTokenConfig', (app) => { try { const td = app?.document; if (td?.object) game.spaceholder?.tokenpointer?.drawForToken(td.object); } catch(_){} });
 
   // Pre-update: compute direction and optional horizontal flip
-  Hooks.on('preUpdateToken', (tokenDocument, updates) => {
+  Hooks.on('preUpdateToken', (tokenDocument, updates, options, userId) => {
     try {
+      // Отладочная информация о контексте операции (только для undo/redo)
+      if ((updates.x !== undefined || updates.y !== undefined) && _isUndoRedoOperation(options)) {
+        console.log('TokenPointer | Undo/Redo context detected:', {
+          isUndo: options?.isUndo,
+          isRedo: options?.isRedo,
+          operation: options?.operation,
+          source: options?.source
+        });
+      }
       const hasXY = updates.x !== undefined || updates.y !== undefined;
       const noPosChange = !hasXY || ((updates.x ?? tokenDocument.x) === tokenDocument.x && (updates.y ?? tokenDocument.y) === tokenDocument.y);
       const hasRotation = updates.rotation !== undefined;
@@ -624,16 +651,18 @@ export function installTokenPointerHooks() {
         return; // Не обновляем tokenpointerDirection при чистом повороте токена
       }
       
-      // Проверка на undo операцию (возврат токена на старое место)
-      if (hasXY && !hasRotation) {
+      // Проверка на undo операцию с использованием контекста
+      if (hasXY && !hasRotation && _isUndoRedoOperation(options)) {
         const newX = updates.x ?? tokenDocument.x;
         const newY = updates.y ?? tokenDocument.y;
         const savedDirection = _findPointerStateForPosition(tokenDocument.id, newX, newY);
         
         if (savedDirection !== null) {
-          console.log(`TokenPointer | Undo detected: restoring pointer direction ${savedDirection}° for position (${newX},${newY})`);
+          console.log(`TokenPointer | Undo operation confirmed: restoring pointer direction ${savedDirection}° for position (${newX},${newY})`);
           foundry.utils.setProperty(updates, 'flags.spaceholder.tokenpointerDirection', savedDirection);
           return;
+        } else {
+          console.log(`TokenPointer | Undo operation detected but no saved state found for position (${newX},${newY})`);
         }
       }
 
@@ -644,9 +673,9 @@ export function installTokenPointerHooks() {
       const { SHIFT } = foundry.helpers.interaction.KeyboardManager.MODIFIER_KEYS;
       const isShiftHeld = game.keyboard?.isModifierActive(SHIFT);
       
-      // Отладочный вывод для понимания состояния клавиш
-      if (hasXY) {
-        console.log(`TokenPointer | Movement detected: Shift held = ${isShiftHeld}`);
+      // Отладочный вывод для Shift (только когда зажат)
+      if (hasXY && isShiftHeld) {
+        console.log(`TokenPointer | Shift+drag detected: preserving pointer direction`);
       }
       
       // Только при движении токена пересчитываем направление указателя
@@ -659,7 +688,6 @@ export function installTokenPointerHooks() {
         if (dx !== 0 || dy !== 0) {
           // Если зажат Shift при перетаскивании, не меняем направление указателя
           if (isShiftHeld) {
-            console.log('TokenPointer | Shift+drag detected: preserving pointer direction');
             return; // Сохраняем текущее направление указателя
           }
           tokenDirection = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -689,7 +717,6 @@ export function installTokenPointerHooks() {
       if (hasXY && hasRotation) {
         // Если зажат Shift при перетаскивании, не меняем направление указателя
         if (isShiftHeld) {
-          console.log('TokenPointer | Shift+drag with rotation detected: preserving pointer direction');
           return; // Сохраняем текущее направление указателя
         }
         
@@ -727,6 +754,11 @@ const POINTER_ROTATION_SPEED = 15; // градусы за шаг
 const pointerStateHistory = new Map(); // tokenId -> Array of {position: {x, y}, direction: number, timestamp: number}
 const MAX_HISTORY_SIZE = 50; // максимальное количество сохраненных состояний для каждого токена
 
+// Система отслеживания undo операций
+let isUndoOperationActive = false;
+let undoOperationTimeStamp = 0;
+const UNDO_DETECTION_WINDOW = 100; // мс - окно для определения undo
+
 /**
  * Сохраняет текущее состояние указателя в историю
  * @param {String} tokenId - ID токена
@@ -754,7 +786,8 @@ function _savePointerState(tokenId, x, y, direction) {
     history.splice(MAX_HISTORY_SIZE);
   }
   
-  console.log(`TokenPointer | Saved state for ${tokenId}: pos(${x},${y}), direction=${direction}°`);
+  // Логируем только в режиме отладки
+  // console.log(`TokenPointer | Saved state for ${tokenId}: pos(${x},${y}), direction=${direction}°`);
 }
 
 /**
@@ -792,6 +825,51 @@ function _findPointerStateForPosition(tokenId, x, y) {
 function _clearPointerHistory(tokenId) {
   pointerStateHistory.delete(tokenId);
   console.log(`TokenPointer | Cleared history for ${tokenId}`);
+}
+
+/**
+ * Определяет, является ли операция undo/redo
+ * @param {Object} options - опции обновления
+ * @returns {Boolean} - true если это undo/redo операция
+ */
+function _isUndoRedoOperation(options) {
+  // Метод 1: Проверка прямых флагов в опциях
+  if (options?.isUndo === true || options?.undo === true || options?.isRedo === true || options?.redo === true) {
+    return true;
+  }
+  
+  // Метод 2: Проверка источника операции
+  const source = options?.source || options?.operation;
+  if (source === 'undo' || source === 'redo' || source === 'history') {
+    return true;
+  }
+  
+  // Метод 3: Проверка флага глобального состояния
+  if (isUndoOperationActive && (Date.now() - undoOperationTimeStamp) < UNDO_DETECTION_WINDOW) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Отмечает начало undo операции
+ */
+function _markUndoOperationStart() {
+  isUndoOperationActive = true;
+  undoOperationTimeStamp = Date.now();
+  console.log('TokenPointer | Undo operation started');
+}
+
+/**
+ * Отмечает завершение undo операции
+ */
+function _markUndoOperationEnd() {
+  // Откладываем сброс флага, чтобы дать время всем обновлениям
+  setTimeout(() => {
+    isUndoOperationActive = false;
+    console.log('TokenPointer | Undo operation ended');
+  }, UNDO_DETECTION_WINDOW);
 }
 
 /**
