@@ -639,6 +639,16 @@ export function installTokenPointerHooks() {
 
       let tokenDirection;
       
+      // Проверяем, зажата ли клавиша Shift во время движения
+      // Используем тот же API, что и в Token Rotator
+      const { SHIFT } = foundry.helpers.interaction.KeyboardManager.MODIFIER_KEYS;
+      const isShiftHeld = game.keyboard?.isModifierActive(SHIFT);
+      
+      // Отладочный вывод для понимания состояния клавиш
+      if (hasXY) {
+        console.log(`TokenPointer | Movement detected: Shift held = ${isShiftHeld}`);
+      }
+      
       // Только при движении токена пересчитываем направление указателя
       if (hasXY && !hasRotation) {
         const prev = { x: tokenDocument.x, y: tokenDocument.y };
@@ -647,6 +657,11 @@ export function installTokenPointerHooks() {
         const dy = next.y - prev.y;
 
         if (dx !== 0 || dy !== 0) {
+          // Если зажат Shift при перетаскивании, не меняем направление указателя
+          if (isShiftHeld) {
+            console.log('TokenPointer | Shift+drag detected: preserving pointer direction');
+            return; // Сохраняем текущее направление указателя
+          }
           tokenDirection = (Math.atan2(dy, dx) * 180) / Math.PI;
           const fp = tokenDocument.getFlag('spaceholder', 'tokenpointer') ?? {};
           const lockToGrid = !!fp.lockToGrid || (!!game.spaceholder?.tokenpointer?.lockToGrid && !!canvas.grid?.type);
@@ -672,6 +687,12 @@ export function installTokenPointerHooks() {
       
       // Если есть и движение, и поворот одновременно
       if (hasXY && hasRotation) {
+        // Если зажат Shift при перетаскивании, не меняем направление указателя
+        if (isShiftHeld) {
+          console.log('TokenPointer | Shift+drag with rotation detected: preserving pointer direction');
+          return; // Сохраняем текущее направление указателя
+        }
+        
         // В этом случае используем направление движения, игнорируя поворот токена
         const prev = { x: tokenDocument.x, y: tokenDocument.y };
         const next = { x: updates.x ?? tokenDocument.x, y: updates.y ?? tokenDocument.y };
