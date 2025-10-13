@@ -526,6 +526,7 @@ export function installTokenPointerHooks() {
         mode: Number(fp.mode ?? game.spaceholder?.tokenpointer?.mode ?? 2),
         lockToGrid: !!(fp.lockToGrid ?? game.spaceholder?.tokenpointer?.lockToGrid ?? false),
         underToken: !!(fp.underToken ?? game.spaceholder?.tokenpointer?.underToken ?? false),
+        disableAutoRotation: !!(fp.disableAutoRotation ?? true),
       };
 
       // Render panel HTML
@@ -625,7 +626,26 @@ export function installTokenPointerHooks() {
   Hooks.on('renderPrototypeTokenConfig', renderHandler);
   Hooks.on('closeTokenConfig', (app) => { try { const td = app?.document; if (td?.object) game.spaceholder?.tokenpointer?.drawForToken(td.object); } catch(_){} });
 
-  // Pre-update: compute direction and optional horizontal flip
+  // Pre-update: prevent automatic token rotation if disabled
+  Hooks.on('preUpdateToken', (tokenDocument, updates, options, userId) => {
+    // Check if automatic rotation should be disabled for this token
+    const fp = tokenDocument.getFlag('spaceholder', 'tokenpointer') ?? {};
+    const disableAutoRotation = !!(fp.disableAutoRotation ?? false);
+    
+    // Only block automatic rotation (when position changes), not manual rotation
+    const hasPositionChange = updates.x !== undefined || updates.y !== undefined;
+    const hasRotationChange = updates.rotation !== undefined;
+    
+    // If auto-rotation is disabled, rotation change happens WITH position change, and not from our system
+    if (disableAutoRotation && hasRotationChange && hasPositionChange && !options.spaceholderPointer) {
+      // Remove rotation from updates to prevent automatic rotation by core Foundry
+      delete updates.rotation;
+      console.log(`TokenPointer | Prevented automatic rotation for token ${tokenDocument.name}`);
+    }
+    // Manual rotation (Ctrl+wheel) without position change is allowed
+  });
+  
+  // Pre-update: compute direction and optional horizontal flip  
   Hooks.on('preUpdateToken', (tokenDocument, updates, options, userId) => {
     try {
       // Отладочная информация о контексте операции (только для undo/redo)

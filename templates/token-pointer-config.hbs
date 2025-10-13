@@ -36,4 +36,8 @@
     <label>Render Under Token</label>
     <input type="checkbox" name="flags.spaceholder.tokenpointer.underToken" {{#if underToken}}checked{{/if}} />
   </div>
+  <div class="form-group">
+    <label>Disable ATR</label>
+    <input type="checkbox" name="flags.spaceholder.tokenpointer.disableAutoRotation" {{#if disableAutoRotation}}checked{{/if}} title="Disable Automatic Token Rotation: Prevents the core token from rotating automatically during movement. The pointer will still rotate." />
+  </div>
 </div>
