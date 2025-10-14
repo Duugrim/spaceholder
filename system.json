@@ -40,7 +40,7 @@
   ],
   "packs": [],
   "packFolders": [],
-  "socket": false,
+  "socket": true,
   "manifest": "Replace this with a link to the /latest release system.json so people can receive updates after they've installed the system",
   "download": "This must link to a .zip file of the current version",
   "background": "systems/spaceholder/assets/anvil-impact.png",

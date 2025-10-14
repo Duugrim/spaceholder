@@ -3,6 +3,7 @@
 
 import { RayCaster } from './ray-casting.mjs';
 import { RayRenderer } from './ray-renderer.mjs';
+import { AimingSocketManager } from './aiming-socket-manager.mjs';
 
 export class AimingSystem {
   constructor() {
@@ -30,6 +31,7 @@ export class AimingSystem {
     // Компоненты системы
     this.rayCaster = new RayCaster(this);
     this.rayRenderer = new RayRenderer(this);
+    this.socketManager = new AimingSocketManager(this);
     
     // Привязки событий
     this._boundEvents = {
@@ -57,6 +59,7 @@ export class AimingSystem {
     // Инициализируем компоненты
     this.rayCaster.initialize();
     this.rayRenderer.initialize();
+    this.socketManager.initialize();
   }
   
   /**
@@ -137,6 +140,17 @@ export class AimingSystem {
     console.log(`🎯 Direction: ${Math.round(this.currentAimDirection)}°`);
     console.log(`📍 Segment length: ${this.config.fireSegmentLength}px, Max segments: ${this.config.maxFireSegments}`);
     
+    // Отправляем событие начала выстрела всем клиентам
+    const shotData = {
+      tokenId: this.aimingToken.id,
+      direction: this.currentAimDirection,
+      startPosition: tokenCenter,
+      timestamp: Date.now(),
+      weaponName: this.weapon?.name || 'Неизвестное оружие'
+    };
+    
+    this.socketManager.broadcastFireShot(shotData);
+    
     // Очищаем только предпросмотр, оставляем предыдущие выстрелы
     if (this.rayRenderer.currentRayGraphics) {
       this.rayRenderer.currentRayGraphics.destroy();
@@ -149,12 +163,24 @@ export class AimingSystem {
       direction: this.currentAimDirection,
       segmentIndex: 0,
       totalHits: [],
-      segments: []
+      segments: [],
+      socketData: shotData // Передаём данные для socket-синхронизации
     });
     
     // Обрабатываем все попадания
     if (fireResult.totalHits.length > 0) {
       this._processHits(fireResult.totalHits);
+      
+      // Отправляем события о попаданиях
+      for (const hit of fireResult.totalHits) {
+        this.socketManager.broadcastShotHit({
+          tokenId: this.aimingToken.id,
+          hitType: hit.type,
+          hitPoint: hit.point,
+          targetId: hit.object?.id,
+          distance: hit.distance
+        });
+      }
     } else {
       // Промах
       console.log('❌ No hits detected - miss!');
@@ -165,6 +191,19 @@ export class AimingSystem {
     }
     
     console.log(`✅ Fire sequence completed for ${this.aimingToken.name}. Total segments: ${fireResult.segments.length}`);
+    
+    // Отправляем событие завершения выстрела
+    this.socketManager.broadcastShotComplete({
+      tokenId: this.aimingToken.id,
+      totalSegments: fireResult.segments.length,
+      totalHits: fireResult.totalHits.length,
+      segments: fireResult.segments.map(seg => ({
+        start: seg.start || seg.origin,
+        end: seg.end,
+        isRicochet: seg.isRicochet || false,
+        bounceNumber: seg.bounceNumber || 0
+      }))
+    });
     
     // Не завершаем прицеливание автоматически - пользователь может продолжить прицеливание
     // this.stopAiming();
@@ -202,7 +241,7 @@ export class AimingSystem {
    * @returns {Promise<Object>} результат выстрела
    */
   async _fireRecursive(fireState) {
-    const { currentPosition, direction, segmentIndex, totalHits, segments, ricochetCount = 0, lastWallId = null } = fireState;
+    const { currentPosition, direction, segmentIndex, totalHits, segments, ricochetCount = 0, lastWallId = null, socketData = null } = fireState;
     
     // Проверяем лимит сегментов
     if (segmentIndex >= this.config.maxFireSegments) {
@@ -251,6 +290,21 @@ export class AimingSystem {
     // Отрисовываем сегмент
     this.rayRenderer.drawFireSegment(segment, segmentIndex);
     
+    // Отправляем событие о сегменте выстрела
+    if (socketData) {
+      this.socketManager.broadcastShotSegment({
+        tokenId: socketData.tokenId,
+        segmentIndex: segmentIndex,
+        segment: {
+          start: segment.start || segment.origin,
+          end: segment.end,
+          isRicochet: segment.isRicochet || false,
+          bounceNumber: segment.bounceNumber || 0
+        },
+        ricochetCount: ricochetCount
+      });
+    }
+    
     // Небольшая задержка для визуального эффекта
     const delay = ricochetCount > 0 ? 75 : 50; // Рикошеты чуть медленнее
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -288,7 +342,8 @@ export class AimingSystem {
           totalHits,
           segments,
           ricochetCount: ricochetCount + 1,
-          lastWallId: firstHit.object.id // Запоминаем ID стены
+          lastWallId: firstHit.object.id, // Запоминаем ID стены
+          socketData: socketData // Передаём дальше данные для socket
         });
       }
       
@@ -307,7 +362,8 @@ export class AimingSystem {
       totalHits,
       segments,
       ricochetCount,
-      lastWallId // Передаём дальше
+      lastWallId, // Передаём дальше
+      socketData: socketData // Передаём дальше данные для socket
     });
   }
   

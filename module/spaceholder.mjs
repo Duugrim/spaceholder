@@ -18,6 +18,7 @@ import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } 
 import { injectAimingStyles } from './helpers/ray-renderer.mjs';
 import './helpers/test-aiming-system.mjs'; // Для отладки
 import './helpers/aiming-demo-macros.mjs'; // Демо макросы
+import './helpers/aiming-socket-manager.mjs'; // Socket менеджер для мультиплеерной синхронизации
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
 

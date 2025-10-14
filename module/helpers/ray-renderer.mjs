@@ -507,10 +507,280 @@ export class RayRenderer {
   }
   
   /**
+   * Визуализация удалённого выстрела (от другого игрока)
+   * @param {Object} shotData - данные о выстреле
+   */
+  async visualizeRemoteShot(shotData) {
+    console.log('🌐 Visualizing remote shot:', shotData);
+    
+    const { token, direction, segments, hits } = shotData;
+    
+    if (!token || !this.rayContainer) {
+      console.warn('SpaceHolder | RayRenderer: Cannot visualize remote shot - missing token or container');
+      return;
+    }
+    
+    console.log('🌐 Remote shot data:', {
+      tokenId: token.id,
+      segmentsCount: segments?.length || 0,
+      hitsCount: hits?.length || 0
+    });
+    
+    // Показываем маркер начала выстрела (БЕЗ очистки)
+    this._showRemoteShotMarker(token);
+    
+    // Анимируем все сегменты (если они есть)
+    if (segments && segments.length > 0) {
+      console.log(`🎬 Animating ${segments.length} segments for remote shot`);
+      for (let i = 0; i < segments.length; i++) {
+        await this._animateRemoteSegment(segments[i], i, token.id);
+      }
+    }
+    
+    // Показываем эффекты попаданий
+    if (hits && hits.length > 0) {
+      hits.forEach((hit, index) => {
+        setTimeout(() => {
+          this._createExplosionEffect(hit.point, hit.type);
+        }, index * 100);
+      });
+    }
+  }
+  
+  /**
+   * Отобразить сегмент удалённого выстрела
+   * @param {Object} segmentData - данные о сегменте
+   */
+  displayRemoteShotSegment(segmentData) {
+    console.log('🌐 Displaying remote shot segment:', segmentData);
+    
+    const { tokenId, segment, segmentIndex } = segmentData;
+    
+    if (!segment || !this.rayContainer) return;
+    
+    // Создаём графику для удалённого сегмента
+    const remoteSegmentGraphics = new PIXI.Graphics();
+    
+    // Стиль для удалённых выстрелов (отличается от локальных)
+    let fireColor, fireAlpha, fireWidth;
+    
+    if (segment.isRicochet) {
+      const bounceLevel = segment.bounceNumber || 1;
+      fireColor = bounceLevel === 1 ? 0x00FF88 : // Зелёно-голубой для первого рикошета
+                  bounceLevel === 2 ? 0x00CCFF : // Голубой для второго
+                                      0x0088FF;   // Синий для остальных
+      fireAlpha = 0.8;
+      fireWidth = 3;
+    } else {
+      // Основной выстрел - синий (отличается от красного локального)
+      fireColor = 0x4444FF;
+      fireAlpha = 0.8;
+      fireWidth = 3;
+    }
+    
+    remoteSegmentGraphics.lineStyle(fireWidth, fireColor, fireAlpha);
+    
+    // Рисуем сегмент
+    remoteSegmentGraphics.moveTo(segment.start.x, segment.start.y)
+                        .lineTo(segment.end.x, segment.end.y);
+    
+    // Маркер начала
+    remoteSegmentGraphics.beginFill(fireColor, fireAlpha);
+    remoteSegmentGraphics.drawCircle(segment.start.x, segment.start.y, Math.max(1, fireWidth - 1));
+    remoteSegmentGraphics.endFill();
+    
+    // Идентификация
+    remoteSegmentGraphics.name = `remoteSegment_${tokenId}_${segmentIndex}`;
+    
+    // Добавляем на сцену
+    this.rayContainer.addChild(remoteSegmentGraphics);
+    
+    // Сохраняем ссылку для очистки
+    if (!this.remoteSegments) {
+      this.remoteSegments = new Map();
+    }
+    if (!this.remoteSegments.has(tokenId)) {
+      this.remoteSegments.set(tokenId, []);
+    }
+    this.remoteSegments.get(tokenId).push(remoteSegmentGraphics);
+  }
+  
+  /**
+   * Отобразить эффект попадания от другого игрока
+   * @param {Object} hitData - данные о попадании
+   */
+  displayRemoteHitEffect(hitData) {
+    console.log('🌐 Displaying remote hit effect:', hitData);
+    
+    if (!hitData.hitPoint) return;
+    
+    // Показываем эффект взрыва с отличающимся цветом
+    this._createRemoteExplosionEffect(hitData.hitPoint, hitData.hitType);
+  }
+  
+  /**
+   * Завершить визуализацию удалённого выстрела
+   * @param {Object} completeData - итоговые данные
+   */
+  completeRemoteShot(completeData) {
+    console.log('🌐 Completing remote shot visualization:', completeData);
+    
+    // Можно добавить дополнительные эффекты завершения
+  }
+  
+  /**
+   * Показать маркер начала удалённого выстрела
+   * @private
+   */
+  _showRemoteShotMarker(token) {
+    if (!token || !this.animationContainer) return;
+    
+    const marker = new PIXI.Graphics();
+    const tokenCenter = token.center;
+    
+    // Маркер начала выстрела (отличающийся цвет)
+    marker.beginFill(0x0088FF, 0.8);
+    marker.drawCircle(tokenCenter.x, tokenCenter.y, 8);
+    marker.endFill();
+    
+    marker.beginFill(0xFFFFFF, 1.0);
+    marker.drawCircle(tokenCenter.x, tokenCenter.y, 3);
+    marker.endFill();
+    
+    marker.name = `remoteShotMarker_${token.id}`;
+    
+    this.animationContainer.addChild(marker);
+    
+    // Анимация мигания
+    const startTime = Date.now();
+    const animate = () => {
+      if (marker.destroyed) return;
+      
+      const elapsed = Date.now() - startTime;
+      const progress = (elapsed % 1000) / 1000;
+      marker.alpha = 0.5 + Math.sin(progress * Math.PI * 2) * 0.5;
+      
+      if (elapsed < 3000) { // 3 секунды
+        requestAnimationFrame(animate);
+      } else {
+        marker.destroy();
+      }
+    };
+    
+    animate();
+  }
+  
+  /**
+   * Анимация сегмента удалённого выстрела
+   * @private
+   */
+  async _animateRemoteSegment(segment, segmentIndex, tokenId) {
+    if (!segment) return;
+    
+    // Отображаем сегмент
+    this.displayRemoteShotSegment({ 
+      tokenId,
+      segment,
+      segmentIndex
+    });
+    
+    // Задержка между сегментами
+    const delay = segment.isRicochet ? 75 : 50;
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+  
+  /**
+   * Очистить удалённые эффекты для конкретного токена
+   * @private
+   */
+  _clearRemoteEffects(tokenId) {
+    console.log(`🧡 Clearing remote effects for token ${tokenId}`);
+    
+    if (!this.remoteSegments) return;
+    
+    const segments = this.remoteSegments.get(tokenId);
+    if (segments) {
+      console.log(`🧡 Clearing ${segments.length} remote segments`);
+      segments.forEach(segment => {
+        if (segment && !segment.destroyed) {
+          segment.destroy();
+        }
+      });
+      this.remoteSegments.delete(tokenId);
+    }
+  }
+  
+  /**
+   * Начать новый удалённый выстрел (очищает предыдущие)
+   */
+  startNewRemoteShot(tokenId) {
+    console.log(`🎆 Starting new remote shot for token ${tokenId}`);
+    this._clearRemoteEffects(tokenId);
+  }
+  
+  /**
+   * Создать эффект взрыва для удалённого попадания
+   * @private
+   */
+  _createRemoteExplosionEffect(point, type) {
+    if (!this.animationContainer) return;
+    
+    const explosion = new PIXI.Graphics();
+    let explosionColor = 0x0088FF; // Синий по умолчанию для удалённых
+    
+    if (type === 'token') {
+      explosionColor = 0x0066FF; // Синий для попадания в токен
+    } else if (type === 'wall') {
+      explosionColor = 0x4488CC; // Серо-синий для стен
+    }
+    
+    const maxRadius = 15; // Меньше локальных взрывов
+    const duration = 400;
+    
+    this.animationContainer.addChild(explosion);
+    
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / duration;
+      
+      if (progress >= 1.0 || explosion.destroyed) {
+        if (!explosion.destroyed) explosion.destroy();
+        return;
+      }
+      
+      const radius = maxRadius * progress;
+      const alpha = (1.0 - progress) * 0.8;
+      
+      explosion.clear();
+      explosion.lineStyle(2, explosionColor, alpha);
+      explosion.beginFill(explosionColor, alpha * 0.3);
+      explosion.drawCircle(point.x, point.y, radius);
+      explosion.endFill();
+      
+      requestAnimationFrame(animate);
+    };
+    
+    animate();
+  }
+  
+  /**
    * Уничтожить рендерер
    */
   destroy() {
     this.clearAll();
+    
+    // Очищаем все удалённые эффекты
+    if (this.remoteSegments) {
+      this.remoteSegments.forEach((segments) => {
+        segments.forEach(segment => {
+          if (segment && !segment.destroyed) {
+            segment.destroy();
+          }
+        });
+      });
+      this.remoteSegments.clear();
+    }
     
     if (this.aimingContainer && !this.aimingContainer.destroyed) {
       this.aimingContainer.destroy();
