@@ -124,6 +124,9 @@ export class RayRenderer {
     this.currentReticle = reticle;
     this.reticleContainer.addChild(reticle);
     
+    // Показываем круглые мишени на всех токенах
+    this._showTargetCircles();
+    
     // Анимация пульсации
     this._animateReticle(reticle);
   }
@@ -136,6 +139,111 @@ export class RayRenderer {
       this.currentReticle.destroy();
       this.currentReticle = null;
     }
+    
+    // Скрываем круглые мишени
+    this._hideTargetCircles();
+  }
+  
+  /**
+   * Показать круглые мишени на всех токенах
+   * @private
+   */
+  _showTargetCircles() {
+    if (!canvas.tokens?.placeables || !this.reticleContainer) return;
+    
+    // Очищаем предыдущие мишени
+    this._hideTargetCircles();
+    
+    this.targetCircles = new Map();
+    
+    for (const token of canvas.tokens.placeables) {
+      // Пропускаем токен, который стреляет
+      if (token === this.aimingSystem.aimingToken) continue;
+      
+      // Пропускаем невидимые токены
+      if (!token.visible) continue;
+      
+      const bounds = token.bounds;
+      const centerX = bounds.x + bounds.width / 2;
+      const centerY = bounds.y + bounds.height / 2;
+      // Используем минимальный размер для более точного попадания
+      const radius = Math.min(bounds.width, bounds.height) / 2;
+      
+      // Создаем мишень
+      const targetCircle = new PIXI.Graphics();
+      
+      // Стиль мишени - полупрозрачные кольца
+      const targetColor = 0xFFAA00; // Оранжевый
+      const targetAlpha = 0.4;
+      const targetLineWidth = 2;
+      
+      targetCircle.lineStyle(targetLineWidth, targetColor, targetAlpha);
+      
+      // Внешний круг мишени
+      targetCircle.drawCircle(centerX, centerY, radius);
+      
+      // Внутренний круг мишени (для лучшей видимости)
+      targetCircle.drawCircle(centerX, centerY, radius * 0.6);
+      
+      // Центральная точка
+      targetCircle.beginFill(targetColor, targetAlpha * 1.5);
+      targetCircle.drawCircle(centerX, centerY, 3);
+      targetCircle.endFill();
+      
+      // Название для отладки
+      targetCircle.name = `targetCircle_${token.id}`;
+      
+      // Добавляем на сцену
+      this.reticleContainer.addChild(targetCircle);
+      
+      // Сохраняем ссылку
+      this.targetCircles.set(token.id, targetCircle);
+      
+      // Легкая анимация появления
+      targetCircle.alpha = 0;
+      this._animateTargetCircle(targetCircle, targetAlpha);
+    }
+  }
+  
+  /**
+   * Скрыть круглые мишени
+   * @private
+   */
+  _hideTargetCircles() {
+    if (!this.targetCircles) return;
+    
+    for (const targetCircle of this.targetCircles.values()) {
+      if (targetCircle && !targetCircle.destroyed) {
+        targetCircle.destroy();
+      }
+    }
+    
+    this.targetCircles = null;
+  }
+  
+  /**
+   * Анимация появления мишени
+   * @private
+   */
+  _animateTargetCircle(targetCircle, targetAlpha) {
+    if (!targetCircle || targetCircle.destroyed) return;
+    
+    const startTime = Date.now();
+    const fadeInDuration = 300;
+    
+    const fadeIn = () => {
+      if (!targetCircle || targetCircle.destroyed || !this.aimingSystem.isAiming) return;
+      
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / fadeInDuration, 1);
+      targetCircle.alpha = progress * targetAlpha;
+      
+      if (progress < 1) {
+        requestAnimationFrame(fadeIn);
+      }
+    };
+    
+    fadeIn();
   }
   
   /**
@@ -504,6 +612,9 @@ export class RayRenderer {
       }
     });
     this.activeAnimations = [];
+    
+    // Очищаем мишени
+    this._hideTargetCircles();
   }
   
   /**
@@ -782,6 +893,9 @@ export class RayRenderer {
       this.remoteSegments.clear();
     }
     
+    // Окончательно очищаем мишени
+    this._hideTargetCircles();
+    
     if (this.aimingContainer && !this.aimingContainer.destroyed) {
       this.aimingContainer.destroy();
     }
@@ -790,6 +904,7 @@ export class RayRenderer {
     this.rayContainer = null;
     this.reticleContainer = null;
     this.animationContainer = null;
+    this.targetCircles = null;
   }
 }
 

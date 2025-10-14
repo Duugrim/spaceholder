@@ -163,11 +163,9 @@ export class RayCaster {
     
     if (!canvas.tokens?.placeables) return collisions;
     
-    // Создаем объект Ray из Foundry для проверки пересечений
     // Поддерживаем оба формата: {start, end} и {origin, end}
     const startPoint = segment.start || segment.origin;
     const endPoint = segment.end;
-    const ray = new foundry.canvas.geometry.Ray(startPoint, endPoint);
     
     for (const token of canvas.tokens.placeables) {
       // Пропускаем токен, который стреляет
@@ -176,12 +174,19 @@ export class RayCaster {
       // Пропускаем невидимые токены
       if (!token.visible) continue;
       
-      // Создаем прямоугольник токена
+      // Используем круглую проверку коллизий вместо прямоугольной
       const bounds = token.bounds;
-      const tokenRect = new PIXI.Rectangle(bounds.x, bounds.y, bounds.width, bounds.height);
+      const centerX = bounds.x + bounds.width / 2;
+      const centerY = bounds.y + bounds.height / 2;
+      const radius = Math.min(bounds.width, bounds.height) / 2;
       
-      // Проверяем пересечение луча с прямоугольником токена
-      const intersection = this._rayRectangleIntersection(ray, tokenRect);
+      // Проверяем пересечение луча с кругом токена
+      const intersection = this._rayCircleIntersection(
+        startPoint, 
+        endPoint, 
+        { x: centerX, y: centerY }, 
+        radius
+      );
       
       if (intersection) {
         const distance = Math.hypot(
@@ -327,6 +332,62 @@ export class RayCaster {
     }
     
     return null;
+  }
+  
+  /**
+   * Вычислить пересечение луча с кругом
+   * @param {Object} rayStart - начальная точка луча
+   * @param {Object} rayEnd - конечная точка луча
+   * @param {Object} center - центр круга {x, y}
+   * @param {number} radius - радиус круга
+   * @returns {Object|null} точка пересечения или null
+   * @private
+   */
+  _rayCircleIntersection(rayStart, rayEnd, center, radius) {
+    // Направляющий вектор луча
+    const dx = rayEnd.x - rayStart.x;
+    const dy = rayEnd.y - rayStart.y;
+    
+    // Вектор от начала луча до центра круга
+    const fx = rayStart.x - center.x;
+    const fy = rayStart.y - center.y;
+    
+    // Коэффициенты квадратного уравнения: at^2 + bt + c = 0
+    const a = dx * dx + dy * dy;
+    const b = 2 * (fx * dx + fy * dy);
+    const c = (fx * fx + fy * fy) - radius * radius;
+    
+    // Проверяем дискриминант
+    const discriminant = b * b - 4 * a * c;
+    
+    // Нет пересечения
+    if (discriminant < 0) {
+      return null;
+    }
+    
+    // Находим параметры пересечения
+    const sqrtDiscriminant = Math.sqrt(discriminant);
+    const t1 = (-b - sqrtDiscriminant) / (2 * a);
+    const t2 = (-b + sqrtDiscriminant) / (2 * a);
+    
+    // Находим первую точку пересечения на отрезке [0, 1]
+    let t = -1;
+    if (t1 >= 0 && t1 <= 1) {
+      t = t1; // Первое пересечение (ближайшее)
+    } else if (t2 >= 0 && t2 <= 1) {
+      t = t2; // Второе пересечение
+    }
+    
+    // Ни одно пересечение не лежит на отрезке луча
+    if (t < 0) {
+      return null;
+    }
+    
+    // Возвращаем точку пересечения
+    return {
+      x: rayStart.x + t * dx,
+      y: rayStart.y + t * dy
+    };
   }
   
   /**
