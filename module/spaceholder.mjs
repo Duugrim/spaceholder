@@ -18,6 +18,8 @@ import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } 
 import { injectAimingStyles } from './helpers/ray-renderer.mjs';
 import './helpers/test-aiming-system.mjs'; // Для отладки
 import './helpers/aiming-demo-macros.mjs'; // Демо макросы
+// Token Controls integration
+import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -28,6 +30,7 @@ Hooks.once('init', function () {
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
   registerAimingSystemSettings();
+  registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
   installTokenPointerTabs();
 
@@ -52,6 +55,8 @@ Hooks.once('init', function () {
   installTokenRotator();
   // Install Aiming System hooks
   installAimingSystemHooks();
+  // Install Token Controls hooks
+  installTokenControlsHooks();
 
   // Add custom constants for configuration.
   CONFIG.SPACEHOLDER = SPACEHOLDER;
