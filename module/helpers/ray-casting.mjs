@@ -386,40 +386,74 @@ export class RayCaster {
   
   /**
    * Обработать рикошеты луча
+   * @param {Object} ray - луч
+   * @param {Array} collisions - столкновения
+   * @param {number} maxRicochets - максимальное количество рикошетов
+   * @param {number} currentBounce - текущий номер рикошета
    * @private
    */
-  _processRicochets(ray, collisions) {
+  _processRicochets(ray, collisions, maxRicochets = 3, currentBounce = 0) {
+    // Проверяем лимит рикошетов
+    if (currentBounce >= maxRicochets) return;
+    
     // Находим первое столкновение со стеной
     const wallCollision = collisions.find(c => c.type === 'wall');
     if (!wallCollision) return;
     
     // Вычисляем отраженный луч
-    const reflectedRay = this._calculateReflection(ray, wallCollision);
-    if (!reflectedRay) return;
+    const reflectedSegment = this._calculateReflection(ray, wallCollision);
+    if (!reflectedSegment) return;
+    
+    // Добавляем метаданные для рикошета
+    reflectedSegment.isRicochet = true;
+    reflectedSegment.bounceNumber = currentBounce + 1;
     
     // Добавляем новый сегмент к лучу
-    ray.segments.push(reflectedRay);
+    ray.segments.push(reflectedSegment);
     
     // Рекурсивно проверяем столкновения нового сегмента
-    const newCollisions = this._checkWallCollisions(reflectedRay);
-    newCollisions.concat(this._checkTokenCollisions(reflectedRay));
+    const wallCollisions = this._checkWallCollisions(reflectedSegment);
+    const tokenCollisions = this._checkTokenCollisions(reflectedSegment);
+    const tileCollisions = this._checkTileCollisions(reflectedSegment);
+    
+    const newCollisions = [...wallCollisions, ...tokenCollisions, ...tileCollisions]
+      .sort((a, b) => a.distance - b.distance);
     
     // Добавляем новые столкновения к общему списку
     ray.collisions.push(...newCollisions);
+    
+    // Если есть столкновение с токеном или тайлом, останавливаемся
+    const blockingCollision = newCollisions.find(c => c.type === 'token' || c.type === 'tile');
+    if (blockingCollision) return;
+    
+    // Продолжаем рикошеты
+    this._processRicochets(ray, newCollisions, maxRicochets, currentBounce + 1);
   }
   
   /**
    * Вычислить отраженный луч от стены
+   * @param {Object} ray - основной луч (для определения оставшегося расстояния)
+   * @param {Object} wallCollision - столкновение со стеной
    * @private
    */
-  _calculateReflection(originalRay, wallCollision) {
+  _calculateReflection(ray, wallCollision) {
     const wall = wallCollision.wallRay;
     const hitPoint = wallCollision.point;
+    const segment = wallCollision.segment;
     
-    // Вектор направления исходного луча
+    // Поддерживаем оба формата: {start, end} и {origin, end}
+    const segmentStart = segment.start || segment.origin;
+    const segmentEnd = segment.end;
+    
+    // Вектор направления сегмента
+    const segmentVector = {
+      x: segmentEnd.x - segmentStart.x,
+      y: segmentEnd.y - segmentStart.y
+    };
+    const segmentLength = Math.hypot(segmentVector.x, segmentVector.y);
     const rayDir = {
-      x: Math.cos(originalRay.angleRad),
-      y: Math.sin(originalRay.angleRad)
+      x: segmentVector.x / segmentLength,
+      y: segmentVector.y / segmentLength
     };
     
     // Вектор стены
@@ -444,19 +478,19 @@ export class RayCaster {
     
     // Оставшееся расстояние луча
     const usedDistance = Math.hypot(
-      hitPoint.x - originalRay.origin.x,
-      hitPoint.y - originalRay.origin.y
+      hitPoint.x - segmentStart.x,
+      hitPoint.y - segmentStart.y
     );
-    const remainingDistance = originalRay.maxDistance - usedDistance;
+    const remainingSegmentDistance = segmentLength - usedDistance;
     
-    if (remainingDistance <= 0) return null;
+    if (remainingSegmentDistance <= 0) return null;
     
     // Создаем новый сегмент
     return {
       start: hitPoint,
       end: {
-        x: hitPoint.x + reflectedDir.x * remainingDistance,
-        y: hitPoint.y + reflectedDir.y * remainingDistance
+        x: hitPoint.x + reflectedDir.x * remainingSegmentDistance,
+        y: hitPoint.y + reflectedDir.y * remainingSegmentDistance
       },
       direction: Math.atan2(reflectedDir.y, reflectedDir.x) * (180 / Math.PI)
     };

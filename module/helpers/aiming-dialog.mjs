@@ -154,11 +154,14 @@ export class AimingDialog {
    */
   static applyConfigToAimingSystem(aimingSystem, config) {
     // Обновляем конфигурацию системы
+    console.log('SpaceHolder | AimingDialog: Raw config data:', config);
     aimingSystem.config.maxRayDistance = parseInt(config.maxRayDistance) || 2000;
     aimingSystem.config.showAimingReticle = !!config.showAimingReticle;
     aimingSystem.config.allowRicochet = !!config.allowRicochet;
     aimingSystem.config.maxRicochets = parseInt(config.maxRicochets) || 3;
     aimingSystem.config.curvedRaysEnabled = !!config.curvedRaysEnabled;
+    
+    console.log('SpaceHolder | AimingDialog: Applied allowRicochet =', aimingSystem.config.allowRicochet);
     
     // Обновляем новые параметры оптимизированной механики
     aimingSystem.config.previewRayLength = 500; // Короткие лучи предпросмотра

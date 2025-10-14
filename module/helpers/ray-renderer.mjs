@@ -171,8 +171,8 @@ export class RayRenderer {
   updateAimingPreview(ray) {
     if (!ray || !this.rayContainer) return;
     
-    // Убираем предыдущий луч
-    this.clearRay();
+    // Очищаем только предыдущий луч предпросмотра, оставляем сегменты выстрелов
+    this.clearPreview();
     
     // Создаем новую графику для луча
     const rayGraphics = new PIXI.Graphics();
@@ -212,24 +212,42 @@ export class RayRenderer {
     // Создаем графику для сегмента выстрела
     const segmentGraphics = new PIXI.Graphics();
     
-    // Стиль сегмента выстрела (ярко-красный, толще)
-    const fireColor = 0xFF4444;
-    const fireAlpha = 0.9;
-    const fireWidth = 4;
+    // Определяем стиль в зависимости от типа сегмента
+    let fireColor, fireAlpha, fireWidth;
+    
+    if (segment.isRicochet) {
+      // Рикошеты - разные оттенки без снижения яркости
+      const bounceLevel = segment.bounceNumber || 1;
+      fireColor = bounceLevel === 1 ? 0xFF8800 : // Оранжевый для первого рикошета
+                  bounceLevel === 2 ? 0xFFCC00 : // Жёлто-оранжевый для второго
+                                      0xFFFF00;   // Жёлтый для остальных
+      fireAlpha = 0.9; // Одинаковая яркость для всех рикошетов
+      fireWidth = 4; // Одинаковая толщина
+    } else {
+      // Основной выстрел - ярко-красный
+      fireColor = 0xFF4444;
+      fireAlpha = 0.9;
+      fireWidth = 4;
+    }
     
     segmentGraphics.lineStyle(fireWidth, fireColor, fireAlpha);
     
+    // Поддерживаем оба формата: {start, end} и {origin, end}
+    const startPoint = segment.start || segment.origin;
+    const endPoint = segment.end;
+    
     // Рисуем сегмент
-    segmentGraphics.moveTo(segment.origin.x, segment.origin.y)
-                  .lineTo(segment.end.x, segment.end.y);
+    segmentGraphics.moveTo(startPoint.x, startPoint.y)
+                  .lineTo(endPoint.x, endPoint.y);
     
     // Добавляем маркер начала сегмента
     segmentGraphics.beginFill(fireColor, fireAlpha);
-    segmentGraphics.drawCircle(segment.origin.x, segment.origin.y, 3);
+    segmentGraphics.drawCircle(startPoint.x, startPoint.y, Math.max(2, fireWidth - 1));
     segmentGraphics.endFill();
     
     // Добавляем ID для управления
-    segmentGraphics.name = `fireSegment_${segmentIndex}`;
+    const segmentType = segment.isRicochet ? `ricochet_${segment.bounceNumber}` : 'primary';
+    segmentGraphics.name = `fireSegment_${segmentType}_${segmentIndex}`;
     
     // Добавляем сегмент на сцену
     this.rayContainer.addChild(segmentGraphics);
@@ -243,14 +261,14 @@ export class RayRenderer {
     // Анимация появления сегмента
     segmentGraphics.alpha = 0;
     const startTime = Date.now();
-    const fadeInDuration = 100;
+    const fadeInDuration = segment.isRicochet ? 150 : 100; // Рикошеты появляются немного медленнее
     
     const fadeIn = () => {
       if (segmentGraphics.destroyed) return;
       
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / fadeInDuration, 1);
-      segmentGraphics.alpha = progress;
+      segmentGraphics.alpha = progress * fireAlpha;
       
       if (progress < 1) {
         requestAnimationFrame(fadeIn);
@@ -439,14 +457,22 @@ export class RayRenderer {
   }
   
   /**
-   * Очистить текущий луч и все сегменты выстрела
+   * Очистить только луч предпросмотра (оставляя сегменты выстрелов)
    */
-  clearRay() {
-    // Очищаем луч предпросмотра
+  clearPreview() {
+    // Очищаем только луч предпросмотра
     if (this.currentRayGraphics) {
       this.currentRayGraphics.destroy();
       this.currentRayGraphics = null;
     }
+  }
+  
+  /**
+   * Очистить текущий луч и все сегменты выстрела
+   */
+  clearRay() {
+    // Очищаем луч предпросмотра
+    this.clearPreview();
     
     // Очищаем все сегменты выстрела
     if (this.fireSegments) {

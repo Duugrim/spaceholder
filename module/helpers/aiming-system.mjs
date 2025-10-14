@@ -137,8 +137,11 @@ export class AimingSystem {
     console.log(`🎯 Direction: ${Math.round(this.currentAimDirection)}°`);
     console.log(`📍 Segment length: ${this.config.fireSegmentLength}px, Max segments: ${this.config.maxFireSegments}`);
     
-    // Очищаем предпросмотр
-    this.rayRenderer.clearRay();
+    // Очищаем только предпросмотр, оставляем предыдущие выстрелы
+    if (this.rayRenderer.currentRayGraphics) {
+      this.rayRenderer.currentRayGraphics.destroy();
+      this.rayRenderer.currentRayGraphics = null;
+    }
     
     // Начинаем рекурсивную отрисовку выстрела
     const fireResult = await this._fireRecursive({
@@ -163,8 +166,8 @@ export class AimingSystem {
     
     console.log(`✅ Fire sequence completed for ${this.aimingToken.name}. Total segments: ${fireResult.segments.length}`);
     
-    // Завершаем прицеливание
-    this.stopAiming();
+    // Не завершаем прицеливание автоматически - пользователь может продолжить прицеливание
+    // this.stopAiming();
   }
   
   /**
@@ -199,11 +202,19 @@ export class AimingSystem {
    * @returns {Promise<Object>} результат выстрела
    */
   async _fireRecursive(fireState) {
-    const { currentPosition, direction, segmentIndex, totalHits, segments } = fireState;
+    const { currentPosition, direction, segmentIndex, totalHits, segments, ricochetCount = 0, lastWallId = null } = fireState;
     
     // Проверяем лимит сегментов
     if (segmentIndex >= this.config.maxFireSegments) {
       console.log(`⚠️ Reached maximum segments limit: ${this.config.maxFireSegments}`);
+      return { totalHits, segments };
+    }
+    
+    // Проверяем лимит рикошетов (используем только конфигурацию)
+    const maxRicochets = this.config.maxRicochets;
+    console.log(`📊 Max ricochets from config: ${maxRicochets}, current: ${ricochetCount}`);
+    if (ricochetCount >= maxRicochets) {
+      console.log(`🏀 Reached maximum ricochet limit: ${maxRicochets}`);
       return { totalHits, segments };
     }
     
@@ -214,41 +225,89 @@ export class AimingSystem {
       this.config.fireSegmentLength
     );
     
+    // Отмечаем, если это рикошет
+    if (ricochetCount > 0) {
+      segment.isRicochet = true;
+      segment.bounceNumber = ricochetCount;
+    }
+    
     segments.push(segment);
     
-    console.log(`➡️ Segment ${segmentIndex + 1}: from (${Math.round(currentPosition.x)}, ${Math.round(currentPosition.y)}) to (${Math.round(segment.end.x)}, ${Math.round(segment.end.y)})`);
+    const segmentType = ricochetCount > 0 ? `ricochet-${ricochetCount}` : 'primary';
+    console.log(`➡️ Segment ${segmentIndex + 1} (${segmentType}): from (${Math.round(currentPosition.x)}, ${Math.round(currentPosition.y)}) to (${Math.round(segment.end.x)}, ${Math.round(segment.end.y)})`);
     
     // Проверяем столкновения для этого сегмента
-    const collisions = this.rayCaster.checkSegmentCollisions(segment);
+    const allCollisions = this.rayCaster.checkSegmentCollisions(segment);
+    
+    // Исключаем последнюю стену для предотвращения немедленных циклов
+    const collisions = allCollisions.filter(collision => {
+      if (collision.type === 'wall' && lastWallId && collision.object.id === lastWallId) {
+        // Пропускаем последнюю стену, если расстояние очень мало
+        return collision.distance > 5; // Минимум 5 пикселей
+      }
+      return true;
+    });
     
     // Отрисовываем сегмент
     this.rayRenderer.drawFireSegment(segment, segmentIndex);
     
     // Небольшая задержка для визуального эффекта
-    await new Promise(resolve => setTimeout(resolve, 50));
+    const delay = ricochetCount > 0 ? 75 : 50; // Рикошеты чуть медленнее
+    await new Promise(resolve => setTimeout(resolve, delay));
     
     // Обрабатываем столкновения
     if (collisions.length > 0) {
-      // Нашли столкновения в этом сегменте
       totalHits.push(...collisions);
-      
       console.log(`🎯 Segment ${segmentIndex + 1} hit ${collisions.length} object(s)`);
       
-      // Пока что просто завершаем выстрел (в будущем - рикошеты)
+      // Проверяем первое столкновение
       const firstHit = collisions[0];
+      
+      // Проверяем, можно ли сделать рикошет
+      if (firstHit.type === 'wall' && this._canRicochet(firstHit, ricochetCount)) {
+        // Вычисляем отраженное направление
+        const reflectedDirection = this._calculateRicochetDirection(segment, firstHit);
+        
+        // Сдвигаем начальную точку рикошета на несколько пикселей в направлении отражения
+        const offsetDistance = 3; // Пиксели сдвига
+        const reflectedRadians = reflectedDirection * Math.PI / 180;
+        const ricochetStartPoint = {
+          x: firstHit.point.x + Math.cos(reflectedRadians) * offsetDistance,
+          y: firstHit.point.y + Math.sin(reflectedRadians) * offsetDistance
+        };
+        
+        console.log(`🏀 Ricochet ${ricochetCount + 1}: bouncing off wall (${firstHit.object.id}) at angle ${Math.round(reflectedDirection)}°`);
+        console.log(`   ➡️ Hit point: (${Math.round(firstHit.point.x)}, ${Math.round(firstHit.point.y)})`);
+        console.log(`   ➡️ Start point: (${Math.round(ricochetStartPoint.x)}, ${Math.round(ricochetStartPoint.y)})`);
+        console.log(`   ➡️ Offset: ${offsetDistance}px in direction ${Math.round(reflectedDirection)}°`);
+        
+        return await this._fireRecursive({
+          currentPosition: ricochetStartPoint,
+          direction: reflectedDirection,
+          segmentIndex: segmentIndex + 1,
+          totalHits,
+          segments,
+          ricochetCount: ricochetCount + 1,
+          lastWallId: firstHit.object.id // Запоминаем ID стены
+        });
+      }
+      
+      // Останавливаемся при попадании в токен или непробиваемую стену
       if (this._shouldStopFiring(firstHit)) {
         console.log(`🛑 Stopping fire at segment ${segmentIndex + 1} due to ${firstHit.type}`);
         return { totalHits, segments };
       }
     }
     
-    // Продолжаем следующим сегментом
+    // Продолжаем следующим сегментом в том же направлении
     return await this._fireRecursive({
       currentPosition: segment.end,
-      direction: direction, // Пока что направление не меняется (в будущем - рикошеты)
+      direction: direction,
       segmentIndex: segmentIndex + 1,
       totalHits,
-      segments
+      segments,
+      ricochetCount,
+      lastWallId // Передаём дальше
     });
   }
   
@@ -258,18 +317,99 @@ export class AimingSystem {
    * @returns {boolean} следует ли остановить
    */
   _shouldStopFiring(collision) {
-    // Пока что останавливаем на любом столкновении
-    // В будущем можно добавить логику рикошетов
     switch (collision.type) {
       case 'token':
-        return true; // Останавливаемся на токенах
+        return true; // Всегда останавливаемся на токенах
       case 'wall':
-        return true; // Останавливаемся на стенах
+        return true; // Останавливаемся на стенах (если нет рикошета)
       case 'tile':
-        return false; // Продолжаем через тайлы (можно настроить)
+        return true; // Останавливаемся на тайлах
       default:
         return true;
     }
+  }
+  
+  /**
+   * Проверяем, можно ли сделать рикошет от данного объекта
+   * @param {Object} collision - столкновение
+   * @param {number} currentRicochets - текущее количество рикошетов
+   * @returns {boolean} можно ли рикошет
+   */
+  _canRicochet(collision, currentRicochets) {
+    // Проверяем, включены ли рикошеты вообще
+    console.log(`🔍 Ricochet check: allowRicochet=${this.config.allowRicochet}, currentRicochets=${currentRicochets}`);
+    if (!this.config.allowRicochet) {
+      console.log(`❌ Ricochets disabled in config`);
+      return false;
+    }
+    
+    // Проверяем лимит рикошетов (используем только конфигурацию)
+    const maxRicochets = this.config.maxRicochets;
+    console.log(`🔢 Ricochet limit check: ${currentRicochets}/${maxRicochets}`);
+    if (currentRicochets >= maxRicochets) {
+      console.log(`⚠️ Ricochet limit reached`);
+      return false;
+    }
+    
+    // Рикошет возможен тольо от стен
+    if (collision.type !== 'wall') {
+      return false;
+    }
+    
+    // Можно добавить дополнительные проверки:
+    // - Тип стены (обычная/дверь)
+    // - Материал стены
+    // - Угол падения
+    
+    return true;
+  }
+  
+  /**
+   * Вычисляем направление рикошета
+   * @param {Object} segment - сегмент, который сталкивается со стеной
+   * @param {Object} wallCollision - столкновение со стеной
+   * @returns {number} новое направление в градусах
+   */
+  _calculateRicochetDirection(segment, wallCollision) {
+    const startPoint = segment.start || segment.origin;
+    const endPoint = segment.end;
+    const wall = wallCollision.wallRay;
+    
+    // Вектор направления луча
+    const rayVector = {
+      x: endPoint.x - startPoint.x,
+      y: endPoint.y - startPoint.y
+    };
+    const rayLength = Math.hypot(rayVector.x, rayVector.y);
+    const rayDir = {
+      x: rayVector.x / rayLength,
+      y: rayVector.y / rayLength
+    };
+    
+    // Вектор стены
+    const wallVector = {
+      x: wall.B.x - wall.A.x,
+      y: wall.B.y - wall.A.y
+    };
+    const wallLength = Math.hypot(wallVector.x, wallVector.y);
+    
+    // Нормаль к стене (перпендикуляр)
+    const wallNormal = {
+      x: -wallVector.y / wallLength,
+      y: wallVector.x / wallLength
+    };
+    
+    // Формула отражения: R = I - 2(I · N)N
+    const dot = 2 * (rayDir.x * wallNormal.x + rayDir.y * wallNormal.y);
+    const reflectedDir = {
+      x: rayDir.x - dot * wallNormal.x,
+      y: rayDir.y - dot * wallNormal.y
+    };
+    
+    // Преобразуем в угол в градусах
+    const reflectedAngle = Math.atan2(reflectedDir.y, reflectedDir.x) * (180 / Math.PI);
+    
+    return reflectedAngle;
   }
   
   /**
@@ -601,6 +741,20 @@ export class AimingSystem {
       config: false,
       default: 1.0,
       type: Number,
+    });
+    
+    game.settings.register(MODULE_NS, `${PREF}.maxRicochets`, {
+      name: 'Максимум рикошетов',
+      hint: 'Максимальное количество рикошетов от стен',
+      scope: 'world',
+      config: false,
+      default: 3,
+      type: Number,
+      range: {
+        min: 0,
+        max: 10,
+        step: 1
+      }
     });
   }
   
