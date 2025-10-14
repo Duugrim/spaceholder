@@ -20,6 +20,11 @@ export class AimingSystem {
       allowRicochet: false, // разрешить рикошеты
       maxRicochets: 3, // максимальное количество рикошетов
       curvedRaysEnabled: false, // изогнутые лучи
+      
+      // Новые константы для оптимизированной механики
+      previewRayLength: 500, // длина луча предпросмотра при прицеливании
+      fireSegmentLength: 100, // длина одного сегмента при выстреле
+      maxFireSegments: 50, // максимальное количество сегментов выстрела
     };
     
     // Компоненты системы
@@ -34,6 +39,10 @@ export class AimingSystem {
       onMouseDown: this._onMouseDown.bind(this),
       onContextMenu: this._onContextMenu.bind(this)
     };
+    
+    // Троттлинг для обновления предпросмотра
+    this._lastPreviewUpdate = 0;
+    this._previewUpdateInterval = 16; // ~60 FPS
   }
   
   /**
@@ -80,8 +89,8 @@ export class AimingSystem {
     // Привязываем события
     this._bindEvents();
     
-    // Создаем начальный луч для предпросмотра
-    this._updateAiming();
+    // Создаем начальный короткий луч для предпросмотра
+    this._updateAimingPreview();
     
     // Уведомляем других игроков
     this._notifyAimingStart();
@@ -115,9 +124,9 @@ export class AimingSystem {
   }
   
   /**
-   * Выстрелить в текущем направлении
+   * Выстрелить в текущем направлении (рекурсивная отрисовка сегментами)
    */
-  fire() {
+  async fire() {
     if (!this.isAiming || !this.aimingToken) {
       ui.notifications.warn("Прицеливание не активно");
       return;
@@ -126,49 +135,141 @@ export class AimingSystem {
     const tokenCenter = this.aimingToken.center;
     console.log(`🔥 FIRE! ${this.aimingToken.name} firing from (${Math.round(tokenCenter.x)}, ${Math.round(tokenCenter.y)})`);
     console.log(`🎯 Direction: ${Math.round(this.currentAimDirection)}°`);
-    console.log(`📍 Max distance: ${this.config.maxRayDistance}px`);
+    console.log(`📍 Segment length: ${this.config.fireSegmentLength}px, Max segments: ${this.config.maxFireSegments}`);
     
-    // Создаем финальный луч
-    const ray = this.rayCaster.createRay(
-      tokenCenter,
-      this.currentAimDirection,
-      this.config.maxRayDistance
-    );
+    // Очищаем предпросмотр
+    this.rayRenderer.clearRay();
     
-    console.log(`➡️ Ray created: from (${Math.round(ray.origin.x)}, ${Math.round(ray.origin.y)}) to (${Math.round(ray.end.x)}, ${Math.round(ray.end.y)})`);
+    // Начинаем рекурсивную отрисовку выстрела
+    const fireResult = await this._fireRecursive({
+      currentPosition: tokenCenter,
+      direction: this.currentAimDirection,
+      segmentIndex: 0,
+      totalHits: [],
+      segments: []
+    });
     
-    // Определяем столкновения
-    const collisions = this.rayCaster.checkCollisions(ray);
+    // Обрабатываем все попадания
+    if (fireResult.totalHits.length > 0) {
+      this._processHits(fireResult.totalHits);
+    } else {
+      // Промах
+      console.log('❌ No hits detected - miss!');
+      ChatMessage.create({
+        content: `${this.aimingToken.name} промахивается!`,
+        speaker: ChatMessage.getSpeaker({ token: this.aimingToken })
+      });
+    }
     
-    // Обрабатываем попадания
-    this._processHits(collisions);
-    
-    // Показываем анимацию выстрела
-    this.rayRenderer.showFireAnimation(ray, collisions);
-    
-    console.log(`✅ Fire sequence completed for ${this.aimingToken.name}`);
+    console.log(`✅ Fire sequence completed for ${this.aimingToken.name}. Total segments: ${fireResult.segments.length}`);
     
     // Завершаем прицеливание
     this.stopAiming();
   }
   
   /**
-   * Обновить направление прицеливания
+   * Обновить предпросмотр прицеливания (короткий луч)
    */
-  _updateAiming() {
+  _updateAimingPreview() {
     if (!this.isAiming || !this.aimingToken) return;
     
-    // Создаем луч для предпросмотра
-    const ray = this.rayCaster.createRay(
+    // Троттлинг для оптимизации производительности
+    const now = Date.now();
+    if (now - this._lastPreviewUpdate < this._previewUpdateInterval) {
+      return;
+    }
+    this._lastPreviewUpdate = now;
+    
+    // Создаем короткий луч для предпросмотра (без проверки коллизий)
+    const previewRay = this.rayCaster.createSimpleRay(
       this.aimingToken.center,
       this.currentAimDirection,
-      this.config.maxRayDistance
+      this.config.previewRayLength
     );
     
-    this.currentRay = ray;
+    this.currentPreviewRay = previewRay;
     
-    // Обновляем визуализацию
-    this.rayRenderer.updateAimingPreview(ray);
+    // Обновляем визуализацию предпросмотра
+    this.rayRenderer.updateAimingPreview(previewRay);
+  }
+  
+  /**
+   * Рекурсивная отрисовка сегментов выстрела
+   * @param {Object} fireState - состояние выстрела
+   * @returns {Promise<Object>} результат выстрела
+   */
+  async _fireRecursive(fireState) {
+    const { currentPosition, direction, segmentIndex, totalHits, segments } = fireState;
+    
+    // Проверяем лимит сегментов
+    if (segmentIndex >= this.config.maxFireSegments) {
+      console.log(`⚠️ Reached maximum segments limit: ${this.config.maxFireSegments}`);
+      return { totalHits, segments };
+    }
+    
+    // Создаем следующий сегмент
+    const segment = this.rayCaster.createSimpleRay(
+      currentPosition,
+      direction,
+      this.config.fireSegmentLength
+    );
+    
+    segments.push(segment);
+    
+    console.log(`➡️ Segment ${segmentIndex + 1}: from (${Math.round(currentPosition.x)}, ${Math.round(currentPosition.y)}) to (${Math.round(segment.end.x)}, ${Math.round(segment.end.y)})`);
+    
+    // Проверяем столкновения для этого сегмента
+    const collisions = this.rayCaster.checkSegmentCollisions(segment);
+    
+    // Отрисовываем сегмент
+    this.rayRenderer.drawFireSegment(segment, segmentIndex);
+    
+    // Небольшая задержка для визуального эффекта
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Обрабатываем столкновения
+    if (collisions.length > 0) {
+      // Нашли столкновения в этом сегменте
+      totalHits.push(...collisions);
+      
+      console.log(`🎯 Segment ${segmentIndex + 1} hit ${collisions.length} object(s)`);
+      
+      // Пока что просто завершаем выстрел (в будущем - рикошеты)
+      const firstHit = collisions[0];
+      if (this._shouldStopFiring(firstHit)) {
+        console.log(`🛑 Stopping fire at segment ${segmentIndex + 1} due to ${firstHit.type}`);
+        return { totalHits, segments };
+      }
+    }
+    
+    // Продолжаем следующим сегментом
+    return await this._fireRecursive({
+      currentPosition: segment.end,
+      direction: direction, // Пока что направление не меняется (в будущем - рикошеты)
+      segmentIndex: segmentIndex + 1,
+      totalHits,
+      segments
+    });
+  }
+  
+  /**
+   * Определяем, следует ли остановить выстрел при данном столкновении
+   * @param {Object} collision - столкновение
+   * @returns {boolean} следует ли остановить
+   */
+  _shouldStopFiring(collision) {
+    // Пока что останавливаем на любом столкновении
+    // В будущем можно добавить логику рикошетов
+    switch (collision.type) {
+      case 'token':
+        return true; // Останавливаемся на токенах
+      case 'wall':
+        return true; // Останавливаемся на стенах
+      case 'tile':
+        return false; // Продолжаем через тайлы (можно настроить)
+      default:
+        return true;
+    }
   }
   
   /**
@@ -262,20 +363,16 @@ export class AimingSystem {
     // Вычисляем угол от центра токена до курсора мыши
     const dx = mousePos.x - tokenCenter.x;
     const dy = mousePos.y - tokenCenter.y;
-    const distance = Math.hypot(dx, dy);
     
     // Конвертируем в градусы (0° = вправо, 90° = вниз)
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    
-    // Применяем чувствительность
-    angle *= this.config.aimingSensitivity;
-    
+    // Убрали чувствительность - прицеливаемся прямо в курсор
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     
     // Обновляем направление прицеливания
     this.currentAimDirection = angle;
     
-    // Обновляем предпросмотр
-    this._updateAiming();
+    // Обновляем предпросмотр (только короткий луч)
+    this._updateAimingPreview();
   }
   
   /**

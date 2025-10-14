@@ -184,27 +184,80 @@ export class RayRenderer {
     
     rayGraphics.lineStyle(rayWidth, rayColor, rayAlpha);
     
-    // Рисуем все сегменты луча
-    for (const segment of ray.segments) {
-      if (ray.curved) {
-        // Для изогнутых лучей рисуем кривую
-        this._drawCurvedSegment(rayGraphics, ray);
-      } else {
-        // Для прямых лучей рисуем линию
-        rayGraphics.moveTo(segment.start.x, segment.start.y)
-                  .lineTo(segment.end.x, segment.end.y);
-      }
-    }
+    // Рисуем упрощенный луч (без сегментов и коллизий)
+    rayGraphics.moveTo(ray.origin.x, ray.origin.y)
+              .lineTo(ray.end.x, ray.end.y);
     
-    // Проверяем коллизии и отмечаем точки попадания
-    const collisions = this.aimingSystem.rayCaster.checkCollisions(ray);
-    this._drawCollisionMarkers(rayGraphics, collisions);
+    // Добавляем маркер начала луча
+    rayGraphics.beginFill(rayColor, rayAlpha);
+    rayGraphics.drawCircle(ray.origin.x, ray.origin.y, 4);
+    rayGraphics.endFill();
     
+    // Сохраняем ссылку на текущий луч предпросмотра
     this.currentRayGraphics = rayGraphics;
     this.rayContainer.addChild(rayGraphics);
     
-    // Анимация мерцания для предпросмотра
+    // Добавляем анимацию мерцания для предпросмотра
     this._animatePreviewRay(rayGraphics);
+  }
+  
+  /**
+   * Отрисовать сегмент выстрела
+   * @param {Object} segment - сегмент луча
+   * @param {number} segmentIndex - индекс сегмента
+   */
+  drawFireSegment(segment, segmentIndex) {
+    if (!segment || !this.rayContainer) return;
+    
+    // Создаем графику для сегмента выстрела
+    const segmentGraphics = new PIXI.Graphics();
+    
+    // Стиль сегмента выстрела (ярко-красный, толще)
+    const fireColor = 0xFF4444;
+    const fireAlpha = 0.9;
+    const fireWidth = 4;
+    
+    segmentGraphics.lineStyle(fireWidth, fireColor, fireAlpha);
+    
+    // Рисуем сегмент
+    segmentGraphics.moveTo(segment.origin.x, segment.origin.y)
+                  .lineTo(segment.end.x, segment.end.y);
+    
+    // Добавляем маркер начала сегмента
+    segmentGraphics.beginFill(fireColor, fireAlpha);
+    segmentGraphics.drawCircle(segment.origin.x, segment.origin.y, 3);
+    segmentGraphics.endFill();
+    
+    // Добавляем ID для управления
+    segmentGraphics.name = `fireSegment_${segmentIndex}`;
+    
+    // Добавляем сегмент на сцену
+    this.rayContainer.addChild(segmentGraphics);
+    
+    // Сохраняем ссылку для возможности очистки
+    if (!this.fireSegments) {
+      this.fireSegments = [];
+    }
+    this.fireSegments.push(segmentGraphics);
+    
+    // Анимация появления сегмента
+    segmentGraphics.alpha = 0;
+    const startTime = Date.now();
+    const fadeInDuration = 100;
+    
+    const fadeIn = () => {
+      if (segmentGraphics.destroyed) return;
+      
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / fadeInDuration, 1);
+      segmentGraphics.alpha = progress;
+      
+      if (progress < 1) {
+        requestAnimationFrame(fadeIn);
+      }
+    };
+    
+    fadeIn();
   }
   
   /**
@@ -386,12 +439,23 @@ export class RayRenderer {
   }
   
   /**
-   * Очистить текущий луч
+   * Очистить текущий луч и все сегменты выстрела
    */
   clearRay() {
+    // Очищаем луч предпросмотра
     if (this.currentRayGraphics) {
       this.currentRayGraphics.destroy();
       this.currentRayGraphics = null;
+    }
+    
+    // Очищаем все сегменты выстрела
+    if (this.fireSegments) {
+      this.fireSegments.forEach(segment => {
+        if (segment && !segment.destroyed) {
+          segment.destroy();
+        }
+      });
+      this.fireSegments = [];
     }
   }
   

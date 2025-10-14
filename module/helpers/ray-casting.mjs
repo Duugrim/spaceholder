@@ -61,6 +61,59 @@ export class RayCaster {
   }
   
   /**
+   * Создать упрощенный луч без дополнительных свойств (для предпросмотра и сегментов)
+   * @param {Object} origin - начальная точка луча {x, y}
+   * @param {number} direction - направление в градусах
+   * @param {number} distance - длина луча
+   * @returns {Object} упрощенный объект луча
+   */
+  createSimpleRay(origin, direction, distance) {
+    // Преобразуем угол в радианы
+    const angleRad = (direction * Math.PI) / 180;
+    
+    // Вычисляем конечную точку луча
+    const endX = origin.x + Math.cos(angleRad) * distance;
+    const endY = origin.y + Math.sin(angleRad) * distance;
+    
+    return {
+      id: foundry.utils.randomID(),
+      origin: { x: origin.x, y: origin.y },
+      end: { x: endX, y: endY },
+      direction: direction,
+      distance: distance,
+      angleRad: angleRad
+    };
+  }
+  
+  /**
+   * Проверить столкновения для одного сегмента
+   * @param {Object} segment - сегмент луча
+   * @returns {Array} массив столкновений
+   */
+  checkSegmentCollisions(segment) {
+    const collisions = [];
+    
+    // Проверяем столкновения с токенами
+    const tokenCollisions = this._checkTokenCollisions(segment);
+    collisions.push(...tokenCollisions);
+    
+    // Проверяем столкновения со стенами
+    const wallCollisions = this._checkWallCollisions(segment);
+    collisions.push(...wallCollisions);
+    
+    // Проверяем столкновения с тайлами (если нужно)
+    if (this.aimingSystem.config.checkTileCollisions) {
+      const tileCollisions = this._checkTileCollisions(segment);
+      collisions.push(...tileCollisions);
+    }
+    
+    // Сортируем столкновения по расстоянию от начала сегмента
+    collisions.sort((a, b) => a.distance - b.distance);
+    
+    return collisions;
+  }
+  
+  /**
    * Проверить столкновения луча с объектами на сцене
    * @param {Object} ray - объект луча
    * @returns {Array} массив столкновений, отсортированный по расстоянию
@@ -111,7 +164,10 @@ export class RayCaster {
     if (!canvas.tokens?.placeables) return collisions;
     
     // Создаем объект Ray из Foundry для проверки пересечений
-    const ray = new foundry.canvas.geometry.Ray(segment.start, segment.end);
+    // Поддерживаем оба формата: {start, end} и {origin, end}
+    const startPoint = segment.start || segment.origin;
+    const endPoint = segment.end;
+    const ray = new foundry.canvas.geometry.Ray(startPoint, endPoint);
     
     for (const token of canvas.tokens.placeables) {
       // Пропускаем токен, который стреляет
@@ -129,8 +185,8 @@ export class RayCaster {
       
       if (intersection) {
         const distance = Math.hypot(
-          intersection.x - segment.start.x,
-          intersection.y - segment.start.y
+          intersection.x - startPoint.x,
+          intersection.y - startPoint.y
         );
         
         collisions.push({
@@ -155,7 +211,10 @@ export class RayCaster {
     
     if (!canvas.walls?.placeables) return collisions;
     
-    const ray = new foundry.canvas.geometry.Ray(segment.start, segment.end);
+    // Поддерживаем оба формата: {start, end} и {origin, end}
+    const startPoint = segment.start || segment.origin;
+    const endPoint = segment.end;
+    const ray = new foundry.canvas.geometry.Ray(startPoint, endPoint);
     
     for (const wall of canvas.walls.placeables) {
       // Пропускаем стены, которые не блокируют движение
@@ -169,14 +228,14 @@ export class RayCaster {
       
       // Проверяем пересечение луча со стеной (отрезок, а не бесконечная линия)
       const intersection = this._raySegmentIntersection(
-        segment.start, segment.end,
+        startPoint, endPoint,
         wallRay.A, wallRay.B
       );
       
       if (intersection) {
         const distance = Math.hypot(
-          intersection.x - segment.start.x,
-          intersection.y - segment.start.y
+          intersection.x - startPoint.x,
+          intersection.y - startPoint.y
         );
         
         
@@ -203,7 +262,10 @@ export class RayCaster {
     
     if (!canvas.tiles?.placeables) return collisions;
     
-    const ray = new foundry.canvas.geometry.Ray(segment.start, segment.end);
+    // Поддерживаем оба формата: {start, end} и {origin, end}
+    const startPoint = segment.start || segment.origin;
+    const endPoint = segment.end;
+    const ray = new foundry.canvas.geometry.Ray(startPoint, endPoint);
     
     for (const tile of canvas.tiles.placeables) {
       // Пропускаем тайлы без коллизий
@@ -216,8 +278,8 @@ export class RayCaster {
       
       if (intersection) {
         const distance = Math.hypot(
-          intersection.x - segment.start.x,
-          intersection.y - segment.start.y
+          intersection.x - startPoint.x,
+          intersection.y - startPoint.y
         );
         
         collisions.push({

@@ -10,7 +10,7 @@ export class AimingDialog {
    */
   static getDefaultConfig() {
     return {
-      maxRayDistance: 2000,
+      maxRayDistance: 3000, // Увеличили до снайперской винтовки
       aimingSensitivity: 1.0,
       showAimingReticle: true,
       allowRicochet: false,
@@ -26,18 +26,15 @@ export class AimingDialog {
     const tokenName = token?.document?.name || token?.name || 'Неизвестный токен';
     
     const distancePresets = [
-      { value: 500, label: "Близкая (500px)" },
-      { value: 1000, label: "Средняя (1000px)" },
-      { value: 2000, label: "Дальняя (2000px)" },
-      { value: 4000, label: "Максимальная (4000px)" }
+      { value: 300, label: "Пистолет (3м / 300px)" },
+      { value: 800, label: "Автомат (8м / 800px)" },
+      { value: 1500, label: "Штурмовая винтовка (15м / 1500px)" },
+      { value: 3000, label: "Снайперская винтовка (30м / 3000px)" },
+      { value: 5000, label: "Дальнобойная (50м / 5000px)" },
+      { value: 10000, label: "Экстремальная (100м / 10000px)" }
     ];
     
-    const sensitivityPresets = [
-      { value: 0.5, label: "Низкая" },
-      { value: 1.0, label: "Обычная" },
-      { value: 1.5, label: "Высокая" },
-      { value: 2.0, label: "Максимальная" }
-    ];
+    // Настройки чувствительности убраны - прицел следует прямо за курсором
     
     return `
       <form class="aiming-dialog-form">
@@ -52,8 +49,8 @@ export class AimingDialog {
           </label>
           <div class="form-fields">
             <input type="number" id="maxRayDistance" name="maxRayDistance" 
-                   value="${config.maxRayDistance}" min="100" max="10000" step="50">
-            <select id="distancePreset" onchange="document.getElementById('maxRayDistance').value = this.value">
+                   value="${config.maxRayDistance}" min="100" max="15000" step="50">
+            <select id="distancePreset">
               <option value="">Выберите предустановку...</option>
               ${distancePresets.map(preset => `
                 <option value="${preset.value}" ${preset.value === config.maxRayDistance ? 'selected' : ''}>
@@ -65,21 +62,12 @@ export class AimingDialog {
         </div>
 
         <div class="form-group">
-          <label for="aimingSensitivity">
-            <i class="fas fa-mouse"></i> Чувствительность прицеливания:
+          <label>
+            <i class="fas fa-info-circle"></i> Прицеливание:
           </label>
-          <div class="form-fields">
-            <input type="number" id="aimingSensitivity" name="aimingSensitivity" 
-                   value="${config.aimingSensitivity}" min="0.1" max="5.0" step="0.1">
-            <select id="sensitivityPreset" onchange="document.getElementById('aimingSensitivity').value = this.value">
-              <option value="">Выберите предустановку...</option>
-              ${sensitivityPresets.map(preset => `
-                <option value="${preset.value}" ${preset.value === config.aimingSensitivity ? 'selected' : ''}>
-                  ${preset.label}
-                </option>
-              `).join('')}
-            </select>
-          </div>
+          <p style="margin: 5px 0; color: #666; font-size: 13px;">
+            Прицел следует за курсором мыши. Показывается короткий луч для предпросмотра.
+          </p>
         </div>
 
         <div class="form-group">
@@ -129,16 +117,53 @@ export class AimingDialog {
 
 
   /**
+   * Настройка обработчиков пресетов
+   */
+  static _setupPresetHandlers(dialog) {
+    // Обработчик пресетов дистанции
+    const distancePreset = dialog.element.querySelector('#distancePreset');
+    if (distancePreset) {
+      distancePreset.addEventListener('change', (event) => {
+        if (event.target.value) {
+          const distanceInput = dialog.element.querySelector('#maxRayDistance');
+          if (distanceInput) {
+            distanceInput.value = event.target.value;
+          }
+        }
+      });
+    }
+    
+    // Чувствительность убрана, прицел следует прямо за курсором
+    
+    // Обработчик чекбокса рикошетов
+    const ricochetCheckbox = dialog.element.querySelector('input[name="allowRicochet"]');
+    const ricochetSettings = dialog.element.querySelector('#ricochet-settings');
+    const maxRicochetsInput = dialog.element.querySelector('#maxRicochets');
+    
+    if (ricochetCheckbox && ricochetSettings && maxRicochetsInput) {
+      ricochetCheckbox.addEventListener('change', (event) => {
+        const enabled = event.target.checked;
+        ricochetSettings.classList.toggle('disabled', !enabled);
+        maxRicochetsInput.disabled = !enabled;
+      });
+    }
+  }
+  
+  /**
    * Применить настройки к системе прицеливания
    */
   static applyConfigToAimingSystem(aimingSystem, config) {
     // Обновляем конфигурацию системы
     aimingSystem.config.maxRayDistance = parseInt(config.maxRayDistance) || 2000;
-    aimingSystem.config.aimingSensitivity = parseFloat(config.aimingSensitivity) || 1.0;
     aimingSystem.config.showAimingReticle = !!config.showAimingReticle;
     aimingSystem.config.allowRicochet = !!config.allowRicochet;
     aimingSystem.config.maxRicochets = parseInt(config.maxRicochets) || 3;
     aimingSystem.config.curvedRaysEnabled = !!config.curvedRaysEnabled;
+    
+    // Обновляем новые параметры оптимизированной механики
+    aimingSystem.config.previewRayLength = 500; // Короткие лучи предпросмотра
+    aimingSystem.config.fireSegmentLength = 100; // Сегменты по 100 пикселей
+    aimingSystem.config.maxFireSegments = Math.floor(aimingSystem.config.maxRayDistance / aimingSystem.config.fireSegmentLength);
 
     console.log('SpaceHolder | AimingDialog: Applied config to aiming system:', aimingSystem.config);
   }
@@ -165,13 +190,17 @@ export class AimingDialog {
     const content = AimingDialog.generateContent(token, config);
     
     // Показываем диалог
-    await foundry.applications.api.DialogV2.wait({
+    const result = await foundry.applications.api.DialogV2.wait({
       window: { 
         title: 'Настройка прицеливания', 
         icon: 'fa-solid fa-bullseye' 
       },
       position: { width: 420 },
       content,
+      render: (event, dialog) => {
+        // Добавляем обработчики пресетов после рендеринга
+        AimingDialog._setupPresetHandlers(dialog);
+      },
       buttons: [
         {
           action: 'startAiming',
