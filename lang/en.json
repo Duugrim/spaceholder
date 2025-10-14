@@ -28,6 +28,11 @@
       "Temporary": "Temporary Effects",
       "Passive": "Passive Effects",
       "Inactive": "Inactive Effects"
+    },
+    "AimingDialog": {
+      "Title": "Настройка прицеливания",
+      "StartAiming": "Начать прицеливание",
+      "Cancel": "Отмена"
     }
   },
 

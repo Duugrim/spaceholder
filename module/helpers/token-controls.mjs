@@ -3,6 +3,8 @@
  * Добавляет пользовательские кнопки в панель Token Controls
  */
 
+import { AimingDialog } from './aiming-dialog.mjs';
+
 /**
  * Регистрирует пользовательские кнопки в Token Controls
  */
@@ -65,17 +67,17 @@ function addTestButton(tokenControls) {
   }
   
   // Проверяем, не добавлена ли кнопка уже
-  if (tokenControls.tools['test-button']) {
-    console.log('SpaceHolder | Test Button already exists, skipping');
+  if (tokenControls.tools['aiming-tool']) {
+    console.log('SpaceHolder | Aiming Tool already exists, skipping');
     return;
   }
   
-  // Добавляем нашу тестовую кнопку как свойство объекта
-  tokenControls.tools['test-button'] = {
-    name: 'test-button',
-    title: 'Test Button',
-    icon: 'fas fa-bug',
-    onChange: (isActive) => handleTestButtonChange(isActive),
+  // Добавляем кнопку прицеливания
+  tokenControls.tools['aiming-tool'] = {
+    name: 'aiming-tool',
+    title: 'Настройка прицеливания',
+    icon: 'fas fa-bullseye',
+    onChange: (isActive) => handleAimingToolChange(isActive),
     button: true,
     order: 10 // Порядок отображения
   };
@@ -84,16 +86,55 @@ function addTestButton(tokenControls) {
 }
 
 /**
- * Обработчик изменения состояния тестовой кнопки
+ * Обработчик изменения состояния кнопки прицеливания
  */
-function handleTestButtonChange(isActive) {
-  console.log('SpaceHolder | Test Button changed! Active:', isActive, 'Функционал работает корректно.');
+function handleAimingToolChange(isActive) {
+  console.log('SpaceHolder | Aiming Tool changed! Active:', isActive);
   
   if (isActive) {
-    // Кнопка активирована
-    ui.notifications.info('Test Button активирована! Проверьте консоль для сообщения.');
-  } else {
-    // Кнопка деактивирована
-    ui.notifications.info('Test Button деактивирована.');
+    // Кнопка активирована - показываем диалог
+    showAimingDialog();
+  }
+  // При деактивации ничего не делаем
+}
+
+/**
+ * Показать диалог настройки прицеливания
+ */
+function showAimingDialog() {
+  // Проверяем, есть ли выбранные токены
+  const controlled = canvas.tokens.controlled;
+  
+  if (controlled.length === 0) {
+    ui.notifications.warn('Выберите токен для настройки прицеливания');
+    // Деактивируем кнопку
+    deactivateAimingTool();
+    return;
+  }
+  
+  if (controlled.length > 1) {
+    ui.notifications.warn('Выберите только один токен для прицеливания');
+    deactivateAimingTool();
+    return;
+  }
+  
+  const token = controlled[0];
+  
+  // Показываем диалог
+  AimingDialog.show(token).then(() => {
+    // После закрытия диалога деактивируем кнопку
+    deactivateAimingTool();
+  });
+}
+
+/**
+ * Деактивировать кнопку прицеливания
+ */
+function deactivateAimingTool() {
+  // Получаем ссылку на систему управления сценой
+  const sceneControls = ui.controls;
+  if (sceneControls && typeof sceneControls.activate === 'function') {
+    // Переключаемся на стандартную группу с инструментом выбора
+    sceneControls.activate({ control: 'tokens', tool: 'select' });
   }
 }
