@@ -22,10 +22,15 @@ export class AimingSystem {
       maxRicochets: 3, // максимальное количество рикошетов
       curvedRaysEnabled: false, // изогнутые лучи
       
-      // Новые константы для оптимизированной механики
+      // Механика лучей и сегментов
       previewRayLength: 500, // длина луча предпросмотра при прицеливании
       fireSegmentLength: 100, // длина одного сегмента при выстреле
       maxFireSegments: 50, // максимальное количество сегментов выстрела
+      
+      // Производительность и анимация
+      previewUpdateRate: 60, // частота обновления предпросмотра (FPS)
+      fireAnimationDelay: 50, // задержка между сегментами выстрела (мс)
+      ricochetAnimationDelay: 75, // задержка между сегментами рикошета (мс)
     };
     
     // Компоненты системы
@@ -44,7 +49,7 @@ export class AimingSystem {
     
     // Троттлинг для обновления предпросмотра
     this._lastPreviewUpdate = 0;
-    this._previewUpdateInterval = 16; // ~60 FPS
+    this._previewUpdateInterval = 1000 / this.config.previewUpdateRate; // интервал в мс
   }
   
   /**
@@ -306,7 +311,7 @@ export class AimingSystem {
     }
     
     // Небольшая задержка для визуального эффекта
-    const delay = ricochetCount > 0 ? 75 : 50; // Рикошеты чуть медленнее
+    const delay = ricochetCount > 0 ? this.config.ricochetAnimationDelay : this.config.fireAnimationDelay;
     await new Promise(resolve => setTimeout(resolve, delay));
     
     // Обрабатываем столкновения
@@ -805,11 +810,81 @@ export class AimingSystem {
       scope: 'world',
       config: false,
       default: 3,
+      type: Number
+    });
+    
+    // Механические параметры лучей
+    game.settings.register(MODULE_NS, `${PREF}.previewRayLength`, {
+      name: 'Длина луча предпросмотра',
+      hint: 'Длина зеленого луча при прицеливании (пиксели)',
+      scope: 'world',
+      config: false,
+      default: 500,
+      type: Number
+    });
+    
+    game.settings.register(MODULE_NS, `${PREF}.fireSegmentLength`, {
+      name: 'Длина сегмента выстрела',
+      hint: 'Длина одного сегмента луча при выстреле (пиксели)',
+      scope: 'world',
+      config: false,
+      default: 100,
+      type: Number
+    });
+    
+    game.settings.register(MODULE_NS, `${PREF}.maxFireSegments`, {
+      name: 'Максимальное количество сегментов',
+      hint: 'Максимальное количество сегментов в одном выстреле',
+      scope: 'world',
+      config: false,
+      default: 50,
+      type: Number
+    });
+    
+    // Параметры производительности и анимации
+    game.settings.register(MODULE_NS, `${PREF}.previewUpdateRate`, {
+      name: 'Частота обновления предпросмотра',
+      hint: 'Количество обновлений луча предпросмотра в секунду (FPS)',
+      scope: 'client',
+      config: false,
+      default: 60,
       type: Number,
-      range: {
-        min: 0,
-        max: 10,
-        step: 1
+      choices: {
+        30: '30 FPS (экономия энергии)',
+        60: '60 FPS (стандарт)',
+        120: '120 FPS (высокая точность)'
+      }
+    });
+    
+    game.settings.register(MODULE_NS, `${PREF}.fireAnimationDelay`, {
+      name: 'Скорость анимации выстрела',
+      hint: 'Задержка между сегментами выстрела (миллисекунды)',
+      scope: 'world',
+      config: false,
+      default: 50,
+      type: Number,
+      choices: {
+        10: 'Очень быстро (10мс)',
+        25: 'Быстро (25мс)',
+        50: 'Нормально (50мс)',
+        100: 'Медленно (100мс)',
+        200: 'Очень медленно (200мс)'
+      }
+    });
+    
+    game.settings.register(MODULE_NS, `${PREF}.ricochetAnimationDelay`, {
+      name: 'Скорость анимации рикошетов',
+      hint: 'Задержка между сегментами рикошетов (миллисекунды)',
+      scope: 'world',
+      config: false,
+      default: 75,
+      type: Number,
+      choices: {
+        25: 'Очень быстро (25мс)',
+        50: 'Быстро (50мс)',
+        75: 'Нормально (75мс)',
+        100: 'Медленно (100мс)',
+        150: 'Очень медленно (150мс)'
       }
     });
   }

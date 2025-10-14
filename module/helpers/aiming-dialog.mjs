@@ -16,6 +16,14 @@ export class AimingDialog {
       allowRicochet: false,
       maxRicochets: 3,
       curvedRaysEnabled: false,
+      
+      // Механические параметры
+      previewRayLength: 500,
+      fireSegmentLength: 100,
+      maxFireSegments: 50,
+      previewUpdateRate: 60,
+      fireAnimationDelay: 50,
+      ricochetAnimationDelay: 75,
     };
   }
 
@@ -49,7 +57,7 @@ export class AimingDialog {
           </label>
           <div class="form-fields">
             <input type="number" id="maxRayDistance" name="maxRayDistance" 
-                   value="${config.maxRayDistance}" min="100" max="15000" step="50">
+                   value="${config.maxRayDistance}">
             <select id="distancePreset">
               <option value="">Выберите предустановку...</option>
               ${distancePresets.map(preset => `
@@ -91,7 +99,7 @@ export class AimingDialog {
             <i class="fas fa-sort-numeric-up"></i> Максимальное количество рикошетов:
           </label>
           <input type="number" id="maxRicochets" name="maxRicochets" 
-                 value="${config.maxRicochets}" min="1" max="10" step="1"
+                 value="${config.maxRicochets}"
                  ${config.allowRicochet ? '' : 'disabled'}>
         </div>
 
@@ -101,6 +109,84 @@ export class AimingDialog {
                    ${config.curvedRaysEnabled ? 'checked' : ''}>
             <i class="fas fa-bezier-curve"></i> Изогнутые лучи (экспериментально)
           </label>
+        </div>
+
+        <div class="form-group mechanics-section">
+          <h4><i class="fas fa-cogs"></i> Механика лучей</h4>
+          
+          <div class="form-subgroup">
+            <label for="previewRayLength">
+              <i class="fas fa-eye"></i> Длина луча предпросмотра:
+            </label>
+            <div class="form-fields">
+              <input type="number" id="previewRayLength" name="previewRayLength" 
+                     value="${config.previewRayLength}">
+              <span class="unit">px</span>
+            </div>
+          </div>
+          
+          <div class="form-subgroup">
+            <label for="fireSegmentLength">
+              <i class="fas fa-ruler-horizontal"></i> Длина сегмента выстрела:
+            </label>
+            <div class="form-fields">
+              <input type="number" id="fireSegmentLength" name="fireSegmentLength" 
+                     value="${config.fireSegmentLength}">
+              <span class="unit">px</span>
+            </div>
+          </div>
+          
+          <div class="form-subgroup">
+            <label for="maxFireSegments">
+              <i class="fas fa-list-ol"></i> Максимум сегментов:
+            </label>
+            <div class="form-fields">
+              <input type="number" id="maxFireSegments" name="maxFireSegments" 
+                     value="${config.maxFireSegments}">
+              <span class="unit">шт.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group performance-section">
+          <h4><i class="fas fa-tachometer-alt"></i> Производительность и анимация</h4>
+          
+          <div class="form-subgroup">
+            <label for="previewUpdateRate">
+              <i class="fas fa-sync"></i> Частота обновления предпросмотра:
+            </label>
+            <select id="previewUpdateRate" name="previewUpdateRate">
+              <option value="30" ${config.previewUpdateRate === 30 ? 'selected' : ''}>30 FPS (экономия)</option>
+              <option value="60" ${config.previewUpdateRate === 60 ? 'selected' : ''}>60 FPS (стандарт)</option>
+              <option value="120" ${config.previewUpdateRate === 120 ? 'selected' : ''}>120 FPS (высокая точность)</option>
+            </select>
+          </div>
+          
+          <div class="form-subgroup">
+            <label for="fireAnimationDelay">
+              <i class="fas fa-stopwatch"></i> Скорость анимации выстрела:
+            </label>
+            <select id="fireAnimationDelay" name="fireAnimationDelay">
+              <option value="10" ${config.fireAnimationDelay === 10 ? 'selected' : ''}>Очень быстро (10мс)</option>
+              <option value="25" ${config.fireAnimationDelay === 25 ? 'selected' : ''}>Быстро (25мс)</option>
+              <option value="50" ${config.fireAnimationDelay === 50 ? 'selected' : ''}>Нормально (50мс)</option>
+              <option value="100" ${config.fireAnimationDelay === 100 ? 'selected' : ''}>Медленно (100мс)</option>
+              <option value="200" ${config.fireAnimationDelay === 200 ? 'selected' : ''}>Очень медленно (200мс)</option>
+            </select>
+          </div>
+          
+          <div class="form-subgroup">
+            <label for="ricochetAnimationDelay">
+              <i class="fas fa-exchange-alt"></i> Скорость анимации рикошетов:
+            </label>
+            <select id="ricochetAnimationDelay" name="ricochetAnimationDelay">
+              <option value="25" ${config.ricochetAnimationDelay === 25 ? 'selected' : ''}>Очень быстро (25мс)</option>
+              <option value="50" ${config.ricochetAnimationDelay === 50 ? 'selected' : ''}>Быстро (50мс)</option>
+              <option value="75" ${config.ricochetAnimationDelay === 75 ? 'selected' : ''}>Нормально (75мс)</option>
+              <option value="100" ${config.ricochetAnimationDelay === 100 ? 'selected' : ''}>Медленно (100мс)</option>
+              <option value="150" ${config.ricochetAnimationDelay === 150 ? 'selected' : ''}>Очень медленно (150мс)</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-group instruction-panel">
@@ -155,19 +241,28 @@ export class AimingDialog {
   static applyConfigToAimingSystem(aimingSystem, config) {
     // Обновляем конфигурацию системы
     console.log('SpaceHolder | AimingDialog: Raw config data:', config);
+    
+    // Основные параметры
     aimingSystem.config.maxRayDistance = parseInt(config.maxRayDistance) || 2000;
     aimingSystem.config.showAimingReticle = !!config.showAimingReticle;
     aimingSystem.config.allowRicochet = !!config.allowRicochet;
     aimingSystem.config.maxRicochets = parseInt(config.maxRicochets) || 3;
     aimingSystem.config.curvedRaysEnabled = !!config.curvedRaysEnabled;
     
-    console.log('SpaceHolder | AimingDialog: Applied allowRicochet =', aimingSystem.config.allowRicochet);
+    // Механические параметры лучей
+    aimingSystem.config.previewRayLength = parseInt(config.previewRayLength) || 500;
+    aimingSystem.config.fireSegmentLength = parseInt(config.fireSegmentLength) || 100;
+    aimingSystem.config.maxFireSegments = parseInt(config.maxFireSegments) || 50;
     
-    // Обновляем новые параметры оптимизированной механики
-    aimingSystem.config.previewRayLength = 500; // Короткие лучи предпросмотра
-    aimingSystem.config.fireSegmentLength = 100; // Сегменты по 100 пикселей
-    aimingSystem.config.maxFireSegments = Math.floor(aimingSystem.config.maxRayDistance / aimingSystem.config.fireSegmentLength);
-
+    // Параметры производительности и анимации
+    aimingSystem.config.previewUpdateRate = parseInt(config.previewUpdateRate) || 60;
+    aimingSystem.config.fireAnimationDelay = parseInt(config.fireAnimationDelay) || 50;
+    aimingSystem.config.ricochetAnimationDelay = parseInt(config.ricochetAnimationDelay) || 75;
+    
+    // Обновляем интервал обновления предпросмотра
+    aimingSystem._previewUpdateInterval = 1000 / aimingSystem.config.previewUpdateRate;
+    
+    console.log('SpaceHolder | AimingDialog: Applied allowRicochet =', aimingSystem.config.allowRicochet);
     console.log('SpaceHolder | AimingDialog: Applied config to aiming system:', aimingSystem.config);
   }
 
