@@ -735,8 +735,19 @@ export class RayRenderer {
    */
   completeRemoteShot(completeData) {
     console.log('🌐 Completing remote shot visualization:', completeData);
+    console.log('🔍 CompleteData structure:', {
+      tokenId: completeData?.tokenId,
+      hasTokenId: !!completeData?.tokenId,
+      keys: Object.keys(completeData || {})
+    });
     
-    // Можно добавить дополнительные эффекты завершения
+    // Запускаем таймер автоматического исчезновения через 10 секунд
+    if (completeData?.tokenId) {
+      console.log('✅ TokenId found, scheduling fade out for:', completeData.tokenId);
+      this._scheduleRemoteShotFadeOut(completeData.tokenId);
+    } else {
+      console.warn('⚠️ No tokenId in completeData, cannot schedule fade out');
+    }
   }
   
   /**
@@ -807,6 +818,12 @@ export class RayRenderer {
   _clearRemoteEffects(tokenId) {
     console.log(`🧡 Clearing remote effects for token ${tokenId}`);
     
+    // Отменяем таймер автоисчезновения, если он есть
+    if (this.remoteShotTimers && this.remoteShotTimers.has(tokenId)) {
+      clearTimeout(this.remoteShotTimers.get(tokenId));
+      this.remoteShotTimers.delete(tokenId);
+    }
+    
     if (!this.remoteSegments) return;
     
     const segments = this.remoteSegments.get(tokenId);
@@ -827,6 +844,106 @@ export class RayRenderer {
   startNewRemoteShot(tokenId) {
     console.log(`🎆 Starting new remote shot for token ${tokenId}`);
     this._clearRemoteEffects(tokenId);
+  }
+  
+  /**
+   * Сбросить таймер исчезновения для токена (без удаления сегментов)
+   * @param {string} tokenId - ID токена
+   * @private
+   */
+  _resetRemoteShotTimer(tokenId) {
+    console.log(`🔄 Resetting fade out timer for token ${tokenId}`);
+    
+    // Инициализируем Map для таймеров, если его нет
+    if (!this.remoteShotTimers) {
+      this.remoteShotTimers = new Map();
+    }
+    
+    // Отменяем предыдущий таймер, если он есть
+    if (this.remoteShotTimers.has(tokenId)) {
+      console.log(`⏹️ Cancelling existing timer for token ${tokenId}`);
+      clearTimeout(this.remoteShotTimers.get(tokenId));
+      this.remoteShotTimers.delete(tokenId);
+    }
+  }
+  
+  /**
+   * Запланировать автоматическое исчезновение удалённого выстрела
+   * @param {string} tokenId - ID токена
+   * @private
+   */
+  _scheduleRemoteShotFadeOut(tokenId) {
+    console.log(`⏰ Scheduling fade out for remote shot from token ${tokenId} in 10 seconds`);
+    
+    // Инициализируем Map для таймеров, если его нет
+    if (!this.remoteShotTimers) {
+      this.remoteShotTimers = new Map();
+    }
+    
+    // Отменяем предыдущий таймер, если он есть
+    if (this.remoteShotTimers.has(tokenId)) {
+      clearTimeout(this.remoteShotTimers.get(tokenId));
+    }
+    
+    // Устанавливаем новый таймер на 10 секунд
+    const timerId = setTimeout(() => {
+      this._fadeOutRemoteShot(tokenId);
+    }, 10000); // 10 секунд
+    
+    this.remoteShotTimers.set(tokenId, timerId);
+  }
+  
+  /**
+   * Плавно убрать удалённый выстрел
+   * @param {string} tokenId - ID токена
+   * @private
+   */
+  _fadeOutRemoteShot(tokenId) {
+    console.log(`🌫️ Starting fade out for remote shot from token ${tokenId}`);
+    
+    if (!this.remoteSegments || !this.remoteSegments.has(tokenId)) {
+      console.log(`⚠️ No remote segments found for token ${tokenId}`);
+      return;
+    }
+    
+    const segments = this.remoteSegments.get(tokenId);
+    if (!segments || segments.length === 0) {
+      console.log(`⚠️ No segments to fade for token ${tokenId}`);
+      return;
+    }
+    
+    // Параметры анимации исчезновения
+    const fadeDuration = 2000; // 2 секунды на исчезновение
+    const startTime = Date.now();
+    
+    // Сохраняем начальную прозрачность каждого сегмента
+    const initialAlphas = segments.map(segment => segment.alpha);
+    
+    const fadeAnimation = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / fadeDuration, 1);
+      
+      // Плавное уменьшение прозрачности
+      const alphaMultiplier = 1 - progress;
+      
+      segments.forEach((segment, index) => {
+        if (segment && !segment.destroyed) {
+          segment.alpha = initialAlphas[index] * alphaMultiplier;
+        }
+      });
+      
+      // Продолжаем анимацию или завершаем
+      if (progress < 1) {
+        requestAnimationFrame(fadeAnimation);
+      } else {
+        // Анимация завершена, окончательно удаляем сегменты
+        console.log(`✨ Fade out completed for token ${tokenId}, removing ${segments.length} segments`);
+        this._clearRemoteEffects(tokenId);
+      }
+    };
+    
+    // Запускаем анимацию
+    fadeAnimation();
   }
   
   /**
@@ -893,6 +1010,14 @@ export class RayRenderer {
       this.remoteSegments.clear();
     }
     
+    // Очищаем все таймеры автоисчезновения
+    if (this.remoteShotTimers) {
+      this.remoteShotTimers.forEach(timerId => {
+        clearTimeout(timerId);
+      });
+      this.remoteShotTimers.clear();
+    }
+    
     // Окончательно очищаем мишени
     this._hideTargetCircles();
     
@@ -905,6 +1030,7 @@ export class RayRenderer {
     this.reticleContainer = null;
     this.animationContainer = null;
     this.targetCircles = null;
+    this.remoteShotTimers = null;
   }
 }
 

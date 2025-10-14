@@ -94,6 +94,13 @@ export class AimingSocketManager {
    * @param {Object} completeData - итоговые данные выстрела
    */
   broadcastShotComplete(completeData) {
+    console.log('🔥 Broadcasting shot complete - input data:', completeData);
+    console.log('🔍 CompleteData structure before broadcast:', {
+      tokenId: completeData?.tokenId,
+      hasTokenId: !!completeData?.tokenId,
+      keys: Object.keys(completeData || {})
+    });
+    
     const message = {
       type: this.MESSAGE_TYPES.SHOT_COMPLETE,
       userId: game.user.id,
@@ -102,6 +109,7 @@ export class AimingSocketManager {
     };
     
     console.log('SpaceHolder | AimingSocketManager: Broadcasting shot complete', message);
+    console.log('📤 Message data.tokenId:', message.data?.tokenId);
     game.socket.emit(this.socketName, message);
   }
   
@@ -223,8 +231,21 @@ export class AimingSocketManager {
    */
   _handleShotComplete(data) {
     console.log('🌐 Remote shot complete received:', data);
+    console.log('🔍 ShotComplete data structure:', {
+      tokenId: data?.tokenId,
+      hasTokenId: !!data?.tokenId,
+      keys: Object.keys(data || {}),
+      fullData: data
+    });
+    
+    // Проверяем доступность rayRenderer
+    if (!this.aimingSystem?.rayRenderer) {
+      console.error('⚠️ RayRenderer not available in _handleShotComplete');
+      return;
+    }
     
     // Завершаем визуализацию
+    console.log('✅ Calling completeRemoteShot with data:', data);
     this.aimingSystem.rayRenderer.completeRemoteShot(data);
   }
   
@@ -242,8 +263,9 @@ export class AimingSocketManager {
         return;
       }
       
-      // Очищаем предыдущие выстрелы для этого токена
-      this.aimingSystem.rayRenderer.startNewRemoteShot(token.id);
+      // Не очищаем предыдущие выстрелы - они исчезнут автоматически через 10 секунд
+      // Но сбрасываем таймер исчезновения для нового выстрела
+      this.aimingSystem.rayRenderer._resetRemoteShotTimer(token.id);
       
       // Минимальная визуализация - показываем маркер
       console.log('🔴 Showing remote shot marker...');
