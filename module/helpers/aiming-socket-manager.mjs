@@ -1,6 +1,8 @@
 // Aiming Socket Manager for SpaceHolder - управление мультиплеерной синхронизацией
 // Отвечает за передачу событий выстрелов между всеми клиентами
 
+import { aimingLogger } from './aiming-logger.mjs';
+
 export class AimingSocketManager {
   constructor(aimingSystem) {
     this.aimingSystem = aimingSystem;
@@ -94,12 +96,7 @@ export class AimingSocketManager {
    * @param {Object} completeData - итоговые данные выстрела
    */
   broadcastShotComplete(completeData) {
-    console.log('🔥 Broadcasting shot complete - input data:', completeData);
-    console.log('🔍 CompleteData structure before broadcast:', {
-      tokenId: completeData?.tokenId,
-      hasTokenId: !!completeData?.tokenId,
-      keys: Object.keys(completeData || {})
-    });
+    aimingLogger.logSocket('Shot complete', completeData?.direction);
     
     const message = {
       type: this.MESSAGE_TYPES.SHOT_COMPLETE,
@@ -108,8 +105,6 @@ export class AimingSocketManager {
       data: completeData
     };
     
-    console.log('SpaceHolder | AimingSocketManager: Broadcasting shot complete', message);
-    console.log('📤 Message data.tokenId:', message.data?.tokenId);
     game.socket.emit(this.socketName, message);
   }
   

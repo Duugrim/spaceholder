@@ -4,6 +4,7 @@
 import { RayCaster } from './ray-casting.mjs';
 import { RayRenderer } from './ray-renderer.mjs';
 import { AimingSocketManager } from './aiming-socket-manager.mjs';
+import { aimingLogger } from './aiming-logger.mjs';
 
 export class AimingSystem {
   constructor() {
@@ -112,8 +113,6 @@ export class AimingSystem {
   stopAiming() {
     if (!this.isAiming) return;
     
-    console.log('SpaceHolder | AimingSystem: Stopping aiming');
-    
     this.isAiming = false;
     this.aimingToken = null;
     this.weapon = null;
@@ -140,18 +139,26 @@ export class AimingSystem {
       return;
     }
     
-    const tokenCenter = this.aimingToken.center;
-    console.log(`🔥 FIRE! ${this.aimingToken.name} firing from (${Math.round(tokenCenter.x)}, ${Math.round(tokenCenter.y)})`);
-    console.log(`🎯 Direction: ${Math.round(this.currentAimDirection)}°`);
-    console.log(`📍 Segment length: ${this.config.fireSegmentLength}px, Max segments: ${this.config.maxFireSegments}`);
+    // Сохраняем ссылки на токен и оружие, чтобы избежать проблем с асинхронностью
+    const firingToken = this.aimingToken;
+    const firingWeapon = this.weapon;
+    const firingDirection = this.currentAimDirection;
+    
+    const tokenCenter = firingToken.center;
+    // Начинаем логирование выстрела
+    aimingLogger.startShot(
+      firingToken,
+      firingDirection,
+      this.config.maxRayDistance
+    );
     
     // Отправляем событие начала выстрела всем клиентам
     const shotData = {
-      tokenId: this.aimingToken.id,
-      direction: this.currentAimDirection,
+      tokenId: firingToken.id,
+      direction: firingDirection,
       startPosition: tokenCenter,
       timestamp: Date.now(),
-      weaponName: this.weapon?.name || 'Неизвестное оружие'
+      weaponName: firingWeapon?.name || 'Неизвестное оружие'
     };
     
     this.socketManager.broadcastFireShot(shotData);
@@ -165,7 +172,7 @@ export class AimingSystem {
     // Начинаем рекурсивную отрисовку выстрела
     const fireResult = await this._fireRecursive({
       currentPosition: tokenCenter,
-      direction: this.currentAimDirection,
+      direction: firingDirection,
       segmentIndex: 0,
       totalHits: [],
       segments: [],
@@ -179,7 +186,7 @@ export class AimingSystem {
       // Отправляем события о попаданиях
       for (const hit of fireResult.totalHits) {
         this.socketManager.broadcastShotHit({
-          tokenId: this.aimingToken.id,
+          tokenId: firingToken.id,
           hitType: hit.type,
           hitPoint: hit.point,
           targetId: hit.object?.id,
@@ -188,18 +195,19 @@ export class AimingSystem {
       }
     } else {
       // Промах
-      console.log('❌ No hits detected - miss!');
+      const tokenName = firingToken?.document?.name || firingToken?.name || 'Неизвестный токен';
       ChatMessage.create({
-        content: `${this.aimingToken.name} промахивается!`,
-        speaker: ChatMessage.getSpeaker({ token: this.aimingToken })
+        content: `${tokenName} промахивается!`,
+        speaker: ChatMessage.getSpeaker({ token: firingToken })
       });
     }
     
-    console.log(`✅ Fire sequence completed for ${this.aimingToken.name}. Total segments: ${fireResult.segments.length}`);
+    // Завершаем логирование выстрела
+    aimingLogger.finishShot();
     
     // Отправляем событие завершения выстрела
     this.socketManager.broadcastShotComplete({
-      tokenId: this.aimingToken.id,
+      tokenId: firingToken.id,
       totalSegments: fireResult.segments.length,
       totalHits: fireResult.totalHits.length,
       segments: fireResult.segments.map(seg => ({
@@ -250,15 +258,13 @@ export class AimingSystem {
     
     // Проверяем лимит сегментов
     if (segmentIndex >= this.config.maxFireSegments) {
-      console.log(`⚠️ Reached maximum segments limit: ${this.config.maxFireSegments}`);
       return { totalHits, segments };
     }
     
     // Проверяем лимит рикошетов (используем только конфигурацию)
     const maxRicochets = this.config.maxRicochets;
-    console.log(`📊 Max ricochets from config: ${maxRicochets}, current: ${ricochetCount}`);
     if (ricochetCount >= maxRicochets) {
-      console.log(`🏀 Reached maximum ricochet limit: ${maxRicochets}`);
+      aimingLogger.addRicochetAttempt(false, 'Max ricochet limit reached', ricochetCount, maxRicochets);
       return { totalHits, segments };
     }
     
@@ -278,7 +284,15 @@ export class AimingSystem {
     segments.push(segment);
     
     const segmentType = ricochetCount > 0 ? `ricochet-${ricochetCount}` : 'primary';
-    console.log(`➡️ Segment ${segmentIndex + 1} (${segmentType}): from (${Math.round(currentPosition.x)}, ${Math.round(currentPosition.y)}) to (${Math.round(segment.end.x)}, ${Math.round(segment.end.y)})`);
+    
+    // Логируем сегмент
+    aimingLogger.addSegment(
+      segmentIndex,
+      segmentType,
+      currentPosition.x, currentPosition.y,
+      segment.end.x, segment.end.y,
+      ricochetCount
+    );
     
     // Проверяем столкновения для этого сегмента
     const allCollisions = this.rayCaster.checkSegmentCollisions(segment);
@@ -317,7 +331,11 @@ export class AimingSystem {
     // Обрабатываем столкновения
     if (collisions.length > 0) {
       totalHits.push(...collisions);
-      console.log(`🎯 Segment ${segmentIndex + 1} hit ${collisions.length} object(s)`);
+      
+      // Логируем коллизии
+      collisions.forEach(collision => {
+        aimingLogger.addCollision(collision.type, collision.distance, collision.point);
+      });
       
       // Проверяем первое столкновение
       const firstHit = collisions[0];
@@ -335,10 +353,7 @@ export class AimingSystem {
           y: firstHit.point.y + Math.sin(reflectedRadians) * offsetDistance
         };
         
-        console.log(`🏀 Ricochet ${ricochetCount + 1}: bouncing off wall (${firstHit.object.id}) at angle ${Math.round(reflectedDirection)}°`);
-        console.log(`   ➡️ Hit point: (${Math.round(firstHit.point.x)}, ${Math.round(firstHit.point.y)})`);
-        console.log(`   ➡️ Start point: (${Math.round(ricochetStartPoint.x)}, ${Math.round(ricochetStartPoint.y)})`);
-        console.log(`   ➡️ Offset: ${offsetDistance}px in direction ${Math.round(reflectedDirection)}°`);
+        aimingLogger.addRicochetAttempt(ricochetCount + 1, firstHit, reflectedDirection, ricochetStartPoint);
         
         return await this._fireRecursive({
           currentPosition: ricochetStartPoint,
@@ -354,7 +369,6 @@ export class AimingSystem {
       
       // Останавливаемся при попадании в токен или непробиваемую стену
       if (this._shouldStopFiring(firstHit)) {
-        console.log(`🛑 Stopping fire at segment ${segmentIndex + 1} due to ${firstHit.type}`);
         return { totalHits, segments };
       }
     }
@@ -398,17 +412,14 @@ export class AimingSystem {
    */
   _canRicochet(collision, currentRicochets) {
     // Проверяем, включены ли рикошеты вообще
-    console.log(`🔍 Ricochet check: allowRicochet=${this.config.allowRicochet}, currentRicochets=${currentRicochets}`);
     if (!this.config.allowRicochet) {
-      console.log(`❌ Ricochets disabled in config`);
       return false;
     }
     
     // Проверяем лимит рикошетов (используем только конфигурацию)
     const maxRicochets = this.config.maxRicochets;
-    console.log(`🔢 Ricochet limit check: ${currentRicochets}/${maxRicochets}`);
     if (currentRicochets >= maxRicochets) {
-      console.log(`⚠️ Ricochet limit reached`);
+      aimingLogger.addRicochetAttempt(currentRicochets + 1, null, null, null, 'Достигнут максимум рикошетов');
       return false;
     }
     
@@ -623,9 +634,6 @@ export class AimingSystem {
    * Обработка попаданий
    */
   _processHits(collisions) {
-    console.log('🎯 SpaceHolder | AimingSystem: Processing hits...');
-    console.log(`📊 Total collisions detected: ${collisions.length}`);
-    
     if (!collisions || collisions.length === 0) {
       console.log('❌ No hits detected - miss!');
       ChatMessage.create({
@@ -636,32 +644,7 @@ export class AimingSystem {
     }
     
     // Логируем детали каждого столкновения
-    console.group('🔍 Collision Details:');
-    collisions.forEach((collision, index) => {
-      const distance = Math.round(collision.distance * 100) / 100; // Округляем до 2 знаков
-      const point = `(${Math.round(collision.point.x)}, ${Math.round(collision.point.y)})`;
-      
-      console.log(`${index + 1}. ${this._getCollisionIcon(collision.type)} Type: ${collision.type}`);
-      console.log(`   Distance: ${distance}px`);
-      console.log(`   Point: ${point}`);
-      
-      if (collision.type === 'token') {
-        console.log(`   Target: ${collision.object.name} (ID: ${collision.object.id})`);
-        console.log(`   Token bounds: ${collision.object.bounds.width}x${collision.object.bounds.height}`);
-      } else if (collision.type === 'wall') {
-        const wall = collision.object;
-        console.log(`   Wall ID: ${wall.id}`);
-        console.log(`   Wall coordinates: (${wall.document.c[0]},${wall.document.c[1]}) -> (${wall.document.c[2]},${wall.document.c[3]})`);
-        console.log(`   Blocks movement: ${wall.document.move}`);
-        console.log(`   Blocks sight: ${wall.document.sight}`);
-      } else if (collision.type === 'tile') {
-        console.log(`   Tile: ${collision.object.document.texture.src}`);
-        console.log(`   Tile bounds: ${collision.object.bounds.width}x${collision.object.bounds.height}`);
-      }
-      
-      console.log('   ---');
-    });
-    console.groupEnd();
+    // Детальные сведения по коллизиям перенесены в сводный отчёт логгера
     
     // Обрабатываем каждое столкновение в порядке расстояния
     collisions.forEach((collision, index) => {
@@ -675,11 +658,7 @@ export class AimingSystem {
     });
     
     // Итоговая сводка
-    const tokenHits = collisions.filter(c => c.type === 'token').length;
-    const wallHits = collisions.filter(c => c.type === 'wall').length;
-    const tileHits = collisions.filter(c => c.type === 'tile').length;
-    
-    console.log(`📋 Hit Summary: ${tokenHits} tokens, ${wallHits} walls, ${tileHits} tiles`);
+    // Сводка выводится в отчёте логгера
   }
   
   /**

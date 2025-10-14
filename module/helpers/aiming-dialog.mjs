@@ -240,8 +240,6 @@ export class AimingDialog {
    */
   static applyConfigToAimingSystem(aimingSystem, config) {
     // Обновляем конфигурацию системы
-    console.log('SpaceHolder | AimingDialog: Raw config data:', config);
-    
     // Основные параметры
     aimingSystem.config.maxRayDistance = parseInt(config.maxRayDistance) || 2000;
     aimingSystem.config.showAimingReticle = !!config.showAimingReticle;
@@ -262,8 +260,7 @@ export class AimingDialog {
     // Обновляем интервал обновления предпросмотра
     aimingSystem._previewUpdateInterval = 1000 / aimingSystem.config.previewUpdateRate;
     
-    console.log('SpaceHolder | AimingDialog: Applied allowRicochet =', aimingSystem.config.allowRicochet);
-    console.log('SpaceHolder | AimingDialog: Applied config to aiming system:', aimingSystem.config);
+    // Конфигурация применена
   }
 
   /**
@@ -308,10 +305,8 @@ export class AimingDialog {
           callback: async (event) => {
             try {
               const root = event.currentTarget;
-              const formData = new FormDataExtended(root.querySelector('form'));
+              const formData = new foundry.applications.ux.FormDataExtended(root.querySelector('form'));
               const data = foundry.utils.expandObject(formData.object);
-              
-              console.log('SpaceHolder | AimingDialog: Starting aiming with config:', data);
 
               // Получаем систему прицеливания
               if (!aimingSystem) {

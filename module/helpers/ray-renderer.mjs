@@ -21,8 +21,7 @@ export class RayRenderer {
    * Инициализация рендерера
    */
   initialize() {
-    console.log('SpaceHolder | RayRenderer: Initializing ray renderer');
-    this._createContainers();
+    this.graphics = new PIXI.Graphics();
   }
   
   /**
@@ -462,8 +461,6 @@ export class RayRenderer {
   showFireAnimation(ray, collisions) {
     if (!ray || !this.animationContainer) return;
     
-    console.log('SpaceHolder | RayRenderer: Showing fire animation');
-    
     // Создаем графику для анимации выстрела
     const fireGraphics = new PIXI.Graphics();
     
@@ -622,8 +619,6 @@ export class RayRenderer {
    * @param {Object} shotData - данные о выстреле
    */
   async visualizeRemoteShot(shotData) {
-    console.log('🌐 Visualizing remote shot:', shotData);
-    
     const { token, direction, segments, hits } = shotData;
     
     if (!token || !this.rayContainer) {
@@ -631,18 +626,11 @@ export class RayRenderer {
       return;
     }
     
-    console.log('🌐 Remote shot data:', {
-      tokenId: token.id,
-      segmentsCount: segments?.length || 0,
-      hitsCount: hits?.length || 0
-    });
-    
     // Показываем маркер начала выстрела (БЕЗ очистки)
     this._showRemoteShotMarker(token);
     
     // Анимируем все сегменты (если они есть)
     if (segments && segments.length > 0) {
-      console.log(`🎬 Animating ${segments.length} segments for remote shot`);
       for (let i = 0; i < segments.length; i++) {
         await this._animateRemoteSegment(segments[i], i, token.id);
       }
@@ -663,8 +651,6 @@ export class RayRenderer {
    * @param {Object} segmentData - данные о сегменте
    */
   displayRemoteShotSegment(segmentData) {
-    console.log('🌐 Displaying remote shot segment:', segmentData);
-    
     const { tokenId, segment, segmentIndex } = segmentData;
     
     if (!segment || !this.rayContainer) return;
@@ -721,8 +707,6 @@ export class RayRenderer {
    * @param {Object} hitData - данные о попадании
    */
   displayRemoteHitEffect(hitData) {
-    console.log('🌐 Displaying remote hit effect:', hitData);
-    
     if (!hitData.hitPoint) return;
     
     // Показываем эффект взрыва с отличающимся цветом
@@ -734,16 +718,8 @@ export class RayRenderer {
    * @param {Object} completeData - итоговые данные
    */
   completeRemoteShot(completeData) {
-    console.log('🌐 Completing remote shot visualization:', completeData);
-    console.log('🔍 CompleteData structure:', {
-      tokenId: completeData?.tokenId,
-      hasTokenId: !!completeData?.tokenId,
-      keys: Object.keys(completeData || {})
-    });
-    
     // Запускаем таймер автоматического исчезновения через 10 секунд
     if (completeData?.tokenId) {
-      console.log('✅ TokenId found, scheduling fade out for:', completeData.tokenId);
       this._scheduleRemoteShotFadeOut(completeData.tokenId);
     } else {
       console.warn('⚠️ No tokenId in completeData, cannot schedule fade out');
@@ -852,8 +828,6 @@ export class RayRenderer {
    * @private
    */
   _resetRemoteShotTimer(tokenId) {
-    console.log(`🔄 Resetting fade out timer for token ${tokenId}`);
-    
     // Инициализируем Map для таймеров, если его нет
     if (!this.remoteShotTimers) {
       this.remoteShotTimers = new Map();
@@ -861,7 +835,6 @@ export class RayRenderer {
     
     // Отменяем предыдущий таймер, если он есть
     if (this.remoteShotTimers.has(tokenId)) {
-      console.log(`⏹️ Cancelling existing timer for token ${tokenId}`);
       clearTimeout(this.remoteShotTimers.get(tokenId));
       this.remoteShotTimers.delete(tokenId);
     }
@@ -873,7 +846,7 @@ export class RayRenderer {
    * @private
    */
   _scheduleRemoteShotFadeOut(tokenId) {
-    console.log(`⏰ Scheduling fade out for remote shot from token ${tokenId} in 10 seconds`);
+    // console.log(`⏰ Scheduling fade out for remote shot from token ${tokenId} in 10 seconds`);
     
     // Инициализируем Map для таймеров, если его нет
     if (!this.remoteShotTimers) {
@@ -899,16 +872,12 @@ export class RayRenderer {
    * @private
    */
   _fadeOutRemoteShot(tokenId) {
-    console.log(`🌫️ Starting fade out for remote shot from token ${tokenId}`);
-    
     if (!this.remoteSegments || !this.remoteSegments.has(tokenId)) {
-      console.log(`⚠️ No remote segments found for token ${tokenId}`);
       return;
     }
     
     const segments = this.remoteSegments.get(tokenId);
     if (!segments || segments.length === 0) {
-      console.log(`⚠️ No segments to fade for token ${tokenId}`);
       return;
     }
     
@@ -937,7 +906,6 @@ export class RayRenderer {
         requestAnimationFrame(fadeAnimation);
       } else {
         // Анимация завершена, окончательно удаляем сегменты
-        console.log(`✨ Fade out completed for token ${tokenId}, removing ${segments.length} segments`);
         this._clearRemoteEffects(tokenId);
       }
     };
