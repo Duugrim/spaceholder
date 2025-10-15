@@ -2,6 +2,7 @@
 // Отвечает за передачу событий выстрелов между всеми клиентами
 
 import { aimingLogger } from './aiming-logger.mjs';
+import { socketLogger } from './socket-logger.mjs';
 
 export class AimingSocketManager {
   constructor(aimingSystem) {
@@ -21,10 +22,6 @@ export class AimingSocketManager {
    * Инициализация socket-менеджера
    */
   initialize() {
-    console.log('SpaceHolder | AimingSocketManager: Initializing socket manager');
-    console.log('Socket name:', this.socketName);
-    console.log('User ID:', game.user.id, 'User name:', game.user.name);
-    
     // Проверяем доступность game.socket
     if (!game.socket) {
       console.error('SpaceHolder | AimingSocketManager: game.socket not available!');
@@ -33,7 +30,6 @@ export class AimingSocketManager {
     
     // Регистрируем обработчики socket-событий
     game.socket.on(this.socketName, (data) => {
-      console.log(`📨 Socket event received on ${this.socketName}:`, data);
       this._handleSocketMessage(data);
     });
     
@@ -52,12 +48,10 @@ export class AimingSocketManager {
       data: shotData
     };
     
-    console.log('SpaceHolder | AimingSocketManager: Broadcasting fire shot', message);
+    const tokenName = shotData.tokenId ? (canvas.tokens.get(shotData.tokenId)?.name || 'Unknown') : 'Unknown';
+    socketLogger.logOutgoing(this.MESSAGE_TYPES.FIRE_SHOT, tokenName);
     
-    // Используем game.socket.emit с правильным callback
-    game.socket.emit(this.socketName, message, (response) => {
-      console.log('Socket emit response:', response);
-    });
+    game.socket.emit(this.socketName, message);
   }
   
   /**
@@ -87,7 +81,6 @@ export class AimingSocketManager {
       data: hitData
     };
     
-    console.log('SpaceHolder | AimingSocketManager: Broadcasting shot hit', message);
     game.socket.emit(this.socketName, message);
   }
   
@@ -96,8 +89,6 @@ export class AimingSocketManager {
    * @param {Object} completeData - итоговые данные выстрела
    */
   broadcastShotComplete(completeData) {
-    aimingLogger.logSocket('Shot complete', completeData?.direction);
-    
     const message = {
       type: this.MESSAGE_TYPES.SHOT_COMPLETE,
       userId: game.user.id,
@@ -113,8 +104,6 @@ export class AimingSocketManager {
    * @private
    */
   _handleSocketMessage(message) {
-    console.log('📨 SpaceHolder | AimingSocketManager: Raw message received', message);
-    
     // Проверяем структуру сообщения
     if (!message || !message.userId || !message.type) {
       console.warn('SpaceHolder | AimingSocketManager: Invalid message structure', message);
@@ -123,11 +112,16 @@ export class AimingSocketManager {
     
     // Игнорируем собственные сообщения
     if (message.userId === game.user.id) {
-      console.log('😴 Ignoring own message from', game.user.name);
       return;
     }
     
-    console.log('✅ SpaceHolder | AimingSocketManager: Processing message from', message.userId, 'type:', message.type);
+    // Логируем через socketLogger
+    const userName = game.users.get(message.userId)?.name || 'Unknown';
+    socketLogger.logIncoming(message.type, message.userId, userName, message.data);
+    
+    // Сохраняем userId и userName для передачи в обработчики
+    message.data._socketUserId = message.userId;
+    message.data._socketUserName = userName;
     
     switch (message.type) {
       case this.MESSAGE_TYPES.FIRE_SHOT:
@@ -156,8 +150,6 @@ export class AimingSocketManager {
    * @private
    */
   _handleFireShot(data) {
-    console.log('🌐 Remote fire shot received:', data);
-    
     // Проверяем наличие ключевых полей
     if (!data || !data.tokenId) {
       console.error('SpaceHolder | AimingSocketManager: Invalid fire shot data', data);
@@ -170,18 +162,12 @@ export class AimingSocketManager {
       return;
     }
     
-    console.log('🔍 Looking for token ID:', data.tokenId);
-    console.log('🗺 Available tokens:', canvas.tokens.placeables.map(t => ({id: t.id, name: t.name})));
-    
     // Найдём токен на сцене
     const token = canvas.tokens.get(data.tokenId);
     if (!token) {
       console.error('SpaceHolder | AimingSocketManager: Token not found for remote fire shot', data.tokenId);
-      console.log('🗺 Available token IDs:', canvas.tokens.placeables.map(t => t.id));
       return;
     }
-    
-    console.log('✅ Token found:', token.name, 'at', token.center);
     
     // Проверяем rayRenderer
     if (!this.aimingSystem || !this.aimingSystem.rayRenderer) {
@@ -189,12 +175,15 @@ export class AimingSocketManager {
       return;
     }
     
-    console.log('✅ RayRenderer found, checking visualizeRemoteShot method');
-    
     if (typeof this.aimingSystem.rayRenderer.visualizeRemoteShot !== 'function') {
       console.error('SpaceHolder | AimingSocketManager: visualizeRemoteShot method not found');
       return;
     }
+    
+    // Начинаем отслеживание в socketLogger
+    const userId = data._socketUserId || 'unknown';
+    const userName = data._socketUserName || 'Unknown';
+    socketLogger.startRemoteShot(data.tokenId, token.name, userId, userName, data.direction, data.weaponName || 'Unknown');
     
     // Начинаем визуализацию удалённого выстрела
     this._startRemoteShotVisualization(token, data);
@@ -205,6 +194,12 @@ export class AimingSocketManager {
    * @private
    */
   _handleShotSegment(data) {
+    // Обновляем счётчик сегментов в socketLogger
+    if (data?.tokenId && data?.segmentIndex !== undefined) {
+      const isRicochet = data.segment?.isRicochet || false;
+      socketLogger.addSegment(data.tokenId, data.segmentIndex, isRicochet);
+    }
+    
     // Обновляем визуализацию траектории
     this.aimingSystem.rayRenderer.displayRemoteShotSegment(data);
   }
@@ -214,7 +209,10 @@ export class AimingSocketManager {
    * @private
    */
   _handleShotHit(data) {
-    console.log('🌐 Remote shot hit received:', data);
+    // Добавляем попадание в socketLogger
+    if (data?.tokenId) {
+      socketLogger.addHit(data.tokenId, data.hitType, data.distance, data.targetId);
+    }
     
     // Показываем эффект попадания
     this.aimingSystem.rayRenderer.displayRemoteHitEffect(data);
@@ -225,13 +223,10 @@ export class AimingSocketManager {
    * @private
    */
   _handleShotComplete(data) {
-    console.log('🌐 Remote shot complete received:', data);
-    console.log('🔍 ShotComplete data structure:', {
-      tokenId: data?.tokenId,
-      hasTokenId: !!data?.tokenId,
-      keys: Object.keys(data || {}),
-      fullData: data
-    });
+    // Завершаем отслеживание в socketLogger
+    if (data?.tokenId) {
+      socketLogger.finishRemoteShot(data.tokenId);
+    }
     
     // Проверяем доступность rayRenderer
     if (!this.aimingSystem?.rayRenderer) {
@@ -240,7 +235,6 @@ export class AimingSocketManager {
     }
     
     // Завершаем визуализацию
-    console.log('✅ Calling completeRemoteShot with data:', data);
     this.aimingSystem.rayRenderer.completeRemoteShot(data);
   }
   
@@ -249,8 +243,6 @@ export class AimingSocketManager {
    * @private
    */
   _startRemoteShotVisualization(token, shotData) {
-    console.log(`🌐 Starting remote shot visualization for ${token.name}`);
-    
     try {
       // Проверяем доступность animationContainer
       if (!this.aimingSystem.rayRenderer.animationContainer) {
@@ -263,17 +255,7 @@ export class AimingSocketManager {
       this.aimingSystem.rayRenderer._resetRemoteShotTimer(token.id);
       
       // Минимальная визуализация - показываем маркер
-      console.log('🔴 Showing remote shot marker...');
       this.aimingSystem.rayRenderer._showRemoteShotMarker(token);
-      
-      console.log('✅ Remote shot marker shown successfully');
-      
-      // Также показываем уведомление в чате
-      ChatMessage.create({
-        content: `🌐 ${token.name} стреляет (удалённо)!`,
-        speaker: { alias: 'System' },
-        whisper: [game.user.id] // Только для текущего игрока
-      });
       
       // Полная визуализация (позже)
       setTimeout(() => {
@@ -291,7 +273,6 @@ export class AimingSocketManager {
       
     } catch (error) {
       console.error('SpaceHolder | AimingSocketManager: Error in remote shot visualization:', error);
-      console.error('Error details:', error.stack);
     }
   }
 }
