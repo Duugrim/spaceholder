@@ -48,16 +48,10 @@ export class PayloadDialog {
         buttons: [
           {
             action: 'fire',
-            label: 'Выстрелить',
-            icon: 'fa-solid fa-bullseye',
+            label: 'Начать прицеливание',
+            icon: 'fa-solid fa-crosshairs',
             default: true,
             callback: (event, dialog) => this._handleFire(event, dialog, token)
-          },
-          {
-            action: 'preview',
-            label: 'Предпросмотр',
-            icon: 'fa-solid fa-eye',
-            callback: (event, dialog) => this._handlePreview(event, dialog, token)
           },
           { 
             action: 'cancel', 
@@ -67,8 +61,18 @@ export class PayloadDialog {
         ]
       });
       
+      console.log('PayloadDialog: Dialog result:', result);
+      
       if (result === 'cancel') {
         return { cancelled: true };
+      }
+      
+      // DialogV2 возвращает результат callback, а не action
+      // Если callback вернул true (успех), значит пользователь нажал "Начать прицеливание"
+      if (result === true) {
+        const payload = this._lastExtractedPayload || this._getDefaultPayload();
+        console.log('PayloadDialog: Returning payload for aiming:', payload);
+        return { action: 'fire', payload };
       }
       
       return { cancelled: false, result: result };
@@ -361,48 +365,26 @@ export class PayloadDialog {
   }
   
   /**
-   * Обработка нажатия "Выстрелить"
+   * Обработка нажатия "Начать прицеливание"
+   * Сохраняем payload для последующего использования
    */
   static async _handleFire(event, dialog, token) {
     try {
       const payload = this._extractPayloadFromDialog(dialog);
       
-      // Импортируем ShotSystem и выполняем выстрел
-      const { ShotSystem } = await import('./shot-system.mjs');
-      const { ShotHistoryManager } = await import('./shot-history-manager.mjs');
+      // Сохраняем payload для доступа в основном методе
+      this._lastExtractedPayload = payload;
       
-      const shotSystem = new ShotSystem(game.spaceholder.aimingSystem.rayCaster);
-      const shotResult = await shotSystem.fire(
-        token.center,
-        0, // направление - пока по умолчанию
-        payload,
-        token
-      );
+      console.log('PayloadDialog: Fire button pressed, payload extracted:', payload);
+      ui.notifications.info(`Настроен payload "${payload.name}" с ${payload.trajectory.length} сегментами`);
       
-      // Визуализируем выстрел
-      let shotHistoryManager = window.newShotTest?.shotHistoryManager;
-      if (!shotHistoryManager) {
-        shotHistoryManager = new ShotHistoryManager(game.spaceholder.aimingSystem.rayRenderer);
-        if (window.newShotTest) {
-          window.newShotTest.shotHistoryManager = shotHistoryManager;
-        }
-      }
-      
-      shotHistoryManager.addShot(shotResult, {
-        isRemote: false,
-        animate: true,
-        autoFade: false // Для демонстрации оставляем
-      });
-      
-      ui.notifications.info(`Выстрел выполнен! ID: ${shotResult.id.substring(0, 8)}...`);
-      console.log('Shot result:', shotResult);
-      
-      return { action: 'fire', payload, shotResult };
+      // DialogV2 будет возвращать action, не этот объект
+      return true; // Просто подтверждаем успех
       
     } catch (error) {
-      console.error('Error firing shot:', error);
-      ui.notifications.error('Ошибка выстрела: ' + error.message);
-      return { action: 'error', error: error.message };
+      console.error('Error extracting payload:', error);
+      ui.notifications.error('Ошибка настройки: ' + error.message);
+      return false; // Ошибка
     }
   }
   
@@ -447,7 +429,8 @@ export class PayloadDialog {
     // Извлекаем базовую информацию
     const payload = {
       name: 'custom',
-      trajectory: []
+      trajectory: [],
+      ignoreShooterSegments: 1 // По умолчанию первый сегмент игнорирует токен стрелка
     };
     
     // Отладочная информация
@@ -465,6 +448,7 @@ export class PayloadDialog {
         type: 'line',
         length: 200
       });
+      payload.ignoreShooterSegments = 1; // По умолчанию первый сегмент игнорирует токен стрелка
       return payload;
     }
     
@@ -507,7 +491,8 @@ export class PayloadDialog {
       trajectory: [{
         type: 'line',
         length: 200
-      }]
+      }],
+      ignoreShooterSegments: 1 // По умолчанию первый сегмент игнорирует токен стрелка
     };
   }
   
@@ -1002,26 +987,6 @@ export class PayloadDialog {
     }
   }
   
-  static _handlePreview(e, dialog, token) { 
-    console.log('Preview shot');
-    e.preventDefault();
-    
-    try {
-      const payload = this._extractPayloadFromDialog(dialog);
-      
-      // Показываем информацию о payload вместо закрытия диалога
-      console.log('Preview payload:', payload);
-      ui.notifications.info(`Предпросмотр: ${payload.trajectory.length} сегментов`);
-      
-      // TODO: здесь можно добавить визуализацию траектории без выстрела
-      return false; // Не закрываем диалог
-      
-    } catch (error) {
-      console.error('Error in preview:', error);
-      ui.notifications.error('Ошибка предпросмотра: ' + error.message);
-      return false;
-    }
-  }
   
   /**
    * Обновить информацию о payload в диалоге

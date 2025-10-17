@@ -2,8 +2,8 @@
 // Отвечает за отрисовку лучей, прицельной сетки и анимаций
 
 export class RayRenderer {
-  constructor(aimingSystem) {
-    this.aimingSystem = aimingSystem;
+  constructor(aimingSystem = null) {
+    this.aimingSystem = aimingSystem; // Опциональная ссылка для обратной совместимости
     
     // Графические контейнеры
     this.aimingContainer = null;
@@ -157,7 +157,7 @@ export class RayRenderer {
     
     for (const token of canvas.tokens.placeables) {
       // Пропускаем токен, который стреляет
-      if (token === this.aimingSystem.aimingToken) continue;
+      if (this.aimingSystem && token === this.aimingSystem.aimingToken) continue;
       
       // Пропускаем невидимые токены
       if (!token.visible) continue;
@@ -231,7 +231,7 @@ export class RayRenderer {
     const fadeInDuration = 300;
     
     const fadeIn = () => {
-      if (!targetCircle || targetCircle.destroyed || !this.aimingSystem.isAiming) return;
+      if (!targetCircle || targetCircle.destroyed || (this.aimingSystem && !this.aimingSystem.isAiming)) return;
       
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / fadeInDuration, 1);
@@ -257,7 +257,7 @@ export class RayRenderer {
     const duration = 2000; // 2 секунды на полный цикл
     
     const animate = () => {
-      if (!reticle || reticle.destroyed || !this.aimingSystem.isAiming) return;
+      if (!reticle || reticle.destroyed || (this.aimingSystem && !this.aimingSystem.isAiming)) return;
       
       const elapsed = Date.now() - startTime;
       const progress = (elapsed % duration) / duration;
@@ -309,32 +309,62 @@ export class RayRenderer {
   }
   
   /**
-   * Отрисовать сегмент выстрела
+   * Отрисовать удалённый сегмент выстрела
    * @param {Object} segment - сегмент луча
    * @param {number} segmentIndex - индекс сегмента
    */
-  drawFireSegment(segment, segmentIndex) {
+  drawRemoteSegment(segment, segmentIndex) {
+    // Просто вызываем drawFireSegment с другим стилем
+    // TODO: В будущем можно добавить разные стили для локальных и удалённых выстрелов
+    return this.drawFireSegment(segment, segmentIndex, true);
+  }
+  
+  /**
+   * Отрисовать сегмент выстрела
+   * @param {Object} segment - сегмент луча
+   * @param {number} segmentIndex - индекс сегмента
+   * @param {boolean} isRemote - это удалённый выстрел
+   */
+  drawFireSegment(segment, segmentIndex, isRemote = false) {
     if (!segment || !this.rayContainer) return;
     
     // Создаем графику для сегмента выстрела
     const segmentGraphics = new PIXI.Graphics();
     
-    // Определяем стиль в зависимости от типа сегмента
+    // Определяем стиль в зависимости от типа сегмента и того, удалённый ли это выстрел
     let fireColor, fireAlpha, fireWidth;
     
     if (segment.isRicochet) {
-      // Рикошеты - разные оттенки без снижения яркости
+      // Рикошеты - разные оттенки
       const bounceLevel = segment.bounceNumber || 1;
-      fireColor = bounceLevel === 1 ? 0xFF8800 : // Оранжевый для первого рикошета
-                  bounceLevel === 2 ? 0xFFCC00 : // Жёлто-оранжевый для второго
-                                      0xFFFF00;   // Жёлтый для остальных
-      fireAlpha = 0.9; // Одинаковая яркость для всех рикошетов
-      fireWidth = 4; // Одинаковая толщина
+      if (isRemote) {
+        // Удалённые рикошеты - синие оттенки
+        fireColor = bounceLevel === 1 ? 0x00FF88 : // Зелёно-голубой
+                    bounceLevel === 2 ? 0x00CCFF : // Голубой
+                                        0x0088FF;   // Синий
+        fireAlpha = 0.8;
+        fireWidth = 3;
+      } else {
+        // Локальные рикошеты - оранжевые оттенки
+        fireColor = bounceLevel === 1 ? 0xFF8800 : // Оранжевый
+                    bounceLevel === 2 ? 0xFFCC00 : // Жёлто-оранжевый
+                                        0xFFFF00;   // Жёлтый
+        fireAlpha = 0.9;
+        fireWidth = 4;
+      }
     } else {
-      // Основной выстрел - ярко-красный
-      fireColor = 0xFF4444;
-      fireAlpha = 0.9;
-      fireWidth = 4;
+      // Основной выстрел
+      if (isRemote) {
+        // Удалённые выстрелы - синие
+        fireColor = 0x4444FF;
+        fireAlpha = 0.8;
+        fireWidth = 3;
+      } else {
+        // Локальные выстрелы - красные
+        fireColor = 0xFF4444;
+        fireAlpha = 0.9;
+        fireWidth = 4;
+      }
     }
     
     segmentGraphics.lineStyle(fireWidth, fireColor, fireAlpha);
@@ -439,7 +469,7 @@ export class RayRenderer {
     const duration = 1000; // 1 секунда на цикл
     
     const animate = () => {
-      if (!rayGraphics || rayGraphics.destroyed || !this.aimingSystem.isAiming) return;
+      if (!rayGraphics || rayGraphics.destroyed || (this.aimingSystem && !this.aimingSystem.isAiming)) return;
       
       const elapsed = Date.now() - startTime;
       const progress = (elapsed % duration) / duration;
@@ -999,6 +1029,16 @@ export class RayRenderer {
     this.animationContainer = null;
     this.targetCircles = null;
     this.remoteShotTimers = null;
+  }
+  
+  /**
+   * Создать независимый экземпляр RayRenderer для ShotSystem
+   * @returns {RayRenderer} новый экземпляр без связи с AimingSystem
+   */
+  static createIndependent() {
+    const renderer = new RayRenderer(null);
+    renderer.onCanvasReady();
+    return renderer;
   }
 }
 

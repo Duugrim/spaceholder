@@ -97,16 +97,11 @@ export class LineSegment extends TrajectorySegment {
     // Создаем луч заданной длины
     const ray = rayCaster.createSimpleRay(currentPosition, direction, this.length);
     
-    // Проверяем коллизии
-    const collisions = rayCaster.checkSegmentCollisions(ray);
-    
-    // Фильтруем коллизии со стрелком
-    const validCollisions = collisions.filter(collision => {
-      if (collision.type === 'token' && collision.object === shooterToken) {
-        return false; // Игнорируем попадание в самого стрелка
-      }
-      return true;
-    });
+    // Проверяем коллизии (исключаем токен стрелка только если он передан)
+    const collisionOptions = shooterToken ? { excludeToken: shooterToken } : {};
+    console.log(`LineSegment DEBUG: Ray length=${this.length}, start=${JSON.stringify(currentPosition)}, end=${JSON.stringify(ray.end)}, excludeToken=${shooterToken?.name || 'none'}`);
+    const validCollisions = rayCaster.checkSegmentCollisions(ray, collisionOptions);
+    console.log(`LineSegment DEBUG: Found ${validCollisions.length} collisions:`, validCollisions.map(c => ({ type: c.type, distance: c.distance, object: c.object?.name || c.object?.id })));
     
     // Применяем эффекты в зависимости от результата
     if (validCollisions.length > 0) {
@@ -171,16 +166,9 @@ export class LineRecSegment extends TrajectorySegment {
       const ray = rayCaster.createSimpleRay(position, direction, this.length);
       ray.iterationIndex = iteration;
       
-      // Проверяем коллизии
-      const collisions = rayCaster.checkSegmentCollisions(ray);
-      
-      // Фильтруем коллизии со стрелком
-      const validCollisions = collisions.filter(collision => {
-        if (collision.type === 'token' && collision.object === shooterToken) {
-          return false;
-        }
-        return true;
-      });
+      // Проверяем коллизии (исключаем токен стрелка только если он передан)
+      const collisionOptions = shooterToken ? { excludeToken: shooterToken } : {};
+      const validCollisions = rayCaster.checkSegmentCollisions(ray, collisionOptions);
       
       allRays.push(ray);
       

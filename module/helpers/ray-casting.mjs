@@ -4,8 +4,15 @@
 // Примечание: Использует foundry.canvas.geometry.Ray вместо устаревшего Ray для Foundry v13+
 
 export class RayCaster {
-  constructor(aimingSystem) {
-    this.aimingSystem = aimingSystem;
+  constructor(options = {}) {
+    // Опции конфигурации
+    this.config = {
+      checkTileCollisions: options.checkTileCollisions ?? false,
+      ...options
+    };
+    
+    // Обратная совместимость с AimingSystem
+    this.aimingSystem = options.aimingSystem || null;
   }
   
   /**
@@ -88,13 +95,22 @@ export class RayCaster {
   /**
    * Проверить столкновения для одного сегмента
    * @param {Object} segment - сегмент луча
+   * @param {Object|Token} options - опции или токен для обратной совместимости
    * @returns {Array} массив столкновений
    */
-  checkSegmentCollisions(segment) {
+  checkSegmentCollisions(segment, options = {}) {
+    // Обратная совместимость: если передан токен, обрачиваем в объект
+    if (options && options.document) { // это Token
+      options = { excludeToken: options };
+    } else if (typeof options !== 'object' || options === null) {
+      options = {};
+    }
+    
+    const excludeToken = options.excludeToken || null;
     const collisions = [];
     
     // Проверяем столкновения с токенами
-    const tokenCollisions = this._checkTokenCollisions(segment);
+    const tokenCollisions = this._checkTokenCollisions(segment, excludeToken);
     collisions.push(...tokenCollisions);
     
     // Проверяем столкновения со стенами
@@ -102,7 +118,7 @@ export class RayCaster {
     collisions.push(...wallCollisions);
     
     // Проверяем столкновения с тайлами (если нужно)
-    if (this.aimingSystem.config.checkTileCollisions) {
+    if (this.config.checkTileCollisions) {
       const tileCollisions = this._checkTileCollisions(segment);
       collisions.push(...tileCollisions);
     }
@@ -116,9 +132,10 @@ export class RayCaster {
   /**
    * Проверить столкновения луча с объектами на сцене
    * @param {Object} ray - объект луча
+   * @param {Token} excludeToken - токен для исключения (обычно стрелок)
    * @returns {Array} массив столкновений, отсортированный по расстоянию
    */
-  checkCollisions(ray) {
+  checkCollisions(ray, excludeToken = null) {
     const collisions = [];
     
     // Проверяем столкновения для каждого сегмента луча
@@ -126,7 +143,7 @@ export class RayCaster {
       const segment = ray.segments[i];
       
       // Проверяем столкновения с токенами
-      const tokenCollisions = this._checkTokenCollisions(segment);
+      const tokenCollisions = this._checkTokenCollisions(segment, excludeToken);
       collisions.push(...tokenCollisions);
       
       // Проверяем столкновения со стенами
@@ -134,7 +151,7 @@ export class RayCaster {
       collisions.push(...wallCollisions);
       
       // Проверяем столкновения с тайлами (если нужно)
-      if (this.aimingSystem.config.checkTileCollisions) {
+      if (this.config.checkTileCollisions) {
         const tileCollisions = this._checkTileCollisions(segment);
         collisions.push(...tileCollisions);
       }
@@ -156,9 +173,11 @@ export class RayCaster {
   
   /**
    * Проверить столкновения с токенами
+   * @param {Object} segment - сегмент луча
+   * @param {Token} excludeToken - токен для исключения (обычно стрелок)
    * @private
    */
-  _checkTokenCollisions(segment) {
+  _checkTokenCollisions(segment, excludeToken = null) {
     const collisions = [];
     
     if (!canvas.tokens?.placeables) return collisions;
@@ -168,8 +187,11 @@ export class RayCaster {
     const endPoint = segment.end;
     
     for (const token of canvas.tokens.placeables) {
-      // Пропускаем токен, который стреляет
-      if (token === this.aimingSystem.aimingToken) continue;
+      // Пропускаем исключаемый токен (обычно стрелок)
+      if (excludeToken && token === excludeToken) continue;
+      
+      // Обратная совместимость: пропускаем aimingToken если есть
+      if (this.aimingSystem?.aimingToken && token === this.aimingSystem.aimingToken) continue;
       
       // Пропускаем невидимые токены
       if (!token.visible) continue;

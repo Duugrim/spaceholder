@@ -3,41 +3,33 @@
 
 import { RayCaster } from './ray-casting.mjs';
 import { RayRenderer } from './ray-renderer.mjs';
-import { AimingSocketManager } from './aiming-socket-manager.mjs';
-import { aimingLogger } from './aiming-logger.mjs';
 
 export class AimingSystem {
-  constructor() {
+  constructor(onAimComplete = null) {
+    // Коллбэк для обработки результата прицеливания
+    this.onAimComplete = onAimComplete;
+    
     // Состояние системы
     this.isAiming = false;
     this.aimingToken = null;
     this.currentAimDirection = 0; // в градусах
     this.currentRay = null;
     
-    // Конфигурация по умолчанию
+    // Конфигурация по умолчанию (только для прицеливания)
     this.config = {
-      maxRayDistance: 2000, // максимальная дальность луча в пикселях
       aimingSensitivity: 1.0, // чувствительность поворота прицела
       showAimingReticle: true, // показывать ли прицельную сетку
-      allowRicochet: false, // разрешить рикошеты
-      maxRicochets: 3, // максимальное количество рикошетов
-      curvedRaysEnabled: false, // изогнутые лучи
       
-      // Механика лучей и сегментов
+      // Механика лучей (только предпросмотр)
       previewRayLength: 500, // длина луча предпросмотра при прицеливании
-      fireSegmentLength: 100, // длина одного сегмента при выстреле
-      maxFireSegments: 50, // максимальное количество сегментов выстрела
       
-      // Производительность и анимация
+      // Производительность предпросмотра
       previewUpdateRate: 60, // частота обновления предпросмотра (FPS)
-      fireAnimationDelay: 50, // задержка между сегментами выстрела (мс)
-      ricochetAnimationDelay: 75, // задержка между сегментами рикошета (мс)
     };
     
-    // Компоненты системы
-    this.rayCaster = new RayCaster(this);
+    // Компоненты системы (только для прицеливания)
+    this.rayCaster = new RayCaster({ aimingSystem: this });
     this.rayRenderer = new RayRenderer(this);
-    this.socketManager = new AimingSocketManager(this);
     
     // Привязки событий
     this._boundEvents = {
@@ -65,7 +57,6 @@ export class AimingSystem {
     // Инициализируем компоненты
     this.rayCaster.initialize();
     this.rayRenderer.initialize();
-    this.socketManager.initialize();
   }
   
   /**
@@ -131,95 +122,27 @@ export class AimingSystem {
   }
   
   /**
-   * Выстрелить в текущем направлении (рекурсивная отрисовка сегментами)
+   * Завершить прицеливание и вернуть результат
+   * @returns {Object|null} Результат прицеливания или null если не активно
    */
-  async fire() {
+  aim() {
     if (!this.isAiming || !this.aimingToken) {
       ui.notifications.warn("Прицеливание не активно");
-      return;
+      return null;
     }
     
-    // Сохраняем ссылки на токен и оружие, чтобы избежать проблем с асинхронностью
-    const firingToken = this.aimingToken;
-    const firingWeapon = this.weapon;
-    const firingDirection = this.currentAimDirection;
-    
-    const tokenCenter = firingToken.center;
-    // Начинаем логирование выстрела
-    aimingLogger.startShot(
-      firingToken,
-      firingDirection,
-      this.config.maxRayDistance
-    );
-    
-    // Отправляем событие начала выстрела всем клиентам
-    const shotData = {
-      tokenId: firingToken.id,
-      direction: firingDirection,
-      startPosition: tokenCenter,
-      timestamp: Date.now(),
-      weaponName: firingWeapon?.name || 'Неизвестное оружие'
+    const aimResult = {
+      token: this.aimingToken,
+      source: this.aimingToken.center,
+      direction: this.currentAimDirection,
+      weapon: this.weapon,
+      timestamp: Date.now()
     };
     
-    this.socketManager.broadcastFireShot(shotData);
+    // Завершаем прицеливание
+    this.stopAiming();
     
-    // Очищаем только предпросмотр, оставляем предыдущие выстрелы
-    if (this.rayRenderer.currentRayGraphics) {
-      this.rayRenderer.currentRayGraphics.destroy();
-      this.rayRenderer.currentRayGraphics = null;
-    }
-    
-    // Начинаем рекурсивную отрисовку выстрела
-    const fireResult = await this._fireRecursive({
-      currentPosition: tokenCenter,
-      direction: firingDirection,
-      segmentIndex: 0,
-      totalHits: [],
-      segments: [],
-      socketData: shotData // Передаём данные для socket-синхронизации
-    });
-    
-    // Обрабатываем все попадания
-    if (fireResult.totalHits.length > 0) {
-      this._processHits(fireResult.totalHits);
-      
-      // Отправляем события о попаданиях
-      for (const hit of fireResult.totalHits) {
-        this.socketManager.broadcastShotHit({
-          tokenId: firingToken.id,
-          hitType: hit.type,
-          hitPoint: hit.point,
-          targetId: hit.object?.id,
-          distance: hit.distance
-        });
-      }
-    } else {
-      // Промах
-      const tokenName = firingToken?.document?.name || firingToken?.name || 'Неизвестный токен';
-      ChatMessage.create({
-        content: `${tokenName} промахивается!`,
-        speaker: ChatMessage.getSpeaker({ token: firingToken })
-      });
-    }
-    
-    // Завершаем логирование выстрела
-    aimingLogger.finishShot();
-    
-    // Отправляем событие завершения выстрела
-    this.socketManager.broadcastShotComplete({
-      tokenId: firingToken.id,
-      totalSegments: fireResult.segments.length,
-      totalHits: fireResult.totalHits.length,
-      segments: fireResult.segments.map(seg => ({
-        start: seg.start || seg.origin,
-        end: seg.end,
-        isRicochet: seg.isRicochet || false,
-        bounceNumber: seg.bounceNumber || 0
-      }))
-    });
-    
-    // Не завершаем прицеливание автоматически - пользователь может продолжить прицеливание
-    // this.stopAiming();
+    return aimResult;
   }
   
   /**
@@ -248,241 +171,6 @@ export class AimingSystem {
     this.rayRenderer.updateAimingPreview(previewRay);
   }
   
-  /**
-   * Рекурсивная отрисовка сегментов выстрела
-   * @param {Object} fireState - состояние выстрела
-   * @returns {Promise<Object>} результат выстрела
-   */
-  async _fireRecursive(fireState) {
-    const { currentPosition, direction, segmentIndex, totalHits, segments, ricochetCount = 0, lastWallId = null, socketData = null } = fireState;
-    
-    // Проверяем лимит сегментов
-    if (segmentIndex >= this.config.maxFireSegments) {
-      return { totalHits, segments };
-    }
-    
-    // Проверяем лимит рикошетов (используем только конфигурацию)
-    const maxRicochets = this.config.maxRicochets;
-    if (ricochetCount >= maxRicochets) {
-      aimingLogger.addRicochetAttempt(false, 'Max ricochet limit reached', ricochetCount, maxRicochets);
-      return { totalHits, segments };
-    }
-    
-    // Создаем следующий сегмент
-    const segment = this.rayCaster.createSimpleRay(
-      currentPosition,
-      direction,
-      this.config.fireSegmentLength
-    );
-    
-    // Отмечаем, если это рикошет
-    if (ricochetCount > 0) {
-      segment.isRicochet = true;
-      segment.bounceNumber = ricochetCount;
-    }
-    
-    segments.push(segment);
-    
-    const segmentType = ricochetCount > 0 ? `ricochet-${ricochetCount}` : 'primary';
-    
-    // Логируем сегмент
-    aimingLogger.addSegment(
-      segmentIndex,
-      segmentType,
-      currentPosition.x, currentPosition.y,
-      segment.end.x, segment.end.y,
-      ricochetCount
-    );
-    
-    // Проверяем столкновения для этого сегмента
-    const allCollisions = this.rayCaster.checkSegmentCollisions(segment);
-    
-    // Исключаем последнюю стену для предотвращения немедленных циклов
-    const collisions = allCollisions.filter(collision => {
-      if (collision.type === 'wall' && lastWallId && collision.object.id === lastWallId) {
-        // Пропускаем последнюю стену, если расстояние очень мало
-        return collision.distance > 5; // Минимум 5 пикселей
-      }
-      return true;
-    });
-    
-    // Отрисовываем сегмент
-    this.rayRenderer.drawFireSegment(segment, segmentIndex);
-    
-    // Отправляем событие о сегменте выстрела
-    if (socketData) {
-      this.socketManager.broadcastShotSegment({
-        tokenId: socketData.tokenId,
-        segmentIndex: segmentIndex,
-        segment: {
-          start: segment.start || segment.origin,
-          end: segment.end,
-          isRicochet: segment.isRicochet || false,
-          bounceNumber: segment.bounceNumber || 0
-        },
-        ricochetCount: ricochetCount
-      });
-    }
-    
-    // Небольшая задержка для визуального эффекта
-    const delay = ricochetCount > 0 ? this.config.ricochetAnimationDelay : this.config.fireAnimationDelay;
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
-    // Обрабатываем столкновения
-    if (collisions.length > 0) {
-      totalHits.push(...collisions);
-      
-      // Логируем коллизии
-      collisions.forEach(collision => {
-        aimingLogger.addCollision(collision.type, collision.distance, collision.point);
-      });
-      
-      // Проверяем первое столкновение
-      const firstHit = collisions[0];
-      
-      // Проверяем, можно ли сделать рикошет
-      if (firstHit.type === 'wall' && this._canRicochet(firstHit, ricochetCount)) {
-        // Вычисляем отраженное направление
-        const reflectedDirection = this._calculateRicochetDirection(segment, firstHit);
-        
-        // Сдвигаем начальную точку рикошета на несколько пикселей в направлении отражения
-        const offsetDistance = 3; // Пиксели сдвига
-        const reflectedRadians = reflectedDirection * Math.PI / 180;
-        const ricochetStartPoint = {
-          x: firstHit.point.x + Math.cos(reflectedRadians) * offsetDistance,
-          y: firstHit.point.y + Math.sin(reflectedRadians) * offsetDistance
-        };
-        
-        aimingLogger.addRicochetAttempt(ricochetCount + 1, firstHit, reflectedDirection, ricochetStartPoint);
-        
-        return await this._fireRecursive({
-          currentPosition: ricochetStartPoint,
-          direction: reflectedDirection,
-          segmentIndex: segmentIndex + 1,
-          totalHits,
-          segments,
-          ricochetCount: ricochetCount + 1,
-          lastWallId: firstHit.object.id, // Запоминаем ID стены
-          socketData: socketData // Передаём дальше данные для socket
-        });
-      }
-      
-      // Останавливаемся при попадании в токен или непробиваемую стену
-      if (this._shouldStopFiring(firstHit)) {
-        return { totalHits, segments };
-      }
-    }
-    
-    // Продолжаем следующим сегментом в том же направлении
-    return await this._fireRecursive({
-      currentPosition: segment.end,
-      direction: direction,
-      segmentIndex: segmentIndex + 1,
-      totalHits,
-      segments,
-      ricochetCount,
-      lastWallId, // Передаём дальше
-      socketData: socketData // Передаём дальше данные для socket
-    });
-  }
-  
-  /**
-   * Определяем, следует ли остановить выстрел при данном столкновении
-   * @param {Object} collision - столкновение
-   * @returns {boolean} следует ли остановить
-   */
-  _shouldStopFiring(collision) {
-    switch (collision.type) {
-      case 'token':
-        return true; // Всегда останавливаемся на токенах
-      case 'wall':
-        return true; // Останавливаемся на стенах (если нет рикошета)
-      case 'tile':
-        return true; // Останавливаемся на тайлах
-      default:
-        return true;
-    }
-  }
-  
-  /**
-   * Проверяем, можно ли сделать рикошет от данного объекта
-   * @param {Object} collision - столкновение
-   * @param {number} currentRicochets - текущее количество рикошетов
-   * @returns {boolean} можно ли рикошет
-   */
-  _canRicochet(collision, currentRicochets) {
-    // Проверяем, включены ли рикошеты вообще
-    if (!this.config.allowRicochet) {
-      return false;
-    }
-    
-    // Проверяем лимит рикошетов (используем только конфигурацию)
-    const maxRicochets = this.config.maxRicochets;
-    if (currentRicochets >= maxRicochets) {
-      aimingLogger.addRicochetAttempt(currentRicochets + 1, null, null, null, 'Достигнут максимум рикошетов');
-      return false;
-    }
-    
-    // Рикошет возможен тольо от стен
-    if (collision.type !== 'wall') {
-      return false;
-    }
-    
-    // Можно добавить дополнительные проверки:
-    // - Тип стены (обычная/дверь)
-    // - Материал стены
-    // - Угол падения
-    
-    return true;
-  }
-  
-  /**
-   * Вычисляем направление рикошета
-   * @param {Object} segment - сегмент, который сталкивается со стеной
-   * @param {Object} wallCollision - столкновение со стеной
-   * @returns {number} новое направление в градусах
-   */
-  _calculateRicochetDirection(segment, wallCollision) {
-    const startPoint = segment.start || segment.origin;
-    const endPoint = segment.end;
-    const wall = wallCollision.wallRay;
-    
-    // Вектор направления луча
-    const rayVector = {
-      x: endPoint.x - startPoint.x,
-      y: endPoint.y - startPoint.y
-    };
-    const rayLength = Math.hypot(rayVector.x, rayVector.y);
-    const rayDir = {
-      x: rayVector.x / rayLength,
-      y: rayVector.y / rayLength
-    };
-    
-    // Вектор стены
-    const wallVector = {
-      x: wall.B.x - wall.A.x,
-      y: wall.B.y - wall.A.y
-    };
-    const wallLength = Math.hypot(wallVector.x, wallVector.y);
-    
-    // Нормаль к стене (перпендикуляр)
-    const wallNormal = {
-      x: -wallVector.y / wallLength,
-      y: wallVector.x / wallLength
-    };
-    
-    // Формула отражения: R = I - 2(I · N)N
-    const dot = 2 * (rayDir.x * wallNormal.x + rayDir.y * wallNormal.y);
-    const reflectedDir = {
-      x: rayDir.x - dot * wallNormal.x,
-      y: rayDir.y - dot * wallNormal.y
-    };
-    
-    // Преобразуем в угол в градусах
-    const reflectedAngle = Math.atan2(reflectedDir.y, reflectedDir.x) * (180 / Math.PI);
-    
-    return reflectedAngle;
-  }
   
   /**
    * Показать UI прицеливания
@@ -525,7 +213,7 @@ export class AimingSystem {
       <div class="aiming-instructions">
         <h3>Режим прицеливания</h3>
         <p>🎯 Поворачивайте мышь для наведения</p>
-        <p>🔫 ЛКМ - выстрелить</p>
+        <p>✅ ЛКМ - подтвердить прицел</p>
         <p>🚫 ПКМ или ESC - отменить</p>
       </div>
     `;
@@ -616,7 +304,11 @@ export class AimingSystem {
     
     if (event.button === 0) { // ЛКМ
       event.preventDefault();
-      this.fire();
+      // Возвращаем результат прицеливания через коллбэк
+      const aimResult = this.aim();
+      if (aimResult && this.onAimComplete) {
+        this.onAimComplete(aimResult);
+      }
     }
   }
   
@@ -630,110 +322,6 @@ export class AimingSystem {
     this.stopAiming();
   }
   
-  /**
-   * Обработка попаданий
-   */
-  _processHits(collisions) {
-    if (!collisions || collisions.length === 0) {
-      console.log('❌ No hits detected - miss!');
-      ChatMessage.create({
-        content: `${this.aimingToken.name} промахивается!`,
-        speaker: ChatMessage.getSpeaker({ token: this.aimingToken })
-      });
-      return;
-    }
-    
-    // Логируем детали каждого столкновения
-    // Детальные сведения по коллизиям перенесены в сводный отчёт логгера
-    
-    // Обрабатываем каждое столкновение в порядке расстояния
-    collisions.forEach((collision, index) => {
-      if (collision.type === 'token') {
-        this._processTokenHit(collision.object, index === 0, index + 1, collisions.length);
-      } else if (collision.type === 'wall') {
-        this._processWallHit(collision.object, index + 1, collisions.length);
-      } else if (collision.type === 'tile') {
-        this._processTileHit(collision.object, index + 1, collisions.length);
-      }
-    });
-    
-    // Итоговая сводка
-    // Сводка выводится в отчёте логгера
-  }
-  
-  /**
-   * Обработка попадания в токен
-   */
-  _processTokenHit(target, isPrimary = true, hitNumber = 1, totalHits = 1) {
-    const attacker = this.aimingToken;
-    
-    console.log(`🎯 Token Hit #${hitNumber}: ${attacker.name} -> ${target.name}`);
-    
-    // Определяем тип попадания
-    const hitType = isPrimary ? 'Первичное' : 'Пробивающее';
-    const hitMessage = totalHits > 1 ? 
-      `🎯 ${attacker.name} попадает в ${target.name}! (${hitType} попадание #${hitNumber} из ${totalHits})` :
-      `🎯 ${attacker.name} попадает в ${target.name}!`;
-    
-    // Создаем сообщение о попадании
-    ChatMessage.create({
-      content: hitMessage,
-      speaker: ChatMessage.getSpeaker({ token: attacker })
-    });
-  }
-  
-  /**
-   * Обработка попадания в стену
-   */
-  _processWallHit(wall, hitNumber = 1, totalHits = 1) {
-    const attacker = this.aimingToken;
-    
-    console.log(`💥 Wall Hit #${hitNumber}: ${attacker.name} -> Wall (${wall.id})`);
-    console.log(`   Wall type: ${wall.document.door ? 'Door' : 'Wall'}`);
-    console.log(`   Wall state: ${wall.document.ds ? 'Open' : 'Closed'}`);
-    
-    const wallType = wall.document.door ? 'дверь' : 'стену';
-    const hitMessage = totalHits > 1 ?
-      `💥 ${attacker.name} попадает в ${wallType}! (Попадание #${hitNumber} из ${totalHits})` :
-      `💥 ${attacker.name} попадает в ${wallType}!`;
-    
-    ChatMessage.create({
-      content: hitMessage,
-      speaker: ChatMessage.getSpeaker({ token: attacker })
-    });
-  }
-  
-  /**
-   * Обработка попадания в тайл
-   */
-  _processTileHit(tile, hitNumber = 1, totalHits = 1) {
-    const attacker = this.aimingToken;
-    
-    console.log(`🏠 Tile Hit #${hitNumber}: ${attacker.name} -> Tile (${tile.id})`);
-    
-    const hitMessage = totalHits > 1 ?
-      `🏠 ${attacker.name} попадает в объект! (Попадание #${hitNumber} из ${totalHits})` :
-      `🏠 ${attacker.name} попадает в объект!`;
-    
-    ChatMessage.create({
-      content: hitMessage,
-      speaker: ChatMessage.getSpeaker({ token: attacker })
-    });
-  }
-  
-  /**
-   * Получить иконку для типа столкновения
-   */
-  _getCollisionIcon(type) {
-    const icons = {
-      'token': '📺',  // токен
-      'wall': '🧯',   // стена
-      'tile': '🏠',   // тайл
-      'door': '🚪',   // дверь
-    };
-    
-    return icons[type] || '❓'; // знак вопроса для неизвестных типов
-  }
   
   /**
    * Уведомление о начале прицеливания
@@ -750,20 +338,11 @@ export class AimingSystem {
   }
   
   /**
-   * Регистрация настроек системы
+   * Регистрация настроек системы прицеливания
    */
   _registerSettings() {
     const MODULE_NS = 'spaceholder';
     const PREF = 'aimingsystem';
-    
-    game.settings.register(MODULE_NS, `${PREF}.maxRayDistance`, {
-      name: 'Максимальная дальность луча',
-      hint: 'Максимальное расстояние для лучей в пикселях',
-      scope: 'world',
-      config: false,
-      default: 2000,
-      type: Number,
-    });
     
     game.settings.register(MODULE_NS, `${PREF}.showAimingReticle`, {
       name: 'Показывать прицельную сетку',
@@ -783,16 +362,6 @@ export class AimingSystem {
       type: Number,
     });
     
-    game.settings.register(MODULE_NS, `${PREF}.maxRicochets`, {
-      name: 'Максимум рикошетов',
-      hint: 'Максимальное количество рикошетов от стен',
-      scope: 'world',
-      config: false,
-      default: 3,
-      type: Number
-    });
-    
-    // Механические параметры лучей
     game.settings.register(MODULE_NS, `${PREF}.previewRayLength`, {
       name: 'Длина луча предпросмотра',
       hint: 'Длина зеленого луча при прицеливании (пиксели)',
@@ -802,25 +371,6 @@ export class AimingSystem {
       type: Number
     });
     
-    game.settings.register(MODULE_NS, `${PREF}.fireSegmentLength`, {
-      name: 'Длина сегмента выстрела',
-      hint: 'Длина одного сегмента луча при выстреле (пиксели)',
-      scope: 'world',
-      config: false,
-      default: 100,
-      type: Number
-    });
-    
-    game.settings.register(MODULE_NS, `${PREF}.maxFireSegments`, {
-      name: 'Максимальное количество сегментов',
-      hint: 'Максимальное количество сегментов в одном выстреле',
-      scope: 'world',
-      config: false,
-      default: 50,
-      type: Number
-    });
-    
-    // Параметры производительности и анимации
     game.settings.register(MODULE_NS, `${PREF}.previewUpdateRate`, {
       name: 'Частота обновления предпросмотра',
       hint: 'Количество обновлений луча предпросмотра в секунду (FPS)',
@@ -832,38 +382,6 @@ export class AimingSystem {
         30: '30 FPS (экономия энергии)',
         60: '60 FPS (стандарт)',
         120: '120 FPS (высокая точность)'
-      }
-    });
-    
-    game.settings.register(MODULE_NS, `${PREF}.fireAnimationDelay`, {
-      name: 'Скорость анимации выстрела',
-      hint: 'Задержка между сегментами выстрела (миллисекунды)',
-      scope: 'world',
-      config: false,
-      default: 50,
-      type: Number,
-      choices: {
-        10: 'Очень быстро (10мс)',
-        25: 'Быстро (25мс)',
-        50: 'Нормально (50мс)',
-        100: 'Медленно (100мс)',
-        200: 'Очень медленно (200мс)'
-      }
-    });
-    
-    game.settings.register(MODULE_NS, `${PREF}.ricochetAnimationDelay`, {
-      name: 'Скорость анимации рикошетов',
-      hint: 'Задержка между сегментами рикошетов (миллисекунды)',
-      scope: 'world',
-      config: false,
-      default: 75,
-      type: Number,
-      choices: {
-        25: 'Очень быстро (25мс)',
-        50: 'Быстро (50мс)',
-        75: 'Нормально (75мс)',
-        100: 'Медленно (100мс)',
-        150: 'Очень медленно (150мс)'
       }
     });
   }

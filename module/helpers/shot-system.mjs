@@ -97,18 +97,24 @@ export class ShotSystem {
   async _executeTrajectory(segments, shotResult, context) {
     let { currentPosition, direction, shooterToken } = context;
     let segmentGlobalIndex = 0;
+    const payload = shotResult.payload;
+    const ignoreShooterSegments = payload.ignoreShooterSegments || 1;
     
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
+      
+      // Определяем, нужно ли игнорировать токен стрелка для данного сегмента
+      const shouldIgnoreShooter = (i < ignoreShooterSegments);
       
       // Создаем контекст для выполнения сегмента
       const shotContext = {
         rayCaster: this.rayCaster,
         currentPosition: currentPosition,
         direction: direction,
-        shooterToken: shooterToken,
+        shooterToken: shouldIgnoreShooter ? shooterToken : null, // Передаем shooterToken только если нужно игнорировать
         segmentIndex: i,
-        globalSegmentIndex: segmentGlobalIndex
+        globalSegmentIndex: segmentGlobalIndex,
+        shouldIgnoreShooter: shouldIgnoreShooter
       };
       
       try {

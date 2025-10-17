@@ -3,7 +3,14 @@
  * Добавляет пользовательские кнопки в панель Token Controls
  */
 
-import { AimingDialog } from './aiming-dialog.mjs';
+import { PayloadDialog } from './payload-dialog.mjs';
+import { AimingSystem } from './aiming-system.mjs';
+import { ShotSystem } from './shot-system.mjs';
+
+// Глобальные переменные для системы
+let aimingSystem = null;
+let shotSystem = null;
+let shotRayRenderer = null; // Независимый RayRenderer для ShotSystem
 
 /**
  * Регистрирует пользовательские кнопки в Token Controls
@@ -72,11 +79,11 @@ function addTestButton(tokenControls) {
     return;
   }
   
-  // Добавляем кнопку прицеливания
+  // Добавляем кнопку настройки payload
   tokenControls.tools['aiming-tool'] = {
     name: 'aiming-tool',
-    title: 'Настройка прицеливания',
-    icon: 'fas fa-bullseye',
+    title: 'Настройка траектории выстрела',
+    icon: 'fas fa-crosshairs',
     onChange: (isActive) => handleAimingToolChange(isActive),
     button: true,
     order: 10 // Порядок отображения
@@ -96,45 +103,267 @@ function addTestButton(tokenControls) {
 }
 
 /**
- * Обработчик изменения состояния кнопки прицеливания
+ * Обработчик изменения состояния кнопки настройки payload
  */
 function handleAimingToolChange(isActive) {
-  console.log('SpaceHolder | Aiming Tool changed! Active:', isActive);
+  console.log('SpaceHolder | Payload Tool changed! Active:', isActive);
   
   if (isActive) {
-    // Кнопка активирована - показываем диалог
-    showAimingDialog();
+    // Кнопка активирована - показываем диалог payload
+    showPayloadDialog();
   }
   // При деактивации ничего не делаем
 }
 
 /**
- * Показать диалог настройки прицеливания
+ * Показать диалог настройки payload
  */
-function showAimingDialog() {
+function showPayloadDialog() {
   // Проверяем, есть ли выбранные токены
   const controlled = canvas.tokens.controlled;
   
   if (controlled.length === 0) {
-    ui.notifications.warn('Выберите токен для настройки прицеливания');
-    // Деактивируем кнопку
+    ui.notifications.warn('Выберите токен для настройки траектории');
     deactivateAimingTool();
     return;
   }
   
   if (controlled.length > 1) {
-    ui.notifications.warn('Выберите только один токен для прицеливания');
+    ui.notifications.warn('Выберите только один токен для настройки траектории');
     deactivateAimingTool();
     return;
   }
   
   const token = controlled[0];
   
-  // Показываем диалог
-  AimingDialog.show(token).then(() => {
-    // После закрытия диалога деактивируем кнопку
+  // Показываем диалог настройки payload
+  PayloadDialog.show(token).then((result) => {
+    console.log('SpaceHolder | PayloadDialog result:', result);
+    deactivateAimingTool();
+    
+    if (result && result.action === 'fire') {
+      // Пользователь нажал "Начать прицеливание" - запускаем прицеливание
+      console.log('SpaceHolder | Starting aiming with payload:', result.payload);
+      startAimingWithPayload(token, result.payload).catch((error) => {
+        console.error('SpaceHolder | Error in startAimingWithPayload:', error);
+      });
+    } else if (result && result.cancelled) {
+      console.log('SpaceHolder | PayloadDialog was cancelled');
+    } else {
+      console.log('SpaceHolder | Unexpected PayloadDialog result:', result);
+    }
+  }).catch((error) => {
+    console.error('SpaceHolder | Error showing payload dialog:', error);
     deactivateAimingTool();
   });
+}
+
+/**
+ * Запустить прицеливание с настроенным payload
+ * @param {Token} token - Токен для стрельбы
+ * @param {Object} payload - Настроенный payload
+ */
+async function startAimingWithPayload(token, payload) {
+  console.log('SpaceHolder | Starting aiming with payload:', payload);
+  console.log('SpaceHolder | Token:', token);
+  
+  // Инициализируем системы, если нужно
+  try {
+    if (!aimingSystem) {
+      console.log('SpaceHolder | Creating new AimingSystem');
+      aimingSystem = new AimingSystem(onAimComplete);
+      aimingSystem.initialize();
+      console.log('SpaceHolder | AimingSystem created and initialized');
+    }
+    
+    if (!shotSystem) {
+      console.log('SpaceHolder | Creating new ShotSystem');
+      // ShotSystem нужен RayCaster - берём его из AimingSystem
+      shotSystem = new ShotSystem(aimingSystem.rayCaster);
+      console.log('SpaceHolder | ShotSystem created with RayCaster');
+    }
+    
+    // Инициализируем независимый RayRenderer для ShotSystem
+    if (!shotRayRenderer) {
+      console.log('SpaceHolder | Creating independent RayRenderer for ShotSystem');
+      const { RayRenderer } = await import('./ray-renderer.mjs');
+      shotRayRenderer = RayRenderer.createIndependent();
+      console.log('SpaceHolder | Independent RayRenderer created');
+    }
+    
+    // Сохраняем payload для использования при выстреле
+    aimingSystem.currentPayload = payload;
+    console.log('SpaceHolder | Payload saved to aimingSystem');
+    
+    // Запускаем прицеливание
+    console.log('SpaceHolder | Starting aiming...');
+    const aimingResult = aimingSystem.startAiming(token);
+    console.log('SpaceHolder | Aiming start result:', aimingResult);
+    
+    ui.notifications.info(`Запущено прицеливание с payload "${payload.name}"`);
+  } catch (error) {
+    console.error('SpaceHolder | Error starting aiming:', error);
+    ui.notifications.error('Ошибка запуска прицеливания: ' + error.message);
+  }
+}
+
+/**
+ * Коллбэк для обработки завершения прицеливания
+ * @param {Object} aimResult - Результат прицеливания
+ */
+function onAimComplete(aimResult) {
+  console.log('SpaceHolder | Aim completed:', aimResult);
+  
+  if (!aimResult || !shotSystem) {
+    console.warn('SpaceHolder | No aim result or shot system not available');
+    return;
+  }
+  
+  // Получаем payload из aiming system
+  const payload = aimingSystem.currentPayload;
+  if (!payload) {
+    console.warn('SpaceHolder | No payload configured');
+    ui.notifications.warn('Нет настроенного payload');
+    return;
+  }
+  
+  // Выполняем выстрел
+  performShot(aimResult, payload);
+}
+
+/**
+ * Выполнить выстрел
+ * @param {Object} aimResult - Результат прицеливания
+ * @param {Object} payload - Payload для выстрела
+ */
+async function performShot(aimResult, payload) {
+  console.log('SpaceHolder | Performing shot with:', { aimResult, payload });
+  
+  try {
+    // Выполняем выстрел через ShotSystem
+    console.log('SpaceHolder | Calling shotSystem.fire...');
+    const shotResult = await shotSystem.fire(
+      aimResult.source,
+      aimResult.direction, 
+      payload,
+      aimResult.token
+    );
+    
+    console.log('SpaceHolder | Shot completed:', shotResult);
+    console.log('SpaceHolder | Shot segments:', shotResult.segments?.length || 0);
+    console.log('SpaceHolder | Shot hits:', shotResult.hits?.length || 0);
+    
+    // Проверяем, есть ли попадания
+    if (shotResult.hits && shotResult.hits.length > 0) {
+      console.log('SpaceHolder | Processing hits:', shotResult.hits);
+      // TODO: обработка попаданий
+      ui.notifications.info(`Попадание! ${shotResult.hits.length} целей`);
+    } else {
+      console.log('SpaceHolder | No hits - miss!');
+      ui.notifications.info('Промах!');
+    }
+    
+    // Пробуем отрисовать результат
+    if (shotResult.segments && shotResult.segments.length > 0) {
+      console.log('SpaceHolder | Attempting to render shot...');
+      await renderShotResult(shotResult);
+    }
+    
+    ui.notifications.info(`Выстрел завершён! ${shotResult.segments?.length || 0} сегментов`);
+  } catch (error) {
+    console.error('SpaceHolder | Error performing shot:', error);
+    ui.notifications.error(`Ошибка при выстреле: ${error.message}`);
+  }
+}
+
+/**
+ * Отрисовать результат выстрела
+ * @param {Object} shotResult - результат выстрела из ShotSystem
+ */
+async function renderShotResult(shotResult) {
+  try {
+    console.log('SpaceHolder | Rendering shot result:', shotResult);
+    
+    // Приоритет - сначала пробуем независимый shotRayRenderer
+    if (shotRayRenderer) {
+      console.log('SpaceHolder | Using independent shotRayRenderer');
+      
+      // Очищаем предыдущие линии
+      shotRayRenderer.clearRay();
+      
+      // Отрисовываем каждый сегмент
+      shotResult.segments.forEach((segment, index) => {
+        console.log(`SpaceHolder | Drawing segment ${index}:`, segment);
+        
+        // Используем ray из сегмента, который создал ShotSystem
+        const segmentToRender = {
+          ...segment.ray, // Основные данные луча
+          start: segment.ray.origin || segment.ray.start,
+          end: segment.ray.end,
+          damage: segment.damage,
+          effects: segment.effects,
+          type: segment.type
+        };
+        
+        try {
+          shotRayRenderer.drawFireSegment(segmentToRender, index);
+        } catch (segmentError) {
+          console.warn(`SpaceHolder | Error drawing segment ${index}:`, segmentError);
+        }
+      });
+      
+      console.log('SpaceHolder | Shot rendering completed with shotRayRenderer');
+      
+    } else if (aimingSystem && aimingSystem.rayRenderer) {
+      console.log('SpaceHolder | Fallback to AimingSystem rayRenderer');
+      
+      // Очищаем предыдущие линии
+      aimingSystem.rayRenderer.clearRay();
+      
+      // Отрисовываем каждый сегмент
+      shotResult.segments.forEach((segment, index) => {
+        console.log(`SpaceHolder | Drawing segment ${index}:`, segment);
+        
+        const segmentToRender = {
+          ...segment.ray,
+          start: segment.ray.origin || segment.ray.start,
+          end: segment.ray.end,
+          damage: segment.damage,
+          effects: segment.effects,
+          type: segment.type
+        };
+        
+        try {
+          aimingSystem.rayRenderer.drawFireSegment(segmentToRender, index);
+        } catch (segmentError) {
+          console.warn(`SpaceHolder | Error drawing segment ${index}:`, segmentError);
+        }
+      });
+      
+      console.log('SpaceHolder | Shot rendering completed with aimingSystem.rayRenderer');
+    } else {
+      console.warn('SpaceHolder | No rayRenderer available');
+      
+      // Пробуем использовать ShotHistoryManager
+      const { ShotHistoryManager } = await import('./shot-history-manager.mjs');
+      let shotHistoryManager = window.globalShotHistoryManager;
+      
+      if (!shotHistoryManager) {
+        console.log('SpaceHolder | Creating new ShotHistoryManager');
+        shotHistoryManager = new ShotHistoryManager(null); // без renderer пока
+        window.globalShotHistoryManager = shotHistoryManager;
+      }
+      
+      shotHistoryManager.addShot(shotResult, {
+        isRemote: false,
+        animate: true,
+        autoFade: false
+      });
+    }
+    
+  } catch (error) {
+    console.error('SpaceHolder | Error rendering shot:', error);
+  }
 }
 
 /**
