@@ -119,5 +119,57 @@
 - Версии: `system.json` и `package.json` различаются — это нормально (см. выше).
 - `lib/some-lib` не подключён в манифесте/esmodules/styles; если планируется использование — потребуется добавить.
 
+## Система выстрелов (2025-10-17)
+
+### Архитектура
+Последовательные компоненты: `ShotSystem -> ShotHistoryManager -> ShotChatManager`
+
+- **ShotSystem** (`module/helpers/shot-system.mjs`):
+  - Обработка и выполнение выстрелов через `fire(origin, direction, payload, token)`
+  - Обработка траекторий, коллизий, рикошетов
+  - Возвращает `shotResult` с полными данными выстрела
+
+- **ShotHistoryManager** (`module/helpers/shot-history-manager.mjs`):
+  - Визуализация и управление историей выстрелов на сцене
+  - PIXI.js отрисовка, анимации, автоочистка
+  - Различные стили для локальных/удалённых выстрелов, рикошетов
+
+- **ShotChatManager** (`module/helpers/shot-chat-manager.mjs`):
+  - Интеграция с чатом FoundryVTT и синхронизация между игроками
+  - Сохранение `shotResult` в `ChatMessage.flags.spaceholder`
+  - Кнопки воспроизведения и закрепления в сообщениях чата
+  - Socket синхронизация: `shot-replay`, `shot-pin-toggle`
+
+### Система сегментов
+- **TrajectorySegment** (`module/helpers/trajectory-segment.mjs`):
+  - Полиморфные классы: `LineSegment`, `LineRecSegment`
+  - Обработка коллизий, эффектов, рикошетов
+  - `TrajectorySegmentFactory` для создания сегментов
+
+- **PayloadFactory** (`module/helpers/payload-factory.mjs`):
+  - Preset конфигурации (rifle, pistol, shotgun, и т.д.)
+  - Кастомные траектории и системы разделения снарядов
+
+### Оптимизация и очистка (2025-10-17)
+- **Удалена старая socket система**:
+  - `AimingSocketManager` - заменена на простую систему в ShotChatManager
+  - `SocketLogger` - больше не требуется сложное логирование
+  - Множественные socket события - заменены на единый поток
+- **Оставлена совместимость**: `RayRenderer.drawFireSegment()` для старых компонентов
+
+### API для разработчиков
+```javascript
+// Глобальные объекты
+window.shotSystem        // ShotSystem instance  
+window.shotHistoryManager // ShotHistoryManager instance
+window.shotChatManager   // ShotChatManager instance
+
+// Тестовые функции
+testShotReplay()     // Воспроизвести последний выстрел
+testSplitShot()      // Тест разделяющихся снарядов  
+testWeaponTypes()    // Тест разных типов оружия
+showStats()          // Показать статистику системы
+```
+
 ---
 Авторы системы (по `system.json`): Asacolips, Lee Talman.

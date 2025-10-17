@@ -18,7 +18,6 @@ import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } 
 import { injectAimingStyles } from './helpers/ray-renderer.mjs';
 import './helpers/test-aiming-system.mjs'; // Для отладки
 import './helpers/aiming-demo-macros.mjs'; // Демо макросы
-import './helpers/aiming-socket-manager.mjs'; // Socket менеджер для мультиплеерной синхронизации
 // Новые компоненты
 import './helpers/trajectory-segment.mjs'; // Полиморфные сегменты траектории
 import './helpers/shot-system.mjs'; // Новая система выстрелов
