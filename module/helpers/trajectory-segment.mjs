@@ -99,9 +99,7 @@ export class LineSegment extends TrajectorySegment {
     
     // Проверяем коллизии (исключаем токен стрелка только если он передан)
     const collisionOptions = shooterToken ? { excludeToken: shooterToken } : {};
-    console.log(`LineSegment DEBUG: Ray length=${this.length}, start=${JSON.stringify(currentPosition)}, end=${JSON.stringify(ray.end)}, excludeToken=${shooterToken?.name || 'none'}`);
     const validCollisions = rayCaster.checkSegmentCollisions(ray, collisionOptions);
-    console.log(`LineSegment DEBUG: Found ${validCollisions.length} collisions:`, validCollisions.map(c => ({ type: c.type, distance: c.distance, object: c.object?.name || c.object?.id })));
     
     // Применяем эффекты в зависимости от результата
     if (validCollisions.length > 0) {

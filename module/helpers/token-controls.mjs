@@ -6,11 +6,53 @@
 import { PayloadDialog } from './payload-dialog.mjs';
 import { AimingSystem } from './aiming-system.mjs';
 import { ShotSystem } from './shot-system.mjs';
+import { ShotChatManager } from './shot-chat-manager.mjs';
 
 // Глобальные переменные для системы
 let aimingSystem = null;
 let shotSystem = null;
 let shotRayRenderer = null; // Независимый RayRenderer для ShotSystem
+let shotChatManager = null; // Менеджер интеграции с чатом
+
+// Глобальная функция для тестирования через консоль
+window.testShotReplay = function() {
+  console.log('=== Testing Shot Replay ===');
+  
+  if (!shotChatManager) {
+    console.error('shotChatManager not available');
+    return;
+  }
+  
+  // Получаем последнее сообщение в чате
+  const messages = game.messages.contents;
+  const lastMessage = messages[messages.length - 1];
+  
+  if (!lastMessage) {
+    console.error('No messages found');
+    return;
+  }
+  
+  console.log('Testing with message:', lastMessage.id);
+  console.log('Message flags:', lastMessage.flags);
+  
+  // Проверяем, является ли это нашим сообщением
+  if (shotChatManager.isShotMessage(lastMessage)) {
+    console.log('Message is a shot message, attempting replay...');
+    shotChatManager.replayShotFromChat(lastMessage.id);
+  } else {
+    console.log('Message is not a shot message');
+    
+    // Попробуем найти последнее сообщение с выстрелом
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (shotChatManager.isShotMessage(messages[i])) {
+        console.log('Found shot message:', messages[i].id);
+        shotChatManager.replayShotFromChat(messages[i].id);
+        return;
+      }
+    }
+    console.log('No shot messages found in chat');
+  }
+};
 
 /**
  * Регистрирует пользовательские кнопки в Token Controls
@@ -20,9 +62,38 @@ export function registerTokenControlButtons() {
 }
 
 /**
- * Устанавливает хуки для Token Controls
+ * Инициализация ShotChatManager
  */
+async function initializeShotChatManager() {
+  if (shotChatManager) return; // Уже инициализирован
+  
+  try {
+    console.log('SpaceHolder | Initializing global ShotChatManager');
+    shotChatManager = new ShotChatManager();
+    
+    // Создаем независимые компоненты
+    const { RayRenderer } = await import('./ray-renderer.mjs');
+    const { ShotHistoryManager } = await import('./shot-history-manager.mjs');
+    
+    const independentRayRenderer = RayRenderer.createIndependent();
+    const shotHistoryManager = new ShotHistoryManager(independentRayRenderer);
+    
+    shotChatManager.initialize(shotHistoryManager);
+    console.log('SpaceHolder | Global ShotChatManager initialized');
+    
+    // Делаем доступным глобально для отладки
+    window.shotChatManager = shotChatManager;
+  } catch (error) {
+    console.error('SpaceHolder | Error initializing ShotChatManager:', error);
+  }
+}
+
 export function installTokenControlsHooks() {
+  // Инициализируем ShotChatManager при готовности холста
+  Hooks.once('canvasReady', () => {
+    initializeShotChatManager();
+  });
+  
   // Хук для добавления пользовательских кнопок в Token Controls
   Hooks.on('getSceneControlButtons', (controls) => {
     try {
@@ -191,6 +262,12 @@ async function startAimingWithPayload(token, payload) {
       console.log('SpaceHolder | Independent RayRenderer created');
     }
     
+    // ShotChatManager уже должен быть инициализирован глобально
+    if (!shotChatManager) {
+      console.warn('SpaceHolder | ShotChatManager not initialized globally, trying to initialize...');
+      await initializeShotChatManager();
+    }
+    
     // Сохраняем payload для использования при выстреле
     aimingSystem.currentPayload = payload;
     console.log('SpaceHolder | Payload saved to aimingSystem');
@@ -267,6 +344,19 @@ async function performShot(aimResult, payload) {
     if (shotResult.segments && shotResult.segments.length > 0) {
       console.log('SpaceHolder | Attempting to render shot...');
       await renderShotResult(shotResult);
+    }
+    
+    // Сохраняем выстрел в чат
+    if (shotChatManager && shotResult.completed) {
+      try {
+        await shotChatManager.saveShotToChat(shotResult, {
+          speakerToken: aimResult.token
+        });
+        console.log('SpaceHolder | Shot saved to chat successfully');
+      } catch (error) {
+        console.error('SpaceHolder | Error saving shot to chat:', error);
+        // Не прерываем выполнение из-за ошибки чата
+      }
     }
     
     ui.notifications.info(`Выстрел завершён! ${shotResult.segments?.length || 0} сегментов`);
