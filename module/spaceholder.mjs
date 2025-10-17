@@ -19,6 +19,11 @@ import { injectAimingStyles } from './helpers/ray-renderer.mjs';
 import './helpers/test-aiming-system.mjs'; // Для отладки
 import './helpers/aiming-demo-macros.mjs'; // Демо макросы
 import './helpers/aiming-socket-manager.mjs'; // Socket менеджер для мультиплеерной синхронизации
+// Новые компоненты
+import './helpers/trajectory-segment.mjs'; // Полиморфные сегменты траектории
+import './helpers/shot-system.mjs'; // Новая система выстрелов
+import './helpers/payload-factory.mjs'; // Фабрика для создания payload
+import './helpers/shot-history-manager.mjs'; // Менеджер истории выстрелов
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
 
@@ -180,6 +185,17 @@ Hooks.once('ready', async function () {
   } catch (error) {
     console.error('SpaceHolder | Failed to initialize aiming system:', error);
     ui.notifications.error('Failed to initialize aiming system. Check console for details.');
+  }
+  
+  // Load test script for new shot system (development only)
+  try {
+    const testScript = document.createElement('script');
+    testScript.src = 'systems/spaceholder/test-new-shot-system.js';
+    testScript.async = true;
+    document.head.appendChild(testScript);
+    console.log('SpaceHolder | New Shot System Test script loaded');
+  } catch (error) {
+    console.warn('SpaceHolder | Failed to load test script:', error);
   }
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
