@@ -26,13 +26,13 @@
   gap: 12px;
 }
 
-.aiming-dialog-form .form-group {
+.aiming-dialog-form .dialog-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.aiming-dialog-form .form-group h3 {
+.aiming-dialog-form .dialog-row h3 {
   margin: 0 0 8px 0;
   color: var(--color-text-primary);
   font-size: 1.2rem;
@@ -41,11 +41,11 @@
   gap: 8px;
 }
 
-.aiming-dialog-form .form-group h3 i {
+.aiming-dialog-form .dialog-row h3 i {
   color: var(--color-text-highlight);
 }
 
-.aiming-dialog-form .form-group label {
+.aiming-dialog-form .dialog-row label {
   font-weight: bold;
   color: var(--color-text-primary);
   display: flex;
@@ -54,7 +54,7 @@
   cursor: pointer;
 }
 
-.aiming-dialog-form .form-group label i {
+.aiming-dialog-form .dialog-row label i {
   color: var(--color-text-highlight);
   width: 16px;
 }
@@ -113,7 +113,7 @@
   cursor: pointer;
 }
 
-.aiming-dialog-form .form-group.disabled {
+.aiming-dialog-form .dialog-row.disabled {
   opacity: 0.5;
   pointer-events: none;
 }
@@ -252,6 +252,166 @@
   background: var(--color-bg-btn-secondary-hover);
 }
 
+/* Стили для payload диалога - сегменты */
+.dialog-row.trajectory-row {
+  flex-direction: column !important;
+}
+
+.dialog-row.trajectory-row .inventory-list {
+  display: flex;
+  flex-direction: column !important;
+  gap: 4px;
+}
+
+.dialog-row.trajectory-row .segment-row {
+  display: flex !important;
+  flex-direction: row !important;
+  padding: 8px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.dialog-row.trajectory-row .segment-row:hover {
+  background: var(--color-bg-option);
+  border-color: var(--color-border-highlight);
+}
+
+.dialog-row.trajectory-row .segment-content {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.dialog-row.trajectory-row .segment-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.dialog-row.trajectory-row .segment-controls {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dialog-row.trajectory-row .segment-controls input,
+.dialog-row.trajectory-row .segment-controls select {
+  min-width: 60px;
+  padding: 4px 6px;
+  font-size: 12px;
+  height: 28px;
+}
+
+.dialog-row.trajectory-row .segment-controls button {
+  padding: 4px 8px;
+  background: var(--color-bg-btn);
+  border: 1px solid var(--color-border-light);
+  border-radius: 3px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  height: 28px;
+  min-width: 28px;
+}
+
+.dialog-row.trajectory-row .segment-controls button:hover {
+  background: var(--color-bg-btn-hover);
+  border-color: var(--color-border-highlight);
+}
+
+.dialog-row.trajectory-row .segment-controls .btn-remove {
+  background: #dc3545;
+  border-color: #c82333;
+  color: white;
+}
+
+.dialog-row.trajectory-row .segment-controls .btn-remove:hover {
+  background: #c82333;
+  border-color: #bd2130;
+}
+
+/* Стили для элементов внутри segment-content */
+.dialog-row.trajectory-row .segment-content .segment-label {
+  font-weight: bold;
+  color: var(--color-text-primary);
+  min-width: 30px;
+}
+
+.dialog-row.trajectory-row .segment-content .seg-type,
+.dialog-row.trajectory-row .segment-content .seg-distance,
+.dialog-row.trajectory-row .segment-content .seg-iter,
+.dialog-row.trajectory-row .segment-content .seg-ric-count {
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.dialog-row.trajectory-row .segment-content .seg-type {
+  min-width: 100px;
+  max-width: 140px;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.dialog-row.trajectory-row .segment-content .seg-distance,
+.dialog-row.trajectory-row .segment-content .seg-iter,
+.dialog-row.trajectory-row .segment-content .seg-ric-count {
+  width: 60px;
+}
+
+.dialog-row.trajectory-row .segment-content .seg-type:focus,
+.dialog-row.trajectory-row .segment-content .seg-distance:focus,
+.dialog-row.trajectory-row .segment-content .seg-iter:focus,
+.dialog-row.trajectory-row .segment-content .seg-ric-count:focus {
+  outline: none;
+  border-color: var(--color-border-highlight);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.1);
+}
+
+.dialog-row.trajectory-row .segment-content .seg-ricochet {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.dialog-row.trajectory-row .segment-content .segment-slash,
+.dialog-row.trajectory-row .segment-content .segment-unit {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.dialog-row.trajectory-row .btn-remove {
+  align-self: flex-start;
+  margin-top: 0;
+}
+
+/* Стили для предустановок */
+.dialog-row.preset-row select {
+  width: 100%;
+  max-width: none;
+}
+
+/* Стили для информационного блока */
+.dialog-row.info-row .payload-summary {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
 /* Адаптивность для мобильных устройств */
 @media (max-width: 500px) {
   .spaceholder.aiming-dialog {
@@ -266,5 +426,14 @@
   
   .spaceholder.aiming-dialog .dialog-buttons {
     flex-direction: column;
+  }
+  
+  .dialog-row.trajectory-row .segment-controls {
+    flex-wrap: wrap;
+  }
+  
+  .dialog-row.trajectory-row .segment-controls input,
+  .dialog-row.trajectory-row .segment-controls select {
+    min-width: 50px;
   }
 }

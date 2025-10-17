@@ -93,12 +93,12 @@ export class PayloadDialog {
     
     return `
       <form class="payload-dialog-form">
-        <div class="form-group header-group">
+        <div class="dialog-row header-row">
           <h3><i class="fas fa-crosshairs"></i> Настройка траектории выстрела</h3>
           <p><strong>Токен:</strong> ${tokenName}</p>
         </div>
 
-        <div class="form-group preset-group">
+        <div class="dialog-row preset-row">
           <label for="weaponPreset">
             <i class="fas fa-list"></i> Предустановки оружия:
           </label>
@@ -113,7 +113,7 @@ export class PayloadDialog {
           </select>
         </div>
 
-        <div class="form-group trajectory-group">
+        <div class="dialog-row trajectory-row">
           <div class="rimworld-header">
             <i class="fas fa-route"></i>
             Сегменты траектории
@@ -131,7 +131,7 @@ export class PayloadDialog {
           </div>
         </div>
 
-        <div class="form-group info-group">
+        <div class="dialog-row info-row">
           <div id="payload-info" class="payload-summary">
             ${this._generatePayloadInfo(payload)}
           </div>
