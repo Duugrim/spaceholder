@@ -38,7 +38,7 @@ export class RayRenderer {
   _createContainers() {
     if (!canvas?.stage) return;
     
-    // Основной контейнер для системы прицеливания
+    // Основной контейнер для системы прицеливания (UI элементы поверх всего)
     if (!this.aimingContainer || this.aimingContainer.destroyed) {
       this.aimingContainer = new PIXI.Container();
       this.aimingContainer.name = 'aimingSystem';
@@ -46,10 +46,11 @@ export class RayRenderer {
       canvas.stage.addChild(this.aimingContainer);
     }
     
-    // Контейнер для лучей
+    // Контейнер для лучей - оставляем в aimingContainer для renderAboveFog
     if (!this.rayContainer || this.rayContainer.destroyed) {
       this.rayContainer = new PIXI.Container();
       this.rayContainer.name = 'rayContainer';
+      this.rayContainer.zIndex = 100;
       this.aimingContainer.addChild(this.rayContainer);
     }
     
@@ -1018,6 +1019,11 @@ export class RayRenderer {
     
     // Окончательно очищаем мишени
     this._hideTargetCircles();
+    
+    // Очищаем rayContainer - может быть в canvas.effects или aimingContainer
+    if (this.rayContainer && !this.rayContainer.destroyed) {
+      this.rayContainer.destroy();
+    }
     
     if (this.aimingContainer && !this.aimingContainer.destroyed) {
       this.aimingContainer.destroy();

@@ -147,7 +147,8 @@ export class ShotChatManager {
         animate: animate,
         autoFade: autoFade,
         fadeDelay: fadeDelay,
-        color: color || (isReplay ? 0x888888 : null) // Используем указанный цвет или серый по умолчанию
+        color: color || (isReplay ? 0x888888 : null), // Используем указанный цвет или серый по умолчанию
+        renderAboveFog: false // По умолчанию под туманом войны
       };
       
       // Если указан ID, используем его для сохранения в истории
@@ -567,7 +568,8 @@ export class ShotChatManager {
             fadeDelay: 0, // Не удалять автоматически
             autoFade: false,
             color: 0xAAAAAA, // Более тусклый цвет для закреплённых
-            id: shotId // Используем shotId для идентификации
+            id: shotId, // Используем shotId для идентификации
+            renderAboveFog: false // Закреплённые выстрелы тоже под туманом
           });
         }
         
@@ -581,7 +583,8 @@ export class ShotChatManager {
             fadeDelay: 0,
             autoFade: false,
             color: 0xAAAAAA,
-            id: shotId
+            id: shotId,
+            renderAboveFog: false
           } : null,
           userId: game.userId
         });

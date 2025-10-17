@@ -27,6 +27,7 @@ export class ShotHistoryManager {
    * Добавить выстрел в историю и визуализировать его
    * @param {Object} shotResult - результат выстрела из ShotSystem
    * @param {Object} options - опции визуализации
+   * @param {boolean} options.renderAboveFog - рендерить поверх тумана войны (по умолчанию false)
    */
   addShot(shotResult, options = {}) {
     const { 
@@ -34,7 +35,8 @@ export class ShotHistoryManager {
       animate = true,
       color = null,
       autoFade = true,
-      fadeDelay = 10000 // 10 секунд до начала затухания
+      fadeDelay = 10000, // 10 секунд до начала затухания
+      renderAboveFog = false // По умолчанию рендерим под туманом войны
     } = options;
     
     const shotId = shotResult.id;
@@ -53,9 +55,23 @@ export class ShotHistoryManager {
       timestamp: Date.now()
     };
     
-    // Настраиваем контейнер
+    // Настраиваем контейнер и выбираем слой
     shotGraphics.container.name = `shot_${shotId}`;
-    this.rayRenderer.rayContainer.addChild(shotGraphics.container);
+    shotGraphics.renderAboveFog = renderAboveFog;
+    
+    // Выбираем контейнер в зависимости от renderAboveFog
+    if (renderAboveFog) {
+      // Поверх тумана войны - используем основной rayContainer
+      this.rayRenderer.rayContainer.addChild(shotGraphics.container);
+    } else {
+      // Под туманом войны - напрямую в слой эффектов
+      if (canvas.effects) {
+        canvas.effects.addChild(shotGraphics.container);
+      } else {
+        // Fallback - используем rayContainer
+        this.rayRenderer.rayContainer.addChild(shotGraphics.container);
+      }
+    }
     
     // Получаем все сегменты (включая дочерние выстрелы)
     const allSegments = ShotSystem.getAllRenderSegments ? 
