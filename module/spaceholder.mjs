@@ -16,8 +16,11 @@ import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
 // Aiming system integration
 import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/aiming-system.mjs';
 import { injectAimingStyles } from './helpers/ray-renderer.mjs';
+// Draw manager for shot visualization
+import { DrawManager } from './helpers/draw-manager.mjs';
 import './helpers/test-aiming-system.mjs'; // Для отладки
 import './helpers/aiming-demo-macros.mjs'; // Демо макросы
+import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
 import './helpers/aiming-socket-manager.mjs'; // Socket менеджер для мультиплеерной синхронизации
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
@@ -49,6 +52,9 @@ Hooks.once('init', function () {
   
   // Initialize Aiming System
   game.spaceholder.aimingSystem = new AimingSystem();
+  
+  // Initialize Draw Manager
+  game.spaceholder.drawManager = new DrawManager();
 
   // Install Token Pointer hooks
   installTokenPointerHooks();
@@ -180,6 +186,15 @@ Hooks.once('ready', async function () {
   } catch (error) {
     console.error('SpaceHolder | Failed to initialize aiming system:', error);
     ui.notifications.error('Failed to initialize aiming system. Check console for details.');
+  }
+  
+  // Initialize draw manager
+  try {
+    game.spaceholder.drawManager.initialize();
+    console.log('SpaceHolder | Draw manager initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize draw manager:', error);
+    ui.notifications.error('Failed to initialize draw manager. Check console for details.');
   }
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
