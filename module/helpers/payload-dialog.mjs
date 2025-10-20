@@ -25,10 +25,10 @@ export class PayloadDialog {
       return { cancelled: true };
     }
     
-    // Устанавливаем payload по умолчанию (пистолет)
-    const defaultPayload = initialPayload || PayloadFactory.createPistol();
+    // Устанавливаем payload по умолчанию (прямая линия)
+    const defaultPayload = initialPayload || await PayloadFactory.create('line_direct');
     
-    const content = this._generateContent(token, defaultPayload);
+    const content = await this._generateContent(token, defaultPayload);
     
     try {
       const result = await foundry.applications.api.DialogV2.wait({
@@ -88,12 +88,12 @@ export class PayloadDialog {
    * Генерация HTML содержимого диалога
    * @param {Token} token - токен
    * @param {Object} payload - текущий payload
-   * @returns {string} HTML содержимое
+   * @returns {Promise<string>} HTML содержимое
    * @private
    */
-  static _generateContent(token, payload) {
+  static async _generateContent(token, payload) {
     const tokenName = token?.document?.name || token?.name || 'Неизвестный токен';
-    const weaponTypes = PayloadFactory.getAvailableWeaponTypes();
+    const trajectories = PayloadFactory.getAvailableTrajectories();
     
     return `
       <form class="payload-dialog-form">
@@ -103,37 +103,18 @@ export class PayloadDialog {
         </div>
 
         <div class="dialog-row preset-row">
-          <label for="weaponPreset">
-            <i class="fas fa-list"></i> Предустановки оружия:
+          <label for="trajectoryPreset">
+            <i class="fas fa-list"></i> Пресеты траекторий:
           </label>
-          <select id="weaponPreset" name="weaponPreset">
-            <option value="">Выберите тип оружия...</option>
-            ${weaponTypes.map(type => {
-              const desc = PayloadFactory.getWeaponDescription(type);
-              const selected = payload.name === type ? 'selected' : '';
-              return `<option value="${type}" ${selected}>${desc.name} - ${desc.description}</option>`;
+          <select id="trajectoryPreset" name="trajectoryPreset">
+            <option value="">Выберите траектория...</option>
+            ${Object.entries(trajectories).map(([id, info]) => {
+              const selected = payload.id === id ? 'selected' : '';
+              return `<option value="${id}" ${selected}>${info.name} - ${info.description}</option>`;
             }).join('')}
-            <option value="custom">Собственная конфигурация</option>
           </select>
         </div>
 
-        <div class="dialog-row trajectory-row">
-          <div class="rimworld-header">
-            <i class="fas fa-route"></i>
-            Сегменты траектории
-          </div>
-          
-          <div class="inventory-controls">
-            <button type="button" id="add-segment" class="item-create-btn">
-              <i class="fas fa-plus"></i>
-              <span class="btn-text">Добавить сегмент</span>
-            </button>
-          </div>
-          
-          <div id="segments-container" class="inventory-list">
-            ${this._generateSegmentsHTML(payload.trajectory || [])}
-          </div>
-        </div>
 
         <div class="dialog-row info-row">
           <div id="payload-info" class="payload-summary">
@@ -146,19 +127,6 @@ export class PayloadDialog {
     `;
   }
   
-  /**
-   * Генерация HTML для сегментов траектории
-   * @param {Array} trajectory - массив сегментов
-   * @returns {string} HTML для сегментов
-   * @private
-   */
-  static _generateSegmentsHTML(trajectory) {
-    if (!trajectory || trajectory.length === 0) {
-      return '<div class="no-segments">Нет сегментов. Добавьте первый сегмент.</div>';
-    }
-    
-    return trajectory.map((segment, index) => this._generateSegmentHTML(segment, index)).join('');
-  }
   
   /**
    * Генерация HTML для одного сегмента в компактном стиле
@@ -317,50 +285,48 @@ export class PayloadDialog {
     const form = dialog.element.querySelector('form');
     if (!form) return;
     
-    // Переключение предустановок оружия
-    const weaponPreset = form.querySelector('#weaponPreset');
-    weaponPreset?.addEventListener('change', (e) => {
-      this._handleWeaponPresetChange(e, dialog);
-    });
-    
-    // Добавление сегмента
-    const addSegmentBtn = form.querySelector('#add-segment');
-    addSegmentBtn?.addEventListener('click', (e) => {
-      this._handleAddSegment(e, dialog);
-    });
-    
-    // Делегирование событий для динамических элементов
-    form.addEventListener('click', (e) => {
-      if (e.target.matches('.btn-remove') || e.target.closest('.btn-remove')) {
-        this._handleRemoveSegment(e, dialog);
-      }
-    });
-    
-    // Изменение полей сегментов
-    form.addEventListener('change', (e) => {
-      if (e.target.matches('.seg-type')) {
-        this._handleSegmentTypeChange(e, dialog);
-      } else if (e.target.matches('.seg-ricochet')) {
-        this._handleRicochetToggle(e, dialog);
-      }
-      // Обновляем статистику при любом изменении
-      this._updatePayloadInfo(dialog);
+    // Переключение пресетов траекторий
+    const trajectoryPreset = form.querySelector('#trajectoryPreset');
+    trajectoryPreset?.addEventListener('change', (e) => {
+      this._handleTrajectoryPresetChange(e, dialog);
     });
   }
   
+  
   /**
-   * Обработка смены предустановки оружия
+   * Обновление информации о payload
+   * @param {Object} dialog - объект диалога
+   * @param {Object} payload - payload для отображения
+   * @private
    */
-  static _handleWeaponPresetChange(event, dialog) {
-    const weaponType = event.target.value;
-    if (!weaponType || weaponType === 'custom') return;
+  static _updatePayloadInfo(dialog, payload) {
+    const payloadInfo = dialog.element.querySelector('#payload-info');
+    if (payloadInfo && payload) {
+      payloadInfo.innerHTML = this._generatePayloadInfo(payload);
+    }
+  }
+  
+  /**
+   * Обработка смены пресета траектории
+   */
+  static async _handleTrajectoryPresetChange(event, dialog) {
+    const trajectoryId = event.target.value;
+    if (!trajectoryId) return;
     
     try {
-      const newPayload = PayloadFactory.create(weaponType);
-      this._refreshDialog(dialog, newPayload);
+      const newPayload = await PayloadFactory.create(trajectoryId);
+      
+      // Сохраняем выбранную траекторию в диалоге
+      dialog._selectedPayload = newPayload;
+      
+      // Обновляем статистику
+      this._updatePayloadInfo(dialog, newPayload);
+      
+      console.log('SpaceHolder | Selected trajectory preset:', trajectoryId, newPayload);
+      
     } catch (error) {
-      console.error('Error loading weapon preset:', error);
-      ui.notifications.error('Ошибка загрузки предустановки: ' + error.message);
+      console.error('Error loading trajectory preset:', error);
+      ui.notifications.error('Ошибка загрузки пресета: ' + error.message);
     }
   }
   
@@ -389,95 +355,21 @@ export class PayloadDialog {
   }
   
   /**
-   * Извлечение payload из диалога
+   * Извлечение payload из диалога (выбранная траектория)
    * @param {Object} dialog - объект диалога
    * @returns {Object} payload
    * @private
    */
   static _extractPayloadFromDialog(dialog) {
-    // В DialogV2 структура может быть разной, попробуем несколько вариантов поиска
-    let form = null;
-    
-    if (dialog && dialog.element) {
-      // Попробуем найти форму через разные селекторы
-      form = dialog.element.querySelector('form') ||
-             dialog.element.querySelector('.payload-dialog-form') ||
-             dialog.element.querySelector('[class*="payload-dialog"]');
-      
-      // Если не нашли форму, но есть контейнер сегментов, используем его
-      if (!form) {
-        const container = dialog.element.querySelector('#segments-container');
-        if (container) {
-          form = container.closest('div') || container.parentElement;
-        }
-      }
+    // Возвращаем выбранную траекторию или по умолчанию
+    if (dialog._selectedPayload) {
+      console.log('SpaceHolder | Using selected payload:', dialog._selectedPayload);
+      return dialog._selectedPayload;
     }
     
-    // Если всё ещё нет формы, попробуем глобальный поиск
-    if (!form) {
-      form = document.querySelector('.payload-dialog-form') ||
-             document.querySelector('#segments-container')?.parentElement;
-    }
-    
-    if (!form) {
-      console.warn('Form not found, returning default payload');
-      console.log('Dialog element:', dialog?.element);
-      console.log('Available elements:', dialog?.element?.innerHTML?.substring(0, 200));
-      return this._getDefaultPayload();
-    }
-    
-    // Извлекаем базовую информацию
-    const payload = {
-      name: 'custom',
-      trajectory: [],
-      ignoreShooterSegments: 1 // По умолчанию первый сегмент игнорирует токен стрелка
-    };
-    
-    // Отладочная информация
-    console.log('Form found:', form);
-    console.log('Form HTML:', form?.outerHTML?.substring(0, 300));
-    
-    // Собираем сегменты
-    const segmentRows = form.querySelectorAll('.segment-row');
-    console.log('Found segment rows:', segmentRows.length);
-    
-    if (segmentRows.length === 0) {
-      // Если нет сегментов, создаем базовый
-      console.log('No segments found, using default');
-      payload.trajectory.push({
-        type: 'line',
-        length: 200
-      });
-      payload.ignoreShooterSegments = 1; // По умолчанию первый сегмент игнорирует токен стрелка
-      return payload;
-    }
-    
-    segmentRows.forEach((row, index) => {
-      // Извлекаем данные сегмента из полей формы
-      const segmentIndex = parseInt(row.dataset.segmentIndex) || index;
-      
-      const segment = {
-        type: row.querySelector('select[name*=".type"]')?.value || 'line',
-        length: parseInt(row.querySelector('input[name*=".length"]')?.value) || 100
-      };
-      
-      // Добавляем специфичные параметры
-      if (segment.type === 'lineRec') {
-        segment.maxIterations = parseInt(row.querySelector('input[name*=".maxIterations"]')?.value) || 20;
-      }
-      
-      // Рикошеты
-      const ricochetCheckbox = row.querySelector('input[name*=".allowRicochet"]');
-      if (ricochetCheckbox?.checked) {
-        segment.allowRicochet = true;
-        segment.maxRicochets = parseInt(row.querySelector('input[name*=".maxRicochets"]')?.value) || 1;
-      }
-      
-      console.log(`Adding segment ${index}:`, segment);
-      payload.trajectory.push(segment);
-    });
-    
-    return payload;
+    // Если ничего не выбрано, возвращаем по умолчанию
+    console.warn('SpaceHolder | No trajectory selected, using default');
+    return this._getDefaultPayload();
   }
   
   /**
@@ -502,7 +394,7 @@ export class PayloadDialog {
    * @param {Object} payload - новый payload
    * @private
    */
-  static _refreshDialog(dialog, payload) {
+  static async _refreshDialog(dialog, payload) {
     const segmentsContainer = dialog.element.querySelector('#segments-container');
     const payloadInfo = dialog.element.querySelector('#payload-info');
     
@@ -529,6 +421,21 @@ export class PayloadDialog {
       .payload-dialog-form {
         font-family: 'Roboto', sans-serif;
         font-size: 13px;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      
+      .dialog-row {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+      }
+      
+      .trajectory-row {
+        width: 100%;
+        box-sizing: border-box;
       }
       
       .form-group {
@@ -547,103 +454,17 @@ export class PayloadDialog {
         gap: 8px;
       }
       
-      .preset-group select {
+      .preset-row select {
         width: 100%;
+        max-width: 100%;
         padding: 5px;
         border: 1px solid #555;
         background: #222;
         color: white;
         border-radius: 3px;
+        box-sizing: border-box;
       }
       
-      /* Простая структура сегментов с инлайн-редактированием */
-      .segment-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: linear-gradient(135deg, #1a1a1a 0%, #262626 100%);
-        border: 1px solid #4a6e4a;
-        border-radius: 6px;
-        padding: 8px 12px;
-        margin-bottom: 4px;
-        font-size: 13px;
-        gap: 8px;
-      }
-      
-      .segment-row:hover {
-        background: linear-gradient(135deg, #202020 0%, #2c2c2c 100%);
-        border-color: #5a7e5a;
-      }
-      
-      .segment-content {
-        display: flex;
-        align-items: center;
-        flex: 1;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      
-      .segment-label {
-        color: #ff6400;
-        font-weight: bold;
-        min-width: 25px;
-      }
-      
-      .seg-type {
-        padding: 2px 6px;
-        border: 1px solid #555;
-        background: #222;
-        color: white;
-        border-radius: 3px;
-        font-size: 12px;
-        min-width: 80px;
-      }
-      
-      .segment-slash {
-        color: #aaa;
-        margin: 0 2px;
-      }
-      
-      .seg-distance, .seg-iter, .seg-ric-count {
-        width: 50px;
-        padding: 2px 4px;
-        border: 1px solid #555;
-        background: #222;
-        color: white;
-        border-radius: 3px;
-        font-size: 12px;
-        text-align: center;
-      }
-      
-      .segment-unit {
-        color: #aaa;
-        font-size: 11px;
-      }
-      
-      .seg-ricochet {
-        margin: 0 3px;
-      }
-      
-      .btn-remove {
-        background: transparent;
-        border: 1px solid #555;
-        color: #e0e0e0;
-        width: 28px;
-        height: 28px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      
-      .btn-remove:hover {
-        background: rgba(231, 76, 60, 0.2);
-        border-color: #e74c3c;
-        color: white;
-      }
       
       /* Кнопки создания */
       .payload-dialog-form .item-create-btn {
@@ -725,283 +546,5 @@ export class PayloadDialog {
       }
       </style>
     `;
-  }
-  
-  // Обработчики событий
-  static _handleAddSegment(e, dialog) { 
-    console.log('Add segment');
-    e.preventDefault();
-    
-    try {
-      const form = dialog.element.querySelector('form');
-      const container = form.querySelector('#segments-container');
-      const existingRows = container.querySelectorAll('.segment-row');
-      const newIndex = existingRows.length;
-      
-      // Создаем новый сегмент
-      const newSegment = { type: 'line', length: 100 };
-      const segmentHTML = this._generateSegmentHTML(newSegment, newIndex);
-      
-      // Удаляем сообщение "нет сегментов" если есть
-      const noSegments = container.querySelector('.no-segments');
-      if (noSegments) {
-        noSegments.remove();
-      }
-      
-      container.insertAdjacentHTML('beforeend', segmentHTML);
-      this._updatePayloadInfo(dialog);
-      
-    } catch (error) {
-      console.error('Error adding segment:', error);
-    }
-  }
-  
-  static _handleRemoveSegment(e, dialog) { 
-    console.log('Remove segment');
-    e.preventDefault();
-    
-    try {
-      const segmentRow = e.target.closest('.segment-row');
-      if (segmentRow) {
-        segmentRow.remove();
-        
-        // Если больше нет сегментов, показываем сообщение
-        const form = dialog.element.querySelector('form');
-        const container = form.querySelector('#segments-container');
-        const remainingRows = container.querySelectorAll('.segment-row');
-        
-        if (remainingRows.length === 0) {
-          container.innerHTML = '<div class="no-segments">Нет сегментов. Добавьте первый сегмент.</div>';
-        } else {
-          // Перенумеровываем оставшиеся сегменты
-          this._refreshAllSegments(dialog, remainingCards);
-        }
-        
-        this._updatePayloadInfo(dialog);
-      }
-    } catch (error) {
-      console.error('Error removing segment:', error);
-    }
-  }
-  
-  static _handleAddSplit(e, dialog) { 
-    console.log('Add split - TODO: implement');
-    ui.notifications.info('Функция разделения снарядов будет реализована позже');
-  }
-  
-  static _handleAddChild(e, dialog) { 
-    console.log('Add child - TODO: implement');
-  }
-  
-  static _handleRemoveChild(e, dialog) { 
-    console.log('Remove child - TODO: implement');
-  }
-  
-  
-  static _handleSegmentTypeChange(e, dialog) {
-    console.log('Segment type change');
-    
-    // Перестроим сегмент с новым типом
-    const segmentRow = e.target.closest('.segment-row');
-    if (segmentRow) {
-      const index = parseInt(segmentRow.dataset.segmentIndex);
-      const newType = e.target.value;
-      
-      // Собираем текущие значения
-      const currentLength = parseInt(segmentRow.querySelector('.seg-distance')?.value) || 100;
-      const currentRicochet = segmentRow.querySelector('.seg-ricochet')?.checked || false;
-      const currentMaxRicochets = parseInt(segmentRow.querySelector('.seg-ric-count')?.value) || 1;
-      
-      const segment = {
-        type: newType,
-        length: currentLength,
-        allowRicochet: currentRicochet
-      };
-      
-      if (newType === 'lineRec') {
-        segment.maxIterations = 20;
-      }
-      
-      if (currentRicochet) {
-        segment.maxRicochets = currentMaxRicochets;
-      }
-      
-      // Перегенерируем HTML
-      const newHTML = this._generateSegmentHTML(segment, index);
-      segmentRow.outerHTML = newHTML;
-    }
-  }
-  
-  static _handleRicochetToggle(e, dialog) {
-    console.log('Ricochet toggle');
-    
-    // Перестроим сегмент с новыми настройками рикошета
-    const segmentRow = e.target.closest('.segment-row');
-    if (segmentRow) {
-      const index = parseInt(segmentRow.dataset.segmentIndex);
-      const isChecked = e.target.checked;
-      
-      const segment = {
-        type: segmentRow.querySelector('.seg-type')?.value || 'line',
-        length: parseInt(segmentRow.querySelector('.seg-distance')?.value) || 100,
-        allowRicochet: isChecked
-      };
-      
-      if (segment.type === 'lineRec') {
-        segment.maxIterations = parseInt(segmentRow.querySelector('.seg-iter')?.value) || 20;
-      }
-      
-      if (isChecked) {
-        segment.maxRicochets = 1;
-      }
-      
-      // Перегенерируем HTML
-      const newHTML = this._generateSegmentHTML(segment, index);
-      segmentRow.outerHTML = newHTML;
-    }
-  }
-  
-  /**
-   * Обработка нажатия кнопки редактирования сегмента
-   */
-  static _handleEditSegment(e, dialog) {
-    console.log('Edit segment');
-    e.preventDefault();
-    
-    try {
-      const segmentCard = e.target.closest('.segment-item-card');
-      if (segmentCard) {
-        const controls = segmentCard.querySelector('.segment-controls');
-        const display = segmentCard.querySelector('.segment-display');
-        const editBtn = segmentCard.querySelector('.segment-edit');
-        
-        if (controls.style.display === 'none' || !controls.style.display) {
-          // Переход в режим редактирования
-          controls.style.display = 'flex';
-          display.style.display = 'none';
-          editBtn.innerHTML = '<i class="fas fa-check"></i>';
-          editBtn.title = 'Сохранить';
-        } else {
-          // Сохранение и выход из режима редактирования
-          this._saveSegmentChanges(segmentCard, dialog);
-        }
-      }
-    } catch (error) {
-      console.error('Error editing segment:', error);
-    }
-  }
-  
-  /**
-   * Обновление сегмента из элементов управления
-   */
-  static _updateSegmentFromControls(e, dialog) {
-    try {
-      const segmentCard = e.target.closest('.segment-item-card');
-      if (segmentCard) {
-        const index = parseInt(segmentCard.dataset.segmentIndex);
-        const controls = segmentCard.querySelector('.segment-controls');
-        
-        // Собираем данные из элементов управления
-        const segment = this._extractSegmentFromControls(controls, index);
-        
-        // Обновляем HTML
-        const newHTML = this._generateSegmentHTML(segment, index);
-        segmentCard.outerHTML = newHTML;
-        
-        // Активируем режим редактирования для нового элемента
-        setTimeout(() => {
-          const newCard = dialog.element.querySelector(`[data-segment-index="${index}"]`);
-          if (newCard) {
-            const newControls = newCard.querySelector('.segment-controls');
-            const newDisplay = newCard.querySelector('.segment-display');
-            const newEditBtn = newCard.querySelector('.segment-edit');
-            
-            newControls.style.display = 'flex';
-            newDisplay.style.display = 'none';
-            newEditBtn.innerHTML = '<i class="fas fa-check"></i>';
-            newEditBtn.title = 'Сохранить';
-          }
-        }, 10);
-        
-        this._updatePayloadInfo(dialog);
-      }
-    } catch (error) {
-      console.error('Error updating segment from controls:', error);
-    }
-  }
-  
-  /**
-   * Сохранение изменений сегмента
-   */
-  static _saveSegmentChanges(segmentCard, dialog) {
-    try {
-      const index = parseInt(segmentCard.dataset.segmentIndex);
-      const controls = segmentCard.querySelector('.segment-controls');
-      
-      // Извлекаем данные сегмента
-      const segment = this._extractSegmentFromControls(controls, index);
-      
-      // Перегенерируем HTML
-      const newHTML = this._generateSegmentHTML(segment, index);
-      segmentCard.outerHTML = newHTML;
-      
-      this._updatePayloadInfo(dialog);
-      
-    } catch (error) {
-      console.error('Error saving segment changes:', error);
-    }
-  }
-  
-  /**
-   * Извлечение данных сегмента из элементов управления
-   */
-  static _extractSegmentFromControls(controls, index) {
-    const segment = {
-      type: controls.querySelector('.seg-type')?.value || 'line',
-      length: parseInt(controls.querySelector('.seg-distance')?.value) || 100
-    };
-    
-    if (segment.type === 'lineRec') {
-      segment.maxIterations = parseInt(controls.querySelector('.seg-iter')?.value) || 20;
-    }
-    
-    const ricochetCheckbox = controls.querySelector('.seg-ricochet');
-    if (ricochetCheckbox?.checked) {
-      segment.allowRicochet = true;
-      segment.maxRicochets = parseInt(controls.querySelector('.seg-ric-count')?.value) || 1;
-    }
-    
-    return segment;
-  }
-  
-  /**
-   * Обновление всех сегментов после удаления
-   */
-  static _refreshAllSegments(dialog, remainingCards) {
-    try {
-      const payload = this._extractPayloadFromDialog(dialog);
-      const container = dialog.element.querySelector('#segments-container');
-      container.innerHTML = this._generateSegmentsHTML(payload.trajectory);
-    } catch (error) {
-      console.error('Error refreshing segments:', error);
-    }
-  }
-  
-  
-  /**
-   * Обновить информацию о payload в диалоге
-   * @param {Object} dialog - диалог
-   * @private
-   */
-  static _updatePayloadInfo(dialog) {
-    try {
-      const payload = this._extractPayloadFromDialog(dialog);
-      const payloadInfo = dialog.element.querySelector('#payload-info');
-      if (payloadInfo) {
-        payloadInfo.innerHTML = this._generatePayloadInfo(payload);
-      }
-    } catch (error) {
-      console.error('Error updating payload info:', error);
-    }
   }
 }

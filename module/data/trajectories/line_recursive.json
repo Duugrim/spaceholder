@@ -1,0 +1,21 @@
+{
+  "id": "line_recursive",
+  "name": "line_recursive", 
+  "description": "Repeating line trajectory with recursive segments",
+  "version": "1.0",
+  "trajectory": [
+    {
+      "type": "lineRec",
+      "length": 100,
+      "maxIterations": 5,
+      "damage": { "direct": 8 },
+      "effects": {
+        "onHit": ["generic_impact"],
+        "onMiss": null,
+        "onCollision": ["segment_continuation"]
+      },
+      "allowRicochet": false,
+      "maxRicochets": 0
+    }
+  ]
+}

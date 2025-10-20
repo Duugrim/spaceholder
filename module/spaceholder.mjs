@@ -9,6 +9,10 @@ import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
 import { SPACEHOLDER } from './helpers/config.mjs';
 // Import anatomy manager
 import { anatomyManager } from './anatomy-manager.mjs';
+// Import trajectory manager
+import { trajectoryManager } from './trajectory-manager.mjs';
+// Import payload factory
+import { PayloadFactory } from './helpers/payload-factory.mjs';
 // Token pointer integration
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
@@ -46,6 +50,8 @@ Hooks.once('init', function () {
     SpaceHolderItem,
     rollItemMacro,
     anatomyManager,
+    trajectoryManager,
+    PayloadFactory,
   };
 
   // Initialize Token Pointer and expose
@@ -175,6 +181,18 @@ Hooks.once('ready', async function () {
     console.error('SpaceHolder | Failed to initialize anatomy system:', error);
     ui.notifications.error('Failed to initialize anatomy system. Check console for details.');
   }
+  
+  // Initialize trajectory manager
+  try {
+    await trajectoryManager.initialize();
+    console.log('SpaceHolder | Trajectory system initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize trajectory system:', error);
+    ui.notifications.error('Failed to initialize trajectory system. Check console for details.');
+  }
+  
+  // Make PayloadFactory available globally for testing/scripting
+  globalThis.PayloadFactory = PayloadFactory;
   
   // Initialize aiming system
   try {

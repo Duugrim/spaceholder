@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "meta": {
+    "description": "Registry of available trajectories for SpaceHolder shooting system",
+    "categories": {
+      "basic": "Основные траектории",
+      "ballistic": "Баллистические траектории",
+      "split": "Траектории с разделением"
+    }
+  },
+  "trajectories": {
+    "line_direct": {
+      "file": "line_direct.json",
+      "name": "Прямая линия",
+      "nameLocalized": "SPACEHOLDER.TRAJECTORY.LINE_DIRECT",
+      "description": "Простая прямая траектория без эффектов",
+      "category": "basic",
+      "range": "configurable",
+      "complexity": "simple"
+    },
+    "line_recursive": {
+      "file": "line_recursive.json",
+      "name": "Прямая повторяющаяся линия",
+      "nameLocalized": "SPACEHOLDER.TRAJECTORY.LINE_RECURSIVE",
+      "description": "Траектория с повторяющимися сегментами",
+      "category": "basic",
+      "range": "configurable",
+      "complexity": "simple"
+    },
+    "line_split": {
+      "file": "line_split.json",
+      "name": "Прямая линия с разделением",
+      "nameLocalized": "SPACEHOLDER.TRAJECTORY.LINE_SPLIT",
+      "description": "Траектория, разделяющаяся на две линии",
+      "category": "split",
+      "range": "configurable",
+      "complexity": "medium"
+    },
+    "line_ricochet": {
+      "file": "line_ricochet.json",
+      "name": "Прямая линия с рикошетом",
+      "nameLocalized": "SPACEHOLDER.TRAJECTORY.LINE_RICOCHET",
+      "description": "Траектория с возможностью отскока от поверхностей",
+      "category": "ballistic",
+      "range": "configurable",
+      "complexity": "medium"
+    }
+  }
+}

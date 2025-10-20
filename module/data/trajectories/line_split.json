@@ -1,0 +1,45 @@
+{
+  "id": "line_split",
+  "name": "line_split",
+  "description": "Direct line trajectory that splits into two lines",
+  "version": "1.0",
+  "trajectory": [
+    {
+      "type": "line",
+      "length": 200,
+      "damage": { "direct": 5 },
+      "effects": {
+        "onHit": ["generic_impact"],
+        "onMiss": null
+      },
+      "allowRicochet": false,
+      "maxRicochets": 0,
+      "children": [
+        {
+          "type": "line",
+          "length": 300,
+          "offsetAngle": -15,
+          "damage": { "direct": 12 },
+          "effects": {
+            "onHit": ["generic_impact"],
+            "onMiss": null
+          },
+          "allowRicochet": false,
+          "maxRicochets": 0
+        },
+        {
+          "type": "line",
+          "length": 300,
+          "offsetAngle": 15,
+          "damage": { "direct": 12 },
+          "effects": {
+            "onHit": ["generic_impact"],
+            "onMiss": null
+          },
+          "allowRicochet": false,
+          "maxRicochets": 0
+        }
+      ]
+    }
+  ]
+}

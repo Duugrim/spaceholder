@@ -1,0 +1,20 @@
+{
+  "id": "line_ricochet",
+  "name": "line_ricochet",
+  "description": "Direct line trajectory with ricochet capability",
+  "version": "1.0",
+  "trajectory": [
+    {
+      "type": "line",
+      "length": 400,
+      "damage": { "direct": 15 },
+      "effects": {
+        "onHit": ["generic_impact"],
+        "onMiss": null,
+        "onRicochet": ["ricochet_spark"]
+      },
+      "allowRicochet": true,
+      "maxRicochets": 2
+    }
+  ]
+}

@@ -1,338 +1,91 @@
-// PayloadFactory - фабрика для создания стандартных payload
-// Создает готовые конфигурации для различных типов оружия
+// PayloadFactory - фабрика для создания payload на основе траекторий
+// Использует TrajectoryManager для загрузки готовых траекторий
+
+import { trajectoryManager } from '../trajectory-manager.mjs';
 
 /**
- * Фабрика для создания payload различных типов оружия
+ * Фабрика для создания payload на основе готовых траекторий
  */
 export class PayloadFactory {
   
   /**
-   * Простой пистолет - одна прямая линия
-   * @param {Object} options - параметры настройки
-   * @returns {Object} payload для пистолета
+   * Создать payload на основе траектории
+   * @param {string} trajectoryId - ID траектории из TrajectoryManager
+   * @param {Object} options - опции для кастомизации
+   * @returns {Promise<Object>} готовый payload
    */
-  static createPistol(options = {}) {
-    const {
-      range = 300,
-      damage = { direct: 15 },
-      allowRicochet = false,
-      maxRicochets = 0
-    } = options;
-    
-    return {
-      name: 'pistol',
-      trajectory: [
-        {
-          type: 'line',
-          length: range,
-          damage: damage,
-          effects: {
-            onHit: ['bullet_impact'],
-            onMiss: null
-          },
-          allowRicochet: allowRicochet,
-          maxRicochets: maxRicochets
-        }
-      ]
-    };
-  }
-  
-  /**
-   * Винтовка - длинная прямая линия с высоким уроном
-   * @param {Object} options - параметры настройки
-   * @returns {Object} payload для винтовки
-   */
-  static createRifle(options = {}) {
-    const {
-      range = 800,
-      damage = { direct: 35 },
-      allowRicochet = false,
-      maxRicochets = 1
-    } = options;
-    
-    return {
-      name: 'rifle',
-      trajectory: [
-        {
-          type: 'line',
-          length: range,
-          damage: damage,
-          effects: {
-            onHit: ['heavy_bullet_impact'],
-            onMiss: null,
-            onRicochet: ['bullet_ricochet']
-          },
-          allowRicochet: allowRicochet,
-          maxRicochets: maxRicochets
-        }
-      ]
-    };
-  }
-  
-  /**
-   * Дробовик - несколько коротких линий в разных направлениях
-   * @param {Object} options - параметры настройки
-   * @returns {Object} payload для дробовика
-   */
-  static createShotgun(options = {}) {
-    const {
-      range = 200,
-      pellets = 5,
-      spread = 30, // общий разброс в градусах
-      damage = { direct: 8 },
-      allowRicochet = false
-    } = options;
-    
-    // Создаем основной снаряд с разделением на дробь
-    const children = [];
-    const angleStep = spread / (pellets - 1);
-    const startAngle = -spread / 2;
-    
-    for (let i = 0; i < pellets; i++) {
-      const offsetAngle = startAngle + (i * angleStep);
-      children.push({
-        type: 'line',
-        length: range,
-        offsetAngle: offsetAngle,
-        damage: damage,
-        effects: {
-          onHit: ['pellet_impact'],
-          onMiss: null
-        },
-        allowRicochet: allowRicochet,
-        maxRicochets: 0
-      });
-    }
-    
-    return {
-      name: 'shotgun',
-      trajectory: [
-        {
-          type: 'line',
-          length: 50, // короткий основной сегмент перед разделением
-          damage: { direct: 1 }, // минимальный урон основного снаряда
-          effects: {
-            onHit: ['shotgun_muzzle_flash'],
-            onMiss: null
-          },
-          allowRicochet: false,
-          children: children
-        }
-      ]
-    };
-  }
-  
-  /**
-   * Гранатомет - летит прямо, взрывается при столкновении
-   * @param {Object} options - параметры настройки
-   * @returns {Object} payload для гранатомета
-   */
-  static createGrenadeLauncher(options = {}) {
-    const {
-      range = 400,
-      directDamage = { direct: 25 },
-      explosionDamage = { area: 50 },
-      allowRicochet = false
-    } = options;
-    
-    return {
-      name: 'grenade_launcher',
-      trajectory: [
-        {
-          type: 'line',
-          length: range,
-          damage: directDamage,
-          effects: {
-            onHit: ['grenade_direct_hit'],
-            onMiss: null
-          },
-          allowRicochet: allowRicochet
-        },
-        {
-          type: 'lineRec',
-          length: 1, // практически мгновенный взрыв
-          maxIterations: 1,
-          damage: explosionDamage,
-          effects: {
-            onCollision: ['grenade_explosion'],
-            onMiss: ['grenade_explosion'] // взрывается в любом случае
-          },
-          allowRicochet: false
-        }
-      ]
-    };
-  }
-  
-  /**
-   * Лазерное оружие - мгновенная линия с эффектами
-   * @param {Object} options - параметры настройки
-   * @returns {Object} payload для лазера
-   */
-  static createLaser(options = {}) {
-    const {
-      range = 600,
-      damage = { direct: 20, thermal: 10 },
-      allowRicochet = false,
-      maxRicochets = 2
-    } = options;
-    
-    return {
-      name: 'laser',
-      trajectory: [
-        {
-          type: 'line',
-          length: range,
-          damage: damage,
-          effects: {
-            onHit: ['laser_burn'],
-            onMiss: null,
-            onRicochet: ['laser_reflection']
-          },
-          allowRicochet: allowRicochet,
-          maxRicochets: maxRicochets
-        }
-      ]
-    };
-  }
-  
-  /**
-   * Кластерная боеголовка - летит прямо, потом разделяется на множество мелких
-   * @param {Object} options - параметры настройки
-   * @returns {Object} payload для кластерной боеголовки
-   */
-  static createClusterMunition(options = {}) {
-    const {
-      range = 300,
-      submunitions = 8,
-      spread = 60,
-      mainDamage = { direct: 10 },
-      subDamage = { direct: 15, area: 25 }
-    } = options;
-    
-    // Создаем суббоеприпасы
-    const children = [];
-    const angleStep = spread / submunitions;
-    const startAngle = -spread / 2;
-    
-    for (let i = 0; i < submunitions; i++) {
-      const offsetAngle = startAngle + (i * angleStep);
-      children.push({
-        type: 'lineRec',
-        length: 80,
-        maxIterations: 5,
-        offsetAngle: offsetAngle,
-        damage: subDamage,
-        effects: {
-          onCollision: ['submunition_explosion'],
-          onMiss: ['submunition_explosion']
-        },
-        allowRicochet: false
-      });
-    }
-    
-    return {
-      name: 'cluster_munition',
-      trajectory: [
-        {
-          type: 'line',
-          length: range,
-          damage: mainDamage,
-          effects: {
-            onHit: ['cluster_direct_hit'],
-            onMiss: null
-          },
-          allowRicochet: false,
-          children: children
-        }
-      ]
-    };
-  }
-  
-  /**
-   * Получить список всех доступных типов оружия
-   * @returns {Array} массив названий типов оружия
-   */
-  static getAvailableWeaponTypes() {
-    return [
-      'pistol',
-      'rifle', 
-      'shotgun',
-      'grenade_launcher',
-      'laser',
-      'cluster_munition'
-    ];
-  }
-  
-  /**
-   * Создать payload по названию типа
-   * @param {string} weaponType - тип оружия
-   * @param {Object} options - параметры настройки
-   * @returns {Object} payload для указанного типа оружия
-   */
-  static create(weaponType, options = {}) {
-    switch (weaponType) {
-      case 'pistol':
-        return this.createPistol(options);
-      case 'rifle':
-        return this.createRifle(options);
-      case 'shotgun':
-        return this.createShotgun(options);
-      case 'grenade_launcher':
-        return this.createGrenadeLauncher(options);
-      case 'laser':
-        return this.createLaser(options);
-      case 'cluster_munition':
-        return this.createClusterMunition(options);
-      default:
-        throw new Error(`Unknown weapon type: ${weaponType}`);
+  static async create(trajectoryId, options = {}) {
+    try {
+      const payload = await trajectoryManager.createPayload(trajectoryId, options);
+      return payload;
+    } catch (error) {
+      console.error(`PayloadFactory: Error creating payload for trajectory '${trajectoryId}':`, error);
+      throw error;
     }
   }
   
   /**
-   * Получить описание типа оружия
-   * @param {string} weaponType - тип оружия
-   * @returns {Object} описание оружия
+   * Создать простой payload с прямой линией (устаревший)
+   * @deprecated Используйте create('line_direct', options) вместо этого
+   * @param {Object} options - опции
+   * @returns {Promise<Object>} payload
    */
-  static getWeaponDescription(weaponType) {
-    const descriptions = {
-      pistol: {
-        name: 'Пистолет',
-        description: 'Простое оружие ближнего боя с одной прямой траекторией',
-        range: 'Короткая',
-        complexity: 'Простая'
-      },
-      rifle: {
-        name: 'Винтовка',
-        description: 'Дальнобойное оружие с высокой точностью и уроном',
-        range: 'Длинная',
-        complexity: 'Простая'
-      },
-      shotgun: {
-        name: 'Дробовик',
-        description: 'Разделяется на несколько дробинок с широким разбросом',
-        range: 'Короткая',
-        complexity: 'Средняя (разделение)'
-      },
-      grenade_launcher: {
-        name: 'Гранатомет',
-        description: 'Двухэтапное оружие: полет снаряда + взрыв при столкновении',
-        range: 'Средняя',
-        complexity: 'Средняя (взрывчатка)'
-      },
-      laser: {
-        name: 'Лазер',
-        description: 'Энергетическое оружие с возможностью отражения',
-        range: 'Длинная',
-        complexity: 'Средняя (отражения)'
-      },
-      cluster_munition: {
-        name: 'Кластерная боеголовка',
-        description: 'Сложное оружие: основной снаряд + множество суббоеприпасов',
-        range: 'Средняя',
-        complexity: 'Высокая (множественное разделение)'
-      }
-    };
-    
-    return descriptions[weaponType] || { name: 'Неизвестно', description: 'Неизвестный тип оружия' };
+  static async createSimpleLine(options = {}) {
+    console.warn('PayloadFactory.createSimpleLine is deprecated. Use create(\'line_direct\', options) instead.');
+    return this.create('line_direct', options);
+  }
+  
+  /**
+   * Создать payload с рикошетом (устаревший)
+   * @deprecated Используйте create('line_ricochet', options) вместо этого
+   * @param {Object} options - опции
+   * @returns {Promise<Object>} payload
+   */
+  static async createRicochetLine(options = {}) {
+    console.warn('PayloadFactory.createRicochetLine is deprecated. Use create(\'line_ricochet\', options) instead.');
+    return this.create('line_ricochet', options);
+  }
+  
+  /**
+   * Получить список всех доступных траекторий
+   * @returns {Object} объект с доступными траекториями
+   */
+  static getAvailableTrajectories() {
+    return trajectoryManager.getAvailableTrajectories();
+  }
+  
+  /**
+   * Получить траектории по категории
+   * @param {string} category - категория
+   * @returns {Object} объект с траекториями указанной категории
+   */
+  static getTrajectoriesByCategory(category) {
+    return trajectoryManager.getTrajectoriesByCategory(category);
+  }
+  
+  /**
+   * Получить информацию о траектории
+   * @param {string} trajectoryId - ID траектории
+   * @returns {Object|null} информация о траектории
+   */
+  static getTrajectoryInfo(trajectoryId) {
+    return trajectoryManager.getTrajectoryInfo(trajectoryId);
+  }
+  
+  /**
+   * Получить локализованное название траектории
+   * @param {string} trajectoryId - ID траектории
+   * @returns {string} локализованное название
+   */
+  static getTrajectoryDisplayName(trajectoryId) {
+    return trajectoryManager.getTrajectoryDisplayName(trajectoryId);
+  }
+  
+  /**
+   * Получить статистику TrajectoryManager
+   * @returns {Object} статистика
+   */
+  static getStats() {
+    return trajectoryManager.getStats();
   }
 }

@@ -1,0 +1,19 @@
+{
+  "id": "line_direct",
+  "name": "line_direct",
+  "description": "Simple direct line trajectory",
+  "version": "1.0",
+  "trajectory": [
+    {
+      "type": "line",
+      "length": 500,
+      "damage": { "direct": 10 },
+      "effects": {
+        "onHit": ["generic_impact"],
+        "onMiss": null
+      },
+      "allowRicochet": false,
+      "maxRicochets": 0
+    }
+  ]
+}
