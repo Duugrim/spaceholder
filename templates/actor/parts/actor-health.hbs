@@ -1,0 +1,52 @@
+{{!-- Health Tab Content --}}
+<div class="health-container">
+
+  <div class="health-main-layout" style="display: block; width: 100%;">
+
+    {{!-- Right Column: Body Parts --}}
+    <div class="health-bodyparts-column" style="flex: 1 1 auto; width: 100%; max-width: 100%; min-width: 0;">
+      <div class="body-parts-hierarchy" style="width: 100%;">
+        {{#if hierarchicalBodyParts}}
+        <div class="parts-tree" style="width: 100%; overflow-x: auto;">
+{{#each hierarchicalBodyParts as |part|}}
+          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}" style="flex-wrap: wrap;">
+            <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
+            <span class="part-spacer"></span>
+            {{#if part.isInjured}}
+              <span class="part-status-text">{{part.status}}</span>
+            {{else}}
+              <span class="part-status-text">healthy</span>
+            {{/if}}
+            <span class="health-numbers">{{part.currentHp}}/{{part.maxHp}}</span>
+          </div>
+          {{/each}}
+        </div>
+        {{else}}
+        <div class="no-body-parts">
+          <p><em>No body parts data available</em></p>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+
+  </div>
+
+  {{!-- Bottom: Anatomy Management --}}
+  <div class="anatomy-management-container">
+    <div class="current-anatomy">
+      <label>Анатомия:</label>
+      {{#if hasAnatomy}}
+        <span class="anatomy-name">{{anatomyDisplayName}}</span>
+        <button type="button" class="anatomy-toggle-btn" title="Удалить анатомию (очистить части тела)">
+          <i class="fas fa-trash"></i> Удалить анатомию
+        </button>
+      {{else}}
+        <span class="no-anatomy">Анатомия не выбрана</span>
+        <button type="button" class="anatomy-toggle-btn" title="Выбрать тип анатомии">
+          <i class="fas fa-plus"></i> Выбрать анатомию
+        </button>
+      {{/if}}
+    </div>
+  </div>
+
+</div>

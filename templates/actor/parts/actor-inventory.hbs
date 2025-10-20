@@ -1,0 +1,88 @@
+<div class="inventory-panel">
+  <div class="rimworld-header">
+    <i class="fas fa-backpack"></i>
+    Инвентарь
+  </div>
+
+  <div class="inventory-stats">
+    <div class="inventory-stat">
+      <i class="fas fa-weight-hanging"></i>
+      <span class="stat-label">Общий вес:</span>
+      <span class="stat-value">{{totalWeight}} кг</span>
+    </div>
+    <div class="inventory-stat">
+      <i class="fas fa-boxes"></i>
+      <span class="stat-label">Предметов:</span>
+      <span class="stat-value">{{totalItems}}</span>
+    </div>
+  </div>
+
+  <div class="inventory-controls">
+    <button
+      type="button"
+      class="item-create-btn"
+      title="Создать предмет"
+      data-type="item"
+    >
+      <i class="fas fa-plus"></i>
+      <span class="btn-text">Новый предмет</span>
+    </button>
+  </div>
+
+  <div class='inventory-list'>
+    {{#each gear as |item id|}}
+      <div class='inventory-item-card rimworld-header' data-item-id='{{item._id}}'>
+        <div class='item-main'>
+          <div class='item-image'>
+            <a class='rollable' data-roll-type='item'>
+              <img
+                src='{{item.img}}'
+                title='{{item.name}}'
+                width='32'
+                height='32'
+              />
+            </a>
+          </div>
+          <div class='item-info'>
+            <div class='item-name'>{{item.name}}</div>
+            {{#if item.system.description}}
+              <div class='item-description'>{{item.system.description}}</div>
+            {{/if}}
+            <div class='item-details'>
+              {{#if item.system.quantity}}
+                <span class='item-quantity'>Кол-во: {{item.system.quantity}}</span>
+              {{/if}}
+              {{#if item.system.weight}}
+                <span class='item-weight'>Общий вес: {{numberFormat (multiply item.system.weight item.system.quantity) decimals=2}} кг</span>
+              {{/if}}
+            </div>
+          </div>
+        </div>
+        <div class='item-controls'>
+          <button
+            type="button"
+            class='icon-btn item-edit'
+            title='Редактировать предмет'
+            data-item-id='{{item._id}}'
+          >
+            <i class='fas fa-edit'></i>
+          </button>
+          <button
+            type="button"
+            class='icon-btn item-delete'
+            title='Удалить предмет'
+            data-item-id='{{item._id}}'
+          >
+            <i class='fas fa-trash'></i>
+          </button>
+        </div>
+      </div>
+    {{/each}}
+    {{#unless gear.length}}
+      <div class='empty-inventory'>
+        <i class='fas fa-box-open'></i>
+        <p><em>Инвентарь пуст. Добавьте новый предмет, нажав кнопку "Новый предмет" выше.</em></p>
+      </div>
+    {{/unless}}
+  </div>
+</div>

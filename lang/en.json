@@ -1,0 +1,50 @@
+{
+  "SPACEHOLDER": {
+    "Ability": {
+      "End": { "long": "Выносливость", "abbr": "END" },
+      "Str": { "long": "Сила",          "abbr": "STR" },
+      "Dex": { "long": "Подвижность",    "abbr": "DEX" },
+      "Cor": { "long": "Координация",    "abbr": "COR" },
+      "Per": { "long": "Восприятие",     "abbr": "PER" },
+      "Int": { "long": "Интеллект",      "abbr": "INT" },
+      "Luc": { "long": "Удача",          "abbr": "LUC" }
+    },
+    "SheetLabels": {
+      "Actor": "SpaceHolder Actor Sheet",
+      "Item": "SpaceHolder Item Sheet"
+    },
+    "Tabs": {
+      "Inventory": "Инвентарь"
+    },
+    "Item": {
+      "Spell": {
+        "SpellLVL": "Level {level} Spells",
+        "AddLVL": "Add LVL {level}"
+      }
+    },
+    "Effect": {
+      "Source": "Source",
+      "Toggle": "Toggle Effect",
+      "Temporary": "Temporary Effects",
+      "Passive": "Passive Effects",
+      "Inactive": "Inactive Effects"
+    },
+    "AimingDialog": {
+      "Title": "Настройка прицеливания",
+      "StartAiming": "Начать прицеливание",
+      "Cancel": "Отмена"
+    }
+  },
+
+  "TYPES": {
+    "Actor": {
+      "character": "Character",
+      "npc": "NPC"
+    },
+    "Item": {
+      "item": "Item",
+      "feature": "Feature",
+      "spell": "Spell"
+    }
+  }
+}

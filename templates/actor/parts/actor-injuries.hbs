@@ -1,0 +1,33 @@
+{{!-- Injuries Tab Content --}}
+<div class="injuries-container" style="display: block; width: 100%;">
+  <div class="injuries-panel">
+    <div class="injuries-actions">
+      <button type="button" class="injury-create-open-btn" data-action="injury-open-create">
+        <i class="fas fa-plus"></i> <span class="btn-text">Добавить травму</span>
+      </button>
+    </div>
+
+    <div class="injuries-list">
+      {{#if injuriesList}}
+        {{#each injuriesList as |inj|}}
+          <div class="injury-card rimworld-header" data-injury-id="{{inj.id}}">
+            <div class="injury-main">
+              <span class="injury-line">
+                {{inj.partName}}, {{inj.amountDisplay}}{{#if inj.type}}, {{inj.type}}{{/if}}{{#if inj.status}}, {{inj.status}}{{/if}}{{#if inj.source}}, {{inj.source}}{{/if}}
+              </span>
+              {{#if inj.createdAtText}}
+                <i class="fas fa-clock injury-when" title="{{inj.createdAtText}}"></i>
+              {{/if}}
+            </div>
+            <div class="injury-actions">
+              <button type="button" class="icon-btn injury-edit-btn" data-action="injury-edit" data-injury-id="{{inj.id}}" title="Редактировать"><i class="fas fa-pen"></i></button>
+              <button type="button" class="icon-btn injury-delete-btn" data-action="injury-delete" data-injury-id="{{inj.id}}" title="Удалить"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        {{/each}}
+      {{else}}
+        <p><em>Пока нет травм</em></p>
+      {{/if}}
+    </div>
+  </div>
+</div>

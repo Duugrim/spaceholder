@@ -1,0 +1,55 @@
+<form>
+  <h2>Token Pointer Settings</h2>
+  <div class="form-group">
+    <label>Color</label>
+    <input type="color" name="tokenpointer.color" value="{{color}}" />
+  </div>
+  <div class="form-group">
+    <label>Distance</label>
+    <input type="number" name="tokenpointer.distance" value="{{distance}}" step="0.05" />
+  </div>
+  <div class="form-group">
+    <label>Scale</label>
+    <input type="number" name="tokenpointer.scale" value="{{scale}}" step="0.05" />
+  </div>
+  <div class="form-group">
+    <label>Mode</label>
+    <select name="tokenpointer.mode">
+      <option value="0" {{#if (eq mode 0)}}selected{{/if}}>Off</option>
+      <option value="1" {{#if (eq mode 1)}}selected{{/if}}>Hover</option>
+      <option value="2" {{#if (eq mode 2)}}selected{{/if}}>Always</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Only in Combat</label>
+    <input type="checkbox" name="tokenpointer.combatOnly" {{#if combatOnly}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Hide on Defeated</label>
+    <input type="checkbox" name="tokenpointer.hideOnDead" {{#if hideOnDead}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Lock to Grid Facings</label>
+    <input type="checkbox" name="tokenpointer.lockToGrid" {{#if lockToGrid}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Flip Token Horizontally</label>
+    <input type="checkbox" name="tokenpointer.flipHorizontal" {{#if flipHorizontal}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Render Under Token</label>
+    <input type="checkbox" name="tokenpointer.underToken" {{#if underToken}}checked{{/if}} />
+  </div>
+  <div class="form-group">
+    <label>Pointer Type</label>
+    <select name="tokenpointer.pointerType">
+      <option value="arrow" {{#if (eq pointerType 'arrow')}}selected{{/if}}>Arrow</option>
+      <option value="line" {{#if (eq pointerType 'line')}}selected{{/if}}>Line</option>
+      <option value="marker" {{#if (eq pointerType 'marker')}}selected{{/if}}>Marker</option>
+      <option value="markerV2" {{#if (eq pointerType 'markerV2')}}selected{{/if}}>Marker V2</option>
+    </select>
+  </div>
+  <footer class="sheet-footer flexrow">
+    <button type="submit" class="button">Save</button>
+  </footer>
+</form>
