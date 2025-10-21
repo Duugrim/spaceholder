@@ -140,6 +140,173 @@ function clearDrawManager() {
 }
 
 /**
+ * Тест конуса
+ */
+function testDrawManagerCone() {
+  console.log('🎆 Testing draw-manager with cone...');
+  
+  if (!game.spaceholder?.drawManager) {
+    console.error('❌ DrawManager not found!');
+    return;
+  }
+  
+  const coneShotResult = {
+    shotPaths: [
+      {
+        id: 0,
+        type: "line",
+        start: { x: 400, y: 500 },
+        end: { x: 450, y: 450 }
+      },
+      {
+        id: 1,
+        type: "cone",
+        range: 100,
+        angle: 30,
+        direction: 0, // Направление на восток
+        start: { x: 450, y: 450 },
+        end: { x: 450, y: 450 }
+      }
+    ]
+  };
+  
+  try {
+    game.spaceholder.drawManager.drawShot(coneShotResult);
+    console.log('✅ Cone test completed!');
+    ui.notifications.info('Тест конуса выполнен!');
+  } catch (error) {
+    console.error('❌ Cone test error:', error);
+    ui.notifications.error(`Ошибка теста конуса: ${error.message}`);
+  }
+}
+
+/**
+ * Тест с несколькими конусами разных направлений
+ */
+function testDrawManagerMultipleCones() {
+  console.log('🎆 Testing multiple cones...');
+  
+  if (!game.spaceholder?.drawManager) {
+    console.error('❌ DrawManager not found!');
+    return;
+  }
+  
+  const multiConeShotResult = {
+    shotPaths: [
+      // Конус на север
+      {
+        id: 0,
+        type: "cone",
+        range: 80,
+        angle: 45,
+        direction: 270, // Север
+        start: { x: 300, y: 300 },
+        end: { x: 300, y: 300 }
+      },
+      // Конус на восток
+      {
+        id: 1,
+        type: "cone",
+        range: 60,
+        angle: 60,
+        direction: 0, // Восток
+        start: { x: 500, y: 300 },
+        end: { x: 500, y: 300 }
+      },
+      // Конус на юг
+      {
+        id: 2,
+        type: "cone",
+        range: 70,
+        angle: 90,
+        direction: 90, // Юг
+        start: { x: 400, y: 500 },
+        end: { x: 400, y: 500 }
+      }
+    ]
+  };
+  
+  try {
+    game.spaceholder.drawManager.drawShot(multiConeShotResult);
+    console.log('✅ Multiple cones test completed!');
+    ui.notifications.info('Тест множества конусов выполнен!');
+  } catch (error) {
+    console.error('❌ Multiple cones test error:', error);
+    ui.notifications.error(`Ошибка теста множества конусов: ${error.message}`);
+  }
+}
+
+/**
+ * Тест усечённых конусов
+ */
+function testDrawManagerCutCones() {
+  console.log('🔪 Testing cut cones...');
+  
+  if (!game.spaceholder?.drawManager) {
+    console.error('❌ DrawManager not found!');
+    return;
+  }
+  
+  const cutConeShotResult = {
+    shotPaths: [
+      // Обычный конус для сравнения
+      {
+        id: 0,
+        type: "cone",
+        range: 100,
+        angle: 60,
+        direction: 0, // Восток
+        start: { x: 200, y: 300 },
+        end: { x: 200, y: 300 }
+        // cut не указан = обычный конус
+      },
+      // Усечённый конус с малым усечением
+      {
+        id: 1,
+        type: "cone",
+        range: 100,
+        angle: 60,
+        direction: 90, // Юг
+        cut: 20,
+        start: { x: 400, y: 300 },
+        end: { x: 400, y: 300 }
+      },
+      // Усечённый конус с большим усечением
+      {
+        id: 2,
+        type: "cone",
+        range: 120,
+        angle: 45,
+        direction: 180, // Запад
+        cut: 50,
+        start: { x: 600, y: 300 },
+        end: { x: 600, y: 300 }
+      },
+      // Узкий усечённый конус
+      {
+        id: 3,
+        type: "cone",
+        range: 80,
+        angle: 30,
+        direction: 270, // Север
+        cut: 30,
+        start: { x: 400, y: 500 },
+        end: { x: 400, y: 500 }
+      }
+    ]
+  };
+  
+  try {
+    game.spaceholder.drawManager.drawShot(cutConeShotResult);
+    console.log('✅ Cut cones test completed!');
+    ui.notifications.info('Тест усечённых конусов выполнен!');
+  } catch (error) {
+    console.error('❌ Cut cones test error:', error);
+    ui.notifications.error(`Ошибка теста усечённых конусов: ${error.message}`);
+  }
+}
+
+/**
  * Тест с пользовательскими стилями
  */
 function testDrawManagerCustomStyles() {
@@ -162,6 +329,12 @@ function testDrawManagerCustomStyles() {
       alpha: 0.7,
       lineWidth: 4,
       fillAlpha: 0.3
+    },
+    cone: {
+      color: 0xFF00FF,  // Магента
+      alpha: 0.8,
+      lineWidth: 3,
+      fillAlpha: 0.25
     }
   };
   
@@ -181,6 +354,15 @@ function testDrawManagerCustomStyles() {
         range: 60,
         start: { x: 700, y: 180 },
         end: { x: 700, y: 180 }
+      },
+      {
+        id: 2,
+        type: "cone",
+        range: 80,
+        angle: 45,
+        direction: 135, // Направление на юго-запад
+        start: { x: 750, y: 200 },
+        end: { x: 750, y: 200 }
       }
     ]
   };
@@ -198,6 +380,9 @@ function testDrawManagerCustomStyles() {
 // Экспортируем функции для использования в консоли
 window.testDrawManager = testDrawManager;
 window.testDrawManagerAdvanced = testDrawManagerAdvanced;
+window.testDrawManagerCone = testDrawManagerCone;
+window.testDrawManagerMultipleCones = testDrawManagerMultipleCones;
+window.testDrawManagerCutCones = testDrawManagerCutCones;
 window.testDrawManagerCustomStyles = testDrawManagerCustomStyles;
 window.clearDrawManager = clearDrawManager;
 
@@ -208,7 +393,10 @@ Hooks.once('ready', () => {
   console.log('🎨 Draw-manager test functions loaded!');
   console.log('📝 Available test functions:');
   console.log('  - testDrawManager() - простой тест');
-  console.log('  - testDrawManagerAdvanced() - продвинутый тест');  
+  console.log('  - testDrawManagerAdvanced() - продвинутый тест');
+  console.log('  - testDrawManagerCone() - тест конуса');
+  console.log('  - testDrawManagerMultipleCones() - тест множества конусов');
+  console.log('  - testDrawManagerCutCones() - тест усечённых конусов');
   console.log('  - testDrawManagerCustomStyles() - тест с пользовательскими стилями');
   console.log('  - clearDrawManager() - очистка');
   
@@ -218,4 +406,4 @@ Hooks.once('ready', () => {
   // }, 2000);
 });
 
-export { testDrawManager, testDrawManagerAdvanced, testDrawManagerCustomStyles, clearDrawManager };
+export { testDrawManager, testDrawManagerAdvanced, testDrawManagerCone, testDrawManagerMultipleCones, testDrawManagerCutCones, testDrawManagerCustomStyles, clearDrawManager };

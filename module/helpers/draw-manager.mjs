@@ -20,6 +20,12 @@ export class DrawManager {
         alpha: 0.6,
         lineWidth: 3,
         fillAlpha: 0.2
+      },
+      cone: {
+        color: 0xFF8844,
+        alpha: 0.7,
+        lineWidth: 2,
+        fillAlpha: 0.15
       }
     };
   }
@@ -93,6 +99,9 @@ export class DrawManager {
         break;
       case 'circle':
         this.drawCircle(segment);
+        break;
+      case 'cone':
+        this.drawCone(segment);
         break;
       default:
         console.warn(`DrawManager: Unknown segment type: ${segment.type}`);
@@ -181,6 +190,93 @@ export class DrawManager {
   }
   
   /**
+   * Отрисовка конуса
+   * @param {Object} segment - сегмент с типом 'cone'
+   */
+  drawCone(segment) {
+    if (!segment.start || !segment.range || segment.angle === undefined || segment.direction === undefined || !this.drawContainer) {
+      console.warn('DrawManager: Invalid cone segment data');
+      return;
+    }
+    
+    const coneGraphics = new PIXI.Graphics();
+    const style = this.defaultStyles.cone;
+    
+    // Настройка стиля конуса
+    coneGraphics.lineStyle(style.lineWidth, style.color, style.alpha);
+    coneGraphics.beginFill(style.color, style.fillAlpha);
+    
+    // Параметры конуса
+    const centerX = segment.start.x;
+    const centerY = segment.start.y;
+    const radius = segment.range;
+    const angleRad = (segment.angle * Math.PI) / 180; // Переводим в радианы
+    const directionRad = (segment.direction * Math.PI) / 180; // Переводим в радианы
+    const cutRadius = segment.cut || 0; // Радиус усечения (по умолчанию 0)
+    
+    // Углы начала и конца конуса
+    const startAngle = directionRad - angleRad / 2;
+    const endAngle = directionRad + angleRad / 2;
+    
+    if (cutRadius <= 0) {
+      // Обычный конус без усечения
+      coneGraphics.moveTo(centerX, centerY);
+      
+      // Линия к начальной точке дуги
+      const startX = centerX + Math.cos(startAngle) * radius;
+      const startY = centerY + Math.sin(startAngle) * radius;
+      coneGraphics.lineTo(startX, startY);
+      
+      // Дуга конуса
+      coneGraphics.arc(centerX, centerY, radius, startAngle, endAngle);
+      
+      // Линия обратно к центру
+      coneGraphics.lineTo(centerX, centerY);
+    } else {
+      // Усечённый конус (кольцевой сектор)
+      // Внешняя дуга
+      const outerStartX = centerX + Math.cos(startAngle) * radius;
+      const outerStartY = centerY + Math.sin(startAngle) * radius;
+      coneGraphics.moveTo(outerStartX, outerStartY);
+      
+      // Внешняя дуга от startAngle к endAngle
+      coneGraphics.arc(centerX, centerY, radius, startAngle, endAngle);
+      
+      // Линия к внутренней дуге
+      const innerEndX = centerX + Math.cos(endAngle) * cutRadius;
+      const innerEndY = centerY + Math.sin(endAngle) * cutRadius;
+      coneGraphics.lineTo(innerEndX, innerEndY);
+      
+      // Внутренняя дуга от endAngle к startAngle (в обратном направлении)
+      coneGraphics.arc(centerX, centerY, cutRadius, endAngle, startAngle, true);
+      
+      // Замыкаем фигуру
+      coneGraphics.lineTo(outerStartX, outerStartY);
+    }
+    
+    coneGraphics.endFill();
+    
+    // Добавляем центральный маркер
+    coneGraphics.beginFill(style.color, style.alpha);
+    coneGraphics.drawCircle(centerX, centerY, 3);
+    coneGraphics.endFill();
+    
+    // Настройка идентификации
+    coneGraphics.name = `drawManager_cone_${segment.id || 'unknown'}`;
+    
+    // Делаем неинтерактивным
+    coneGraphics.interactive = false;
+    coneGraphics.interactiveChildren = false;
+    
+    // Добавляем на сцену
+    this.drawContainer.addChild(coneGraphics);
+    this.currentDrawnElements.push(coneGraphics);
+    
+    // Анимация появления
+    this._animateElementAppearance(coneGraphics);
+  }
+  
+  /**
    * Анимация появления элемента
    * @param {PIXI.Graphics} element - графический элемент
    * @private
@@ -226,7 +322,7 @@ export class DrawManager {
   
   /**
    * Установка пользовательских стилей
-   * @param {Object} styles - объект со стилями для line и/или circle
+   * @param {Object} styles - объект со стилями для line, circle и/или cone
    */
   setStyles(styles) {
     if (styles.line) {
@@ -234,6 +330,9 @@ export class DrawManager {
     }
     if (styles.circle) {
       this.defaultStyles.circle = { ...this.defaultStyles.circle, ...styles.circle };
+    }
+    if (styles.cone) {
+      this.defaultStyles.cone = { ...this.defaultStyles.cone, ...styles.cone };
     }
   }
   
