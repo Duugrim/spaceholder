@@ -13,15 +13,17 @@ import { anatomyManager } from './anatomy-manager.mjs';
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
-// Aiming system integration
-import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/aiming-system.mjs';
-import { injectAimingStyles } from './helpers/ray-renderer.mjs';
+// Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
+// import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
+// import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
 // Draw manager for shot visualization
 import { DrawManager } from './helpers/draw-manager.mjs';
-import './helpers/test-aiming-system.mjs'; // Для отладки
-import './helpers/aiming-demo-macros.mjs'; // Демо макросы
-import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
-import './helpers/aiming-socket-manager.mjs'; // Socket менеджер для мультиплеерной синхронизации
+// Shot manager for shot calculation
+import { ShotManager } from './helpers/shot-manager.mjs';
+// import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
+// import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
+// import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
+// import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
 
@@ -33,7 +35,7 @@ Hooks.once('init', function () {
   // Register SpaceHolder settings and menus early
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
-  registerAimingSystemSettings();
+  // registerAimingSystemSettings(); // OLD SYSTEM DISABLED
   registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
   installTokenPointerTabs();
@@ -50,18 +52,21 @@ Hooks.once('init', function () {
   // Initialize Token Pointer and expose
   game.spaceholder.tokenpointer = new TokenPointer();
   
-  // Initialize Aiming System
-  game.spaceholder.aimingSystem = new AimingSystem();
+  // Initialize Aiming System - OLD SYSTEM DISABLED
+  // game.spaceholder.aimingSystem = new AimingSystem();
   
   // Initialize Draw Manager
   game.spaceholder.drawManager = new DrawManager();
+  
+  // Initialize Shot Manager
+  game.spaceholder.shotManager = new ShotManager();
 
   // Install Token Pointer hooks
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks
   installTokenRotator();
-  // Install Aiming System hooks
-  installAimingSystemHooks();
+  // Install Aiming System hooks - OLD SYSTEM DISABLED
+  // installAimingSystemHooks();
   // Install Token Controls hooks
   installTokenControlsHooks();
 
@@ -178,15 +183,15 @@ Hooks.once('ready', async function () {
     ui.notifications.error('Failed to initialize anatomy system. Check console for details.');
   }
   
-  // Initialize aiming system
-  try {
-    game.spaceholder.aimingSystem.initialize();
-    injectAimingStyles();
-    console.log('SpaceHolder | Aiming system initialized successfully');
-  } catch (error) {
-    console.error('SpaceHolder | Failed to initialize aiming system:', error);
-    ui.notifications.error('Failed to initialize aiming system. Check console for details.');
-  }
+  // Initialize aiming system - OLD SYSTEM DISABLED
+  // try {
+  //   game.spaceholder.aimingSystem.initialize();
+  //   injectAimingStyles();
+  //   console.log('SpaceHolder | Aiming system initialized successfully');
+  // } catch (error) {
+  //   console.error('SpaceHolder | Failed to initialize aiming system:', error);
+  //   ui.notifications.error('Failed to initialize aiming system. Check console for details.');
+  // }
   
   // Initialize draw manager
   try {
@@ -195,6 +200,14 @@ Hooks.once('ready', async function () {
   } catch (error) {
     console.error('SpaceHolder | Failed to initialize draw manager:', error);
     ui.notifications.error('Failed to initialize draw manager. Check console for details.');
+  }
+  
+  // Initialize shot manager
+  try {
+    console.log('SpaceHolder | Shot manager initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize shot manager:', error);
+    ui.notifications.error('Failed to initialize shot manager. Check console for details.');
   }
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to

@@ -1,0 +1,41 @@
+{
+  "id": "zigzag_line",
+  "name": "Зигзаг",
+  "description": "Траектория с несколькими отрезками под разными углами",
+  "type": "complex",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "line",
+        "direction": 0,
+        "length": 2,
+        "props": {
+          "penetration": true,
+          "ricochet": false,
+          "collision": true
+        }
+      },
+      {
+        "type": "line",
+        "direction": 45,
+        "length": 2,
+        "props": {
+          "penetration": true,
+          "ricochet": false,
+          "collision": true
+        }
+      },
+      {
+        "type": "line",
+        "direction": -45,
+        "length": 2,
+        "props": {
+          "penetration": true,
+          "ricochet": false,
+          "collision": true
+        }
+      }
+    ]
+  }
+}

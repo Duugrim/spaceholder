@@ -1,0 +1,21 @@
+{
+  "id": "straight_line",
+  "name": "Прямая линия",
+  "description": "Классическая прямолинейная траектория без отклонений",
+  "type": "linear",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "line",
+        "direction": 0,
+        "length": 3,
+        "props": {
+          "penetration": true,
+          "ricochet": false,
+          "collision": true
+        }
+      }
+    ]
+  }
+}

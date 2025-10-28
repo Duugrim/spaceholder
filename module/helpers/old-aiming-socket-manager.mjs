@@ -1,8 +1,16 @@
+/**
+ * ⚠️ LEGACY CODE - ОТКЛЮЧЕН ⚠️
+ * Этот файл является устаревшей версией менеджера сокетов прицеливания.
+ * Система переработана в новую модульную архитектуру.
+ * Файл сохранён для справки, но не используется.
+ * Дата архивации: 2025-10-28
+ */
+
 // Aiming Socket Manager for SpaceHolder - управление мультиплеерной синхронизацией
 // Отвечает за передачу событий выстрелов между всеми клиентами
 
-import { aimingLogger } from './aiming-logger.mjs';
-import { socketLogger } from './socket-logger.mjs';
+import { aimingLogger } from './old-aiming-logger.mjs';
+import { socketLogger } from './old-socket-logger.mjs';
 
 export class AimingSocketManager {
   constructor(aimingSystem) {

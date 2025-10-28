@@ -3,7 +3,8 @@
  * Добавляет пользовательские кнопки в панель Token Controls
  */
 
-import { AimingDialog } from './aiming-dialog.mjs';
+// OLD SYSTEM DISABLED 2025-10-28
+// import { AimingDialog } from './old-aiming-dialog.mjs';
 
 /**
  * Регистрирует пользовательские кнопки в Token Controls
@@ -102,12 +103,15 @@ function handleAimingToolChange(isActive) {
  * Показать диалог настройки прицеливания
  */
 function showAimingDialog() {
-  // Проверяем, есть ли выбранные токены
+  // OLD SYSTEM DISABLED - Новая система в разработке
+  ui.notifications.warn('Система прицеливания временно отключена. Идёт переработка.');
+  deactivateAimingTool();
+  
+  /* OLD CODE:
   const controlled = canvas.tokens.controlled;
   
   if (controlled.length === 0) {
     ui.notifications.warn('Выберите токен для настройки прицеливания');
-    // Деактивируем кнопку
     deactivateAimingTool();
     return;
   }
@@ -119,12 +123,10 @@ function showAimingDialog() {
   }
   
   const token = controlled[0];
-  
-  // Показываем диалог
   AimingDialog.show(token).then(() => {
-    // После закрытия диалога деактивируем кнопку
     deactivateAimingTool();
   });
+  */
 }
 
 /**

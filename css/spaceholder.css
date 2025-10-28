@@ -1,6 +1,4 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
-/* Импорт стилей для диалога прицеливания */
-@import url("../styles/aiming-dialog.css");
 /* Global styles */
 .window-app {
   font-family: "Roboto", sans-serif;

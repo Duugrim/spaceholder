@@ -1,10 +1,18 @@
+/**
+ * ⚠️ LEGACY CODE - ОТКЛЮЧЕН ⚠️
+ * Этот файл является устаревшей версией системы прицеливания.
+ * Система переработана в новую модульную архитектуру.
+ * Файл сохранён для справки, но не используется.
+ * Дата архивации: 2025-10-28
+ */
+
 // Aiming System for SpaceHolder - основная система прицеливания с лучами
 // Интегрируется с существующими TokenPointer и TokenRotator системами
 
-import { RayCaster } from './ray-casting.mjs';
-import { RayRenderer } from './ray-renderer.mjs';
-import { AimingSocketManager } from './aiming-socket-manager.mjs';
-import { aimingLogger } from './aiming-logger.mjs';
+import { RayCaster } from './old-ray-casting.mjs';
+import { RayRenderer } from './old-ray-renderer.mjs';
+import { AimingSocketManager } from './old-aiming-socket-manager.mjs';
+import { aimingLogger } from './old-aiming-logger.mjs';
 
 export class AimingSystem {
   constructor() {
