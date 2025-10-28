@@ -1,0 +1,21 @@
+{
+  "id": "explosion",
+  "name": "Взрыв",
+  "description": "Круговой взрыв с фиксированным радиусом",
+  "type": "area",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "circle",
+        "direction": 0,
+        "range": 3,
+        "props": {
+          "penetration": true,
+          "ricochet": false,
+          "collision": true
+        }
+      }
+    ]
+  }
+}

@@ -100,6 +100,111 @@ export class ShotManager {
   }
 
   /**
+   * Расчёт процента перекрытия двух кругов
+   * @private
+   * @returns {number} Процент покрытия токена (0-1)
+   */
+  _calculateCircleOverlap(center1, radius1, center2, radius2) {
+    const distance = Math.hypot(center2.x - center1.x, center2.y - center1.y);
+    
+    // Если круги не пересекаются
+    if (distance >= radius1 + radius2) return 0;
+    
+    // Если токен полностью внутри взрыва
+    if (distance + radius2 <= radius1) return 1;
+    
+    // Если взрыв полностью внутри токена (редко, но возможно)
+    if (distance + radius1 <= radius2) {
+      return (Math.PI * radius1 * radius1) / (Math.PI * radius2 * radius2);
+    }
+    
+    // Частичное перекрытие - используем упрощённый расчёт
+    // Формула площади пересечения двух кругов
+    const r1Sq = radius1 * radius1;
+    const r2Sq = radius2 * radius2;
+    const dSq = distance * distance;
+    
+    const part1 = r1Sq * Math.acos((dSq + r1Sq - r2Sq) / (2 * distance * radius1));
+    const part2 = r2Sq * Math.acos((dSq + r2Sq - r1Sq) / (2 * distance * radius2));
+    const part3 = 0.5 * Math.sqrt((-distance + radius1 + radius2) * (distance + radius1 - radius2) * (distance - radius1 + radius2) * (distance + radius1 + radius2));
+    
+    const intersectionArea = part1 + part2 - part3;
+    const tokenArea = Math.PI * r2Sq;
+    
+    return Math.max(0, Math.min(1, intersectionArea / tokenArea));
+  }
+
+  /**
+   * Расчёт процента покрытия токена конусом (метод сэмплирования)
+   * @private
+   * @returns {number} Процент покрытия (0-1)
+   */
+  _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius) {
+    // Расстояние от начала конуса до центра токена
+    const distance = Math.hypot(tokenCenter.x - coneOrigin.x, tokenCenter.y - coneOrigin.y);
+    
+    // Быстрая проверка: токен вне возможного радиуса
+    if (distance > coneRange + tokenRadius || distance < coneCut - tokenRadius) return 0;
+    
+    // Сэмплирование: разбиваем токен на точки по кругу
+    const sampleCount = 32; // Количество точек для сэмплирования
+    const sampleRings = 3;  // Кольца сэмплирования (1 = центр + край)
+    
+    let hitCount = 0;
+    let totalCount = 0;
+    
+    // Центр токена
+    totalCount++;
+    if (this._isPointInCone(tokenCenter, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
+      hitCount++;
+    }
+    
+    // Сэмплы по кольцам
+    for (let ring = 1; ring <= sampleRings; ring++) {
+      const ringRadius = (tokenRadius * ring) / sampleRings;
+      const pointsInRing = Math.max(8, Math.floor(sampleCount * ring / sampleRings));
+      
+      for (let i = 0; i < pointsInRing; i++) {
+        const angle = (i / pointsInRing) * 2 * Math.PI;
+        const samplePoint = {
+          x: tokenCenter.x + Math.cos(angle) * ringRadius,
+          y: tokenCenter.y + Math.sin(angle) * ringRadius
+        };
+        
+        totalCount++;
+        if (this._isPointInCone(samplePoint, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
+          hitCount++;
+        }
+      }
+    }
+    
+    return hitCount / totalCount;
+  }
+
+  /**
+   * Проверка, находится ли точка в конусе
+   * @private
+   */
+  _isPointInCone(point, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad) {
+    // Расстояние от начала конуса
+    const distance = Math.hypot(point.x - coneOrigin.x, point.y - coneOrigin.y);
+    
+    // Проверяем радиус
+    if (distance > coneRange || distance < coneCut) return false;
+    
+    // Угол к точке
+    const pointAngle = Math.atan2(point.y - coneOrigin.y, point.x - coneOrigin.x);
+    
+    // Разница углов
+    let angleDiff = pointAngle - coneDirectionRad;
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+    
+    // Проверяем угол
+    return Math.abs(angleDiff) <= coneHalfAngleRad;
+  }
+
+  /**
    * Проверка пересечения отрезка с отрезком (для стен)
    * @private
    */
@@ -295,6 +400,31 @@ export class ShotManager {
   shotSegment(segment, context) {
     const { lastPos, direction, defSize, whitelist, shot } = context;
     
+    // Выбираем обработчик в зависимости от типа сегмента
+    switch (segment.type) {
+      case 'line':
+        return this._processLineSegment(segment, context);
+      case 'circle':
+        return this._processCircleSegment(segment, context);
+      case 'cone':
+        return this._processConeSegment(segment, context);
+      default:
+        console.warn(`ShotManager: Unknown segment type: ${segment.type}`);
+        return {
+          endPos: lastPos,
+          direction: direction,
+          shouldContinue: false
+        };
+    }
+  }
+
+  /**
+   * Обработка линейного сегмента
+   * @private
+   */
+  _processLineSegment(segment, context) {
+    const { lastPos, direction, defSize, whitelist, shot } = context;
+    
     // Вычисляем абсолютное направление сегмента
     const absoluteDirection = direction + segment.direction;
     
@@ -342,6 +472,167 @@ export class ShotManager {
       endPos: endPos,
       direction: absoluteDirection,
       shouldContinue: !hitResult.shouldStop
+    };
+  }
+
+  /**
+   * Обработка кругового сегмента (взрыв)
+   * @private
+   */
+  _processCircleSegment(segment, context) {
+    const { lastPos, direction, defSize, whitelist, shot } = context;
+    
+    // Для круга используем lastPos как центр
+    const range = segment.range * defSize;
+    
+    // Создаём объект пути для визуализации
+    const path = {
+      start: { ...lastPos },
+      range: range,
+      type: 'circle'
+    };
+    
+    shot.shotResult.shotPaths.push(path);
+    
+    // Проверяем попадания в радиусе
+    if (segment.props.collision && canvas.tokens?.placeables) {
+      for (const token of canvas.tokens.placeables) {
+        if (whitelist.includes(token)) continue;
+        if (!token.visible) continue;
+        
+        // Расстояние от центра взрыва до центра токена
+        const tokenCenter = token.center;
+        const distance = Math.hypot(
+          tokenCenter.x - lastPos.x,
+          tokenCenter.y - lastPos.y
+        );
+        
+        // Радиус токена (как круг)
+        const tokenBounds = token.bounds;
+        const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
+        
+        // Если токен в радиусе (с учётом радиуса токена)
+        if (distance <= range + tokenRadius) {
+          // Рассчитываем процент покрытия
+          const coverage = this._calculateCircleOverlap(lastPos, range, tokenCenter, tokenRadius);
+          
+          shot.shotResult.shotHits.push({
+            point: { ...tokenCenter },
+            type: 'token',
+            object: token,
+            distance: distance,
+            coverage: coverage
+          });
+          
+          shot.actualHits.push({
+            hit: true,
+            point: tokenCenter,
+            type: 'token',
+            object: token,
+            shouldStop: false,
+            coverage: coverage
+          });
+        }
+      }
+    }
+    
+    // Круг не двигает lastPos, остаётся на месте
+    return {
+      endPos: lastPos,
+      direction: direction,
+      shouldContinue: true  // Можно продолжать после взрыва
+    };
+  }
+
+  /**
+   * Обработка конуса
+   * @private
+   */
+  _processConeSegment(segment, context) {
+    const { lastPos, direction, defSize, whitelist, shot } = context;
+    
+    // Вычисляем абсолютное направление
+    const absoluteDirection = direction + segment.direction;
+    const range = segment.range * defSize;
+    const angle = segment.angle || 90;  // Угол конуса по умолчанию 90°
+    const cut = segment.cut ? segment.cut * defSize : 0;
+    
+    // Создаём объект пути для визуализации
+    const path = {
+      start: { ...lastPos },
+      range: range,
+      angle: angle,
+      direction: absoluteDirection,
+      cut: cut,
+      type: 'cone'
+    };
+    
+    shot.shotResult.shotPaths.push(path);
+    
+    // Проверяем попадания в конус
+    if (segment.props.collision && canvas.tokens?.placeables) {
+      const directionRad = (absoluteDirection * Math.PI) / 180;
+      const halfAngleRad = ((angle / 2) * Math.PI) / 180;
+      
+      for (const token of canvas.tokens.placeables) {
+        if (whitelist.includes(token)) continue;
+        if (!token.visible) continue;
+        
+        const tokenCenter = token.center;
+        const tokenBounds = token.bounds;
+        const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
+        
+        // Расстояние от начала конуса
+        const distance = Math.hypot(
+          tokenCenter.x - lastPos.x,
+          tokenCenter.y - lastPos.y
+        );
+        
+        // Угол от начала конуса до токена
+        const tokenAngle = Math.atan2(
+          tokenCenter.y - lastPos.y,
+          tokenCenter.x - lastPos.x
+        );
+        
+        // Разница углов
+        let angleDiff = tokenAngle - directionRad;
+        // Нормализуем угол в диапазоне [-PI, PI]
+        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+        
+        // Рассчитываем процент покрытия токена конусом
+        const coverage = this._calculateConeTokenCoverage(
+          lastPos, range, cut, directionRad, halfAngleRad,
+          tokenCenter, tokenRadius
+        );
+        
+        // Если есть покрытие
+        if (coverage > 0) {
+          shot.shotResult.shotHits.push({
+            point: { ...tokenCenter },
+            type: 'token',
+            object: token,
+            distance: distance,
+            coverage: coverage
+          });
+          
+          shot.actualHits.push({
+            hit: true,
+            point: tokenCenter,
+            type: 'token',
+            object: token,
+            shouldStop: false,
+            coverage: coverage
+          });
+        }
+      }
+    }
+    
+    // Конус не двигает lastPos
+    return {
+      endPos: lastPos,
+      direction: absoluteDirection,
+      shouldContinue: true
     };
   }
 

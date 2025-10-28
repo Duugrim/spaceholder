@@ -1,0 +1,23 @@
+{
+  "id": "cone_blast",
+  "name": "Конусный залп",
+  "description": "Атака конусом 90 градусов",
+  "type": "area",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "cone",
+        "direction": 0,
+        "range": 4,
+        "angle": 90,
+        "cut": 0,
+        "props": {
+          "penetration": true,
+          "ricochet": false,
+          "collision": true
+        }
+      }
+    ]
+  }
+}

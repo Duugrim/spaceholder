@@ -1,0 +1,31 @@
+{
+  "id": "rocket",
+  "name": "Ракета",
+  "description": "Летит прямо, потом взрывается",
+  "type": "complex",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "line",
+        "direction": 0,
+        "length": 5,
+        "props": {
+          "penetration": false,
+          "ricochet": false,
+          "collision": true
+        }
+      },
+      {
+        "type": "circle",
+        "direction": 0,
+        "range": 2,
+        "props": {
+          "penetration": true,
+          "ricochet": false,
+          "collision": true
+        }
+      }
+    ]
+  }
+}
