@@ -26,6 +26,12 @@ export class DrawManager {
         alpha: 0.7,
         lineWidth: 2,
         fillAlpha: 0.15
+      },
+      hit: {
+        color: 0xFF0000,
+        alpha: 0.9,
+        radius: 8,
+        lineWidth: 2
       }
     };
   }
@@ -81,6 +87,13 @@ export class DrawManager {
     shotResult.shotPaths.forEach((segment, index) => {
       this.drawSegment(segment);
     });
+    
+    // Отрисовываем попадания
+    if (shotResult.shotHits && shotResult.shotHits.length > 0) {
+      shotResult.shotHits.forEach((hit, index) => {
+        this.drawHit(hit, index);
+      });
+    }
   }
   
   /**
@@ -277,6 +290,55 @@ export class DrawManager {
   }
   
   /**
+   * Отрисовка маркера попадания
+   * @param {Object} hit - объект попадания из shotHits
+   * @param {number} index - индекс попадания
+   */
+  drawHit(hit, index) {
+    if (!hit || !hit.point || !this.drawContainer) {
+      console.warn('DrawManager: Invalid hit data');
+      return;
+    }
+    
+    const hitGraphics = new PIXI.Graphics();
+    const style = this.defaultStyles.hit;
+    
+    // Рисуем крестик
+    hitGraphics.lineStyle(style.lineWidth, style.color, style.alpha);
+    
+    // Горизонтальная линия крестика
+    hitGraphics.moveTo(hit.point.x - style.radius, hit.point.y);
+    hitGraphics.lineTo(hit.point.x + style.radius, hit.point.y);
+    
+    // Вертикальная линия крестика
+    hitGraphics.moveTo(hit.point.x, hit.point.y - style.radius);
+    hitGraphics.lineTo(hit.point.x, hit.point.y + style.radius);
+    
+    // Окружность вокруг крестика
+    hitGraphics.lineStyle(style.lineWidth, style.color, style.alpha * 0.7);
+    hitGraphics.drawCircle(hit.point.x, hit.point.y, style.radius * 0.7);
+    
+    // Центральная точка
+    hitGraphics.beginFill(style.color, style.alpha);
+    hitGraphics.drawCircle(hit.point.x, hit.point.y, 2);
+    hitGraphics.endFill();
+    
+    // Настройка идентификации
+    hitGraphics.name = `drawManager_hit_${index}`;
+    
+    // Делаем неинтерактивным
+    hitGraphics.interactive = false;
+    hitGraphics.interactiveChildren = false;
+    
+    // Добавляем на сцену
+    this.drawContainer.addChild(hitGraphics);
+    this.currentDrawnElements.push(hitGraphics);
+    
+    // Анимация появления
+    this._animateElementAppearance(hitGraphics);
+  }
+  
+  /**
    * Анимация появления элемента
    * @param {PIXI.Graphics} element - графический элемент
    * @private
@@ -322,7 +384,7 @@ export class DrawManager {
   
   /**
    * Установка пользовательских стилей
-   * @param {Object} styles - объект со стилями для line, circle и/или cone
+   * @param {Object} styles - объект со стилями для line, circle, cone и/или hit
    */
   setStyles(styles) {
     if (styles.line) {
@@ -333,6 +395,9 @@ export class DrawManager {
     }
     if (styles.cone) {
       this.defaultStyles.cone = { ...this.defaultStyles.cone, ...styles.cone };
+    }
+    if (styles.hit) {
+      this.defaultStyles.hit = { ...this.defaultStyles.hit, ...styles.hit };
     }
   }
   
