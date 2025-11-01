@@ -10,10 +10,13 @@
         "type": "line",
         "direction": 0,
         "length": 3,
+        "collision": {
+          "walls": true,
+          "tokens": true
+        },
         "props": {
           "penetration": true,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       }
     ]

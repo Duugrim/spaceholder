@@ -137,9 +137,11 @@ export class ShotManager {
   /**
    * Расчёт процента покрытия токена конусом (метод сэмплирования)
    * @private
+   * @param {object} collisionOptions - Опции проверки collision {walls, tokens}
+   * @param {Array} whitelist - Список игнорируемых токенов
    * @returns {number} Процент покрытия (0-1)
    */
-  _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius) {
+  _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = []) {
     // Расстояние от начала конуса до центра токена
     const distance = Math.hypot(tokenCenter.x - coneOrigin.x, tokenCenter.y - coneOrigin.y);
     
@@ -156,7 +158,11 @@ export class ShotManager {
     // Центр токена
     totalCount++;
     if (this._isPointInCone(tokenCenter, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
-      hitCount++;
+      // Проверяем LoS до центра токена
+      const losCheck = this._checkLineOfSight(coneOrigin, tokenCenter, collisionOptions, whitelist);
+      if (!losCheck.blocked) {
+        hitCount++;
+      }
     }
     
     // Сэмплы по кольцам
@@ -173,7 +179,11 @@ export class ShotManager {
         
         totalCount++;
         if (this._isPointInCone(samplePoint, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
-          hitCount++;
+          // Проверяем LoS до точки сэмплирования
+          const losCheck = this._checkLineOfSight(coneOrigin, samplePoint, collisionOptions, whitelist);
+          if (!losCheck.blocked) {
+            hitCount++;
+          }
         }
       }
     }
@@ -275,20 +285,105 @@ export class ShotManager {
   }
 
   /**
+   * Проверка line of sight между двумя точками
+   * @private
+   * @param {object} start - Начальная точка {x, y}
+   * @param {object} end - Конечная точка {x, y}
+   * @param {object} options - Опции проверки {walls: boolean, tokens: boolean}
+   * @param {Array} whitelist - Список игнорируемых токенов
+   * @returns {object} Результат {blocked: boolean, blockers: [{type, object, point}]}
+   */
+  _checkLineOfSight(start, end, options = {}, whitelist = []) {
+    const blockers = [];
+    const checkWalls = options.walls !== false;
+    const checkTokens = options.tokens !== false;
+    
+    // Проверка стен
+    if (checkWalls && canvas.walls?.placeables) {
+      for (const wall of canvas.walls.placeables) {
+        if (!wall.document.move) continue;
+        
+        const intersection = this._raySegmentIntersection(
+          start,
+          end,
+          { x: wall.document.c[0], y: wall.document.c[1] },
+          { x: wall.document.c[2], y: wall.document.c[3] }
+        );
+        
+        if (intersection) {
+          const distance = Math.hypot(
+            intersection.x - start.x,
+            intersection.y - start.y
+          );
+          
+          blockers.push({
+            type: 'wall',
+            object: wall,
+            point: intersection,
+            distance: distance
+          });
+        }
+      }
+    }
+    
+    // Проверка токенов
+    if (checkTokens && canvas.tokens?.placeables) {
+      for (const token of canvas.tokens.placeables) {
+        if (whitelist.includes(token)) continue;
+        if (!token.visible) continue;
+        
+        const bounds = token.bounds;
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + bounds.height / 2;
+        const radius = Math.min(bounds.width, bounds.height) / 2;
+        
+        const intersection = this._rayCircleIntersection(
+          start,
+          end,
+          { x: centerX, y: centerY },
+          radius
+        );
+        
+        if (intersection) {
+          const distance = Math.hypot(
+            intersection.x - start.x,
+            intersection.y - start.y
+          );
+          
+          blockers.push({
+            type: 'token',
+            object: token,
+            point: intersection,
+            distance: distance
+          });
+        }
+      }
+    }
+    
+    return {
+      blocked: blockers.length > 0,
+      blockers: blockers
+    };
+  }
+
+  /**
    * Проверка столкновений сегмента с объектами
-   * @param {object} segment - Сегмент {start, end, type, props}
+   * @param {object} segment - Сегмент {start, end, type, collision, props}
    * @param {Array} whitelist - Список игнорируемых объектов
    * @returns {object} Результат {hit, point, type, object, shouldStop}
    */
   isHit(segment, whitelist) {
-    if (!segment.props.collision) {
+    // Проверяем наличие collision настроек
+    if (!segment.collision || (segment.collision.walls === false && segment.collision.tokens === false)) {
       return { hit: false, shouldStop: false };
     }
 
     const collisions = [];
+    const checkWalls = segment.collision.walls !== false;
+    const checkTokens = segment.collision.tokens !== false;
     
     // Проверка столкновений с токенами
-    if (canvas.tokens?.placeables) {
+    if (checkTokens && canvas.tokens?.placeables) {
       for (const token of canvas.tokens.placeables) {
         if (whitelist.includes(token)) continue;
         if (!token.visible) continue;
@@ -322,7 +417,7 @@ export class ShotManager {
     }
     
     // Проверка столкновений со стенами
-    if (canvas.walls?.placeables) {
+    if (checkWalls && canvas.walls?.placeables) {
       for (const wall of canvas.walls.placeables) {
         if (!wall.document.move) continue;
         
@@ -436,6 +531,7 @@ export class ShotManager {
       start: { ...lastPos },
       end: { ...endPos },
       type: segment.type,
+      collision: segment.collision,
       props: segment.props
     };
     
@@ -495,7 +591,8 @@ export class ShotManager {
     shot.shotResult.shotPaths.push(path);
     
     // Проверяем попадания в радиусе
-    if (segment.props.collision && canvas.tokens?.placeables) {
+    const hasCollision = segment.collision && (segment.collision.walls !== false || segment.collision.tokens !== false);
+    if (hasCollision && canvas.tokens?.placeables) {
       for (const token of canvas.tokens.placeables) {
         if (whitelist.includes(token)) continue;
         if (!token.visible) continue;
@@ -513,6 +610,17 @@ export class ShotManager {
         
         // Если токен в радиусе (с учётом радиуса токена)
         if (distance <= range + tokenRadius) {
+          // Проверяем LoS от центра взрыва до центра токена
+          const losCheck = this._checkLineOfSight(
+            lastPos,
+            tokenCenter,
+            segment.collision,
+            whitelist
+          );
+          
+          // Если есть блокировка - пропускаем токен
+          if (losCheck.blocked) continue;
+          
           // Рассчитываем процент покрытия
           const coverage = this._calculateCircleOverlap(lastPos, range, tokenCenter, tokenRadius);
           
@@ -570,7 +678,8 @@ export class ShotManager {
     shot.shotResult.shotPaths.push(path);
     
     // Проверяем попадания в конус
-    if (segment.props.collision && canvas.tokens?.placeables) {
+    const hasCollision = segment.collision && (segment.collision.walls !== false || segment.collision.tokens !== false);
+    if (hasCollision && canvas.tokens?.placeables) {
       const directionRad = (absoluteDirection * Math.PI) / 180;
       const halfAngleRad = ((angle / 2) * Math.PI) / 180;
       
@@ -603,7 +712,7 @@ export class ShotManager {
         // Рассчитываем процент покрытия токена конусом
         const coverage = this._calculateConeTokenCoverage(
           lastPos, range, cut, directionRad, halfAngleRad,
-          tokenCenter, tokenRadius
+          tokenCenter, tokenRadius, segment.collision, whitelist
         );
         
         // Если есть покрытие

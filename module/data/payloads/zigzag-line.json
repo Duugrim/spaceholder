@@ -10,30 +10,39 @@
         "type": "line",
         "direction": 0,
         "length": 2,
+        "collision": {
+          "walls": true,
+          "tokens": true
+        },
         "props": {
           "penetration": true,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       },
       {
         "type": "line",
         "direction": 45,
         "length": 2,
+        "collision": {
+          "walls": true,
+          "tokens": true
+        },
         "props": {
           "penetration": true,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       },
       {
         "type": "line",
         "direction": -45,
         "length": 2,
+        "collision": {
+          "walls": true,
+          "tokens": true
+        },
         "props": {
           "penetration": true,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       }
     ]

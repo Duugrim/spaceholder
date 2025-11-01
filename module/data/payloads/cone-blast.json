@@ -12,10 +12,13 @@
         "range": 4,
         "angle": 90,
         "cut": 0,
+        "collision": {
+          "walls": true,
+          "tokens": false
+        },
         "props": {
           "penetration": true,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       }
     ]

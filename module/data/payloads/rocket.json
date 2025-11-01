@@ -10,20 +10,26 @@
         "type": "line",
         "direction": 0,
         "length": 5,
+        "collision": {
+          "walls": true,
+          "tokens": true
+        },
         "props": {
           "penetration": false,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       },
       {
         "type": "circle",
         "direction": 0,
         "range": 2,
+        "collision": {
+          "walls": true,
+          "tokens": false
+        },
         "props": {
           "penetration": true,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       }
     ]

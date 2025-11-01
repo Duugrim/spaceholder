@@ -10,10 +10,13 @@
         "type": "circle",
         "direction": 0,
         "range": 3,
+        "collision": {
+          "walls": true,
+          "tokens": false
+        },
         "props": {
           "penetration": true,
-          "ricochet": false,
-          "collision": true
+          "ricochet": false
         }
       }
     ]

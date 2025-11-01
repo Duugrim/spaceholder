@@ -13,15 +13,74 @@ Payload - объект, содержащий набор данных о трае
         "type": "line",
         "direction": 0,
         "length": 3,
+        "collision": {
+          "walls": true,  // Проверять столкновения со стенами
+          "tokens": true  // Проверять столкновения с токенами
+        },
         "props": {
-          "penetration": true, //Может ли пробить
-          "ricochet": false, //Может ли срикошетить данный отрезок
-          "collision": true //Вообще проверяем столкновения или нет
+          "penetration": true, // Может ли пробить
+          "ricochet": false    // Может ли срикошетить данный отрезок
         }
-        
       }
     ]
   }
+}
+```
+
+**Примеры конфигураций collision:**
+
+```json
+// Полная проверка (по умолчанию)
+"collision": {
+  "walls": true,
+  "tokens": true
+}
+
+// Только стены (игнорировать токены)
+"collision": {
+  "walls": true,
+  "tokens": false
+}
+
+// Только токены (проходит сквозь стены)
+"collision": {
+  "walls": false,
+  "tokens": true
+}
+
+// Отключить все проверки
+"collision": {
+  "walls": false,
+  "tokens": false
+}
+```
+
+**Примеры для разных типов сегментов:**
+
+```json
+// Взрыв, блокируемый стенами
+{
+  "type": "circle",
+  "range": 3,
+  "collision": {
+    "walls": true,
+    "tokens": false  // Взрыв не блокируется другими токенами
+  },
+  "props": {}
+}
+
+// Конус огня, проходящий сквозь стены
+{
+  "type": "cone",
+  "direction": 0,
+  "range": 5,
+  "angle": 90,
+  "cut": 0,
+  "collision": {
+    "walls": false,  // Магический огонь проходит сквозь стены
+    "tokens": true
+  },
+  "props": {}
 }
 ```
 Алгоритм работы:
