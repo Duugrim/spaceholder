@@ -100,38 +100,68 @@ export class ShotManager {
   }
 
   /**
-   * Расчёт процента перекрытия двух кругов
+   * Расчёт процента покрытия токена кругом (метод сэмплирования)
    * @private
-   * @returns {number} Процент покрытия токена (0-1)
+   * @param {object} circleCenter - Центр круга {x, y}
+   * @param {number} circleRadius - Радиус круга
+   * @param {object} tokenCenter - Центр токена {x, y}
+   * @param {number} tokenRadius - Радиус токена
+   * @param {object} collisionOptions - Опции проверки collision {walls, tokens}
+   * @param {Array} whitelist - Список игнорируемых токенов
+   * @returns {number} Процент покрытия (0-1)
    */
-  _calculateCircleOverlap(center1, radius1, center2, radius2) {
-    const distance = Math.hypot(center2.x - center1.x, center2.y - center1.y);
+  _calculateCircleTokenCoverage(circleCenter, circleRadius, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = []) {
+    // Расстояние от центра круга до центра токена
+    const distance = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y);
     
-    // Если круги не пересекаются
-    if (distance >= radius1 + radius2) return 0;
+    // Быстрая проверка: токен вне круга
+    if (distance > circleRadius + tokenRadius) return 0;
     
-    // Если токен полностью внутри взрыва
-    if (distance + radius2 <= radius1) return 1;
+    // Сэмплирование: разбиваем токен на точки по кругу
+    const sampleCount = 32; // Количество точек для сэмплирования
+    const sampleRings = 3;  // Кольца сэмплирования (1 = центр + край)
     
-    // Если взрыв полностью внутри токена (редко, но возможно)
-    if (distance + radius1 <= radius2) {
-      return (Math.PI * radius1 * radius1) / (Math.PI * radius2 * radius2);
+    let hitCount = 0;
+    let totalCount = 0;
+    
+    // Центр токена
+    totalCount++;
+    const centerInCircle = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y) <= circleRadius;
+    if (centerInCircle) {
+      // Проверяем LoS до центра токена
+      const losCheck = this._checkLineOfSight(circleCenter, tokenCenter, collisionOptions, whitelist);
+      if (!losCheck.blocked) {
+        hitCount++;
+      }
     }
     
-    // Частичное перекрытие - используем упрощённый расчёт
-    // Формула площади пересечения двух кругов
-    const r1Sq = radius1 * radius1;
-    const r2Sq = radius2 * radius2;
-    const dSq = distance * distance;
+    // Сэмплы по кольцам
+    for (let ring = 1; ring <= sampleRings; ring++) {
+      const ringRadius = (tokenRadius * ring) / sampleRings;
+      const pointsInRing = Math.max(8, Math.floor(sampleCount * ring / sampleRings));
+      
+      for (let i = 0; i < pointsInRing; i++) {
+        const angle = (i / pointsInRing) * 2 * Math.PI;
+        const samplePoint = {
+          x: tokenCenter.x + Math.cos(angle) * ringRadius,
+          y: tokenCenter.y + Math.sin(angle) * ringRadius
+        };
+        
+        totalCount++;
+        
+        // Проверяем, находится ли точка в круге
+        const pointInCircle = Math.hypot(samplePoint.x - circleCenter.x, samplePoint.y - circleCenter.y) <= circleRadius;
+        if (pointInCircle) {
+          // Проверяем LoS до точки сэмплирования
+          const losCheck = this._checkLineOfSight(circleCenter, samplePoint, collisionOptions, whitelist);
+          if (!losCheck.blocked) {
+            hitCount++;
+          }
+        }
+      }
+    }
     
-    const part1 = r1Sq * Math.acos((dSq + r1Sq - r2Sq) / (2 * distance * radius1));
-    const part2 = r2Sq * Math.acos((dSq + r2Sq - r1Sq) / (2 * distance * radius2));
-    const part3 = 0.5 * Math.sqrt((-distance + radius1 + radius2) * (distance + radius1 - radius2) * (distance - radius1 + radius2) * (distance + radius1 + radius2));
-    
-    const intersectionArea = part1 + part2 - part3;
-    const tokenArea = Math.PI * r2Sq;
-    
-    return Math.max(0, Math.min(1, intersectionArea / tokenArea));
+    return hitCount / totalCount;
   }
 
   /**
@@ -610,36 +640,32 @@ export class ShotManager {
         
         // Если токен в радиусе (с учётом радиуса токена)
         if (distance <= range + tokenRadius) {
-          // Проверяем LoS от центра взрыва до центра токена
-          const losCheck = this._checkLineOfSight(
-            lastPos,
-            tokenCenter,
-            segment.collision,
-            whitelist
+          // Рассчитываем процент покрытия через сэмплирование
+          // (проверка LoS выполняется внутри для каждой точки)
+          const coverage = this._calculateCircleTokenCoverage(
+            lastPos, range, tokenCenter, tokenRadius,
+            segment.collision, whitelist
           );
           
-          // Если есть блокировка - пропускаем токен
-          if (losCheck.blocked) continue;
-          
-          // Рассчитываем процент покрытия
-          const coverage = this._calculateCircleOverlap(lastPos, range, tokenCenter, tokenRadius);
-          
-          shot.shotResult.shotHits.push({
-            point: { ...tokenCenter },
-            type: 'token',
-            object: token,
-            distance: distance,
-            coverage: coverage
-          });
-          
-          shot.actualHits.push({
-            hit: true,
-            point: tokenCenter,
-            type: 'token',
-            object: token,
-            shouldStop: false,
-            coverage: coverage
-          });
+          // Если есть хоть какое-то покрытие - записываем попадание
+          if (coverage > 0) {
+            shot.shotResult.shotHits.push({
+              point: { ...tokenCenter },
+              type: 'token',
+              object: token,
+              distance: distance,
+              coverage: coverage
+            });
+            
+            shot.actualHits.push({
+              hit: true,
+              point: tokenCenter,
+              type: 'token',
+              object: token,
+              shouldStop: false,
+              coverage: coverage
+            });
+          }
         }
       }
     }
