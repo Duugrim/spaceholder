@@ -19,7 +19,8 @@
         "props": {
           "penetration": true,
           "ricochet": false
-        }
+        },
+        "hitBeh": "stop"
       }
     ]
   }

@@ -519,15 +519,17 @@ export class ShotManager {
     // Берём ближайшее столкновение
     const nearestCollision = collisions[0];
     
-    // Определяем, останавливать ли выстрел
-    const shouldStop = !segment.props.penetration;
+    // Определяем поведение при попадании
+    // hitBeh может быть: "stop" или "next"
+    // Используем значение из сегмента или определяем по penetration
+    const hitBeh = segment.hitBeh || (!segment.props.penetration ? "stop" : "next");
     
     return {
       hit: true,
       point: nearestCollision.point,
       type: nearestCollision.type,
       object: nearestCollision.object,
-      shouldStop: shouldStop,
+      hitBeh: hitBeh,
       allCollisions: collisions
     };
   }
@@ -596,16 +598,39 @@ export class ShotManager {
       end: { ...endPos },
       type: segment.type,
       collision: segment.collision,
-      props: segment.props
+      props: segment.props,
+      hitBeh: segment.hitBeh
     };
     
     // Проверяем столкновения
     const hitResult = this.isHit(testSegment, whitelist);
     
-    // Если есть столкновение и нужно остановиться
-    if (hitResult.hit && hitResult.shouldStop) {
-      // Корректируем конечную точку до места столкновения
-      endPos = hitResult.point;
+    // Определяем, продолжать ли выстрел на основе hitBeh
+    let shouldContinue = true;
+    
+    if (hitResult.hit) {
+      // Если есть столкновение без пробития
+      if (hitResult.hitBeh === "stop") {
+        // Останавливаем выстрел
+        shouldContinue = false;
+        endPos = hitResult.point; // Корректируем до точки попадания
+      } else if (hitResult.hitBeh === "next") {
+        // Переходим к следующему сегменту
+        shouldContinue = true;
+        endPos = hitResult.point; // Заканчиваем этот сегмент в точке попадания
+      }
+      
+      // Сохраняем информацию о попадании
+      shot.shotResult.shotHits.push({
+        point: hitResult.point,
+        type: hitResult.type,
+        object: hitResult.object
+      });
+      
+      shot.actualHits.push(hitResult);
+    } else {
+      // Нет столкновений - продолжаем дальше
+      shouldContinue = true;
     }
     
     // Создаём объект пути для сохранения
@@ -617,21 +642,10 @@ export class ShotManager {
     
     shot.shotResult.shotPaths.push(path);
     
-    // Сохраняем информацию о попадании
-    if (hitResult.hit) {
-      shot.shotResult.shotHits.push({
-        point: hitResult.point,
-        type: hitResult.type,
-        object: hitResult.object
-      });
-      
-      shot.actualHits.push(hitResult);
-    }
-    
     return {
       endPos: endPos,
       direction: absoluteDirection,
-      shouldContinue: !hitResult.shouldStop
+      shouldContinue: shouldContinue
     };
   }
 
@@ -708,10 +722,13 @@ export class ShotManager {
     }
     
     // Круг не двигает lastPos, остаётся на месте
+    // Для круга hitBeh определяет, продолжать ли после взрыва
+    const shouldContinue = segment.hitBeh === "stop" ? false : true;
+    
     return {
       endPos: lastPos,
       direction: direction,
-      shouldContinue: true  // Можно продолжать после взрыва
+      shouldContinue: shouldContinue
     };
   }
 
@@ -804,10 +821,13 @@ export class ShotManager {
     }
     
     // Конус не двигает lastPos
+    // Для конуса hitBeh определяет, продолжать ли после атаки
+    const coneShouldContinue = segment.hitBeh === "stop" ? false : true;
+    
     return {
       endPos: lastPos,
       direction: absoluteDirection,
-      shouldContinue: true
+      shouldContinue: coneShouldContinue
     };
   }
 

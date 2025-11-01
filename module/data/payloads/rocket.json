@@ -17,7 +17,8 @@
         "props": {
           "penetration": false,
           "ricochet": false
-        }
+        },
+        "hitBeh": "next"
       },
       {
         "type": "circle",
@@ -30,7 +31,8 @@
         "props": {
           "penetration": true,
           "ricochet": false
-        }
+        },
+        "hitBeh": "stop"
       }
     ]
   }

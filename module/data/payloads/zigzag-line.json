@@ -15,9 +15,10 @@
           "tokens": true
         },
         "props": {
-          "penetration": true,
+          "penetration": false,
           "ricochet": false
-        }
+        },
+        "hitBeh": "stop"
       },
       {
         "type": "line",
@@ -28,9 +29,10 @@
           "tokens": true
         },
         "props": {
-          "penetration": true,
+          "penetration": false,
           "ricochet": false
-        }
+        },
+        "hitBeh": "stop"
       },
       {
         "type": "line",
@@ -41,9 +43,10 @@
           "tokens": true
         },
         "props": {
-          "penetration": true,
+          "penetration": false,
           "ricochet": false
-        }
+        },
+        "hitBeh": "stop"
       }
     ]
   }
