@@ -303,25 +303,42 @@ export class DrawManager {
     const hitGraphics = new PIXI.Graphics();
     const style = this.defaultStyles.hit;
     
-    // Рисуем крестик
-    hitGraphics.lineStyle(style.lineWidth, style.color, style.alpha);
-    
-    // Горизонтальная линия крестика
-    hitGraphics.moveTo(hit.point.x - style.radius, hit.point.y);
-    hitGraphics.lineTo(hit.point.x + style.radius, hit.point.y);
-    
-    // Вертикальная линия крестика
-    hitGraphics.moveTo(hit.point.x, hit.point.y - style.radius);
-    hitGraphics.lineTo(hit.point.x, hit.point.y + style.radius);
-    
-    // Окружность вокруг крестика
-    hitGraphics.lineStyle(style.lineWidth, style.color, style.alpha * 0.7);
-    hitGraphics.drawCircle(hit.point.x, hit.point.y, style.radius * 0.7);
-    
-    // Центральная точка
-    hitGraphics.beginFill(style.color, style.alpha);
-    hitGraphics.drawCircle(hit.point.x, hit.point.y, 2);
-    hitGraphics.endFill();
+    // Если есть массив hitPoints - рисуем все точки сэмплирования
+    if (hit.hitPoints && Array.isArray(hit.hitPoints) && hit.hitPoints.length > 0) {
+      // Отрисовываем каждую точку сэмплирования
+      hitGraphics.beginFill(style.color, style.alpha * 0.6);
+      for (const point of hit.hitPoints) {
+        hitGraphics.drawCircle(point.x, point.y, 3);
+      }
+      hitGraphics.endFill();
+      
+      // Основной маркер в центре токена (больше и ярче)
+      hitGraphics.lineStyle(style.lineWidth, style.color, style.alpha);
+      hitGraphics.drawCircle(hit.point.x, hit.point.y, style.radius * 0.7);
+      hitGraphics.beginFill(style.color, style.alpha);
+      hitGraphics.drawCircle(hit.point.x, hit.point.y, 4);
+      hitGraphics.endFill();
+    } else {
+      // Старый формат - просто крестик
+      hitGraphics.lineStyle(style.lineWidth, style.color, style.alpha);
+      
+      // Горизонтальная линия крестика
+      hitGraphics.moveTo(hit.point.x - style.radius, hit.point.y);
+      hitGraphics.lineTo(hit.point.x + style.radius, hit.point.y);
+      
+      // Вертикальная линия крестика
+      hitGraphics.moveTo(hit.point.x, hit.point.y - style.radius);
+      hitGraphics.lineTo(hit.point.x, hit.point.y + style.radius);
+      
+      // Окружность вокруг крестика
+      hitGraphics.lineStyle(style.lineWidth, style.color, style.alpha * 0.7);
+      hitGraphics.drawCircle(hit.point.x, hit.point.y, style.radius * 0.7);
+      
+      // Центральная точка
+      hitGraphics.beginFill(style.color, style.alpha);
+      hitGraphics.drawCircle(hit.point.x, hit.point.y, 2);
+      hitGraphics.endFill();
+    }
     
     // Настройка идентификации
     hitGraphics.name = `drawManager_hit_${index}`;

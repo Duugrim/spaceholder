@@ -61,6 +61,28 @@ class ShotSystem {
   clear() {
     this.shots.clear();
   }
+
+  /**
+   * Вывод всех сохранённых shotResult в консоль
+   */
+  logAllShots() {
+    if (this.shots.size === 0) {
+      console.log('ShotSystem: No shots stored');
+      return;
+    }
+
+    console.log(`%c=== ShotSystem Debug (${this.shots.size} shots) ===`, 'color: #00ff00; font-weight: bold; font-size: 14px');
+    
+    this.shots.forEach((shot, uid) => {
+      console.group(`%c${uid}`, 'color: #ffff00');
+      console.log('shotPaths:', shot.shotResult.shotPaths);
+      console.log('shotHits:', shot.shotResult.shotHits);
+      console.log('actualHits:', shot.actualHits);
+      console.groupEnd();
+    });
+    
+    console.log('%c=== End ShotSystem Debug ===', 'color: #00ff00; font-weight: bold');
+  }
 }
 
 /**
@@ -108,14 +130,14 @@ export class ShotManager {
    * @param {number} tokenRadius - Радиус токена
    * @param {object} collisionOptions - Опции проверки collision {walls, tokens}
    * @param {Array} whitelist - Список игнорируемых токенов
-   * @returns {number} Процент покрытия (0-1)
+   * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
   _calculateCircleTokenCoverage(circleCenter, circleRadius, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = []) {
     // Расстояние от центра круга до центра токена
     const distance = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y);
     
     // Быстрая проверка: токен вне круга
-    if (distance > circleRadius + tokenRadius) return 0;
+    if (distance > circleRadius + tokenRadius) return { coverage: 0, hitPoints: [] };
     
     // Сэмплирование: разбиваем токен на точки по кругу
     const sampleCount = 32; // Количество точек для сэмплирования
@@ -123,6 +145,7 @@ export class ShotManager {
     
     let hitCount = 0;
     let totalCount = 0;
+    const hitPoints = [];
     
     // Центр токена
     totalCount++;
@@ -132,6 +155,7 @@ export class ShotManager {
       const losCheck = this._checkLineOfSight(circleCenter, tokenCenter, collisionOptions, whitelist);
       if (!losCheck.blocked) {
         hitCount++;
+        hitPoints.push({ x: tokenCenter.x, y: tokenCenter.y });
       }
     }
     
@@ -156,12 +180,16 @@ export class ShotManager {
           const losCheck = this._checkLineOfSight(circleCenter, samplePoint, collisionOptions, whitelist);
           if (!losCheck.blocked) {
             hitCount++;
+            hitPoints.push({ x: samplePoint.x, y: samplePoint.y });
           }
         }
       }
     }
     
-    return hitCount / totalCount;
+    return {
+      coverage: hitCount / totalCount,
+      hitPoints: hitPoints
+    };
   }
 
   /**
@@ -169,14 +197,14 @@ export class ShotManager {
    * @private
    * @param {object} collisionOptions - Опции проверки collision {walls, tokens}
    * @param {Array} whitelist - Список игнорируемых токенов
-   * @returns {number} Процент покрытия (0-1)
+   * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
   _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = []) {
     // Расстояние от начала конуса до центра токена
     const distance = Math.hypot(tokenCenter.x - coneOrigin.x, tokenCenter.y - coneOrigin.y);
     
     // Быстрая проверка: токен вне возможного радиуса
-    if (distance > coneRange + tokenRadius || distance < coneCut - tokenRadius) return 0;
+    if (distance > coneRange + tokenRadius || distance < coneCut - tokenRadius) return { coverage: 0, hitPoints: [] };
     
     // Сэмплирование: разбиваем токен на точки по кругу
     const sampleCount = 32; // Количество точек для сэмплирования
@@ -184,6 +212,7 @@ export class ShotManager {
     
     let hitCount = 0;
     let totalCount = 0;
+    const hitPoints = [];
     
     // Центр токена
     totalCount++;
@@ -192,6 +221,7 @@ export class ShotManager {
       const losCheck = this._checkLineOfSight(coneOrigin, tokenCenter, collisionOptions, whitelist);
       if (!losCheck.blocked) {
         hitCount++;
+        hitPoints.push({ x: tokenCenter.x, y: tokenCenter.y });
       }
     }
     
@@ -213,12 +243,16 @@ export class ShotManager {
           const losCheck = this._checkLineOfSight(coneOrigin, samplePoint, collisionOptions, whitelist);
           if (!losCheck.blocked) {
             hitCount++;
+            hitPoints.push({ x: samplePoint.x, y: samplePoint.y });
           }
         }
       }
     }
     
-    return hitCount / totalCount;
+    return {
+      coverage: hitCount / totalCount,
+      hitPoints: hitPoints
+    };
   }
 
   /**
@@ -642,19 +676,21 @@ export class ShotManager {
         if (distance <= range + tokenRadius) {
           // Рассчитываем процент покрытия через сэмплирование
           // (проверка LoS выполняется внутри для каждой точки)
-          const coverage = this._calculateCircleTokenCoverage(
+          const result = this._calculateCircleTokenCoverage(
             lastPos, range, tokenCenter, tokenRadius,
             segment.collision, whitelist
           );
           
-          // Если есть хоть какое-то покрытие - записываем попадание
-          if (coverage > 0) {
+          // Если есть хоть какое-то покрытие - записываем один объект попадания на токен
+          if (result.coverage > 0) {
+            // Группируем все точки токена в один объект
             shot.shotResult.shotHits.push({
-              point: { ...tokenCenter },
+              point: { ...tokenCenter },  // Центр токена для основного маркера
+              hitPoints: result.hitPoints, // Все успешные точки сэмплирования
               type: 'token',
               object: token,
               distance: distance,
-              coverage: coverage
+              coverage: result.coverage
             });
             
             shot.actualHits.push({
@@ -663,7 +699,8 @@ export class ShotManager {
               type: 'token',
               object: token,
               shouldStop: false,
-              coverage: coverage
+              coverage: result.coverage,
+              hitPoints: result.hitPoints
             });
           }
         }
@@ -736,19 +773,21 @@ export class ShotManager {
         while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
         
         // Рассчитываем процент покрытия токена конусом
-        const coverage = this._calculateConeTokenCoverage(
+        const result = this._calculateConeTokenCoverage(
           lastPos, range, cut, directionRad, halfAngleRad,
           tokenCenter, tokenRadius, segment.collision, whitelist
         );
         
-        // Если есть покрытие
-        if (coverage > 0) {
+        // Если есть покрытие - записываем один объект попадания на токен
+        if (result.coverage > 0) {
+          // Группируем все точки токена в один объект
           shot.shotResult.shotHits.push({
-            point: { ...tokenCenter },
+            point: { ...tokenCenter },  // Центр токена для основного маркера
+            hitPoints: result.hitPoints, // Все успешные точки сэмплирования
             type: 'token',
             object: token,
             distance: distance,
-            coverage: coverage
+            coverage: result.coverage
           });
           
           shot.actualHits.push({
@@ -757,7 +796,8 @@ export class ShotManager {
             type: 'token',
             object: token,
             shouldStop: false,
-            coverage: coverage
+            coverage: result.coverage,
+            hitPoints: result.hitPoints
           });
         }
       }
@@ -825,5 +865,12 @@ export class ShotManager {
   getShotResult(uid) {
     const shot = this.shotSystem.getShot(uid);
     return shot ? shot.shotResult : null;
+  }
+
+  /**
+   * Вывод всех сохранённых выстрелов в консоль для отладки
+   */
+  logAllShots() {
+    this.shotSystem.logAllShots();
   }
 }

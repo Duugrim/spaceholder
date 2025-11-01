@@ -103,30 +103,36 @@ function handleAimingToolChange(isActive) {
  * Показать диалог настройки прицеливания
  */
 function showAimingDialog() {
-  // OLD SYSTEM DISABLED - Новая система в разработке
-  ui.notifications.warn('Система прицеливания временно отключена. Идёт переработка.');
-  deactivateAimingTool();
-  
-  /* OLD CODE:
   const controlled = canvas.tokens.controlled;
-  
+
   if (controlled.length === 0) {
     ui.notifications.warn('Выберите токен для настройки прицеливания');
     deactivateAimingTool();
     return;
   }
-  
+
   if (controlled.length > 1) {
     ui.notifications.warn('Выберите только один токен для прицеливания');
     deactivateAimingTool();
     return;
   }
-  
+
   const token = controlled[0];
-  AimingDialog.show(token).then(() => {
-    deactivateAimingTool();
-  });
-  */
+
+  // Ленивая загрузка менеджера прицеливания
+  import('./aiming-manager.mjs')
+    .then(({ AimingManager }) => {
+      const manager = new AimingManager();
+      manager.showAimingDialog(token).finally(() => {
+        // Не держим ссылку, менеджер сам повесит события при старте
+        deactivateAimingTool();
+      });
+    })
+    .catch((err) => {
+      console.error('SpaceHolder | Failed to load AimingManager:', err);
+      ui.notifications.error('Не удалось загрузить модуль прицеливания');
+      deactivateAimingTool();
+    });
 }
 
 /**
