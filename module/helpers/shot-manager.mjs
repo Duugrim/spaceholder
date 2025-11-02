@@ -130,9 +130,10 @@ export class ShotManager {
    * @param {number} tokenRadius - Радиус токена
    * @param {object} collisionOptions - Опции проверки collision {walls, tokens}
    * @param {Array} whitelist - Список игнорируемых токенов
+   * @param {Token} targetToken - Целевой токен (для учета высоты)
    * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
-  _calculateCircleTokenCoverage(circleCenter, circleRadius, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = []) {
+  _calculateCircleTokenCoverage(circleCenter, circleRadius, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = [], targetToken = null) {
     // Расстояние от центра круга до центра токена
     const distance = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y);
     
@@ -152,7 +153,7 @@ export class ShotManager {
     const centerInCircle = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y) <= circleRadius;
     if (centerInCircle) {
       // Проверяем LoS до центра токена
-      const losCheck = this._checkLineOfSight(circleCenter, tokenCenter, collisionOptions, whitelist);
+      const losCheck = this._checkLineOfSight(circleCenter, tokenCenter, collisionOptions, whitelist, targetToken);
       if (!losCheck.blocked) {
         hitCount++;
         hitPoints.push({ x: tokenCenter.x, y: tokenCenter.y });
@@ -178,7 +179,7 @@ export class ShotManager {
         const pointInCircle = Math.hypot(samplePoint.x - circleCenter.x, samplePoint.y - circleCenter.y) <= circleRadius;
         if (pointInCircle) {
           // Проверяем LoS до точки сэмплирования
-          const losCheck = this._checkLineOfSight(circleCenter, samplePoint, collisionOptions, whitelist);
+          const losCheck = this._checkLineOfSight(circleCenter, samplePoint, collisionOptions, whitelist, targetToken);
           if (!losCheck.blocked) {
             hitCount++;
             hitPoints.push({ x: samplePoint.x, y: samplePoint.y });
@@ -198,9 +199,10 @@ export class ShotManager {
    * @private
    * @param {object} collisionOptions - Опции проверки collision {walls, tokens}
    * @param {Array} whitelist - Список игнорируемых токенов
+   * @param {Token} targetToken - Целевой токен (для учета высоты)
    * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
-  _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = []) {
+  _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = [], targetToken = null) {
     // Расстояние от начала конуса до центра токена
     const distance = Math.hypot(tokenCenter.x - coneOrigin.x, tokenCenter.y - coneOrigin.y);
     
@@ -219,7 +221,7 @@ export class ShotManager {
     totalCount++;
     if (this._isPointInCone(tokenCenter, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
       // Проверяем LoS до центра токена
-      const losCheck = this._checkLineOfSight(coneOrigin, tokenCenter, collisionOptions, whitelist);
+      const losCheck = this._checkLineOfSight(coneOrigin, tokenCenter, collisionOptions, whitelist, targetToken);
       if (!losCheck.blocked) {
         hitCount++;
         hitPoints.push({ x: tokenCenter.x, y: tokenCenter.y });
@@ -242,7 +244,7 @@ export class ShotManager {
         totalCount++;
         if (this._isPointInCone(samplePoint, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
           // Проверяем LoS до точки сэмплирования
-          const losCheck = this._checkLineOfSight(coneOrigin, samplePoint, collisionOptions, whitelist);
+          const losCheck = this._checkLineOfSight(coneOrigin, samplePoint, collisionOptions, whitelist, targetToken);
           if (!losCheck.blocked) {
             hitCount++;
             hitPoints.push({ x: samplePoint.x, y: samplePoint.y });
@@ -357,9 +359,10 @@ export class ShotManager {
    * @param {object} end - Конечная точка {x, y}
    * @param {object} options - Опции проверки {walls: boolean, tokens: boolean}
    * @param {Array} whitelist - Список игнорируемых токенов
+   * @param {Token} targetToken - Целевой токен (для учета высоты при стакинге)
    * @returns {object} Результат {blocked: boolean, blockers: [{type, object, point}]}
    */
-  _checkLineOfSight(start, end, options = {}, whitelist = []) {
+  _checkLineOfSight(start, end, options = {}, whitelist = [], targetToken = null) {
     const blockers = [];
     const checkWalls = options.walls !== false;
     const checkTokens = options.tokens !== false;
@@ -403,6 +406,34 @@ export class ShotManager {
       for (const token of canvas.tokens.placeables) {
         if (whitelist.includes(token)) continue;
         if (!token.visible) continue;
+        
+        // Если есть целевой токен, проверяем перекрытие по позиции
+        if (targetToken && token !== targetToken) {
+          const targetCenter = targetToken.center;
+          const tokenCenter = token.center;
+          const distanceBetween = Math.hypot(
+            targetCenter.x - tokenCenter.x,
+            targetCenter.y - tokenCenter.y
+          );
+          
+          // Вычисляем радиусы токенов
+          const targetBounds = targetToken.bounds;
+          const targetRadius = Math.min(targetBounds.width, targetBounds.height) / 2;
+          const tokenBounds = token.bounds;
+          const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
+          
+          // Если токены перекрываются (расстояние меньше суммы радиусов)
+          if (distanceBetween < (targetRadius + tokenRadius)) {
+            // Получаем z-высоту токенов (порядок рендеринга)
+            const targetSort = targetToken.document.sort || 0;
+            const tokenSort = token.document.sort || 0;
+            
+            // Если текущий токен ниже целевого по z - игнорируем его при проверке LoS
+            if (tokenSort < targetSort) {
+              continue;
+            }
+          }
+        }
         
         const bounds = token.bounds;
         const centerX = bounds.x + bounds.width / 2;
@@ -602,14 +633,14 @@ export class ShotManager {
       
       // Если токен в радиусе (с учётом радиуса токена)
       if (distance <= circleRadius + tokenRadius) {
-        // Добавляем токен в whitelist, чтобы он не блокировал сам себя при сэмплировании
-        const extendedWhitelist = [...whitelist, token];
-        
-        // Рассчитываем процент покрытия через сэмплирование
-        const result = this._calculateCircleTokenCoverage(
-          circleCenter, circleRadius, tokenCenter, tokenRadius,
-          segment.collision, extendedWhitelist
-        );
+      // Добавляем токен в whitelist, чтобы он не блокировал сам себя при сэмплировании
+      const extendedWhitelist = [...whitelist, token];
+      
+      // Рассчитываем процент покрытия через сэмплирование
+      const result = this._calculateCircleTokenCoverage(
+        circleCenter, circleRadius, tokenCenter, tokenRadius,
+        segment.collision, extendedWhitelist, token
+      );
         
         // Если есть хоть какое-то покрытие - добавляем попадание
         if (result.coverage > 0) {
@@ -691,7 +722,7 @@ export class ShotManager {
       // Рассчитываем процент покрытия через сэмплирование
       const result = this._calculateConeTokenCoverage(
         coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad,
-        tokenCenter, tokenRadius, segment.collision, extendedWhitelist
+        tokenCenter, tokenRadius, segment.collision, extendedWhitelist, token
       );
       
       // Если есть покрытие - добавляем попадание
