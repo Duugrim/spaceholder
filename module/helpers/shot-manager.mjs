@@ -161,7 +161,8 @@ export class ShotManager {
     
     // Сэмплы по кольцам
     for (let ring = 1; ring <= sampleRings; ring++) {
-      const ringRadius = (tokenRadius * ring) / sampleRings;
+      // Внешнее кольцо уменьшаем на 5%, чтобы точки были внутри токена
+      const ringRadius = (tokenRadius * ring) / sampleRings * 0.95;
       const pointsInRing = Math.max(8, Math.floor(sampleCount * ring / sampleRings));
       
       for (let i = 0; i < pointsInRing; i++) {
@@ -227,7 +228,8 @@ export class ShotManager {
     
     // Сэмплы по кольцам
     for (let ring = 1; ring <= sampleRings; ring++) {
-      const ringRadius = (tokenRadius * ring) / sampleRings;
+      // Внешнее кольцо уменьшаем на 5%, чтобы точки были внутри токена
+      const ringRadius = (tokenRadius * ring) / sampleRings * 0.95;
       const pointsInRing = Math.max(8, Math.floor(sampleCount * ring / sampleRings));
       
       for (let i = 0; i < pointsInRing; i++) {
