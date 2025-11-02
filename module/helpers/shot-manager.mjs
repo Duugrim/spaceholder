@@ -480,7 +480,7 @@ export class ShotManager {
    *   Для circle: {start, range, type: 'circle', collision, props, hitBeh}
    *   Для cone: {start, range, angle, direction, cut, type: 'cone', collision, props, hitBeh}
    * @param {Array} whitelist - Список игнорируемых объектов
-   * @returns {object} Результат проверки попаданий
+   * @returns {Array} Массив столкновений {type, object, point, distance, details}
    */
   isHit(segment, whitelist = []) {
     // Проверяем наличие collision настроек
@@ -490,7 +490,7 @@ export class ShotManager {
     }
     
     if (segment.collision.walls === false && segment.collision.tokens === false) {
-      return { hit: false, shouldStop: false };
+      return [];
     }
 
     // Определяем метод проверки на основе типа сегмента
@@ -503,7 +503,7 @@ export class ShotManager {
         return this._isHitCone(segment, whitelist);
       default:
         console.warn(`ShotManager: Unknown segment type in isHit: ${segment.type}`);
-        return { hit: false, shouldStop: false };
+        return [];
     }
   }
 
@@ -544,7 +544,8 @@ export class ShotManager {
             type: 'token',
             object: token,
             point: intersection,
-            distance: distance
+            distance: distance,
+            details: {}
           });
         }
       }
@@ -572,7 +573,8 @@ export class ShotManager {
             type: 'wall',
             object: wall,
             point: intersection,
-            distance: distance
+            distance: distance,
+            details: {}
           });
         }
       }
@@ -581,25 +583,7 @@ export class ShotManager {
     // Сортируем по расстоянию
     collisions.sort((a, b) => a.distance - b.distance);
     
-    // Если нет столкновений
-    if (collisions.length === 0) {
-      return { hit: false, shouldStop: false };
-    }
-    
-    // Берём ближайшее столкновение
-    const nearestCollision = collisions[0];
-    
-    // Определяем поведение при попадании
-    const hitBeh = segment.hitBeh || (!segment.props.penetration ? "stop" : "next");
-    
-    return {
-      hit: true,
-      point: nearestCollision.point,
-      type: nearestCollision.type,
-      object: nearestCollision.object,
-      hitBeh: hitBeh,
-      allCollisions: collisions
-    };
+    return collisions;
   }
 
   /**
@@ -607,11 +591,11 @@ export class ShotManager {
    * @private
    */
   _isHitCircle(segment, whitelist) {
-    const hits = [];
+    const collisions = [];
     const checkTokens = segment.collision.tokens !== false;
     
     if (!checkTokens || !canvas.tokens?.placeables) {
-      return { hit: false, shouldStop: false };
+      return [];
     }
     
     const circleCenter = segment.start;
@@ -644,39 +628,24 @@ export class ShotManager {
         
         // Если есть хоть какое-то покрытие - добавляем попадание
         if (result.coverage > 0) {
-          hits.push({
+          collisions.push({
             type: 'token',
             object: token,
             point: { ...tokenCenter },
             distance: distance,
-            coverage: result.coverage,
-            hitPoints: result.hitPoints
+            details: {
+              coverage: result.coverage,
+              hitPoints: result.hitPoints
+            }
           });
         }
       }
     }
     
     // Сортируем по расстоянию
-    hits.sort((a, b) => a.distance - b.distance);
+    collisions.sort((a, b) => a.distance - b.distance);
     
-    if (hits.length === 0) {
-      return { hit: false, shouldStop: false };
-    }
-    
-    // Берём ближайшее попадание
-    const nearestHit = hits[0];
-    const hitBeh = segment.hitBeh || "next";
-    
-    return {
-      hit: true,
-      point: nearestHit.point,
-      type: nearestHit.type,
-      object: nearestHit.object,
-      hitBeh: hitBeh,
-      coverage: nearestHit.coverage,
-      hitPoints: nearestHit.hitPoints,
-      allHits: hits
-    };
+    return collisions;
   }
 
   /**
@@ -684,11 +653,11 @@ export class ShotManager {
    * @private
    */
   _isHitCone(segment, whitelist) {
-    const hits = [];
+    const collisions = [];
     const checkTokens = segment.collision.tokens !== false;
     
     if (!checkTokens || !canvas.tokens?.placeables) {
-      return { hit: false, shouldStop: false };
+      return [];
     }
     
     const coneOrigin = segment.start;
@@ -727,38 +696,23 @@ export class ShotManager {
       
       // Если есть покрытие - добавляем попадание
       if (result.coverage > 0) {
-        hits.push({
+        collisions.push({
           type: 'token',
           object: token,
           point: { ...tokenCenter },
           distance: distance,
-          coverage: result.coverage,
-          hitPoints: result.hitPoints
+          details: {
+            coverage: result.coverage,
+            hitPoints: result.hitPoints
+          }
         });
       }
     }
     
     // Сортируем по расстоянию
-    hits.sort((a, b) => a.distance - b.distance);
+    collisions.sort((a, b) => a.distance - b.distance);
     
-    if (hits.length === 0) {
-      return { hit: false, shouldStop: false };
-    }
-    
-    // Берём ближайшее попадание
-    const nearestHit = hits[0];
-    const hitBeh = segment.hitBeh || "next";
-    
-    return {
-      hit: true,
-      point: nearestHit.point,
-      type: nearestHit.type,
-      object: nearestHit.object,
-      hitBeh: hitBeh,
-      coverage: nearestHit.coverage,
-      hitPoints: nearestHit.hitPoints,
-      allHits: hits
-    };
+    return collisions;
   }
 
   /**
@@ -830,31 +784,35 @@ export class ShotManager {
     };
     
     // Проверяем столкновения
-    const hitResult = this.isHit(testSegment, whitelist);
+    const collisions = this.isHit(testSegment, whitelist);
     
     // Определяем, продолжать ли выстрел на основе hitBeh
     let shouldContinue = true;
     
-    if (hitResult.hit) {
-      // Если есть столкновение без пробития
-      if (hitResult.hitBeh === "stop") {
-        // Останавливаем выстрел
-        shouldContinue = false;
-        endPos = hitResult.point; // Корректируем до точки попадания
-      } else if (hitResult.hitBeh === "next") {
-        // Переходим к следующему сегменту
-        shouldContinue = true;
-        endPos = hitResult.point; // Заканчиваем этот сегмент в точке попадания
+    if (collisions.length > 0) {
+      // Определяем hitBeh на основе сегмента
+      const hitBeh = segment.hitBeh || (!segment.props.penetration ? "stop" : "next");
+      
+      // Обрабатываем все столкновения
+      for (const collision of collisions) {
+        shot.shotResult.shotHits.push({
+          point: collision.point,
+          type: collision.type,
+          object: collision.object,
+          ...collision.details
+        });
+        
+        shot.actualHits.push(collision);
       }
       
-      // Сохраняем информацию о попадании
-      shot.shotResult.shotHits.push({
-        point: hitResult.point,
-        type: hitResult.type,
-        object: hitResult.object
-      });
-      
-      shot.actualHits.push(hitResult);
+      // Решение о продолжении на основе первого попадания
+      if (hitBeh === "stop") {
+        shouldContinue = false;
+        endPos = collisions[0].point;
+      } else if (hitBeh === "next") {
+        shouldContinue = true;
+        endPos = collisions[0].point;
+      }
     } else {
       // Нет столкновений - продолжаем дальше
       shouldContinue = true;
@@ -897,52 +855,32 @@ export class ShotManager {
     };
     
     // Проверяем столкновения через универсальный метод
-    const hitResult = this.isHit(testSegment, whitelist);
+    const collisions = this.isHit(testSegment, whitelist);
     
     // Определяем, продолжать ли выстрел на основе hitBeh
     let shouldContinue = true;
     
-    if (hitResult.hit) {
-      // Если есть столкновения
-      if (hitResult.hitBeh === "stop") {
-        shouldContinue = false;
-      } else if (hitResult.hitBeh === "next") {
-        shouldContinue = true;
-      }
+    if (collisions.length > 0) {
+      // Определяем hitBeh на основе сегмента
+      const hitBeh = segment.hitBeh || "next";
       
-      // Сохраняем информацию о всех попаданиях (для круга может быть несколько токенов)
-      if (hitResult.allHits && hitResult.allHits.length > 0) {
-        // Добавляем все попадания
-        for (const hit of hitResult.allHits) {
-          shot.shotResult.shotHits.push({
-            point: hit.point,
-            type: hit.type,
-            object: hit.object,
-            coverage: hit.coverage,
-            hitPoints: hit.hitPoints
-          });
-          
-          shot.actualHits.push({
-            hit: true,
-            point: hit.point,
-            type: hit.type,
-            object: hit.object,
-            hitBeh: hitResult.hitBeh,
-            coverage: hit.coverage,
-            hitPoints: hit.hitPoints
-          });
-        }
-      } else {
-        // Для линейных сегментов - одно попадание
+      // Обрабатываем все столкновения
+      for (const collision of collisions) {
         shot.shotResult.shotHits.push({
-          point: hitResult.point,
-          type: hitResult.type,
-          object: hitResult.object,
-          coverage: hitResult.coverage,
-          hitPoints: hitResult.hitPoints
+          point: collision.point,
+          type: collision.type,
+          object: collision.object,
+          ...collision.details
         });
         
-        shot.actualHits.push(hitResult);
+        shot.actualHits.push(collision);
+      }
+      
+      // Решение о продолжении на основе первого попадания
+      if (hitBeh === "stop") {
+        shouldContinue = false;
+      } else if (hitBeh === "next") {
+        shouldContinue = true;
       }
     } else {
       // Нет столкновений - продолжаем дальше
@@ -992,52 +930,32 @@ export class ShotManager {
     };
     
     // Проверяем столкновения через универсальный метод
-    const hitResult = this.isHit(testSegment, whitelist);
+    const collisions = this.isHit(testSegment, whitelist);
     
     // Определяем, продолжать ли выстрел на основе hitBeh
     let shouldContinue = true;
     
-    if (hitResult.hit) {
-      // Если есть столкновения
-      if (hitResult.hitBeh === "stop") {
-        shouldContinue = false;
-      } else if (hitResult.hitBeh === "next") {
-        shouldContinue = true;
-      }
+    if (collisions.length > 0) {
+      // Определяем hitBeh на основе сегмента
+      const hitBeh = segment.hitBeh || "next";
       
-      // Сохраняем информацию о всех попаданиях (для конуса может быть несколько токенов)
-      if (hitResult.allHits && hitResult.allHits.length > 0) {
-        // Добавляем все попадания
-        for (const hit of hitResult.allHits) {
-          shot.shotResult.shotHits.push({
-            point: hit.point,
-            type: hit.type,
-            object: hit.object,
-            coverage: hit.coverage,
-            hitPoints: hit.hitPoints
-          });
-          
-          shot.actualHits.push({
-            hit: true,
-            point: hit.point,
-            type: hit.type,
-            object: hit.object,
-            hitBeh: hitResult.hitBeh,
-            coverage: hit.coverage,
-            hitPoints: hit.hitPoints
-          });
-        }
-      } else {
-        // Для линейных сегментов - одно попадание
+      // Обрабатываем все столкновения
+      for (const collision of collisions) {
         shot.shotResult.shotHits.push({
-          point: hitResult.point,
-          type: hitResult.type,
-          object: hitResult.object,
-          coverage: hitResult.coverage,
-          hitPoints: hitResult.hitPoints
+          point: collision.point,
+          type: collision.type,
+          object: collision.object,
+          ...collision.details
         });
         
-        shot.actualHits.push(hitResult);
+        shot.actualHits.push(collision);
+      }
+      
+      // Решение о продолжении на основе первого попадания
+      if (hitBeh === "stop") {
+        shouldContinue = false;
+      } else if (hitBeh === "next") {
+        shouldContinue = true;
       }
     } else {
       // Нет столкновений - продолжаем дальше

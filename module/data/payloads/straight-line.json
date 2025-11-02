@@ -15,7 +15,7 @@
           "tokens": true
         },
         "props": {
-          "penetration": false,
+          "penetration": true,
           "ricochet": false
         },
         "hitBeh": "stop"
