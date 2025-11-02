@@ -14,7 +14,7 @@
         "cut": 0,
         "collision": {
           "walls": true,
-          "tokens": false
+          "tokens": true
         },
         "props": {
           "penetration": true,

@@ -12,7 +12,7 @@
         "range": 3,
         "collision": {
           "walls": true,
-          "tokens": false
+          "tokens": true
         },
         "props": {
           "penetration": true,

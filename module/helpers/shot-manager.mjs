@@ -362,6 +362,12 @@ export class ShotManager {
     const checkWalls = options.walls !== false;
     const checkTokens = options.tokens !== false;
     
+    // DEBUG
+    const debugLoS = false; // включить для отладки
+    if (debugLoS) {
+      console.log('_checkLineOfSight:', { start, end, options, whitelist: whitelist.length });
+    }
+    
     // Проверка стен
     if (checkWalls && canvas.walls?.placeables) {
       for (const wall of canvas.walls.placeables) {
@@ -424,6 +430,10 @@ export class ShotManager {
       }
     }
     
+    if (debugLoS && blockers.length > 0) {
+      console.log('LoS blocked by:', blockers);
+    }
+    
     return {
       blocked: blockers.length > 0,
       blockers: blockers
@@ -431,17 +441,44 @@ export class ShotManager {
   }
 
   /**
-   * Проверка столкновений сегмента с объектами
-   * @param {object} segment - Сегмент {start, end, type, collision, props}
+   * Проверка столкновений сегмента с объектами (универсальный метод)
+   * @param {object} segment - Сегмент {type, collision, props, ...}
+   *   Для line: {start, end, type: 'line', collision, props, hitBeh}
+   *   Для circle: {start, range, type: 'circle', collision, props, hitBeh}
+   *   Для cone: {start, range, angle, direction, cut, type: 'cone', collision, props, hitBeh}
    * @param {Array} whitelist - Список игнорируемых объектов
-   * @returns {object} Результат {hit, point, type, object, shouldStop}
+   * @returns {object} Результат проверки попаданий
    */
-  isHit(segment, whitelist) {
+  isHit(segment, whitelist = []) {
     // Проверяем наличие collision настроек
-    if (!segment.collision || (segment.collision.walls === false && segment.collision.tokens === false)) {
+    // Если collision не определена, используем значения по умолчанию (проверяем оба)
+    if (!segment.collision) {
+      segment.collision = { walls: true, tokens: true };
+    }
+    
+    if (segment.collision.walls === false && segment.collision.tokens === false) {
       return { hit: false, shouldStop: false };
     }
 
+    // Определяем метод проверки на основе типа сегмента
+    switch (segment.type) {
+      case 'line':
+        return this._isHitLine(segment, whitelist);
+      case 'circle':
+        return this._isHitCircle(segment, whitelist);
+      case 'cone':
+        return this._isHitCone(segment, whitelist);
+      default:
+        console.warn(`ShotManager: Unknown segment type in isHit: ${segment.type}`);
+        return { hit: false, shouldStop: false };
+    }
+  }
+
+  /**
+   * Проверка столкновений для линейного сегмента
+   * @private
+   */
+  _isHitLine(segment, whitelist) {
     const collisions = [];
     const checkWalls = segment.collision.walls !== false;
     const checkTokens = segment.collision.tokens !== false;
@@ -520,8 +557,6 @@ export class ShotManager {
     const nearestCollision = collisions[0];
     
     // Определяем поведение при попадании
-    // hitBeh может быть: "stop" или "next"
-    // Используем значение из сегмента или определяем по penetration
     const hitBeh = segment.hitBeh || (!segment.props.penetration ? "stop" : "next");
     
     return {
@@ -531,6 +566,165 @@ export class ShotManager {
       object: nearestCollision.object,
       hitBeh: hitBeh,
       allCollisions: collisions
+    };
+  }
+
+  /**
+   * Проверка столкновений для кругового сегмента (взрыв)
+   * @private
+   */
+  _isHitCircle(segment, whitelist) {
+    const hits = [];
+    const checkTokens = segment.collision.tokens !== false;
+    
+    if (!checkTokens || !canvas.tokens?.placeables) {
+      return { hit: false, shouldStop: false };
+    }
+    
+    const circleCenter = segment.start;
+    const circleRadius = segment.range;
+    
+    for (const token of canvas.tokens.placeables) {
+      if (whitelist.includes(token)) continue;
+      if (!token.visible) continue;
+      
+      const tokenCenter = token.center;
+      const tokenBounds = token.bounds;
+      const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
+      
+      // Расстояние от центра круга до центра токена
+      const distance = Math.hypot(
+        tokenCenter.x - circleCenter.x,
+        tokenCenter.y - circleCenter.y
+      );
+      
+      // Если токен в радиусе (с учётом радиуса токена)
+      if (distance <= circleRadius + tokenRadius) {
+        // Добавляем токен в whitelist, чтобы он не блокировал сам себя при сэмплировании
+        const extendedWhitelist = [...whitelist, token];
+        
+        // Рассчитываем процент покрытия через сэмплирование
+        const result = this._calculateCircleTokenCoverage(
+          circleCenter, circleRadius, tokenCenter, tokenRadius,
+          segment.collision, extendedWhitelist
+        );
+        
+        // Если есть хоть какое-то покрытие - добавляем попадание
+        if (result.coverage > 0) {
+          hits.push({
+            type: 'token',
+            object: token,
+            point: { ...tokenCenter },
+            distance: distance,
+            coverage: result.coverage,
+            hitPoints: result.hitPoints
+          });
+        }
+      }
+    }
+    
+    // Сортируем по расстоянию
+    hits.sort((a, b) => a.distance - b.distance);
+    
+    if (hits.length === 0) {
+      return { hit: false, shouldStop: false };
+    }
+    
+    // Берём ближайшее попадание
+    const nearestHit = hits[0];
+    const hitBeh = segment.hitBeh || "next";
+    
+    return {
+      hit: true,
+      point: nearestHit.point,
+      type: nearestHit.type,
+      object: nearestHit.object,
+      hitBeh: hitBeh,
+      coverage: nearestHit.coverage,
+      hitPoints: nearestHit.hitPoints,
+      allHits: hits
+    };
+  }
+
+  /**
+   * Проверка столкновений для конусного сегмента
+   * @private
+   */
+  _isHitCone(segment, whitelist) {
+    const hits = [];
+    const checkTokens = segment.collision.tokens !== false;
+    
+    if (!checkTokens || !canvas.tokens?.placeables) {
+      return { hit: false, shouldStop: false };
+    }
+    
+    const coneOrigin = segment.start;
+    const coneRange = segment.range;
+    const coneCut = segment.cut || 0;
+    const coneDirectionRad = (segment.direction * Math.PI) / 180;
+    const coneHalfAngleRad = ((segment.angle || 90) / 2 * Math.PI) / 180;
+    
+    for (const token of canvas.tokens.placeables) {
+      if (whitelist.includes(token)) continue;
+      if (!token.visible) continue;
+      
+      const tokenCenter = token.center;
+      const tokenBounds = token.bounds;
+      const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
+      
+      // Расстояние от начала конуса до центра токена
+      const distance = Math.hypot(
+        tokenCenter.x - coneOrigin.x,
+        tokenCenter.y - coneOrigin.y
+      );
+      
+      // Быстрая проверка: токен вне возможного радиуса
+      if (distance > coneRange + tokenRadius || distance < coneCut - tokenRadius) {
+        continue;
+      }
+      
+      // Добавляем токен в whitelist, чтобы он не блокировал сам себя при сэмплировании
+      const extendedWhitelist = [...whitelist, token];
+      
+      // Рассчитываем процент покрытия через сэмплирование
+      const result = this._calculateConeTokenCoverage(
+        coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad,
+        tokenCenter, tokenRadius, segment.collision, extendedWhitelist
+      );
+      
+      // Если есть покрытие - добавляем попадание
+      if (result.coverage > 0) {
+        hits.push({
+          type: 'token',
+          object: token,
+          point: { ...tokenCenter },
+          distance: distance,
+          coverage: result.coverage,
+          hitPoints: result.hitPoints
+        });
+      }
+    }
+    
+    // Сортируем по расстоянию
+    hits.sort((a, b) => a.distance - b.distance);
+    
+    if (hits.length === 0) {
+      return { hit: false, shouldStop: false };
+    }
+    
+    // Берём ближайшее попадание
+    const nearestHit = hits[0];
+    const hitBeh = segment.hitBeh || "next";
+    
+    return {
+      hit: true,
+      point: nearestHit.point,
+      type: nearestHit.type,
+      object: nearestHit.object,
+      hitBeh: hitBeh,
+      coverage: nearestHit.coverage,
+      hitPoints: nearestHit.hitPoints,
+      allHits: hits
     };
   }
 
@@ -659,71 +853,77 @@ export class ShotManager {
     // Для круга используем lastPos как центр
     const range = segment.range * defSize;
     
+    // Создаём объект сегмента для проверки через isHit
+    const testSegment = {
+      start: { ...lastPos },
+      range: range,
+      type: segment.type,
+      collision: segment.collision,
+      props: segment.props,
+      hitBeh: segment.hitBeh
+    };
+    
+    // Проверяем столкновения через универсальный метод
+    const hitResult = this.isHit(testSegment, whitelist);
+    
+    // Определяем, продолжать ли выстрел на основе hitBeh
+    let shouldContinue = true;
+    
+    if (hitResult.hit) {
+      // Если есть столкновения
+      if (hitResult.hitBeh === "stop") {
+        shouldContinue = false;
+      } else if (hitResult.hitBeh === "next") {
+        shouldContinue = true;
+      }
+      
+      // Сохраняем информацию о всех попаданиях (для круга может быть несколько токенов)
+      if (hitResult.allHits && hitResult.allHits.length > 0) {
+        // Добавляем все попадания
+        for (const hit of hitResult.allHits) {
+          shot.shotResult.shotHits.push({
+            point: hit.point,
+            type: hit.type,
+            object: hit.object,
+            coverage: hit.coverage,
+            hitPoints: hit.hitPoints
+          });
+          
+          shot.actualHits.push({
+            hit: true,
+            point: hit.point,
+            type: hit.type,
+            object: hit.object,
+            hitBeh: hitResult.hitBeh,
+            coverage: hit.coverage,
+            hitPoints: hit.hitPoints
+          });
+        }
+      } else {
+        // Для линейных сегментов - одно попадание
+        shot.shotResult.shotHits.push({
+          point: hitResult.point,
+          type: hitResult.type,
+          object: hitResult.object,
+          coverage: hitResult.coverage,
+          hitPoints: hitResult.hitPoints
+        });
+        
+        shot.actualHits.push(hitResult);
+      }
+    } else {
+      // Нет столкновений - продолжаем дальше
+      shouldContinue = true;
+    }
+    
     // Создаём объект пути для визуализации
     const path = {
       start: { ...lastPos },
       range: range,
-      type: 'circle'
+      type: segment.type
     };
     
     shot.shotResult.shotPaths.push(path);
-    
-    // Проверяем попадания в радиусе
-    const hasCollision = segment.collision && (segment.collision.walls !== false || segment.collision.tokens !== false);
-    if (hasCollision && canvas.tokens?.placeables) {
-      for (const token of canvas.tokens.placeables) {
-        if (whitelist.includes(token)) continue;
-        if (!token.visible) continue;
-        
-        // Расстояние от центра взрыва до центра токена
-        const tokenCenter = token.center;
-        const distance = Math.hypot(
-          tokenCenter.x - lastPos.x,
-          tokenCenter.y - lastPos.y
-        );
-        
-        // Радиус токена (как круг)
-        const tokenBounds = token.bounds;
-        const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
-        
-        // Если токен в радиусе (с учётом радиуса токена)
-        if (distance <= range + tokenRadius) {
-          // Рассчитываем процент покрытия через сэмплирование
-          // (проверка LoS выполняется внутри для каждой точки)
-          const result = this._calculateCircleTokenCoverage(
-            lastPos, range, tokenCenter, tokenRadius,
-            segment.collision, whitelist
-          );
-          
-          // Если есть хоть какое-то покрытие - записываем один объект попадания на токен
-          if (result.coverage > 0) {
-            // Группируем все точки токена в один объект
-            shot.shotResult.shotHits.push({
-              point: { ...tokenCenter },  // Центр токена для основного маркера
-              hitPoints: result.hitPoints, // Все успешные точки сэмплирования
-              type: 'token',
-              object: token,
-              distance: distance,
-              coverage: result.coverage
-            });
-            
-            shot.actualHits.push({
-              hit: true,
-              point: tokenCenter,
-              type: 'token',
-              object: token,
-              shouldStop: false,
-              coverage: result.coverage,
-              hitPoints: result.hitPoints
-            });
-          }
-        }
-      }
-    }
-    
-    // Круг не двигает lastPos, остаётся на месте
-    // Для круга hitBeh определяет, продолжать ли после взрыва
-    const shouldContinue = segment.hitBeh === "stop" ? false : true;
     
     return {
       endPos: lastPos,
@@ -745,6 +945,72 @@ export class ShotManager {
     const angle = segment.angle || 90;  // Угол конуса по умолчанию 90°
     const cut = segment.cut ? segment.cut * defSize : 0;
     
+    // Создаём объект сегмента для проверки через isHit
+    const testSegment = {
+      start: { ...lastPos },
+      range: range,
+      angle: angle,
+      direction: absoluteDirection,
+      cut: cut,
+      type: segment.type,
+      collision: segment.collision,
+      props: segment.props,
+      hitBeh: segment.hitBeh
+    };
+    
+    // Проверяем столкновения через универсальный метод
+    const hitResult = this.isHit(testSegment, whitelist);
+    
+    // Определяем, продолжать ли выстрел на основе hitBeh
+    let shouldContinue = true;
+    
+    if (hitResult.hit) {
+      // Если есть столкновения
+      if (hitResult.hitBeh === "stop") {
+        shouldContinue = false;
+      } else if (hitResult.hitBeh === "next") {
+        shouldContinue = true;
+      }
+      
+      // Сохраняем информацию о всех попаданиях (для конуса может быть несколько токенов)
+      if (hitResult.allHits && hitResult.allHits.length > 0) {
+        // Добавляем все попадания
+        for (const hit of hitResult.allHits) {
+          shot.shotResult.shotHits.push({
+            point: hit.point,
+            type: hit.type,
+            object: hit.object,
+            coverage: hit.coverage,
+            hitPoints: hit.hitPoints
+          });
+          
+          shot.actualHits.push({
+            hit: true,
+            point: hit.point,
+            type: hit.type,
+            object: hit.object,
+            hitBeh: hitResult.hitBeh,
+            coverage: hit.coverage,
+            hitPoints: hit.hitPoints
+          });
+        }
+      } else {
+        // Для линейных сегментов - одно попадание
+        shot.shotResult.shotHits.push({
+          point: hitResult.point,
+          type: hitResult.type,
+          object: hitResult.object,
+          coverage: hitResult.coverage,
+          hitPoints: hitResult.hitPoints
+        });
+        
+        shot.actualHits.push(hitResult);
+      }
+    } else {
+      // Нет столкновений - продолжаем дальше
+      shouldContinue = true;
+    }
+    
     // Создаём объект пути для визуализации
     const path = {
       start: { ...lastPos },
@@ -752,82 +1018,15 @@ export class ShotManager {
       angle: angle,
       direction: absoluteDirection,
       cut: cut,
-      type: 'cone'
+      type: segment.type
     };
     
     shot.shotResult.shotPaths.push(path);
     
-    // Проверяем попадания в конус
-    const hasCollision = segment.collision && (segment.collision.walls !== false || segment.collision.tokens !== false);
-    if (hasCollision && canvas.tokens?.placeables) {
-      const directionRad = (absoluteDirection * Math.PI) / 180;
-      const halfAngleRad = ((angle / 2) * Math.PI) / 180;
-      
-      for (const token of canvas.tokens.placeables) {
-        if (whitelist.includes(token)) continue;
-        if (!token.visible) continue;
-        
-        const tokenCenter = token.center;
-        const tokenBounds = token.bounds;
-        const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
-        
-        // Расстояние от начала конуса
-        const distance = Math.hypot(
-          tokenCenter.x - lastPos.x,
-          tokenCenter.y - lastPos.y
-        );
-        
-        // Угол от начала конуса до токена
-        const tokenAngle = Math.atan2(
-          tokenCenter.y - lastPos.y,
-          tokenCenter.x - lastPos.x
-        );
-        
-        // Разница углов
-        let angleDiff = tokenAngle - directionRad;
-        // Нормализуем угол в диапазоне [-PI, PI]
-        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-        
-        // Рассчитываем процент покрытия токена конусом
-        const result = this._calculateConeTokenCoverage(
-          lastPos, range, cut, directionRad, halfAngleRad,
-          tokenCenter, tokenRadius, segment.collision, whitelist
-        );
-        
-        // Если есть покрытие - записываем один объект попадания на токен
-        if (result.coverage > 0) {
-          // Группируем все точки токена в один объект
-          shot.shotResult.shotHits.push({
-            point: { ...tokenCenter },  // Центр токена для основного маркера
-            hitPoints: result.hitPoints, // Все успешные точки сэмплирования
-            type: 'token',
-            object: token,
-            distance: distance,
-            coverage: result.coverage
-          });
-          
-          shot.actualHits.push({
-            hit: true,
-            point: tokenCenter,
-            type: 'token',
-            object: token,
-            shouldStop: false,
-            coverage: result.coverage,
-            hitPoints: result.hitPoints
-          });
-        }
-      }
-    }
-    
-    // Конус не двигает lastPos
-    // Для конуса hitBeh определяет, продолжать ли после атаки
-    const coneShouldContinue = segment.hitBeh === "stop" ? false : true;
-    
     return {
       endPos: lastPos,
       direction: absoluteDirection,
-      shouldContinue: coneShouldContinue
+      shouldContinue: shouldContinue
     };
   }
 
