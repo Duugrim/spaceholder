@@ -102,13 +102,17 @@ export class AimingManager {
    * @returns {Array} Массив объектов payloads
    */
   async _loadPayloads() {
-    const payloadFiles = [
-      'cone-blast',
-      'explosion',
-      'rocket',
-      'straight-line',
-      'zigzag-line'
-    ];
+    // Загружаем манифест с доступными payloads
+    let payloadFiles = [];
+    try {
+      const manifestResponse = await fetch('systems/spaceholder/module/data/payloads/manifest.json');
+      if (manifestResponse.ok) {
+        payloadFiles = await manifestResponse.json();
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки манифеста payloads:', error);
+      return [];
+    }
     
     const payloads = [];
     

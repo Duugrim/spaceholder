@@ -750,6 +750,8 @@ export class ShotManager {
         return this._processCircleSegment(segment, context);
       case 'cone':
         return this._processConeSegment(segment, context);
+      case 'swing':
+        return this._processSwingSegment(segment, context);
       default:
         console.warn(`ShotManager: Unknown segment type: ${segment.type}`);
         return {
@@ -899,6 +901,81 @@ export class ShotManager {
     return {
       endPos: lastPos,
       direction: direction,
+      shouldContinue: shouldContinue
+    };
+  }
+
+  /**
+   * Обработка сложного сегмента swing - серия конусов с изменяющимися параметрами
+   * @private
+   * @param {object} segment - Сегмент swing
+   *   {
+   *     type: 'swing',
+   *     direction: начальное направление,
+   *     range: начальная дальность,
+   *     angle: угол конуса,
+   *     cut: отсечение,
+   *     directionStep: шаг изменения направления (в градусах),
+   *     rangeStep: шаг изменения дальности,
+   *     length: количество конусов,
+   *     collision: {...},
+   *     props: {...},
+   *     hitBeh: '...'
+   *   }
+   * @param {object} context - Контекст выстрела
+   * @returns {object} Результат {endPos, direction, shouldContinue}
+   */
+  _processSwingSegment(segment, context) {
+    const { lastPos, direction, defSize, whitelist, shot } = context;
+    
+    // Параметры swing
+    const length = segment.length || 1;  // Количество конусов
+    const directionStep = segment.directionStep || 0;  // Шаг направления
+    const rangeStep = segment.rangeStep || 0;  // Шаг дальности
+    
+    // Начальные параметры конуса
+    let currentDirection = segment.direction || 0;
+    let currentRange = segment.range;
+    const angle = segment.angle || 90;
+    const cut = segment.cut || 0;
+    
+    let shouldContinue = true;
+    let finalDirection = direction + currentDirection;
+    
+    // Генерируем серию конусов
+    for (let i = 0; i < length; i++) {
+      // Создаём конус с текущими параметрами
+      const coneSegment = {
+        type: 'cone',
+        direction: currentDirection,
+        range: currentRange,
+        angle: angle,
+        cut: cut,
+        collision: segment.collision,
+        props: segment.props,
+        hitBeh: segment.hitBeh
+      };
+      
+      // Обрабатываем конус через стандартный метод
+      const result = this._processConeSegment(coneSegment, context);
+      
+      // Сохраняем последнее направление
+      finalDirection = result.direction;
+      
+      // Если конус вернул shouldContinue = false, прерываем цикл
+      if (!result.shouldContinue) {
+        shouldContinue = false;
+        break;
+      }
+      
+      // Изменяем параметры для следующего конуса
+      currentDirection += directionStep;
+      currentRange += rangeStep;
+    }
+    
+    return {
+      endPos: lastPos,
+      direction: finalDirection,
       shouldContinue: shouldContinue
     };
   }

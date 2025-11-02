@@ -1,0 +1,30 @@
+{
+  "id": "sword_swing",
+  "name": "Размах меча",
+  "description": "Широкая атака мечом с размахом от левого плеча к правому бедру",
+  "type": "melee",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "swing",
+        "direction": -45,
+        "range": 2,
+        "angle": 30,
+        "cut": 0.5,
+        "directionStep": 30,
+        "rangeStep": 0.2,
+        "length": 7,
+        "collision": {
+          "walls": true,
+          "tokens": true
+        },
+        "props": {
+          "penetration": false,
+          "ricochet": false
+        },
+        "hitBeh": "stop"
+      }
+    ]
+  }
+}
