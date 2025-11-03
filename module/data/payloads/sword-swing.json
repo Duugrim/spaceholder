@@ -17,7 +17,11 @@
         "count": 7,
         "collision": {
           "walls": true,
-          "tokens": true
+          "tokens": {
+            "owner": false,
+            "ally": true,
+            "other": true
+          }
         },
         "props": {
           "penetration": false,

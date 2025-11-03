@@ -12,7 +12,11 @@
         "length": 5,
         "collision": {
           "walls": true,
-          "tokens": true
+          "tokens": {
+            "owner": false,
+            "ally": true,
+            "other": true
+          }
         },
         "props": {
           "penetration": false,
@@ -26,7 +30,11 @@
         "range": 2,
         "collision": {
           "walls": true,
-          "tokens": true
+          "tokens": {
+            "owner": false,
+            "ally": true,
+            "other": true
+          }
         },
         "props": {
           "penetration": true,

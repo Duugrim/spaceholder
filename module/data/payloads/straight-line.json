@@ -9,10 +9,14 @@
       {
         "type": "line",
         "direction": 0,
-        "length": 3,
+        "length": 10,
         "collision": {
           "walls": true,
-          "tokens": true
+          "tokens": {
+            "owner": false,
+            "ally": true,
+            "other": false
+          }
         },
         "props": {
           "penetration": true,

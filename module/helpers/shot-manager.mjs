@@ -716,6 +716,39 @@ export class ShotManager {
   }
 
   /**
+   * Проверка необходимости игнорирования токена по диспозиции
+   * @private
+   * @param {Token} targetToken - Токен, в который попали
+   * @param {object} segment - Сегмент с настройками collision
+   * @param {Token} shooterToken - Токен, который стреляет
+   * @returns {boolean} true если токен нужно игнорировать
+   */
+  _shouldIgnoreByDisposition(targetToken, segment, shooterToken) {
+    const tokenConfig = segment.collision?.tokens;
+    
+    // Старый формат или tokens = true/false
+    if (typeof tokenConfig === 'boolean' || !tokenConfig) {
+      return false;
+    }
+    
+    // Проверка owner
+    if (targetToken === shooterToken) {
+      return !tokenConfig.owner; // Игнорировать если owner: false
+    }
+    
+    const shooterDisposition = shooterToken.document.disposition;
+    const targetDisposition = targetToken.document.disposition;
+    
+    // Проверка ally (одинаковая диспозиция)
+    if (shooterDisposition === targetDisposition) {
+      return !tokenConfig.ally; // Игнорировать если ally: false
+    }
+    
+    // Проверка other (разная диспозиция)
+    return !tokenConfig.other; // Игнорировать если other: false
+  }
+
+  /**
    * Расчёт координат конечной точки линии
    * @param {object} start - Начальная точка {x, y}
    * @param {number} direction - Направление в градусах
@@ -767,7 +800,7 @@ export class ShotManager {
    * @private
    */
   _processLineSegment(segment, context) {
-    const { lastPos, direction, defSize, whitelist, shot } = context;
+    const { lastPos, direction, defSize, whitelist, shot, shooterToken } = context;
     
     // Вычисляем абсолютное направление сегмента
     const absoluteDirection = direction + segment.direction;
@@ -788,15 +821,21 @@ export class ShotManager {
     // Проверяем столкновения
     const collisions = this.isHit(testSegment, whitelist);
     
+    // Фильтруем по диспозиции ДО дальнейших действий
+    const validCollisions = collisions.filter(collision => {
+      if (collision.type === 'wall') return true;
+      return !this._shouldIgnoreByDisposition(collision.object, segment, shooterToken);
+    });
+    
     // Определяем, продолжать ли выстрел на основе hitBeh
     let shouldContinue = true;
     
-    if (collisions.length > 0) {
+    if (validCollisions.length > 0) {
       // Определяем hitBeh на основе сегмента
       const hitBeh = segment.hitBeh || (!segment.props.penetration ? "stop" : "next");
       
-      // Обрабатываем все столкновения
-      for (const collision of collisions) {
+      // Обрабатываем все валидные столкновения
+      for (const collision of validCollisions) {
         shot.shotResult.shotHits.push({
           point: collision.point,
           type: collision.type,
@@ -807,16 +846,16 @@ export class ShotManager {
         shot.actualHits.push(collision);
       }
       
-      // Решение о продолжении на основе первого попадания
+      // Решение о продолжении на основе первого валидного попадания
       if (hitBeh === "stop") {
         shouldContinue = false;
-        endPos = collisions[0].point;
+        endPos = validCollisions[0].point;
       } else if (hitBeh === "next") {
         shouldContinue = true;
-        endPos = collisions[0].point;
+        endPos = validCollisions[0].point;
       }
     } else {
-      // Нет столкновений - продолжаем дальше
+      // Нет валидных столкновений - продолжаем дальше
       shouldContinue = true;
     }
     
@@ -1085,7 +1124,8 @@ export class ShotManager {
         direction: currentDirection,
         defSize: defaults.defSize,
         whitelist: whitelist,
-        shot: shot
+        shot: shot,
+        shooterToken: token
       };
       
       const result = this.shotSegment(segment, context);
