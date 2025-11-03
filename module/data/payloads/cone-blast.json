@@ -16,7 +16,7 @@
           "walls": true,
           "tokens": {
             "owner": false,
-            "ally": true,
+            "ally": false,
             "other": true
           }
         },

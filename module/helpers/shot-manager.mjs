@@ -593,6 +593,7 @@ export class ShotManager {
   _isHitCircle(segment, whitelist) {
     const collisions = [];
     const checkTokens = segment.collision.tokens !== false;
+    const shooterToken = segment.shooterToken;
     
     if (!checkTokens || !canvas.tokens?.placeables) {
       return [];
@@ -604,6 +605,11 @@ export class ShotManager {
     for (const token of canvas.tokens.placeables) {
       if (whitelist.includes(token)) continue;
       if (!token.visible) continue;
+      
+      // Проверка диспозиции
+      if (shooterToken && this._shouldIgnoreByDisposition(token, segment, shooterToken)) {
+        continue;
+      }
       
       const tokenCenter = token.center;
       const tokenBounds = token.bounds;
@@ -617,8 +623,8 @@ export class ShotManager {
       
       // Если токен в радиусе (с учётом радиуса токена)
       if (distance <= circleRadius + tokenRadius) {
-      // Добавляем токен в whitelist, чтобы он не блокировал сам себя при сэмплировании
-      const extendedWhitelist = [...whitelist, token];
+      // Добавляем токен в whitelist + токены с игнорируемой диспозицией
+      const extendedWhitelist = this._buildExtendedWhitelist(whitelist, token, segment, shooterToken);
       
       // Рассчитываем процент покрытия через сэмплирование
       const result = this._calculateCircleTokenCoverage(
@@ -655,6 +661,7 @@ export class ShotManager {
   _isHitCone(segment, whitelist) {
     const collisions = [];
     const checkTokens = segment.collision.tokens !== false;
+    const shooterToken = segment.shooterToken;
     
     if (!checkTokens || !canvas.tokens?.placeables) {
       return [];
@@ -669,6 +676,11 @@ export class ShotManager {
     for (const token of canvas.tokens.placeables) {
       if (whitelist.includes(token)) continue;
       if (!token.visible) continue;
+      
+      // Проверка диспозиции
+      if (shooterToken && this._shouldIgnoreByDisposition(token, segment, shooterToken)) {
+        continue;
+      }
       
       const tokenCenter = token.center;
       const tokenBounds = token.bounds;
@@ -685,8 +697,8 @@ export class ShotManager {
         continue;
       }
       
-      // Добавляем токен в whitelist, чтобы он не блокировал сам себя при сэмплировании
-      const extendedWhitelist = [...whitelist, token];
+      // Добавляем токен в whitelist + токены с игнорируемой диспозицией
+      const extendedWhitelist = this._buildExtendedWhitelist(whitelist, token, segment, shooterToken);
       
       // Рассчитываем процент покрытия через сэмплирование
       const result = this._calculateConeTokenCoverage(
@@ -713,6 +725,34 @@ export class ShotManager {
     collisions.sort((a, b) => a.distance - b.distance);
     
     return collisions;
+  }
+
+  /**
+   * Построение расширенного whitelist с токенами игнорируемой диспозиции
+   * @private
+   * @param {Array} whitelist - Базовый whitelist
+   * @param {Token} targetToken - Целевой токен (не блокирует сам себя)
+   * @param {object} segment - Сегмент с настройками collision
+   * @param {Token} shooterToken - Токен, который стреляет
+   * @returns {Array} Расширенный whitelist
+   */
+  _buildExtendedWhitelist(whitelist, targetToken, segment, shooterToken) {
+    const extended = [...whitelist, targetToken];
+    
+    if (!shooterToken || !canvas.tokens?.placeables) {
+      return extended;
+    }
+    
+    // Добавляем все токены с игнорируемой диспозицией
+    for (const token of canvas.tokens.placeables) {
+      if (this._shouldIgnoreByDisposition(token, segment, shooterToken)) {
+        if (!extended.includes(token)) {
+          extended.push(token);
+        }
+      }
+    }
+    
+    return extended;
   }
 
   /**
@@ -880,7 +920,7 @@ export class ShotManager {
    * @private
    */
   _processCircleSegment(segment, context) {
-    const { lastPos, direction, defSize, whitelist, shot } = context;
+    const { lastPos, direction, defSize, whitelist, shot, shooterToken } = context;
     
     // Для круга используем lastPos как центр
     const range = segment.range * defSize;
@@ -892,7 +932,8 @@ export class ShotManager {
       type: segment.type,
       collision: segment.collision,
       props: segment.props,
-      hitBeh: segment.hitBeh
+      hitBeh: segment.hitBeh,
+      shooterToken: shooterToken
     };
     
     // Проверяем столкновения через универсальный метод
@@ -1024,7 +1065,7 @@ export class ShotManager {
    * @private
    */
   _processConeSegment(segment, context) {
-    const { lastPos, direction, defSize, whitelist, shot } = context;
+    const { lastPos, direction, defSize, whitelist, shot, shooterToken } = context;
     
     // Вычисляем абсолютное направление
     const absoluteDirection = direction + segment.direction;
@@ -1042,7 +1083,8 @@ export class ShotManager {
       type: segment.type,
       collision: segment.collision,
       props: segment.props,
-      hitBeh: segment.hitBeh
+      hitBeh: segment.hitBeh,
+      shooterToken: shooterToken
     };
     
     // Проверяем столкновения через универсальный метод

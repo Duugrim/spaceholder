@@ -15,7 +15,7 @@
           "tokens": {
             "owner": false,
             "ally": true,
-            "other": false
+            "other": true
           }
         },
         "props": {
