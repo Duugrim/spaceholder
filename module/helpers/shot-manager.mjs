@@ -874,23 +874,32 @@ export class ShotManager {
       // Определяем hitBeh на основе сегмента
       const hitBeh = segment.hitBeh || (!segment.props.penetration ? "stop" : "next");
       
-      // Обрабатываем все валидные столкновения
-      for (const collision of validCollisions) {
-        shot.shotResult.shotHits.push({
-          point: collision.point,
-          type: collision.type,
-          object: collision.object,
-          ...collision.details
-        });
-        
-        shot.actualHits.push(collision);
-      }
-      
       // Решение о продолжении на основе первого валидного попадания
       if (hitBeh === "stop") {
+        // Простая линия: добавляем ТОЛЬКО первое попадание и останавливаемся
+        const firstCollision = validCollisions[0];
+        shot.shotResult.shotHits.push({
+          point: firstCollision.point,
+          type: firstCollision.type,
+          object: firstCollision.object,
+          ...firstCollision.details
+        });
+        shot.actualHits.push(firstCollision);
+        
         shouldContinue = false;
-        endPos = validCollisions[0].point;
+        endPos = firstCollision.point;
       } else if (hitBeh === "next") {
+        // Проникновение: добавляем все попадания
+        for (const collision of validCollisions) {
+          shot.shotResult.shotHits.push({
+            point: collision.point,
+            type: collision.type,
+            object: collision.object,
+            ...collision.details
+          });
+          shot.actualHits.push(collision);
+        }
+        
         shouldContinue = true;
         endPos = validCollisions[0].point;
       }
