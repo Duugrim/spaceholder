@@ -8,13 +8,13 @@
     "segments": [
       {
         "type": "swing",
-        "direction": -45,
-        "range": 2,
-        "angle": 30,
+        "direction": 90,
+        "range": 1,
+        "angle": 15,
         "cut": 0.5,
-        "directionStep": 30,
+        "directionStep": 15,
         "rangeStep": 0.2,
-        "length": 7,
+        "count": 7,
         "collision": {
           "walls": true,
           "tokens": true

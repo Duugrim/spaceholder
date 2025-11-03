@@ -917,7 +917,7 @@ export class ShotManager {
    *     cut: отсечение,
    *     directionStep: шаг изменения направления (в градусах),
    *     rangeStep: шаг изменения дальности,
-   *     length: количество конусов,
+   *     count: количество конусов,
    *     collision: {...},
    *     props: {...},
    *     hitBeh: '...'
@@ -929,7 +929,7 @@ export class ShotManager {
     const { lastPos, direction, defSize, whitelist, shot } = context;
     
     // Параметры swing
-    const length = segment.length || 1;  // Количество конусов
+    const count = segment.count || 1;  // Количество конусов
     const directionStep = segment.directionStep || 0;  // Шаг направления
     const rangeStep = segment.rangeStep || 0;  // Шаг дальности
     
@@ -943,7 +943,7 @@ export class ShotManager {
     let finalDirection = direction + currentDirection;
     
     // Генерируем серию конусов
-    for (let i = 0; i < length; i++) {
+    for (let i = 0; i < count; i++) {
       // Создаём конус с текущими параметрами
       const coneSegment = {
         type: 'cone',
