@@ -6,15 +6,18 @@ import { anatomyManager } from '../anatomy-manager.mjs';
 
 // Base V2 Actor Sheet with Handlebars rendering
 export class SpaceHolderBaseActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
-  foundry.applications.sheets.ActorSheet
+  foundry.applications.sheets.ActorSheetV2
 ) {
-  // Default options for both character and npc
+  /** @override */
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
     classes: ['spaceholder', 'sheet', 'actor'],
     position: { width: 640, height: 'auto' },
     window: {
       resizable: true,
       contentClasses: ['standard-form']
+    },
+    form: {
+      submitOnChange: true
     }
   });
 

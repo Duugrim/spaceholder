@@ -122,6 +122,22 @@ export class ShotManager {
   }
 
   /**
+   * Получить множитель размера цели на основе DEX токена
+   * @private
+   * @param {Token} token - Токен
+   * @returns {number} Множитель размера (DEX/10)
+   */
+  _getTargetSizeMultiplier(token) {
+    if (!token || !token.actor) return 1.0;
+    
+    // Получаем DEX из способностей актора
+    const dex = token.actor.system?.abilities?.dex?.value;
+    if (typeof dex !== 'number' || dex <= 0) return 1.0;
+    
+    return dex / 10;
+  }
+
+  /**
    * Расчёт процента покрытия токена кругом (метод сэмплирования)
    * @private
    * @param {object} circleCenter - Центр круга {x, y}
@@ -134,11 +150,15 @@ export class ShotManager {
    * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
   _calculateCircleTokenCoverage(circleCenter, circleRadius, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = [], targetToken = null) {
+    // Применяем множитель размера на основе DEX
+    const sizeMultiplier = this._getTargetSizeMultiplier(targetToken);
+    const effectiveRadius = tokenRadius * sizeMultiplier;
+    
     // Расстояние от центра круга до центра токена
     const distance = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y);
     
-    // Быстрая проверка: токен вне круга
-    if (distance > circleRadius + tokenRadius) return { coverage: 0, hitPoints: [] };
+    // Быстрая проверка: токен вне круга (используем эффективный радиус)
+    if (distance > circleRadius + effectiveRadius) return { coverage: 0, hitPoints: [] };
     
     // Сэмплирование: разбиваем токен на точки по кругу
     const sampleCount = 32; // Количество точек для сэмплирования
@@ -163,7 +183,7 @@ export class ShotManager {
     // Сэмплы по кольцам
     for (let ring = 1; ring <= sampleRings; ring++) {
       // Внешнее кольцо уменьшаем на 5%, чтобы точки были внутри токена
-      const ringRadius = (tokenRadius * ring) / sampleRings * 0.95;
+      const ringRadius = (effectiveRadius * ring) / sampleRings * 0.95;
       const pointsInRing = Math.max(8, Math.floor(sampleCount * ring / sampleRings));
       
       for (let i = 0; i < pointsInRing; i++) {
@@ -203,11 +223,15 @@ export class ShotManager {
    * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
   _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = [], targetToken = null) {
+    // Применяем множитель размера на основе DEX
+    const sizeMultiplier = this._getTargetSizeMultiplier(targetToken);
+    const effectiveRadius = tokenRadius * sizeMultiplier;
+    
     // Расстояние от начала конуса до центра токена
     const distance = Math.hypot(tokenCenter.x - coneOrigin.x, tokenCenter.y - coneOrigin.y);
     
-    // Быстрая проверка: токен вне возможного радиуса
-    if (distance > coneRange + tokenRadius || distance < coneCut - tokenRadius) return { coverage: 0, hitPoints: [] };
+    // Быстрая проверка: токен вне возможного радиуса (используем эффективный радиус)
+    if (distance > coneRange + effectiveRadius || distance < coneCut - effectiveRadius) return { coverage: 0, hitPoints: [] };
     
     // Сэмплирование: разбиваем токен на точки по кругу
     const sampleCount = 32; // Количество точек для сэмплирования
@@ -231,7 +255,7 @@ export class ShotManager {
     // Сэмплы по кольцам
     for (let ring = 1; ring <= sampleRings; ring++) {
       // Внешнее кольцо уменьшаем на 5%, чтобы точки были внутри токена
-      const ringRadius = (tokenRadius * ring) / sampleRings * 0.95;
+      const ringRadius = (effectiveRadius * ring) / sampleRings * 0.95;
       const pointsInRing = Math.max(8, Math.floor(sampleCount * ring / sampleRings));
       
       for (let i = 0; i < pointsInRing; i++) {
@@ -527,11 +551,15 @@ export class ShotManager {
         const centerY = bounds.y + bounds.height / 2;
         const radius = Math.min(bounds.width, bounds.height) / 2;
         
+        // Применяем множитель размера на основе DEX
+        const sizeMultiplier = this._getTargetSizeMultiplier(token);
+        const effectiveRadius = radius * sizeMultiplier;
+        
         const intersection = this._rayCircleIntersection(
           segment.start,
           segment.end,
           { x: centerX, y: centerY },
-          radius
+          effectiveRadius
         );
         
         if (intersection) {
