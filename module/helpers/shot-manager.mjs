@@ -377,6 +377,34 @@ export class ShotManager {
   }
 
   /**
+   * Вычисление кратчайшего расстояния от центра круга до бесконечной прямой
+   * @private
+   * @param {object} rayStart - Начало луча {x, y}
+   * @param {object} rayEnd - Конец луча {x, y}
+   * @param {object} center - Центр круга {x, y}
+   * @returns {number} Кратчайшее расстояние от центра до линии
+   */
+  _distanceFromPointToLine(rayStart, rayEnd, center) {
+    const dx = rayEnd.x - rayStart.x;
+    const dy = rayEnd.y - rayStart.y;
+    
+    // Длина отрезка
+    const lineLength = Math.sqrt(dx * dx + dy * dy);
+    
+    if (lineLength === 0) {
+      // Если начало и конец совпадают - возвращаем расстояние до точки
+      return Math.hypot(center.x - rayStart.x, center.y - rayStart.y);
+    }
+    
+    // Используем формулу расстояния от точки до прямой через векторное произведение
+    // distance = |cross product| / |line vector|
+    const crossProduct = Math.abs((center.x - rayStart.x) * dy - (center.y - rayStart.y) * dx);
+    const distance = crossProduct / lineLength;
+    
+    return distance;
+  }
+
+  /**
    * Проверка line of sight между двумя точками
    * @private
    * @param {object} start - Начальная точка {x, y}
@@ -568,12 +596,43 @@ export class ShotManager {
             intersection.y - segment.start.y
           );
           
+          // Вычисляем расстояние от центра токена до линии траектории
+          const distanceToCenter = this._distanceFromPointToLine(
+            segment.start,
+            segment.end,
+            { x: centerX, y: centerY }
+          );
+          
+          // Рассчитываем closeness: 1.0 = точно в центр, 0.0 = касательное попадание
+          const closeness = 1 - Math.min(Math.max(distanceToCenter / effectiveRadius, 0), 1);
+          
+          // Рассчитываем угол между векторами SH и HC (опционально)
+          const vecSH_x = intersection.x - segment.start.x;
+          const vecSH_y = intersection.y - segment.start.y;
+          const vecHC_x = centerX - intersection.x;
+          const vecHC_y = centerY - intersection.y;
+          
+          const lenSH = Math.sqrt(vecSH_x * vecSH_x + vecSH_y * vecSH_y);
+          const lenHC = Math.sqrt(vecHC_x * vecHC_x + vecHC_y * vecHC_y);
+          
+          let angleDeg = 0;
+          if (lenSH > 0 && lenHC > 0) {
+            const dotProduct = vecSH_x * vecHC_x + vecSH_y * vecHC_y;
+            const cosAngle = dotProduct / (lenSH * lenHC);
+            const angleRad = Math.acos(Math.min(Math.max(cosAngle, -1), 1));
+            angleDeg = (angleRad * 180) / Math.PI;
+          }
+          
           collisions.push({
             type: 'token',
             object: token,
             point: intersection,
             distance: distance,
-            details: {}
+            details: {
+              distanceToCenter: distanceToCenter,
+              closeness: closeness,
+              angleDeg: angleDeg
+            }
           });
         }
       }
