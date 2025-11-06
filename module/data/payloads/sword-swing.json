@@ -27,7 +27,9 @@
           "penetration": false,
           "ricochet": false
         },
-        "onHit": "stop"
+        "onHit": "skip",
+        "hitOrder": "near",
+        "hitAmount": 1
       }
     ]
   }

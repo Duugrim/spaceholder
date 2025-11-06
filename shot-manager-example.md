@@ -117,6 +117,36 @@ Payload - объект, содержащий набор данных о трае
   },
   "props": {}
 }
+
+// Конус с выбором приоритета попаданий
+{
+  "type": "cone",
+  "direction": 0,
+  "range": 4,
+  "angle": 60,
+  "cut": 0,
+  "collision": {
+    "walls": true,
+    "tokens": true
+  },
+  "props": {},
+  "onHit": "next",
+  "hitOrder": "far",       // Приоритет: дальние цели ('near', 'far', 'left', 'right')
+  "hitAmount": 2           // Максимум 2 попадания (undefined = все попадания)
+}
+
+// Взрыв, поражающий только ближайшую цель слева
+{
+  "type": "circle",
+  "range": 3,
+  "collision": {
+    "walls": true,
+    "tokens": true
+  },
+  "props": {},
+  "hitOrder": "left",      // Сортировка слева направо
+  "hitAmount": 1           // Только первая цель
+}
 ```
 Алгоритм работы:
 1. Пользователь вызывает **startAiming(*token*, *payload*)**. 

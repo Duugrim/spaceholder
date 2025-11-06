@@ -1,29 +1,29 @@
 {
-  "id": "explosion",
-  "name": "Взрыв",
-  "description": "Круговой взрыв с фиксированным радиусом",
+  "id": "circle_left_sweep",
+  "name": "Волна слева",
+  "description": "Взрывная волна, поражающая до 2 целей слева направо",
   "type": "area",
   
   "trajectory": {
     "segments": [
       {
         "type": "circle",
-        "direction": 0,
         "range": 3,
         "collision": {
           "walls": true,
           "tokens": {
             "owner": false,
-            "ally": true,
+            "ally": false,
             "other": true
           }
         },
         "props": {
-          "penetration": true,
+          "penetration": false,
           "ricochet": false
         },
         "onHit": "next",
-        "hitOrder": "near"
+        "hitOrder": "left",
+        "hitAmount": 2
       }
     ]
   }

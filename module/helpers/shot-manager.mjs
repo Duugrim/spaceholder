@@ -667,10 +667,65 @@ export class ShotManager {
       }
     }
     
-    // Сортируем по расстоянию
+    // Сортируем по расстоянию (по умолчанию)
     collisions.sort((a, b) => a.distance - b.distance);
     
     return collisions;
+  }
+
+  /**
+   * Сортировка и фильтрация попаданий по параметрам hitOrder и hitAmount
+   * @private
+   * @param {Array} collisions - Массив попаданий
+   * @param {string} hitOrder - Порядок выбора: 'near', 'far', 'left', 'right'
+   * @param {number|undefined} hitAmount - Количество попаданий (undefined = все)
+   * @param {object} sourcePoint - Точка источника для расчёта направлений
+   * @returns {Array} Отфильтрованный массив попаданий
+   */
+  _applyHitOrderAndAmount(collisions, hitOrder, hitAmount, sourcePoint) {
+    if (collisions.length === 0) return collisions;
+    
+    // Работаем со всеми попаданиями (токены и стены)
+    let sortedCollisions = [...collisions];
+    
+    // Применяем hitOrder (сортировку)
+    switch (hitOrder) {
+      case 'far':
+        // Сортируем от дальних к ближним
+        sortedCollisions.sort((a, b) => b.distance - a.distance);
+        break;
+        
+      case 'left':
+        // Сортируем слева направо (по x-координате относительно источника)
+        sortedCollisions.sort((a, b) => {
+          const relA = a.point.x - sourcePoint.x;
+          const relB = b.point.x - sourcePoint.x;
+          return relA - relB;
+        });
+        break;
+        
+      case 'right':
+        // Сортируем справа налево (по x-координате относительно источника)
+        sortedCollisions.sort((a, b) => {
+          const relA = a.point.x - sourcePoint.x;
+          const relB = b.point.x - sourcePoint.x;
+          return relB - relA;
+        });
+        break;
+        
+      case 'near':
+      default:
+        // Уже отсортировано по расстоянию (от ближних к дальним)
+        break;
+    }
+    
+    // Применяем hitAmount
+    if (hitAmount !== undefined && hitAmount > 0) {
+      return sortedCollisions.slice(0, hitAmount);
+    }
+    
+    // Если hitAmount не задан или 0/-1, возвращаем все
+    return sortedCollisions;
   }
 
   /**
@@ -1035,15 +1090,20 @@ export class ShotManager {
     // Проверяем столкновения через универсальный метод
     const collisions = this.isHit(testSegment, whitelist);
     
+    // Применяем hitOrder и hitAmount для фильтрации попаданий
+    const hitOrder = segment.hitOrder || 'near';
+    const hitAmount = segment.hitAmount;
+    const filteredCollisions = this._applyHitOrderAndAmount(collisions, hitOrder, hitAmount, lastPos);
+    
     // Определяем, продолжать ли выстрел на основе onHit
     let shouldContinue = true;
     
-    if (collisions.length > 0) {
+    if (filteredCollisions.length > 0) {
       // Определяем onHit на основе сегмента
       const onHit = segment.onHit || "next";
       
-      // Обрабатываем все столкновения
-      for (const collision of collisions) {
+      // Обрабатываем отфильтрованные столкновения
+      for (const collision of filteredCollisions) {
         shot.shotResult.shotHits.push({
           point: collision.point,
           type: collision.type,
@@ -1120,10 +1180,12 @@ export class ShotManager {
     
     // Определяем onHit для обработки попаданий
     const onHit = segment.onHit || "next";
-    let hasHit = false;  // Флаг для отслеживания попаданий
     
     // Генерируем серию конусов
     for (let i = 0; i < count; i++) {
+      // Сохраняем текущее количество попаданий до конуса
+      const hitsBefore = shot.actualHits.length;
+      
       // Создаём конус с текущими параметрами
       const coneSegment = {
         type: 'cone',
@@ -1133,7 +1195,9 @@ export class ShotManager {
         cut: cut,
         collision: segment.collision,
         props: segment.props,
-        onHit: 'next'  // Внутренние конусы всегда используют 'next'
+        onHit: 'next',  // Внутренние конусы всегда используют 'next'
+        hitOrder: segment.hitOrder,  // Передаём hitOrder из swing
+        hitAmount: segment.hitAmount  // Передаём hitAmount из swing
       };
       
       // Обрабатываем конус через стандартный метод
@@ -1143,9 +1207,10 @@ export class ShotManager {
       finalDirection = result.direction;
       
       // Проверяем, было ли попадание в этом конусе
-      if (!result.shouldContinue || shot.actualHits.length > 0) {
-        hasHit = true;
-        
+      const hitsAfter = shot.actualHits.length;
+      const hadHitInThisCone = hitsAfter > hitsBefore;
+      
+      if (hadHitInThisCone) {
         // Обрабатываем onHit для swing
         if (onHit === "stop") {
           // Останавливаем весь выстрел
@@ -1203,15 +1268,20 @@ export class ShotManager {
     // Проверяем столкновения через универсальный метод
     const collisions = this.isHit(testSegment, whitelist);
     
+    // Применяем hitOrder и hitAmount для фильтрации попаданий
+    const hitOrder = segment.hitOrder || 'near';
+    const hitAmount = segment.hitAmount;
+    const filteredCollisions = this._applyHitOrderAndAmount(collisions, hitOrder, hitAmount, lastPos);
+    
     // Определяем, продолжать ли выстрел на основе onHit
     let shouldContinue = true;
     
-    if (collisions.length > 0) {
+    if (filteredCollisions.length > 0) {
       // Определяем onHit на основе сегмента
       const onHit = segment.onHit || "next";
       
-      // Обрабатываем все столкновения
-      for (const collision of collisions) {
+      // Обрабатываем отфильтрованные столкновения
+      for (const collision of filteredCollisions) {
         shot.shotResult.shotHits.push({
           point: collision.point,
           type: collision.type,

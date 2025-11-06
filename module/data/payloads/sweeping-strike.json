@@ -1,0 +1,35 @@
+{
+  "id": "sweeping_strike",
+  "name": "Размашистый удар",
+  "description": "Широкий удар, который продолжается даже после попадания",
+  "type": "melee",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "swing",
+        "direction": -60,
+        "range": 1.5,
+        "angle": 20,
+        "cut": 0.3,
+        "directionStep": 20,
+        "rangeStep": 0.1,
+        "count": 7,
+        "collision": {
+          "walls": true,
+          "tokens": {
+            "owner": false,
+            "ally": false,
+            "other": true
+          }
+        },
+        "props": {
+          "penetration": false,
+          "ricochet": false
+        },
+        "onHit": "next",
+        "hitOrder": "near"
+      }
+    ]
+  }
+}

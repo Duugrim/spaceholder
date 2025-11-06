@@ -1,8 +1,12 @@
 [
   "cone-blast",
+  "cone-far-priority",
+  "circle-left-sweep",
   "explosion",
   "rocket",
   "straight-line",
-  "zigzag-line",
-  "sword-swing"
+  "sweeping-strike",
+  "swing-to-blast",
+  "sword-swing",
+  "zigzag-line"
 ]

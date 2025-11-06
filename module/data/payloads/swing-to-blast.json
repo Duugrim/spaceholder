@@ -1,0 +1,54 @@
+{
+  "id": "swing_to_blast",
+  "name": "Удар с взрывом",
+  "description": "Размах меча с последующим взрывом при попадании",
+  "type": "complex",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "swing",
+        "direction": -45,
+        "range": 1.2,
+        "angle": 25,
+        "cut": 0.4,
+        "directionStep": 15,
+        "rangeStep": 0.15,
+        "count": 7,
+        "collision": {
+          "walls": true,
+          "tokens": {
+            "owner": false,
+            "ally": false,
+            "other": true
+          }
+        },
+        "props": {
+          "penetration": false,
+          "ricochet": false
+        },
+        "onHit": "skip",
+        "hitOrder": "near",
+        "hitAmount": 1
+      },
+      {
+        "type": "circle",
+        "range": 2,
+        "collision": {
+          "walls": true,
+          "tokens": {
+            "owner": false,
+            "ally": true,
+            "other": true
+          }
+        },
+        "props": {
+          "penetration": true,
+          "ricochet": false
+        },
+        "onHit": "next",
+        "hitOrder": "near"
+      }
+    ]
+  }
+}

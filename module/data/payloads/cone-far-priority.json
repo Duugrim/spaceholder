@@ -1,7 +1,7 @@
 {
-  "id": "cone_blast",
-  "name": "Конусный залп",
-  "description": "Атака конусом 90 градусов",
+  "id": "cone_far_priority",
+  "name": "Конус с приоритетом дальних целей",
+  "description": "Поражает только самую дальнюю цель в конусе",
   "type": "area",
   
   "trajectory": {
@@ -9,8 +9,8 @@
       {
         "type": "cone",
         "direction": 0,
-        "range": 4,
-        "angle": 90,
+        "range": 5,
+        "angle": 60,
         "cut": 0,
         "collision": {
           "walls": true,
@@ -21,12 +21,12 @@
           }
         },
         "props": {
-          "penetration": true,
+          "penetration": false,
           "ricochet": false
         },
-        "onHit": "next",
-        "hitOrder": "near",
-        "hitAmount": 3
+        "onHit": "stop",
+        "hitOrder": "left",
+        "hitAmount": 1
       }
     ]
   }
