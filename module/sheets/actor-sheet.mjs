@@ -20,6 +20,47 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       submitOnChange: true
     }
   });
+  
+  /**
+   * Переопределяем _getHeaderControls для удаления дубликатов и неподходящих опций
+   * @override
+   */
+  _getHeaderControls() {
+    const controls = super._getHeaderControls();
+    
+    // Определяем, есть ли привязанный токен на сцене
+    const hasToken = !!this.document.token;
+    const hasPrototype = !!this.document.prototypeToken;
+    
+    console.log(`ActorSheet | Context: hasToken=${hasToken}, hasPrototype=${hasPrototype}`);
+    console.log(`ActorSheet | Original controls:`, controls.map(c => c.label || c.action));
+    
+    // Удаляем дубликаты и фильтруем неподходящие опции
+    const seen = new Set();
+    const filtered = controls.filter(control => {
+      const key = control.label || control.icon || control.action;
+      
+      // Фильтруем дубликаты
+      if (seen.has(key)) {
+        console.log(`ActorSheet | Filtered duplicate: ${key}`);
+        return false;
+      }
+      seen.add(key);
+      
+      // Фильтруем опции в зависимости от контекста
+      // Если лист открыт НЕ через токен, убираем опцию "Token"
+      if (!hasToken && (control.action === 'token' || control.label === 'SIDEBAR.CharArt' || control.label === 'Token')) {
+        console.log(`ActorSheet | Filtered (no token): ${key}`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    console.log(`ActorSheet | Filtered controls:`, filtered.map(c => c.label || c.action));
+    console.log(`ActorSheet | Header controls: ${controls.length} -> ${filtered.length}`);
+    return filtered;
+  }
 
 
   /* -------------------------------------------- */
