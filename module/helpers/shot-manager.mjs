@@ -528,9 +528,9 @@ export class ShotManager {
   /**
    * Проверка столкновений сегмента с объектами (универсальный метод)
    * @param {object} segment - Сегмент {type, collision, props, ...}
-   *   Для line: {start, end, type: 'line', collision, props, hitBeh}
-   *   Для circle: {start, range, type: 'circle', collision, props, hitBeh}
-   *   Для cone: {start, range, angle, direction, cut, type: 'cone', collision, props, hitBeh}
+   *   Для line: {start, end, type: 'line', collision, props, onHit}
+   *   Для circle: {start, range, type: 'circle', collision, props, onHit}
+   *   Для cone: {start, range, angle, direction, cut, type: 'cone', collision, props, onHit}
    * @param {Array} whitelist - Список игнорируемых объектов
    * @returns {Array} Массив столкновений {type, object, point, distance, details}
    */
@@ -942,7 +942,7 @@ export class ShotManager {
       type: segment.type,
       collision: segment.collision,
       props: segment.props,
-      hitBeh: segment.hitBeh
+      onHit: segment.onHit
     };
     
     // Проверяем столкновения
@@ -954,15 +954,15 @@ export class ShotManager {
       return !this._shouldIgnoreByDisposition(collision.object, segment, shooterToken);
     });
     
-    // Определяем, продолжать ли выстрел на основе hitBeh
+    // Определяем, продолжать ли выстрел на основе onHit
     let shouldContinue = true;
     
     if (validCollisions.length > 0) {
-      // Определяем hitBeh на основе сегмента
-      const hitBeh = segment.hitBeh || (!segment.props.penetration ? "stop" : "next");
+      // Определяем onHit на основе сегмента
+      const onHit = segment.onHit || (!segment.props.penetration ? "stop" : "next");
       
       // Решение о продолжении на основе первого валидного попадания
-      if (hitBeh === "stop") {
+      if (onHit === "stop") {
         // Простая линия: добавляем ТОЛЬКО первое попадание и останавливаемся
         const firstCollision = validCollisions[0];
         shot.shotResult.shotHits.push({
@@ -975,7 +975,7 @@ export class ShotManager {
         
         shouldContinue = false;
         endPos = firstCollision.point;
-      } else if (hitBeh === "next") {
+      } else if (onHit === "next") {
         // Проникновение: добавляем все попадания
         for (const collision of validCollisions) {
           shot.shotResult.shotHits.push({
@@ -1028,19 +1028,19 @@ export class ShotManager {
       type: segment.type,
       collision: segment.collision,
       props: segment.props,
-      hitBeh: segment.hitBeh,
+      onHit: segment.onHit,
       shooterToken: shooterToken
     };
     
     // Проверяем столкновения через универсальный метод
     const collisions = this.isHit(testSegment, whitelist);
     
-    // Определяем, продолжать ли выстрел на основе hitBeh
+    // Определяем, продолжать ли выстрел на основе onHit
     let shouldContinue = true;
     
     if (collisions.length > 0) {
-      // Определяем hitBeh на основе сегмента
-      const hitBeh = segment.hitBeh || "next";
+      // Определяем onHit на основе сегмента
+      const onHit = segment.onHit || "next";
       
       // Обрабатываем все столкновения
       for (const collision of collisions) {
@@ -1055,9 +1055,9 @@ export class ShotManager {
       }
       
       // Решение о продолжении на основе первого попадания
-      if (hitBeh === "stop") {
+      if (onHit === "stop") {
         shouldContinue = false;
-      } else if (hitBeh === "next") {
+      } else if (onHit === "next") {
         shouldContinue = true;
       }
     } else {
@@ -1096,7 +1096,7 @@ export class ShotManager {
    *     count: количество конусов,
    *     collision: {...},
    *     props: {...},
-   *     hitBeh: '...'
+   *     onHit: 'stop' | 'next' | 'skip'
    *   }
    * @param {object} context - Контекст выстрела
    * @returns {object} Результат {endPos, direction, shouldContinue}
@@ -1118,6 +1118,10 @@ export class ShotManager {
     let shouldContinue = true;
     let finalDirection = direction + currentDirection;
     
+    // Определяем onHit для обработки попаданий
+    const onHit = segment.onHit || "next";
+    let hasHit = false;  // Флаг для отслеживания попаданий
+    
     // Генерируем серию конусов
     for (let i = 0; i < count; i++) {
       // Создаём конус с текущими параметрами
@@ -1129,7 +1133,7 @@ export class ShotManager {
         cut: cut,
         collision: segment.collision,
         props: segment.props,
-        hitBeh: segment.hitBeh
+        onHit: 'next'  // Внутренние конусы всегда используют 'next'
       };
       
       // Обрабатываем конус через стандартный метод
@@ -1138,10 +1142,23 @@ export class ShotManager {
       // Сохраняем последнее направление
       finalDirection = result.direction;
       
-      // Если конус вернул shouldContinue = false, прерываем цикл
-      if (!result.shouldContinue) {
-        shouldContinue = false;
-        break;
+      // Проверяем, было ли попадание в этом конусе
+      if (!result.shouldContinue || shot.actualHits.length > 0) {
+        hasHit = true;
+        
+        // Обрабатываем onHit для swing
+        if (onHit === "stop") {
+          // Останавливаем весь выстрел
+          shouldContinue = false;
+          break;
+        } else if (onHit === "skip") {
+          // Пропускаем оставшуюся часть swing и переходим к следующему сегменту в payload
+          shouldContinue = true;
+          break;
+        } else if (onHit === "next") {
+          // Продолжаем к следующему конусу в swing (поведение по умолчанию)
+          // Просто продолжаем цикл
+        }
       }
       
       // Изменяем параметры для следующего конуса
@@ -1179,19 +1196,19 @@ export class ShotManager {
       type: segment.type,
       collision: segment.collision,
       props: segment.props,
-      hitBeh: segment.hitBeh,
+      onHit: segment.onHit,
       shooterToken: shooterToken
     };
     
     // Проверяем столкновения через универсальный метод
     const collisions = this.isHit(testSegment, whitelist);
     
-    // Определяем, продолжать ли выстрел на основе hitBeh
+    // Определяем, продолжать ли выстрел на основе onHit
     let shouldContinue = true;
     
     if (collisions.length > 0) {
-      // Определяем hitBeh на основе сегмента
-      const hitBeh = segment.hitBeh || "next";
+      // Определяем onHit на основе сегмента
+      const onHit = segment.onHit || "next";
       
       // Обрабатываем все столкновения
       for (const collision of collisions) {
@@ -1206,9 +1223,9 @@ export class ShotManager {
       }
       
       // Решение о продолжении на основе первого попадания
-      if (hitBeh === "stop") {
+      if (onHit === "stop") {
         shouldContinue = false;
-      } else if (hitBeh === "next") {
+      } else if (onHit === "next") {
         shouldContinue = true;
       }
     } else {

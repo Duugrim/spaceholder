@@ -24,7 +24,7 @@
           "penetration": true,
           "ricochet": false
         },
-        "hitBeh": "stop"
+        "onHit": "stop"
       }
     ]
   }

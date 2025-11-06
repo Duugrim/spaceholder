@@ -22,7 +22,7 @@
           "penetration": false,
           "ricochet": false
         },
-        "hitBeh": "next"
+        "onHit": "next"
       },
       {
         "type": "circle",
@@ -40,7 +40,7 @@
           "penetration": true,
           "ricochet": false
         },
-        "hitBeh": "stop"
+        "onHit": "stop"
       }
     ]
   }
