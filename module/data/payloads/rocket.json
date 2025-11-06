@@ -22,7 +22,7 @@
           "penetration": false,
           "ricochet": false
         },
-        "onHit": "next"
+        "onHit": "need"
       },
       {
         "type": "circle",

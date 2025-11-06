@@ -1030,7 +1030,7 @@ export class ShotManager {
         
         shouldContinue = false;
         endPos = firstCollision.point;
-      } else if (onHit === "next") {
+      } else if (onHit === "next" || onHit === "need") {
         // Проникновение: добавляем все попадания
         for (const collision of validCollisions) {
           shot.shotResult.shotHits.push({
@@ -1046,8 +1046,16 @@ export class ShotManager {
         endPos = validCollisions[0].point;
       }
     } else {
-      // Нет валидных столкновений - продолжаем дальше
-      shouldContinue = true;
+      // Нет валидных столкновений
+      const onHit = segment.onHit || (!segment.props.penetration ? "stop" : "next");
+      
+      if (onHit === "need") {
+        // Останавливаем выстрел, если попадания не было, а оно требовалось
+        shouldContinue = false;
+      } else {
+        // По умолчанию продолжаем дальше
+        shouldContinue = true;
+      }
     }
     
     // Создаём объект пути для сохранения
@@ -1117,12 +1125,20 @@ export class ShotManager {
       // Решение о продолжении на основе первого попадания
       if (onHit === "stop") {
         shouldContinue = false;
-      } else if (onHit === "next") {
+      } else if (onHit === "next" || onHit === "need") {
         shouldContinue = true;
       }
     } else {
-      // Нет столкновений - продолжаем дальше
-      shouldContinue = true;
+      // Нет столкновений
+      const onHit = segment.onHit || "next";
+      
+      if (onHit === "need") {
+        // Останавливаем выстрел, если попадания не было, а оно требовалось
+        shouldContinue = false;
+      } else {
+        // По умолчанию продолжаем дальше
+        shouldContinue = true;
+      }
     }
     
     // Создаём объект пути для визуализации
@@ -1156,7 +1172,7 @@ export class ShotManager {
    *     count: количество конусов,
    *     collision: {...},
    *     props: {...},
-   *     onHit: 'stop' | 'next' | 'skip'
+   *     onHit: 'stop' | 'next' | 'skip' | 'need'
    *   }
    * @param {object} context - Контекст выстрела
    * @returns {object} Результат {endPos, direction, shouldContinue}
@@ -1220,10 +1236,14 @@ export class ShotManager {
           // Пропускаем оставшуюся часть swing и переходим к следующему сегменту в payload
           shouldContinue = true;
           break;
-        } else if (onHit === "next") {
+        } else if (onHit === "next" || onHit === "need") {
           // Продолжаем к следующему конусу в swing (поведение по умолчанию)
           // Просто продолжаем цикл
         }
+      } else if (onHit === "need") {
+        // Если в этом конусе не было попадания, а оно требовалось - останавливаем
+        shouldContinue = false;
+        break;
       }
       
       // Изменяем параметры для следующего конуса
@@ -1295,12 +1315,20 @@ export class ShotManager {
       // Решение о продолжении на основе первого попадания
       if (onHit === "stop") {
         shouldContinue = false;
-      } else if (onHit === "next") {
+      } else if (onHit === "next" || onHit === "need") {
         shouldContinue = true;
       }
     } else {
-      // Нет столкновений - продолжаем дальше
-      shouldContinue = true;
+      // Нет столкновений
+      const onHit = segment.onHit || "next";
+      
+      if (onHit === "need") {
+        // Останавливаем выстрел, если попадания не было, а оно требовалось
+        shouldContinue = false;
+      } else {
+        // По умолчанию продолжаем дальше
+        shouldContinue = true;
+      }
     }
     
     // Создаём объект пути для визуализации
