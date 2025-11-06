@@ -405,6 +405,167 @@ export class ShotManager {
   }
 
   /**
+   * Расчет угла между лучом и стеной
+   * @private
+   * @param {number} rayDirection - Направление луча в градусах
+   * @param {object} wall - Объект стены
+   * @returns {number} Угол между лучом и стеной в градусах (0-90)
+   */
+  _calculateWallAngle(rayDirection, wall) {
+    // Направление стены
+    const wallDx = wall.document.c[2] - wall.document.c[0];
+    const wallDy = wall.document.c[3] - wall.document.c[1];
+    const wallAngle = Math.atan2(wallDy, wallDx) * 180 / Math.PI;
+    
+    // Угол между лучом и стеной
+    let angle = Math.abs(rayDirection - wallAngle);
+    
+    // Нормализуем угол к 0-180
+    while (angle > 180) angle -= 360;
+    while (angle < -180) angle += 360;
+    angle = Math.abs(angle);
+    
+    // Приводим к 0-90 (острый угол)
+    if (angle > 90) angle = 180 - angle;
+    
+    return angle;
+  }
+
+  /**
+   * Расчет направления рикошета от стены
+   * @private
+   * @param {number} rayDirection - Направление луча в градусах
+   * @param {object} wall - Объект стены
+   * @returns {number} Новое направление после рикошета в градусах
+   */
+  _calculateWallRicochet(rayDirection, wall) {
+    // Вектор направления луча (конвертируем градусы в вектор)
+    const rayRadians = rayDirection * Math.PI / 180;
+    const rayDir = {
+      x: Math.cos(rayRadians),
+      y: Math.sin(rayRadians)
+    };
+    
+    // Вектор стены
+    const wallVector = {
+      x: wall.document.c[2] - wall.document.c[0],
+      y: wall.document.c[3] - wall.document.c[1]
+    };
+    const wallLength = Math.hypot(wallVector.x, wallVector.y);
+    
+    // Нормаль к стене (перпендикуляр)
+    const wallNormal = {
+      x: -wallVector.y / wallLength,
+      y: wallVector.x / wallLength
+    };
+    
+    // Формула отражения: R = I - 2(I · N)N
+    const dot = 2 * (rayDir.x * wallNormal.x + rayDir.y * wallNormal.y);
+    const reflectedDir = {
+      x: rayDir.x - dot * wallNormal.x,
+      y: rayDir.y - dot * wallNormal.y
+    };
+    
+    // Преобразуем в угол в градусах
+    const reflectedAngle = Math.atan2(reflectedDir.y, reflectedDir.x) * (180 / Math.PI);
+    
+    return reflectedAngle;
+  }
+
+  /**
+   * Расчет угла между лучом и касательной к токену
+   * @private
+   * @param {number} rayDirection - Направление луча в градусах
+   * @param {object} hitPoint - Точка попадания {x, y}
+   * @param {object} tokenCenter - Центр токена {x, y}
+   * @returns {number} Угол между лучом и касательной в градусах (0-90)
+   */
+  _calculateTokenRicochetAngle(rayDirection, hitPoint, tokenCenter) {
+    // Радиус-вектор от центра к точке попадания
+    const radiusDx = hitPoint.x - tokenCenter.x;
+    const radiusDy = hitPoint.y - tokenCenter.y;
+    const radiusAngle = Math.atan2(radiusDy, radiusDx) * 180 / Math.PI;
+    
+    // Касательная перпендикулярна радиусу
+    const tangentAngle = radiusAngle + 90;
+    
+    // Угол между лучом и касательной
+    let angle = Math.abs(rayDirection - tangentAngle);
+    
+    // Нормализуем к 0-180
+    while (angle > 180) angle -= 360;
+    while (angle < -180) angle += 360;
+    angle = Math.abs(angle);
+    
+    // Приводим к 0-90
+    if (angle > 90) angle = 180 - angle;
+    
+    return angle;
+  }
+
+  /**
+   * Расчет направления рикошета от токена
+   * @private
+   * @param {number} rayDirection - Направление луча в градусах
+   * @param {object} hitPoint - Точка попадания {x, y}
+   * @param {object} tokenCenter - Центр токена {x, y}
+   * @returns {number} Новое направление после рикошета в градусах
+   */
+  _calculateTokenRicochet(rayDirection, hitPoint, tokenCenter) {
+    // Вектор направления луча (конвертируем градусы в вектор)
+    const rayRadians = rayDirection * Math.PI / 180;
+    const rayDir = {
+      x: Math.cos(rayRadians),
+      y: Math.sin(rayRadians)
+    };
+    
+    // Нормаль поверхности токена (радиус от центра к точке попадания)
+    const radiusVector = {
+      x: hitPoint.x - tokenCenter.x,
+      y: hitPoint.y - tokenCenter.y
+    };
+    const radiusLength = Math.hypot(radiusVector.x, radiusVector.y);
+    
+    // Нормализуем нормаль
+    const normal = {
+      x: radiusVector.x / radiusLength,
+      y: radiusVector.y / radiusLength
+    };
+    
+    // Формула отражения: R = I - 2(I · N)N
+    const dot = 2 * (rayDir.x * normal.x + rayDir.y * normal.y);
+    const reflectedDir = {
+      x: rayDir.x - dot * normal.x,
+      y: rayDir.y - dot * normal.y
+    };
+    
+    // Преобразуем в угол в градусах
+    const reflectedAngle = Math.atan2(reflectedDir.y, reflectedDir.x) * (180 / Math.PI);
+    
+    return reflectedAngle;
+  }
+
+  /**
+   * Проверка, вышел ли луч за пределы токена
+   * @private
+   * @param {object} currentPos - Текущая позиция {x, y}
+   * @param {Token} token - Токен
+   * @returns {boolean} true, если луч вышел за пределы
+   */
+  _hasExitedToken(currentPos, token) {
+    const tokenCenter = token.center;
+    const bounds = token.bounds;
+    const radius = Math.min(bounds.width, bounds.height) / 2;
+    
+    const distance = Math.hypot(
+      currentPos.x - tokenCenter.x,
+      currentPos.y - tokenCenter.y
+    );
+    
+    return distance > radius;
+  }
+
+  /**
    * Проверка line of sight между двумя точками
    * @private
    * @param {object} start - Начальная точка {x, y}
@@ -967,6 +1128,8 @@ export class ShotManager {
         return this._processConeSegment(segment, context);
       case 'swing':
         return this._processSwingSegment(segment, context);
+      case 'complexLine':
+        return this._processComplexLineSegment(segment, context);
       default:
         console.warn(`ShotManager: Unknown segment type: ${segment.type}`);
         return {
@@ -1013,8 +1176,8 @@ export class ShotManager {
     let shouldContinue = true;
     
     if (validCollisions.length > 0) {
-      // Определяем onHit на основе сегмента
-      const onHit = segment.onHit || (!segment.props.penetration ? "stop" : "next");
+      // Определяем onHit на основе сегмента (по умолчанию "stop")
+      const onHit = segment.onHit || "stop";
       
       // Решение о продолжении на основе первого валидного попадания
       if (onHit === "stop") {
@@ -1047,7 +1210,7 @@ export class ShotManager {
       }
     } else {
       // Нет валидных столкновений
-      const onHit = segment.onHit || (!segment.props.penetration ? "stop" : "next");
+      const onHit = segment.onHit || "stop";
       
       if (onHit === "need") {
         // Останавливаем выстрел, если попадания не было, а оно требовалось
@@ -1346,6 +1509,278 @@ export class ShotManager {
     return {
       endPos: lastPos,
       direction: absoluteDirection,
+      shouldContinue: shouldContinue
+    };
+  }
+
+  /**
+   * Обработка сложного сегмента complexLine - серия простых линий с рикошетами и пробитием
+   * @private
+   * @param {object} segment - Сегмент complexLine
+   *   {
+   *     type: 'complexLine',
+   *     direction: начальное направление,
+   *     length: длина одного отрезка,
+   *     amount: количество отрезков,
+   *     collision: {...},
+   *     damage: {
+   *       penetration: пробитие,
+   *       ricochet: максимальный угол для рикошета
+   *     },
+   *     onHit: 'stop' | 'next' | 'skip' | 'need'
+   *   }
+   * @param {object} context - Контекст выстрела
+   * @returns {object} Результат {endPos, direction, shouldContinue}
+   */
+  _processComplexLineSegment(segment, context) {
+    const { lastPos, direction, defSize, whitelist, shot, shooterToken } = context;
+    
+    // ======================
+    // ПАРАМЕТРЫ СЕГМЕНТА
+    // ======================
+    const amount = segment.amount || 1;
+    const segmentLength = segment.length;
+    const absoluteDirection = direction + (segment.direction || 0);
+    const damage = segment.damage || {};
+    const penetration = damage.penetration || 0;
+    const maxRicochetAngle = damage.ricochet || 0;
+    const onHit = segment.onHit || "stop";
+    
+    // ======================
+    // СОСТОЯНИЕ ТРАЕКТОРИИ
+    // ======================
+    let currentPos = { ...lastPos };
+    let currentDirection = absoluteDirection;
+    let shouldContinue = true;
+    
+    // Временный whitelist для предотвращения повторных попаданий
+    const tempWhitelist = [...whitelist];
+    
+    // Токены, которые мы пробили (нужно держать в whitelist до выхода)
+    const penetratedTokens = [];
+    
+    // ======================
+    // ЦИКЛ ПО ОТРЕЗКАМ
+    // ======================
+    for (let i = 0; i < amount; i++) {
+      // TODO: Здесь будет логика поиска и поворота к ближайшим токенам
+      
+      // Сохраняем начальную точку отрезка
+      const segmentStart = { ...currentPos };
+      
+      // Рассчитываем конечную точку отрезка
+      const segmentEnd = this.shotLine(currentPos, currentDirection, segmentLength, defSize);
+      
+      // Создаём тестовый сегмент для проверки коллизий
+      const testSegment = {
+        start: segmentStart,
+        end: { ...segmentEnd },
+        type: 'line',
+        collision: segment.collision
+      };
+      
+      // Проверяем столкновения
+      const collisions = this.isHit(testSegment, tempWhitelist);
+      
+      // Фильтруем по диспозиции
+      const validCollisions = collisions.filter(collision => {
+        if (collision.type === 'wall') return true;
+        return !this._shouldIgnoreByDisposition(collision.object, segment, shooterToken);
+      });
+      
+      // ======================
+      // ОЧИСТКА WHITELIST ОТ ПРОБИТЫХ ТОКЕНОВ
+      // ======================
+      // Удаляем токены, которые мы уже покинули
+      for (let j = penetratedTokens.length - 1; j >= 0; j--) {
+        const token = penetratedTokens[j];
+        if (this._hasExitedToken(currentPos, token)) {
+          const idx = tempWhitelist.indexOf(token);
+          if (idx !== -1) tempWhitelist.splice(idx, 1);
+          penetratedTokens.splice(j, 1);
+        }
+      }
+      
+      // ======================
+      // ОБРАБОТКА ПОПАДАНИЙ
+      // ======================
+      if (validCollisions.length > 0) {
+        const firstHit = validCollisions[0];
+        let segmentEndPos = firstHit.point;
+        let hitProcessed = false;
+        
+        // Обрабатываем первое попадание
+        if (firstHit.type === 'wall') {
+          // ==================
+          // ПОПАДАНИЕ В СТЕНУ
+          // ==================
+          const wallAngle = this._calculateWallAngle(currentDirection, firstHit.object);
+          
+          if (wallAngle <= maxRicochetAngle) {
+            // РИКОШЕТ ОТ СТЕНЫ
+            const newDirection = this._calculateWallRicochet(currentDirection, firstHit.object);
+            
+            // Смещаем позицию немного в направлении рикошета, чтобы отойти от стены
+            const offsetDistance = 0.1; // Небольшое смещение
+            const radians = (newDirection * Math.PI) / 180;
+            currentPos = {
+              x: firstHit.point.x + Math.cos(radians) * offsetDistance,
+              y: firstHit.point.y + Math.sin(radians) * offsetDistance
+            };
+            currentDirection = newDirection;
+            hitProcessed = true;
+            
+            // Очищаем временный whitelist при рикошете и добавляем стену
+            tempWhitelist.length = whitelist.length;
+            tempWhitelist.splice(whitelist.length, tempWhitelist.length - whitelist.length, ...whitelist.slice(whitelist.length));
+            penetratedTokens.length = 0;
+            
+            // Добавляем стену во временный whitelist
+            tempWhitelist.push(firstHit.object);
+          } else {
+            // TODO: Здесь будет проверка пробития стены
+            
+            // СТЕНА ОСТАНОВИЛА ЛУЧ
+            shouldContinue = (onHit === "next" || onHit === "skip");
+            segmentEndPos = firstHit.point;
+            
+            // Сохраняем путь
+            shot.shotResult.shotPaths.push({
+              start: segmentStart,
+              end: { ...segmentEndPos },
+              type: 'line'
+            });
+            
+            currentPos = segmentEndPos;
+            break;
+          }
+          
+        } else if (firstHit.type === 'token') {
+          // ==================
+          // ПОПАДАНИЕ В ТОКЕН
+          // ==================
+          const token = firstHit.object;
+          const tokenCenter = token.center;
+          const tokenAngle = this._calculateTokenRicochetAngle(currentDirection, firstHit.point, tokenCenter);
+          
+          if (tokenAngle <= maxRicochetAngle) {
+            // РИКОШЕТ ОТ ТОКЕНА
+            const newDirection = this._calculateTokenRicochet(currentDirection, firstHit.point, tokenCenter);
+            
+            // Смещаем позицию немного в направлении рикошета, чтобы отойти от токена
+            const offsetDistance = 0.1;
+            const radians = (newDirection * Math.PI) / 180;
+            currentPos = {
+              x: firstHit.point.x + Math.cos(radians) * offsetDistance,
+              y: firstHit.point.y + Math.sin(radians) * offsetDistance
+            };
+            currentDirection = newDirection;
+            hitProcessed = true;
+            
+            // Добавляем попадание в результаты
+            shot.shotResult.shotHits.push({
+              point: firstHit.point,
+              type: firstHit.type,
+              object: firstHit.object,
+              ...firstHit.details
+            });
+            shot.actualHits.push(firstHit);
+            
+            // Очищаем временный whitelist при рикошете
+            tempWhitelist.length = whitelist.length;
+            tempWhitelist.splice(whitelist.length, tempWhitelist.length - whitelist.length, ...whitelist.slice(whitelist.length));
+            penetratedTokens.length = 0;
+            
+          } else {
+            // ПРОВЕРКА ПРОБИТИЯ
+            const tokenEnd = token.actor?.system?.abilities?.end?.value || 0;
+            console.log(`Проверка пробития: penetration=${penetration}, tokenEnd=${tokenEnd}, token=${token.name}`);
+            
+            if (penetration >= tokenEnd) {
+              // ПРОБИВАЕМ ТОКЕН
+              currentPos = firstHit.point;
+              hitProcessed = true;
+              
+              // Добавляем попадание
+              shot.shotResult.shotHits.push({
+                point: firstHit.point,
+                type: firstHit.type,
+                object: firstHit.object,
+                ...firstHit.details
+              });
+              shot.actualHits.push(firstHit);
+              
+              // Добавляем в временный whitelist и список пробитых
+              if (!tempWhitelist.includes(token)) {
+                tempWhitelist.push(token);
+              }
+              if (!penetratedTokens.includes(token)) {
+                penetratedTokens.push(token);
+              }
+              
+            } else {
+              // ТОКЕН ОСТАНОВИЛ ЛУЧ
+              segmentEndPos = firstHit.point;
+              
+              // Добавляем попадание
+              shot.shotResult.shotHits.push({
+                point: firstHit.point,
+                type: firstHit.type,
+                object: firstHit.object,
+                ...firstHit.details
+              });
+              shot.actualHits.push(firstHit);
+              
+              // Определяем, продолжать ли
+              shouldContinue = (onHit === "next" || onHit === "skip");
+              
+              // Сохраняем путь
+              shot.shotResult.shotPaths.push({
+                start: segmentStart,
+                end: { ...segmentEndPos },
+                type: 'line'
+              });
+              
+              currentPos = segmentEndPos;
+              break;
+            }
+          }
+        }
+        
+        // Сохраняем путь, если был рикошет или пробитие
+        if (hitProcessed) {
+          shot.shotResult.shotPaths.push({
+            start: segmentStart,
+            end: { ...segmentEndPos },
+            type: 'line'
+          });
+        }
+        
+      } else {
+        // ======================
+        // НЕТ ПОПАДАНИЙ
+        // ======================
+        
+        // Сохраняем полный отрезок
+        shot.shotResult.shotPaths.push({
+          start: segmentStart,
+          end: { ...segmentEnd },
+          type: 'line'
+        });
+        
+        currentPos = segmentEnd;
+        
+        // Проверяем onHit: "need"
+        if (onHit === "need") {
+          shouldContinue = false;
+          break;
+        }
+      }
+    }
+    
+    return {
+      endPos: currentPos,
+      direction: currentDirection,
       shouldContinue: shouldContinue
     };
   }

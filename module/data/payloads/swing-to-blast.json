@@ -23,10 +23,6 @@
             "other": true
           }
         },
-        "props": {
-          "penetration": false,
-          "ricochet": false
-        },
         "onHit": "skip",
         "hitOrder": "near",
         "hitAmount": 1
@@ -41,10 +37,6 @@
             "ally": true,
             "other": true
           }
-        },
-        "props": {
-          "penetration": true,
-          "ricochet": false
         },
         "onHit": "next",
         "hitOrder": "near"

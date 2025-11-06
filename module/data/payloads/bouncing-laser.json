@@ -1,0 +1,30 @@
+{
+  "id": "bouncing_laser",
+  "name": "Отражающийся лазер",
+  "description": "Лазерный луч, который может рикошетить от стен и токенов, а также пробивать слабые цели",
+  "type": "complex",
+  
+  "trajectory": {
+    "segments": [
+      {
+        "type": "complexLine",
+        "direction": 0,
+        "length": 2,
+        "amount": 15,
+        "collision": {
+          "walls": true,
+          "tokens": {
+            "owner": false,
+            "ally": false,
+            "other": true
+          }
+        },
+        "damage": {
+          "penetration": 10,
+          "ricochet": 45
+        },
+        "onHit": "stop"
+      }
+    ]
+  }
+}

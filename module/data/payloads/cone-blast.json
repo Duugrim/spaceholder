@@ -20,10 +20,6 @@
             "other": true
           }
         },
-        "props": {
-          "penetration": true,
-          "ricochet": false
-        },
         "onHit": "next",
         "hitOrder": "near",
         "hitAmount": 3

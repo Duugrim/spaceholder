@@ -17,10 +17,6 @@
             "other": true
           }
         },
-        "props": {
-          "penetration": false,
-          "ricochet": false
-        },
         "onHit": "next",
         "hitOrder": "left",
         "hitAmount": 2

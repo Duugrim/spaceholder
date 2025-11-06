@@ -20,10 +20,6 @@
             "other": true
           }
         },
-        "props": {
-          "penetration": false,
-          "ricochet": false
-        },
         "onHit": "stop",
         "hitOrder": "left",
         "hitAmount": 1

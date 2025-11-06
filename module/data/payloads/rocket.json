@@ -18,10 +18,6 @@
             "other": true
           }
         },
-        "props": {
-          "penetration": false,
-          "ricochet": false
-        },
         "onHit": "need"
       },
       {
@@ -35,10 +31,6 @@
             "ally": true,
             "other": true
           }
-        },
-        "props": {
-          "penetration": true,
-          "ricochet": false
         },
         "onHit": "stop"
       }

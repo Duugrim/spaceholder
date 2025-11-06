@@ -1,7 +1,8 @@
 [
+  "bouncing-laser",
+  "circle-left-sweep",
   "cone-blast",
   "cone-far-priority",
-  "circle-left-sweep",
   "explosion",
   "rocket",
   "straight-line",

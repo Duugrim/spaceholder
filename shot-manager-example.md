@@ -147,6 +147,45 @@ Payload - объект, содержащий набор данных о трае
   "hitOrder": "left",      // Сортировка слева направо
   "hitAmount": 1           // Только первая цель
 }
+
+// complexLine - сложная линия с рикошетами и пробитием
+// Лазерный луч, отражающийся от стен и токенов
+{
+  "type": "complexLine",
+  "direction": 0,
+  "length": 2,             // Длина ОДНОГО отрезка
+  "amount": 15,            // Количество отрезков
+  "collision": {
+    "walls": true,
+    "tokens": {
+      "owner": false,
+      "ally": false,
+      "other": true
+    }
+  },
+  "damage": {
+    "penetration": 10,     // Пробиваем токены с END <= 10
+    "ricochet": 45         // Рикошет при угле <= 45°
+  },
+  "onHit": "stop"          // Остановка при полной остановке
+}
+
+// complexLine с высоким пробитием, но без рикошетов
+{
+  "type": "complexLine",
+  "direction": 0,
+  "length": 3,
+  "amount": 10,
+  "collision": {
+    "walls": true,
+    "tokens": true
+  },
+  "damage": {
+    "penetration": 50,     // Высокое пробитие
+    "ricochet": 0          // Нет рикошетов
+  },
+  "onHit": "stop"
+}
 ```
 Алгоритм работы:
 1. Пользователь вызывает **startAiming(*token*, *payload*)**. 
