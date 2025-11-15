@@ -29,13 +29,27 @@ if ($lastTag -match "^re-v(\d+)$") {
 
 Write-Host "Next version: $nextVersion" -ForegroundColor Yellow
 
-$confirm = Read-Host "Continue with commit '$msg' and tag $nextVersion? (y/N)"
-if ($confirm -ne "y") {
-    Write-Host "Cancelled" -ForegroundColor Red
-    exit
+# Спрашиваем об обновлении версии в system.json
+$updateVersion = Read-Host "Update version in system.json? (y/N)"
+$shouldUpdateVersion = $updateVersion -eq "y"
+
+if ($shouldUpdateVersion) {
+    Write-Host "Reading current version from system.json..." -ForegroundColor Cyan
+    $systemJsonPath = Join-Path $PSScriptRoot "system.json"
+    $systemJson = Get-Content $systemJsonPath -Raw | ConvertFrom-Json
+    $currentVersion = $systemJson.version
+    Write-Host "Current version in system.json: $currentVersion" -ForegroundColor Yellow
+    
+    $newVersion = Read-Host "Enter new version for system.json"
+    
+    Write-Host "Updating system.json..." -ForegroundColor Cyan
+    $systemJson.version = $newVersion
+    $systemJson | ConvertTo-Json -Depth 10 | Set-Content $systemJsonPath
+    
+    Write-Host "Version updated to $newVersion" -ForegroundColor Green
 }
 
-if ($hasChanges) {
+if ($hasChanges -or $shouldUpdateVersion) {
     Write-Host "Adding and committing..." -ForegroundColor Cyan
     git add .
     git commit -m $msg
@@ -47,13 +61,28 @@ git tag $nextVersion
 Write-Host "Pushing..." -ForegroundColor Cyan
 $branch = git branch --show-current
 
-if ($hasChanges) {
+if ($hasChanges -or $shouldUpdateVersion) {
     git push origin $branch
 }
 git push origin $nextVersion
 
-Write-Host "Done! Created release $nextVersion" -ForegroundColor Green
+Write-Host "Done! Pushed commit and tag $nextVersion" -ForegroundColor Green
 
-$repoUrl = git remote get-url origin
-$releaseUrl = $repoUrl -replace "\.git$", ""
-Write-Host "Create GitHub Release: $releaseUrl/releases/new?tag=$nextVersion" -ForegroundColor Cyan
+if ($shouldUpdateVersion) {
+    Write-Host "Creating GitHub Release..." -ForegroundColor Cyan
+    
+    # Проверяем, установлен ли GitHub CLI
+    $ghInstalled = Get-Command gh -ErrorAction SilentlyContinue
+    
+    if ($ghInstalled) {
+        gh release create $nextVersion --title $nextVersion --notes $msg
+        Write-Host "GitHub Release created successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "GitHub CLI (gh) not installed. Install it with: winget install GitHub.cli" -ForegroundColor Yellow
+        $repoUrl = git remote get-url origin
+        $releaseUrl = $repoUrl -replace "\.git$", ""
+        Write-Host "Create GitHub Release manually: $releaseUrl/releases/new?tag=$nextVersion" -ForegroundColor Cyan
+    }
+} else {
+    Write-Host "Skipping GitHub Release creation (version not updated)" -ForegroundColor Yellow
+}
