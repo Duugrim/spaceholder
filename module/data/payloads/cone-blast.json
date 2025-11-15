@@ -22,7 +22,7 @@
         },
         "onHit": "next",
         "hitOrder": "near",
-        "hitAmount": 3
+        "hitAmount": 1
       }
     ]
   }

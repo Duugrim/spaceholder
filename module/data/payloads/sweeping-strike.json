@@ -23,7 +23,7 @@
             "other": true
           }
         },
-        "onHit": "next",
+        "onHit": "stop",
         "hitOrder": "near"
       }
     ]

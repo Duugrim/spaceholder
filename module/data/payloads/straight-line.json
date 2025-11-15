@@ -9,7 +9,7 @@
       {
         "type": "line",
         "direction": 0,
-        "length": 10,
+        "length": 1,
         "collision": {
           "walls": true,
           "tokens": {
