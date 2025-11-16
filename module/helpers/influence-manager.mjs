@@ -107,7 +107,7 @@ export class InfluenceManager {
   }
   
   /**
-   * Нарисовать сферы влияния (простая версия - отдельные круги)
+   * Нарисовать сферы влияния с учётом давления между фракциями
    */
   drawInfluenceZones() {
     // Очищаем предыдущую графику
@@ -130,11 +130,8 @@ export class InfluenceManager {
     const groups = this.groupBySide(objects);
     console.log('InfluenceManager: Groups by side:', groups);
     
-    // Рисуем каждую группу
-    for (const [side, sideObjects] of Object.entries(groups)) {
-      console.log(`InfluenceManager: Drawing ${sideObjects.length} objects for side "${side}"`);
-      this._drawSideInfluence(side, sideObjects);
-    }
+    // Используем новый метод с силовым полем
+    this._drawInfluenceWithPressure(groups, objects);
   }
   
   /**
@@ -331,5 +328,265 @@ export class InfluenceManager {
       this.influenceContainer.destroy({ children: true });
     }
     this.influenceContainer = null;
+  }
+  
+  /**
+   * Нарисовать зоны влияния с учётом давления между фракциями
+   * @param {Object} groups - группы объектов по сторонам
+   * @param {Array} allObjects - все объекты
+   * @private
+   */
+  _drawInfluenceWithPressure(groups, allObjects) {
+    if (!canvas?.dimensions) return;
+    
+    // Определяем границы области для расчёта
+    const bounds = this._calculateBounds(allObjects);
+    if (!bounds) return;
+    
+    // Размер ячейки сетки (в пикселях canvas)
+    // Меньше значение = точнее, но медленнее
+    const gridSize = canvas.grid.size || 100;
+    const cellSize = gridSize / 2; // Половина размера клетки для баланса
+    
+    // Создаём карту доминирования для каждой фракции
+    const factionTerritories = this._calculateFactionTerritories(groups, bounds, cellSize);
+    
+    // Рисуем территории каждой фракции
+    for (const [side, territory] of Object.entries(factionTerritories)) {
+      if (territory.length === 0) continue;
+      
+      const color = this.getColorForSide(side);
+      this._drawTerritoryPolygons(territory, color, side);
+    }
+    
+    // Рисуем центральные точки источников
+    for (const obj of allObjects) {
+      if (obj.gRange <= 0) continue;
+      
+      const color = this.getColorForSide(obj.gSide);
+      const centerGraphics = new PIXI.Graphics();
+      centerGraphics.beginFill(color, 0.9);
+      centerGraphics.drawCircle(obj.position.x, obj.position.y, 5);
+      centerGraphics.endFill();
+      centerGraphics.name = `influence_center_${obj.gSide}_${obj.token.id}`;
+      centerGraphics.interactive = false;
+      this.influenceContainer.addChild(centerGraphics);
+      this.currentElements.push(centerGraphics);
+    }
+  }
+  
+  /**
+   * Вычислить границы области для расчёта влияния
+   * @param {Array} objects - все объекты
+   * @returns {Object} {minX, minY, maxX, maxY}
+   * @private
+   */
+  _calculateBounds(objects) {
+    if (objects.length === 0) return null;
+    
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+    
+    for (const obj of objects) {
+      if (obj.gRange <= 0) continue;
+      
+      minX = Math.min(minX, obj.position.x - obj.gRange);
+      minY = Math.min(minY, obj.position.y - obj.gRange);
+      maxX = Math.max(maxX, obj.position.x + obj.gRange);
+      maxY = Math.max(maxY, obj.position.y + obj.gRange);
+    }
+    
+    // Добавляем небольшой отступ
+    const padding = 50;
+    return {
+      minX: minX - padding,
+      minY: minY - padding,
+      maxX: maxX + padding,
+      maxY: maxY + padding
+    };
+  }
+  
+  /**
+   * Вычислить силу влияния объекта в точке
+   * @param {Object} obj - объект влияния
+   * @param {number} x - координата X точки
+   * @param {number} y - координата Y точки
+   * @returns {number} сила влияния (0 если вне радиуса)
+   * @private
+   */
+  _calculateInfluenceStrength(obj, x, y) {
+    const dx = x - obj.position.x;
+    const dy = y - obj.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Если точка вне радиуса влияния - сила 0
+    if (distance > obj.gRange) return 0;
+    
+    // Используем квадратичный спад влияния
+    // Можно настроить: linear, quadratic, exponential
+    const normalizedDistance = distance / obj.gRange; // 0..1
+    const falloff = 1 - (normalizedDistance * normalizedDistance); // квадратичный спад
+    
+    // Умножаем на мощность объекта
+    return falloff * obj.gPower;
+  }
+  
+  /**
+   * Вычислить территории каждой фракции на основе силового поля
+   * @param {Object} groups - группы объектов по сторонам
+   * @param {Object} bounds - границы области
+   * @param {number} cellSize - размер ячейки сетки
+   * @returns {Object} {side: [polygons]}
+   * @private
+   */
+  _calculateFactionTerritories(groups, bounds, cellSize) {
+    const territories = {};
+    const sides = Object.keys(groups);
+    
+    // Инициализируем территории для каждой стороны
+    for (const side of sides) {
+      territories[side] = [];
+    }
+    
+    // Создаём сетку точек и определяем доминирующую фракцию
+    const dominanceGrid = [];
+    const cols = Math.ceil((bounds.maxX - bounds.minX) / cellSize);
+    const rows = Math.ceil((bounds.maxY - bounds.minY) / cellSize);
+    
+    for (let row = 0; row < rows; row++) {
+      dominanceGrid[row] = [];
+      for (let col = 0; col < cols; col++) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        
+        // Вычисляем силу влияния каждой фракции в этой точке
+        let maxStrength = 0;
+        let dominantSide = null;
+        
+        for (const [side, objects] of Object.entries(groups)) {
+          let totalStrength = 0;
+          
+          for (const obj of objects) {
+            totalStrength += this._calculateInfluenceStrength(obj, x, y);
+          }
+          
+          if (totalStrength > maxStrength) {
+            maxStrength = totalStrength;
+            dominantSide = side;
+          }
+        }
+        
+        dominanceGrid[row][col] = {
+          side: dominantSide,
+          strength: maxStrength,
+          x: x,
+          y: y
+        };
+      }
+    }
+    
+    // Преобразуем сетку в полигоны для каждой фракции
+    for (const side of sides) {
+      const polygons = this._gridToPolygons(dominanceGrid, side, cellSize);
+      territories[side] = polygons;
+    }
+    
+    return territories;
+  }
+  
+  /**
+   * Преобразовать сетку доминирования в полигоны для конкретной стороны
+   * @param {Array} grid - сетка доминирования
+   * @param {string} side - сторона для которой строим полигоны
+   * @param {number} cellSize - размер ячейки
+   * @returns {Array} массив полигонов (ClipperLib format)
+   * @private
+   */
+  _gridToPolygons(grid, side, cellSize) {
+    if (!grid || grid.length === 0) return [];
+    
+    const rows = grid.length;
+    const cols = grid[0].length;
+    const scale = 1000; // для ClipperLib
+    
+    // Создаём список прямоугольников (ячеек) принадлежащих этой стороне
+    const cells = [];
+    
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = grid[row][col];
+        
+        if (cell.side === side && cell.strength > 0) {
+          // Создаём прямоугольник для этой ячейки
+          const halfCell = cellSize / 2;
+          const rect = [
+            { X: Math.round((cell.x - halfCell) * scale), Y: Math.round((cell.y - halfCell) * scale) },
+            { X: Math.round((cell.x + halfCell) * scale), Y: Math.round((cell.y - halfCell) * scale) },
+            { X: Math.round((cell.x + halfCell) * scale), Y: Math.round((cell.y + halfCell) * scale) },
+            { X: Math.round((cell.x - halfCell) * scale), Y: Math.round((cell.y + halfCell) * scale) }
+          ];
+          cells.push(rect);
+        }
+      }
+    }
+    
+    if (cells.length === 0) return [];
+    
+    // Объединяем все прямоугольники в единую геометрию
+    try {
+      const clipper = new ClipperLib.Clipper();
+      
+      // Добавляем первую ячейку как subject
+      clipper.AddPath(cells[0], ClipperLib.PolyType.ptSubject, true);
+      
+      // Добавляем остальные ячейки и объединяем
+      for (let i = 1; i < cells.length; i++) {
+        clipper.AddPath(cells[i], ClipperLib.PolyType.ptClip, true);
+      }
+      
+      const solution = new ClipperLib.Paths();
+      clipper.Execute(ClipperLib.ClipType.ctUnion, solution,
+        ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+      
+      // Масштабируем обратно
+      return solution.map(poly => this._scalePolygon(poly, 1/scale));
+      
+    } catch (error) {
+      console.error('InfluenceManager: Failed to union grid cells:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Нарисовать полигоны территории
+   * @param {Array} polygons - массив полигонов
+   * @param {number} color - цвет
+   * @param {string} side - название стороны
+   * @private
+   */
+  _drawTerritoryPolygons(polygons, color, side) {
+    if (!polygons || polygons.length === 0) return;
+    
+    for (let i = 0; i < polygons.length; i++) {
+      const polygon = polygons[i];
+      if (!polygon || polygon.length < 3) continue;
+      
+      const graphics = new PIXI.Graphics();
+      graphics.lineStyle(3, color, 0.9);
+      graphics.beginFill(color, 0.25);
+      
+      // Рисуем полигон
+      graphics.moveTo(polygon[0].X, polygon[0].Y);
+      for (let j = 1; j < polygon.length; j++) {
+        graphics.lineTo(polygon[j].X, polygon[j].Y);
+      }
+      graphics.closePath();
+      graphics.endFill();
+      
+      graphics.name = `influence_territory_${side}_${i}`;
+      graphics.interactive = false;
+      this.influenceContainer.addChild(graphics);
+      this.currentElements.push(graphics);
+    }
   }
 }
