@@ -56,6 +56,9 @@ export class InfluenceManager {
     
     if (!canvas.tokens) return objects;
     
+    // Размер клетки сцены в пикселях
+    const gridSize = canvas.grid.size || 100;
+    
     for (const token of canvas.tokens.placeables) {
       // Проверяем, является ли актор типом globalobject
       if (token.actor?.type !== 'globalobject') continue;
@@ -63,9 +66,14 @@ export class InfluenceManager {
       const system = token.actor.system;
       if (!system) continue;
       
+      // Конвертируем gRange из единиц сетки×100 в пиксели
+      // Например: gRange=500 и gridSize=100 → 5 клеток → 500 пикселей
+      const rangeInGridUnits = (system.gRange || 0) / 100; // 500 → 5
+      const rangeInPixels = rangeInGridUnits * gridSize; // 5 × 100 = 500
+      
       objects.push({
         token: token,
-        gRange: system.gRange || 0,
+        gRange: rangeInPixels,
         gPower: system.gPower || 1,
         gSide: system.gSide || 'neutral',
         position: {
@@ -108,8 +116,9 @@ export class InfluenceManager {
   
   /**
    * Нарисовать сферы влияния с учётом давления между фракциями
+   * @param {boolean} debug - отображать ли отладочные окружности gRange
    */
-  drawInfluenceZones() {
+  drawInfluenceZones(debug = false) {
     // Очищаем предыдущую графику
     this.clearAll();
     
@@ -131,7 +140,7 @@ export class InfluenceManager {
     console.log('InfluenceManager: Groups by side:', groups);
     
     // Используем новый метод с силовым полем
-    this._drawInfluenceWithPressure(groups, objects);
+    this._drawInfluenceWithPressure(groups, objects, debug);
   }
   
   /**
@@ -334,9 +343,10 @@ export class InfluenceManager {
    * Нарисовать зоны влияния с учётом давления между фракциями
    * @param {Object} groups - группы объектов по сторонам
    * @param {Array} allObjects - все объекты
+   * @param {boolean} debug - отображать ли отладочные окружности
    * @private
    */
-  _drawInfluenceWithPressure(groups, allObjects) {
+  _drawInfluenceWithPressure(groups, allObjects, debug = false) {
     if (!canvas?.dimensions) return;
     
     // Определяем границы области для расчёта
@@ -351,11 +361,24 @@ export class InfluenceManager {
     // Используем метод метабольных шаров с Marching Squares
     this._drawInfluenceWithMetaballs(groups, bounds, cellSize);
     
-    // Рисуем центральные точки источников
+    // Рисуем центральные точки источников (и опционально отладочные окружности)
     for (const obj of allObjects) {
       if (obj.gRange <= 0) continue;
       
       const color = this.getColorForSide(obj.gSide);
+      
+      // Отладочная окружность радиуса gRange (только в режиме отладки)
+      if (debug) {
+        const debugCircle = new PIXI.Graphics();
+        debugCircle.lineStyle(2, color, 0.5);
+        debugCircle.drawCircle(obj.position.x, obj.position.y, obj.gRange);
+        debugCircle.name = `influence_debug_circle_${obj.gSide}_${obj.token.id}`;
+        debugCircle.interactive = false;
+        this.influenceContainer.addChild(debugCircle);
+        this.currentElements.push(debugCircle);
+      }
+      
+      // Центральная точка
       const centerGraphics = new PIXI.Graphics();
       centerGraphics.beginFill(color, 0.9);
       centerGraphics.drawCircle(obj.position.x, obj.position.y, 5);
@@ -615,12 +638,12 @@ export class InfluenceManager {
       );
       
       // Используем Marching Squares для построения изоконтуров
-      const threshold = 0.5; // Порог для изоповерхности
+      const threshold = 0.3; // Порог для предотвращения перекрытия зон
       const contours = this._marchingSquares(territoryField, rows, cols, bounds, cellSize, threshold);
       
       // Рисуем контуры
       const color = this.getColorForSide(side);
-      this._drawMetaballContours(contours, color, side, dominanceField);
+      this._drawMetaballContours(contours, color, side);
     }
   }
   
