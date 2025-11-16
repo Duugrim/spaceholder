@@ -603,8 +603,16 @@ export class InfluenceManager {
       const validObjects = objects.filter(obj => obj.gRange > 0);
       if (validObjects.length === 0) continue;
       
-      // Создаём поле, где 1 = территория этой фракции, 0 = чужая
-      const territoryField = this._extractTerritoryField(dominanceField, side, rows, cols);
+      // Создаём поле силы влияния с учётом доминирования
+      const territoryField = this._extractTerritoryFieldWithStrength(
+        dominanceField, 
+        validObjects, 
+        side, 
+        bounds, 
+        cellSize, 
+        rows, 
+        cols
+      );
       
       // Используем Marching Squares для построения изоконтуров
       const threshold = 0.5; // Порог для изоповерхности
@@ -612,7 +620,7 @@ export class InfluenceManager {
       
       // Рисуем контуры
       const color = this.getColorForSide(side);
-      this._drawMetaballContours(contours, color, side);
+      this._drawMetaballContours(contours, color, side, dominanceField);
     }
   }
   
@@ -663,15 +671,18 @@ export class InfluenceManager {
   }
   
   /**
-   * Извлечь поле территории конкретной фракции из поля доминирования
+   * Извлечь поле территории с учётом реальной силы влияния
    * @param {Array} dominanceField - поле доминирования
-   * @param {string} side - сторона для извлечения
+   * @param {Array} objects - объекты этой фракции
+   * @param {string} side - сторона
+   * @param {Object} bounds - границы
+   * @param {number} cellSize - размер ячейки
    * @param {number} rows - количество строк
    * @param {number} cols - количество столбцов
-   * @returns {Array} двумерный массив значений 0-1 (сила территории)
+   * @returns {Array} двумерный массив значений 0-1
    * @private
    */
-  _extractTerritoryField(dominanceField, side, rows, cols) {
+  _extractTerritoryFieldWithStrength(dominanceField, objects, side, bounds, cellSize, rows, cols) {
     const field = [];
     
     for (let row = 0; row <= rows; row++) {
@@ -679,10 +690,19 @@ export class InfluenceManager {
       for (let col = 0; col <= cols; col++) {
         const cell = dominanceField[row][col];
         
-        if (cell.side === side && cell.strength > 0) {
-          // Эта фракция доминирует - используем нормализованную силу
-          // Чем сильнее влияние, тем ближе к 1
-          field[row][col] = Math.min(cell.strength, 1);
+        // Только если эта фракция доминирует в этой точке
+        if (cell.side === side) {
+          // Вычисляем реальную силу влияния в этой точке
+          const x = bounds.minX + col * cellSize;
+          const y = bounds.minY + row * cellSize;
+          
+          let totalStrength = 0;
+          for (const obj of objects) {
+            totalStrength += this._calculateInfluenceStrength(obj, x, y);
+          }
+          
+          // Нормализуем значение (0-1)
+          field[row][col] = Math.min(totalStrength, 1);
         } else {
           // Чужая территория
           field[row][col] = 0;
@@ -799,29 +819,51 @@ export class InfluenceManager {
    * @param {Array} contours - массив сегментов линий
    * @param {number} color - цвет
    * @param {string} side - название стороны
+   * @param {Object} dominanceField - поле доминирования
    * @private
    */
-  _drawMetaballContours(contours, color, side) {
+  _drawMetaballContours(contours, color, side, dominanceField) {
     if (!contours || contours.length === 0) return;
     
     // Соединяем сегменты в замкнутые контуры
     const closedContours = this._connectSegments(contours);
     
-    // Рисуем каждый замкнутый контур
-    for (let i = 0; i < closedContours.length; i++) {
-      const contour = closedContours[i];
+    // Определяем иерархию контуров (кто внутри кого)
+    const hierarchy = this._buildContourHierarchy(closedContours);
+    
+    // Рисуем только внешние контуры (с дырками внутри)
+    for (let i = 0; i < hierarchy.length; i++) {
+      const item = hierarchy[i];
+      if (item.parent !== -1) continue; // Пропускаем вложенные контуры
+      
+      const contour = item.contour;
       if (!contour || contour.length < 3) continue;
       
       const graphics = new PIXI.Graphics();
       graphics.lineStyle(3, color, 0.9);
       graphics.beginFill(color, 0.25);
       
-      // Рисуем контур
+      // Рисуем внешний контур
       graphics.moveTo(contour[0].x, contour[0].y);
       for (let j = 1; j < contour.length; j++) {
         graphics.lineTo(contour[j].x, contour[j].y);
       }
       graphics.closePath();
+      
+      // Добавляем дырки (внутренние контуры)
+      for (let k = 0; k < hierarchy.length; k++) {
+        if (hierarchy[k].parent === i) {
+          const holeContour = hierarchy[k].contour;
+          graphics.beginHole();
+          graphics.moveTo(holeContour[0].x, holeContour[0].y);
+          for (let j = 1; j < holeContour.length; j++) {
+            graphics.lineTo(holeContour[j].x, holeContour[j].y);
+          }
+          graphics.closePath();
+          graphics.endHole();
+        }
+      }
+      
       graphics.endFill();
       
       graphics.name = `influence_metaball_${side}_${i}`;
@@ -890,5 +932,95 @@ export class InfluenceManager {
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
     return (dx * dx + dy * dy) < (epsilon * epsilon);
+  }
+  
+  /**
+   * Построить иерархию контуров (кто внутри кого)
+   * @param {Array} contours - массив контуров
+   * @returns {Array} массив объектов {contour, parent}
+   * @private
+   */
+  _buildContourHierarchy(contours) {
+    const hierarchy = [];
+    
+    for (let i = 0; i < contours.length; i++) {
+      let parent = -1;
+      let minArea = Infinity;
+      
+      // Ищем самый маленький контур, который содержит текущий
+      for (let j = 0; j < contours.length; j++) {
+        if (i === j) continue;
+        
+        if (this._isContourInsideContour(contours[i], contours[j])) {
+          const area = this._calculatePolygonArea(contours[j]);
+          if (area < minArea) {
+            minArea = area;
+            parent = j;
+          }
+        }
+      }
+      
+      hierarchy.push({
+        contour: contours[i],
+        parent: parent
+      });
+    }
+    
+    return hierarchy;
+  }
+  
+  /**
+   * Проверить, находится ли контур A внутри контура B
+   * @private
+   */
+  _isContourInsideContour(contourA, contourB) {
+    // Проверяем несколько точек контура A
+    for (let i = 0; i < Math.min(3, contourA.length); i++) {
+      if (!this._isPointInPolygon(contourA[i], contourB)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  /**
+   * Проверить, находится ли точка внутри полигона (ray casting)
+   * @private
+   */
+  _isPointInPolygon(point, polygon) {
+    let inside = false;
+    
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x;
+      const yi = polygon[i].y;
+      const xj = polygon[j].x;
+      const yj = polygon[j].y;
+      
+      const intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      
+      if (intersect) inside = !inside;
+    }
+    
+    return inside;
+  }
+  
+  /**
+   * Вычислить площадь полигона (формула шнуровки)
+   * @param {Array} polygon - массив точек {x, y}
+   * @returns {number} площадь
+   * @private
+   */
+  _calculatePolygonArea(polygon) {
+    if (!polygon || polygon.length < 3) return 0;
+    
+    let area = 0;
+    for (let i = 0; i < polygon.length; i++) {
+      const j = (i + 1) % polygon.length;
+      area += polygon[i].x * polygon[j].y;
+      area -= polygon[j].x * polygon[i].y;
+    }
+    
+    return Math.abs(area / 2);
   }
 }
