@@ -346,18 +346,10 @@ export class InfluenceManager {
     // Размер ячейки сетки (в пикселях canvas)
     // Меньше значение = точнее, но медленнее
     const gridSize = canvas.grid.size || 100;
-    const cellSize = gridSize / 2; // Половина размера клетки для баланса
+    const cellSize = gridSize / 4; // Уменьшаем для более плавных контуров
     
-    // Создаём карту доминирования для каждой фракции
-    const factionTerritories = this._calculateFactionTerritories(groups, bounds, cellSize);
-    
-    // Рисуем территории каждой фракции
-    for (const [side, territory] of Object.entries(factionTerritories)) {
-      if (territory.length === 0) continue;
-      
-      const color = this.getColorForSide(side);
-      this._drawTerritoryPolygons(territory, color, side);
-    }
+    // Используем метод метабольных шаров с Marching Squares
+    this._drawInfluenceWithMetaballs(groups, bounds, cellSize);
     
     // Рисуем центральные точки источников
     for (const obj of allObjects) {
@@ -588,5 +580,315 @@ export class InfluenceManager {
       this.influenceContainer.addChild(graphics);
       this.currentElements.push(graphics);
     }
+  }
+  
+  /**
+   * Нарисовать зоны влияния используя метабольные шары (Metaballs)
+   * @param {Object} groups - группы объектов по сторонам
+   * @param {Object} bounds - границы области
+   * @param {number} cellSize - размер ячейки сетки
+   * @private
+   */
+  _drawInfluenceWithMetaballs(groups, bounds, cellSize) {
+    const cols = Math.ceil((bounds.maxX - bounds.minX) / cellSize);
+    const rows = Math.ceil((bounds.maxY - bounds.minY) / cellSize);
+    
+    // Вычисляем доминирование фракций (какая фракция доминирует в каждой точке)
+    const dominanceField = this._calculateDominanceField(groups, bounds, cellSize, rows, cols);
+    
+    // Для каждой фракции строим изоконтуры её территории
+    for (const [side, objects] of Object.entries(groups)) {
+      if (objects.length === 0) continue;
+      
+      const validObjects = objects.filter(obj => obj.gRange > 0);
+      if (validObjects.length === 0) continue;
+      
+      // Создаём поле, где 1 = территория этой фракции, 0 = чужая
+      const territoryField = this._extractTerritoryField(dominanceField, side, rows, cols);
+      
+      // Используем Marching Squares для построения изоконтуров
+      const threshold = 0.5; // Порог для изоповерхности
+      const contours = this._marchingSquares(territoryField, rows, cols, bounds, cellSize, threshold);
+      
+      // Рисуем контуры
+      const color = this.getColorForSide(side);
+      this._drawMetaballContours(contours, color, side);
+    }
+  }
+  
+  /**
+   * Вычислить поле доминирования фракций (учитывая конкуренцию)
+   * @param {Object} groups - группы объектов по сторонам
+   * @param {Object} bounds - границы области
+   * @param {number} cellSize - размер ячейки
+   * @param {number} rows - количество строк
+   * @param {number} cols - количество столбцов
+   * @returns {Array} двумерный массив с доминирующей стороной и силой
+   * @private
+   */
+  _calculateDominanceField(groups, bounds, cellSize, rows, cols) {
+    const field = [];
+    
+    for (let row = 0; row <= rows; row++) {
+      field[row] = [];
+      for (let col = 0; col <= cols; col++) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        
+        // Вычисляем силу влияния каждой фракции в этой точке
+        let maxStrength = 0;
+        let dominantSide = null;
+        
+        for (const [side, objects] of Object.entries(groups)) {
+          let totalStrength = 0;
+          
+          for (const obj of objects) {
+            totalStrength += this._calculateInfluenceStrength(obj, x, y);
+          }
+          
+          if (totalStrength > maxStrength) {
+            maxStrength = totalStrength;
+            dominantSide = side;
+          }
+        }
+        
+        field[row][col] = {
+          side: dominantSide,
+          strength: maxStrength
+        };
+      }
+    }
+    
+    return field;
+  }
+  
+  /**
+   * Извлечь поле территории конкретной фракции из поля доминирования
+   * @param {Array} dominanceField - поле доминирования
+   * @param {string} side - сторона для извлечения
+   * @param {number} rows - количество строк
+   * @param {number} cols - количество столбцов
+   * @returns {Array} двумерный массив значений 0-1 (сила территории)
+   * @private
+   */
+  _extractTerritoryField(dominanceField, side, rows, cols) {
+    const field = [];
+    
+    for (let row = 0; row <= rows; row++) {
+      field[row] = [];
+      for (let col = 0; col <= cols; col++) {
+        const cell = dominanceField[row][col];
+        
+        if (cell.side === side && cell.strength > 0) {
+          // Эта фракция доминирует - используем нормализованную силу
+          // Чем сильнее влияние, тем ближе к 1
+          field[row][col] = Math.min(cell.strength, 1);
+        } else {
+          // Чужая территория
+          field[row][col] = 0;
+        }
+      }
+    }
+    
+    return field;
+  }
+  
+  /**
+   * Алгоритм Marching Squares для построения изоконтуров
+   * @param {Array} field - скалярное поле
+   * @param {number} rows - количество строк
+   * @param {number} cols - количество столбцов
+   * @param {Object} bounds - границы области
+   * @param {number} cellSize - размер ячейки
+   * @param {number} threshold - порог для изоповерхности
+   * @returns {Array} массив контуров
+   * @private
+   */
+  _marchingSquares(field, rows, cols, bounds, cellSize, threshold) {
+    const contours = [];
+    
+    // Проходим по каждой ячейке сетки
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        // Получаем значения в 4 углах ячейки
+        const v0 = field[row][col];         // top-left
+        const v1 = field[row][col + 1];     // top-right
+        const v2 = field[row + 1][col + 1]; // bottom-right
+        const v3 = field[row + 1][col];     // bottom-left
+        
+        // Определяем конфигурацию ячейки (какие углы выше порога)
+        let config = 0;
+        if (v0 >= threshold) config |= 1;
+        if (v1 >= threshold) config |= 2;
+        if (v2 >= threshold) config |= 4;
+        if (v3 >= threshold) config |= 8;
+        
+        // Пропускаем полностью внутренние или внешние ячейки
+        if (config === 0 || config === 15) continue;
+        
+        // Координаты углов ячейки
+        const x0 = bounds.minX + col * cellSize;
+        const y0 = bounds.minY + row * cellSize;
+        const x1 = x0 + cellSize;
+        const y1 = y0 + cellSize;
+        
+        // Вычисляем точки пересечения рёбер (используем линейную интерполяцию)
+        const edges = [
+          this._lerp2D({x: x0, y: y0}, {x: x1, y: y0}, v0, v1, threshold), // top
+          this._lerp2D({x: x1, y: y0}, {x: x1, y: y1}, v1, v2, threshold), // right
+          this._lerp2D({x: x1, y: y1}, {x: x0, y: y1}, v2, v3, threshold), // bottom
+          this._lerp2D({x: x0, y: y1}, {x: x0, y: y0}, v3, v0, threshold)  // left
+        ];
+        
+        // Добавляем сегменты линий в зависимости от конфигурации
+        const segments = this._getMarchingSquaresSegments(config, edges);
+        contours.push(...segments);
+      }
+    }
+    
+    return contours;
+  }
+  
+  /**
+   * Линейная интерполяция между двумя точками на основе значений поля
+   * @private
+   */
+  _lerp2D(p0, p1, v0, v1, threshold) {
+    if (Math.abs(v0 - v1) < 0.001) {
+      return { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    }
+    
+    const t = (threshold - v0) / (v1 - v0);
+    return {
+      x: p0.x + t * (p1.x - p0.x),
+      y: p0.y + t * (p1.y - p0.y)
+    };
+  }
+  
+  /**
+   * Получить сегменты линий для конкретной конфигурации Marching Squares
+   * @private
+   */
+  _getMarchingSquaresSegments(config, edges) {
+    // Таблица сегментов для каждой из 16 конфигураций
+    // Каждая конфигурация определяет, какие рёбра соединять
+    const segmentTable = {
+      0: [],
+      1: [[edges[3], edges[0]]],
+      2: [[edges[0], edges[1]]],
+      3: [[edges[3], edges[1]]],
+      4: [[edges[1], edges[2]]],
+      5: [[edges[3], edges[0]], [edges[1], edges[2]]], // ambiguous case
+      6: [[edges[0], edges[2]]],
+      7: [[edges[3], edges[2]]],
+      8: [[edges[2], edges[3]]],
+      9: [[edges[2], edges[0]]],
+      10: [[edges[0], edges[1]], [edges[2], edges[3]]], // ambiguous case
+      11: [[edges[2], edges[1]]],
+      12: [[edges[1], edges[3]]],
+      13: [[edges[1], edges[0]]],
+      14: [[edges[0], edges[3]]],
+      15: []
+    };
+    
+    return segmentTable[config] || [];
+  }
+  
+  /**
+   * Нарисовать контуры метабольных шаров
+   * @param {Array} contours - массив сегментов линий
+   * @param {number} color - цвет
+   * @param {string} side - название стороны
+   * @private
+   */
+  _drawMetaballContours(contours, color, side) {
+    if (!contours || contours.length === 0) return;
+    
+    // Соединяем сегменты в замкнутые контуры
+    const closedContours = this._connectSegments(contours);
+    
+    // Рисуем каждый замкнутый контур
+    for (let i = 0; i < closedContours.length; i++) {
+      const contour = closedContours[i];
+      if (!contour || contour.length < 3) continue;
+      
+      const graphics = new PIXI.Graphics();
+      graphics.lineStyle(3, color, 0.9);
+      graphics.beginFill(color, 0.25);
+      
+      // Рисуем контур
+      graphics.moveTo(contour[0].x, contour[0].y);
+      for (let j = 1; j < contour.length; j++) {
+        graphics.lineTo(contour[j].x, contour[j].y);
+      }
+      graphics.closePath();
+      graphics.endFill();
+      
+      graphics.name = `influence_metaball_${side}_${i}`;
+      graphics.interactive = false;
+      this.influenceContainer.addChild(graphics);
+      this.currentElements.push(graphics);
+    }
+  }
+  
+  /**
+   * Соединить сегменты линий в замкнутые контуры
+   * @param {Array} segments - массив сегментов [[p1, p2], ...]
+   * @returns {Array} массив замкнутых контуров
+   * @private
+   */
+  _connectSegments(segments) {
+    if (segments.length === 0) return [];
+    
+    const closedContours = [];
+    const remainingSegments = [...segments];
+    const epsilon = 1.5;
+    
+    while (remainingSegments.length > 0) {
+      const contour = [];
+      let currentSegment = remainingSegments.pop();
+      
+      contour.push(currentSegment[0]);
+      contour.push(currentSegment[1]);
+      
+      // Пытаемся найти следующие сегменты
+      let foundConnection = true;
+      while (foundConnection && remainingSegments.length > 0) {
+        foundConnection = false;
+        const lastPoint = contour[contour.length - 1];
+        
+        for (let i = 0; i < remainingSegments.length; i++) {
+          const seg = remainingSegments[i];
+          
+          if (this._pointsClose(lastPoint, seg[0], epsilon)) {
+            contour.push(seg[1]);
+            remainingSegments.splice(i, 1);
+            foundConnection = true;
+            break;
+          } else if (this._pointsClose(lastPoint, seg[1], epsilon)) {
+            contour.push(seg[0]);
+            remainingSegments.splice(i, 1);
+            foundConnection = true;
+            break;
+          }
+        }
+      }
+      
+      if (contour.length >= 3) {
+        closedContours.push(contour);
+      }
+    }
+    
+    return closedContours;
+  }
+  
+  /**
+   * Проверить, находятся ли две точки достаточно близко
+   * @private
+   */
+  _pointsClose(p1, p2, epsilon) {
+    const dx = p1.x - p2.x;
+    const dy = p1.y - p2.y;
+    return (dx * dx + dy * dy) < (epsilon * epsilon);
   }
 }
