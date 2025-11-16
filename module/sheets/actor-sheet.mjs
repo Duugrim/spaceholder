@@ -842,3 +842,20 @@ export class SpaceHolderNPCSheet extends SpaceHolderBaseActorSheet {
     body: { root: true, template: 'systems/spaceholder/templates/actor/actor-npc-sheet.hbs' }
   };
 }
+
+// Global Object sheet (Application V2)
+export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
+  static PARTS = {
+    body: { root: true, template: 'systems/spaceholder/templates/actor/actor-globalobject-sheet.hbs' }
+  };
+  
+  /** @inheritDoc */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    
+    // Global Object не использует стандартные вкладки character/npc
+    // Просто предоставляем данные для редактирования gRange, gPower, gSide
+    
+    return context;
+  }
+}

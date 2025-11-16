@@ -1,0 +1,64 @@
+<form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off">
+
+  {{!-- Sheet Header --}}
+  <header class="sheet-header">
+    <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
+    <div class="header-fields">
+      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Name"/></h1>
+      
+      {{!-- Global Object Parameters --}}
+      <div class="resources grid grid-3col">
+        
+        <div class="resource flex-group-center">
+          <label for="system.gRange" class="resource-label" title="Радиус сферы влияния в пикселях">Range</label>
+          <div class="resource-content flexrow flex-center flex-between">
+            <input type="number" name="system.gRange" value="{{system.gRange}}" data-dtype="Number" min="0" step="10"/>
+          </div>
+        </div>
+
+        <div class="resource flex-group-center">
+          <label for="system.gPower" class="resource-label" title="Сила влияния (определяет приоритет при столкновениях)">Power</label>
+          <div class="resource-content flexrow flex-center flex-between">
+            <input type="number" name="system.gPower" value="{{system.gPower}}" data-dtype="Number" min="0" step="0.1"/>
+          </div>
+        </div>
+
+        <div class="resource flex-group-center">
+          <label for="system.gSide" class="resource-label" title="Сторона (объекты одной стороны объединяются)">Side</label>
+          <div class="resource-content flexrow flex-center flex-between">
+            <select name="system.gSide" style="width: 100%;">
+              <option value="neutral" {{#if (eq system.gSide "neutral")}}selected{{/if}}>Neutral</option>
+              <option value="ally" {{#if (eq system.gSide "ally")}}selected{{/if}}>Ally</option>
+              <option value="enemy" {{#if (eq system.gSide "enemy")}}selected{{/if}}>Enemy</option>
+              <option value="faction1" {{#if (eq system.gSide "faction1")}}selected{{/if}}>Faction 1</option>
+              <option value="faction2" {{#if (eq system.gSide "faction2")}}selected{{/if}}>Faction 2</option>
+              <option value="faction3" {{#if (eq system.gSide "faction3")}}selected{{/if}}>Faction 3</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  {{!-- Sheet Tab Navigation --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="description">Description</a>
+    <a class="item" data-tab="effects">Effects</a>
+  </nav>
+
+  {{!-- Sheet Body --}}
+  <section class="sheet-body">
+
+    {{!-- Description Tab --}}
+    <div class="tab biography" data-group="primary" data-tab="description">
+      {{editor enrichedBiography target="system.biography" engine="prosemirror" button=true editable=editable}}
+    </div>
+
+    {{!-- Active Effects Tab --}}
+    <div class="tab effects flexcol" data-group="primary" data-tab="effects">
+      {{> "systems/spaceholder/templates/actor/parts/actor-effects.hbs"}}
+    </div>
+
+  </section>
+</form>

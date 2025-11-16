@@ -1,6 +1,6 @@
 {
   "Actor": {
-    "types": ["character", "npc"],
+    "types": ["character", "npc", "globalobject"],
     "templates": {
       "base": {
         "anatomy": {
@@ -38,6 +38,12 @@
     "npc": {
       "templates": ["base"],
       "cr": 0
+    },
+    "globalobject": {
+      "gRange": 100,
+      "gPower": 1,
+      "gSide": "neutral",
+      "biography": ""
     }
   },
   "Item": {

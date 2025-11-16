@@ -2,7 +2,7 @@
 import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
 // Import sheet classes (Application V2)
-import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet } from './sheets/actor-sheet.mjs';
+import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderGlobalObjectSheet } from './sheets/actor-sheet.mjs';
 import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
@@ -20,6 +20,8 @@ import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
 import { DrawManager } from './helpers/draw-manager.mjs';
 // Shot manager for shot calculation
 import { ShotManager } from './helpers/shot-manager.mjs';
+// Influence manager for global objects influence zones
+import { InfluenceManager } from './helpers/influence-manager.mjs';
 // import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
 // import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
 // import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
@@ -47,6 +49,9 @@ Hooks.once('init', function () {
     SpaceHolderItem,
     rollItemMacro,
     anatomyManager,
+    // Helper functions for influence zones
+    showInfluence: () => game.spaceholder.influenceManager?.drawInfluenceZones(),
+    hideInfluence: () => game.spaceholder.influenceManager?.clearAll(),
   };
 
   // Initialize Token Pointer and expose
@@ -60,6 +65,9 @@ Hooks.once('init', function () {
   
   // Initialize Shot Manager
   game.spaceholder.shotManager = new ShotManager();
+  
+  // Initialize Influence Manager
+  game.spaceholder.influenceManager = new InfluenceManager();
 
   // Install Token Pointer hooks
   installTokenPointerHooks();
@@ -106,6 +114,11 @@ Hooks.once('init', function () {
     types: ['npc'],
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.Actor',
+  });
+  foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderGlobalObjectSheet, {
+    types: ['globalobject'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.GlobalObject',
   });
 
   // Register Item sheets by type (fallback generic)
@@ -208,6 +221,15 @@ Hooks.once('ready', async function () {
   } catch (error) {
     console.error('SpaceHolder | Failed to initialize shot manager:', error);
     ui.notifications.error('Failed to initialize shot manager. Check console for details.');
+  }
+  
+  // Initialize influence manager
+  try {
+    game.spaceholder.influenceManager.initialize();
+    console.log('SpaceHolder | Influence manager initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize influence manager:', error);
+    ui.notifications.error('Failed to initialize influence manager. Check console for details.');
   }
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
