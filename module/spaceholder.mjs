@@ -25,6 +25,7 @@ import { InfluenceManager } from './helpers/influence-manager.mjs';
 // Height map manager and renderer
 import { HeightMapManager } from './helpers/heightmap-manager.mjs';
 import { HeightMapRenderer } from './helpers/heightmap-renderer.mjs';
+import { HeightMapEditor } from './helpers/heightmap-editor.mjs';
 import { registerHeightMapSceneConfig, installHeightMapSceneConfigHooks } from './helpers/heightmap-scene-config.mjs';
 // import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
 // import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
@@ -95,6 +96,13 @@ Hooks.once('init', function () {
   // Initialize Height Map Renderer (pass manager as dependency)
   game.spaceholder.heightMapRenderer = new HeightMapRenderer(game.spaceholder.heightMapManager);
   game.spaceholder.renderer = game.spaceholder.heightMapRenderer;  // Alias for convenience
+  
+  // Initialize Height Map Editor (pass renderer as dependency)
+  // Must be in init hook so it's ready for getSceneControlButtons
+  game.spaceholder.heightMapEditor = new HeightMapEditor(game.spaceholder.heightMapRenderer);
+  game.spaceholder.editor = game.spaceholder.heightMapEditor;  // Alias for convenience
+  game.spaceholder.heightMapEditor.initialize();
+  console.log('SpaceHolder | Height map editor initialized in init hook');
 
   // Install Token Pointer hooks
   installTokenPointerHooks();
@@ -276,6 +284,8 @@ Hooks.once('ready', async function () {
     console.error('SpaceHolder | Failed to initialize height map renderer:', error);
     ui.notifications.error('Failed to initialize height map renderer. Check console for details.');
   }
+  
+  // Height map editor already initialized in init hook
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
   Hooks.on('hotbarDrop', (bar, data, slot) => createItemMacro(data, slot));
