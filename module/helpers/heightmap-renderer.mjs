@@ -558,50 +558,61 @@ export class HeightMapRenderer {
 
   /**
    * Filter out small isolated regions using flood fill
+   * Filters both elevations (1s) and depressions/holes (0s)
    */
   _filterSmallRegions(mask, rows, cols, minSize) {
     const result = new Uint8Array(rows * cols);
     const visited = new Uint8Array(rows * cols);
     
-    for (let startRow = 0; startRow < rows; startRow++) {
-      for (let startCol = 0; startCol < cols; startCol++) {
-        const startIdx = startRow * cols + startCol;
-        
-        if (mask[startIdx] === 0 || visited[startIdx]) continue;
-        
-        // Flood fill to find connected region
-        const region = [];
-        const queue = [{row: startRow, col: startCol}];
-        visited[startIdx] = 1;
-        
-        while (queue.length > 0) {
-          const {row, col} = queue.shift();
-          const idx = row * cols + col;
-          region.push(idx);
+    // Process both types of regions: elevations (value=1) and holes (value=0)
+    for (let value = 0; value <= 1; value++) {
+      visited.fill(0); // Reset visited for each pass
+      
+      for (let startRow = 0; startRow < rows; startRow++) {
+        for (let startCol = 0; startCol < cols; startCol++) {
+          const startIdx = startRow * cols + startCol;
           
-          // Check 4-connected neighbors
-          const neighbors = [
-            {row: row - 1, col: col},
-            {row: row + 1, col: col},
-            {row: row, col: col - 1},
-            {row: row, col: col + 1}
-          ];
+          if (mask[startIdx] !== value || visited[startIdx]) continue;
           
-          for (const n of neighbors) {
-            if (n.row < 0 || n.row >= rows || n.col < 0 || n.col >= cols) continue;
+          // Flood fill to find connected region with this value
+          const region = [];
+          const queue = [{row: startRow, col: startCol}];
+          visited[startIdx] = 1;
+          
+          while (queue.length > 0) {
+            const {row, col} = queue.shift();
+            const idx = row * cols + col;
+            region.push(idx);
             
-            const nIdx = n.row * cols + n.col;
-            if (mask[nIdx] && !visited[nIdx]) {
-              visited[nIdx] = 1;
-              queue.push(n);
+            // Check 4-connected neighbors
+            const neighbors = [
+              {row: row - 1, col: col},
+              {row: row + 1, col: col},
+              {row: row, col: col - 1},
+              {row: row, col: col + 1}
+            ];
+            
+            for (const n of neighbors) {
+              if (n.row < 0 || n.row >= rows || n.col < 0 || n.col >= cols) continue;
+              
+              const nIdx = n.row * cols + n.col;
+              if (mask[nIdx] === value && !visited[nIdx]) {
+                visited[nIdx] = 1;
+                queue.push(n);
+              }
             }
           }
-        }
-        
-        // Keep region if it's large enough
-        if (region.length >= minSize) {
-          for (const idx of region) {
-            result[idx] = 1;
+          
+          // Keep region if it's large enough
+          if (region.length >= minSize) {
+            for (const idx of region) {
+              result[idx] = value;
+            }
+          } else {
+            // Small region - invert it (fill holes, remove small peaks)
+            for (const idx of region) {
+              result[idx] = 1 - value;
+            }
           }
         }
       }
