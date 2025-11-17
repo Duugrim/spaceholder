@@ -1,7 +1,10 @@
 {
   "contourLevels": [
-    { "level": 0, "minHeight": 0, "maxHeight": 21, "color": "0x0066CC", "label": "Shallow water/coast" },
-    { "level": 21, "minHeight": 21, "maxHeight": 25, "color": "0x008800", "label": "Very low coastal land" },
+    { "level": 0, "minHeight": 0, "maxHeight": 5, "color": "0x001166", "label": "Deep water" },
+    { "level": 5, "minHeight": 5, "maxHeight": 10, "color": "0x002288", "label": "Water" },
+    { "level": 10, "minHeight": 10, "maxHeight": 15, "color": "0x0044AA", "label": "Low water" },
+    { "level": 15, "minHeight": 15, "maxHeight": 20, "color": "0x0066CC", "label": "Seaside" },
+    { "level": 20, "minHeight": 20, "maxHeight": 25, "color": "0x0088AA", "label": "Coast" },
     { "level": 25, "minHeight": 25, "maxHeight": 30, "color": "0x00AA00", "label": "Coastal lowlands" },
     { "level": 30, "minHeight": 30, "maxHeight": 35, "color": "0x22BB00", "label": "Low plains" },
     { "level": 35, "minHeight": 35, "maxHeight": 40, "color": "0x44BB00", "label": "Plains" },
