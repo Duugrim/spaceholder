@@ -15,6 +15,13 @@ export class HeightMapEditor {
     // Mouse state
     this.isMouseDown = false;
     this.lastPosition = null;
+    
+    // Temporary overlay for stroke
+    this.tempOverlay = null; // Temporary Float32Array with deltas
+    this.strokeHistory = []; // For undo/redo
+    
+    // Brush cursor visualization
+    this.brushCursor = null; // PIXI.Graphics for cursor
   }
 
   /**
@@ -85,21 +92,19 @@ export class HeightMapEditor {
         },
         'edit-mode': {
           name: 'edit-mode',
-          title: 'Edit Terrain Mode',
+          title: 'Edit Terrain',
           icon: 'fa-solid fa-pencil',
           onChange: async (isActive) => {
-            if (isActive) {
-              if (!this.checkHeightMapLoaded()) {
-                // Deactivate tool if height map not loaded
-                ui.controls.control.activeTool = null;
-                return;
-              }
-              this.activate();
-            } else {
+            if (!this.checkHeightMapLoaded()) return;
+            
+            // Toggle edit mode
+            if (this.isActive) {
               await this.deactivate();
+            } else {
+              this.activate();
             }
           },
-          toggle: true
+          button: true
         }
       }
     };
@@ -159,6 +164,9 @@ export class HeightMapEditor {
       canvas.mouseInteractionManager.options.dragResistance = 999999;
     }
     
+    // Create brush cursor
+    this.createBrushCursor();
+    
     // Show UI
     this.showUI();
     
@@ -169,7 +177,11 @@ export class HeightMapEditor {
    * Deactivate the editor and save changes
    */
   async deactivate() {
+    console.log('HeightMapEditor | Deactivating...');
     this.isActive = false;
+    
+    // Destroy brush cursor
+    this.destroyBrushCursor();
     
     // Restore canvas selection
     if (this._savedCanvasState) {
@@ -214,8 +226,15 @@ export class HeightMapEditor {
       event.data.originalEvent.stopPropagation();
       
       this.isMouseDown = true;
+      
+      // Create temporary overlay for this stroke
+      if (this.renderer.cachedHeightField) {
+        const size = this.renderer.cachedHeightField.values.length;
+        this.tempOverlay = new Float32Array(size);
+      }
+      
       const pos = event.data.getLocalPosition(canvas.stage);
-      this.applyBrush(pos.x, pos.y);
+      this.applyBrushToOverlay(pos.x, pos.y);
       this.lastPosition = pos;
       
       return false;
@@ -223,11 +242,16 @@ export class HeightMapEditor {
     
     // Mouse move
     canvas.stage.on('pointermove', (event) => {
-      if (!this.isActive || !this.isMouseDown) return;
+      if (!this.isActive) return;
       
       const pos = event.data.getLocalPosition(canvas.stage);
       
-      // Throttle - only apply every 50ms
+      // Update brush cursor position
+      this.updateBrushCursor(pos.x, pos.y);
+      
+      if (!this.isMouseDown) return;
+      
+      // Throttle - only apply every 10 pixels
       if (this.lastPosition) {
         const dx = pos.x - this.lastPosition.x;
         const dy = pos.y - this.lastPosition.y;
@@ -235,7 +259,7 @@ export class HeightMapEditor {
         
         // Only apply if moved enough
         if (dist > 10) {
-          this.applyBrush(pos.x, pos.y);
+          this.applyBrushToOverlay(pos.x, pos.y);
           this.lastPosition = pos;
         }
       }
@@ -248,38 +272,132 @@ export class HeightMapEditor {
       this.isMouseDown = false;
       this.lastPosition = null;
       
-      // Changes are kept in cache, will be saved on deactivate
+      // Apply overlay to heightField
+      this.commitOverlay();
     });
   }
 
   /**
-   * Apply brush at position
+   * Apply brush to temporary overlay (no render)
    */
-  applyBrush(x, y) {
-    if (!this.renderer.cachedHeightField) return;
+  applyBrushToOverlay(x, y) {
+    if (!this.renderer.cachedHeightField || !this.tempOverlay) return;
     
-    const delta = 5; // Base height change per application
+    const { values, rows, cols } = this.renderer.cachedHeightField;
+    const { minX, minY } = this.renderer.cachedBounds;
+    const cellSize = this.renderer.cachedCellSize;
     
-    switch (this.currentTool) {
-      case 'raise':
-        this.renderer.editHeight(x, y, this.brushRadius, delta * this.brushStrength, this.brushStrength);
-        break;
+    // Convert world coordinates to grid coordinates
+    const centerCol = (x - minX) / cellSize;
+    const centerRow = (y - minY) / cellSize;
+    
+    // Calculate grid radius
+    const gridRadius = this.brushRadius / cellSize;
+    const radiusSq = gridRadius * gridRadius;
+    
+    // Apply brush to overlay
+    const minRow = Math.max(0, Math.floor(centerRow - gridRadius));
+    const maxRow = Math.min(rows - 1, Math.ceil(centerRow + gridRadius));
+    const minCol = Math.max(0, Math.floor(centerCol - gridRadius));
+    const maxCol = Math.min(cols - 1, Math.ceil(centerCol + gridRadius));
+    
+    const delta = 5; // Base height change
+    
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const dx = col - centerCol;
+        const dy = row - centerRow;
+        const distSq = dx * dx + dy * dy;
         
-      case 'lower':
-        this.renderer.editHeight(x, y, this.brushRadius, -delta * this.brushStrength, this.brushStrength);
-        break;
-        
-      case 'smooth':
-        this.renderer.smoothHeight(x, y, this.brushRadius, this.brushStrength);
-        break;
-        
-      case 'flatten':
-        this.renderer.flattenHeight(x, y, this.brushRadius, this.targetHeight, this.brushStrength);
-        break;
+        if (distSq <= radiusSq) {
+          const falloff = 1 - Math.sqrt(distSq / radiusSq);
+          const effectiveStrength = falloff * this.brushStrength;
+          const idx = row * cols + col;
+          
+          switch (this.currentTool) {
+            case 'raise':
+              this.tempOverlay[idx] += delta * effectiveStrength;
+              break;
+            case 'lower':
+              this.tempOverlay[idx] -= delta * effectiveStrength;
+              break;
+            case 'smooth':
+              // Smooth will be calculated on commit
+              break;
+            case 'flatten':
+              const currentHeight = values[idx] + this.tempOverlay[idx];
+              this.tempOverlay[idx] += (this.targetHeight - currentHeight) * effectiveStrength;
+              break;
+          }
+        }
+      }
+    }
+  }
+  
+  /**
+   * Commit overlay to heightField and render
+   */
+  commitOverlay() {
+    if (!this.tempOverlay || !this.renderer.cachedHeightField) return;
+    
+    const { values, rows, cols } = this.renderer.cachedHeightField;
+    
+    // Apply smooth if needed
+    if (this.currentTool === 'smooth') {
+      // For smooth, recalculate from affected area
+      this.applySmoothFromOverlay();
     }
     
-    // Re-render
+    // Apply overlay to heightField
+    for (let i = 0; i < values.length; i++) {
+      if (this.tempOverlay[i] !== 0) {
+        values[i] = Math.max(0, Math.min(100, values[i] + this.tempOverlay[i]));
+      }
+    }
+    
+    // Save to history for undo
+    this.strokeHistory.push(new Float32Array(this.tempOverlay));
+    
+    // Clear overlay
+    this.tempOverlay = null;
+    
+    // Render once
     this.renderer.render();
+  }
+  
+  /**
+   * Apply smooth tool from overlay
+   */
+  applySmoothFromOverlay() {
+    // For smooth tool, we mark affected cells and average them
+    // This is simplified - just apply smoothing to non-zero overlay cells
+    const { values, rows, cols } = this.renderer.cachedHeightField;
+    const smoothed = new Float32Array(values.length);
+    smoothed.set(values);
+    
+    for (let row = 1; row < rows - 1; row++) {
+      for (let col = 1; col < cols - 1; col++) {
+        const idx = row * cols + col;
+        
+        // Only smooth where overlay was applied
+        if (Math.abs(this.tempOverlay[idx]) > 0.001) {
+          let sum = 0;
+          let count = 0;
+          
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              const nIdx = (row + dr) * cols + (col + dc);
+              sum += values[nIdx];
+              count++;
+            }
+          }
+          
+          const average = sum / count;
+          const strength = this.brushStrength;
+          this.tempOverlay[idx] = (average - values[idx]) * strength;
+        }
+      }
+    }
   }
 
   /**
@@ -329,8 +447,12 @@ export class HeightMapEditor {
           <input type="range" id="heightmap-target" min="0" max="100" step="5" value="${this.targetHeight}" style="width: 100%;">
         </div>
         
+        <button id="heightmap-save" style="width: 100%; padding: 8px; margin-top: 5px; background: #4a4; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+          Save & Exit
+        </button>
+        
         <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 3px; font-size: 12px;">
-          <strong>Tip:</strong> Changes are saved automatically when you exit Edit Mode.
+          <strong>Tip:</strong> Click "Save & Exit" or the Edit Terrain button to finish editing.
         </div>
       </div>
     `;
@@ -341,21 +463,28 @@ export class HeightMapEditor {
     $('#heightmap-tool').on('change', (e) => {
       this.currentTool = e.target.value;
       $('#flatten-height-container').toggle(this.currentTool === 'flatten');
+      this.updateBrushCursorGraphics();
     });
     
     $('#heightmap-radius').on('input', (e) => {
       this.brushRadius = parseInt(e.target.value);
       $('#radius-value').text(this.brushRadius);
+      this.updateBrushCursorGraphics();
     });
     
     $('#heightmap-strength').on('input', (e) => {
       this.brushStrength = parseFloat(e.target.value);
       $('#strength-value').text(this.brushStrength.toFixed(1));
+      this.updateBrushCursorGraphics();
     });
     
     $('#heightmap-target').on('input', (e) => {
       this.targetHeight = parseInt(e.target.value);
       $('#target-value').text(this.targetHeight);
+    });
+    
+    $('#heightmap-save').on('click', async () => {
+      await this.deactivate();
     });
   }
 
@@ -364,5 +493,85 @@ export class HeightMapEditor {
    */
   hideUI() {
     $('#heightmap-editor-ui').remove();
+  }
+
+  /**
+   * Create brush cursor visualization
+   */
+  createBrushCursor() {
+    if (this.brushCursor) {
+      this.brushCursor.destroy();
+    }
+    
+    this.brushCursor = new PIXI.Graphics();
+    this.brushCursor.name = 'heightmap-brush-cursor';
+    
+    // Add to interface layer
+    if (canvas.interface) {
+      canvas.interface.addChild(this.brushCursor);
+    }
+    
+    this.updateBrushCursorGraphics();
+  }
+
+  /**
+   * Update brush cursor position
+   */
+  updateBrushCursor(x, y) {
+    if (!this.brushCursor) return;
+    
+    this.brushCursor.position.set(x, y);
+  }
+
+  /**
+   * Update brush cursor graphics (when tool/radius/strength changes)
+   */
+  updateBrushCursorGraphics() {
+    if (!this.brushCursor) return;
+    
+    this.brushCursor.clear();
+    
+    // Determine color based on tool
+    let color, alpha;
+    switch (this.currentTool) {
+      case 'raise':
+        color = 0x00ff00; // Green
+        alpha = 0.2;
+        break;
+      case 'lower':
+        color = 0xff0000; // Red
+        alpha = 0.2;
+        break;
+      case 'smooth':
+        color = 0xffff00; // Yellow
+        alpha = 0.15;
+        break;
+      case 'flatten':
+        color = 0x00ffff; // Cyan
+        alpha = 0.2;
+        break;
+      default:
+        color = 0xffffff;
+        alpha = 0.1;
+    }
+    
+    // Draw filled circle
+    this.brushCursor.beginFill(color, alpha * this.brushStrength);
+    this.brushCursor.drawCircle(0, 0, this.brushRadius);
+    this.brushCursor.endFill();
+    
+    // Draw outline
+    this.brushCursor.lineStyle(2, color, 0.6);
+    this.brushCursor.drawCircle(0, 0, this.brushRadius);
+  }
+
+  /**
+   * Destroy brush cursor
+   */
+  destroyBrushCursor() {
+    if (this.brushCursor) {
+      this.brushCursor.destroy();
+      this.brushCursor = null;
+    }
   }
 }
