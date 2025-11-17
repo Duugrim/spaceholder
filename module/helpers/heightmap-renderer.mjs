@@ -10,6 +10,11 @@ export class HeightMapRenderer {
     this.contourContainer = null;
     this.isVisible = false;
     this.renderMode = HEIGHTMAP_SETTINGS.defaultRenderMode;
+    
+    // Cache for heightField
+    this.cachedHeightField = null;
+    this.cachedBounds = null;
+    this.cachedCellSize = null;
   }
 
   /**
@@ -64,7 +69,7 @@ export class HeightMapRenderer {
   }
 
   /**
-   * Render the height map using filled regions instead of contour lines
+   * Render the height map
    */
   async render() {
     if (!this.heightMapManager.isLoaded()) {
@@ -73,7 +78,7 @@ export class HeightMapRenderer {
       return;
     }
 
-    console.log('HeightMapRenderer | Rendering height map with filled regions...');
+    console.log('HeightMapRenderer | Rendering height map...');
 
     // Make sure container is set up
     if (!this.contourContainer) {
@@ -85,18 +90,51 @@ export class HeightMapRenderer {
 
     const processedData = this.heightMapManager.getProcessedData();
     
-    // Calculate bounds
-    const bounds = this._calculateBounds(processedData.heightPoints);
-    if (!bounds) {
-      console.warn('HeightMapRenderer | Could not calculate bounds');
-      return;
+    // Try to load heightField from file or cache
+    let heightField, bounds, cellSize;
+    
+    if (this.cachedHeightField) {
+      console.log('HeightMapRenderer | Using cached heightField');
+      heightField = this.cachedHeightField;
+      bounds = this.cachedBounds;
+      cellSize = this.cachedCellSize;
+    } else {
+      // Try to load from file
+      const loadedData = await this.heightMapManager.loadHeightFieldFromFile();
+      
+      if (loadedData) {
+        console.log('HeightMapRenderer | Loaded heightField from file');
+        heightField = loadedData.heightField;
+        bounds = loadedData.bounds;
+        cellSize = loadedData.cellSize;
+        
+        // Cache it
+        this.cachedHeightField = heightField;
+        this.cachedBounds = bounds;
+        this.cachedCellSize = cellSize;
+      } else {
+        // Generate from scratch
+        console.log('HeightMapRenderer | Generating heightField from source data');
+        
+        bounds = this._calculateBounds(processedData.heightPoints);
+        if (!bounds) {
+          console.warn('HeightMapRenderer | Could not calculate bounds');
+          return;
+        }
+        
+        cellSize = canvas.grid.size / 4;
+        heightField = this._createHeightField(processedData.heightPoints, bounds, cellSize);
+        
+        // Cache it
+        this.cachedHeightField = heightField;
+        this.cachedBounds = bounds;
+        this.cachedCellSize = cellSize;
+        
+        // Save to file for future use
+        await this.heightMapManager.saveHeightFieldToFile(heightField, bounds, cellSize);
+        console.log('HeightMapRenderer | HeightField saved to file');
+      }
     }
-    
-    // Cell size for grid (smaller = more detail, slower performance)
-    const cellSize = canvas.grid.size / 4;
-    
-    // Create a single height field from all points
-    const heightField = this._createHeightField(processedData.heightPoints, bounds, cellSize);
     
     // Draw based on render mode
     if (this.renderMode === 'filled') {
@@ -115,7 +153,7 @@ export class HeightMapRenderer {
   _createHeightField(points, bounds, cellSize) {
     const cols = Math.ceil((bounds.maxX - bounds.minX) / cellSize);
     const rows = Math.ceil((bounds.maxY - bounds.minY) / cellSize);
-    const field = { values: new Array(rows * cols), rows, cols };
+    const field = { values: new Float32Array(rows * cols), rows, cols };
     const influenceRadius = cellSize * 4;
     
     for (let row = 0; row < rows; row++) {
@@ -482,6 +520,247 @@ export class HeightMapRenderer {
    */
   getRenderMode() {
     return this.renderMode;
+  }
+
+  /**
+   * Get cached heightField
+   * @returns {Object|null} Cached heightField or null
+   */
+  getHeightField() {
+    return this.cachedHeightField ? {
+      heightField: this.cachedHeightField,
+      bounds: this.cachedBounds,
+      cellSize: this.cachedCellSize
+    } : null;
+  }
+
+  /**
+   * Invalidate heightField cache (force regeneration on next render)
+   */
+  invalidateCache() {
+    console.log('HeightMapRenderer | Cache invalidated');
+    this.cachedHeightField = null;
+    this.cachedBounds = null;
+    this.cachedCellSize = null;
+    this.isVisible = false;  // Force re-render on next show()
+  }
+
+  /**
+   * Update heightField cache and optionally save to file
+   * @param {Object} heightField - Updated heightField
+   * @param {boolean} saveToFile - Whether to save to file immediately
+   */
+  async updateHeightField(heightField, saveToFile = false) {
+    this.cachedHeightField = heightField;
+    
+    if (saveToFile) {
+      await this.heightMapManager.saveHeightFieldToFile(
+        heightField, 
+        this.cachedBounds, 
+        this.cachedCellSize,
+        null,
+        true // Mark as edited
+      );
+      console.log('HeightMapRenderer | HeightField updated and saved');
+    }
+    
+    // Re-render if visible
+    if (this.isVisible) {
+      await this.render();
+    }
+  }
+
+  /**
+   * Edit height at a specific world coordinate using a brush
+   * @param {number} worldX - World X coordinate
+   * @param {number} worldY - World Y coordinate
+   * @param {number} radius - Brush radius in pixels
+   * @param {number} delta - Height change (can be positive or negative)
+   * @param {number} strength - Brush strength (0-1), affects falloff
+   * @returns {boolean} Success status
+   */
+  editHeight(worldX, worldY, radius, delta, strength = 1.0) {
+    if (!this.cachedHeightField) {
+      console.warn('HeightMapRenderer | No heightField loaded for editing');
+      return false;
+    }
+
+    const { values, rows, cols } = this.cachedHeightField;
+    const { minX, minY } = this.cachedBounds;
+    const cellSize = this.cachedCellSize;
+
+    // Convert world coordinates to grid coordinates
+    const centerCol = (worldX - minX) / cellSize;
+    const centerRow = (worldY - minY) / cellSize;
+
+    // Calculate grid radius
+    const gridRadius = radius / cellSize;
+    const radiusSq = gridRadius * gridRadius;
+
+    // Apply brush to affected cells
+    const minRow = Math.max(0, Math.floor(centerRow - gridRadius));
+    const maxRow = Math.min(rows - 1, Math.ceil(centerRow + gridRadius));
+    const minCol = Math.max(0, Math.floor(centerCol - gridRadius));
+    const maxCol = Math.min(cols - 1, Math.ceil(centerCol + gridRadius));
+
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const dx = col - centerCol;
+        const dy = row - centerRow;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq <= radiusSq) {
+          // Calculate falloff (smooth at edges)
+          const falloff = 1 - Math.sqrt(distSq / radiusSq);
+          const effectiveStrength = falloff * strength;
+
+          const idx = row * cols + col;
+          const currentHeight = values[idx];
+          const newHeight = currentHeight + (delta * effectiveStrength);
+
+          // Clamp to valid range (0-100)
+          values[idx] = Math.max(0, Math.min(100, newHeight));
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Smooth heights in a region
+   * @param {number} worldX - World X coordinate
+   * @param {number} worldY - World Y coordinate  
+   * @param {number} radius - Brush radius in pixels
+   * @param {number} strength - Smoothing strength (0-1)
+   * @returns {boolean} Success status
+   */
+  smoothHeight(worldX, worldY, radius, strength = 0.5) {
+    if (!this.cachedHeightField) {
+      console.warn('HeightMapRenderer | No heightField loaded for editing');
+      return false;
+    }
+
+    const { values, rows, cols } = this.cachedHeightField;
+    const { minX, minY } = this.cachedBounds;
+    const cellSize = this.cachedCellSize;
+
+    // Convert world coordinates to grid coordinates
+    const centerCol = (worldX - minX) / cellSize;
+    const centerRow = (worldY - minY) / cellSize;
+
+    // Calculate grid radius
+    const gridRadius = radius / cellSize;
+    const radiusSq = gridRadius * gridRadius;
+
+    // Calculate affected area
+    const minRow = Math.max(0, Math.floor(centerRow - gridRadius));
+    const maxRow = Math.min(rows - 1, Math.ceil(centerRow + gridRadius));
+    const minCol = Math.max(0, Math.floor(centerCol - gridRadius));
+    const maxCol = Math.min(cols - 1, Math.ceil(centerCol + gridRadius));
+
+    // Create temporary array for smoothed values
+    const smoothed = new Float32Array(values.length);
+    smoothed.set(values);
+
+    // Apply smoothing
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const dx = col - centerCol;
+        const dy = row - centerRow;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq <= radiusSq) {
+          // Calculate average of neighbors
+          let sum = 0;
+          let count = 0;
+
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              const nr = row + dr;
+              const nc = col + dc;
+
+              if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                sum += values[nr * cols + nc];
+                count++;
+              }
+            }
+          }
+
+          const average = sum / count;
+          const idx = row * cols + col;
+          const currentHeight = values[idx];
+
+          // Calculate falloff
+          const falloff = 1 - Math.sqrt(distSq / radiusSq);
+          const effectiveStrength = falloff * strength;
+
+          // Blend between current and smoothed
+          smoothed[idx] = currentHeight + (average - currentHeight) * effectiveStrength;
+        }
+      }
+    }
+
+    // Copy smoothed values back
+    values.set(smoothed);
+
+    return true;
+  }
+
+  /**
+   * Flatten heights to a specific value in a region
+   * @param {number} worldX - World X coordinate
+   * @param {number} worldY - World Y coordinate
+   * @param {number} radius - Brush radius in pixels
+   * @param {number} targetHeight - Target height to flatten to
+   * @param {number} strength - Flattening strength (0-1)
+   * @returns {boolean} Success status
+   */
+  flattenHeight(worldX, worldY, radius, targetHeight, strength = 1.0) {
+    if (!this.cachedHeightField) {
+      console.warn('HeightMapRenderer | No heightField loaded for editing');
+      return false;
+    }
+
+    const { values, rows, cols } = this.cachedHeightField;
+    const { minX, minY } = this.cachedBounds;
+    const cellSize = this.cachedCellSize;
+
+    // Convert world coordinates to grid coordinates
+    const centerCol = (worldX - minX) / cellSize;
+    const centerRow = (worldY - minY) / cellSize;
+
+    // Calculate grid radius
+    const gridRadius = radius / cellSize;
+    const radiusSq = gridRadius * gridRadius;
+
+    // Apply flattening
+    const minRow = Math.max(0, Math.floor(centerRow - gridRadius));
+    const maxRow = Math.min(rows - 1, Math.ceil(centerRow + gridRadius));
+    const minCol = Math.max(0, Math.floor(centerCol - gridRadius));
+    const maxCol = Math.min(cols - 1, Math.ceil(centerCol + gridRadius));
+
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const dx = col - centerCol;
+        const dy = row - centerRow;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq <= radiusSq) {
+          // Calculate falloff
+          const falloff = 1 - Math.sqrt(distSq / radiusSq);
+          const effectiveStrength = falloff * strength;
+
+          const idx = row * cols + col;
+          const currentHeight = values[idx];
+
+          // Blend towards target height
+          values[idx] = currentHeight + (targetHeight - currentHeight) * effectiveStrength;
+        }
+      }
+    }
+
+    return true;
   }
 
   _drawContourLines(heightField, bounds, cellSize, contourLevels) {

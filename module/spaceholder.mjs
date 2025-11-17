@@ -68,6 +68,9 @@ Hooks.once('init', function () {
     toggleHeightMap: () => game.spaceholder.heightMapRenderer?.toggle(),
     setHeightMapMode: (mode) => game.spaceholder.heightMapRenderer?.setRenderMode(mode),
     getHeightMapMode: () => game.spaceholder.heightMapRenderer?.getRenderMode(),
+    // Direct access for debugging
+    renderer: null,  // Will be set below
+    manager: null,   // Will be set below
   };
 
   // Initialize Token Pointer and expose
@@ -87,9 +90,11 @@ Hooks.once('init', function () {
   
   // Initialize Height Map Manager
   game.spaceholder.heightMapManager = new HeightMapManager();
+  game.spaceholder.manager = game.spaceholder.heightMapManager;  // Alias for convenience
   
   // Initialize Height Map Renderer (pass manager as dependency)
   game.spaceholder.heightMapRenderer = new HeightMapRenderer(game.spaceholder.heightMapManager);
+  game.spaceholder.renderer = game.spaceholder.heightMapRenderer;  // Alias for convenience
 
   // Install Token Pointer hooks
   installTokenPointerHooks();
