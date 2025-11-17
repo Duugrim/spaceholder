@@ -22,6 +22,10 @@ import { DrawManager } from './helpers/draw-manager.mjs';
 import { ShotManager } from './helpers/shot-manager.mjs';
 // Influence manager for global objects influence zones
 import { InfluenceManager } from './helpers/influence-manager.mjs';
+// Height map manager and renderer
+import { HeightMapManager } from './helpers/heightmap-manager.mjs';
+import { HeightMapRenderer } from './helpers/heightmap-renderer.mjs';
+import { registerHeightMapSceneConfig, installHeightMapSceneConfigHooks } from './helpers/heightmap-scene-config.mjs';
 // import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
 // import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
 // import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
@@ -41,6 +45,10 @@ Hooks.once('init', function () {
   registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
   installTokenPointerTabs();
+  
+  // Register height map scene configuration
+  registerHeightMapSceneConfig();
+  installHeightMapSceneConfigHooks();
 
   // Add utility classes to the global game object so that they're more easily
   // accessible in global contexts.
@@ -52,6 +60,12 @@ Hooks.once('init', function () {
     // Helper functions for influence zones
     showInfluence: () => game.spaceholder.influenceManager?.drawInfluenceZones(),
     hideInfluence: () => game.spaceholder.influenceManager?.clearAll(),
+    // Helper functions for height maps
+    processHeightMap: (scene) => game.spaceholder.heightMapManager?.processHeightMapFromSource(scene),
+    clearProcessedHeightMap: (scene) => game.spaceholder.heightMapManager?.clearProcessedHeightMap(scene),
+    showHeightMap: () => game.spaceholder.heightMapRenderer?.show(),
+    hideHeightMap: () => game.spaceholder.heightMapRenderer?.hide(),
+    toggleHeightMap: () => game.spaceholder.heightMapRenderer?.toggle(),
   };
 
   // Initialize Token Pointer and expose
@@ -68,6 +82,12 @@ Hooks.once('init', function () {
   
   // Initialize Influence Manager
   game.spaceholder.influenceManager = new InfluenceManager();
+  
+  // Initialize Height Map Manager
+  game.spaceholder.heightMapManager = new HeightMapManager();
+  
+  // Initialize Height Map Renderer (pass manager as dependency)
+  game.spaceholder.heightMapRenderer = new HeightMapRenderer(game.spaceholder.heightMapManager);
 
   // Install Token Pointer hooks
   installTokenPointerHooks();
@@ -230,6 +250,24 @@ Hooks.once('ready', async function () {
   } catch (error) {
     console.error('SpaceHolder | Failed to initialize influence manager:', error);
     ui.notifications.error('Failed to initialize influence manager. Check console for details.');
+  }
+  
+  // Initialize height map manager
+  try {
+    game.spaceholder.heightMapManager.initialize();
+    console.log('SpaceHolder | Height map manager initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize height map manager:', error);
+    ui.notifications.error('Failed to initialize height map manager. Check console for details.');
+  }
+  
+  // Initialize height map renderer
+  try {
+    game.spaceholder.heightMapRenderer.initialize();
+    console.log('SpaceHolder | Height map renderer initialized successfully');
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize height map renderer:', error);
+    ui.notifications.error('Failed to initialize height map renderer. Check console for details.');
   }
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
