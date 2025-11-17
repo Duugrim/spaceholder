@@ -158,18 +158,25 @@ export class HeightMapManager {
       height: cell.h || 0
     }));
     
-    // Define contour levels (height ranges) - 10 levels for detailed map
+    // Define contour levels (height ranges) - from shallow water to peaks
     const contourLevels = [
-      { level: 0, minHeight: 0, maxHeight: 10, color: 0x003366 },     // Deep water
-      { level: 10, minHeight: 10, maxHeight: 20, color: 0x0066CC },   // Shallow water/coast
-      { level: 20, minHeight: 20, maxHeight: 30, color: 0x00AA00 },   // Lowlands
-      { level: 30, minHeight: 30, maxHeight: 40, color: 0x44BB00 },   // Plains
-      { level: 40, minHeight: 40, maxHeight: 50, color: 0x88CC00 },   // Elevated plains
-      { level: 50, minHeight: 50, maxHeight: 60, color: 0xAAAA00 },   // Foothills
-      { level: 60, minHeight: 60, maxHeight: 70, color: 0xBB9900 },   // Hills
-      { level: 70, minHeight: 70, maxHeight: 80, color: 0xCC8800 },   // High hills
-      { level: 80, minHeight: 80, maxHeight: 90, color: 0xDD7700 },   // Mountains
-      { level: 90, minHeight: 90, maxHeight: 100, color: 0xFFFFFF }   // Peaks
+      { level: 10, minHeight: 10, maxHeight: 18, color: 0x0066CC },   // Shallow water/coast
+      { level: 22, minHeight: 22, maxHeight: 25, color: 0x008800 },   // Very low coastal land
+      { level: 25, minHeight: 25, maxHeight: 30, color: 0x00AA00 },   // Coastal lowlands
+      { level: 30, minHeight: 30, maxHeight: 35, color: 0x22BB00 },   // Low plains
+      { level: 35, minHeight: 35, maxHeight: 40, color: 0x44BB00 },   // Plains
+      { level: 40, minHeight: 40, maxHeight: 45, color: 0x66CC00 },   // High plains
+      { level: 45, minHeight: 45, maxHeight: 50, color: 0x88CC00 },   // Elevated plains
+      { level: 50, minHeight: 50, maxHeight: 55, color: 0xAAAA00 },   // Low foothills
+      { level: 55, minHeight: 55, maxHeight: 60, color: 0xBBAA00 },   // Foothills
+      { level: 60, minHeight: 60, maxHeight: 65, color: 0xBB9900 },   // Hills
+      { level: 65, minHeight: 65, maxHeight: 70, color: 0xCC9900 },   // High hills
+      { level: 70, minHeight: 70, maxHeight: 75, color: 0xCC8800 },   // Mountains start
+      { level: 75, minHeight: 75, maxHeight: 80, color: 0xDD8800 },   // Low mountains
+      { level: 80, minHeight: 80, maxHeight: 85, color: 0xDD7700 },   // Mountains
+      { level: 85, minHeight: 85, maxHeight: 90, color: 0xEE7700 },   // High mountains
+      { level: 90, minHeight: 90, maxHeight: 95, color: 0xFFAA77 },   // Alpine
+      { level: 95, minHeight: 95, maxHeight: 100, color: 0xFFFFFF }   // Peaks
     ];
     
     const processedData = {

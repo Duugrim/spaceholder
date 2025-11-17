@@ -7,7 +7,7 @@ export class HeightMapRenderer {
     this.heightMapManager = heightMapManager;
     this.contourContainer = null;
     this.isVisible = false;
-    this.renderMode = 'filled'; // 'filled' or 'contours'
+    this.renderMode = 'contours'; // 'filled' or 'contours'
   }
 
   /**
