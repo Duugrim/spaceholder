@@ -1,3 +1,5 @@
+import { HEIGHTMAP_SETTINGS } from './heightmap-config.mjs';
+
 /**
  * Height Map Renderer using Metaballs
  * Renders smooth height map visualization using metaball technique
@@ -7,7 +9,7 @@ export class HeightMapRenderer {
     this.heightMapManager = heightMapManager;
     this.contourContainer = null;
     this.isVisible = false;
-    this.renderMode = 'contours'; // 'filled' or 'contours'
+    this.renderMode = HEIGHTMAP_SETTINGS.defaultRenderMode;
   }
 
   /**
@@ -155,7 +157,7 @@ export class HeightMapRenderer {
     
     for (const levelInfo of sortedLevels) {
       const graphics = new PIXI.Graphics();
-      graphics.beginFill(levelInfo.color, 0.3);
+      graphics.beginFill(levelInfo.color, HEIGHTMAP_SETTINGS.fillAlpha);
       
       // Find all cells that belong to this height range
       for (let row = 0; row < rows - 1; row++) {
@@ -488,37 +490,58 @@ export class HeightMapRenderer {
   _drawContourLines(heightField, bounds, cellSize, contourLevels) {
     const { values, rows, cols } = heightField;
     
+    // Minimum region size in cells (filters out small isolated regions)
+    const minRegionSize = HEIGHTMAP_SETTINGS.minRegionSize;
+    
     // Draw contours for each level
     for (const levelInfo of contourLevels) {
       const graphics = new PIXI.Graphics();
-      graphics.lineStyle(2, levelInfo.color, 0.8);
+      graphics.lineStyle(HEIGHTMAP_SETTINGS.lineWidth, levelInfo.color, HEIGHTMAP_SETTINGS.lineAlpha);
       
       // Use marching squares to find contour lines at this height threshold
       const threshold = levelInfo.minHeight + (levelInfo.maxHeight - levelInfo.minHeight) / 2;
       
+      // Create binary mask for this threshold
+      const mask = new Uint8Array(rows * cols);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          mask[row * cols + col] = values[row * cols + col] >= threshold ? 1 : 0;
+        }
+      }
+      
+      // Filter out small regions
+      const filteredMask = this._filterSmallRegions(mask, rows, cols, minRegionSize);
+      
+      // Draw contours using filtered mask
       for (let row = 0; row < rows - 1; row++) {
         for (let col = 0; col < cols - 1; col++) {
           const x = bounds.minX + col * cellSize;
           const y = bounds.minY + row * cellSize;
           
-          // Get corner heights
-          const v00 = values[row * cols + col];
-          const v10 = values[row * cols + (col + 1)];
-          const v01 = values[(row + 1) * cols + col];
-          const v11 = values[(row + 1) * cols + (col + 1)];
+          // Use filtered mask values
+          const v00 = filteredMask[row * cols + col];
+          const v10 = filteredMask[row * cols + (col + 1)];
+          const v01 = filteredMask[(row + 1) * cols + col];
+          const v11 = filteredMask[(row + 1) * cols + (col + 1)];
           
           // Calculate marching squares case
           let caseValue = 0;
-          if (v00 >= threshold) caseValue |= 1;
-          if (v10 >= threshold) caseValue |= 2;
-          if (v11 >= threshold) caseValue |= 4;
-          if (v01 >= threshold) caseValue |= 8;
+          if (v00) caseValue |= 1;
+          if (v10) caseValue |= 2;
+          if (v11) caseValue |= 4;
+          if (v01) caseValue |= 8;
           
           // Skip fully inside or outside
           if (caseValue === 0 || caseValue === 15) continue;
           
+          // Get actual height values for interpolation
+          const h00 = values[row * cols + col];
+          const h10 = values[row * cols + (col + 1)];
+          const h01 = values[(row + 1) * cols + col];
+          const h11 = values[(row + 1) * cols + (col + 1)];
+          
           // Draw line segments
-          const segments = this._getContourSegments(caseValue, x, y, cellSize, v00, v10, v01, v11, threshold);
+          const segments = this._getContourSegments(caseValue, x, y, cellSize, h00, h10, h01, h11, threshold);
           
           for (const segment of segments) {
             graphics.moveTo(segment[0].x, segment[0].y);
@@ -531,6 +554,60 @@ export class HeightMapRenderer {
       graphics.interactive = false;
       this.contourContainer.addChild(graphics);
     }
+  }
+
+  /**
+   * Filter out small isolated regions using flood fill
+   */
+  _filterSmallRegions(mask, rows, cols, minSize) {
+    const result = new Uint8Array(rows * cols);
+    const visited = new Uint8Array(rows * cols);
+    
+    for (let startRow = 0; startRow < rows; startRow++) {
+      for (let startCol = 0; startCol < cols; startCol++) {
+        const startIdx = startRow * cols + startCol;
+        
+        if (mask[startIdx] === 0 || visited[startIdx]) continue;
+        
+        // Flood fill to find connected region
+        const region = [];
+        const queue = [{row: startRow, col: startCol}];
+        visited[startIdx] = 1;
+        
+        while (queue.length > 0) {
+          const {row, col} = queue.shift();
+          const idx = row * cols + col;
+          region.push(idx);
+          
+          // Check 4-connected neighbors
+          const neighbors = [
+            {row: row - 1, col: col},
+            {row: row + 1, col: col},
+            {row: row, col: col - 1},
+            {row: row, col: col + 1}
+          ];
+          
+          for (const n of neighbors) {
+            if (n.row < 0 || n.row >= rows || n.col < 0 || n.col >= cols) continue;
+            
+            const nIdx = n.row * cols + n.col;
+            if (mask[nIdx] && !visited[nIdx]) {
+              visited[nIdx] = 1;
+              queue.push(n);
+            }
+          }
+        }
+        
+        // Keep region if it's large enough
+        if (region.length >= minSize) {
+          for (const idx of region) {
+            result[idx] = 1;
+          }
+        }
+      }
+    }
+    
+    return result;
   }
 
   /**
