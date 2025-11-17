@@ -1,20 +1,13 @@
 /**
- * Height Map Renderer
- * Renders height map contour lines on the effects layer
+ * Height Map Renderer using Metaballs
+ * Renders smooth height map visualization using metaball technique
  */
 export class HeightMapRenderer {
   constructor(heightMapManager) {
     this.heightMapManager = heightMapManager;
     this.contourContainer = null;
     this.isVisible = false;
-    this.contourLevels = [20, 40, 60, 80, 100]; // Default contour levels
-    this.contourColors = {
-      20: 0x8B4513,  // Brown - low elevations
-      40: 0xA0522D,  // Sienna
-      60: 0xCD853F,  // Peru
-      80: 0xD2691E,  // Chocolate
-      100: 0x696969  // Dim gray - high elevations
-    };
+    this.renderMode = 'filled'; // 'filled' or 'contours'
   }
 
   /**
@@ -58,7 +51,7 @@ export class HeightMapRenderer {
       this.contourContainer.destroy({children: true});
     }
 
-    // Create new container for contour lines
+    // Create new container for height map
     this.contourContainer = new PIXI.Container();
     this.contourContainer.name = 'heightMapContours';
     
@@ -69,7 +62,7 @@ export class HeightMapRenderer {
   }
 
   /**
-   * Render the height map contours
+   * Render the height map using filled regions instead of contour lines
    */
   async render() {
     if (!this.heightMapManager.isLoaded()) {
@@ -78,7 +71,7 @@ export class HeightMapRenderer {
       return;
     }
 
-    console.log('HeightMapRenderer | Rendering height map...');
+    console.log('HeightMapRenderer | Rendering height map with filled regions...');
 
     // Make sure container is set up
     if (!this.contourContainer) {
@@ -89,10 +82,25 @@ export class HeightMapRenderer {
     this.clear();
 
     const processedData = this.heightMapManager.getProcessedData();
-
-    // Draw contour lines for each level
-    for (const level of processedData.contourLevels) {
-      await this.drawContourLevel(level, processedData);
+    
+    // Calculate bounds
+    const bounds = this._calculateBounds(processedData.heightPoints);
+    if (!bounds) {
+      console.warn('HeightMapRenderer | Could not calculate bounds');
+      return;
+    }
+    
+    // Cell size for grid (smaller = more detail, slower performance)
+    const cellSize = canvas.grid.size / 4;
+    
+    // Create a single height field from all points
+    const heightField = this._createHeightField(processedData.heightPoints, bounds, cellSize);
+    
+    // Draw based on render mode
+    if (this.renderMode === 'filled') {
+      this._drawFilledRegions(heightField, bounds, cellSize, processedData.contourLevels);
+    } else {
+      this._drawContourLines(heightField, bounds, cellSize, processedData.contourLevels);
     }
 
     this.isVisible = true;
@@ -100,88 +108,178 @@ export class HeightMapRenderer {
   }
 
   /**
-   * Draw contour lines for a specific height level
-   * @param {number} level - Height level
-   * @param {Object} data - Processed height map data
+   * Create height field from all points with actual height values
    */
-  async drawContourLevel(level, data) {
-    const graphics = new PIXI.Graphics();
-    const color = this.contourColors[level] || 0x888888;
+  _createHeightField(points, bounds, cellSize) {
+    const cols = Math.ceil((bounds.maxX - bounds.minX) / cellSize);
+    const rows = Math.ceil((bounds.maxY - bounds.minY) / cellSize);
+    const field = { values: new Array(rows * cols), rows, cols };
+    const influenceRadius = cellSize * 4;
     
-    graphics.lineStyle(2, color, 0.7);
-
-    // Get pre-generated contours from processed data
-    const contours = data.contours[level];
-    
-    if (!contours || contours.length === 0) {
-      console.warn(`HeightMapRenderer | No contours found for level ${level}`);
-      return;
-    }
-    
-    // Draw each contour segment
-    for (const segment of contours) {
-      if (segment.length < 2) continue;
-      
-      graphics.moveTo(segment[0].x, segment[0].y);
-      for (let i = 1; i < segment.length; i++) {
-        graphics.lineTo(segment[i].x, segment[i].y);
-      }
-    }
-
-    graphics.name = `contour-${level}`;
-    this.contourContainer.addChild(graphics);
-  }
-
-  /**
-   * Create interpolated height grid
-   */
-  createInterpolatedGrid(data, width, height, scaleX, scaleY, gridResolution) {
-    const grid = new Array(width * height);
-    
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const mapX = (x * gridResolution) / scaleX;
-        const mapY = (y * gridResolution) / scaleY;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
         
-        // Find nearest cells and interpolate using inverse distance weighting
+        // Inverse distance weighted interpolation of actual height values
         let totalWeight = 0;
         let weightedHeight = 0;
-        const maxDistance = 100; // Maximum distance to consider
         
-        for (const cell of data.cells) {
-          const dx = cell.position.x - mapX;
-          const dy = cell.position.y - mapY;
+        for (const point of points) {
+          const dx = x - point.x;
+          const dy = y - point.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          if (distance < maxDistance) {
-            const weight = 1 / (distance + 1); // +1 to avoid division by zero
-            weightedHeight += cell.height * weight;
+          if (distance < influenceRadius) {
+            const weight = 1 / (distance + 1);
+            weightedHeight += point.height * weight;
             totalWeight += weight;
           }
         }
         
-        grid[y * width + x] = totalWeight > 0 ? weightedHeight / totalWeight : 0;
+        field.values[row * cols + col] = totalWeight > 0 ? weightedHeight / totalWeight : 0;
       }
     }
     
-    return grid;
+    return field;
+  }
+  
+  /**
+   * Draw filled regions by sampling height field
+   */
+  _drawFilledRegions(heightField, bounds, cellSize, contourLevels) {
+    const { values, rows, cols } = heightField;
+    
+    // Draw from highest to lowest so higher elevations are on top
+    const sortedLevels = [...contourLevels].sort((a, b) => b.level - a.level);
+    
+    for (const levelInfo of sortedLevels) {
+      const graphics = new PIXI.Graphics();
+      graphics.beginFill(levelInfo.color, 0.3);
+      
+      // Find all cells that belong to this height range
+      for (let row = 0; row < rows - 1; row++) {
+        for (let col = 0; col < cols - 1; col++) {
+          const height = values[row * cols + col];
+          
+          // Check if this cell is in the current height range
+          if (height >= levelInfo.minHeight && height < levelInfo.maxHeight) {
+            const x = bounds.minX + col * cellSize;
+            const y = bounds.minY + row * cellSize;
+            
+            // Draw a small rectangle for this cell
+            graphics.drawRect(x, y, cellSize, cellSize);
+          }
+        }
+      }
+      
+      graphics.endFill();
+      graphics.name = `heightmap_fill_${levelInfo.level}`;
+      graphics.interactive = false;
+      this.contourContainer.addChild(graphics);
+    }
   }
 
   /**
-   * Marching squares algorithm to find contour lines
+   * Calculate bounds for all height points
    */
-  marchingSquares(grid, width, height, threshold, maxHeight) {
-    const contours = [];
-    const visited = new Set();
+  _calculateBounds(points) {
+    if (points.length === 0) return null;
     
-    for (let y = 0; y < height - 1; y++) {
-      for (let x = 0; x < width - 1; x++) {
-        const key = `${x},${y}`;
-        if (visited.has(key)) continue;
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+    
+    for (const point of points) {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    }
+    
+    // Add padding
+    const padding = canvas.grid.size;
+    return {
+      minX: minX - padding,
+      minY: minY - padding,
+      maxX: maxX + padding,
+      maxY: maxY + padding
+    };
+  }
+
+  /**
+   * Create influence field for metaball rendering
+   */
+  _createInfluenceField(points, bounds, cellSize, rows, cols) {
+    const field = new Array(rows * cols);
+    const influenceRadius = cellSize * 4; // How far each point influences
+    
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
         
-        const contour = this.traceContour(grid, width, height, x, y, threshold, visited);
-        if (contour.length > 0) {
-          contours.push(contour);
+        let totalInfluence = 0;
+        
+        // Calculate influence from all points
+        for (const point of points) {
+          const dx = x - point.x;
+          const dy = y - point.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < influenceRadius) {
+            // Metaball function: 1 - (d/r)^2
+            const normalizedDistance = distance / influenceRadius;
+            const influence = Math.max(0, 1 - normalizedDistance * normalizedDistance);
+            totalInfluence += influence;
+          }
+        }
+        
+        field[row * cols + col] = totalInfluence;
+      }
+    }
+    
+    return field;
+  }
+
+  /**
+   * Marching squares algorithm with masking for hierarchical layers
+   */
+  _marchingSquaresWithMask(field, maskField, rows, cols, bounds, cellSize, threshold) {
+    const contours = [];
+    const maskThreshold = 0.4; // Threshold for mask
+    
+    for (let row = 0; row < rows - 1; row++) {
+      for (let col = 0; col < cols - 1; col++) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        
+        // Get corner values
+        let v00 = field[row * cols + col];
+        let v10 = field[row * cols + (col + 1)];
+        let v01 = field[(row + 1) * cols + col];
+        let v11 = field[(row + 1) * cols + (col + 1)];
+        
+        // Apply mask - if any corner is masked by higher level, set its value to 0
+        if (maskField) {
+          if (maskField[row * cols + col] >= maskThreshold) v00 = 0;
+          if (maskField[row * cols + (col + 1)] >= maskThreshold) v10 = 0;
+          if (maskField[(row + 1) * cols + col] >= maskThreshold) v01 = 0;
+          if (maskField[(row + 1) * cols + (col + 1)] >= maskThreshold) v11 = 0;
+        }
+        
+        // Calculate marching squares case
+        let caseValue = 0;
+        if (v00 >= threshold) caseValue |= 1;
+        if (v10 >= threshold) caseValue |= 2;
+        if (v11 >= threshold) caseValue |= 4;
+        if (v01 >= threshold) caseValue |= 8;
+        
+        // Generate line segments based on case
+        const segments = this._getSegmentsForCase(caseValue, x, y, cellSize, 
+          v00, v10, v01, v11, threshold);
+        
+        if (segments.length > 0) {
+          contours.push(...segments);
         }
       }
     }
@@ -190,64 +288,113 @@ export class HeightMapRenderer {
   }
 
   /**
-   * Trace a single contour starting from given cell
+   * Marching squares algorithm to extract contours from field (original without mask)
    */
-  traceContour(grid, width, height, startX, startY, threshold, visited) {
-    const contour = [];
-    let x = startX;
-    let y = startY;
+  _marchingSquares(field, rows, cols, bounds, cellSize, threshold) {
+    const contours = [];
     
-    // Simple contour tracing - check if any edge crosses threshold
-    const v1 = grid[y * width + x];
-    const v2 = grid[y * width + (x + 1)];
-    const v3 = grid[(y + 1) * width + (x + 1)];
-    const v4 = grid[(y + 1) * width + x];
-    
-    const edges = [];
-    
-    // Top edge
-    if ((v1 < threshold && v2 >= threshold) || (v1 >= threshold && v2 < threshold)) {
-      const t = (threshold - v1) / (v2 - v1);
-      edges.push({x: x + t, y: y});
-    }
-    // Right edge
-    if ((v2 < threshold && v3 >= threshold) || (v2 >= threshold && v3 < threshold)) {
-      const t = (threshold - v2) / (v3 - v2);
-      edges.push({x: x + 1, y: y + t});
-    }
-    // Bottom edge
-    if ((v3 < threshold && v4 >= threshold) || (v3 >= threshold && v4 < threshold)) {
-      const t = (threshold - v4) / (v3 - v4);
-      edges.push({x: x + 1 - t, y: y + 1});
-    }
-    // Left edge
-    if ((v4 < threshold && v1 >= threshold) || (v4 >= threshold && v1 < threshold)) {
-      const t = (threshold - v4) / (v1 - v4);
-      edges.push({x: x, y: y + 1 - t});
+    for (let row = 0; row < rows - 1; row++) {
+      for (let col = 0; col < cols - 1; col++) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        
+        // Get corner values
+        const v00 = field[row * cols + col];
+        const v10 = field[row * cols + (col + 1)];
+        const v01 = field[(row + 1) * cols + col];
+        const v11 = field[(row + 1) * cols + (col + 1)];
+        
+        // Calculate marching squares case
+        let caseValue = 0;
+        if (v00 >= threshold) caseValue |= 1;
+        if (v10 >= threshold) caseValue |= 2;
+        if (v11 >= threshold) caseValue |= 4;
+        if (v01 >= threshold) caseValue |= 8;
+        
+        // Generate line segments based on case
+        const segments = this._getSegmentsForCase(caseValue, x, y, cellSize, 
+          v00, v10, v01, v11, threshold);
+        
+        if (segments.length > 0) {
+          contours.push(...segments);
+        }
+      }
     }
     
-    return edges;
+    return contours;
   }
 
   /**
-   * Smooth contour using simple averaging
+   * Get line segments for marching squares case
    */
-  smoothContour(contour, factor) {
-    if (contour.length < 3) return contour;
+  _getSegmentsForCase(caseValue, x, y, size, v00, v10, v01, v11, threshold) {
+    const segments = [];
     
-    const smoothed = [];
-    for (let i = 0; i < contour.length; i++) {
-      const prev = contour[i > 0 ? i - 1 : contour.length - 1];
-      const curr = contour[i];
-      const next = contour[i < contour.length - 1 ? i + 1 : 0];
-      
-      smoothed.push({
-        x: curr.x * (1 - factor) + (prev.x + next.x) * 0.5 * factor,
-        y: curr.y * (1 - factor) + (prev.y + next.y) * 0.5 * factor
-      });
+    // Helper to interpolate edge crossing
+    const lerp = (v1, v2) => {
+      if (Math.abs(v2 - v1) < 0.0001) return 0.5;
+      return (threshold - v1) / (v2 - v1);
+    };
+    
+    // Edge midpoints (with interpolation)
+    const edges = {
+      top: { x: x + size * lerp(v00, v10), y: y },
+      right: { x: x + size, y: y + size * lerp(v10, v11) },
+      bottom: { x: x + size * lerp(v01, v11), y: y + size },
+      left: { x: x, y: y + size * lerp(v00, v01) }
+    };
+    
+    // Marching squares lookup table
+    switch (caseValue) {
+      case 1: segments.push([edges.left, edges.top]); break;
+      case 2: segments.push([edges.top, edges.right]); break;
+      case 3: segments.push([edges.left, edges.right]); break;
+      case 4: segments.push([edges.right, edges.bottom]); break;
+      case 5: 
+        segments.push([edges.left, edges.top]);
+        segments.push([edges.right, edges.bottom]);
+        break;
+      case 6: segments.push([edges.top, edges.bottom]); break;
+      case 7: segments.push([edges.left, edges.bottom]); break;
+      case 8: segments.push([edges.bottom, edges.left]); break;
+      case 9: segments.push([edges.bottom, edges.top]); break;
+      case 10:
+        segments.push([edges.top, edges.right]);
+        segments.push([edges.bottom, edges.left]);
+        break;
+      case 11: segments.push([edges.bottom, edges.right]); break;
+      case 12: segments.push([edges.right, edges.left]); break;
+      case 13: segments.push([edges.right, edges.top]); break;
+      case 14: segments.push([edges.top, edges.left]); break;
+      // case 0 and 15: no lines
     }
     
-    return smoothed;
+    return segments;
+  }
+
+  /**
+   * Draw contours
+   */
+  _drawContours(contours, color, level) {
+    if (contours.length === 0) return;
+    
+    const graphics = new PIXI.Graphics();
+    graphics.lineStyle(2, color, 0.8);
+    graphics.beginFill(color, 0.15);
+    
+    // Draw each segment
+    for (const segment of contours) {
+      if (segment.length === 2) {
+        graphics.moveTo(segment[0].x, segment[0].y);
+        graphics.lineTo(segment[1].x, segment[1].y);
+      }
+    }
+    
+    graphics.endFill();
+    graphics.name = `heightmap_level_${level}`;
+    graphics.interactive = false;
+    
+    this.contourContainer.addChild(graphics);
   }
 
   /**
@@ -303,51 +450,133 @@ export class HeightMapRenderer {
   }
 
   /**
-   * Set contour levels
-   * @param {number[]} levels - Array of height levels
-   */
-  setContourLevels(levels) {
-    this.contourLevels = levels;
-    console.log(`HeightMapRenderer | Contour levels set to: ${levels.join(', ')}`);
-    
-    // Re-render if currently visible
-    if (this.isVisible && this.heightMapManager.isLoaded()) {
-      this.render();
-    }
-  }
-
-  /**
-   * Set contour colors
-   * @param {Object} colors - Object mapping levels to colors
-   */
-  setContourColors(colors) {
-    this.contourColors = {...this.contourColors, ...colors};
-    console.log('HeightMapRenderer | Contour colors updated');
-    
-    // Re-render if currently visible
-    if (this.isVisible && this.heightMapManager.isLoaded()) {
-      this.render();
-    }
-  }
-
-  /**
-   * Check if height map is currently visible
-   * @returns {boolean} Visibility status
+   * Check if height map is visible
    */
   isHeightMapVisible() {
     return this.isVisible;
   }
 
   /**
-   * Destroy the renderer and clean up resources
+   * Set render mode
+   * @param {string} mode - 'filled' or 'contours'
    */
-  destroy() {
-    this.clear();
-    if (this.contourContainer) {
-      this.contourContainer.destroy({children: true});
-      this.contourContainer = null;
+  setRenderMode(mode) {
+    if (mode !== 'filled' && mode !== 'contours') {
+      console.warn(`HeightMapRenderer | Invalid render mode: ${mode}`);
+      return;
     }
-    this.isVisible = false;
-    console.log('HeightMapRenderer | Destroyed');
+    
+    this.renderMode = mode;
+    console.log(`HeightMapRenderer | Render mode set to: ${mode}`);
+    
+    // Re-render if currently visible
+    if (this.isVisible) {
+      this.render();
+    }
+  }
+
+  /**
+   * Get current render mode
+   */
+  getRenderMode() {
+    return this.renderMode;
+  }
+
+  /**
+   * Draw contour lines from height field
+   */
+  _drawContourLines(heightField, bounds, cellSize, contourLevels) {
+    const { values, rows, cols } = heightField;
+    
+    // Draw contours for each level
+    for (const levelInfo of contourLevels) {
+      const graphics = new PIXI.Graphics();
+      graphics.lineStyle(2, levelInfo.color, 0.8);
+      
+      // Use marching squares to find contour lines at this height threshold
+      const threshold = levelInfo.minHeight + (levelInfo.maxHeight - levelInfo.minHeight) / 2;
+      
+      for (let row = 0; row < rows - 1; row++) {
+        for (let col = 0; col < cols - 1; col++) {
+          const x = bounds.minX + col * cellSize;
+          const y = bounds.minY + row * cellSize;
+          
+          // Get corner heights
+          const v00 = values[row * cols + col];
+          const v10 = values[row * cols + (col + 1)];
+          const v01 = values[(row + 1) * cols + col];
+          const v11 = values[(row + 1) * cols + (col + 1)];
+          
+          // Calculate marching squares case
+          let caseValue = 0;
+          if (v00 >= threshold) caseValue |= 1;
+          if (v10 >= threshold) caseValue |= 2;
+          if (v11 >= threshold) caseValue |= 4;
+          if (v01 >= threshold) caseValue |= 8;
+          
+          // Skip fully inside or outside
+          if (caseValue === 0 || caseValue === 15) continue;
+          
+          // Draw line segments
+          const segments = this._getContourSegments(caseValue, x, y, cellSize, v00, v10, v01, v11, threshold);
+          
+          for (const segment of segments) {
+            graphics.moveTo(segment[0].x, segment[0].y);
+            graphics.lineTo(segment[1].x, segment[1].y);
+          }
+        }
+      }
+      
+      graphics.name = `heightmap_contour_${levelInfo.level}`;
+      graphics.interactive = false;
+      this.contourContainer.addChild(graphics);
+    }
+  }
+
+  /**
+   * Get contour segments for marching squares case
+   */
+  _getContourSegments(caseValue, x, y, size, v00, v10, v01, v11, threshold) {
+    const segments = [];
+    
+    // Helper to interpolate edge crossing
+    const lerp = (v1, v2) => {
+      if (Math.abs(v2 - v1) < 0.0001) return 0.5;
+      return (threshold - v1) / (v2 - v1);
+    };
+    
+    // Edge midpoints (with interpolation)
+    const edges = {
+      top: { x: x + size * lerp(v00, v10), y: y },
+      right: { x: x + size, y: y + size * lerp(v10, v11) },
+      bottom: { x: x + size * lerp(v01, v11), y: y + size },
+      left: { x: x, y: y + size * lerp(v00, v01) }
+    };
+    
+    // Marching squares lookup table
+    switch (caseValue) {
+      case 1: segments.push([edges.left, edges.top]); break;
+      case 2: segments.push([edges.top, edges.right]); break;
+      case 3: segments.push([edges.left, edges.right]); break;
+      case 4: segments.push([edges.right, edges.bottom]); break;
+      case 5: 
+        segments.push([edges.left, edges.top]);
+        segments.push([edges.right, edges.bottom]);
+        break;
+      case 6: segments.push([edges.top, edges.bottom]); break;
+      case 7: segments.push([edges.left, edges.bottom]); break;
+      case 8: segments.push([edges.bottom, edges.left]); break;
+      case 9: segments.push([edges.bottom, edges.top]); break;
+      case 10:
+        segments.push([edges.top, edges.right]);
+        segments.push([edges.bottom, edges.left]);
+        break;
+      case 11: segments.push([edges.bottom, edges.right]); break;
+      case 12: segments.push([edges.right, edges.left]); break;
+      case 13: segments.push([edges.right, edges.top]); break;
+      case 14: segments.push([edges.top, edges.left]); break;
+    }
+    
+    return segments;
   }
 }

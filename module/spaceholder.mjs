@@ -66,6 +66,8 @@ Hooks.once('init', function () {
     showHeightMap: () => game.spaceholder.heightMapRenderer?.show(),
     hideHeightMap: () => game.spaceholder.heightMapRenderer?.hide(),
     toggleHeightMap: () => game.spaceholder.heightMapRenderer?.toggle(),
+    setHeightMapMode: (mode) => game.spaceholder.heightMapRenderer?.setRenderMode(mode),
+    getHeightMapMode: () => game.spaceholder.heightMapRenderer?.getRenderMode(),
   };
 
   // Initialize Token Pointer and expose

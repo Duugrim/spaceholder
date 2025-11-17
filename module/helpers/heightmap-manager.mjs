@@ -123,13 +123,13 @@ export class HeightMapManager {
   }
 
   /**
-   * Process raw height map data into contours
+   * Process raw height map data into smooth contours using metaballs approach
    * @param {Object} rawData - Raw data from Azgaar's FMG
    * @param {Scene} scene - Target scene for coordinate scaling
    * @returns {Object} Processed contour data
    */
   async processRawHeightMapData(rawData, scene) {
-    console.log('HeightMapManager | Processing raw height map data...');
+    console.log('HeightMapManager | Processing raw height map data with metaballs...');
     
     const cells = rawData.cells?.cells || rawData.cells;
     const mapInfo = rawData.info;
@@ -147,27 +147,30 @@ export class HeightMapManager {
     console.log(`HeightMapManager | Height range: ${minHeight} - ${maxHeight}`);
     console.log(`HeightMapManager | Processing ${cells.length} cells...`);
     
-    // Define contour levels
-    const contourLevels = [20, 40, 60, 80, 100];
-    
     // Calculate scale factors
     const scaleX = scene.dimensions.width / mapWidth;
     const scaleY = scene.dimensions.height / mapHeight;
     
-    // Create interpolated grid
-    const gridResolution = 50;
-    const gridWidth = Math.ceil(mapWidth * scaleX / gridResolution);
-    const gridHeight = Math.ceil(mapHeight * scaleY / gridResolution);
+    // Convert cells to scaled points with heights
+    const heightPoints = cells.map(cell => ({
+      x: cell.p[0] * scaleX,
+      y: cell.p[1] * scaleY,
+      height: cell.h || 0
+    }));
     
-    console.log(`HeightMapManager | Creating ${gridWidth}x${gridHeight} interpolation grid...`);
-    const grid = this.createInterpolatedGrid(cells, mapWidth, mapHeight, gridWidth, gridHeight, scaleX, scaleY, gridResolution);
-    
-    // Generate contours for each level
-    const contours = {};
-    for (const level of contourLevels) {
-      console.log(`HeightMapManager | Generating contours for level ${level}...`);
-      contours[level] = this.generateContoursForLevel(grid, gridWidth, gridHeight, level, gridResolution);
-    }
+    // Define contour levels (height ranges) - 10 levels for detailed map
+    const contourLevels = [
+      { level: 0, minHeight: 0, maxHeight: 10, color: 0x003366 },     // Deep water
+      { level: 10, minHeight: 10, maxHeight: 20, color: 0x0066CC },   // Shallow water/coast
+      { level: 20, minHeight: 20, maxHeight: 30, color: 0x00AA00 },   // Lowlands
+      { level: 30, minHeight: 30, maxHeight: 40, color: 0x44BB00 },   // Plains
+      { level: 40, minHeight: 40, maxHeight: 50, color: 0x88CC00 },   // Elevated plains
+      { level: 50, minHeight: 50, maxHeight: 60, color: 0xAAAA00 },   // Foothills
+      { level: 60, minHeight: 60, maxHeight: 70, color: 0xBB9900 },   // Hills
+      { level: 70, minHeight: 70, maxHeight: 80, color: 0xCC8800 },   // High hills
+      { level: 80, minHeight: 80, maxHeight: 90, color: 0xDD7700 },   // Mountains
+      { level: 90, minHeight: 90, maxHeight: 100, color: 0xFFFFFF }   // Peaks
+    ];
     
     const processedData = {
       mapWidth: mapWidth * scaleX,
@@ -177,92 +180,15 @@ export class HeightMapManager {
         max: maxHeight,
         range: maxHeight - minHeight
       },
-      contourLevels,
-      contours,
-      gridResolution
+      heightPoints,
+      contourLevels
     };
     
-    console.log(`HeightMapManager | ✓ Generated contours for ${contourLevels.length} levels`);
+    console.log(`HeightMapManager | ✓ Prepared ${heightPoints.length} height points for metaball rendering`);
     
     return processedData;
   }
 
-  /**
-   * Create interpolated height grid from Voronoi cells
-   */
-  createInterpolatedGrid(cells, mapWidth, mapHeight, gridWidth, gridHeight, scaleX, scaleY, gridResolution) {
-    const grid = new Array(gridWidth * gridHeight);
-    
-    for (let y = 0; y < gridHeight; y++) {
-      for (let x = 0; x < gridWidth; x++) {
-        const mapX = (x * gridResolution) / scaleX;
-        const mapY = (y * gridResolution) / scaleY;
-        
-        // Inverse distance weighting interpolation
-        let totalWeight = 0;
-        let weightedHeight = 0;
-        const maxDistance = 100;
-        
-        for (const cell of cells) {
-          const dx = cell.p[0] - mapX;
-          const dy = cell.p[1] - mapY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          
-          if (distance < maxDistance) {
-            const weight = 1 / (distance + 1);
-            weightedHeight += (cell.h || 0) * weight;
-            totalWeight += weight;
-          }
-        }
-        
-        grid[y * gridWidth + x] = totalWeight > 0 ? weightedHeight / totalWeight : 0;
-      }
-    }
-    
-    return grid;
-  }
-
-  /**
-   * Generate contour lines for specific level using marching squares
-   */
-  generateContoursForLevel(grid, width, height, threshold, gridResolution) {
-    const contourSegments = [];
-    
-    for (let y = 0; y < height - 1; y++) {
-      for (let x = 0; x < width - 1; x++) {
-        const v1 = grid[y * width + x];
-        const v2 = grid[y * width + (x + 1)];
-        const v3 = grid[(y + 1) * width + (x + 1)];
-        const v4 = grid[(y + 1) * width + x];
-        
-        const edges = [];
-        
-        // Check each edge for threshold crossing
-        if ((v1 < threshold && v2 >= threshold) || (v1 >= threshold && v2 < threshold)) {
-          const t = (threshold - v1) / (v2 - v1 + 0.0001);
-          edges.push({x: (x + t) * gridResolution, y: y * gridResolution});
-        }
-        if ((v2 < threshold && v3 >= threshold) || (v2 >= threshold && v3 < threshold)) {
-          const t = (threshold - v2) / (v3 - v2 + 0.0001);
-          edges.push({x: (x + 1) * gridResolution, y: (y + t) * gridResolution});
-        }
-        if ((v3 < threshold && v4 >= threshold) || (v3 >= threshold && v4 < threshold)) {
-          const t = (threshold - v4) / (v3 - v4 + 0.0001);
-          edges.push({x: (x + 1 - t) * gridResolution, y: (y + 1) * gridResolution});
-        }
-        if ((v4 < threshold && v1 >= threshold) || (v4 >= threshold && v1 < threshold)) {
-          const t = (threshold - v4) / (v1 - v4 + 0.0001);
-          edges.push({x: x * gridResolution, y: (y + 1 - t) * gridResolution});
-        }
-        
-        if (edges.length >= 2) {
-          contourSegments.push(edges);
-        }
-      }
-    }
-    
-    return contourSegments;
-  }
 
   /**
    * Get processed height map data
