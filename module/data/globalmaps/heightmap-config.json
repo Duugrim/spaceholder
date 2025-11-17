@@ -20,9 +20,17 @@
   ],
   "settings": {
     "defaultRenderMode": "contours",
-    "minRegionSize": 9,
     "lineWidth": 2,
     "lineAlpha": 0.8,
-    "fillAlpha": 0.3
+    "fillAlpha": 0.3,
+    "slopeHachures": true,
+    "hachureLength": 10,
+    "hachureSpacing": 20,
+    "hachureWidth": 1,
+    "filtering": {
+      "enabled": true,
+      "minElevationSize": 9,
+      "minDepressionSize": 9
+    }
   }
 }

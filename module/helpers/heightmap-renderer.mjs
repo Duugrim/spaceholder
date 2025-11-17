@@ -484,14 +484,11 @@ export class HeightMapRenderer {
     return this.renderMode;
   }
 
-  /**
-   * Draw contour lines from height field
-   */
   _drawContourLines(heightField, bounds, cellSize, contourLevels) {
     const { values, rows, cols } = heightField;
     
-    // Minimum region size in cells (filters out small isolated regions)
-    const minRegionSize = HEIGHTMAP_SETTINGS.minRegionSize;
+    // Get filtering settings
+    const filtering = HEIGHTMAP_SETTINGS.filtering || { enabled: true, minElevationSize: 9, minDepressionSize: 9 };
     
     // Draw contours for each level
     for (const levelInfo of contourLevels) {
@@ -509,10 +506,14 @@ export class HeightMapRenderer {
         }
       }
       
-      // Filter out small regions
-      const filteredMask = this._filterSmallRegions(mask, rows, cols, minRegionSize);
+      // Filter out small regions if enabled
+      const filteredMask = filtering.enabled 
+        ? this._filterSmallRegions(mask, rows, cols, filtering.minElevationSize, filtering.minDepressionSize)
+        : mask;
       
-      // Draw contours using filtered mask
+      // Collect all contour segments first
+      const allSegments = [];
+      
       for (let row = 0; row < rows - 1; row++) {
         for (let col = 0; col < cols - 1; col++) {
           const x = bounds.minX + col * cellSize;
@@ -540,14 +541,22 @@ export class HeightMapRenderer {
           const h01 = values[(row + 1) * cols + col];
           const h11 = values[(row + 1) * cols + (col + 1)];
           
-          // Draw line segments
+          // Get line segments
           const segments = this._getContourSegments(caseValue, x, y, cellSize, h00, h10, h01, h11, threshold);
-          
-          for (const segment of segments) {
-            graphics.moveTo(segment[0].x, segment[0].y);
-            graphics.lineTo(segment[1].x, segment[1].y);
-          }
+          allSegments.push(...segments);
         }
+      }
+      
+      // Draw contour lines
+      for (const segment of allSegments) {
+        graphics.moveTo(segment[0].x, segment[0].y);
+        graphics.lineTo(segment[1].x, segment[1].y);
+      }
+      
+      // Add slope hachures if enabled
+      if (HEIGHTMAP_SETTINGS.slopeHachures) {
+        graphics.lineStyle(HEIGHTMAP_SETTINGS.hachureWidth || 1, levelInfo.color, HEIGHTMAP_SETTINGS.lineAlpha);
+        this._drawSlopeHachures(graphics, allSegments, values, rows, cols, bounds, cellSize, threshold);
       }
       
       graphics.name = `heightmap_contour_${levelInfo.level}`;
@@ -557,16 +566,126 @@ export class HeightMapRenderer {
   }
 
   /**
+   * Draw slope hachures (short perpendicular lines indicating downslope direction)
+   */
+  _drawSlopeHachures(graphics, segments, heightValues, rows, cols, bounds, cellSize, threshold) {
+    const hachureLength = HEIGHTMAP_SETTINGS.hachureLength || 10;
+    const hachureSpacing = HEIGHTMAP_SETTINGS.hachureSpacing || 20;
+    
+    for (const segment of segments) {
+      // Calculate segment length and direction
+      const dx = segment[1].x - segment[0].x;
+      const dy = segment[1].y - segment[0].y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      
+      if (length < 1) continue;
+      
+      // Number of hachures along this segment
+      const numHachures = Math.floor(length / hachureSpacing);
+      if (numHachures === 0) continue;
+      
+      // Unit tangent vector (along the contour line)
+      const tx = dx / length;
+      const ty = dy / length;
+      
+      // Perpendicular vector (potential downslope directions)
+      const nx1 = -ty;
+      const ny1 = tx;
+      const nx2 = ty;
+      const ny2 = -tx;
+      
+      // Sample points along the segment to determine downslope direction
+      for (let i = 1; i <= numHachures; i++) {
+        const t = i / (numHachures + 1);
+        const px = segment[0].x + dx * t;
+        const py = segment[0].y + dy * t;
+        
+        // Sample height field at two perpendicular directions
+        const sampleDist = cellSize * 2;
+        const h1 = this._sampleHeightField(px + nx1 * sampleDist, py + ny1 * sampleDist, heightValues, rows, cols, bounds, cellSize);
+        const h2 = this._sampleHeightField(px + nx2 * sampleDist, py + ny2 * sampleDist, heightValues, rows, cols, bounds, cellSize);
+        
+        // Determine which direction goes downhill
+        let hachureNx, hachureNy;
+        if (h1 < threshold && h2 >= threshold) {
+          // Direction 1 is downhill
+          hachureNx = nx1;
+          hachureNy = ny1;
+        } else if (h2 < threshold && h1 >= threshold) {
+          // Direction 2 is downhill
+          hachureNx = nx2;
+          hachureNy = ny2;
+        } else {
+          // Ambiguous or both same - use the lower one
+          if (h1 < h2) {
+            hachureNx = nx1;
+            hachureNy = ny1;
+          } else {
+            hachureNx = nx2;
+            hachureNy = ny2;
+          }
+        }
+        
+        // Draw hachure pointing downhill
+        const hx = px + hachureNx * hachureLength;
+        const hy = py + hachureNy * hachureLength;
+        
+        graphics.moveTo(px, py);
+        graphics.lineTo(hx, hy);
+      }
+    }
+  }
+  
+  /**
+   * Sample height from interpolated field
+   */
+  _sampleHeightField(x, y, values, rows, cols, bounds, cellSize) {
+    // Convert world coordinates to grid coordinates
+    const col = (x - bounds.minX) / cellSize;
+    const row = (y - bounds.minY) / cellSize;
+    
+    // Check bounds
+    if (col < 0 || col >= cols - 1 || row < 0 || row >= rows - 1) {
+      return 0;
+    }
+    
+    // Bilinear interpolation
+    const col0 = Math.floor(col);
+    const row0 = Math.floor(row);
+    const col1 = col0 + 1;
+    const row1 = row0 + 1;
+    
+    const fx = col - col0;
+    const fy = row - row0;
+    
+    const v00 = values[row0 * cols + col0];
+    const v10 = values[row0 * cols + col1];
+    const v01 = values[row1 * cols + col0];
+    const v11 = values[row1 * cols + col1];
+    
+    return (1 - fx) * (1 - fy) * v00 +
+           fx * (1 - fy) * v10 +
+           (1 - fx) * fy * v01 +
+           fx * fy * v11;
+  }
+
+  /**
    * Filter out small isolated regions using flood fill
    * Filters both elevations (1s) and depressions/holes (0s)
+   * @param {Uint8Array} mask - Binary mask to filter
+   * @param {number} rows - Number of rows
+   * @param {number} cols - Number of columns
+   * @param {number} minElevationSize - Minimum size for elevation regions (value=1)
+   * @param {number} minDepressionSize - Minimum size for depression regions (value=0)
    */
-  _filterSmallRegions(mask, rows, cols, minSize) {
+  _filterSmallRegions(mask, rows, cols, minElevationSize, minDepressionSize) {
     const result = new Uint8Array(rows * cols);
     const visited = new Uint8Array(rows * cols);
     
     // Process both types of regions: elevations (value=1) and holes (value=0)
     for (let value = 0; value <= 1; value++) {
       visited.fill(0); // Reset visited for each pass
+      const minSize = value === 1 ? minElevationSize : minDepressionSize;
       
       for (let startRow = 0; startRow < rows; startRow++) {
         for (let startCol = 0; startCol < cols; startCol++) {
