@@ -221,28 +221,20 @@ export class HeightMapRenderer {
   }
 
   /**
-   * Calculate bounds for all height points
+   * Calculate bounds based on scene dimensions
+   * This ensures heightField covers entire scene, not just data points
    */
   _calculateBounds(points) {
     if (points.length === 0) return null;
     
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
+    // Use scene dimensions as bounds
+    const sceneDimensions = canvas.scene.dimensions;
     
-    for (const point of points) {
-      minX = Math.min(minX, point.x);
-      minY = Math.min(minY, point.y);
-      maxX = Math.max(maxX, point.x);
-      maxY = Math.max(maxY, point.y);
-    }
-    
-    // Add padding
-    const padding = canvas.grid.size;
     return {
-      minX: minX - padding,
-      minY: minY - padding,
-      maxX: maxX + padding,
-      maxY: maxY + padding
+      minX: 0,
+      minY: 0,
+      maxX: sceneDimensions.width,
+      maxY: sceneDimensions.height
     };
   }
 
@@ -456,14 +448,17 @@ export class HeightMapRenderer {
       return;
     }
 
-    if (!this.isVisible) {
-      await this.render();
-    } else if (this.contourContainer) {
+    // If container exists and has content, just show it
+    if (this.contourContainer && this.contourContainer.children.length > 0) {
       this.contourContainer.visible = true;
+      this.isVisible = true;
+      console.log('HeightMapRenderer | Height map shown (from cache)');
+    } else {
+      // Need to render
+      await this.render();
+      this.isVisible = true;
+      console.log('HeightMapRenderer | Height map shown (rendered)');
     }
-    
-    this.isVisible = true;
-    console.log('HeightMapRenderer | Height map shown');
   }
 
   /**

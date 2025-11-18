@@ -22,6 +22,11 @@ export class HeightMapEditor {
     
     // Brush cursor visualization
     this.brushCursor = null; // PIXI.Graphics for cursor
+    this.overlayPreview = null; // PIXI.Graphics for overlay preview
+    
+    // Inspect mode
+    this.isInspectMode = false;
+    this.inspectLabel = null; // PIXI.Text for height display
   }
 
   /**
@@ -31,8 +36,9 @@ export class HeightMapEditor {
     console.log('HeightMapEditor | Initializing...');
     
     // Hook into canvas ready
-    Hooks.on('canvasReady', () => {
+    Hooks.on('canvasReady', async () => {
       this.setupEventListeners();
+      await this.autoLoadHeightMap();
     });
     
     // Add control button
@@ -42,6 +48,11 @@ export class HeightMapEditor {
     
     // Block canvas drag selection when editor is active
     Hooks.on('controlToken', (token, controlled) => {
+      if (this.isActive) return false;
+    });
+    
+    // Block ping when editor is active
+    Hooks.on('canvasPan', (canvas, position) => {
       if (this.isActive) return false;
     });
   }
@@ -66,7 +77,21 @@ export class HeightMapEditor {
       layer: 'heightmap',
       visible: true,
       order: 11, // After notes (order: 10)
+      activeTool: 'inspect-height', // Default active tool
       tools: {
+        'inspect-height': {
+          name: 'inspect-height',
+          title: 'Inspect Height',
+          icon: 'fa-solid fa-ruler',
+          onChange: (isActive) => {
+            if (isActive) {
+              this.activateInspectMode();
+            } else {
+              this.deactivateInspectMode();
+            }
+          },
+          button: false // This is the default tool, not a button
+        },
         'load-heightmap': {
           name: 'load-heightmap',
           title: 'Load/Show Height Map',
@@ -88,6 +113,15 @@ export class HeightMapEditor {
           title: 'Toggle Height Map Visibility',
           icon: 'fa-solid fa-eye',
           onChange: (isActive) => this.renderer.toggle(),
+          button: true
+        },
+        'regenerate': {
+          name: 'regenerate',
+          title: 'Regenerate from Source File',
+          icon: 'fa-solid fa-rotate',
+          onChange: async (isActive) => {
+            await this.regenerateFromSource();
+          },
           button: true
         },
         'edit-mode': {
@@ -113,6 +147,75 @@ export class HeightMapEditor {
   }
 
   /**
+   * Auto-load height map if heightField file exists for this scene
+   */
+  async autoLoadHeightMap() {
+    const scene = canvas.scene;
+    if (!scene) return;
+    
+    // Check if heightField file path exists in scene flags
+    const heightFieldPath = scene.getFlag('spaceholder', 'heightFieldPath');
+    
+    if (heightFieldPath) {
+      console.log('HeightMapEditor | Auto-loading height map from file...');
+      
+      // Load processed data if not loaded
+      if (!this.renderer.heightMapManager.isLoaded()) {
+        await this.renderer.heightMapManager.processHeightMapFromSource();
+      }
+      
+      // Show height map silently (no notification)
+      if (!this.renderer.isVisible) {
+        await this.renderer.show();
+      }
+      
+      console.log('HeightMapEditor | Height map auto-loaded successfully');
+    }
+  }
+  
+  /**
+   * Regenerate height map from original source file
+   */
+  async regenerateFromSource() {
+    const scene = canvas.scene;
+    if (!scene) {
+      ui.notifications.error('No scene available');
+      return;
+    }
+    
+    const sourcePath = scene.getFlag('spaceholder', 'heightMapPath');
+    if (!sourcePath) {
+      ui.notifications.warn('No source file configured for this scene. Please set heightMapPath in scene settings.');
+      return;
+    }
+    
+    ui.notifications.info('Regenerating height map from source file...');
+    console.log('HeightMapEditor | Regenerating from source:', sourcePath);
+    
+    // Delete old heightField file from scene flags
+    await scene.unsetFlag('spaceholder', 'heightFieldPath');
+    
+    // Clear renderer cache
+    this.renderer.cachedHeightField = null;
+    this.renderer.cachedBounds = null;
+    this.renderer.cachedCellSize = null;
+    
+    // Clear container
+    this.renderer.clear();
+    
+    // Process from source - this will create new heightField and save to file
+    const success = await this.renderer.heightMapManager.processHeightMapFromSource();
+    
+    if (success) {
+      // Render the new height map (will generate new heightField)
+      await this.renderer.render();
+      ui.notifications.info('Height map regenerated successfully!');
+    } else {
+      ui.notifications.error('Failed to regenerate height map');
+    }
+  }
+  
+  /**
    * Check if height map is loaded and warn user if not
    */
   checkHeightMapLoaded() {
@@ -123,6 +226,33 @@ export class HeightMapEditor {
     return true;
   }
 
+  /**
+   * Activate inspect mode
+   */
+  activateInspectMode() {
+    this.isInspectMode = true;
+    
+    // Show height map if not visible
+    if (!this.renderer.isVisible) {
+      this.renderer.show();
+    }
+    
+    // Create inspect label
+    this.createInspectLabel();
+    
+    // Setup inspect event listener
+    this.setupInspectListener();
+  }
+  
+  /**
+   * Deactivate inspect mode
+   */
+  deactivateInspectMode() {
+    this.isInspectMode = false;
+    this.destroyInspectLabel();
+    this.removeInspectListener();
+  }
+  
   /**
    * Toggle editor on/off
    */
@@ -147,25 +277,13 @@ export class HeightMapEditor {
       this.renderer.show();
     }
     
-    // Disable canvas selection
-    this._savedCanvasState = {
-      controlsDrag: canvas.controls?.options?.drag,
-      mouseEnabled: canvas.mouseInteractionManager?.options?.dragResistance
-    };
-    
-    if (canvas.controls) {
-      canvas.controls.options.drag = false;
-      if (canvas.controls.interactionManager) {
-        canvas.controls.interactionManager.drag = false;
-      }
-    }
-    
-    if (canvas.mouseInteractionManager) {
-      canvas.mouseInteractionManager.options.dragResistance = 999999;
-    }
+    // Note: We don't disable canvas controls, just prevent selection via our event handlers
     
     // Create brush cursor
     this.createBrushCursor();
+    
+    // Create overlay preview graphics
+    this.createOverlayPreview();
     
     // Show UI
     this.showUI();
@@ -180,22 +298,9 @@ export class HeightMapEditor {
     console.log('HeightMapEditor | Deactivating...');
     this.isActive = false;
     
-    // Destroy brush cursor
+    // Destroy brush cursor and preview
     this.destroyBrushCursor();
-    
-    // Restore canvas selection
-    if (this._savedCanvasState) {
-      if (canvas.controls) {
-        canvas.controls.options.drag = this._savedCanvasState.controlsDrag;
-        if (canvas.controls.interactionManager) {
-          canvas.controls.interactionManager.drag = this._savedCanvasState.controlsDrag;
-        }
-      }
-      if (canvas.mouseInteractionManager) {
-        canvas.mouseInteractionManager.options.dragResistance = this._savedCanvasState.mouseEnabled;
-      }
-      this._savedCanvasState = null;
-    }
+    this.destroyOverlayPreview();
     
     // Save changes to file
     if (this.renderer.cachedHeightField) {
@@ -213,17 +318,18 @@ export class HeightMapEditor {
   setupEventListeners() {
     if (!canvas.stage) return;
     
-    // Mouse down - highest priority to prevent selection
+    // Mouse down - prevent selection on LMB, allow pan on RMB
     canvas.stage.on('pointerdown', (event) => {
       if (!this.isActive) return;
       
-      // Only respond to left mouse button
+      // Allow right mouse button for panning
+      if (event.data.button === 2) return;
+      
+      // Only work with left mouse button
       if (event.data.button !== 0) return;
       
-      // Prevent default selection box and stop propagation
+      // Stop event propagation to prevent selection box
       event.stopPropagation();
-      event.data.originalEvent.preventDefault();
-      event.data.originalEvent.stopPropagation();
       
       this.isMouseDown = true;
       
@@ -231,14 +337,15 @@ export class HeightMapEditor {
       if (this.renderer.cachedHeightField) {
         const size = this.renderer.cachedHeightField.values.length;
         this.tempOverlay = new Float32Array(size);
+        
+        // Recreate overlay preview for this stroke
+        this.createOverlayPreview();
       }
       
       const pos = event.data.getLocalPosition(canvas.stage);
       this.applyBrushToOverlay(pos.x, pos.y);
       this.lastPosition = pos;
-      
-      return false;
-    }, true); // Use capture phase
+    });
     
     // Mouse move
     canvas.stage.on('pointermove', (event) => {
@@ -274,6 +381,9 @@ export class HeightMapEditor {
       
       // Apply overlay to heightField
       this.commitOverlay();
+      
+      // Clear preview
+      this.clearOverlayPreview();
     });
   }
 
@@ -332,6 +442,9 @@ export class HeightMapEditor {
         }
       }
     }
+    
+    // Update preview after applying brush
+    this.updateOverlayPreview();
   }
   
   /**
@@ -572,6 +685,193 @@ export class HeightMapEditor {
     if (this.brushCursor) {
       this.brushCursor.destroy();
       this.brushCursor = null;
+    }
+  }
+
+  /**
+   * Create overlay preview graphics
+   */
+  createOverlayPreview() {
+    if (this.overlayPreview) {
+      this.overlayPreview.destroy();
+    }
+    
+    this.overlayPreview = new PIXI.Graphics();
+    this.overlayPreview.name = 'heightmap-overlay-preview';
+    
+    // Add to renderer's container (above height map, below cursor)
+    if (this.renderer.contourContainer) {
+      this.renderer.contourContainer.addChild(this.overlayPreview);
+    }
+  }
+
+  /**
+   * Update overlay preview visualization
+   */
+  updateOverlayPreview() {
+    if (!this.overlayPreview || !this.tempOverlay || !this.renderer.cachedHeightField) return;
+    
+    this.overlayPreview.clear();
+    
+    const { rows, cols } = this.renderer.cachedHeightField;
+    const { minX, minY } = this.renderer.cachedBounds;
+    const cellSize = this.renderer.cachedCellSize;
+    
+    // Determine color based on tool
+    let positiveColor, negativeColor;
+    switch (this.currentTool) {
+      case 'raise':
+        positiveColor = 0x00ff00; // Green for raised
+        negativeColor = 0xff0000; // Red for lowered (shouldn't happen)
+        break;
+      case 'lower':
+        positiveColor = 0xff0000; // Red for lowered (inverted)
+        negativeColor = 0x00ff00;
+        break;
+      case 'smooth':
+      case 'flatten':
+        positiveColor = 0xffff00; // Yellow for modified
+        negativeColor = 0xffff00;
+        break;
+      default:
+        positiveColor = 0xffffff;
+        negativeColor = 0xffffff;
+    }
+    
+    // Draw affected cells with alpha based on delta
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        const delta = this.tempOverlay[idx];
+        
+        if (Math.abs(delta) > 0.1) {
+          const x = minX + col * cellSize;
+          const y = minY + row * cellSize;
+          
+          // Choose color based on direction
+          const color = delta > 0 ? positiveColor : negativeColor;
+          // Alpha based on magnitude (capped at 0.4)
+          const alpha = Math.min(0.4, Math.abs(delta) / 10);
+          
+          this.overlayPreview.beginFill(color, alpha);
+          this.overlayPreview.drawRect(x, y, cellSize, cellSize);
+          this.overlayPreview.endFill();
+        }
+      }
+    }
+  }
+
+  /**
+   * Clear overlay preview
+   */
+  clearOverlayPreview() {
+    if (this.overlayPreview) {
+      this.overlayPreview.clear();
+    }
+  }
+
+  /**
+   * Destroy overlay preview
+   */
+  destroyOverlayPreview() {
+    if (this.overlayPreview) {
+      this.overlayPreview.destroy();
+      this.overlayPreview = null;
+    }
+  }
+  
+  /**
+   * Create inspect label for displaying height
+   */
+  createInspectLabel() {
+    if (this.inspectLabel) {
+      this.inspectLabel.destroy();
+    }
+    
+    // Create PIXI text with background
+    const style = new PIXI.TextStyle({
+      fontFamily: 'Signika',
+      fontSize: 16,
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 3,
+      dropShadow: true,
+      dropShadowColor: '#000000',
+      dropShadowBlur: 4,
+      dropShadowDistance: 2
+    });
+    
+    this.inspectLabel = new PIXI.Text('Height: --', style);
+    this.inspectLabel.name = 'heightmap-inspect-label';
+    this.inspectLabel.visible = false;
+    
+    // Add to interface layer
+    if (canvas.interface) {
+      canvas.interface.addChild(this.inspectLabel);
+    }
+  }
+  
+  /**
+   * Setup inspect event listener
+   */
+  setupInspectListener() {
+    if (!canvas.stage) return;
+    
+    this.inspectMoveHandler = (event) => {
+      if (!this.isInspectMode) return;
+      
+      const pos = event.data.getLocalPosition(canvas.stage);
+      this.updateInspectLabel(pos.x, pos.y);
+    };
+    
+    canvas.stage.on('pointermove', this.inspectMoveHandler);
+  }
+  
+  /**
+   * Remove inspect event listener
+   */
+  removeInspectListener() {
+    if (canvas.stage && this.inspectMoveHandler) {
+      canvas.stage.off('pointermove', this.inspectMoveHandler);
+      this.inspectMoveHandler = null;
+    }
+  }
+  
+  /**
+   * Update inspect label with height at position
+   */
+  updateInspectLabel(x, y) {
+    if (!this.inspectLabel || !this.renderer.cachedHeightField) return;
+    
+    const { values, rows, cols } = this.renderer.cachedHeightField;
+    const { minX, minY } = this.renderer.cachedBounds;
+    const cellSize = this.renderer.cachedCellSize;
+    
+    // Convert world coordinates to grid coordinates
+    const col = Math.floor((x - minX) / cellSize);
+    const row = Math.floor((y - minY) / cellSize);
+    
+    // Check if position is within bounds
+    if (row >= 0 && row < rows && col >= 0 && col < cols) {
+      const idx = row * cols + col;
+      const height = values[idx];
+      
+      // Update label text and position
+      this.inspectLabel.text = `Height: ${height.toFixed(1)}`;
+      this.inspectLabel.position.set(x + 20, y - 10); // Offset from cursor
+      this.inspectLabel.visible = true;
+    } else {
+      this.inspectLabel.visible = false;
+    }
+  }
+  
+  /**
+   * Destroy inspect label
+   */
+  destroyInspectLabel() {
+    if (this.inspectLabel) {
+      this.inspectLabel.destroy();
+      this.inspectLabel = null;
     }
   }
 }
