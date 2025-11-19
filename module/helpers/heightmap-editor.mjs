@@ -3,6 +3,99 @@
  * Provides interactive tools for editing height maps
  */
 
+/**
+ * Show dialog for creating height map overlay
+ */
+async function showCreateOverlayDialog(editor) {
+  const content = `
+    <form>
+      <div class="form-group">
+        <label>Файл карты высот (JSON)</label>
+        <div class="form-fields" style="display: flex; gap: 5px;">
+          <button type="button" class="file-picker" data-type="json" title="Выбрать файл" style="flex-shrink: 0;">
+            <i class="fas fa-file-import fa-fw"></i>
+          </button>
+          <input class="height-map-path" type="text" name="filePath" placeholder="Путь к JSON файлу из Azgaar's FMG" value="" style="flex-grow: 1;">
+        </div>
+        <p class="notes" style="margin-top: 5px; font-size: 12px;">
+          Выберите JSON файл из Azgaar's Fantasy Map Generator или оставьте пустым для создания ровной карты (высота = 20).
+        </p>
+      </div>
+    </form>
+  `;
+  
+  return new Promise((resolve) => {
+    const dialog = new Dialog({
+      title: 'Создать оверлей карты высот',
+      content: content,
+      buttons: {
+        create: {
+          icon: '<i class="fas fa-check"></i>',
+          label: 'Создать',
+          callback: async (html) => {
+            // Get the file path from the input field
+            const fileInput = html.find('input[name="filePath"]');
+            const filePath = fileInput.val() ? fileInput.val().trim() : '';
+            
+            console.log('HeightMapEditor | Dialog callback - filePath:', filePath, 'empty?', !filePath);
+            
+            if (filePath && filePath.length > 0) {
+              // Import from file
+              console.log('HeightMapEditor | Creating overlay from file:', filePath);
+              const success = await editor.renderer.heightMapManager.processFromFile(filePath);
+              
+              if (success) {
+                // Show the height map
+                await editor.renderer.show();
+              }
+            } else {
+              // Create flat map
+              console.log('HeightMapEditor | Creating flat overlay map');
+              const success = await editor.renderer.heightMapManager.createFlatMap(20);
+              
+              if (success) {
+                // Show the height map
+                await editor.renderer.show();
+              }
+            }
+            
+            resolve(true);
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Отмена',
+          callback: () => resolve(false)
+        }
+      },
+      default: 'create',
+      render: (html) => {
+        // Setup file picker
+        const filePicker = html.find('button.file-picker');
+        const inputField = html.find('input[name="filePath"]');
+        
+        filePicker.on('click', function(e) {
+          e.preventDefault();
+          const current = inputField.val();
+          const fp = new FilePicker({
+            type: 'json',
+            current: current,
+            callback: (path) => {
+              inputField.val(path);
+            }
+          });
+          fp.browse();
+        });
+      },
+      close: () => resolve(false)
+    }, {
+      width: 500
+    });
+    
+    dialog.render(true);
+  });
+}
+
 export class HeightMapEditor {
   constructor(heightMapRenderer) {
     this.renderer = heightMapRenderer;
@@ -81,7 +174,7 @@ export class HeightMapEditor {
       tools: {
         'inspect-height': {
           name: 'inspect-height',
-          title: 'Inspect Height',
+          title: 'Просмотр высоты',
           icon: 'fa-solid fa-ruler',
           onChange: (isActive) => {
             if (isActive) {
@@ -92,36 +185,20 @@ export class HeightMapEditor {
           },
           button: false // This is the default tool, not a button
         },
-        'load-heightmap': {
-          name: 'load-heightmap',
-          title: 'Load/Show Height Map',
+        'create-overlay': {
+          name: 'create-overlay',
+          title: 'Создать оверлей карты',
           icon: 'fa-solid fa-map',
           onChange: async (isActive) => {
-            // Load processed data if not loaded
-            if (!this.renderer.heightMapManager.isLoaded()) {
-              ui.notifications.info('Loading height map data...');
-              await this.renderer.heightMapManager.processHeightMapFromSource();
-            }
-            // Show height map
-            await this.renderer.show();
-            ui.notifications.info('Height map ready for editing!');
+            await showCreateOverlayDialog(this);
           },
           button: true
         },
         'toggle-view': {
           name: 'toggle-view',
-          title: 'Toggle Height Map Visibility',
+          title: 'Переключить видимость',
           icon: 'fa-solid fa-eye',
           onChange: (isActive) => this.renderer.toggle(),
-          button: true
-        },
-        'regenerate': {
-          name: 'regenerate',
-          title: 'Regenerate from Source File',
-          icon: 'fa-solid fa-rotate',
-          onChange: async (isActive) => {
-            await this.regenerateFromSource();
-          },
           button: true
         },
         'edit-mode': {
@@ -147,72 +224,13 @@ export class HeightMapEditor {
   }
 
   /**
-   * Auto-load height map if heightField file exists for this scene
+   * Auto-load height map if processed data exists for this scene
+   * Note: The renderer now handles auto-loading automatically via its canvasReady hook
    */
   async autoLoadHeightMap() {
-    const scene = canvas.scene;
-    if (!scene) return;
-    
-    // Check if heightField file path exists in scene flags
-    const heightFieldPath = scene.getFlag('spaceholder', 'heightFieldPath');
-    
-    if (heightFieldPath) {
-      console.log('HeightMapEditor | Auto-loading height map from file...');
-      
-      // Load processed data if not loaded
-      if (!this.renderer.heightMapManager.isLoaded()) {
-        await this.renderer.heightMapManager.processHeightMapFromSource();
-      }
-      
-      // Show height map silently (no notification)
-      if (!this.renderer.isVisible) {
-        await this.renderer.show();
-      }
-      
-      console.log('HeightMapEditor | Height map auto-loaded successfully');
-    }
-  }
-  
-  /**
-   * Regenerate height map from original source file
-   */
-  async regenerateFromSource() {
-    const scene = canvas.scene;
-    if (!scene) {
-      ui.notifications.error('No scene available');
-      return;
-    }
-    
-    const sourcePath = scene.getFlag('spaceholder', 'heightMapPath');
-    if (!sourcePath) {
-      ui.notifications.warn('No source file configured for this scene. Please set heightMapPath in scene settings.');
-      return;
-    }
-    
-    ui.notifications.info('Regenerating height map from source file...');
-    console.log('HeightMapEditor | Regenerating from source:', sourcePath);
-    
-    // Delete old heightField file from scene flags
-    await scene.unsetFlag('spaceholder', 'heightFieldPath');
-    
-    // Clear renderer cache
-    this.renderer.cachedHeightField = null;
-    this.renderer.cachedBounds = null;
-    this.renderer.cachedCellSize = null;
-    
-    // Clear container
-    this.renderer.clear();
-    
-    // Process from source - this will create new heightField and save to file
-    const success = await this.renderer.heightMapManager.processHeightMapFromSource();
-    
-    if (success) {
-      // Render the new height map (will generate new heightField)
-      await this.renderer.render();
-      ui.notifications.info('Height map regenerated successfully!');
-    } else {
-      ui.notifications.error('Failed to regenerate height map');
-    }
+    // The renderer's onCanvasReady now handles auto-loading automatically
+    // This method is kept for compatibility but does nothing
+    // Height map will be shown if data exists in scene flags
   }
   
   /**
@@ -784,8 +802,14 @@ export class HeightMapEditor {
    * Create inspect label for displaying height
    */
   createInspectLabel() {
+    // Safely destroy existing label
     if (this.inspectLabel) {
-      this.inspectLabel.destroy();
+      try {
+        this.inspectLabel.destroy();
+      } catch (error) {
+        console.warn('HeightMapEditor | Error destroying inspectLabel:', error);
+      }
+      this.inspectLabel = null;
     }
     
     // Create PIXI text with background

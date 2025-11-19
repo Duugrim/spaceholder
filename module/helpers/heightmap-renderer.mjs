@@ -27,17 +27,64 @@ export class HeightMapRenderer {
     Hooks.on('canvasReady', async () => {
       await this.onCanvasReady();
     });
+    
+    // If canvas is already ready (e.g., during Foundry startup), load immediately
+    if (canvas?.ready && canvas?.scene) {
+      console.log('HeightMapRenderer | Canvas already ready, checking for height map...');
+      setTimeout(async () => {
+        await this.onInitialLoad();
+      }, 200); // Wait for manager to load data
+    }
   }
 
   /**
    * Called when canvas is ready
    */
   async onCanvasReady() {
+    // Clear cache when switching scenes
+    this.cachedHeightField = null;
+    this.cachedBounds = null;
+    this.cachedCellSize = null;
+    this.isVisible = false;
+    
     this.setupContainerLayer();
     
-    // If height map is loaded and was previously visible, render it
-    if (this.heightMapManager.isLoaded() && this.isVisible) {
-      await this.render();
+    // Wait a tick for manager to load scene data
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    // Auto-render if height map data exists for THIS scene
+    // Manager's canvasReady hook should have already loaded the data
+    if (this.heightMapManager.isLoaded()) {
+      console.log('HeightMapRenderer | Height map data detected for current scene, auto-rendering...');
+      // Auto-show height map if data exists
+      await this.show();
+    } else {
+      console.log('HeightMapRenderer | No height map data for current scene');
+    }
+  }
+
+  /**
+   * Called on initial Foundry load to auto-show height map if it exists
+   */
+  async onInitialLoad() {
+    console.log('HeightMapRenderer | Checking for height map on initial load...');
+    
+    // Wait a bit longer for everything to initialize
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Check if height map data exists for current scene
+    if (this.heightMapManager.isLoaded()) {
+      console.log('HeightMapRenderer | Height map found on initial load, auto-rendering...');
+      
+      // Setup container if not already done
+      if (!this.contourContainer) {
+        this.setupContainerLayer();
+      }
+      
+      // Auto-show height map
+      await this.show();
+    } else {
+      console.log('HeightMapRenderer | No height map data on initial load');
     }
   }
 
@@ -154,6 +201,20 @@ export class HeightMapRenderer {
     const cols = Math.ceil((bounds.maxX - bounds.minX) / cellSize);
     const rows = Math.ceil((bounds.maxY - bounds.minY) / cellSize);
     const field = { values: new Float32Array(rows * cols), rows, cols };
+    
+    // Optimization: if all points have the same height (flat map), fill with constant value
+    if (points.length > 0) {
+      const firstHeight = points[0].height;
+      const isFlat = points.every(p => p.height === firstHeight);
+      
+      if (isFlat) {
+        console.log(`HeightMapRenderer | Creating flat heightField with height: ${firstHeight}`);
+        field.values.fill(firstHeight);
+        return field;
+      }
+    }
+    
+    // Standard interpolation for non-flat maps
     const influenceRadius = cellSize * 4;
     
     for (let row = 0; row < rows; row++) {

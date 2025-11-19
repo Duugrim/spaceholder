@@ -20,21 +20,35 @@ export class HeightMapManager {
     Hooks.on('canvasReady', async (canvas) => {
       await this.onCanvasReady(canvas);
     });
+    
+    // If canvas is already ready (e.g., during Foundry startup), load immediately
+    if (canvas?.ready && canvas?.scene) {
+      console.log('HeightMapManager | Canvas already ready, loading scene data...');
+      this.onCanvasReady(canvas);
+    }
   }
 
   /**
    * Called when canvas is ready - loads processed height map data from scene flags
    */
   async onCanvasReady(canvas) {
+    console.log('HeightMapManager | onCanvasReady called');
     this.currentScene = canvas.scene;
-    const processedData = this.currentScene?.getFlag('spaceholder', 'processedHeightMap');
+    
+    if (!this.currentScene) {
+      console.warn('HeightMapManager | No scene available in canvas');
+      return;
+    }
+    
+    console.log(`HeightMapManager | Checking scene flags for: ${this.currentScene.name}`);
+    const processedData = this.currentScene.getFlag('spaceholder', 'processedHeightMap');
     
     if (processedData) {
       console.log(`HeightMapManager | ✓ Loading processed height map for scene: ${this.currentScene.name}`);
       this.processedData = processedData;
-      console.log(`HeightMapManager | ✓ Loaded ${processedData.contourLevels?.length || 0} contour levels from cache`);
+      console.log(`HeightMapManager | ✓ Loaded ${processedData.contourLevels?.length || 0} contour levels, ${processedData.heightPoints?.length || 0} height points`);
     } else {
-      console.log(`HeightMapManager | No processed height map for scene: ${this.currentScene?.name || 'unknown'}`);
+      console.log(`HeightMapManager | No processed height map for scene: ${this.currentScene.name}`);
       this.processedData = null;
     }
   }
@@ -89,6 +103,114 @@ export class HeightMapManager {
     } catch (error) {
       console.error('HeightMapManager | Failed to process height map:', error);
       ui.notifications.error(`Failed to process height map: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Process height map from a specific file path
+   * @param {string} filePath - Path to the JSON file
+   * @param {Scene} scene - The scene to process for (defaults to current scene)
+   * @returns {Promise<boolean>} Success status
+   */
+  async processFromFile(filePath, scene = null) {
+    try {
+      const targetScene = scene || this.currentScene || canvas.scene;
+      if (!targetScene) {
+        throw new Error('No scene available. Make sure you are viewing a scene.');
+      }
+
+      if (!filePath) {
+        throw new Error('No file path provided.');
+      }
+      
+      console.log(`HeightMapManager | Processing height map from: ${filePath}`);
+      ui.notifications.info('Импорт карты высот... Это может занять время.');
+      
+      // Fetch the JSON file
+      const response = await fetch(filePath);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch height map: ${response.statusText}`);
+      }
+      
+      const rawData = await response.json();
+      
+      // Validate the data structure
+      if (!this.validateHeightMapData(rawData)) {
+        throw new Error('Invalid height map data structure');
+      }
+      
+      // Process the raw data into contours
+      const processedData = await this.processRawHeightMapData(rawData, targetScene);
+      
+      // Save processed data to scene flags
+      await targetScene.setFlag('spaceholder', 'processedHeightMap', processedData);
+      
+      this.processedData = processedData;
+      
+      console.log('HeightMapManager | ✓ Height map processed and saved successfully');
+      ui.notifications.info('Карта высот успешно импортирована!');
+      
+      return true;
+    } catch (error) {
+      console.error('HeightMapManager | Failed to process height map:', error);
+      ui.notifications.error(`Ошибка импорта карты высот: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Create a flat height map with uniform height
+   * @param {number} defaultHeight - Default height value (default: 20)
+   * @param {Scene} scene - The scene to create for (defaults to current scene)
+   * @returns {Promise<boolean>} Success status
+   */
+  async createFlatMap(defaultHeight = 20, scene = null) {
+    try {
+      const targetScene = scene || this.currentScene || canvas.scene;
+      if (!targetScene) {
+        throw new Error('No scene available. Make sure you are viewing a scene.');
+      }
+
+      console.log(`HeightMapManager | Creating flat height map with height: ${defaultHeight}`);
+      ui.notifications.info('Создание ровной карты высот...');
+      
+      // Create minimal processedData with 4 corner points at default height
+      // This is sufficient for the renderer to create a uniform heightField
+      const sceneDimensions = targetScene.dimensions;
+      
+      const heightPoints = [
+        { x: 0, y: 0, height: defaultHeight },
+        { x: sceneDimensions.width, y: 0, height: defaultHeight },
+        { x: 0, y: sceneDimensions.height, height: defaultHeight },
+        { x: sceneDimensions.width, y: sceneDimensions.height, height: defaultHeight }
+      ];
+      
+      const processedData = {
+        mapWidth: sceneDimensions.width,
+        mapHeight: sceneDimensions.height,
+        heightStats: {
+          min: defaultHeight,
+          max: defaultHeight,
+          range: 0
+        },
+        heightPoints,
+        contourLevels: HEIGHTMAP_CONTOUR_LEVELS,
+        isFlat: true // Flag to indicate this is a flat map
+      };
+      
+      // Save processed data to scene flags
+      await targetScene.setFlag('spaceholder', 'processedHeightMap', processedData);
+      
+      this.processedData = processedData;
+      
+      console.log('HeightMapManager | ✓ Flat height map created successfully');
+      ui.notifications.info('Ровная карта высот создана!');
+      
+      return true;
+    } catch (error) {
+      console.error('HeightMapManager | Failed to create flat height map:', error);
+      ui.notifications.error(`Ошибка создания карты высот: ${error.message}`);
       return false;
     }
   }

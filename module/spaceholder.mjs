@@ -62,7 +62,8 @@ Hooks.once('init', function () {
     showInfluence: () => game.spaceholder.influenceManager?.drawInfluenceZones(),
     hideInfluence: () => game.spaceholder.influenceManager?.clearAll(),
     // Helper functions for height maps
-    processHeightMap: (scene) => game.spaceholder.heightMapManager?.processHeightMapFromSource(scene),
+    createHeightMapFromFile: (filePath, scene) => game.spaceholder.heightMapManager?.processFromFile(filePath, scene),
+    createFlatHeightMap: (height, scene) => game.spaceholder.heightMapManager?.createFlatMap(height, scene),
     clearProcessedHeightMap: (scene) => game.spaceholder.heightMapManager?.clearProcessedHeightMap(scene),
     showHeightMap: () => game.spaceholder.heightMapRenderer?.show(),
     hideHeightMap: () => game.spaceholder.heightMapRenderer?.hide(),
