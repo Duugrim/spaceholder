@@ -45,7 +45,17 @@ async function showCreateOverlayDialog(editor) {
               const success = await editor.renderer.heightMapManager.processFromFile(filePath);
               
               if (success) {
-                // Show the height map
+                // Clear old heightField file reference so it regenerates
+                const scene = canvas.scene;
+                if (scene) {
+                  await scene.unsetFlag('spaceholder', 'heightFieldPath');
+                }
+                // Clear renderer cache and container to force regeneration
+                editor.renderer.cachedHeightField = null;
+                editor.renderer.cachedBounds = null;
+                editor.renderer.cachedCellSize = null;
+                editor.renderer.clear(); // Clear visual content
+                // Show the height map (will render from scratch)
                 await editor.renderer.show();
               }
             } else {
@@ -54,7 +64,17 @@ async function showCreateOverlayDialog(editor) {
               const success = await editor.renderer.heightMapManager.createFlatMap(20);
               
               if (success) {
-                // Show the height map
+                // Clear old heightField file reference so it regenerates
+                const scene = canvas.scene;
+                if (scene) {
+                  await scene.unsetFlag('spaceholder', 'heightFieldPath');
+                }
+                // Clear renderer cache and container to force regeneration
+                editor.renderer.cachedHeightField = null;
+                editor.renderer.cachedBounds = null;
+                editor.renderer.cachedCellSize = null;
+                editor.renderer.clear(); // Clear visual content
+                // Show the height map (will render from scratch)
                 await editor.renderer.show();
               }
             }
