@@ -27,6 +27,14 @@ import { HeightMapManager } from './helpers/heightmap-manager.mjs';
 import { HeightMapRenderer } from './helpers/heightmap-renderer.mjs';
 import { HeightMapEditor } from './helpers/heightmap-editor.mjs';
 import { registerHeightMapSceneConfig, installHeightMapSceneConfigHooks } from './helpers/heightmap-scene-config.mjs';
+// Biome map manager and renderer
+import { BiomeManager } from './helpers/biome-manager.mjs';
+import { BiomeRenderer } from './helpers/biome-renderer.mjs';
+import { BiomeEditor } from './helpers/biome-editor.mjs';
+// Terrain field manager (shared grid for heights + biomes)
+import { TerrainFieldManager } from './helpers/terrain-field-manager.mjs';
+// Unified terrain controls (replaces separate heightmap/biome tabs)
+import { registerTerrainControls } from './helpers/terrain-controls.mjs';
 // import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
 // import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
 // import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
@@ -70,6 +78,12 @@ Hooks.once('init', function () {
     toggleHeightMap: () => game.spaceholder.heightMapRenderer?.toggle(),
     setHeightMapMode: (mode) => game.spaceholder.heightMapRenderer?.setRenderMode(mode),
     getHeightMapMode: () => game.spaceholder.heightMapRenderer?.getRenderMode(),
+    // Helper functions for biome maps
+    createBiomeMapFromFile: (filePath, scene) => game.spaceholder.biomeManager?.processFromFile(filePath, scene),
+    clearProcessedBiomeMap: (scene) => game.spaceholder.biomeManager?.clearProcessedBiomeMap(scene),
+    showBiomeMap: () => game.spaceholder.biomeRenderer?.show(),
+    hideBiomeMap: () => game.spaceholder.biomeRenderer?.hide(),
+    toggleBiomeMap: () => game.spaceholder.biomeRenderer?.toggle(),
     // Direct access for debugging
     renderer: null,  // Will be set below
     manager: null,   // Will be set below
@@ -96,14 +110,40 @@ Hooks.once('init', function () {
   
   // Initialize Height Map Renderer (pass manager as dependency)
   game.spaceholder.heightMapRenderer = new HeightMapRenderer(game.spaceholder.heightMapManager);
+  game.spaceholder.heightMapRenderer.terrainFieldManager = game.spaceholder.terrainFieldManager;
   game.spaceholder.renderer = game.spaceholder.heightMapRenderer;  // Alias for convenience
   
   // Initialize Height Map Editor (pass renderer as dependency)
   // Must be in init hook so it's ready for getSceneControlButtons
   game.spaceholder.heightMapEditor = new HeightMapEditor(game.spaceholder.heightMapRenderer);
   game.spaceholder.editor = game.spaceholder.heightMapEditor;  // Alias for convenience
-  game.spaceholder.heightMapEditor.initialize();
-  console.log('SpaceHolder | Height map editor initialized in init hook');
+  // DON'T initialize heightMapEditor - it would add its own tab
+  // game.spaceholder.heightMapEditor.initialize();
+  console.log('SpaceHolder | Height map editor created (tab registration disabled)');
+  
+  // Initialize Terrain Field Manager (shared grid for heights + biomes)
+  game.spaceholder.terrainFieldManager = new TerrainFieldManager();
+  console.log('SpaceHolder | Terrain field manager initialized');
+  
+  // Initialize Biome Manager
+  game.spaceholder.biomeManager = new BiomeManager();
+  game.spaceholder.biomeManager.initialize();
+  
+  // Initialize Biome Renderer (pass manager as dependency)
+  game.spaceholder.biomeRenderer = new BiomeRenderer(game.spaceholder.biomeManager);
+  game.spaceholder.biomeRenderer.terrainFieldManager = game.spaceholder.terrainFieldManager;
+  game.spaceholder.biomeRenderer.initialize();
+  
+  // Initialize Biome Editor (pass renderer as dependency)
+  game.spaceholder.biomeEditor = new BiomeEditor(game.spaceholder.biomeRenderer);
+  // DON'T initialize biomeEditor - it would add its own tab
+  // game.spaceholder.biomeEditor.initialize();
+  console.log('SpaceHolder | Biome manager, renderer and editor created (tab registration disabled)');
+  
+  // Register unified terrain controls (replaces separate heightmap/biome tabs)
+  Hooks.on('getSceneControlButtons', (controls) => {
+    registerTerrainControls(controls);
+  });
 
   // Install Token Pointer hooks
   installTokenPointerHooks();

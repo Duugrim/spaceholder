@@ -11,10 +11,13 @@ export class HeightMapRenderer {
     this.isVisible = false;
     this.renderMode = HEIGHTMAP_SETTINGS.defaultRenderMode;
     
-    // Cache for heightField
+    // Cache for heightField (legacy)
     this.cachedHeightField = null;
     this.cachedBounds = null;
     this.cachedCellSize = null;
+    
+    // Shared terrain field manager (will be set from outside)
+    this.terrainFieldManager = null;
   }
 
   /**
@@ -46,6 +49,11 @@ export class HeightMapRenderer {
     this.cachedBounds = null;
     this.cachedCellSize = null;
     this.isVisible = false;
+    
+    // Clear shared terrain field cache
+    if (this.terrainFieldManager) {
+      this.terrainFieldManager.clearCache();
+    }
     
     this.setupContainerLayer();
     
@@ -137,30 +145,23 @@ export class HeightMapRenderer {
 
     const processedData = this.heightMapManager.getProcessedData();
     
-    // Try to load heightField from file or cache
-    let heightField, bounds, cellSize;
-    
-    if (this.cachedHeightField) {
-      console.log('HeightMapRenderer | Using cached heightField');
-      heightField = this.cachedHeightField;
-      bounds = this.cachedBounds;
-      cellSize = this.cachedCellSize;
+    // Try to use shared terrainField
+    let terrainField, bounds, cellSize;
+    const cached = this.terrainFieldManager?.getCachedTerrainField();
+    if (cached && cached.terrainField?.heights) {
+      console.log('HeightMapRenderer | Using cached terrainField');
+      terrainField = cached.terrainField;
+      bounds = cached.bounds;
+      cellSize = cached.cellSize;
     } else {
-      // Try to load from file
-      const loadedData = await this.heightMapManager.loadHeightFieldFromFile();
-      
-      if (loadedData) {
-        console.log('HeightMapRenderer | Loaded heightField from file');
-        heightField = loadedData.heightField;
-        bounds = loadedData.bounds;
-        cellSize = loadedData.cellSize;
-        
-        // Cache it
-        this.cachedHeightField = heightField;
-        this.cachedBounds = bounds;
-        this.cachedCellSize = cellSize;
+      const loaded = await this.terrainFieldManager?.loadTerrainFieldFromFile(canvas.scene);
+      if (loaded && loaded.terrainField?.heights) {
+        console.log('HeightMapRenderer | Loaded terrainField from file');
+        terrainField = loaded.terrainField;
+        bounds = loaded.bounds;
+        cellSize = loaded.cellSize;
       } else {
-        // Generate from scratch
+        // Fallback to previous generation path
         console.log('HeightMapRenderer | Generating heightField from source data');
         
         bounds = this._calculateBounds(processedData.heightPoints);
@@ -170,18 +171,39 @@ export class HeightMapRenderer {
         }
         
         cellSize = canvas.grid.size / 4;
-        heightField = this._createHeightField(processedData.heightPoints, bounds, cellSize);
+        const heightField = this._createHeightField(processedData.heightPoints, bounds, cellSize);
         
-        // Cache it
-        this.cachedHeightField = heightField;
-        this.cachedBounds = bounds;
-        this.cachedCellSize = cellSize;
+        // Prepare terrainField
+        const rows = heightField.rows;
+        const cols = heightField.cols;
+        terrainField = {
+          heights: heightField.values,
+          biomes: new Uint8Array(rows * cols), // empty; will be filled by biome renderer later
+          rows,
+          cols
+        };
         
-        // Save to file for future use
-        await this.heightMapManager.saveHeightFieldToFile(heightField, bounds, cellSize);
-        console.log('HeightMapRenderer | HeightField saved to file');
+        // Cache and save via terrain manager
+        if (this.terrainFieldManager) {
+          this.terrainFieldManager.updateCache(terrainField, bounds, cellSize);
+          await this.terrainFieldManager.saveTerrainFieldToFile(
+            terrainField,
+            bounds,
+            cellSize,
+            canvas.scene,
+            { heightSource: 'Azgaar FMG' }
+          );
+        }
       }
     }
+    
+    // For rendering logic below, adapt to use terrainField
+    const heightField = { values: terrainField.heights, rows: terrainField.rows, cols: terrainField.cols };
+    
+    // Update legacy cache (for editor compatibility)
+    this.cachedHeightField = heightField;
+    this.cachedBounds = bounds;
+    this.cachedCellSize = cellSize;
     
     // Draw based on render mode
     if (this.renderMode === 'filled') {

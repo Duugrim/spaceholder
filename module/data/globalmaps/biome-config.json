@@ -1,0 +1,25 @@
+{
+  "biomeColors": [
+    { "id": 0, "name": "Marine", "color": "003366" },
+    { "id": 1, "name": "Hot desert", "color": "FFCC66" },
+    { "id": 2, "name": "Cold desert", "color": "CCCCBB" },
+    { "id": 3, "name": "Savanna", "color": "DDDD88" },
+    { "id": 4, "name": "Grassland", "color": "88CC55" },
+    { "id": 5, "name": "Tropical seasonal forest", "color": "66AA44" },
+    { "id": 6, "name": "Temperate deciduous forest", "color": "558833" },
+    { "id": 7, "name": "Tropical rainforest", "color": "336622" },
+    { "id": 8, "name": "Temperate rainforest", "color": "447744" },
+    { "id": 9, "name": "Taiga", "color": "667744" },
+    { "id": 10, "name": "Tundra", "color": "AABB99" },
+    { "id": 11, "name": "Glacier", "color": "EEFFFF" },
+    { "id": 12, "name": "Wetland", "color": "5588AA" }
+  ],
+  "settings": {
+    "defaultRenderMode": "filled",
+    "fillAlpha": 0.5,
+    "showBorders": false,
+    "borderWidth": 1,
+    "borderAlpha": 0.3,
+    "borderColor": 0
+  }
+}
