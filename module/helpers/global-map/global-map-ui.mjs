@@ -238,6 +238,24 @@ export function registerGlobalMapUI(controls, spaceholder) {
         },
         button: true,
       },
+
+      'toggle-render-mode': {
+        name: 'toggle-render-mode',
+        title: 'Режим отображения (контуры/ячейки)',
+        icon: 'fas fa-layer-group',
+        onChange: async (isActive) => {
+          if (!spaceholder.globalMapRenderer?.currentGrid) {
+            ui.notifications.warn('Нет загруженной карты');
+            return;
+          }
+
+          const currentMode = spaceholder.globalMapRenderer.renderMode;
+          const newMode = currentMode === 'contours' ? 'cells' : 'contours';
+          spaceholder.globalMapRenderer.setRenderMode(newMode);
+          ui.notifications.info(`Режим: ${newMode === 'contours' ? 'контуры' : 'ячейки'}`);
+        },
+        button: true,
+      },
     },
   };
 
