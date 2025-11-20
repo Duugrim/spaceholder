@@ -23,18 +23,22 @@ import { ShotManager } from './helpers/shot-manager.mjs';
 // Influence manager for global objects influence zones
 import { InfluenceManager } from './helpers/influence-manager.mjs';
 // Height map manager and renderer
-import { HeightMapManager } from './helpers/heightmap-manager.mjs';
-import { HeightMapRenderer } from './helpers/heightmap-renderer.mjs';
-import { HeightMapEditor } from './helpers/heightmap-editor.mjs';
-import { registerHeightMapSceneConfig, installHeightMapSceneConfigHooks } from './helpers/heightmap-scene-config.mjs';
-// Biome map manager and renderer
-import { BiomeManager } from './helpers/biome-manager.mjs';
-import { BiomeRenderer } from './helpers/biome-renderer.mjs';
-import { BiomeEditor } from './helpers/biome-editor.mjs';
-// Terrain field manager (shared grid for heights + biomes)
-import { TerrainFieldManager } from './helpers/terrain-field-manager.mjs';
-// Unified terrain controls (replaces separate heightmap/biome tabs)
-import { registerTerrainControls } from './helpers/terrain-controls.mjs';
+// DEPRECATED: Old height/biome map system - disabled pending replacement
+// import { HeightMapManager } from './helpers/heightmap-manager.mjs';
+// import { HeightMapRenderer } from './helpers/heightmap-renderer.mjs';
+// import { HeightMapEditor } from './helpers/heightmap-editor.mjs';
+// import { registerHeightMapSceneConfig, installHeightMapSceneConfigHooks } from './helpers/heightmap-scene-config.mjs';
+// import { BiomeManager } from './helpers/biome-manager.mjs';
+// import { BiomeRenderer } from './helpers/biome-renderer.mjs';
+// import { BiomeEditor } from './helpers/biome-editor.mjs';
+// import { TerrainFieldManager } from './helpers/terrain-field-manager.mjs';
+// import { registerTerrainControls } from './helpers/terrain-controls.mjs';
+
+// NEW: Global map system (replacement for height/biome maps)
+import { GlobalMapProcessing } from './helpers/global-map/global-map-processing.mjs';
+import { GlobalMapRenderer } from './helpers/global-map/global-map-renderer.mjs';
+import { GlobalMapTools } from './helpers/global-map/global-map-tools.mjs';
+import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 // import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
 // import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
 // import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
@@ -55,9 +59,9 @@ Hooks.once('init', function () {
   registerSpaceholderSettingsMenus();
   installTokenPointerTabs();
   
-  // Register height map scene configuration
-  registerHeightMapSceneConfig();
-  installHeightMapSceneConfigHooks();
+  // DEPRECATED: Old height map scene configuration - disabled
+  // registerHeightMapSceneConfig();
+  // installHeightMapSceneConfigHooks();
 
   // Add utility classes to the global game object so that they're more easily
   // accessible in global contexts.
@@ -69,24 +73,11 @@ Hooks.once('init', function () {
     // Helper functions for influence zones
     showInfluence: () => game.spaceholder.influenceManager?.drawInfluenceZones(),
     hideInfluence: () => game.spaceholder.influenceManager?.clearAll(),
-    // Helper functions for height maps
-    createHeightMapFromFile: (filePath, scene) => game.spaceholder.heightMapManager?.processFromFile(filePath, scene),
-    createFlatHeightMap: (height, scene) => game.spaceholder.heightMapManager?.createFlatMap(height, scene),
-    clearProcessedHeightMap: (scene) => game.spaceholder.heightMapManager?.clearProcessedHeightMap(scene),
-    showHeightMap: () => game.spaceholder.heightMapRenderer?.show(),
-    hideHeightMap: () => game.spaceholder.heightMapRenderer?.hide(),
-    toggleHeightMap: () => game.spaceholder.heightMapRenderer?.toggle(),
-    setHeightMapMode: (mode) => game.spaceholder.heightMapRenderer?.setRenderMode(mode),
-    getHeightMapMode: () => game.spaceholder.heightMapRenderer?.getRenderMode(),
-    // Helper functions for biome maps
-    createBiomeMapFromFile: (filePath, scene) => game.spaceholder.biomeManager?.processFromFile(filePath, scene),
-    clearProcessedBiomeMap: (scene) => game.spaceholder.biomeManager?.clearProcessedBiomeMap(scene),
-    showBiomeMap: () => game.spaceholder.biomeRenderer?.show(),
-    hideBiomeMap: () => game.spaceholder.biomeRenderer?.hide(),
-    toggleBiomeMap: () => game.spaceholder.biomeRenderer?.toggle(),
-    // Direct access for debugging
-    renderer: null,  // Will be set below
-    manager: null,   // Will be set below
+    // Global map helpers (new system)
+    // TODO: Add new global map helpers when ready
+    
+    // DEPRECATED: Old height/biome map helpers - no longer used
+    // (kept structure for reference during migration)
   };
 
   // Initialize Token Pointer and expose
@@ -104,47 +95,23 @@ Hooks.once('init', function () {
   // Initialize Influence Manager
   game.spaceholder.influenceManager = new InfluenceManager();
   
-  // Initialize Height Map Manager
-  game.spaceholder.heightMapManager = new HeightMapManager();
-  game.spaceholder.manager = game.spaceholder.heightMapManager;  // Alias for convenience
+  // DEPRECATED: Old map systems - disabled
+  // game.spaceholder.heightMapManager = new HeightMapManager();
+  // game.spaceholder.biomeManager = new BiomeManager();
+  // game.spaceholder.terrainFieldManager = new TerrainFieldManager();
+  console.log('SpaceHolder | Old height/biome map systems DISABLED. Migration in progress.');
   
-  // Initialize Height Map Renderer (pass manager as dependency)
-  game.spaceholder.heightMapRenderer = new HeightMapRenderer(game.spaceholder.heightMapManager);
-  game.spaceholder.heightMapRenderer.terrainFieldManager = game.spaceholder.terrainFieldManager;
-  game.spaceholder.renderer = game.spaceholder.heightMapRenderer;  // Alias for convenience
+  // NEW: Global map system
+  game.spaceholder.globalMapProcessing = new GlobalMapProcessing();
+  game.spaceholder.globalMapRenderer = new GlobalMapRenderer();
+  game.spaceholder.globalMapRenderer.initialize();
+  game.spaceholder.globalMapTools = new GlobalMapTools(game.spaceholder.globalMapRenderer);
+  console.log('SpaceHolder | Global map system initialized');
   
-  // Initialize Height Map Editor (pass renderer as dependency)
-  // Must be in init hook so it's ready for getSceneControlButtons
-  game.spaceholder.heightMapEditor = new HeightMapEditor(game.spaceholder.heightMapRenderer);
-  game.spaceholder.editor = game.spaceholder.heightMapEditor;  // Alias for convenience
-  // DON'T initialize heightMapEditor - it would add its own tab
-  // game.spaceholder.heightMapEditor.initialize();
-  console.log('SpaceHolder | Height map editor created (tab registration disabled)');
-  
-  // Initialize Terrain Field Manager (shared grid for heights + biomes)
-  game.spaceholder.terrainFieldManager = new TerrainFieldManager();
-  console.log('SpaceHolder | Terrain field manager initialized');
-  
-  // Initialize Biome Manager
-  game.spaceholder.biomeManager = new BiomeManager();
-  game.spaceholder.biomeManager.initialize();
-  
-  // Initialize Biome Renderer (pass manager as dependency)
-  game.spaceholder.biomeRenderer = new BiomeRenderer(game.spaceholder.biomeManager);
-  game.spaceholder.biomeRenderer.terrainFieldManager = game.spaceholder.terrainFieldManager;
-  game.spaceholder.biomeRenderer.initialize();
-  
-  // Initialize Biome Editor (pass renderer as dependency)
-  game.spaceholder.biomeEditor = new BiomeEditor(game.spaceholder.biomeRenderer);
-  // DON'T initialize biomeEditor - it would add its own tab
-  // game.spaceholder.biomeEditor.initialize();
-  console.log('SpaceHolder | Biome manager, renderer and editor created (tab registration disabled)');
-  
-  // Register unified terrain controls (replaces separate heightmap/biome tabs)
+  // Register global map UI controls
   Hooks.on('getSceneControlButtons', (controls) => {
-    registerTerrainControls(controls);
+    registerGlobalMapUI(controls, game.spaceholder);
   });
-
   // Install Token Pointer hooks
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks
@@ -308,25 +275,8 @@ Hooks.once('ready', async function () {
     ui.notifications.error('Failed to initialize influence manager. Check console for details.');
   }
   
-  // Initialize height map manager
-  try {
-    game.spaceholder.heightMapManager.initialize();
-    console.log('SpaceHolder | Height map manager initialized successfully');
-  } catch (error) {
-    console.error('SpaceHolder | Failed to initialize height map manager:', error);
-    ui.notifications.error('Failed to initialize height map manager. Check console for details.');
-  }
-  
-  // Initialize height map renderer
-  try {
-    game.spaceholder.heightMapRenderer.initialize();
-    console.log('SpaceHolder | Height map renderer initialized successfully');
-  } catch (error) {
-    console.error('SpaceHolder | Failed to initialize height map renderer:', error);
-    ui.notifications.error('Failed to initialize height map renderer. Check console for details.');
-  }
-  
-  // Height map editor already initialized in init hook
+  // DEPRECATED: Old height map systems - no longer initialized
+  // game.spaceholder.heightMapManager, heightMapRenderer, etc are disabled
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
   Hooks.on('hotbarDrop', (bar, data, slot) => createItemMacro(data, slot));

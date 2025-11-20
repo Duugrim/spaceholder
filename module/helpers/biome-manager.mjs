@@ -1,6 +1,10 @@
 /**
  * Biome Manager
  * Manages loading and processing of biome data from Azgaar's Fantasy Map Generator
+ * 
+ * @deprecated This component is deprecated and scheduled for replacement.
+ * Used only for reading existing processed biome maps from scene flags.
+ * New terrain systems should use individual data handlers instead.
  */
 export class BiomeManager {
   constructor() {
@@ -10,8 +14,10 @@ export class BiomeManager {
 
   /**
    * Initialize the biome manager
+   * @deprecated
    */
   initialize() {
+    console.warn('DEPRECATED BiomeManager | This component is scheduled for replacement. See .deprecated.md');
     console.log('BiomeManager | Initializing...');
     
     // Hook into scene changes to load processed biome data

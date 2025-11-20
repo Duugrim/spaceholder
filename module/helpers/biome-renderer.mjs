@@ -3,6 +3,9 @@ import { BIOME_SETTINGS, getBiomeColor } from './biome-config.mjs';
 /**
  * Biome Renderer
  * Renders biome visualization as colored cells
+ * 
+ * @deprecated This component is deprecated and scheduled for replacement.
+ * Currently used for rendering legacy biome data only.
  */
 export class BiomeRenderer {
   constructor(biomeManager) {
@@ -16,8 +19,10 @@ export class BiomeRenderer {
 
   /**
    * Initialize the renderer
+   * @deprecated
    */
   initialize() {
+    console.warn('DEPRECATED BiomeRenderer | This component is scheduled for replacement. See .deprecated.md');
     console.log('BiomeRenderer | Initializing...');
     
     // Hook into canvas ready to set up rendering

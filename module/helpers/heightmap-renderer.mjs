@@ -3,6 +3,9 @@ import { HEIGHTMAP_SETTINGS } from './heightmap-config.mjs';
 /**
  * Height Map Renderer using Metaballs
  * Renders smooth height map visualization using metaball technique
+ * 
+ * @deprecated This component is deprecated and scheduled for replacement.
+ * Currently used for rendering legacy height map data only.
  */
 export class HeightMapRenderer {
   constructor(heightMapManager) {
@@ -22,8 +25,10 @@ export class HeightMapRenderer {
 
   /**
    * Initialize the renderer
+   * @deprecated
    */
   initialize() {
+    console.warn('DEPRECATED HeightMapRenderer | This component is scheduled for replacement. See .deprecated.md');
     console.log('HeightMapRenderer | Initializing...');
     
     // Hook into canvas ready to set up rendering

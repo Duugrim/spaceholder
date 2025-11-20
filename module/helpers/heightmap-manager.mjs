@@ -3,6 +3,10 @@ import { HEIGHTMAP_CONTOUR_LEVELS } from './heightmap-config.mjs';
 /**
  * Height Map Manager
  * Manages loading, parsing and processing of height map data from Azgaar's Fantasy Map Generator
+ * 
+ * @deprecated This component is deprecated and scheduled for replacement.
+ * Used only for reading existing processed height maps from scene flags.
+ * New terrain systems should use individual data handlers instead.
  */
 export class HeightMapManager {
   constructor() {
@@ -12,8 +16,10 @@ export class HeightMapManager {
 
   /**
    * Initialize the height map manager
+   * @deprecated
    */
   initialize() {
+    console.warn('DEPRECATED HeightMapManager | This component is scheduled for replacement. See .deprecated.md');
     console.log('HeightMapManager | Initializing...');
     
     // Hook into scene changes to load processed height map
