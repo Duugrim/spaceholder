@@ -161,6 +161,39 @@ export function registerGlobalMapUI(controls, spaceholder) {
         button: true,
       },
 
+'save-map': {
+        name: 'save-map',
+        title: 'Сохранить в файл',
+        icon: 'fas fa-save',
+        onChange: async (isActive) => {
+          if (!spaceholder.globalMapRenderer?.currentGrid) {
+            ui.notifications.warn('Нет карты для сохранения');
+            return;
+          }
+          const ok = await spaceholder.globalMapProcessing.saveGridToFile(canvas.scene);
+          if (!ok) {
+            ui.notifications.error('Не удалось сохранить карту');
+          }
+        },
+        button: true,
+      },
+
+      'load-map': {
+        name: 'load-map',
+        title: 'Загрузить из файла',
+        icon: 'fas fa-upload',
+        onChange: async (isActive) => {
+          const loaded = await spaceholder.globalMapProcessing.loadGridFromFile(canvas.scene);
+          if (loaded && loaded.gridData) {
+            await spaceholder.globalMapRenderer.render(loaded.gridData, loaded.metadata, { mode: 'heights' });
+            ui.notifications.info('Карта загружена из файла');
+          } else {
+            ui.notifications.warn('Файл карты не найден');
+          }
+        },
+        button: true,
+      },
+
       'edit-map': {
         name: 'edit-map',
         title: 'Редактировать карту',

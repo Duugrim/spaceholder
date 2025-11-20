@@ -4,8 +4,9 @@
  * Handles user interactions like brush editing, flattening, smoothing
  */
 export class GlobalMapTools {
-  constructor(renderer) {
+  constructor(renderer, processing) {
     this.renderer = renderer;
+    this.processing = processing;
     this.isActive = false;
     this.currentTool = 'inspect'; // 'inspect', 'raise', 'lower', 'smooth', 'flatten'
     this.brushRadius = 100;
@@ -55,11 +56,6 @@ export class GlobalMapTools {
 
     console.log('GlobalMapTools | Deactivating...');
     this.isActive = false;
-
-    // Save changes if any
-    if (this.renderer.currentGrid) {
-      await this.saveGridChanges();
-    }
 
     // Destroy UI elements
     this.destroyBrushCursor();
@@ -382,8 +378,8 @@ export class GlobalMapTools {
           <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
         </div>
 
-        <button id="global-map-save" style="width: 100%; padding: 8px; margin-top: 5px; background: #4a4; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-          Save & Exit
+        <button id="global-map-exit" style="width: 100%; padding: 8px; margin-top: 5px; background: #888; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+          Exit
         </button>
       </div>
     `;
@@ -407,7 +403,7 @@ export class GlobalMapTools {
       this.updateBrushCursorGraphics();
     });
 
-    $('#global-map-save').on('click', async () => {
+    $('#global-map-exit').on('click', async () => {
       await this.deactivate();
     });
   }

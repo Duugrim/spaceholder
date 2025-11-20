@@ -105,7 +105,7 @@ Hooks.once('init', function () {
   game.spaceholder.globalMapProcessing = new GlobalMapProcessing();
   game.spaceholder.globalMapRenderer = new GlobalMapRenderer();
   game.spaceholder.globalMapRenderer.initialize();
-  game.spaceholder.globalMapTools = new GlobalMapTools(game.spaceholder.globalMapRenderer);
+  game.spaceholder.globalMapTools = new GlobalMapTools(game.spaceholder.globalMapRenderer, game.spaceholder.globalMapProcessing);
   console.log('SpaceHolder | Global map system initialized');
   
   // Register global map UI controls

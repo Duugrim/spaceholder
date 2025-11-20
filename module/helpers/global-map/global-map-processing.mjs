@@ -257,6 +257,148 @@ export class GlobalMapProcessing {
   }
 
   /**
+   * Generate file name for a scene
+   * @param {Scene} scene - Target scene
+   * @returns {string} File name like "SceneName_uuid.json"
+   */
+  _generateFileName(scene) {
+    const sceneName = scene.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    return `${sceneName}_${scene.id}.json`;
+  }
+
+  /**
+   * Generate file path for saving grid
+   * @param {Scene} scene - Target scene
+   * @returns {string} Full file path
+   */
+  _getGridFilePath(scene) {
+    const fileName = this._generateFileName(scene);
+    return `worlds/${game.world.id}/global-maps/${fileName}`;
+  }
+
+  /**
+   * Save unified grid to file
+   * @param {Scene} scene - Target scene
+   * @returns {Promise<boolean>} Success status
+   */
+  async saveGridToFile(scene) {
+    try {
+      if (!this.unifiedGrid || !this.gridMetadata) {
+        throw new Error('No grid data to save');
+      }
+
+      const filePath = this._getGridFilePath(scene);
+      console.log(`GlobalMapProcessing | Saving grid to: ${filePath}`);
+
+      // Convert typed arrays to regular arrays for JSON serialization
+      const heightsArray = Array.from(this.unifiedGrid.heights);
+      const biomesArray = Array.from(this.unifiedGrid.biomes);
+
+      const gridData = {
+        version: 1,
+        metadata: this.gridMetadata,
+        grid: {
+          heights: heightsArray,
+          biomes: biomesArray,
+          rows: this.unifiedGrid.rows,
+          cols: this.unifiedGrid.cols,
+        },
+      };
+
+      // Create JSON blob
+      const blob = new Blob([JSON.stringify(gridData, null, 2)], { type: 'application/json' });
+      const file = new File([blob], this._generateFileName(scene), { type: 'application/json' });
+
+      const directory = filePath.substring(0, filePath.lastIndexOf('/'));
+
+      // Create directory if needed
+      try {
+        await foundry.applications.apps.FilePicker.implementation.createDirectory('data', directory, {});
+      } catch (err) {
+        // Directory might already exist
+      }
+
+      // Upload file
+      const response = await foundry.applications.apps.FilePicker.implementation.upload(
+        'data',
+        directory,
+        file,
+        {}
+      );
+
+      if (response) {
+        // Save path to scene flag for later loading
+        await scene.setFlag('spaceholder', 'globalMapGridPath', response.path);
+        console.log(`GlobalMapProcessing | ✓ Grid saved to ${response.path}`);
+        ui.notifications.info('Global map saved successfully');
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('GlobalMapProcessing | Failed to save grid:', error);
+      ui.notifications.error(`Failed to save grid: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Load unified grid from file
+   * @param {Scene} scene - Target scene
+   * @returns {Promise<{gridData, metadata}|null>} Loaded grid or null if not found
+   */
+  async loadGridFromFile(scene) {
+    try {
+      // Try to load from scene flag first
+      let savedPath = scene.getFlag('spaceholder', 'globalMapGridPath');
+
+      if (!savedPath) {
+        // Fallback: compute expected path by convention
+        savedPath = this._getGridFilePath(scene);
+        console.log('GlobalMapProcessing | No saved grid path in scene flags; trying default path:', savedPath);
+      }
+
+      console.log(`GlobalMapProcessing | Loading grid from: ${savedPath}`);
+
+      const response = await fetch(savedPath);
+      if (!response.ok) {
+        console.warn(`GlobalMapProcessing | Grid file not found: ${savedPath}`);
+        return null;
+      }
+
+      const gridData = await response.json();
+
+      // Validate version
+      if (gridData.version !== 1) {
+        console.warn(`GlobalMapProcessing | Unsupported grid version: ${gridData.version}`);
+        return null;
+      }
+
+      // Convert arrays back to typed arrays
+      const unifiedGrid = {
+        heights: new Float32Array(gridData.grid.heights),
+        biomes: new Uint8Array(gridData.grid.biomes),
+        rows: gridData.grid.rows,
+        cols: gridData.grid.cols,
+      };
+
+      // Store in instance
+      this.unifiedGrid = unifiedGrid;
+      this.gridMetadata = gridData.metadata;
+
+      console.log(`GlobalMapProcessing | ✓ Grid loaded: ${unifiedGrid.rows}x${unifiedGrid.cols}`);
+
+      return {
+        gridData: unifiedGrid,
+        metadata: gridData.metadata,
+      };
+    } catch (error) {
+      console.error('GlobalMapProcessing | Failed to load grid:', error);
+      return null;
+    }
+  }
+
+  /**
    * Clear processed data
    */
   clear() {
