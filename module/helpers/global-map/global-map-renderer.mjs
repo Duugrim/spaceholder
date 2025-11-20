@@ -124,17 +124,17 @@ export class GlobalMapRenderer {
     const { heights, rows, cols } = gridData;
     const { cellSize, bounds, heightStats } = metadata;
 
-    // Create contour levels (5 levels by default)
+    // Create contour levels (20 levels for better detail)
     const minHeight = heightStats.min;
     const maxHeight = heightStats.max;
     const range = maxHeight - minHeight;
 
     const levels = [];
-    for (let i = 1; i <= 5; i++) {
-      const level = minHeight + (range * i / 5);
+    for (let i = 1; i <= 20; i++) {
+      const level = minHeight + (range * i / 20);
       levels.push({
         level,
-        color: this._heightToColor(i / 5),
+        color: this._heightToColor(i / 20),
       });
     }
 
@@ -234,14 +234,14 @@ export class GlobalMapRenderer {
     const graphics = new PIXI.Graphics();
 
     // Draw black outline first (for better visibility)
-    graphics.lineStyle(4, 0x000000, 0.6);
+    graphics.lineStyle(2, 0x000000, 0.6);
     for (const segment of segments) {
       graphics.moveTo(segment[0].x, segment[0].y);
       graphics.lineTo(segment[1].x, segment[1].y);
     }
 
     // Draw colored contour lines
-    graphics.lineStyle(2, color, 0.8);
+    graphics.lineStyle(1, color, 0.8);
     for (const segment of segments) {
       graphics.moveTo(segment[0].x, segment[0].y);
       graphics.lineTo(segment[1].x, segment[1].y);
@@ -258,7 +258,7 @@ export class GlobalMapRenderer {
    * @private
    */
   _drawSlopeMarks(graphics, segments, heightValues, rows, cols, bounds, cellSize, color) {
-    const hachureLength = 8;
+    const hachureLength = 4;
     const hachureSpacing = 25;
 
     for (const segment of segments) {

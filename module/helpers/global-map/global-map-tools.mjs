@@ -8,19 +8,22 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'inspect'; // 'inspect', 'raise', 'lower', 'smooth', 'flatten'
+    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.targetHeight = 50;
+    this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
 
     // Mouse state
     this.isMouseDown = false;
     this.lastPosition = null;
     this.tempOverlay = null; // Temporary delta layer for current stroke
+    this.affectedCells = null; // Track which cells were affected by current stroke
 
     // UI elements
     this.brushCursor = null;
     this.brushPreview = null;
+    this.overlayPreview = null; // Overlay showing affected cells
     this.inspectLabel = null;
   }
 
@@ -43,6 +46,7 @@ export class GlobalMapTools {
 
     // Create UI elements
     this.createBrushCursor();
+    this.createOverlayPreview();
     this.showToolsUI();
 
     console.log('GlobalMapTools | ✓ Activated');
@@ -59,6 +63,7 @@ export class GlobalMapTools {
 
     // Destroy UI elements
     this.destroyBrushCursor();
+    this.destroyOverlayPreview();
     this.hideToolsUI();
 
     console.log('GlobalMapTools | ✓ Deactivated');
@@ -68,7 +73,7 @@ export class GlobalMapTools {
    * Set current tool
    */
   setTool(tool) {
-    if (['inspect', 'raise', 'lower', 'smooth', 'flatten'].includes(tool)) {
+    if (['raise', 'lower', 'smooth', 'flatten'].includes(tool)) {
       this.currentTool = tool;
       this.updateBrushCursorGraphics();
       console.log(`GlobalMapTools | Tool changed to: ${tool}`);
@@ -106,9 +111,11 @@ export class GlobalMapTools {
       // Start temporary overlay for this stroke
       const gridSize = this.renderer.currentGrid.heights.length;
       this.tempOverlay = new Float32Array(gridSize);
+      this.affectedCells = new Set();
 
       const pos = event.data.getLocalPosition(canvas.stage);
       this.applyBrushStroke(pos.x, pos.y);
+      this.updateOverlayPreview();
       this.lastPosition = pos;
     });
 
@@ -121,7 +128,7 @@ export class GlobalMapTools {
       // Update cursor
       this.updateBrushCursorPosition(pos.x, pos.y);
 
-      if (!this.isMouseDown || this.currentTool === 'inspect') return;
+      if (!this.isMouseDown) return;
 
       // Throttle to 10px
       if (this.lastPosition) {
@@ -131,6 +138,7 @@ export class GlobalMapTools {
 
         if (dist > 10) {
           this.applyBrushStroke(pos.x, pos.y);
+          this.updateOverlayPreview();
           this.lastPosition = pos;
         }
       }
@@ -147,6 +155,7 @@ export class GlobalMapTools {
       if (this.tempOverlay) {
         this.commitOverlay();
         this.tempOverlay = null;
+        this.clearOverlayPreview();
       }
     });
   }
@@ -188,6 +197,11 @@ export class GlobalMapTools {
           const effectiveStrength = falloff * this.brushStrength;
           const idx = row * cols + col;
 
+          // Track affected cells for smooth tool
+          if (this.currentTool === 'smooth') {
+            this.affectedCells.add(idx);
+          }
+
           switch (this.currentTool) {
             case 'raise':
               this.tempOverlay[idx] += delta * effectiveStrength;
@@ -200,7 +214,9 @@ export class GlobalMapTools {
               this.tempOverlay[idx] += (this.targetHeight - currentHeight) * effectiveStrength;
               break;
             case 'smooth':
-              // Smooth is applied on commit
+              // Mark for smoothing, processed in commit
+              break;
+            default:
               break;
           }
         }
@@ -214,7 +230,12 @@ export class GlobalMapTools {
   commitOverlay() {
     if (!this.renderer.currentGrid || !this.tempOverlay) return;
 
-    const { heights } = this.renderer.currentGrid;
+    const { heights, rows, cols } = this.renderer.currentGrid;
+
+    // Apply smooth if needed
+    if (this.currentTool === 'smooth' && this.affectedCells.size > 0) {
+      this._applySmoothOverlay(heights, rows, cols);
+    }
 
     // Apply overlay to heights
     for (let i = 0; i < heights.length; i++) {
@@ -231,6 +252,124 @@ export class GlobalMapTools {
     );
 
     console.log('GlobalMapTools | Changes applied');
+  }
+
+  /**
+   * Create overlay preview graphics
+   */
+  createOverlayPreview() {
+    if (this.overlayPreview) {
+      this.overlayPreview.destroy();
+    }
+    this.overlayPreview = new PIXI.Graphics();
+    this.overlayPreview.name = 'global-map-overlay-preview';
+    if (this.renderer.container) {
+      this.renderer.container.addChild(this.overlayPreview);
+    }
+  }
+
+  /**
+   * Update overlay preview visualization
+   */
+  updateOverlayPreview() {
+    if (!this.overlayPreview || !this.tempOverlay || !this.renderer.currentGrid) return;
+
+    this.overlayPreview.clear();
+
+    const { rows, cols } = this.renderer.currentGrid;
+    const { bounds, cellSize } = this.renderer.currentMetadata;
+
+    // Determine colors based on tool
+    let positiveColor = 0x00ff00; // default
+    let negativeColor = 0xff0000;
+    switch (this.currentTool) {
+      case 'raise':
+        positiveColor = 0x00ff00; // Green for raised
+        negativeColor = 0xff0000; // Red for lowered (shouldn't happen)
+        break;
+      case 'lower':
+        positiveColor = 0xff0000; // Red for lowered (inverted)
+        negativeColor = 0x00ff00;
+        break;
+      case 'smooth':
+      case 'flatten':
+        positiveColor = 0xffff00; // Yellow for modified
+        negativeColor = 0xffff00;
+        break;
+    }
+
+    // Draw affected cells
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        const delta = this.tempOverlay[idx];
+        if (Math.abs(delta) > 0.05) {
+          const x = bounds.minX + col * cellSize;
+          const y = bounds.minY + row * cellSize;
+          const color = delta > 0 ? positiveColor : negativeColor;
+          const alpha = Math.min(0.35, Math.abs(delta) / 10);
+          this.overlayPreview.beginFill(color, alpha);
+          this.overlayPreview.drawRect(x, y, cellSize, cellSize);
+          this.overlayPreview.endFill();
+        }
+      }
+    }
+  }
+
+  /**
+   * Clear overlay preview
+   */
+  clearOverlayPreview() {
+    if (this.overlayPreview) {
+      this.overlayPreview.clear();
+    }
+  }
+
+  /**
+   * Destroy overlay preview
+   */
+  destroyOverlayPreview() {
+    if (this.overlayPreview) {
+      this.overlayPreview.destroy();
+      this.overlayPreview = null;
+    }
+  }
+
+  /**
+   * Apply smoothing to affected cells
+   * @private
+   */
+  _applySmoothOverlay(heights, rows, cols) {
+    const smoothAmount = this.brushStrength * 0.5; // Smoothing factor
+    const tempHeights = new Float32Array(heights); // Copy for sampling
+
+    for (const idx of this.affectedCells) {
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+
+      // Average with neighbors (3x3 neighborhood)
+      let sum = heights[idx];
+      let count = 1;
+
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue; // Skip center
+
+          const nRow = row + dr;
+          const nCol = col + dc;
+
+          if (nRow >= 0 && nRow < rows && nCol >= 0 && nCol < cols) {
+            const nIdx = nRow * cols + nCol;
+            sum += tempHeights[nIdx];
+            count++;
+          }
+        }
+      }
+
+      const avg = sum / count;
+      const delta = (avg - heights[idx]) * smoothAmount;
+      this.tempOverlay[idx] += delta;
+    }
   }
 
   /**
@@ -310,9 +449,6 @@ export class GlobalMapTools {
       case 'flatten':
         color = 0x00ffff; // Cyan
         break;
-      case 'inspect':
-        color = 0x0088ff; // Blue
-        break;
     }
 
     // Draw filled circle
@@ -351,31 +487,57 @@ export class GlobalMapTools {
         color: white;
         padding: 15px;
         border-radius: 5px;
-        min-width: 200px;
+        min-width: 250px;
         z-index: 1000;
         font-family: 'Signika', sans-serif;
       ">
         <h3 style="margin-top: 0; margin-bottom: 10px;">Global Map Tools</h3>
 
-        <div style="margin-bottom: 10px;">
-          <label style="display: block; margin-bottom: 5px;">Tool:</label>
-          <select id="global-map-tool" style="width: 100%; padding: 5px;">
-            <option value="inspect" selected>Inspect</option>
-            <option value="raise">Raise Terrain</option>
-            <option value="lower">Lower Terrain</option>
-            <option value="smooth">Smooth</option>
-            <option value="flatten">Flatten</option>
-          </select>
+        <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+          <button id="tab-brush" data-tab="brush" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+            Brush
+          </button>
+          <button id="tab-global" data-tab="global" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
+            Global
+          </button>
         </div>
 
-        <div style="margin-bottom: 10px;">
-          <label style="display: block; margin-bottom: 5px;">Radius: <span id="radius-value">${this.brushRadius}</span>px</label>
-          <input type="range" id="global-map-radius" min="50" max="500" step="10" value="${this.brushRadius}" style="width: 100%;">
+        <div id="brush-tab" style="display: block;">
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Tool:</label>
+            <select id="global-map-tool" style="width: 100%; padding: 5px;">
+              <option value="raise" selected>Raise Terrain</option>
+              <option value="lower">Lower Terrain</option>
+              <option value="smooth">Smooth</option>
+              <option value="flatten">Flatten</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Radius: <span id="radius-value">${this.brushRadius}</span>px</label>
+            <input type="range" id="global-map-radius" min="50" max="500" step="10" value="${this.brushRadius}" style="width: 100%;">
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Strength: <span id="strength-value">${this.brushStrength.toFixed(1)}</span></label>
+            <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
+          </div>
         </div>
 
-        <div style="margin-bottom: 10px;">
-          <label style="display: block; margin-bottom: 5px;">Strength: <span id="strength-value">${this.brushStrength.toFixed(1)}</span></label>
-          <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
+        <div id="global-tab" style="display: none;">
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Smooth Strength: <span id="global-smooth-strength-value">${this.globalSmoothStrength.toFixed(1)}</span></label>
+            <input type="range" id="global-smooth-strength" min="0.1" max="1.0" step="0.1" value="${this.globalSmoothStrength}" style="width: 100%; margin-bottom: 10px;">
+          </div>
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Global Operations:</label>
+            <button id="global-smooth-btn" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #ffff00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+              Smooth (1 pass)
+            </button>
+            <button id="global-smooth-3-btn" style="width: 100%; padding: 8px; background: #ffdd00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+              Smooth (3 passes)
+            </button>
+          </div>
         </div>
 
         <button id="global-map-exit" style="width: 100%; padding: 8px; margin-top: 5px; background: #888; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
@@ -403,6 +565,38 @@ export class GlobalMapTools {
       this.updateBrushCursorGraphics();
     });
 
+    // Tabs switching
+    const activateTab = (tab) => {
+      if (tab === 'brush') {
+        $('#brush-tab').show();
+        $('#global-tab').hide();
+        $('#tab-brush').css('background', '#0066cc').css('font-weight', 'bold');
+        $('#tab-global').css('background', '#333').css('font-weight', 'normal');
+      } else {
+        $('#brush-tab').hide();
+        $('#global-tab').show();
+        $('#tab-global').css('background', '#0066cc').css('font-weight', 'bold');
+        $('#tab-brush').css('background', '#333').css('font-weight', 'normal');
+      }
+    };
+    $('#tab-brush').on('click', () => activateTab('brush'));
+    $('#tab-global').on('click', () => activateTab('global'));
+
+    // Global operations
+    $('#global-smooth-strength').on('input', (e) => {
+      this.globalSmoothStrength = parseFloat(e.target.value);
+      $('#global-smooth-strength-value').text(this.globalSmoothStrength.toFixed(1));
+    });
+
+    $('#global-smooth-btn').on('click', async () => {
+      $('#global-smooth-btn').prop('disabled', true);
+      try { this.globalSmooth(1); } finally { $('#global-smooth-btn').prop('disabled', false); }
+    });
+    $('#global-smooth-3-btn').on('click', async () => {
+      $('#global-smooth-3-btn').prop('disabled', true);
+      try { this.globalSmooth(3); } finally { $('#global-smooth-3-btn').prop('disabled', false); }
+    });
+
     $('#global-map-exit').on('click', async () => {
       await this.deactivate();
     });
@@ -413,5 +607,62 @@ export class GlobalMapTools {
    */
   hideToolsUI() {
     $('#global-map-tools-ui').remove();
+  }
+
+  /**
+   * Apply global smooth to entire grid
+   * @param {number} iterations - Number of smoothing passes
+   */
+  globalSmooth(iterations = 1) {
+    if (!this.renderer.currentGrid) {
+      ui.notifications.warn('No grid loaded');
+      return;
+    }
+
+    console.log(`GlobalMapTools | Applying global smooth (${iterations} iterations, strength: ${this.globalSmoothStrength})...`);
+    const { heights, rows, cols } = this.renderer.currentGrid;
+
+    for (let iter = 0; iter < iterations; iter++) {
+      const tempHeights = new Float32Array(heights);
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const idx = row * cols + col;
+
+          // Average with neighbors (3x3 neighborhood)
+          let sum = heights[idx];
+          let count = 1;
+
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (dr === 0 && dc === 0) continue;
+
+              const nRow = row + dr;
+              const nCol = col + dc;
+
+              if (nRow >= 0 && nRow < rows && nCol >= 0 && nCol < cols) {
+                const nIdx = nRow * cols + nCol;
+                sum += tempHeights[nIdx];
+                count++;
+              }
+            }
+          }
+
+          const avg = sum / count;
+          const delta = (avg - heights[idx]) * this.globalSmoothStrength;
+          heights[idx] += delta;
+        }
+      }
+    }
+
+    // Re-render
+    this.renderer.render(
+      this.renderer.currentGrid,
+      this.renderer.currentMetadata,
+      { mode: 'heights' }
+    );
+
+    console.log(`GlobalMapTools | ✓ Global smooth applied (${iterations} iterations, strength: ${this.globalSmoothStrength})`);
+    ui.notifications.info(`Global map smoothed (${iterations} ${iterations === 1 ? 'pass' : 'passes'}, strength: ${this.globalSmoothStrength.toFixed(1)})`);
   }
 }
