@@ -139,6 +139,20 @@ export function registerGlobalMapUI(controls, spaceholder) {
         button: false,
       },
 
+      'inspect-cell': {
+        name: 'inspect-cell',
+        title: 'Инспектировать клетку',
+        icon: 'fas fa-search',
+        onChange: (isActive) => {
+          if (isActive) {
+            spaceholder.globalMapTools?.activateCellInspector();
+          } else {
+            spaceholder.globalMapTools?.deactivateCellInspector();
+          }
+        },
+        button: false,
+      },
+
       'import-map': {
         name: 'import-map',
         title: 'Импортировать карту',

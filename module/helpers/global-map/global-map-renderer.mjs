@@ -1,3 +1,5 @@
+import { BiomeResolver } from './global-map-biome-resolver.mjs';
+
 /**
  * Global Map Renderer
  * Pure visualization layer - renders unified grid to canvas
@@ -10,18 +12,18 @@ export class GlobalMapRenderer {
     this.currentGrid = null; // Reference to current grid being rendered
     this.currentMetadata = null;
     this.renderMode = 'contours'; // 'contours' (default) or 'cells'
-    this.biomeColors = null; // Loaded biome colors from config
+    this.biomeResolver = new BiomeResolver(); // For dynamic biome determination
     this.showBiomes = true; // Whether to render biomes under heights
   }
 
   /**
    * Initialize renderer and set up canvas hooks
    */
-  initialize() {
+  async initialize() {
     console.log('GlobalMapRenderer | Initializing...');
 
-    // Load biome colors config
-    this._loadBiomeConfig();
+    // Load biome resolver config
+    await this.biomeResolver.loadConfig();
 
     Hooks.on('canvasReady', async () => {
       await this.onCanvasReady();
@@ -32,27 +34,6 @@ export class GlobalMapRenderer {
       setTimeout(async () => {
         await this.onCanvasReady();
       }, 100);
-    }
-  }
-
-  /**
-   * Load biome colors from config file
-   * @private
-   */
-  async _loadBiomeConfig() {
-    try {
-      const response = await fetch('systems/spaceholder/module/data/globalmaps/biome-config.json');
-      if (response.ok) {
-        const config = await response.json();
-        this.biomeColors = new Map();
-        for (const biome of config.biomeColors) {
-          this.biomeColors.set(biome.id, parseInt(biome.color, 16));
-        }
-        console.log(`GlobalMapRenderer | Loaded ${this.biomeColors.size} biome colors`);
-      }
-    } catch (error) {
-      console.warn('GlobalMapRenderer | Failed to load biome config:', error);
-      this.biomeColors = null;
     }
   }
 
@@ -144,40 +125,45 @@ export class GlobalMapRenderer {
 
   /**
    * Render biomes as colored cells (base layer)
+   * Dynamically determines biome from moisture/temperature
    * @private
    */
   _renderBiomesBase(gridData, metadata) {
-    const { biomes, rows, cols } = gridData;
+    const { moisture, temperature, heights, rows, cols } = gridData;
     const { cellSize, bounds } = metadata;
 
-    if (!biomes || !this.showBiomes) {
+    if (!moisture || !temperature || !this.showBiomes) {
       return;
     }
 
     // Check if there are any biomes to render
-    const hasBiomes = biomes.some(b => b > 0);
+    const hasBiomes = moisture.some(m => m > 0) && temperature.some(t => t > 0);
     if (!hasBiomes) {
       console.log('GlobalMapRenderer | No biomes to render');
       return;
     }
 
-    console.log('GlobalMapRenderer | Rendering biome base layer...');
+    console.log('GlobalMapRenderer | Rendering biome base layer (dynamic)...');
     const graphics = new PIXI.Graphics();
 
     // Render biome cells
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const idx = row * cols + col;
-        const biomeId = biomes[idx];
+        
+        const moistureVal = moisture[idx];
+        const temperatureVal = temperature[idx];
+        const height = heights[idx];
 
-        if (biomeId === 0) continue; // Skip marine/empty
+        // Dynamically determine biome ID from moisture/temperature/height
+        const biomeId = this.biomeResolver.getBiomeId(moistureVal, temperatureVal, height);
 
         const x = bounds.minX + col * cellSize;
         const y = bounds.minY + row * cellSize;
 
         // Get biome color
-        const color = this._getBiomeColor(biomeId);
-        const alpha = 0.6; // Semi-transparent so contours are visible
+        const color = this.biomeResolver.getBiomeColor(biomeId);
+        const alpha = 1.0; // Fully opaque
 
         graphics.beginFill(color, alpha);
         graphics.drawRect(x, y, cellSize, cellSize);
@@ -438,7 +424,7 @@ export class GlobalMapRenderer {
       cellBorder = false,
     } = renderOptions;
 
-    const { heights, biomes, rows, cols } = gridData;
+    const { heights, moisture, temperature, rows, cols } = gridData;
     const { cellSize, bounds } = metadata;
 
     const graphics = new PIXI.Graphics();
@@ -472,17 +458,20 @@ export class GlobalMapRenderer {
         }
 
         if (mode === 'biomes' || mode === 'both') {
-          const biome = biomes[idx];
+          // Dynamically determine biome from moisture/temperature
+          const biomeId = this.biomeResolver.getBiomeId(
+            moisture[idx],
+            temperature[idx],
+            heights[idx]
+          );
 
-          if (biome > 0) {
-            if (biomeColorFunc) {
-              const biomeColor = biomeColorFunc(biome);
-              color = biomeColor;
-              alpha = opacity;
-            } else {
-              color = this._biomeToColor(biome);
-              alpha = opacity;
-            }
+          if (biomeColorFunc) {
+            const biomeColor = biomeColorFunc(biomeId);
+            color = biomeColor;
+            alpha = opacity;
+          } else {
+            color = this.biomeResolver.getBiomeColor(biomeId);
+            alpha = opacity;
           }
         }
 
@@ -596,64 +585,4 @@ export class GlobalMapRenderer {
     return ((r << 16) | (g << 8) | b) & 0xFFFFFF;
   }
 
-  /**
-   * Get biome color from config or fallback to generated color
-   * @private
-   */
-  _getBiomeColor(biomeId) {
-    // Try to get color from loaded config
-    if (this.biomeColors && this.biomeColors.has(biomeId)) {
-      return this.biomeColors.get(biomeId);
-    }
-    
-    // Fallback: generate color from biome ID
-    const hue = (biomeId * 137.508) % 360; // Golden angle for good color distribution
-    return this._hslToRgb(hue, 70, 50);
-  }
-
-  /**
-   * Convert biome ID to RGB color (legacy method for compatibility)
-   * @private
-   */
-  _biomeToColor(biomeId) {
-    return this._getBiomeColor(biomeId);
-  }
-
-  /**
-   * Convert HSL to RGB
-   * @private
-   */
-  _hslToRgb(h, s, l) {
-    h = h / 360;
-    s = s / 100;
-    l = l / 100;
-
-    let r, g, b;
-
-    if (s === 0) {
-      r = g = b = l; // achromatic
-    } else {
-      const hue2rgb = (p, q, t) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1 / 6) return p + (q - p) * 6 * t;
-        if (t < 1 / 2) return q;
-        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-        return p;
-      };
-
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1 / 3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1 / 3);
-    }
-
-    const ri = Math.floor(Math.max(0, Math.min(255, r * 255)));
-    const gi = Math.floor(Math.max(0, Math.min(255, g * 255)));
-    const bi = Math.floor(Math.max(0, Math.min(255, b * 255)));
-
-    // Apply 0xFFFFFF mask to ensure positive hex value
-    return ((ri << 16) | (gi << 8) | bi) & 0xFFFFFF;
-  }
 }

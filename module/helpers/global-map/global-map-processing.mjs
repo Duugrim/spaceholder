@@ -1,3 +1,5 @@
+import { BiomeResolver } from './global-map-biome-resolver.mjs';
+
 /**
  * Global Map Processing
  * Converts raw PackCells Voronoi data into a unified rectangular height grid
@@ -5,8 +7,17 @@
  */
 export class GlobalMapProcessing {
   constructor() {
-    this.unifiedGrid = null; // Final rectangular grid: {heights, biomes, rows, cols}
+    this.unifiedGrid = null; // Final rectangular grid: {heights, moisture, temperature, rows, cols}
     this.gridMetadata = null; // Grid metadata: {bounds, cellSize, stats, timestamp}
+    this.biomeResolver = new BiomeResolver();
+  }
+
+  /**
+   * Initialize processing - load biome resolver config
+   */
+  async initialize() {
+    await this.biomeResolver.loadConfig();
+    console.log('GlobalMapProcessing | Initialized');
   }
 
   /**
@@ -94,7 +105,8 @@ export class GlobalMapProcessing {
 
     // Create unified grid by interpolating Voronoi cells
     const gridHeights = new Float32Array(gridSize);
-    const gridBiomes = new Uint8Array(gridSize);
+    const gridMoisture = new Uint8Array(gridSize);
+    const gridTemperature = new Uint8Array(gridSize);
 
     // Interpolate heights and biomes for each grid cell
     for (let row = 0; row < gridRows; row++) {
@@ -127,7 +139,11 @@ export class GlobalMapProcessing {
         }
 
         gridHeights[idx] = nearestHeight;
-        gridBiomes[idx] = nearestBiome;
+        
+        // Convert biome ID to moisture/temperature using BiomeResolver
+        const params = this.biomeResolver.getParametersFromBiomeId(nearestBiome);
+        gridMoisture[idx] = params.moisture;
+        gridTemperature[idx] = params.temperature;
       }
     }
 
@@ -136,7 +152,8 @@ export class GlobalMapProcessing {
 
     const unifiedGrid = {
       heights: gridHeights,
-      biomes: gridBiomes,
+      moisture: gridMoisture,
+      temperature: gridTemperature,
       rows: gridRows,
       cols: gridCols,
     };
@@ -196,16 +213,20 @@ export class GlobalMapProcessing {
     const gridRows = Math.ceil(sceneDims.height / cellSize);
     const gridSize = gridRows * gridCols;
 
-    // All cells have same height, no biomes
+    // All cells have same height, default moisture/temperature
     const gridHeights = new Float32Array(gridSize);
     gridHeights.fill(defaultHeight);
 
-    const gridBiomes = new Uint8Array(gridSize);
-    gridBiomes.fill(0);
+    const gridMoisture = new Uint8Array(gridSize);
+    gridMoisture.fill(3); // Default moisture = 3 (moderate)
+
+    const gridTemperature = new Uint8Array(gridSize);
+    gridTemperature.fill(3); // Default temperature = 3 (temperate)
 
     const unifiedGrid = {
       heights: gridHeights,
-      biomes: gridBiomes,
+      moisture: gridMoisture,
+      temperature: gridTemperature,
       rows: gridRows,
       cols: gridCols,
     };
@@ -292,14 +313,16 @@ export class GlobalMapProcessing {
 
       // Convert typed arrays to regular arrays for JSON serialization
       const heightsArray = Array.from(this.unifiedGrid.heights);
-      const biomesArray = Array.from(this.unifiedGrid.biomes);
+      const moistureArray = Array.from(this.unifiedGrid.moisture);
+      const temperatureArray = Array.from(this.unifiedGrid.temperature);
 
       const gridData = {
-        version: 1,
+        version: 2, // New version with moisture/temperature
         metadata: this.gridMetadata,
         grid: {
           heights: heightsArray,
-          biomes: biomesArray,
+          moisture: moistureArray,
+          temperature: temperatureArray,
           rows: this.unifiedGrid.rows,
           cols: this.unifiedGrid.cols,
         },
@@ -368,19 +391,44 @@ export class GlobalMapProcessing {
 
       const gridData = await response.json();
 
-      // Validate version
-      if (gridData.version !== 1) {
+      // Handle different versions
+      let unifiedGrid;
+      
+      if (gridData.version === 2) {
+        // Version 2: moisture/temperature format
+        unifiedGrid = {
+          heights: new Float32Array(gridData.grid.heights),
+          moisture: new Uint8Array(gridData.grid.moisture),
+          temperature: new Uint8Array(gridData.grid.temperature),
+          rows: gridData.grid.rows,
+          cols: gridData.grid.cols,
+        };
+      } else if (gridData.version === 1) {
+        // Version 1 (legacy): biomes format - convert to moisture/temperature
+        console.log('GlobalMapProcessing | Converting legacy format (v1) to v2...');
+        const heights = new Float32Array(gridData.grid.heights);
+        const biomes = new Uint8Array(gridData.grid.biomes);
+        const moisture = new Uint8Array(biomes.length);
+        const temperature = new Uint8Array(biomes.length);
+        
+        // Convert each biome to moisture/temperature
+        for (let i = 0; i < biomes.length; i++) {
+          const params = this.biomeResolver.getParametersFromBiomeId(biomes[i]);
+          moisture[i] = params.moisture;
+          temperature[i] = params.temperature;
+        }
+        
+        unifiedGrid = {
+          heights,
+          moisture,
+          temperature,
+          rows: gridData.grid.rows,
+          cols: gridData.grid.cols,
+        };
+      } else {
         console.warn(`GlobalMapProcessing | Unsupported grid version: ${gridData.version}`);
         return null;
       }
-
-      // Convert arrays back to typed arrays
-      const unifiedGrid = {
-        heights: new Float32Array(gridData.grid.heights),
-        biomes: new Uint8Array(gridData.grid.biomes),
-        rows: gridData.grid.rows,
-        cols: gridData.grid.cols,
-      };
 
       // Store in instance
       this.unifiedGrid = unifiedGrid;

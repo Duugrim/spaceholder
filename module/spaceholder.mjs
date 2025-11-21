@@ -104,9 +104,14 @@ Hooks.once('init', function () {
   // NEW: Global map system
   game.spaceholder.globalMapProcessing = new GlobalMapProcessing();
   game.spaceholder.globalMapRenderer = new GlobalMapRenderer();
-  game.spaceholder.globalMapRenderer.initialize();
   game.spaceholder.globalMapTools = new GlobalMapTools(game.spaceholder.globalMapRenderer, game.spaceholder.globalMapProcessing);
-  console.log('SpaceHolder | Global map system initialized');
+  
+  // Initialize asynchronously (load configs)
+  (async () => {
+    await game.spaceholder.globalMapProcessing.initialize();
+    await game.spaceholder.globalMapRenderer.initialize();
+    console.log('SpaceHolder | Global map system initialized');
+  })();
   
   // Register global map UI controls
   Hooks.on('getSceneControlButtons', (controls) => {

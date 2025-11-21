@@ -25,6 +25,10 @@ export class GlobalMapTools {
     this.brushPreview = null;
     this.overlayPreview = null; // Overlay showing affected cells
     this.inspectLabel = null;
+
+    // Cell inspector
+    this.isCellInspectorActive = false;
+    this.cellInspectorHandler = null;
   }
 
   /**
@@ -798,5 +802,100 @@ export class GlobalMapTools {
 
     console.log(`GlobalMapTools | ✓ Global smooth applied (${iterations} iterations, strength: ${this.globalSmoothStrength})`);
     ui.notifications.info(`Global map smoothed (${iterations} ${iterations === 1 ? 'pass' : 'passes'}, strength: ${this.globalSmoothStrength.toFixed(1)})`);
+  }
+
+  /**
+   * Activate cell inspector mode
+   */
+  activateCellInspector() {
+    if (this.isCellInspectorActive) return;
+
+    console.log('GlobalMapTools | Activating cell inspector...');
+    this.isCellInspectorActive = true;
+
+    // Show renderer if not visible
+    if (!this.renderer.isVisible) {
+      this.renderer.show();
+    }
+
+    // Create click handler
+    this.cellInspectorHandler = (event) => {
+      if (!this.isCellInspectorActive) return;
+      if (event.data.button !== 0) return; // Only left click
+
+      const pos = event.data.getLocalPosition(canvas.stage);
+      this.inspectCellAtPosition(pos.x, pos.y);
+    };
+
+    // Attach to canvas
+    if (canvas.stage) {
+      canvas.stage.on('pointerdown', this.cellInspectorHandler);
+    }
+
+    console.log('GlobalMapTools | ✓ Cell inspector activated');
+  }
+
+  /**
+   * Deactivate cell inspector mode
+   */
+  deactivateCellInspector() {
+    if (!this.isCellInspectorActive) return;
+
+    console.log('GlobalMapTools | Deactivating cell inspector...');
+    this.isCellInspectorActive = false;
+
+    // Remove event handler
+    if (canvas.stage && this.cellInspectorHandler) {
+      canvas.stage.off('pointerdown', this.cellInspectorHandler);
+      this.cellInspectorHandler = null;
+    }
+
+    console.log('GlobalMapTools | ✓ Cell inspector deactivated');
+  }
+
+  /**
+   * Inspect cell at world position and log data to console
+   * @param {number} worldX - World X coordinate
+   * @param {number} worldY - World Y coordinate
+   */
+  inspectCellAtPosition(worldX, worldY) {
+    if (!this.renderer.currentGrid || !this.renderer.currentMetadata) {
+      console.warn('GlobalMapTools | No grid loaded for inspection');
+      return;
+    }
+
+    const grid = this.renderer.currentGrid;
+    const metadata = this.renderer.currentMetadata;
+    const { heights, biomes, moisture, temperature, rows, cols } = grid;
+    const { cellSize, bounds } = metadata;
+
+    // Convert world coords to grid coords
+    const gridCol = Math.floor((worldX - bounds.minX) / cellSize);
+    const gridRow = Math.floor((worldY - bounds.minY) / cellSize);
+
+    // Check bounds
+    if (gridRow < 0 || gridRow >= rows || gridCol < 0 || gridCol >= cols) {
+      console.log('GlobalMapTools | Click outside grid bounds');
+      return;
+    }
+
+    const idx = gridRow * cols + gridCol;
+
+    // Gather cell data
+    const height = heights[idx];
+    const moist = moisture ? moisture[idx] : null;
+    const temp = temperature ? temperature[idx] : null;
+
+    // Get biome name from BiomeResolver
+    let biomeName = 'Unknown';
+    if (moist !== null && temp !== null && this.processing?.biomeResolver) {
+      // Calculate biome ID from moisture, temperature, and height
+      const biomeId = this.processing.biomeResolver.getBiomeId(moist, temp, height);
+      const params = this.processing.biomeResolver.getParametersFromBiomeId(biomeId);
+      biomeName = params.name || `Biome ${biomeId}`;
+    }
+
+    // Log to console in one line
+    console.log(`${biomeName} (${height.toFixed(1)}, ${temp ?? '?'}, ${moist ?? '?'})`);
   }
 }
