@@ -8,11 +8,15 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten'
+    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten', 'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.targetHeight = 50;
     this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
+    
+    // Temperature/moisture editing
+    this.tempOverlayTemp = null; // Temporary delta for temperature
+    this.tempOverlayMoisture = null; // Temporary delta for moisture
 
     // Mouse state
     this.isMouseDown = false;
@@ -77,7 +81,11 @@ export class GlobalMapTools {
    * Set current tool
    */
   setTool(tool) {
-    if (['raise', 'lower', 'smooth', 'roughen', 'flatten'].includes(tool)) {
+    const validTools = [
+      'raise', 'lower', 'smooth', 'roughen', 'flatten',
+      'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture'
+    ];
+    if (validTools.includes(tool)) {
       this.currentTool = tool;
       this.updateBrushCursorGraphics();
       // Clear overlay preview when switching tools
@@ -117,6 +125,8 @@ export class GlobalMapTools {
       // Start temporary overlay for this stroke
       const gridSize = this.renderer.currentGrid.heights.length;
       this.tempOverlay = new Float32Array(gridSize);
+      this.tempOverlayTemp = new Float32Array(gridSize);
+      this.tempOverlayMoisture = new Float32Array(gridSize);
       this.affectedCells = new Set();
 
       const pos = event.data.getLocalPosition(canvas.stage);
@@ -174,7 +184,7 @@ export class GlobalMapTools {
 
     const grid = this.renderer.currentGrid;
     const metadata = this.renderer.currentMetadata;
-    const { heights, biomes, rows, cols } = grid;
+    const { heights, moisture, temperature, rows, cols } = grid;
     const { cellSize, bounds } = metadata;
 
     // Convert world coords to grid coords
@@ -225,6 +235,18 @@ export class GlobalMapTools {
             case 'roughen':
               // Mark for roughening, processed in commit
               break;
+            case 'increase-temp':
+              this.tempOverlayTemp[idx] += effectiveStrength * 0.5; // Slower change
+              break;
+            case 'decrease-temp':
+              this.tempOverlayTemp[idx] -= effectiveStrength * 0.5;
+              break;
+            case 'increase-moisture':
+              this.tempOverlayMoisture[idx] += effectiveStrength * 0.5;
+              break;
+            case 'decrease-moisture':
+              this.tempOverlayMoisture[idx] -= effectiveStrength * 0.5;
+              break;
             default:
               break;
           }
@@ -239,7 +261,7 @@ export class GlobalMapTools {
   commitOverlay() {
     if (!this.renderer.currentGrid || !this.tempOverlay) return;
 
-    const { heights, rows, cols } = this.renderer.currentGrid;
+    const { heights, moisture, temperature, rows, cols } = this.renderer.currentGrid;
 
     // Apply smooth/roughen if needed
     if (this.currentTool === 'smooth' && this.affectedCells.size > 0) {
@@ -252,6 +274,24 @@ export class GlobalMapTools {
     for (let i = 0; i < heights.length; i++) {
       if (Math.abs(this.tempOverlay[i]) > 0.001) {
         heights[i] = Math.max(0, heights[i] + this.tempOverlay[i]);
+      }
+    }
+
+    // Apply overlay to temperature (clamp to 1-5)
+    if (this.tempOverlayTemp) {
+      for (let i = 0; i < temperature.length; i++) {
+        if (Math.abs(this.tempOverlayTemp[i]) > 0.01) {
+          temperature[i] = Math.max(1, Math.min(5, Math.round(temperature[i] + this.tempOverlayTemp[i])));
+        }
+      }
+    }
+
+    // Apply overlay to moisture (clamp to 1-5)
+    if (this.tempOverlayMoisture) {
+      for (let i = 0; i < moisture.length; i++) {
+        if (Math.abs(this.tempOverlayMoisture[i]) > 0.01) {
+          moisture[i] = Math.max(1, Math.min(5, Math.round(moisture[i] + this.tempOverlayMoisture[i])));
+        }
       }
     }
 
@@ -380,13 +420,37 @@ export class GlobalMapTools {
         positiveColor = 0xff9900; // Orange for roughened
         negativeColor = 0xff9900;
         break;
+      case 'increase-temp':
+        positiveColor = 0xff4444; // Red for warmer
+        negativeColor = 0x4444ff;
+        break;
+      case 'decrease-temp':
+        positiveColor = 0x4444ff; // Blue for colder
+        negativeColor = 0xff4444;
+        break;
+      case 'increase-moisture':
+        positiveColor = 0x4488ff; // Blue for wetter
+        negativeColor = 0xffaa44;
+        break;
+      case 'decrease-moisture':
+        positiveColor = 0xffaa44; // Orange for drier
+        negativeColor = 0x4488ff;
+        break;
     }
 
     // Draw affected cells
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const idx = row * cols + col;
-        const delta = previewOverlay[idx];
+        let delta = previewOverlay[idx];
+        
+        // For temperature/moisture tools, use their specific overlays
+        if (this.currentTool.includes('temp') && this.tempOverlayTemp) {
+          delta = this.tempOverlayTemp[idx];
+        } else if (this.currentTool.includes('moisture') && this.tempOverlayMoisture) {
+          delta = this.tempOverlayMoisture[idx];
+        }
+        
         if (Math.abs(delta) > 0.05) {
           const x = bounds.minX + col * cellSize;
           const y = bounds.minY + row * cellSize;
@@ -395,6 +459,8 @@ export class GlobalMapTools {
           let alpha;
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen') {
             alpha = Math.min(0.55, Math.abs(delta) / 5); // Brighter for smooth/roughen
+          } else if (this.currentTool.includes('temp') || this.currentTool.includes('moisture')) {
+            alpha = Math.min(0.6, Math.abs(delta)); // Fixed alpha for temp/moisture
           } else {
             alpha = Math.min(0.35, Math.abs(delta) / 10);
           }
@@ -586,6 +652,18 @@ export class GlobalMapTools {
       case 'flatten':
         color = 0x00ffff; // Cyan
         break;
+      case 'increase-temp':
+        color = 0xff4444; // Red for warmer
+        break;
+      case 'decrease-temp':
+        color = 0x4444ff; // Blue for colder
+        break;
+      case 'increase-moisture':
+        color = 0x4488ff; // Blue for wetter
+        break;
+      case 'decrease-moisture':
+        color = 0xffaa44; // Orange for drier
+        break;
     }
 
     // Draw filled circle
@@ -648,6 +726,10 @@ export class GlobalMapTools {
             <option value="smooth">Smooth</option>
             <option value="roughen">Roughen</option>
             <option value="flatten">Flatten</option>
+            <option value="increase-temp">Increase Temperature</option>
+            <option value="decrease-temp">Decrease Temperature</option>
+            <option value="increase-moisture">Increase Moisture</option>
+            <option value="decrease-moisture">Decrease Moisture</option>
           </select>
           </div>
 
