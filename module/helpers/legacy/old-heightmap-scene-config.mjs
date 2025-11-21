@@ -1,4 +1,15 @@
 /**
+ * ⚠️ УСТАРЕВШИЙ КОД - НЕ ИСПОЛЬЗОВАТЬ ⚠️
+ * 
+ * Этот модуль является УСТАРЕВШИМ и больше НЕ используется в системе.
+ * Код сохранён только для справки и примеров старой реализации.
+ * 
+ * ❌ НЕ дорабатывайте этот код
+ * ❌ НЕ используйте его в новых функциях
+ * ✅ Используйте только как справочный материал
+ * 
+ * @deprecated Используйте новые модули terrain вместо legacy heightmap
+ * 
  * Height Map Scene Configuration Extension
  * NOTE: Height map file picker has been removed from scene configuration.
  * Use the "Create Overlay Map" button in the Height Map Editor toolbar instead.

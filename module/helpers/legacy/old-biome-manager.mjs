@@ -1,8 +1,17 @@
 /**
+ * ⚠️ УСТАРЕВШИЙ КОД - НЕ ИСПОЛЬЗОВАТЬ ⚠️
+ * 
+ * Этот модуль является УСТАРЕВШИМ и больше НЕ используется в системе.
+ * Код сохранён только для справки и примеров старой реализации.
+ * 
+ * ❌ НЕ дорабатывайте этот код
+ * ❌ НЕ используйте его в новых функциях
+ * ✅ Используйте только как справочный материал
+ * 
+ * @deprecated Используйте новые модули terrain вместо legacy biome
+ * 
  * Biome Manager
  * Manages loading and processing of biome data from Azgaar's Fantasy Map Generator
- * 
- * @deprecated This component is deprecated and scheduled for replacement.
  * Used only for reading existing processed biome maps from scene flags.
  * New terrain systems should use individual data handlers instead.
  */

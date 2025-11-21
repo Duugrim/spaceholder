@@ -1,10 +1,19 @@
-import { BIOME_SETTINGS, getBiomeColor } from './biome-config.mjs';
+import { BIOME_SETTINGS, getBiomeColor } from './old-biome-config.mjs';
 
 /**
+ * ⚠️ УСТАРЕВШИЙ КОД - НЕ ИСПОЛЬЗОВАТЬ ⚠️
+ * 
+ * Этот модуль является УСТАРЕВШИМ и больше НЕ используется в системе.
+ * Код сохранён только для справки и примеров старой реализации.
+ * 
+ * ❌ НЕ дорабатывайте этот код
+ * ❌ НЕ используйте его в новых функциях
+ * ✅ Используйте только как справочный материал
+ * 
+ * @deprecated Используйте новые модули terrain вместо legacy biome
+ * 
  * Biome Renderer
  * Renders biome visualization as colored cells
- * 
- * @deprecated This component is deprecated and scheduled for replacement.
  * Currently used for rendering legacy biome data only.
  */
 export class BiomeRenderer {
