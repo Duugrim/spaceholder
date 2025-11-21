@@ -10,6 +10,8 @@ export class GlobalMapRenderer {
     this.currentGrid = null; // Reference to current grid being rendered
     this.currentMetadata = null;
     this.renderMode = 'contours'; // 'contours' (default) or 'cells'
+    this.biomeColors = null; // Loaded biome colors from config
+    this.showBiomes = true; // Whether to render biomes under heights
   }
 
   /**
@@ -17,6 +19,9 @@ export class GlobalMapRenderer {
    */
   initialize() {
     console.log('GlobalMapRenderer | Initializing...');
+
+    // Load biome colors config
+    this._loadBiomeConfig();
 
     Hooks.on('canvasReady', async () => {
       await this.onCanvasReady();
@@ -27,6 +32,27 @@ export class GlobalMapRenderer {
       setTimeout(async () => {
         await this.onCanvasReady();
       }, 100);
+    }
+  }
+
+  /**
+   * Load biome colors from config file
+   * @private
+   */
+  async _loadBiomeConfig() {
+    try {
+      const response = await fetch('systems/spaceholder/module/data/globalmaps/biome-config.json');
+      if (response.ok) {
+        const config = await response.json();
+        this.biomeColors = new Map();
+        for (const biome of config.biomeColors) {
+          this.biomeColors.set(biome.id, parseInt(biome.color, 16));
+        }
+        console.log(`GlobalMapRenderer | Loaded ${this.biomeColors.size} biome colors`);
+      }
+    } catch (error) {
+      console.warn('GlobalMapRenderer | Failed to load biome config:', error);
+      this.biomeColors = null;
     }
   }
 
@@ -117,6 +143,53 @@ export class GlobalMapRenderer {
   }
 
   /**
+   * Render biomes as colored cells (base layer)
+   * @private
+   */
+  _renderBiomesBase(gridData, metadata) {
+    const { biomes, rows, cols } = gridData;
+    const { cellSize, bounds } = metadata;
+
+    if (!biomes || !this.showBiomes) {
+      return;
+    }
+
+    // Check if there are any biomes to render
+    const hasBiomes = biomes.some(b => b > 0);
+    if (!hasBiomes) {
+      console.log('GlobalMapRenderer | No biomes to render');
+      return;
+    }
+
+    console.log('GlobalMapRenderer | Rendering biome base layer...');
+    const graphics = new PIXI.Graphics();
+
+    // Render biome cells
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        const biomeId = biomes[idx];
+
+        if (biomeId === 0) continue; // Skip marine/empty
+
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+
+        // Get biome color
+        const color = this._getBiomeColor(biomeId);
+        const alpha = 0.6; // Semi-transparent so contours are visible
+
+        graphics.beginFill(color, alpha);
+        graphics.drawRect(x, y, cellSize, cellSize);
+        graphics.endFill();
+      }
+    }
+
+    this.container.addChild(graphics);
+    console.log('GlobalMapRenderer | ✓ Biome base layer rendered');
+  }
+
+  /**
    * Render as contour lines using marching squares
    * @private
    */
@@ -124,6 +197,10 @@ export class GlobalMapRenderer {
     const { heights, rows, cols } = gridData;
     const { cellSize, bounds, heightStats } = metadata;
 
+    // First, render biomes as base layer
+    this._renderBiomesBase(gridData, metadata);
+
+    // Then render contour lines on top
     // Create contour levels (20 levels for better detail)
     const minHeight = heightStats.min;
     const maxHeight = heightStats.max;
@@ -520,13 +597,26 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Convert biome ID to RGB color
+   * Get biome color from config or fallback to generated color
+   * @private
+   */
+  _getBiomeColor(biomeId) {
+    // Try to get color from loaded config
+    if (this.biomeColors && this.biomeColors.has(biomeId)) {
+      return this.biomeColors.get(biomeId);
+    }
+    
+    // Fallback: generate color from biome ID
+    const hue = (biomeId * 137.508) % 360; // Golden angle for good color distribution
+    return this._hslToRgb(hue, 70, 50);
+  }
+
+  /**
+   * Convert biome ID to RGB color (legacy method for compatibility)
    * @private
    */
   _biomeToColor(biomeId) {
-    // Simple hash-based color from biome ID
-    const hue = (biomeId * 137.508) % 360; // Golden angle for good color distribution
-    return this._hslToRgb(hue, 70, 50);
+    return this._getBiomeColor(biomeId);
   }
 
   /**
