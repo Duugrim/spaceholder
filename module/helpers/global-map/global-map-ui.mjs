@@ -108,6 +108,7 @@ async function showGlobalMapImportDialog(processing, renderer) {
  * @param {Object} controls - Scene controls object
  * @param {Object} spaceholder - game.spaceholder context
  */
+
 export function registerGlobalMapUI(controls, spaceholder) {
   console.log('GlobalMapUI | Registering controls...');
 

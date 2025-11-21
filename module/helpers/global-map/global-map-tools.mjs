@@ -73,9 +73,11 @@ export class GlobalMapTools {
    * Set current tool
    */
   setTool(tool) {
-    if (['raise', 'lower', 'smooth', 'flatten'].includes(tool)) {
+    if (['raise', 'lower', 'smooth', 'roughen', 'flatten'].includes(tool)) {
       this.currentTool = tool;
       this.updateBrushCursorGraphics();
+      // Clear overlay preview when switching tools
+      this.clearOverlayPreview();
       console.log(`GlobalMapTools | Tool changed to: ${tool}`);
     }
   }
@@ -197,8 +199,8 @@ export class GlobalMapTools {
           const effectiveStrength = falloff * this.brushStrength;
           const idx = row * cols + col;
 
-          // Track affected cells for smooth tool
-          if (this.currentTool === 'smooth') {
+          // Track affected cells for smooth/roughen tool
+          if (this.currentTool === 'smooth' || this.currentTool === 'roughen') {
             this.affectedCells.add(idx);
           }
 
@@ -216,6 +218,9 @@ export class GlobalMapTools {
             case 'smooth':
               // Mark for smoothing, processed in commit
               break;
+            case 'roughen':
+              // Mark for roughening, processed in commit
+              break;
             default:
               break;
           }
@@ -232,9 +237,11 @@ export class GlobalMapTools {
 
     const { heights, rows, cols } = this.renderer.currentGrid;
 
-    // Apply smooth if needed
+    // Apply smooth/roughen if needed
     if (this.currentTool === 'smooth' && this.affectedCells.size > 0) {
       this._applySmoothOverlay(heights, rows, cols);
+    } else if (this.currentTool === 'roughen' && this.affectedCells.size > 0) {
+      this._applyRoughenOverlay(heights, rows, cols);
     }
 
     // Apply overlay to heights
@@ -251,6 +258,9 @@ export class GlobalMapTools {
       { mode: 'heights' }
     );
 
+    // Recreate overlay preview after render (it gets destroyed)
+    this.createOverlayPreview();
+
     console.log('GlobalMapTools | Changes applied');
   }
 
@@ -259,12 +269,18 @@ export class GlobalMapTools {
    */
   createOverlayPreview() {
     if (this.overlayPreview) {
-      this.overlayPreview.destroy();
+      try {
+        this.overlayPreview.destroy();
+      } catch (e) {
+        // Already destroyed
+      }
     }
     this.overlayPreview = new PIXI.Graphics();
     this.overlayPreview.name = 'global-map-overlay-preview';
     if (this.renderer.container) {
       this.renderer.container.addChild(this.overlayPreview);
+    } else {
+      console.warn('GlobalMapTools | Renderer container not available for overlay');
     }
   }
 
@@ -276,8 +292,68 @@ export class GlobalMapTools {
 
     this.overlayPreview.clear();
 
-    const { rows, cols } = this.renderer.currentGrid;
+    const { heights, rows, cols } = this.renderer.currentGrid;
     const { bounds, cellSize } = this.renderer.currentMetadata;
+    const previewOverlay = new Float32Array(this.tempOverlay); // Copy current overlay
+
+    // For smooth/roughen, calculate preview of what will happen
+    if ((this.currentTool === 'smooth' || this.currentTool === 'roughen') && this.affectedCells.size > 0) {
+      if (this.currentTool === 'smooth') {
+        const smoothAmount = this.brushStrength * 0.5;
+        const tempHeights = new Float32Array(heights);
+
+        for (const idx of this.affectedCells) {
+          const row = Math.floor(idx / cols);
+          const col = idx % cols;
+          let sum = heights[idx];
+          let count = 1;
+
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (dr === 0 && dc === 0) continue;
+              const nRow = row + dr;
+              const nCol = col + dc;
+              if (nRow >= 0 && nRow < rows && nCol >= 0 && nCol < cols) {
+                const nIdx = nRow * cols + nCol;
+                sum += tempHeights[nIdx];
+                count++;
+              }
+            }
+          }
+          const avg = sum / count;
+          const delta = (avg - heights[idx]) * smoothAmount;
+          previewOverlay[idx] = delta;
+        }
+      } else if (this.currentTool === 'roughen') {
+        const roughenAmount = this.brushStrength * 0.3;
+        const tempHeights = new Float32Array(heights);
+
+        for (const idx of this.affectedCells) {
+          const row = Math.floor(idx / cols);
+          const col = idx % cols;
+          let sum = 0;
+          let count = 0;
+
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (dr === 0 && dc === 0) continue;
+              const nRow = row + dr;
+              const nCol = col + dc;
+              if (nRow >= 0 && nRow < rows && nCol >= 0 && nCol < cols) {
+                const nIdx = nRow * cols + nCol;
+                sum += tempHeights[nIdx];
+                count++;
+              }
+            }
+          }
+          if (count > 0) {
+            const avg = sum / count;
+            const delta = (heights[idx] - avg) * roughenAmount;
+            previewOverlay[idx] = delta;
+          }
+        }
+      }
+    }
 
     // Determine colors based on tool
     let positiveColor = 0x00ff00; // default
@@ -296,18 +372,28 @@ export class GlobalMapTools {
         positiveColor = 0xffff00; // Yellow for modified
         negativeColor = 0xffff00;
         break;
+      case 'roughen':
+        positiveColor = 0xff9900; // Orange for roughened
+        negativeColor = 0xff9900;
+        break;
     }
 
     // Draw affected cells
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const idx = row * cols + col;
-        const delta = this.tempOverlay[idx];
+        const delta = previewOverlay[idx];
         if (Math.abs(delta) > 0.05) {
           const x = bounds.minX + col * cellSize;
           const y = bounds.minY + row * cellSize;
           const color = delta > 0 ? positiveColor : negativeColor;
-          const alpha = Math.min(0.35, Math.abs(delta) / 10);
+          // Smooth and Roughen get higher alpha for visibility
+          let alpha;
+          if (this.currentTool === 'smooth' || this.currentTool === 'roughen') {
+            alpha = Math.min(0.55, Math.abs(delta) / 5); // Brighter for smooth/roughen
+          } else {
+            alpha = Math.min(0.35, Math.abs(delta) / 10);
+          }
           this.overlayPreview.beginFill(color, alpha);
           this.overlayPreview.drawRect(x, y, cellSize, cellSize);
           this.overlayPreview.endFill();
@@ -369,6 +455,50 @@ export class GlobalMapTools {
       const avg = sum / count;
       const delta = (avg - heights[idx]) * smoothAmount;
       this.tempOverlay[idx] += delta;
+    }
+  }
+
+  /**
+   * Apply roughening to affected cells (opposite of smooth)
+   * Adds random perturbation to create natural variation
+   * @private
+   */
+  _applyRoughenOverlay(heights, rows, cols) {
+    const roughenAmount = this.brushStrength * 0.3; // Reduced to avoid extreme spikes
+    const randomAmount = this.brushStrength * 0.4; // Random perturbation
+    const tempHeights = new Float32Array(heights); // Copy for sampling
+
+    for (const idx of this.affectedCells) {
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+
+      // Calculate average of neighbors
+      let sum = 0;
+      let count = 0;
+
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue; // Skip center
+
+          const nRow = row + dr;
+          const nCol = col + dc;
+
+          if (nRow >= 0 && nRow < rows && nCol >= 0 && nCol < cols) {
+            const nIdx = nRow * cols + nCol;
+            sum += tempHeights[nIdx];
+            count++;
+          }
+        }
+      }
+
+      if (count > 0) {
+        const avg = sum / count;
+        // Increase difference from average (roughen) + random noise
+        const deterministicDelta = (heights[idx] - avg) * roughenAmount;
+        // Random value between -1 and 1
+        const randomNoise = (Math.random() * 2 - 1) * randomAmount;
+        this.tempOverlay[idx] += deterministicDelta + randomNoise;
+      }
     }
   }
 
@@ -446,6 +576,9 @@ export class GlobalMapTools {
       case 'smooth':
         color = 0xffff00; // Yellow
         break;
+      case 'roughen':
+        color = 0xff9900; // Orange
+        break;
       case 'flatten':
         color = 0x00ffff; // Cyan
         break;
@@ -505,12 +638,13 @@ export class GlobalMapTools {
         <div id="brush-tab" style="display: block;">
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Tool:</label>
-            <select id="global-map-tool" style="width: 100%; padding: 5px;">
-              <option value="raise" selected>Raise Terrain</option>
-              <option value="lower">Lower Terrain</option>
-              <option value="smooth">Smooth</option>
-              <option value="flatten">Flatten</option>
-            </select>
+          <select id="global-map-tool" style="width: 100%; padding: 5px;">
+            <option value="raise" selected>Raise Terrain</option>
+            <option value="lower">Lower Terrain</option>
+            <option value="smooth">Smooth</option>
+            <option value="roughen">Roughen</option>
+            <option value="flatten">Flatten</option>
+          </select>
           </div>
 
           <div style="margin-bottom: 10px;">
