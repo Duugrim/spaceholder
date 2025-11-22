@@ -7,6 +7,7 @@ export class BiomeResolver {
     this.biomeMatrix = null;
     this.biomeParameters = null;
     this.biomeColors = null;
+    this.azgaarBiomeMappings = null;
   }
 
   /**
@@ -25,6 +26,7 @@ export class BiomeResolver {
       
       this.biomeMatrix = config.biomeMatrix || [];
       this.biomeParameters = config.biomeParameters || {};
+      this.azgaarBiomeMappings = config.azgaarBiomeMappings || {};
       
       // Load biome colors as well
       this.biomeColors = new Map();
@@ -32,7 +34,7 @@ export class BiomeResolver {
         this.biomeColors.set(biome.id, parseInt(biome.color, 16));
       }
 
-      console.log(`BiomeResolver | Loaded ${this.biomeMatrix.length} biome rules, ${Object.keys(this.biomeParameters).length} biome parameters`);
+      console.log(`BiomeResolver | Loaded ${this.biomeMatrix.length} biome rules, ${Object.keys(this.biomeParameters).length} biome parameters, ${Object.keys(this.azgaarBiomeMappings).length} Azgaar mappings`);
       return true;
     } catch (error) {
       console.error('BiomeResolver | Failed to load config:', error);
@@ -41,21 +43,15 @@ export class BiomeResolver {
   }
 
   /**
-   * Determine biome ID based on moisture, temperature, and optionally height
+   * Determine biome ID based on moisture and temperature
    * @param {number} moisture - 1-5
    * @param {number} temperature - 1-5
-   * @param {number} height - Height value (if < 20, it's Marine/Ocean)
    * @returns {number} biomeId
    */
-  getBiomeId(moisture, temperature, height = null) {
+  getBiomeId(moisture, temperature) {
     if (!this.biomeMatrix || this.biomeMatrix.length === 0) {
       console.warn('BiomeResolver | Biome matrix not loaded');
       return 0;
-    }
-
-    // Special case: Marine (biome 0) - determined by height
-    if (height !== null && height < 20) {
-      return 0; // Marine/Ocean
     }
 
     // Special case: no moisture or temperature data
@@ -73,7 +69,7 @@ export class BiomeResolver {
       }
     }
 
-    // Fallback: if no match found, return 0 (Marine/undefined)
+    // Fallback: if no match found, return 0
     console.warn(`BiomeResolver | No biome found for moisture=${moisture}, temperature=${temperature}`);
     return 0;
   }
@@ -97,6 +93,26 @@ export class BiomeResolver {
     }
 
     return params;
+  }
+
+  /**
+   * Map Azgaar biome ID to our biome ID using pre-configured mappings
+   * @param {number} azBiomeId - Azgaar biome index from cells.biome
+   * @returns {number} Our biome ID
+   */
+  mapAzgaarBiomeId(azBiomeId) {
+    if (!this.azgaarBiomeMappings) {
+      console.warn(`BiomeResolver | Azgaar mappings not loaded`);
+      return 17; // Default to Луга (grassland)
+    }
+
+    const mappedId = this.azgaarBiomeMappings[azBiomeId.toString()];
+    if (mappedId === undefined) {
+      console.warn(`BiomeResolver | No mapping for Azgaar biome ${azBiomeId}, using default`);
+      return 17; // Default to Луга
+    }
+
+    return mappedId;
   }
 
   /**

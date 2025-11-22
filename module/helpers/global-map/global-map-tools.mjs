@@ -213,8 +213,10 @@ export class GlobalMapTools {
           const effectiveStrength = falloff * this.brushStrength;
           const idx = row * cols + col;
 
-          // Track affected cells for smooth/roughen tool
-          if (this.currentTool === 'smooth' || this.currentTool === 'roughen') {
+          // Track affected cells for tools that process in commit
+          if (this.currentTool === 'smooth' || this.currentTool === 'roughen' ||
+              this.currentTool === 'increase-temp' || this.currentTool === 'decrease-temp' ||
+              this.currentTool === 'increase-moisture' || this.currentTool === 'decrease-moisture') {
             this.affectedCells.add(idx);
           }
 
@@ -236,16 +238,10 @@ export class GlobalMapTools {
               // Mark for roughening, processed in commit
               break;
             case 'increase-temp':
-              this.tempOverlayTemp[idx] += effectiveStrength * 0.5; // Slower change
-              break;
             case 'decrease-temp':
-              this.tempOverlayTemp[idx] -= effectiveStrength * 0.5;
-              break;
             case 'increase-moisture':
-              this.tempOverlayMoisture[idx] += effectiveStrength * 0.5;
-              break;
             case 'decrease-moisture':
-              this.tempOverlayMoisture[idx] -= effectiveStrength * 0.5;
+              // Just collect cells, changes applied in commit
               break;
             default:
               break;
@@ -270,28 +266,31 @@ export class GlobalMapTools {
       this._applyRoughenOverlay(heights, rows, cols);
     }
 
+    // Apply temperature/moisture changes (±1 per cell)
+    if (this.affectedCells.size > 0) {
+      if (this.currentTool === 'increase-temp') {
+        for (const idx of this.affectedCells) {
+          temperature[idx] = Math.min(5, temperature[idx] + 1);
+        }
+      } else if (this.currentTool === 'decrease-temp') {
+        for (const idx of this.affectedCells) {
+          temperature[idx] = Math.max(1, temperature[idx] - 1);
+        }
+      } else if (this.currentTool === 'increase-moisture') {
+        for (const idx of this.affectedCells) {
+          moisture[idx] = Math.min(5, moisture[idx] + 1);
+        }
+      } else if (this.currentTool === 'decrease-moisture') {
+        for (const idx of this.affectedCells) {
+          moisture[idx] = Math.max(1, moisture[idx] - 1);
+        }
+      }
+    }
+
     // Apply overlay to heights
     for (let i = 0; i < heights.length; i++) {
       if (Math.abs(this.tempOverlay[i]) > 0.001) {
         heights[i] = Math.max(0, heights[i] + this.tempOverlay[i]);
-      }
-    }
-
-    // Apply overlay to temperature (clamp to 1-5)
-    if (this.tempOverlayTemp) {
-      for (let i = 0; i < temperature.length; i++) {
-        if (Math.abs(this.tempOverlayTemp[i]) > 0.01) {
-          temperature[i] = Math.max(1, Math.min(5, Math.round(temperature[i] + this.tempOverlayTemp[i])));
-        }
-      }
-    }
-
-    // Apply overlay to moisture (clamp to 1-5)
-    if (this.tempOverlayMoisture) {
-      for (let i = 0; i < moisture.length; i++) {
-        if (Math.abs(this.tempOverlayMoisture[i]) > 0.01) {
-          moisture[i] = Math.max(1, Math.min(5, Math.round(moisture[i] + this.tempOverlayMoisture[i])));
-        }
       }
     }
 
@@ -399,6 +398,21 @@ export class GlobalMapTools {
       }
     }
 
+    // For temperature/moisture tools, show fixed ±1 change for affected cells
+    if (this.affectedCells.size > 0) {
+      if (this.currentTool === 'increase-temp' || this.currentTool === 'decrease-temp') {
+        const delta = this.currentTool === 'increase-temp' ? 1 : -1;
+        for (const idx of this.affectedCells) {
+          previewOverlay[idx] = delta;
+        }
+      } else if (this.currentTool === 'increase-moisture' || this.currentTool === 'decrease-moisture') {
+        const delta = this.currentTool === 'increase-moisture' ? 1 : -1;
+        for (const idx of this.affectedCells) {
+          previewOverlay[idx] = delta;
+        }
+      }
+    }
+
     // Determine colors based on tool
     let positiveColor = 0x00ff00; // default
     let negativeColor = 0xff0000;
@@ -444,13 +458,6 @@ export class GlobalMapTools {
         const idx = row * cols + col;
         let delta = previewOverlay[idx];
         
-        // For temperature/moisture tools, use their specific overlays
-        if (this.currentTool.includes('temp') && this.tempOverlayTemp) {
-          delta = this.tempOverlayTemp[idx];
-        } else if (this.currentTool.includes('moisture') && this.tempOverlayMoisture) {
-          delta = this.tempOverlayMoisture[idx];
-        }
-        
         if (Math.abs(delta) > 0.05) {
           const x = bounds.minX + col * cellSize;
           const y = bounds.minY + row * cellSize;
@@ -460,7 +467,7 @@ export class GlobalMapTools {
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen') {
             alpha = Math.min(0.55, Math.abs(delta) / 5); // Brighter for smooth/roughen
           } else if (this.currentTool.includes('temp') || this.currentTool.includes('moisture')) {
-            alpha = Math.min(0.6, Math.abs(delta)); // Fixed alpha for temp/moisture
+            alpha = 0.6; // Fixed alpha for temp/moisture (always ±1)
           } else {
             alpha = Math.min(0.35, Math.abs(delta) / 10);
           }
@@ -968,16 +975,46 @@ export class GlobalMapTools {
     const moist = moisture ? moisture[idx] : null;
     const temp = temperature ? temperature[idx] : null;
 
-    // Get biome name from BiomeResolver
+    // Get biome name and color from BiomeResolver
     let biomeName = 'Unknown';
+    let biomeColor = 0x888888; // Default gray
     if (moist !== null && temp !== null && this.processing?.biomeResolver) {
       // Calculate biome ID from moisture, temperature, and height
       const biomeId = this.processing.biomeResolver.getBiomeId(moist, temp, height);
       const params = this.processing.biomeResolver.getParametersFromBiomeId(biomeId);
       biomeName = params.name || `Biome ${biomeId}`;
+      
+      // Get biome color
+      biomeColor = this.processing.biomeResolver.getBiomeColor(biomeId);
     }
 
-    // Log to console in one line
-    console.log(`${biomeName} (${height.toFixed(1)}, ${temp ?? '?'}, ${moist ?? '?'})`);
+    // Format color as hex string
+    const colorHex = '#' + ('000000' + biomeColor.toString(16)).slice(-6).toUpperCase();
+    
+    // Log to console with color styling
+    console.log(
+      `%c${biomeName}%c (h=${height.toFixed(1)}, t=${temp ?? '?'}, m=${moist ?? '?'})`,
+      `background-color: ${colorHex}; color: ${this._getContrastColor(biomeColor)}; padding: 2px 6px; border-radius: 3px; font-weight: bold;`,
+      `color: inherit; padding: 2px 0;`
+    );
+  }
+
+  /**
+   * Get contrasting text color (black or white) for given background color
+   * @private
+   * @param {number} rgbColor - RGB color as 24-bit integer
+   * @returns {string} '#000000' or '#FFFFFF'
+   */
+  _getContrastColor(rgbColor) {
+    // Extract RGB components
+    const r = (rgbColor >> 16) & 0xFF;
+    const g = (rgbColor >> 8) & 0xFF;
+    const b = rgbColor & 0xFF;
+    
+    // Calculate relative luminance (WCAG formula)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black for bright colors, white for dark colors
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
   }
 }

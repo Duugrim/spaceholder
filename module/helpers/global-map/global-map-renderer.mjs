@@ -124,6 +124,195 @@ export class GlobalMapRenderer {
   }
 
   /**
+   * Render biomes with smooth boundaries
+   * Uses marching squares + Chaikin smoothing for natural-looking borders
+   * @private
+   */
+  _renderBiomesSmooth(gridData, metadata) {
+    const { moisture, temperature, heights, rows, cols } = gridData;
+    const { cellSize, bounds } = metadata;
+
+    if (!moisture || !temperature || !this.showBiomes) {
+      return;
+    }
+
+    // Check if there are any biomes to render
+    const hasBiomes = moisture.some(m => m > 0) && temperature.some(t => t > 0);
+    if (!hasBiomes) {
+      console.log('GlobalMapRenderer | No biomes to render');
+      return;
+    }
+
+    console.log('GlobalMapRenderer | Rendering biomes with smooth boundaries...');
+
+    // 1. Build biomeId grid
+    const biomeIds = new Uint8Array(rows * cols);
+    const uniqueBiomes = new Set();
+    
+    for (let i = 0; i < rows * cols; i++) {
+      const biomeId = this.biomeResolver.getBiomeId(moisture[i], temperature[i], heights[i]);
+      biomeIds[i] = biomeId;
+      uniqueBiomes.add(biomeId);
+    }
+
+    console.log(`GlobalMapRenderer | Found ${uniqueBiomes.size} unique biomes`);
+
+    // 2. Sort biomes by moisture (ascending), then temperature (ascending)
+    // This ensures consistent overlap: drier renders first, then wetter
+    // Within same moisture: colder renders first, then hotter
+    const sortedBiomes = Array.from(uniqueBiomes).sort((a, b) => {
+      const paramsA = this.biomeResolver.getParametersFromBiomeId(a);
+      const paramsB = this.biomeResolver.getParametersFromBiomeId(b);
+      
+      // Primary sort: moisture (ascending)
+      if (paramsA.moisture !== paramsB.moisture) {
+        return paramsA.moisture - paramsB.moisture;
+      }
+      
+      // Secondary sort: temperature (ascending)
+      return paramsA.temperature - paramsB.temperature;
+    });
+
+    // 3. Render biomes in sorted order
+    // Later biomes will slightly overdraw earlier ones at boundaries
+    for (const biomeId of sortedBiomes) {
+      const color = this.biomeResolver.getBiomeColor(biomeId);
+      this._renderBiomeRegion(biomeIds, rows, cols, bounds, cellSize, biomeId, color);
+    }
+
+    console.log('GlobalMapRenderer | ✓ Smooth biome boundaries rendered');
+  }
+
+  /**
+   * Render a single biome region with smooth boundaries
+   * @private
+   */
+  _renderBiomeRegion(biomeIds, rows, cols, bounds, cellSize, targetBiomeId, color) {
+    const graphics = new PIXI.Graphics();
+
+    // Create binary grid for this biome (1 = this biome, 0 = other)
+    const binaryGrid = new Float32Array(rows * cols);
+    for (let i = 0; i < biomeIds.length; i++) {
+      binaryGrid[i] = biomeIds[i] === targetBiomeId ? 1.0 : 0.0;
+    }
+
+    // Use marching squares to find contours at threshold 0.5
+    const contourSegments = this._marchingSquares(binaryGrid, rows, cols, bounds, cellSize, 0.5);
+
+    if (contourSegments.length === 0) {
+      return; // No boundaries for this biome
+    }
+
+    // 3. Build contour paths from segments
+    const contours = this._buildContourPaths(contourSegments);
+
+    // 4. Smooth contours using Chaikin's algorithm
+    const smoothedContours = contours.map(path => this._smoothContour(path, 2));
+
+    // 5. Draw filled regions
+    graphics.beginFill(color, 1.0);
+    for (const contour of smoothedContours) {
+      if (contour.length < 3) continue;
+
+      graphics.moveTo(contour[0].x, contour[0].y);
+      for (let i = 1; i < contour.length; i++) {
+        graphics.lineTo(contour[i].x, contour[i].y);
+      }
+      graphics.closePath();
+    }
+    graphics.endFill();
+
+    this.container.addChild(graphics);
+  }
+
+  /**
+   * Build contour paths from disconnected segments
+   * Connects segments into closed loops
+   * @private
+   */
+  _buildContourPaths(segments) {
+    if (segments.length === 0) return [];
+
+    const paths = [];
+    const used = new Set();
+    const epsilon = 0.1; // Tolerance for point matching
+
+    const pointsEqual = (p1, p2) => {
+      return Math.abs(p1.x - p2.x) < epsilon && Math.abs(p1.y - p2.y) < epsilon;
+    };
+
+    for (let i = 0; i < segments.length; i++) {
+      if (used.has(i)) continue;
+
+      const path = [segments[i][0], segments[i][1]];
+      used.add(i);
+
+      // Try to extend path by finding connecting segments
+      let extended = true;
+      while (extended) {
+        extended = false;
+
+        for (let j = 0; j < segments.length; j++) {
+          if (used.has(j)) continue;
+
+          const lastPoint = path[path.length - 1];
+          const seg = segments[j];
+
+          // Check if segment connects to end of path
+          if (pointsEqual(lastPoint, seg[0])) {
+            path.push(seg[1]);
+            used.add(j);
+            extended = true;
+            break;
+          } else if (pointsEqual(lastPoint, seg[1])) {
+            path.push(seg[0]);
+            used.add(j);
+            extended = true;
+            break;
+          }
+        }
+      }
+
+      paths.push(path);
+    }
+
+    return paths;
+  }
+
+  /**
+   * Smooth contour using Chaikin's corner-cutting algorithm
+   * @private
+   */
+  _smoothContour(points, iterations = 2) {
+    if (points.length < 3) return points;
+
+    let smoothed = [...points];
+
+    for (let iter = 0; iter < iterations; iter++) {
+      const newPoints = [];
+
+      for (let i = 0; i < smoothed.length; i++) {
+        const p0 = smoothed[i];
+        const p1 = smoothed[(i + 1) % smoothed.length];
+
+        // Create two new points at 1/4 and 3/4 along the segment
+        newPoints.push({
+          x: 0.75 * p0.x + 0.25 * p1.x,
+          y: 0.75 * p0.y + 0.25 * p1.y
+        });
+        newPoints.push({
+          x: 0.25 * p0.x + 0.75 * p1.x,
+          y: 0.25 * p0.y + 0.75 * p1.y
+        });
+      }
+
+      smoothed = newPoints;
+    }
+
+    return smoothed;
+  }
+
+  /**
    * Render biomes as colored cells (base layer)
    * Dynamically determines biome from moisture/temperature
    * @private
@@ -183,8 +372,8 @@ export class GlobalMapRenderer {
     const { heights, rows, cols } = gridData;
     const { cellSize, bounds, heightStats } = metadata;
 
-    // First, render biomes as base layer
-    this._renderBiomesBase(gridData, metadata);
+    // First, render biomes as base layer with smooth boundaries
+    this._renderBiomesSmooth(gridData, metadata);
 
     // Then render contour lines on top
     // Create contour levels (20 levels for better detail)

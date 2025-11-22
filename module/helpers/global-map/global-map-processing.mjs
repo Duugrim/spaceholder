@@ -93,6 +93,7 @@ export class GlobalMapProcessing {
 
     console.log(`GlobalMapProcessing | Heights: ${heightStats.min}-${heightStats.max}, Biomes: ${uniqueBiomes.length}`);
 
+
     // Target grid dimensions (rectangular grid to fill scene)
     const sceneDims = scene.dimensions;
     const cellSize = (scene.canvas?.grid?.size || 64) / gridResolution;
@@ -140,8 +141,9 @@ export class GlobalMapProcessing {
 
         gridHeights[idx] = nearestHeight;
         
-        // Convert biome ID to moisture/temperature using BiomeResolver
-        const params = this.biomeResolver.getParametersFromBiomeId(nearestBiome);
+        // Map Azgaar biome ID to our biome ID, then get moisture/temperature
+        const mappedBiomeId = this.biomeResolver.mapAzgaarBiomeId(nearestBiome);
+        const params = this.biomeResolver.getParametersFromBiomeId(mappedBiomeId);
         gridMoisture[idx] = params.moisture;
         gridTemperature[idx] = params.temperature;
       }
