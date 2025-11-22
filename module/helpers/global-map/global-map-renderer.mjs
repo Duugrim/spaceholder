@@ -405,46 +405,37 @@ export class GlobalMapRenderer {
     
     const color = this.biomeResolver.getBiomeColor(biomeId);
     
-    // Create binary grid for this biome region (1 = in region, 0 = outside)
-    const binaryGrid = new Float32Array(rows * cols);
+    // Create EXPANDED binary grid with padding (to handle edges correctly)
+    // Add 1 cell padding on all sides filled with 0
+    const paddedRows = rows + 2;
+    const paddedCols = cols + 2;
+    const paddedGrid = new Float32Array(paddedRows * paddedCols); // Default 0
+    
+    // Fill padded grid (offset by 1)
     for (const idx of cellIndices) {
-      binaryGrid[idx] = 1.0;
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+      const paddedIdx = (row + 1) * paddedCols + (col + 1);
+      paddedGrid[paddedIdx] = 1.0;
     }
     
-    // Check if biome touches edges of the map
-    const touchesEdge = this._checkBiomeTouchesEdge(cellIndices, rows, cols);
+    // Adjust bounds for padded grid
+    const paddedBounds = {
+      minX: bounds.minX - cellSize,
+      minY: bounds.minY - cellSize,
+      maxX: bounds.maxX + cellSize,
+      maxY: bounds.maxY + cellSize
+    };
     
-    // Use marching squares to find contours at threshold 0.5
-    const contourSegments = this._marchingSquares(binaryGrid, rows, cols, bounds, cellSize, 0.5);
+    // Use marching squares on padded grid
+    const contourSegments = this._marchingSquares(paddedGrid, paddedRows, paddedCols, paddedBounds, cellSize, 0.5);
 
-    // If no contours and touches edge, draw as rectangle (entire region is on edge)
-    if (contourSegments.length === 0 && touchesEdge) {
-      // Draw all cells as rectangles
-      const graphics = new PIXI.Graphics();
-      graphics.beginFill(color, 1.0);
-      for (const idx of cellIndices) {
-        const row = Math.floor(idx / cols);
-        const col = idx % cols;
-        const x = bounds.minX + col * cellSize;
-        const y = bounds.minY + row * cellSize;
-        graphics.drawRect(x, y, cellSize, cellSize);
-      }
-      graphics.endFill();
-      this.container.addChild(graphics);
-      return;
-    }
-    
     if (contourSegments.length === 0) {
       return; // No boundaries for this biome
     }
 
     // Build contour paths from segments
     const contours = this._buildContourPaths(contourSegments);
-    
-    // If biome touches edge, add explicit edge boundaries
-    if (touchesEdge) {
-      this._addEdgeBoundaries(contours, cellIndices, rows, cols, bounds, cellSize);
-    }
     
     // Smooth contours using Chaikin's algorithm
     const smoothedContours = contours.map(path => this._smoothContour(path, 2));
