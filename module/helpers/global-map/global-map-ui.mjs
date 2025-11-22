@@ -166,6 +166,24 @@ export function registerGlobalMapUI(controls, spaceholder) {
         button: true,
       },
 
+      'create-test-grid': {
+        name: 'create-test-grid',
+        title: 'Создать тестовую сетку биомов',
+        icon: 'fas fa-th',
+        onChange: async (isActive) => {
+          try {
+            ui.notifications.info('Создание тестовой карты биомов...');
+            const result = spaceholder.globalMapProcessing.createBiomeTestGrid(canvas.scene);
+            await spaceholder.globalMapRenderer.render(result.gridData, result.metadata, { mode: 'heights' });
+            ui.notifications.info('Тестовая карта создана: сетка 5x6 биомов');
+          } catch (error) {
+            console.error('GlobalMapUI | Error creating test grid:', error);
+            ui.notifications.error(`Ошибка: ${error.message}`);
+          }
+        },
+        button: true,
+      },
+
       'toggle-map': {
         name: 'toggle-map',
         title: 'Переключить видимость',

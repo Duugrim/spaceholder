@@ -8,6 +8,7 @@ export class BiomeResolver {
     this.biomeParameters = null;
     this.biomeColors = null;
     this.azgaarBiomeMappings = null;
+    this.settings = null;
   }
 
   /**
@@ -27,11 +28,16 @@ export class BiomeResolver {
       this.biomeMatrix = config.biomeMatrix || [];
       this.biomeParameters = config.biomeParameters || {};
       this.azgaarBiomeMappings = config.azgaarBiomeMappings || {};
+      this.settings = config.settings || {};
       
-      // Load biome colors as well
+      // Load biome colors and patterns
       this.biomeColors = new Map();
+      this.biomePatterns = new Map();
       for (const biome of config.biomeColors || []) {
         this.biomeColors.set(biome.id, parseInt(biome.color, 16));
+        if (biome.pattern) {
+          this.biomePatterns.set(biome.id, biome.pattern);
+        }
       }
 
       console.log(`BiomeResolver | Loaded ${this.biomeMatrix.length} biome rules, ${Object.keys(this.biomeParameters).length} biome parameters, ${Object.keys(this.azgaarBiomeMappings).length} Azgaar mappings`);
@@ -128,6 +134,18 @@ export class BiomeResolver {
     // Fallback: generate color from ID
     const hue = (biomeId * 137.508) % 360;
     return this._hslToRgb(hue, 70, 50);
+  }
+
+  /**
+   * Get biome pattern config by ID
+   * @param {number} biomeId
+   * @returns {Object|null} Pattern config or null
+   */
+  getBiomePattern(biomeId) {
+    if (this.biomePatterns && this.biomePatterns.has(biomeId)) {
+      return this.biomePatterns.get(biomeId);
+    }
+    return null;
   }
 
   /**

@@ -495,21 +495,375 @@ export class GlobalMapRenderer {
     // Smooth contours using Chaikin's algorithm
     const smoothedContours = contours.map(path => this._smoothContour(path, 2));
 
-    // Draw filled regions
-    const graphics = new PIXI.Graphics();
-    graphics.beginFill(color, 1.0);
+    // Check if this biome has a pattern config
+    const patternConfig = this.biomeResolver.getBiomePattern(biomeId);
+
+    if (patternConfig) {
+      // Draw with pattern using config
+      this._drawBiomeWithPattern(smoothedContours, color, bounds, cellSize, biomeId, patternConfig);
+    } else {
+      // Draw filled regions (default behavior)
+      const graphics = new PIXI.Graphics();
+      graphics.beginFill(color, 1.0);
+      for (const contour of smoothedContours) {
+        if (contour.length < 3) continue;
+
+        graphics.moveTo(contour[0].x, contour[0].y);
+        for (let i = 1; i < contour.length; i++) {
+          graphics.lineTo(contour[i].x, contour[i].y);
+        }
+        graphics.closePath();
+      }
+      graphics.endFill();
+
+      this.container.addChild(graphics);
+    }
+  }
+
+  /**
+   * Draw biome region with pattern instead of solid fill
+   * @private
+   */
+  _drawBiomeWithPattern(smoothedContours, color, bounds, cellSize, biomeId, patternConfig) {
+    // 1. Сначала рисуем заливку основным цветом
+    const baseGraphics = new PIXI.Graphics();
+    baseGraphics.beginFill(color, 1.0);
     for (const contour of smoothedContours) {
       if (contour.length < 3) continue;
-
-      graphics.moveTo(contour[0].x, contour[0].y);
+      baseGraphics.moveTo(contour[0].x, contour[0].y);
       for (let i = 1; i < contour.length; i++) {
-        graphics.lineTo(contour[i].x, contour[i].y);
+        baseGraphics.lineTo(contour[i].x, contour[i].y);
       }
-      graphics.closePath();
+      baseGraphics.closePath();
     }
-    graphics.endFill();
+    baseGraphics.endFill();
+    this.container.addChild(baseGraphics);
+    
+    // 2. Создаём контейнер для паттерна с маской
+    const patternContainer = new PIXI.Container();
+    
+    // 3. Маска для паттерна (та же форма биома)
+    const mask = new PIXI.Graphics();
+    mask.beginFill(0xFFFFFF);
+    for (const contour of smoothedContours) {
+      if (contour.length < 3) continue;
+      mask.moveTo(contour[0].x, contour[0].y);
+      for (let i = 1; i < contour.length; i++) {
+        mask.lineTo(contour[i].x, contour[i].y);
+      }
+      mask.closePath();
+    }
+    mask.endFill();
+    
+    // 4. Рисуем паттерн согласно конфигурации
+    const pattern = new PIXI.Graphics();
+    
+    // Извлекаем параметры из конфига с значениями по умолчанию
+    const darkenFactor = patternConfig.darkenFactor ?? 0.4;
+    const opacity = patternConfig.opacity ?? 0.9;
+    const spacing = patternConfig.spacing ?? 2.0;
+    const lineWidth = patternConfig.lineWidth ?? 0.6;
+    
+    const patternColor = this._darkenColor(color, darkenFactor);
+    
+    // Выбираем тип паттерна
+    switch (patternConfig.type) {
+      case 'circles':
+        this._drawConcentricCirclesPattern(pattern, smoothedContours, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'diagonal':
+        this._drawDiagonalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'crosshatch':
+        this._drawCrosshatchPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'vertical':
+        this._drawVerticalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'horizontal':
+        this._drawHorizontalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'dots':
+        this._drawDotsPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'waves':
+        this._drawWavesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'hexagons':
+        this._drawHexagonsPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        break;
+      case 'spots':
+        this._drawRandomSpotsPattern(pattern, smoothedContours, bounds, cellSize, patternColor, spacing, lineWidth, opacity, biomeId);
+        break;
+      default:
+        // По умолчанию - диагональные линии
+        this._drawDiagonalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+    }
+    
+    // 5. Применяем маску к паттерну
+    pattern.mask = mask;
+    
+    // 6. Добавляем всё на сцену
+    patternContainer.addChild(mask);
+    patternContainer.addChild(pattern);
+    this.container.addChild(patternContainer);
+  }
 
-    this.container.addChild(graphics);
+  /**
+   * Draw diagonal lines pattern
+   * @private
+   */
+  _drawDiagonalLinesPattern(graphics, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.6, opacity = 0.9) {
+    const spacing = cellSize * spacingMultiplier;
+    const lineWidth = Math.max(6, cellSize * lineWidthMultiplier);
+    const mapWidth = bounds.maxX - bounds.minX;
+    const mapHeight = bounds.maxY - bounds.minY;
+    const diagonal = Math.sqrt(mapWidth ** 2 + mapHeight ** 2);
+    
+    graphics.lineStyle(lineWidth, color, opacity);
+    
+    for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
+      graphics.moveTo(bounds.minX, bounds.minY + offset);
+      graphics.lineTo(bounds.minX + mapHeight, bounds.minY + offset - mapHeight);
+    }
+  }
+
+  /**
+   * Draw concentric circles pattern
+   * @private
+   */
+  _drawConcentricCirclesPattern(graphics, contours, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.4, opacity = 0.9) {
+    // Находим центр области биома
+    let sumX = 0, sumY = 0, pointCount = 0;
+    for (const contour of contours) {
+      for (const point of contour) {
+        sumX += point.x;
+        sumY += point.y;
+        pointCount++;
+      }
+    }
+    
+    if (pointCount === 0) return;
+    
+    const centerX = sumX / pointCount;
+    const centerY = sumY / pointCount;
+    
+    // Находим максимальное расстояние от центра до границы
+    let maxDistance = 0;
+    for (const contour of contours) {
+      for (const point of contour) {
+        const dist = Math.sqrt((point.x - centerX) ** 2 + (point.y - centerY) ** 2);
+        if (dist > maxDistance) maxDistance = dist;
+      }
+    }
+    
+    // Рисуем концентрические круги
+    const spacing = cellSize * spacingMultiplier;
+    const lineWidth = Math.max(4, cellSize * lineWidthMultiplier);
+    
+    graphics.lineStyle(lineWidth, color, opacity);
+    
+    for (let radius = spacing; radius <= maxDistance + spacing; radius += spacing) {
+      graphics.drawCircle(centerX, centerY, radius);
+    }
+  }
+
+  /**
+   * Draw crosshatch pattern (diagonal lines in both directions)
+   * @private
+   */
+  _drawCrosshatchPattern(graphics, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.6, opacity = 0.9) {
+    // Рисуем диагональные линии в обе стороны
+    const spacing = cellSize * spacingMultiplier;
+    const lineWidth = Math.max(3, cellSize * lineWidthMultiplier * 0.5); // Тоньше для сетки
+    const mapWidth = bounds.maxX - bounds.minX;
+    const mapHeight = bounds.maxY - bounds.minY;
+    const diagonal = Math.sqrt(mapWidth ** 2 + mapHeight ** 2);
+    
+    graphics.lineStyle(lineWidth, color, opacity);
+    
+    // Линии в одну сторону (\)
+    for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
+      graphics.moveTo(bounds.minX, bounds.minY + offset);
+      graphics.lineTo(bounds.minX + mapHeight, bounds.minY + offset - mapHeight);
+    }
+    
+    // Линии в другую сторону (/)
+    for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
+      graphics.moveTo(bounds.minX, bounds.minY - offset + mapHeight);
+      graphics.lineTo(bounds.minX + mapHeight, bounds.minY - offset + mapHeight * 2);
+    }
+  }
+
+  /**
+   * Draw vertical lines pattern
+   * @private
+   */
+  _drawVerticalLinesPattern(graphics, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.6, opacity = 0.9) {
+    const spacing = cellSize * spacingMultiplier;
+    const lineWidth = Math.max(6, cellSize * lineWidthMultiplier);
+    const mapWidth = bounds.maxX - bounds.minX;
+    const mapHeight = bounds.maxY - bounds.minY;
+    
+    graphics.lineStyle(lineWidth, color, opacity);
+    
+    for (let x = bounds.minX; x <= bounds.maxX; x += spacing) {
+      graphics.moveTo(x, bounds.minY);
+      graphics.lineTo(x, bounds.maxY);
+    }
+  }
+
+  /**
+   * Draw horizontal lines pattern
+   * @private
+   */
+  _drawHorizontalLinesPattern(graphics, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.6, opacity = 0.9) {
+    const spacing = cellSize * spacingMultiplier;
+    const lineWidth = Math.max(6, cellSize * lineWidthMultiplier);
+    const mapWidth = bounds.maxX - bounds.minX;
+    const mapHeight = bounds.maxY - bounds.minY;
+    
+    graphics.lineStyle(lineWidth, color, opacity);
+    
+    for (let y = bounds.minY; y <= bounds.maxY; y += spacing) {
+      graphics.moveTo(bounds.minX, y);
+      graphics.lineTo(bounds.maxX, y);
+    }
+  }
+
+  /**
+   * Draw dots pattern
+   * @private
+   */
+  _drawDotsPattern(graphics, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.4, opacity = 0.9) {
+    const spacing = cellSize * spacingMultiplier;
+    const dotRadius = Math.max(2, cellSize * lineWidthMultiplier);
+    
+    graphics.beginFill(color, opacity);
+    
+    for (let y = bounds.minY; y <= bounds.maxY; y += spacing) {
+      for (let x = bounds.minX; x <= bounds.maxX; x += spacing) {
+        graphics.drawCircle(x, y, dotRadius);
+      }
+    }
+    
+    graphics.endFill();
+  }
+
+  /**
+   * Draw waves pattern
+   * @private
+   */
+  _drawWavesPattern(graphics, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.6, opacity = 0.9) {
+    const spacing = cellSize * spacingMultiplier;
+    const lineWidth = Math.max(3, cellSize * lineWidthMultiplier);
+    const waveHeight = cellSize * spacingMultiplier * 0.25; // Уменьшили амплитуду с 0.5 до 0.25
+    const waveLength = cellSize * 4;
+    
+    graphics.lineStyle(lineWidth, color, opacity);
+    
+    const mapWidth = bounds.maxX - bounds.minX;
+    const step = cellSize * 0.5; // Меньший шаг для более плавных волн
+    
+    for (let y = bounds.minY; y <= bounds.maxY; y += spacing) {
+      let firstPoint = true;
+      
+      for (let x = bounds.minX; x <= bounds.maxX + step; x += step) {
+        const phase = (x - bounds.minX) / waveLength * Math.PI * 2;
+        const waveY = y + Math.sin(phase) * waveHeight;
+        
+        if (firstPoint) {
+          graphics.moveTo(x, waveY);
+          firstPoint = false;
+        } else {
+          graphics.lineTo(x, waveY);
+        }
+      }
+    }
+  }
+
+  /**
+   * Draw hexagons pattern
+   * @private
+   */
+  _drawHexagonsPattern(graphics, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.3, opacity = 0.9) {
+    const hexSize = cellSize * spacingMultiplier;
+    const lineWidth = Math.max(2, cellSize * lineWidthMultiplier);
+    const hexWidth = hexSize * 2;
+    const hexHeight = Math.sqrt(3) * hexSize;
+    
+    graphics.lineStyle(lineWidth, color, opacity);
+    
+    // Рисуем шестиугольники в шахматном порядке
+    for (let row = 0; row * hexHeight <= bounds.maxY - bounds.minY + hexHeight; row++) {
+      for (let col = 0; col * hexWidth * 0.75 <= bounds.maxX - bounds.minX + hexWidth; col++) {
+        const x = bounds.minX + col * hexWidth * 0.75;
+        const y = bounds.minY + row * hexHeight + (col % 2) * hexHeight / 2;
+        
+        this._drawHexagon(graphics, x, y, hexSize);
+      }
+    }
+  }
+
+  /**
+   * Draw random spots pattern
+   * @private
+   */
+  _drawRandomSpotsPattern(graphics, contours, bounds, cellSize, color, spacingMultiplier = 2.0, lineWidthMultiplier = 0.4, opacity = 0.9, seed = 0) {
+    const spacing = cellSize * spacingMultiplier;
+    const minRadius = Math.max(2, cellSize * lineWidthMultiplier * 0.5);
+    const maxRadius = Math.max(4, cellSize * lineWidthMultiplier * 1.5);
+    
+    // Простой генератор псевдослучайных чисел с seed
+    let random = seed + 12345;
+    const seededRandom = () => {
+      random = (random * 9301 + 49297) % 233280;
+      return random / 233280;
+    };
+    
+    graphics.beginFill(color, opacity);
+    
+    // Генерируем пятна на сетке с небольшим смещением
+    for (let y = bounds.minY; y <= bounds.maxY; y += spacing) {
+      for (let x = bounds.minX; x <= bounds.maxX; x += spacing) {
+        // Смещение от сетки
+        const offsetX = (seededRandom() - 0.5) * spacing * 0.8;
+        const offsetY = (seededRandom() - 0.5) * spacing * 0.8;
+        
+        // Случайный размер пятна
+        const radius = minRadius + seededRandom() * (maxRadius - minRadius);
+        
+        // Иногда пропускаем пятно для разнообразия
+        if (seededRandom() > 0.3) {
+          graphics.drawCircle(x + offsetX, y + offsetY, radius);
+        }
+      }
+    }
+    
+    graphics.endFill();
+  }
+
+  /**
+   * Draw a single hexagon
+   * @private
+   */
+  _drawHexagon(graphics, centerX, centerY, size) {
+    const angles = [0, 60, 120, 180, 240, 300];
+    
+    graphics.moveTo(
+      centerX + size * Math.cos(0),
+      centerY + size * Math.sin(0)
+    );
+    
+    for (const angle of angles) {
+      const rad = (angle * Math.PI) / 180;
+      graphics.lineTo(
+        centerX + size * Math.cos(rad),
+        centerY + size * Math.sin(rad)
+      );
+    }
+    
+    graphics.closePath();
   }
 
   /**

@@ -264,6 +264,117 @@ export class GlobalMapProcessing {
   }
 
   /**
+   * Create biome test grid (5x6 grid matching biome matrix)
+   * Each cell represents one biome from the biome matrix (temperature 1-5, moisture 1-6)
+   * @param {Scene} scene - Target scene
+   * @param {number} gridResolution - Cells per unit (default 2)
+   * @param {number} baseHeight - Base height for all cells (default 20)
+   * @returns {Object} {gridData, metadata}
+   */
+  createBiomeTestGrid(scene = null, gridResolution = 2, baseHeight = 20) {
+    console.log(`GlobalMapProcessing | Creating biome test grid (5x6 biome matrix)`);
+
+    const targetScene = scene || canvas.scene;
+    if (!targetScene) {
+      throw new Error('No scene available');
+    }
+
+    const sceneDims = targetScene.dimensions;
+    const cellSize = (targetScene.canvas?.grid?.size || 64) / gridResolution;
+
+    // Biome matrix: 5 temperatures (columns) x 6 moisture levels (rows)
+    const biomeCols = 5; // Temperature 1-5
+    const biomeRows = 6; // Moisture 1-6
+
+    // Calculate cells per biome block to fill scene
+    const cellsPerBiomeX = Math.ceil(sceneDims.width / cellSize / biomeCols);
+    const cellsPerBiomeY = Math.ceil(sceneDims.height / cellSize / biomeRows);
+
+    const gridCols = biomeCols * cellsPerBiomeX;
+    const gridRows = biomeRows * cellsPerBiomeY;
+    const gridSize = gridRows * gridCols;
+
+    console.log(`GlobalMapProcessing | Test grid: ${gridRows}x${gridCols} cells, ` +
+                `${cellsPerBiomeX}x${cellsPerBiomeY} cells per biome block`);
+
+    const gridHeights = new Float32Array(gridSize);
+    const gridMoisture = new Uint8Array(gridSize);
+    const gridTemperature = new Uint8Array(gridSize);
+
+    // Fill grid: each block corresponds to one biome from matrix
+    for (let row = 0; row < gridRows; row++) {
+      for (let col = 0; col < gridCols; col++) {
+        const idx = row * gridCols + col;
+
+        // Determine which biome block this cell belongs to
+        const biomeCol = Math.floor(col / cellsPerBiomeX); // 0-4 → temperature 1-5
+        const biomeRow = Math.floor(row / cellsPerBiomeY); // 0-5 → moisture 1-6
+
+        // Biome matrix coordinates
+        const temperature = biomeCol + 1; // 1-5
+        const moisture = 6 - biomeRow;     // 6-1 (inverted: top row = moisture 6)
+
+        gridHeights[idx] = baseHeight;
+        gridTemperature[idx] = temperature;
+        gridMoisture[idx] = moisture;
+      }
+    }
+
+    const unifiedGrid = {
+      heights: gridHeights,
+      moisture: gridMoisture,
+      temperature: gridTemperature,
+      rows: gridRows,
+      cols: gridCols,
+    };
+
+    // Collect unique biomes for stats
+    const uniqueBiomes = [];
+    for (let temp = 1; temp <= 5; temp++) {
+      for (let moist = 1; moist <= 6; moist++) {
+        const biomeId = this.biomeResolver.getBiomeId(moist, temp);
+        if (!uniqueBiomes.includes(biomeId)) {
+          uniqueBiomes.push(biomeId);
+        }
+      }
+    }
+
+    const gridMetadata = {
+      sourceType: 'BiomeTestGrid',
+      sceneDimensions: sceneDims,
+      gridResolution,
+      cellSize,
+      bounds: {
+        minX: 0,
+        minY: 0,
+        maxX: sceneDims.width,
+        maxY: sceneDims.height,
+      },
+      heightStats: {
+        min: baseHeight,
+        max: baseHeight,
+        range: 0,
+      },
+      biomeStats: {
+        uniqueBiomes: uniqueBiomes.sort((a, b) => a - b),
+        totalCells: gridSize,
+        testGrid: true,
+        biomeBlockSize: { x: cellsPerBiomeX, y: cellsPerBiomeY },
+      },
+      timestamp: new Date().toISOString(),
+      isBiomeTestGrid: true,
+    };
+
+    this.unifiedGrid = unifiedGrid;
+    this.gridMetadata = gridMetadata;
+
+    console.log(`GlobalMapProcessing | ✓ Biome test grid created: ${gridRows}x${gridCols}, ` +
+                `${uniqueBiomes.length} unique biomes`);
+
+    return { gridData: unifiedGrid, metadata: gridMetadata };
+  }
+
+  /**
    * Get current unified grid
    * @returns {Object|null} {heights, biomes, rows, cols}
    */
