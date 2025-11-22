@@ -125,7 +125,7 @@ export class GlobalMapRenderer {
 
   /**
    * Render biomes with smooth boundaries
-   * Uses marching squares + Chaikin smoothing for natural-looking borders
+   * First fills all cells, then draws smooth border lines
    * @private
    */
   _renderBiomesSmooth(gridData, metadata) {
@@ -157,30 +157,96 @@ export class GlobalMapRenderer {
 
     console.log(`GlobalMapRenderer | Found ${uniqueBiomes.size} unique biomes`);
 
-    // 2. Sort biomes by moisture (ascending), then temperature (ascending)
-    // This ensures consistent overlap: drier renders first, then wetter
-    // Within same moisture: colder renders first, then hotter
-    const sortedBiomes = Array.from(uniqueBiomes).sort((a, b) => {
-      const paramsA = this.biomeResolver.getParametersFromBiomeId(a);
-      const paramsB = this.biomeResolver.getParametersFromBiomeId(b);
-      
-      // Primary sort: moisture (ascending)
-      if (paramsA.moisture !== paramsB.moisture) {
-        return paramsA.moisture - paramsB.moisture;
+    // 2. First pass: Fill ALL cells with biome colors (no gaps)
+    const baseGraphics = new PIXI.Graphics();
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        const biomeId = biomeIds[idx];
+        const color = this.biomeResolver.getBiomeColor(biomeId);
+        
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        
+        baseGraphics.beginFill(color, 1.0);
+        baseGraphics.drawRect(x, y, cellSize, cellSize);
+        baseGraphics.endFill();
       }
-      
-      // Secondary sort: temperature (ascending)
-      return paramsA.temperature - paramsB.temperature;
-    });
-
-    // 3. Render biomes in sorted order
-    // Later biomes will slightly overdraw earlier ones at boundaries
-    for (const biomeId of sortedBiomes) {
-      const color = this.biomeResolver.getBiomeColor(biomeId);
-      this._renderBiomeRegion(biomeIds, rows, cols, bounds, cellSize, biomeId, color);
     }
+    this.container.addChild(baseGraphics);
+
+    // 3. Second pass: Draw smooth borders between biomes
+    this._drawBiomeBorders(biomeIds, rows, cols, bounds, cellSize, uniqueBiomes);
 
     console.log('GlobalMapRenderer | ✓ Smooth biome boundaries rendered');
+  }
+
+  /**
+   * Draw smooth borders between different biomes
+   * @private
+   */
+  _drawBiomeBorders(biomeIds, rows, cols, bounds, cellSize, uniqueBiomes) {
+    // For each unique biome, draw its borders
+    for (const biomeId of uniqueBiomes) {
+      this._drawBiomeBorder(biomeIds, rows, cols, bounds, cellSize, biomeId);
+    }
+  }
+
+  /**
+   * Draw border for a single biome using marching squares
+   * @private
+   */
+  _drawBiomeBorder(biomeIds, rows, cols, bounds, cellSize, targetBiomeId) {
+    // Create binary grid for this biome (1 = this biome, 0 = other)
+    const binaryGrid = new Float32Array(rows * cols);
+    for (let i = 0; i < biomeIds.length; i++) {
+      binaryGrid[i] = biomeIds[i] === targetBiomeId ? 1.0 : 0.0;
+    }
+
+    // Use marching squares to find contours at threshold 0.5
+    const contourSegments = this._marchingSquares(binaryGrid, rows, cols, bounds, cellSize, 0.5);
+
+    if (contourSegments.length === 0) {
+      return; // No boundaries for this biome
+    }
+
+    // Build and smooth contour paths
+    const contours = this._buildContourPaths(contourSegments);
+    const smoothedContours = contours.map(path => this._smoothContour(path, 2));
+
+    // Draw border lines (not filled regions)
+    const graphics = new PIXI.Graphics();
+    const color = this.biomeResolver.getBiomeColor(targetBiomeId);
+    
+    // Draw darker border line
+    graphics.lineStyle(1.5, this._darkenColor(color, 0.3), 0.6);
+    for (const contour of smoothedContours) {
+      if (contour.length < 3) continue;
+
+      graphics.moveTo(contour[0].x, contour[0].y);
+      for (let i = 1; i < contour.length; i++) {
+        graphics.lineTo(contour[i].x, contour[i].y);
+      }
+      graphics.closePath();
+    }
+
+    this.container.addChild(graphics);
+  }
+
+  /**
+   * Darken a color by a factor
+   * @private
+   */
+  _darkenColor(color, factor) {
+    const r = (color >> 16) & 0xFF;
+    const g = (color >> 8) & 0xFF;
+    const b = color & 0xFF;
+    
+    const newR = Math.floor(r * (1 - factor));
+    const newG = Math.floor(g * (1 - factor));
+    const newB = Math.floor(b * (1 - factor));
+    
+    return (newR << 16) | (newG << 8) | newB;
   }
 
   /**

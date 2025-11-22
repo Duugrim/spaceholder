@@ -8,10 +8,12 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten', 'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture'
+    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten', 'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture', 'set-temp', 'set-moisture'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.targetHeight = 50;
+    this.targetTemperature = 3; // Target temperature for set-temp tool (1-5)
+    this.targetMoisture = 3; // Target moisture for set-moisture tool (1-5)
     this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
     
     // Temperature/moisture editing
@@ -83,7 +85,8 @@ export class GlobalMapTools {
   setTool(tool) {
     const validTools = [
       'raise', 'lower', 'smooth', 'roughen', 'flatten',
-      'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture'
+      'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture',
+      'set-temp', 'set-moisture'
     ];
     if (validTools.includes(tool)) {
       this.currentTool = tool;
@@ -97,10 +100,12 @@ export class GlobalMapTools {
   /**
    * Set brush parameters
    */
-  setBrushParams(radius = null, strength = null, targetHeight = null) {
+  setBrushParams(radius = null, strength = null, targetHeight = null, targetTemperature = null, targetMoisture = null) {
     if (radius !== null) this.brushRadius = radius;
     if (strength !== null) this.brushStrength = strength;
     if (targetHeight !== null) this.targetHeight = targetHeight;
+    if (targetTemperature !== null) this.targetTemperature = Math.max(1, Math.min(5, targetTemperature));
+    if (targetMoisture !== null) this.targetMoisture = Math.max(1, Math.min(5, targetMoisture));
     this.updateBrushCursorGraphics();
   }
 
@@ -216,7 +221,8 @@ export class GlobalMapTools {
           // Track affected cells for tools that process in commit
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen' ||
               this.currentTool === 'increase-temp' || this.currentTool === 'decrease-temp' ||
-              this.currentTool === 'increase-moisture' || this.currentTool === 'decrease-moisture') {
+              this.currentTool === 'increase-moisture' || this.currentTool === 'decrease-moisture' ||
+              this.currentTool === 'set-temp' || this.currentTool === 'set-moisture') {
             this.affectedCells.add(idx);
           }
 
@@ -241,6 +247,8 @@ export class GlobalMapTools {
             case 'decrease-temp':
             case 'increase-moisture':
             case 'decrease-moisture':
+            case 'set-temp':
+            case 'set-moisture':
               // Just collect cells, changes applied in commit
               break;
             default:
@@ -266,7 +274,7 @@ export class GlobalMapTools {
       this._applyRoughenOverlay(heights, rows, cols);
     }
 
-    // Apply temperature/moisture changes (±1 per cell)
+    // Apply temperature/moisture changes (±1 per cell or set value)
     if (this.affectedCells.size > 0) {
       if (this.currentTool === 'increase-temp') {
         for (const idx of this.affectedCells) {
@@ -283,6 +291,14 @@ export class GlobalMapTools {
       } else if (this.currentTool === 'decrease-moisture') {
         for (const idx of this.affectedCells) {
           moisture[idx] = Math.max(1, moisture[idx] - 1);
+        }
+      } else if (this.currentTool === 'set-temp') {
+        for (const idx of this.affectedCells) {
+          temperature[idx] = this.targetTemperature;
+        }
+      } else if (this.currentTool === 'set-moisture') {
+        for (const idx of this.affectedCells) {
+          moisture[idx] = this.targetMoisture;
         }
       }
     }
@@ -398,7 +414,7 @@ export class GlobalMapTools {
       }
     }
 
-    // For temperature/moisture tools, show fixed ±1 change for affected cells
+    // For temperature/moisture tools, show change for affected cells
     if (this.affectedCells.size > 0) {
       if (this.currentTool === 'increase-temp' || this.currentTool === 'decrease-temp') {
         const delta = this.currentTool === 'increase-temp' ? 1 : -1;
@@ -409,6 +425,15 @@ export class GlobalMapTools {
         const delta = this.currentTool === 'increase-moisture' ? 1 : -1;
         for (const idx of this.affectedCells) {
           previewOverlay[idx] = delta;
+        }
+      } else if (this.currentTool === 'set-temp') {
+        // For set tools, show target value indicator
+        for (const idx of this.affectedCells) {
+          previewOverlay[idx] = this.targetTemperature; // Use target value as indicator
+        }
+      } else if (this.currentTool === 'set-moisture') {
+        for (const idx of this.affectedCells) {
+          previewOverlay[idx] = this.targetMoisture; // Use target value as indicator
         }
       }
     }
@@ -449,6 +474,14 @@ export class GlobalMapTools {
       case 'decrease-moisture':
         positiveColor = 0xffaa44; // Orange for drier
         negativeColor = 0x4488ff;
+        break;
+      case 'set-temp':
+        positiveColor = 0xff6666; // Light red for temperature set
+        negativeColor = 0xff6666;
+        break;
+      case 'set-moisture':
+        positiveColor = 0x66aaff; // Light blue for moisture set
+        negativeColor = 0x66aaff;
         break;
     }
 
@@ -671,6 +704,12 @@ export class GlobalMapTools {
       case 'decrease-moisture':
         color = 0xffaa44; // Orange for drier
         break;
+      case 'set-temp':
+        color = 0xff6666; // Light red for temperature set
+        break;
+      case 'set-moisture':
+        color = 0x66aaff; // Light blue for moisture set
+        break;
     }
 
     // Draw filled circle
@@ -737,6 +776,8 @@ export class GlobalMapTools {
             <option value="decrease-temp">Decrease Temperature</option>
             <option value="increase-moisture">Increase Moisture</option>
             <option value="decrease-moisture">Decrease Moisture</option>
+            <option value="set-temp">Set Temperature</option>
+            <option value="set-moisture">Set Moisture</option>
           </select>
           </div>
 
@@ -748,6 +789,16 @@ export class GlobalMapTools {
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Strength: <span id="strength-value">${this.brushStrength.toFixed(1)}</span></label>
             <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
+          </div>
+
+          <div id="target-temp-container" style="margin-bottom: 10px; display: none;">
+            <label style="display: block; margin-bottom: 5px;">Target Temperature: <span id="target-temp-value">${this.targetTemperature}</span></label>
+            <input type="range" id="global-map-target-temp" min="1" max="5" step="1" value="${this.targetTemperature}" style="width: 100%;">
+          </div>
+
+          <div id="target-moisture-container" style="margin-bottom: 10px; display: none;">
+            <label style="display: block; margin-bottom: 5px;">Target Moisture: <span id="target-moisture-value">${this.targetMoisture}</span></label>
+            <input type="range" id="global-map-target-moisture" min="1" max="5" step="1" value="${this.targetMoisture}" style="width: 100%;">
           </div>
         </div>
 
@@ -775,9 +826,27 @@ export class GlobalMapTools {
 
     $('body').append(html);
 
+    // Update UI visibility based on tool
+    const updateToolUI = (tool) => {
+      // Show/hide target temperature control
+      if (tool === 'set-temp') {
+        $('#target-temp-container').show();
+      } else {
+        $('#target-temp-container').hide();
+      }
+      
+      // Show/hide target moisture control
+      if (tool === 'set-moisture') {
+        $('#target-moisture-container').show();
+      } else {
+        $('#target-moisture-container').hide();
+      }
+    };
+
     // Event listeners
     $('#global-map-tool').on('change', (e) => {
       this.setTool(e.target.value);
+      updateToolUI(e.target.value);
     });
 
     $('#global-map-radius').on('input', (e) => {
@@ -790,6 +859,18 @@ export class GlobalMapTools {
       this.brushStrength = parseFloat(e.target.value);
       $('#strength-value').text(this.brushStrength.toFixed(1));
       this.updateBrushCursorGraphics();
+    });
+
+    $('#global-map-target-temp').on('input', (e) => {
+      this.targetTemperature = parseInt(e.target.value);
+      $('#target-temp-value').text(this.targetTemperature);
+      this.updateOverlayPreview();
+    });
+
+    $('#global-map-target-moisture').on('input', (e) => {
+      this.targetMoisture = parseInt(e.target.value);
+      $('#target-moisture-value').text(this.targetMoisture);
+      this.updateOverlayPreview();
     });
 
     // Tabs switching
