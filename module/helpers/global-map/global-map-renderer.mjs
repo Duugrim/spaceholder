@@ -179,6 +179,31 @@ export class GlobalMapRenderer {
     this._drawBiomeBorders(biomeIds, rows, cols, bounds, cellSize, uniqueBiomes);
 
     console.log('GlobalMapRenderer | ✓ Smooth biome boundaries rendered');
+
+    /* ALTERNATIVE APPROACH (commented out):
+    // 2. Sort biomes by moisture (ascending), then temperature (ascending)
+    // This ensures consistent overlap: drier renders first, then wetter
+    // Within same moisture: colder renders first, then hotter
+    const sortedBiomes = Array.from(uniqueBiomes).sort((a, b) => {
+      const paramsA = this.biomeResolver.getParametersFromBiomeId(a);
+      const paramsB = this.biomeResolver.getParametersFromBiomeId(b);
+      
+      // Primary sort: moisture (ascending)
+      if (paramsA.moisture !== paramsB.moisture) {
+        return paramsA.moisture - paramsB.moisture;
+      }
+      
+      // Secondary sort: temperature (ascending)
+      return paramsA.temperature - paramsB.temperature;
+    });
+
+    // 3. Render biomes in sorted order
+    // Later biomes will slightly overdraw earlier ones at boundaries
+    for (const biomeId of sortedBiomes) {
+      const color = this.biomeResolver.getBiomeColor(biomeId);
+      this._renderBiomeRegion(biomeIds, rows, cols, bounds, cellSize, biomeId, color);
+    }
+    */
   }
 
   /**
