@@ -44,7 +44,7 @@ export class BiomeResolver {
 
   /**
    * Determine biome ID based on moisture and temperature
-   * @param {number} moisture - 1-5
+   * @param {number} moisture - 1-6
    * @param {number} temperature - 1-5
    * @returns {number} biomeId
    */

@@ -13,7 +13,7 @@ export class GlobalMapTools {
     this.brushStrength = 0.5;
     this.targetHeight = 50;
     this.targetTemperature = 3; // Target temperature for set-temp tool (1-5)
-    this.targetMoisture = 3; // Target moisture for set-moisture tool (1-5)
+    this.targetMoisture = 3; // Target moisture for set-moisture tool (1-6)
     this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
     
     // Temperature/moisture editing
@@ -105,7 +105,7 @@ export class GlobalMapTools {
     if (strength !== null) this.brushStrength = strength;
     if (targetHeight !== null) this.targetHeight = targetHeight;
     if (targetTemperature !== null) this.targetTemperature = Math.max(1, Math.min(5, targetTemperature));
-    if (targetMoisture !== null) this.targetMoisture = Math.max(1, Math.min(5, targetMoisture));
+    if (targetMoisture !== null) this.targetMoisture = Math.max(1, Math.min(6, targetMoisture));
     this.updateBrushCursorGraphics();
   }
 
@@ -286,7 +286,7 @@ export class GlobalMapTools {
         }
       } else if (this.currentTool === 'increase-moisture') {
         for (const idx of this.affectedCells) {
-          moisture[idx] = Math.min(5, moisture[idx] + 1);
+          moisture[idx] = Math.min(6, moisture[idx] + 1);
         }
       } else if (this.currentTool === 'decrease-moisture') {
         for (const idx of this.affectedCells) {
@@ -798,7 +798,7 @@ export class GlobalMapTools {
 
           <div id="target-moisture-container" style="margin-bottom: 10px; display: none;">
             <label style="display: block; margin-bottom: 5px;">Target Moisture: <span id="target-moisture-value">${this.targetMoisture}</span></label>
-            <input type="range" id="global-map-target-moisture" min="1" max="5" step="1" value="${this.targetMoisture}" style="width: 100%;">
+            <input type="range" id="global-map-target-moisture" min="1" max="6" step="1" value="${this.targetMoisture}" style="width: 100%;">
           </div>
         </div>
 

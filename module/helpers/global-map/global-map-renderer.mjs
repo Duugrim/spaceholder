@@ -157,23 +157,9 @@ export class GlobalMapRenderer {
 
     console.log(`GlobalMapRenderer | Found ${uniqueBiomes.size} unique biomes`);
 
-    // 2. First pass: Fill ALL cells with biome colors (no gaps)
-    const baseGraphics = new PIXI.Graphics();
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const idx = row * cols + col;
-        const biomeId = biomeIds[idx];
-        const color = this.biomeResolver.getBiomeColor(biomeId);
-        
-        const x = bounds.minX + col * cellSize;
-        const y = bounds.minY + row * cellSize;
-        
-        baseGraphics.beginFill(color, 1.0);
-        baseGraphics.drawRect(x, y, cellSize, cellSize);
-        baseGraphics.endFill();
-      }
-    }
-    this.container.addChild(baseGraphics);
+    // 2. Wave-based rendering: draw biomes in order of connectivity
+    // Start with wettest biome, then draw neighbors, then their neighbors, etc.
+    this._renderBiomesWaveBased(biomeIds, uniqueBiomes, rows, cols, bounds, cellSize);
 
     // 3. Second pass: Draw smooth borders between biomes
     this._drawBiomeBorders(biomeIds, rows, cols, bounds, cellSize, uniqueBiomes);
@@ -204,6 +190,370 @@ export class GlobalMapRenderer {
       this._renderBiomeRegion(biomeIds, rows, cols, bounds, cellSize, biomeId, color);
     }
     */
+  }
+
+  /**
+   * Render biomes using wave-based approach at cluster level
+   * Draws clusters in order of connectivity, starting from wettest biome
+   * @private
+   */
+  _renderBiomesWaveBased(biomeIds, uniqueBiomes, rows, cols, bounds, cellSize) {
+    // Build all clusters for all biomes first
+    const allClusters = []; // Array of {biomeId, cluster: [cell indices], neighbors: Set}
+    
+    for (const biomeId of uniqueBiomes) {
+      const biomeCells = [];
+      for (let i = 0; i < rows * cols; i++) {
+        if (biomeIds[i] === biomeId) {
+          biomeCells.push(i);
+        }
+      }
+      
+      if (biomeCells.length === 0) continue;
+      
+      const clusters = this._findConnectedClusters(biomeCells, rows, cols);
+      
+      for (const cluster of clusters) {
+        allClusters.push({
+          biomeId,
+          cluster,
+          id: `${biomeId}_${allClusters.length}` // Unique cluster ID
+        });
+      }
+    }
+    
+    console.log(`GlobalMapRenderer | Total clusters across all biomes: ${allClusters.length}`);
+    
+    // Find starting cluster (from wettest biome)
+    const sortedBiomes = Array.from(uniqueBiomes).sort((a, b) => {
+      const paramsA = this.biomeResolver.getParametersFromBiomeId(a);
+      const paramsB = this.biomeResolver.getParametersFromBiomeId(b);
+      if (paramsA.moisture !== paramsB.moisture) {
+        return paramsB.moisture - paramsA.moisture;
+      }
+      return paramsA.temperature - paramsB.temperature;
+    });
+    
+    const startBiomeId = sortedBiomes[0];
+    const startCluster = allClusters.find(c => c.biomeId === startBiomeId);
+    
+    if (!startCluster) {
+      console.warn('GlobalMapRenderer | No starting cluster found');
+      return;
+    }
+    
+    // Track rendered cells and processed clusters
+    const pastBiomes = new Set(); // Rendered cells
+    const processedClusters = new Set(); // Cluster IDs already drawn
+    const clusterQueue = [startCluster]; // Queue of clusters to process
+    
+    // Process clusters in waves
+    while (clusterQueue.length > 0) {
+      const currentCluster = clusterQueue.shift();
+      
+      if (processedClusters.has(currentCluster.id)) {
+        continue;
+      }
+      
+      processedClusters.add(currentCluster.id);
+      
+      // Log cluster being drawn
+      const biomeParams = this.biomeResolver.getParametersFromBiomeId(currentCluster.biomeId);
+      const biomeColor = this.biomeResolver.getBiomeColor(currentCluster.biomeId);
+      const colorHex = '#' + biomeColor.toString(16).padStart(6, '0').toUpperCase();
+      
+      console.log(`GlobalMapRenderer | Drawing cluster: %c${biomeParams.name}%c (ID: ${currentCluster.biomeId}, Cluster: ${currentCluster.id})`,
+        `color: ${colorHex}; font-weight: bold;`,
+        'color: inherit; font-weight: normal;');
+      
+      // Find neighboring cells not in pastBiomes
+      const addBiome = new Set();
+      const neighboringClusterIds = new Set();
+      
+      for (const idx of currentCluster.cluster) {
+        const row = Math.floor(idx / cols);
+        const col = idx % cols;
+        
+        // Check all 8 neighbors
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            
+            const newRow = row + dr;
+            const newCol = col + dc;
+            
+            if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+              const neighborIdx = newRow * cols + newCol;
+              
+              // Find which cluster this neighbor belongs to
+              if (biomeIds[neighborIdx] !== currentCluster.biomeId) {
+                for (const otherCluster of allClusters) {
+                  if (otherCluster.cluster.includes(neighborIdx) && !processedClusters.has(otherCluster.id)) {
+                    neighboringClusterIds.add(otherCluster.id);
+                    break;
+                  }
+                }
+              }
+              
+              // Expand into unrendered cells
+              if (!pastBiomes.has(neighborIdx)) {
+                addBiome.add(neighborIdx);
+              }
+            }
+          }
+        }
+      }
+      
+      // Combine cluster and expansion for drawing
+      const drawBiome = [...currentCluster.cluster, ...Array.from(addBiome)];
+      
+      // Draw this cluster
+      this._renderBiomeRegionLayered(drawBiome, rows, cols, bounds, cellSize, currentCluster.biomeId);
+      
+      // Mark cells as rendered
+      for (const idx of currentCluster.cluster) {
+        pastBiomes.add(idx);
+      }
+      
+      // Add neighboring clusters to queue
+      for (const neighborClusterId of neighboringClusterIds) {
+        const neighborCluster = allClusters.find(c => c.id === neighborClusterId);
+        if (neighborCluster && !clusterQueue.some(c => c.id === neighborClusterId)) {
+          clusterQueue.push(neighborCluster);
+        }
+      }
+    }
+    
+    // Process any remaining unprocessed clusters (disconnected regions)
+    for (const cluster of allClusters) {
+      if (!processedClusters.has(cluster.id)) {
+        console.warn(`GlobalMapRenderer | Cluster ${cluster.id} was not connected, processing separately`);
+        clusterQueue.push(cluster);
+      }
+    }
+  }
+
+  /**
+   * Find connected clusters (components) in a set of cells
+   * Uses flood-fill algorithm with 8-connectivity (including diagonals)
+   * @private
+   */
+  _findConnectedClusters(cells, rows, cols) {
+    if (cells.length === 0) return [];
+    
+    const cellSet = new Set(cells);
+    const visited = new Set();
+    const clusters = [];
+    
+    // Helper: Get 8 neighbors (including diagonals)
+    const getNeighbors = (idx) => {
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+      const neighbors = [];
+      
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          
+          const newRow = row + dr;
+          const newCol = col + dc;
+          
+          if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+            neighbors.push(newRow * cols + newCol);
+          }
+        }
+      }
+      
+      return neighbors;
+    };
+    
+    // Flood-fill to find each cluster
+    for (const startIdx of cells) {
+      if (visited.has(startIdx)) continue;
+      
+      // BFS to find all connected cells
+      const cluster = [];
+      const queue = [startIdx];
+      visited.add(startIdx);
+      
+      while (queue.length > 0) {
+        const idx = queue.shift();
+        cluster.push(idx);
+        
+        // Check neighbors
+        for (const neighborIdx of getNeighbors(idx)) {
+          if (cellSet.has(neighborIdx) && !visited.has(neighborIdx)) {
+            visited.add(neighborIdx);
+            queue.push(neighborIdx);
+          }
+        }
+      }
+      
+      clusters.push(cluster);
+    }
+    
+    return clusters;
+  }
+
+  /**
+   * Render a biome region using layered filling approach
+   * Creates smooth contours using marching squares
+   * @private
+   */
+  _renderBiomeRegionLayered(cellIndices, rows, cols, bounds, cellSize, biomeId) {
+    if (cellIndices.length === 0) return;
+    
+    const color = this.biomeResolver.getBiomeColor(biomeId);
+    
+    // Create binary grid for this biome region (1 = in region, 0 = outside)
+    const binaryGrid = new Float32Array(rows * cols);
+    for (const idx of cellIndices) {
+      binaryGrid[idx] = 1.0;
+    }
+    
+    // Check if biome touches edges of the map
+    const touchesEdge = this._checkBiomeTouchesEdge(cellIndices, rows, cols);
+    
+    // Use marching squares to find contours at threshold 0.5
+    const contourSegments = this._marchingSquares(binaryGrid, rows, cols, bounds, cellSize, 0.5);
+
+    // If no contours and touches edge, draw as rectangle (entire region is on edge)
+    if (contourSegments.length === 0 && touchesEdge) {
+      // Draw all cells as rectangles
+      const graphics = new PIXI.Graphics();
+      graphics.beginFill(color, 1.0);
+      for (const idx of cellIndices) {
+        const row = Math.floor(idx / cols);
+        const col = idx % cols;
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        graphics.drawRect(x, y, cellSize, cellSize);
+      }
+      graphics.endFill();
+      this.container.addChild(graphics);
+      return;
+    }
+    
+    if (contourSegments.length === 0) {
+      return; // No boundaries for this biome
+    }
+
+    // Build contour paths from segments
+    const contours = this._buildContourPaths(contourSegments);
+    
+    // If biome touches edge, add explicit edge boundaries
+    if (touchesEdge) {
+      this._addEdgeBoundaries(contours, cellIndices, rows, cols, bounds, cellSize);
+    }
+    
+    // Smooth contours using Chaikin's algorithm
+    const smoothedContours = contours.map(path => this._smoothContour(path, 2));
+
+    // Draw filled regions
+    const graphics = new PIXI.Graphics();
+    graphics.beginFill(color, 1.0);
+    for (const contour of smoothedContours) {
+      if (contour.length < 3) continue;
+
+      graphics.moveTo(contour[0].x, contour[0].y);
+      for (let i = 1; i < contour.length; i++) {
+        graphics.lineTo(contour[i].x, contour[i].y);
+      }
+      graphics.closePath();
+    }
+    graphics.endFill();
+
+    this.container.addChild(graphics);
+  }
+
+  /**
+   * Check if biome cluster touches any edge of the map
+   * @private
+   */
+  _checkBiomeTouchesEdge(cellIndices, rows, cols) {
+    for (const idx of cellIndices) {
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+      
+      // Check if on any edge
+      if (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Add explicit boundary paths along map edges for biomes that touch them
+   * @private
+   */
+  _addEdgeBoundaries(contours, cellIndices, rows, cols, bounds, cellSize) {
+    // Find cells on each edge
+    const topEdge = [];
+    const bottomEdge = [];
+    const leftEdge = [];
+    const rightEdge = [];
+    
+    for (const idx of cellIndices) {
+      const row = Math.floor(idx / cols);
+      const col = idx % cols;
+      
+      if (row === 0) topEdge.push(col);
+      if (row === rows - 1) bottomEdge.push(col);
+      if (col === 0) leftEdge.push(row);
+      if (col === cols - 1) rightEdge.push(row);
+    }
+    
+    // Sort edges
+    topEdge.sort((a, b) => a - b);
+    bottomEdge.sort((a, b) => a - b);
+    leftEdge.sort((a, b) => a - b);
+    rightEdge.sort((a, b) => a - b);
+    
+    // Add edge paths to contours
+    if (topEdge.length > 0) {
+      const path = [];
+      for (const col of topEdge) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY;
+        path.push({ x, y });
+        path.push({ x: x + cellSize, y });
+      }
+      if (path.length > 0) contours.push(path);
+    }
+    
+    if (bottomEdge.length > 0) {
+      const path = [];
+      for (const col of bottomEdge) {
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + rows * cellSize;
+        path.push({ x, y });
+        path.push({ x: x + cellSize, y });
+      }
+      if (path.length > 0) contours.push(path);
+    }
+    
+    if (leftEdge.length > 0) {
+      const path = [];
+      for (const row of leftEdge) {
+        const x = bounds.minX;
+        const y = bounds.minY + row * cellSize;
+        path.push({ x, y });
+        path.push({ x, y: y + cellSize });
+      }
+      if (path.length > 0) contours.push(path);
+    }
+    
+    if (rightEdge.length > 0) {
+      const path = [];
+      for (const row of rightEdge) {
+        const x = bounds.minX + cols * cellSize;
+        const y = bounds.minY + row * cellSize;
+        path.push({ x, y });
+        path.push({ x, y: y + cellSize });
+      }
+      if (path.length > 0) contours.push(path);
+    }
   }
 
   /**
