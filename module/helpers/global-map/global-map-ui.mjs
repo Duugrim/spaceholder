@@ -254,20 +254,57 @@ export function registerGlobalMapUI(controls, spaceholder) {
         button: true,
       },
 
-      'toggle-render-mode': {
-        name: 'toggle-render-mode',
-        title: 'Режим отображения (контуры/ячейки)',
-        icon: 'fas fa-layer-group',
+      'toggle-biomes-mode': {
+        name: 'toggle-biomes-mode',
+        title: 'Режим биомов',
+        icon: 'fas fa-seedling',
         onChange: async (isActive) => {
           if (!spaceholder.globalMapRenderer?.currentGrid) {
             ui.notifications.warn('Нет загруженной карты');
             return;
           }
 
-          const currentMode = spaceholder.globalMapRenderer.renderMode;
-          const newMode = currentMode === 'contours' ? 'cells' : 'contours';
-          spaceholder.globalMapRenderer.setRenderMode(newMode);
-          ui.notifications.info(`Режим: ${newMode === 'contours' ? 'контуры' : 'ячейки'}`);
+          const modes = ['fancy', 'fancyDebug', 'cells', 'off'];
+          const modeNames = {
+            'fancy': 'Красивые',
+            'fancyDebug': 'Красивые + отладка',
+            'cells': 'Сетка',
+            'off': 'Выключено'
+          };
+          
+          const currentMode = spaceholder.globalMapRenderer.biomesMode;
+          const currentIndex = modes.indexOf(currentMode);
+          const newMode = modes[(currentIndex + 1) % modes.length];
+          
+          spaceholder.globalMapRenderer.setBiomesMode(newMode);
+          ui.notifications.info(`Биомы: ${modeNames[newMode]}`);
+        },
+        button: true,
+      },
+
+      'toggle-heights-mode': {
+        name: 'toggle-heights-mode',
+        title: 'Режим высот',
+        icon: 'fas fa-mountain',
+        onChange: async (isActive) => {
+          if (!spaceholder.globalMapRenderer?.currentGrid) {
+            ui.notifications.warn('Нет загруженной карты');
+            return;
+          }
+
+          const modes = ['contours', 'cells', 'off'];
+          const modeNames = {
+            'contours': 'Контуры',
+            'cells': 'Цветная сетка',
+            'off': 'Выключено'
+          };
+          
+          const currentMode = spaceholder.globalMapRenderer.heightsMode;
+          const currentIndex = modes.indexOf(currentMode);
+          const newMode = modes[(currentIndex + 1) % modes.length];
+          
+          spaceholder.globalMapRenderer.setHeightsMode(newMode);
+          ui.notifications.info(`Высоты: ${modeNames[newMode]}`);
         },
         button: true,
       },

@@ -11,9 +11,10 @@ export class GlobalMapRenderer {
     this.isVisible = false;
     this.currentGrid = null; // Reference to current grid being rendered
     this.currentMetadata = null;
-    this.renderMode = 'contours'; // 'contours' (default) or 'cells'
+    // Separate render modes for heights and biomes
+    this.heightsMode = 'contours'; // 'contours', 'cells', 'off'
+    this.biomesMode = 'fancy'; // 'fancy', 'fancyDebug', 'cells', 'off'
     this.biomeResolver = new BiomeResolver(); // For dynamic biome determination
-    this.showBiomes = true; // Whether to render biomes under heights
   }
 
   /**
@@ -70,35 +71,51 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Set render mode
-   * @param {string} mode - 'contours' (default) or 'cells'
+   * Set heights render mode
+   * @param {string} mode - 'contours', 'cells', 'off'
    */
-  setRenderMode(mode) {
-    if (mode !== 'contours' && mode !== 'cells') {
-      console.warn(`GlobalMapRenderer | Invalid render mode: ${mode}`);
+  setHeightsMode(mode) {
+    if (!['contours', 'cells', 'off'].includes(mode)) {
+      console.warn(`GlobalMapRenderer | Invalid heights mode: ${mode}`);
       return;
     }
-    this.renderMode = mode;
-    console.log(`GlobalMapRenderer | Render mode set to: ${mode}`);
+    this.heightsMode = mode;
+    console.log(`GlobalMapRenderer | Heights mode set to: ${mode}`);
     // Re-render if data available
     if (this.currentGrid && this.currentMetadata) {
-      this.render(this.currentGrid, this.currentMetadata, { mode: 'heights' });
+      this.render(this.currentGrid, this.currentMetadata);
     }
   }
 
   /**
-   * Render unified grid to canvas
+   * Set biomes render mode
+   * @param {string} mode - 'fancy', 'fancyDebug', 'cells', 'off'
+   */
+  setBiomesMode(mode) {
+    if (!['fancy', 'fancyDebug', 'cells', 'off'].includes(mode)) {
+      console.warn(`GlobalMapRenderer | Invalid biomes mode: ${mode}`);
+      return;
+    }
+    this.biomesMode = mode;
+    console.log(`GlobalMapRenderer | Biomes mode set to: ${mode}`);
+    // Re-render if data available
+    if (this.currentGrid && this.currentMetadata) {
+      this.render(this.currentGrid, this.currentMetadata);
+    }
+  }
+
+  /**
+   * Render unified grid to canvas with separate biomes and heights modes
    * @param {Object} gridData - Unified grid {heights, biomes, rows, cols}
    * @param {Object} metadata - Grid metadata
-   * @param {Object} renderOptions - Render options {mode: 'heights'|'biomes'|'both', colorFunc, etc}
    */
-  async render(gridData, metadata, renderOptions = {}) {
+  async render(gridData, metadata) {
     if (!gridData || !gridData.heights) {
       console.warn('GlobalMapRenderer | No grid data to render');
       return;
     }
 
-    console.log(`GlobalMapRenderer | Rendering grid (mode: ${this.renderMode})...`);
+    console.log(`GlobalMapRenderer | Rendering grid (biomes: ${this.biomesMode}, heights: ${this.heightsMode})...`);
 
     // Store reference to current grid
     this.currentGrid = gridData;
@@ -112,11 +129,14 @@ export class GlobalMapRenderer {
     // Clear previous rendering
     this.container.removeChildren();
 
-    // Choose rendering method
-    if (this.renderMode === 'contours') {
-      this._renderContours(gridData, metadata);
-    } else {
-      this._renderCells(gridData, metadata, renderOptions);
+    // Render biomes layer
+    if (this.biomesMode !== 'off') {
+      this._renderBiomesLayer(gridData, metadata);
+    }
+
+    // Render heights layer
+    if (this.heightsMode !== 'off') {
+      this._renderHeightsLayer(gridData, metadata);
     }
 
     this.isVisible = true;
@@ -124,15 +144,48 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Render biomes with smooth boundaries
-   * First fills all cells, then draws smooth border lines
+   * Render biomes layer based on current biomesMode
    * @private
    */
-  _renderBiomesSmooth(gridData, metadata) {
+  _renderBiomesLayer(gridData, metadata) {
+    switch (this.biomesMode) {
+      case 'fancy':
+        this._renderBiomesSmooth(gridData, metadata, false); // No borders
+        break;
+      case 'fancyDebug':
+        this._renderBiomesSmooth(gridData, metadata, true); // With borders
+        break;
+      case 'cells':
+        this._renderBiomesCells(gridData, metadata);
+        break;
+    }
+  }
+
+  /**
+   * Render heights layer based on current heightsMode
+   * @private
+   */
+  _renderHeightsLayer(gridData, metadata) {
+    switch (this.heightsMode) {
+      case 'contours':
+        this._renderHeightContours(gridData, metadata);
+        break;
+      case 'cells':
+        this._renderHeightCells(gridData, metadata);
+        break;
+    }
+  }
+
+  /**
+   * Render biomes with smooth boundaries
+   * @param {boolean} drawBorders - Whether to draw biome borders
+   * @private
+   */
+  _renderBiomesSmooth(gridData, metadata, drawBorders = false) {
     const { moisture, temperature, heights, rows, cols } = gridData;
     const { cellSize, bounds } = metadata;
 
-    if (!moisture || !temperature || !this.showBiomes) {
+    if (!moisture || !temperature) {
       return;
     }
 
@@ -161,8 +214,10 @@ export class GlobalMapRenderer {
     // Start with wettest biome, then draw neighbors, then their neighbors, etc.
     this._renderBiomesWaveBased(biomeIds, uniqueBiomes, rows, cols, bounds, cellSize);
 
-    // 3. Second pass: Draw smooth borders between biomes
-    this._drawBiomeBorders(biomeIds, rows, cols, bounds, cellSize, uniqueBiomes);
+    // 3. Optional: Draw smooth borders between biomes
+    if (drawBorders) {
+      this._drawBiomeBorders(biomeIds, rows, cols, bounds, cellSize, uniqueBiomes);
+    }
 
     console.log('GlobalMapRenderer | ✓ Smooth biome boundaries rendered');
 
@@ -742,6 +797,98 @@ export class GlobalMapRenderer {
     }
 
     return smoothed;
+  }
+
+  /**
+   * Render biomes as simple colored cells
+   * @private
+   */
+  _renderBiomesCells(gridData, metadata) {
+    const { moisture, temperature, heights, rows, cols } = gridData;
+    const { cellSize, bounds } = metadata;
+
+    if (!moisture || !temperature) {
+      return;
+    }
+
+    console.log('GlobalMapRenderer | Rendering biomes as cells...');
+    const graphics = new PIXI.Graphics();
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        const biomeId = this.biomeResolver.getBiomeId(moisture[idx], temperature[idx], heights[idx]);
+        const color = this.biomeResolver.getBiomeColor(biomeId);
+        
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        
+        graphics.beginFill(color, 1.0);
+        graphics.drawRect(x, y, cellSize, cellSize);
+        graphics.endFill();
+      }
+    }
+
+    this.container.addChild(graphics);
+  }
+
+  /**
+   * Render height contours
+   * @private
+   */
+  _renderHeightContours(gridData, metadata) {
+    const { heights, rows, cols } = gridData;
+    const { cellSize, bounds, heightStats } = metadata;
+
+    // Create contour levels (20 levels for better detail)
+    const minHeight = heightStats.min;
+    const maxHeight = heightStats.max;
+    const range = maxHeight - minHeight;
+
+    const levels = [];
+    for (let i = 1; i <= 20; i++) {
+      const level = minHeight + (range * i / 20);
+      levels.push({
+        level,
+        color: this._heightToColor(i / 20),
+      });
+    }
+
+    // Draw contours for each level
+    for (const levelInfo of levels) {
+      const segments = this._marchingSquares(heights, rows, cols, bounds, cellSize, levelInfo.level);
+      this._drawContourSegments(segments, levelInfo.color, heights, rows, cols, bounds, cellSize);
+    }
+  }
+
+  /**
+   * Render heights as colored cells
+   * @private
+   */
+  _renderHeightCells(gridData, metadata) {
+    const { heights, rows, cols } = gridData;
+    const { cellSize, bounds, heightStats } = metadata;
+
+    const graphics = new PIXI.Graphics();
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        const height = heights[idx];
+        
+        const normalized = this._normalizeValue(height, heightStats.min, heightStats.max);
+        const color = this._heightToColor(normalized);
+        
+        const x = bounds.minX + col * cellSize;
+        const y = bounds.minY + row * cellSize;
+        
+        graphics.beginFill(color, 0.7);
+        graphics.drawRect(x, y, cellSize, cellSize);
+        graphics.endFill();
+      }
+    }
+
+    this.container.addChild(graphics);
   }
 
   /**
