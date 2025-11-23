@@ -114,9 +114,9 @@ export class GlobalMapProcessing {
       for (let col = 0; col < gridCols; col++) {
         const idx = row * gridCols + col;
 
-        // Grid cell center in source map coordinates
-        const worldX = col * cellSize + cellSize / 2;
-        const worldY = row * cellSize + cellSize / 2;
+        // Grid cell coordinates (shifted by half cell to center at coordinate point)
+        const worldX = (col + 0.5) * cellSize;
+        const worldY = (row + 0.5) * cellSize;
 
         // Scale to source map coordinates (0..srcMapWidth, 0..srcMapHeight)
         const srcX = (worldX / sceneDims.width) * srcMapWidth;

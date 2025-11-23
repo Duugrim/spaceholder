@@ -492,8 +492,9 @@ export class GlobalMapTools {
         let delta = previewOverlay[idx];
         
         if (Math.abs(delta) > 0.05) {
-          const x = bounds.minX + col * cellSize;
-          const y = bounds.minY + row * cellSize;
+          // Draw cell centered at coordinate point (shift by half cell)
+          const x = bounds.minX + col * cellSize - cellSize / 2;
+          const y = bounds.minY + row * cellSize - cellSize / 2;
           const color = delta > 0 ? positiveColor : negativeColor;
           // Smooth and Roughen get higher alpha for visibility
           let alpha;

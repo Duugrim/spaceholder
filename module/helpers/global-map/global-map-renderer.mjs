@@ -1224,8 +1224,9 @@ export class GlobalMapRenderer {
         const biomeId = this.biomeResolver.getBiomeId(moisture[idx], temperature[idx], heights[idx]);
         const color = this.biomeResolver.getBiomeColor(biomeId);
         
-        const x = bounds.minX + col * cellSize;
-        const y = bounds.minY + row * cellSize;
+        // Draw cell centered at coordinate point (shift by half cell)
+        const x = bounds.minX + col * cellSize - cellSize / 2;
+        const y = bounds.minY + row * cellSize - cellSize / 2;
         
         graphics.beginFill(color, 1.0);
         graphics.drawRect(x, y, cellSize, cellSize);
@@ -1283,8 +1284,9 @@ export class GlobalMapRenderer {
         const normalized = this._normalizeValue(height, heightStats.min, heightStats.max);
         const color = this._heightToColor(normalized);
         
-        const x = bounds.minX + col * cellSize;
-        const y = bounds.minY + row * cellSize;
+        // Draw cell centered at coordinate point (shift by half cell)
+        const x = bounds.minX + col * cellSize - cellSize / 2;
+        const y = bounds.minY + row * cellSize - cellSize / 2;
         
         graphics.beginFill(color, 0.7);
         graphics.drawRect(x, y, cellSize, cellSize);
@@ -1330,8 +1332,9 @@ export class GlobalMapRenderer {
         // Dynamically determine biome ID from moisture/temperature/height
         const biomeId = this.biomeResolver.getBiomeId(moistureVal, temperatureVal, height);
 
-        const x = bounds.minX + col * cellSize;
-        const y = bounds.minY + row * cellSize;
+        // Draw cell centered at coordinate point (shift by half cell)
+        const x = bounds.minX + col * cellSize - cellSize / 2;
+        const y = bounds.minY + row * cellSize - cellSize / 2;
 
         // Get biome color
         const color = this.biomeResolver.getBiomeColor(biomeId);
@@ -1606,8 +1609,9 @@ export class GlobalMapRenderer {
       for (let col = 0; col < cols; col++) {
         const idx = row * cols + col;
 
-        const x = bounds.minX + col * cellSize;
-        const y = bounds.minY + row * cellSize;
+        // Draw cell centered at coordinate point (shift by half cell)
+        const x = bounds.minX + col * cellSize - cellSize / 2;
+        const y = bounds.minY + row * cellSize - cellSize / 2;
 
         let color = 0xffffff; // Default white
         let alpha = opacity;
