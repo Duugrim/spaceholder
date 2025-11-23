@@ -20,6 +20,9 @@ export class GlobalMapTools {
     this.tempOverlayTemp = null; // Temporary delta for temperature
     this.tempOverlayMoisture = null; // Temporary delta for moisture
 
+    // Brush state
+    this.isBrushActive = false; // Whether brush is currently active and ready to paint
+    
     // Mouse state
     this.isMouseDown = false;
     this.lastPosition = null;
@@ -80,6 +83,39 @@ export class GlobalMapTools {
   }
 
   /**
+   * Activate brush for painting
+   */
+  activateBrush() {
+    if (this.isBrushActive) return;
+    
+    // Sync currentTool with selected tool from active tab
+    if ($('#brush-tab').is(':visible')) {
+      // Heights tab is active
+      const selectedTool = $('#global-map-tool').val();
+      this.setTool(selectedTool);
+    } else if ($('#biomes-tab').is(':visible')) {
+      // Biomes tab is active
+      const selectedTool = $('#global-map-biome-tool').val();
+      this.setTool(selectedTool);
+    }
+    
+    this.isBrushActive = true;
+    this.updateBrushUI();
+    console.log(`GlobalMapTools | Brush activated: ${this.currentTool}`);
+  }
+  
+  /**
+   * Deactivate brush
+   */
+  deactivateBrush() {
+    if (!this.isBrushActive) return;
+    
+    this.isBrushActive = false;
+    this.updateBrushUI();
+    console.log('GlobalMapTools | Brush deactivated');
+  }
+  
+  /**
    * Set current tool
    */
   setTool(tool) {
@@ -117,7 +153,7 @@ export class GlobalMapTools {
 
     // Mouse down
     canvas.stage.on('pointerdown', (event) => {
-      if (!this.isActive) return;
+      if (!this.isActive || !this.isBrushActive) return;
 
       // Allow right-click panning
       if (event.data.button === 2) return;
@@ -146,10 +182,10 @@ export class GlobalMapTools {
 
       const pos = event.data.getLocalPosition(canvas.stage);
 
-      // Update cursor
+      // Update cursor (always show, even when inactive)
       this.updateBrushCursorPosition(pos.x, pos.y);
 
-      if (!this.isMouseDown) return;
+      if (!this.isBrushActive || !this.isMouseDown) return;
 
       // Throttle to 10px
       if (this.lastPosition) {
@@ -167,7 +203,7 @@ export class GlobalMapTools {
 
     // Mouse up
     canvas.stage.on('pointerup', (event) => {
-      if (!this.isActive || !this.isMouseDown) return;
+      if (!this.isActive || !this.isBrushActive || !this.isMouseDown) return;
 
       this.isMouseDown = false;
       this.lastPosition = null;
@@ -724,6 +760,41 @@ export class GlobalMapTools {
   }
 
   /**
+   * Update brush UI state (enable/disable controls based on brush active state)
+   */
+  updateBrushUI() {
+    if (!$('#global-map-tools-ui').length) return;
+    
+    const isActive = this.isBrushActive;
+    
+    // Update button text and style
+    const buttonText = isActive ? 'Deactivate Brush' : 'Activate Brush';
+    const buttonColor = isActive ? '#cc0000' : '#00aa00';
+    $('#brush-toggle').text(buttonText).css('background', buttonColor);
+    $('#biome-brush-toggle').text(buttonText).css('background', buttonColor);
+    
+    // Disable/enable controls
+    $('#global-map-tool').prop('disabled', isActive);
+    $('#global-map-biome-tool').prop('disabled', isActive);
+    
+    // Disable/enable tab switching
+    if (isActive) {
+      $('#tab-brush').css('pointer-events', 'none').css('opacity', '0.5');
+      $('#tab-biomes').css('pointer-events', 'none').css('opacity', '0.5');
+      $('#tab-global').css('pointer-events', 'none').css('opacity', '0.5');
+    } else {
+      $('#tab-brush').css('pointer-events', 'auto').css('opacity', '1');
+      $('#tab-biomes').css('pointer-events', 'auto').css('opacity', '1');
+      $('#tab-global').css('pointer-events', 'auto').css('opacity', '1');
+    }
+    
+    // Update cursor visibility
+    if (this.brushCursor) {
+      this.brushCursor.visible = isActive;
+    }
+  }
+  
+  /**
    * Destroy brush cursor
    */
   destroyBrushCursor() {
@@ -757,7 +828,10 @@ export class GlobalMapTools {
 
         <div style="display: flex; gap: 5px; margin-bottom: 10px;">
           <button id="tab-brush" data-tab="brush" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Brush
+            Heights
+          </button>
+          <button id="tab-biomes" data-tab="biomes" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
+            Biomes
           </button>
           <button id="tab-global" data-tab="global" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
             Global
@@ -773,12 +847,6 @@ export class GlobalMapTools {
             <option value="smooth">Smooth</option>
             <option value="roughen">Roughen</option>
             <option value="flatten">Flatten</option>
-            <option value="increase-temp">Increase Temperature</option>
-            <option value="decrease-temp">Decrease Temperature</option>
-            <option value="increase-moisture">Increase Moisture</option>
-            <option value="decrease-moisture">Decrease Moisture</option>
-            <option value="set-temp">Set Temperature</option>
-            <option value="set-moisture">Set Moisture</option>
           </select>
           </div>
 
@@ -791,16 +859,48 @@ export class GlobalMapTools {
             <label style="display: block; margin-bottom: 5px;">Strength: <span id="strength-value">${this.brushStrength.toFixed(1)}</span></label>
             <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
           </div>
+          
+          <button id="brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+            Activate Brush
+          </button>
+        </div>
 
-          <div id="target-temp-container" style="margin-bottom: 10px; display: none;">
-            <label style="display: block; margin-bottom: 5px;">Target Temperature: <span id="target-temp-value">${this.targetTemperature}</span></label>
-            <input type="range" id="global-map-target-temp" min="1" max="5" step="1" value="${this.targetTemperature}" style="width: 100%;">
+        <div id="biomes-tab" style="display: none;">
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Tool:</label>
+          <select id="global-map-biome-tool" style="width: 100%; padding: 5px;">
+            <option value="increase-temp" selected>Increase Temperature</option>
+            <option value="decrease-temp">Decrease Temperature</option>
+            <option value="set-temp">Set Temperature</option>
+            <option value="increase-moisture">Increase Moisture</option>
+            <option value="decrease-moisture">Decrease Moisture</option>
+            <option value="set-moisture">Set Moisture</option>
+          </select>
           </div>
 
-          <div id="target-moisture-container" style="margin-bottom: 10px; display: none;">
-            <label style="display: block; margin-bottom: 5px;">Target Moisture: <span id="target-moisture-value">${this.targetMoisture}</span></label>
-            <input type="range" id="global-map-target-moisture" min="1" max="6" step="1" value="${this.targetMoisture}" style="width: 100%;">
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Radius: <span id="biome-radius-value">${this.brushRadius}</span>px</label>
+            <input type="range" id="global-map-biome-radius" min="50" max="500" step="10" value="${this.brushRadius}" style="width: 100%;">
           </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Strength: <span id="biome-strength-value">${this.brushStrength.toFixed(1)}</span></label>
+            <input type="range" id="global-map-biome-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
+          </div>
+
+          <div id="biome-target-temp-container" style="margin-bottom: 10px; display: none;">
+            <label style="display: block; margin-bottom: 5px;">Target Temperature: <span id="biome-target-temp-value">${this.targetTemperature}</span></label>
+            <input type="range" id="global-map-biome-target-temp" min="1" max="5" step="1" value="${this.targetTemperature}" style="width: 100%;">
+          </div>
+
+          <div id="biome-target-moisture-container" style="margin-bottom: 10px; display: none;">
+            <label style="display: block; margin-bottom: 5px;">Target Moisture: <span id="biome-target-moisture-value">${this.targetMoisture}</span></label>
+            <input type="range" id="global-map-biome-target-moisture" min="1" max="6" step="1" value="${this.targetMoisture}" style="width: 100%;">
+          </div>
+          
+          <button id="biome-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+            Activate Brush
+          </button>
         </div>
 
         <div id="global-tab" style="display: none;">
@@ -827,68 +927,119 @@ export class GlobalMapTools {
 
     $('body').append(html);
 
-    // Update UI visibility based on tool
-    const updateToolUI = (tool) => {
+    // Update UI visibility based on tool (biomes tab)
+    const updateBiomeToolUI = (tool) => {
       // Show/hide target temperature control
       if (tool === 'set-temp') {
-        $('#target-temp-container').show();
+        $('#biome-target-temp-container').show();
       } else {
-        $('#target-temp-container').hide();
+        $('#biome-target-temp-container').hide();
       }
       
       // Show/hide target moisture control
       if (tool === 'set-moisture') {
-        $('#target-moisture-container').show();
+        $('#biome-target-moisture-container').show();
       } else {
-        $('#target-moisture-container').hide();
+        $('#biome-target-moisture-container').hide();
       }
     };
 
-    // Event listeners
+    // Event listeners for Heights tab
     $('#global-map-tool').on('change', (e) => {
       this.setTool(e.target.value);
-      updateToolUI(e.target.value);
     });
 
     $('#global-map-radius').on('input', (e) => {
       this.brushRadius = parseInt(e.target.value);
       $('#radius-value').text(this.brushRadius);
+      $('#biome-radius-value').text(this.brushRadius);
       this.updateBrushCursorGraphics();
     });
 
     $('#global-map-strength').on('input', (e) => {
       this.brushStrength = parseFloat(e.target.value);
       $('#strength-value').text(this.brushStrength.toFixed(1));
+      $('#biome-strength-value').text(this.brushStrength.toFixed(1));
       this.updateBrushCursorGraphics();
     });
 
-    $('#global-map-target-temp').on('input', (e) => {
+    // Event listeners for Biomes tab
+    $('#global-map-biome-tool').on('change', (e) => {
+      this.setTool(e.target.value);
+      updateBiomeToolUI(e.target.value);
+    });
+
+    $('#global-map-biome-radius').on('input', (e) => {
+      this.brushRadius = parseInt(e.target.value);
+      $('#radius-value').text(this.brushRadius);
+      $('#biome-radius-value').text(this.brushRadius);
+      this.updateBrushCursorGraphics();
+    });
+
+    $('#global-map-biome-strength').on('input', (e) => {
+      this.brushStrength = parseFloat(e.target.value);
+      $('#strength-value').text(this.brushStrength.toFixed(1));
+      $('#biome-strength-value').text(this.brushStrength.toFixed(1));
+      this.updateBrushCursorGraphics();
+    });
+
+    $('#global-map-biome-target-temp').on('input', (e) => {
       this.targetTemperature = parseInt(e.target.value);
-      $('#target-temp-value').text(this.targetTemperature);
+      $('#biome-target-temp-value').text(this.targetTemperature);
       this.updateOverlayPreview();
     });
 
-    $('#global-map-target-moisture').on('input', (e) => {
+    $('#global-map-biome-target-moisture').on('input', (e) => {
       this.targetMoisture = parseInt(e.target.value);
-      $('#target-moisture-value').text(this.targetMoisture);
+      $('#biome-target-moisture-value').text(this.targetMoisture);
       this.updateOverlayPreview();
+    });
+    
+    // Brush activation/deactivation
+    $('#brush-toggle').on('click', () => {
+      if (this.isBrushActive) {
+        this.deactivateBrush();
+      } else {
+        this.activateBrush();
+      }
+    });
+    
+    $('#biome-brush-toggle').on('click', () => {
+      if (this.isBrushActive) {
+        this.deactivateBrush();
+      } else {
+        this.activateBrush();
+      }
     });
 
     // Tabs switching
     const activateTab = (tab) => {
+      // Hide all tabs
+      $('#brush-tab').hide();
+      $('#biomes-tab').hide();
+      $('#global-tab').hide();
+      
+      // Reset all tab buttons
+      $('#tab-brush').css('background', '#333').css('font-weight', 'normal');
+      $('#tab-biomes').css('background', '#333').css('font-weight', 'normal');
+      $('#tab-global').css('background', '#333').css('font-weight', 'normal');
+      
+      // Show selected tab and highlight button
       if (tab === 'brush') {
         $('#brush-tab').show();
-        $('#global-tab').hide();
         $('#tab-brush').css('background', '#0066cc').css('font-weight', 'bold');
-        $('#tab-global').css('background', '#333').css('font-weight', 'normal');
-      } else {
-        $('#brush-tab').hide();
+      } else if (tab === 'biomes') {
+        $('#biomes-tab').show();
+        $('#tab-biomes').css('background', '#0066cc').css('font-weight', 'bold');
+        // Initialize biome tool UI state
+        updateBiomeToolUI($('#global-map-biome-tool').val());
+      } else if (tab === 'global') {
         $('#global-tab').show();
         $('#tab-global').css('background', '#0066cc').css('font-weight', 'bold');
-        $('#tab-brush').css('background', '#333').css('font-weight', 'normal');
       }
     };
     $('#tab-brush').on('click', () => activateTab('brush'));
+    $('#tab-biomes').on('click', () => activateTab('biomes'));
     $('#tab-global').on('click', () => activateTab('global'));
 
     // Global operations
@@ -909,6 +1060,9 @@ export class GlobalMapTools {
     $('#global-map-exit').on('click', async () => {
       await this.deactivate();
     });
+    
+    // Initialize UI state
+    this.updateBrushUI();
   }
 
   /**
