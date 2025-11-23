@@ -539,10 +539,22 @@ export class GlobalMapRenderer {
     baseGraphics.endFill();
     this.container.addChild(baseGraphics);
     
-    // 2. Создаём контейнер для паттерна с маской
+    // 2. Вычисляем реальный bounding box биома из контуров
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const contour of smoothedContours) {
+      for (const point of contour) {
+        if (point.x < minX) minX = point.x;
+        if (point.y < minY) minY = point.y;
+        if (point.x > maxX) maxX = point.x;
+        if (point.y > maxY) maxY = point.y;
+      }
+    }
+    const biomeBounds = { minX, minY, maxX, maxY };
+    
+    // 3. Создаём контейнер для паттерна с маской
     const patternContainer = new PIXI.Container();
     
-    // 3. Маска для паттерна (та же форма биома)
+    // 4. Маска для паттерна (та же форма биома)
     const mask = new PIXI.Graphics();
     mask.beginFill(0xFFFFFF);
     for (const contour of smoothedContours) {
@@ -555,7 +567,7 @@ export class GlobalMapRenderer {
     }
     mask.endFill();
     
-    // 4. Рисуем паттерн согласно конфигурации
+    // 5. Рисуем паттерн согласно конфигурации
     const pattern = new PIXI.Graphics();
     
     // Извлекаем параметры из конфига с значениями по умолчанию
@@ -564,46 +576,54 @@ export class GlobalMapRenderer {
     const spacing = patternConfig.spacing ?? 2.0;
     const lineWidth = patternConfig.lineWidth ?? 0.6;
     
-    const patternColor = this._darkenColor(color, darkenFactor);
+    // Определяем цвет паттерна: используем кастомный цвет, если указан, иначе затемняем основной
+    let patternColor;
+    if (patternConfig.patternColor) {
+      // Кастомный цвет из конфига (hex-строка)
+      patternColor = parseInt(patternConfig.patternColor, 16);
+    } else {
+      // Затемнённый основной цвет биома
+      patternColor = this._darkenColor(color, darkenFactor);
+    }
     
-    // Выбираем тип паттерна
+    // Выбираем тип паттерна (используем biomeBounds вместо bounds всей карты)
     switch (patternConfig.type) {
       case 'circles':
-        this._drawConcentricCirclesPattern(pattern, smoothedContours, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawConcentricCirclesPattern(pattern, smoothedContours, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'diagonal':
-        this._drawDiagonalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawDiagonalLinesPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'crosshatch':
-        this._drawCrosshatchPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawCrosshatchPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'vertical':
-        this._drawVerticalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawVerticalLinesPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'horizontal':
-        this._drawHorizontalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawHorizontalLinesPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'dots':
-        this._drawDotsPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawDotsPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'waves':
-        this._drawWavesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawWavesPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'hexagons':
-        this._drawHexagonsPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawHexagonsPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
         break;
       case 'spots':
-        this._drawRandomSpotsPattern(pattern, smoothedContours, bounds, cellSize, patternColor, spacing, lineWidth, opacity, biomeId);
+        this._drawRandomSpotsPattern(pattern, smoothedContours, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity, biomeId);
         break;
       default:
         // По умолчанию - диагональные линии
-        this._drawDiagonalLinesPattern(pattern, bounds, cellSize, patternColor, spacing, lineWidth, opacity);
+        this._drawDiagonalLinesPattern(pattern, biomeBounds, cellSize, patternColor, spacing, lineWidth, opacity);
     }
     
-    // 5. Применяем маску к паттерну
+    // 6. Применяем маску к паттерну
     pattern.mask = mask;
     
-    // 6. Добавляем всё на сцену
+    // 7. Добавляем всё на сцену
     patternContainer.addChild(mask);
     patternContainer.addChild(pattern);
     this.container.addChild(patternContainer);
@@ -622,9 +642,19 @@ export class GlobalMapRenderer {
     
     graphics.lineStyle(lineWidth, color, opacity);
     
+    // Рисуем диагональные линии (\) сверху-слева вниз-вправо
+    // Начинаем с верхнего левого угла, идём по диагонали вправо-вниз
     for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
-      graphics.moveTo(bounds.minX, bounds.minY + offset);
-      graphics.lineTo(bounds.minX + mapHeight, bounds.minY + offset - mapHeight);
+      // Линия начинается либо на левой границе, либо на верхней
+      const startX = bounds.minX;
+      const startY = bounds.minY + offset;
+      
+      // Линия заканчивается либо на правой границе, либо на нижней
+      const endX = bounds.minX + diagonal;
+      const endY = bounds.minY + offset - diagonal;
+      
+      graphics.moveTo(startX, startY);
+      graphics.lineTo(endX, endY);
     }
   }
 
@@ -682,16 +712,26 @@ export class GlobalMapRenderer {
     
     graphics.lineStyle(lineWidth, color, opacity);
     
-    // Линии в одну сторону (\)
+    // Линии в одну сторону (\) - сверху-слева вниз-вправо
     for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
-      graphics.moveTo(bounds.minX, bounds.minY + offset);
-      graphics.lineTo(bounds.minX + mapHeight, bounds.minY + offset - mapHeight);
+      const startX = bounds.minX;
+      const startY = bounds.minY + offset;
+      const endX = bounds.minX + diagonal;
+      const endY = bounds.minY + offset - diagonal;
+      
+      graphics.moveTo(startX, startY);
+      graphics.lineTo(endX, endY);
     }
     
-    // Линии в другую сторону (/)
+    // Линии в другую сторону (/) - снизу-слева вверх-вправо
     for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
-      graphics.moveTo(bounds.minX, bounds.minY - offset + mapHeight);
-      graphics.lineTo(bounds.minX + mapHeight, bounds.minY - offset + mapHeight * 2);
+      const startX = bounds.minX;
+      const startY = bounds.maxY - offset;
+      const endX = bounds.minX + diagonal;
+      const endY = bounds.maxY - offset + diagonal;
+      
+      graphics.moveTo(startX, startY);
+      graphics.lineTo(endX, endY);
     }
   }
 

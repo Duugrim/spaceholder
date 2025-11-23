@@ -1,36 +1,49 @@
 {
   "biomeColors": [
-    { "id": 0, "name": "Айсберг", "color": "E8F4F8" },
+    { 
+      "id": 0, 
+      "name": "Айсберг", 
+      "color": "E0F0F8",
+      "pattern": {
+        "type": "dots",
+        "spacing": 3.0,
+        "lineWidth": 0.3,
+        "darkenFactor": 0.2,
+        "opacity": 0.6
+      }
+    },
     { 
       "id": 1, 
       "name": "Ледяной океан", 
-      "color": "B0D9E8",
+      "color": "1D334A"
+    },
+    { 
+      "id": 2, 
+      "name": "Океан", 
+      "color": "1A4780"
+    },
+    { 
+      "id": 3, 
+      "name": "Тёплый океан", 
+      "color": "3880C8"
+    },
+    { 
+      "id": 4, 
+      "name": "Кипящий океан", 
+      "color": "6699CC",
       "pattern": {
         "type": "waves",
+		"patternColor": "9DB1CC",
         "spacing": 2.5,
-        "lineWidth": 0.4,
+        "lineWidth": 0.1,
         "darkenFactor": 0.3,
         "opacity": 0.8
       }
     },
     { 
-      "id": 2, 
-      "name": "Океан", 
-      "color": "4A90E2",
-      "pattern": {
-        "type": "waves",
-        "spacing": 3.0,
-        "lineWidth": 0.5,
-        "darkenFactor": 0.4,
-        "opacity": 0.85
-      }
-    },
-    { "id": 3, "name": "Тёплый океан", "color": "3A7BC8" },
-    { "id": 4, "name": "Кипящий океан", "color": "FF6B35" },
-    { 
       "id": 5, 
       "name": "Льды", 
-      "color": "F0F8FF",
+      "color": "E8F4FC",
       "pattern": {
         "type": "dots",
         "spacing": 2.5,
@@ -39,66 +52,197 @@
         "opacity": 0.7
       }
     },
-    { "id": 6, "name": "Замёрзшее болото", "color": "8FAADC" },
     { 
-      "id": 7, 
-      "name": "Болото", 
-      "color": "5B7C99",
+      "id": 6, 
+      "name": "Замёрзшее болото", 
+      "color": "A0B0C0",
       "pattern": {
-        "type": "spots",
-        "spacing": 2.0,
-        "lineWidth": 0.8,
+        "type": "diagonal",
+		"patternColor": "284828",
+        "spacing": 3,
+        "lineWidth": 1.5,
         "darkenFactor": 0.5,
         "opacity": 1
       }
     },
-    { "id": 8, "name": "Болотистые джунгли", "color": "4A6B52" },
-    { "id": 9, "name": "Болото-суп", "color": "2D5016" },
-    { "id": 10, "name": "Замёрзший лес", "color": "A6D5E8" },
-    { "id": 11, "name": "Тайга", "color": "6B8E23" },
-    { "id": 12, "name": "Лиственный лес", "color": "556B2F" },
-    { "id": 13, "name": "Джунгли", "color": "228B22" },
-    { "id": 14, "name": "Горелый лес", "color": "8B4513" },
-    { "id": 15, "name": "Мёрзлые земли", "color": "B0C4DE" },
     { 
-      "id": 16, 
-      "name": "Тундра", 
-      "color": "9DB8A8",
+      "id": 7, 
+      "name": "Болото", 
+      "color": "1A5958",
       "pattern": {
-        "type": "horizontal",
-        "spacing": 2.0,
-        "lineWidth": 0.4,
-        "darkenFactor": 0.3,
-        "opacity": 0.8
+        "type": "diagonal",
+		"patternColor": "35682D",
+        "spacing": 3,
+        "lineWidth": 1.5,
+        "darkenFactor": 0.5,
+        "opacity": 1
       }
     },
-    { "id": 17, "name": "Луга", "color": "90EE90" },
-    { "id": 18, "name": "Саванна", "color": "DAA520" },
-    { "id": 19, "name": "Чёрная трава", "color": "4A4A1A" },
-    { "id": 20, "name": "Ледяная полупустыня", "color": "D3D3D3" },
-    { "id": 21, "name": "Холодная полупустыня", "color": "C4B896" },
+    { 
+      "id": 8, 
+      "name": "Болотистые джунгли", 
+      "color": "567858",
+      "pattern": {
+        "type": "diagonal",
+		"patternColor": "556b2f",
+        "spacing": 3,
+        "lineWidth": 1.5,
+        "darkenFactor": 0.5,
+        "opacity": 1
+      }
+    },
+    { 
+      "id": 9, 
+      "name": "Болото-суп", 
+      "color": "4A5A30",
+      "pattern": {
+        "type": "diagonal",
+		"patternColor": "35682D",
+        "spacing": 3,
+        "lineWidth": 1.5,
+        "darkenFactor": 0.5,
+        "opacity": 1
+      }
+    },
+    { 
+      "id": 10, 
+      "name": "Замёрзший лес", 
+      "color": "AFDAFC",
+      "pattern": {
+        "type": "diagonal",
+		"patternColor": "C8D8E8",
+        "spacing": 3,
+        "lineWidth": 0.5,
+        "darkenFactor": 0.35,
+        "opacity": 1
+      }
+    },
+    { 
+      "id": 11, 
+      "name": "Тайга", 
+      "color": "284828",
+      "pattern": {
+        "type": "diagonal",
+		"patternColor": "74883C",
+        "spacing": 3,
+        "lineWidth": 0.5,
+        "darkenFactor": 0.35,
+        "opacity": 1
+      }
+    },
+    { 
+      "id": 12, 
+      "name": "Лиственный лес", 
+      "color": "35682D",
+      "pattern": {
+        "type": "diagonal",
+		"patternColor": "278E2A",
+        "spacing": 3,
+        "lineWidth": 0.5,
+        "darkenFactor": 0.5,
+        "opacity": 1
+      }
+    },
+    { 
+      "id": 13, 
+      "name": "Джунгли", 
+      "color": "556b2f",
+      "pattern": {
+        "type": "diagonal",
+		"patternColor": "D1A36E",
+        "spacing": 3,
+        "lineWidth": 0.5,
+        "darkenFactor": 0.5,
+        "opacity": 1
+      }
+    },
+    { 
+      "id": 14, 
+      "name": "Горелый лес", 
+      "color": "484820",
+      "pattern": {
+        "type": "diagonal",
+        "spacing": 2.5,
+        "lineWidth": 0.5,
+        "darkenFactor": 0.5,
+        "opacity": 0.85
+      }
+    },
+    { "id": 15, "name": "Мёрзлые земли", "color": "C8D8E8" },
+    { "id": 16, "name": "Тундра", "color": "74883C" },
+    { "id": 17, "name": "Луга", "color": "278E2A" },
+    { "id": 18, "name": "Саванна", "color": "D1A36E"},
+    { "id": 19, "name": "Чёрная трава", "color": "585830" },
+    { 
+      "id": 20, 
+      "name": "Ледяная полупустыня", 
+      "color": "D8E0E8",
+      "pattern": {
+        "type": "horizontal",
+        "spacing": 1,
+        "lineWidth": 0.1,
+        "darkenFactor": 0.35,
+        "opacity": 0.25
+      }
+    },
+    { 
+      "id": 21, 
+      "name": "Холодная полупустыня", 
+      "color": "C0B098",
+      "pattern": {
+        "type": "horizontal",
+        "spacing": 1,
+        "lineWidth": 0.1,
+        "darkenFactor": 0.35,
+        "opacity": 0.25
+      }
+    },
     { 
       "id": 22, 
       "name": "Степь", 
-      "color": "C4A747",
+      "color": "B8A860",
       "pattern": {
-        "type": "diagonal",
-        "spacing": 2.0,
-        "lineWidth": 0.6,
-        "darkenFactor": 0.4,
-        "opacity": 0.9
+        "type": "horizontal",
+        "spacing": 1,
+        "lineWidth": 0.1,
+        "darkenFactor": 0.35,
+        "opacity": 0.25
       }
     },
-    { "id": 23, "name": "Жаркая полупустыня", "color": "E8B94D" },
-    { "id": 24, "name": "Выжженая пустыня", "color": "D4A574" },
+    { 
+      "id": 23, 
+      "name": "Жаркая полупустыня", 
+      "color": "D8A850",
+      "pattern": {
+        "type": "horizontal",
+        "spacing": 1,
+        "lineWidth": 0.1,
+        "darkenFactor": 0.35,
+        "opacity": 0.25
+      }
+    },
+    { 
+      "id": 24, 
+      "name": "Выжженая пустыня", 
+      "color": "C08850",
+      "pattern": {
+        "type": "horizontal",
+		"patternColor": "F75E25",
+        "spacing": 1,
+        "lineWidth": 0.1,
+        "darkenFactor": 0.35,
+        "opacity": 0.5
+      }
+    },
     { 
       "id": 25, 
       "name": "Иниевая пустошь", 
-      "color": "E0E0D0",
+      "color": "E0E8E8",
       "pattern": {
-        "type": "hexagons",
-        "spacing": 2.0,
-        "lineWidth": 0.2,
+        "type": "circles",
+		"patternColor": "00BFFF",
+        "spacing": 1.0,
+        "lineWidth": 0.1,
         "darkenFactor": 0.25,
         "opacity": 0.7
       }
@@ -106,37 +250,27 @@
     { 
       "id": 26, 
       "name": "Холодная пустыня", 
-      "color": "D4C5B9",
-      "pattern": {
-        "type": "crosshatch",
-        "spacing": 3.0,
-        "lineWidth": 0.4,
-        "darkenFactor": 0.35,
-        "opacity": 0.75
-      }
+      "color": "D0C0A8"
     },
-    { "id": 27, "name": "Пустошь", "color": "D2B48C" },
+    { 
+      "id": 27, 
+      "name": "Пустошь", 
+      "color": "C8B088"
+    },
     { 
       "id": 28, 
       "name": "Жаркая пустыня", 
-      "color": "FFD700",
-      "pattern": {
-        "type": "vertical",
-        "spacing": 2.5,
-        "lineWidth": 0.5,
-        "darkenFactor": 0.3,
-        "opacity": 0.8
-      }
+      "color": "E8C870"
     },
     { 
       "id": 29, 
       "name": "Шрам", 
-      "color": "8B0000",
+      "color": "A04030",
       "pattern": {
         "type": "circles",
         "spacing": 2.0,
         "lineWidth": 0.4,
-        "darkenFactor": 0.4,
+        "darkenFactor": 0.5,
         "opacity": 0.9
       }
     }
