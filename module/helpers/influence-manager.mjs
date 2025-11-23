@@ -36,14 +36,20 @@ export class InfluenceManager {
       this.influenceContainer = new PIXI.Container();
       this.influenceContainer.name = 'influenceManager';
       
-      // Размещаем под токенами но над фоном
-      this.influenceContainer.zIndex = 50;
+      // Размещаем поверх глобальной карты
+      this.influenceContainer.zIndex = 1000;
       
       // Делаем контейнер неинтерактивным
       this.influenceContainer.interactiveChildren = false;
       this.influenceContainer.interactive = false;
       
       canvas.effects.addChild(this.influenceContainer);
+      
+      // Включаем сортировку по zIndex для effects layer
+      if (!canvas.effects.sortableChildren) {
+        canvas.effects.sortableChildren = true;
+        canvas.effects.sortChildren();
+      }
     }
   }
   

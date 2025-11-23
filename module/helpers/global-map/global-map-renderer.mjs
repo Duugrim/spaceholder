@@ -48,13 +48,13 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Set up PIXI container on interface layer
+   * Set up PIXI container on primary layer (under tokens)
    */
   setupContainer() {
-    const interfaceLayer = canvas.interface;
+    const primaryLayer = canvas.primary;
 
-    if (!interfaceLayer) {
-      console.warn('GlobalMapRenderer | Interface layer not available');
+    if (!primaryLayer) {
+      console.warn('GlobalMapRenderer | Primary layer not available');
       return;
     }
 
@@ -65,9 +65,19 @@ export class GlobalMapRenderer {
 
     this.container = new PIXI.Container();
     this.container.name = 'globalMapContainer';
-    interfaceLayer.addChild(this.container);
+    
+    // Устанавливаем высокий zIndex, чтобы быть поверх фона, но под токенами
+    this.container.zIndex = 1000;
+    
+    primaryLayer.addChild(this.container);
+    
+    // Включаем сортировку по zIndex для primary layer
+    if (!primaryLayer.sortableChildren) {
+      primaryLayer.sortableChildren = true;
+      primaryLayer.sortChildren();
+    }
 
-    console.log('GlobalMapRenderer | Container set up');
+    console.log('GlobalMapRenderer | Container set up on primary layer (under tokens) with zIndex 1000');
   }
 
   /**

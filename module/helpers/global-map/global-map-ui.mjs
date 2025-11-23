@@ -326,6 +326,30 @@ export function registerGlobalMapUI(controls, spaceholder) {
         },
         button: true,
       },
+
+      'toggle-influence': {
+        name: 'toggle-influence',
+        title: 'Показать влияние',
+        icon: 'fas fa-flag',
+        onChange: async (isActive) => {
+          if (!spaceholder.influenceManager) {
+            ui.notifications.warn('Менеджер влияния недоступен');
+            return;
+          }
+
+          // Проверяем, есть ли уже отрисованное влияние
+          if (spaceholder.influenceManager.currentElements.length > 0) {
+            // Если есть - очищаем
+            spaceholder.influenceManager.clearAll();
+            ui.notifications.info('Влияние скрыто');
+          } else {
+            // Если нет - отрисовываем
+            spaceholder.influenceManager.drawInfluenceZones(false);
+            ui.notifications.info('Влияние отображено');
+          }
+        },
+        button: true,
+      },
     },
   };
 
