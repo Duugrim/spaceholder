@@ -18,13 +18,13 @@ if ($hasChanges) {
 }
 
 Write-Host "Getting next version..." -ForegroundColor Cyan
-$lastTag = git tag --list --sort=-version:refname | Where-Object { $_ -match "^v\d+$" } | Select-Object -First 1
+$lastTag = git tag --list --sort=-version:refname | Where-Object { $_ -match "^v0\.\d+$" } | Select-Object -First 1
 
-if ($lastTag -match "^v(\d+)$") {
+if ($lastTag -match "^v0\.(\d+)$") {
     $nextNumber = [int]$matches[1] + 1
-    $nextVersion = "v$nextNumber"
+    $nextVersion = "v0.$nextNumber"
 } else {
-    $nextVersion = "v2"
+    $nextVersion = "v0.71"
 }
 
 Write-Host "Next version: $nextVersion" -ForegroundColor Yellow
