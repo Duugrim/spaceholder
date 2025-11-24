@@ -11,6 +11,7 @@ export class GlobalMapTools {
     this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'set-biome'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
+    this.singleCellMode = false; // If true, brush affects only one cell
     this.targetHeight = 50;
     
     // New biome tools settings
@@ -42,6 +43,7 @@ export class GlobalMapTools {
     this.brushCursor = null;
     this.brushPreview = null;
     this.overlayPreview = null; // Overlay showing affected cells
+    this.cellHighlight = null; // Highlight for single cell mode
     this.inspectLabel = null;
 
     // Cell inspector
@@ -190,8 +192,11 @@ export class GlobalMapTools {
 
       const pos = event.data.getLocalPosition(canvas.stage);
 
-      // Update cursor (always show, even when inactive)
+      // Update cursor and cell highlight
       this.updateBrushCursorPosition(pos.x, pos.y);
+      if (this.singleCellMode) {
+        this.updateCellHighlight(pos.x, pos.y);
+      }
 
       if (!this.isBrushActive || !this.isMouseDown) return;
 
@@ -241,25 +246,53 @@ export class GlobalMapTools {
     const gridRow = (worldY - bounds.minY) / cellSize;
 
     // Calculate affected cells
-    const gridRadius = this.brushRadius / cellSize;
-    const radiusSq = gridRadius * gridRadius;
-
-    const minRow = Math.max(0, Math.floor(gridRow - gridRadius));
-    const maxRow = Math.min(rows - 1, Math.ceil(gridRow + gridRadius));
-    const minCol = Math.max(0, Math.floor(gridCol - gridRadius));
-    const maxCol = Math.min(cols - 1, Math.ceil(gridCol + gridRadius));
+    let minRow, maxRow, minCol, maxCol;
+    
+    if (this.singleCellMode) {
+      // Single cell mode: affect only the cell under cursor
+      const targetRow = Math.floor(gridRow);
+      const targetCol = Math.floor(gridCol);
+      minRow = Math.max(0, targetRow);
+      maxRow = Math.min(rows - 1, targetRow);
+      minCol = Math.max(0, targetCol);
+      maxCol = Math.min(cols - 1, targetCol);
+    } else {
+      // Normal brush mode: affect cells in radius
+      const gridRadius = this.brushRadius / cellSize;
+      minRow = Math.max(0, Math.floor(gridRow - gridRadius));
+      maxRow = Math.min(rows - 1, Math.ceil(gridRow + gridRadius));
+      minCol = Math.max(0, Math.floor(gridCol - gridRadius));
+      maxCol = Math.min(cols - 1, Math.ceil(gridCol + gridRadius));
+    }
 
     const delta = 5; // Base height change per stroke
 
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
-        const dx = col - gridCol;
-        const dy = row - gridRow;
-        const distSq = dx * dx + dy * dy;
+        // Check if cell is within brush area
+        let inBrush = false;
+        let effectiveStrength = this.brushStrength;
+        
+        if (this.singleCellMode) {
+          // Single cell mode: always affect the cell
+          inBrush = true;
+          effectiveStrength = 1.0; // Full strength for single cell
+        } else {
+          // Normal brush mode: check distance and calculate falloff
+          const dx = col - gridCol;
+          const dy = row - gridRow;
+          const distSq = dx * dx + dy * dy;
+          const gridRadius = this.brushRadius / cellSize;
+          const radiusSq = gridRadius * gridRadius;
+          
+          if (distSq <= radiusSq) {
+            inBrush = true;
+            const falloff = 1 - Math.sqrt(distSq / radiusSq);
+            effectiveStrength = falloff * this.brushStrength;
+          }
+        }
 
-        if (distSq <= radiusSq) {
-          const falloff = 1 - Math.sqrt(distSq / radiusSq);
-          const effectiveStrength = falloff * this.brushStrength;
+        if (inBrush) {
           const idx = row * cols + col;
 
           // Track affected cells for tools that process in commit
@@ -349,8 +382,11 @@ export class GlobalMapTools {
       { mode: 'heights' }
     );
 
-    // Recreate overlay preview after render (it gets destroyed)
+    // Recreate overlays after render (they get destroyed during render)
     this.createOverlayPreview();
+    if (this.singleCellMode) {
+      this.createCellHighlight();
+    }
 
     console.log('GlobalMapTools | Changes applied');
   }
@@ -665,6 +701,86 @@ export class GlobalMapTools {
 
     this.updateBrushCursorGraphics();
   }
+  
+  /**
+   * Create or update cell highlight for single cell mode
+   */
+  createCellHighlight() {
+    if (this.cellHighlight) {
+      try {
+        this.cellHighlight.destroy();
+      } catch (e) {
+        // Already destroyed
+      }
+    }
+    this.cellHighlight = new PIXI.Graphics();
+    this.cellHighlight.name = 'global-map-cell-highlight';
+    if (this.renderer.container) {
+      this.renderer.container.addChild(this.cellHighlight);
+    }
+  }
+  
+  /**
+   * Update cell highlight position in single cell mode
+   */
+  updateCellHighlight(worldX, worldY) {
+    if (!this.cellHighlight || !this.renderer.currentGrid) {
+      this.createCellHighlight();
+      if (!this.cellHighlight) return;
+    }
+    
+    const { cellSize, bounds } = this.renderer.currentMetadata;
+    const { rows, cols } = this.renderer.currentGrid;
+    
+    // Convert world coords to grid coords
+    const gridCol = (worldX - bounds.minX) / cellSize;
+    const gridRow = (worldY - bounds.minY) / cellSize;
+    
+    const targetRow = Math.floor(gridRow);
+    const targetCol = Math.floor(gridCol);
+    
+    // Check bounds
+    if (targetRow < 0 || targetRow >= rows || targetCol < 0 || targetCol >= cols) {
+      this.cellHighlight.clear();
+      return;
+    }
+    
+    // Draw cell highlight
+    this.cellHighlight.clear();
+    
+    // Get color based on current tool
+    let color = 0xffffff;
+    switch (this.currentTool) {
+      case 'raise': color = 0x00ff00; break;
+      case 'lower': color = 0xff0000; break;
+      case 'smooth': color = 0xffff00; break;
+      case 'roughen': color = 0xff9900; break;
+      case 'flatten': color = 0x00ffff; break;
+      case 'modify-biome': color = 0xaa66ff; break;
+      case 'set-biome': color = 0x66ffaa; break;
+    }
+    
+    // Draw cell with tool color
+    const x = bounds.minX + targetCol * cellSize - cellSize / 2;
+    const y = bounds.minY + targetRow * cellSize - cellSize / 2;
+    
+    this.cellHighlight.beginFill(color, 0.4);
+    this.cellHighlight.drawRect(x, y, cellSize, cellSize);
+    this.cellHighlight.endFill();
+    
+    // Draw outline
+    this.cellHighlight.lineStyle(2, color, 0.9);
+    this.cellHighlight.drawRect(x, y, cellSize, cellSize);
+  }
+  
+  /**
+   * Clear cell highlight
+   */
+  clearCellHighlight() {
+    if (this.cellHighlight) {
+      this.cellHighlight.clear();
+    }
+  }
 
   /**
    * Update brush cursor position
@@ -709,14 +825,19 @@ export class GlobalMapTools {
         break;
     }
 
-    // Draw filled circle
-    this.brushCursor.beginFill(color, alpha * this.brushStrength);
-    this.brushCursor.drawCircle(0, 0, this.brushRadius);
-    this.brushCursor.endFill();
+    if (this.singleCellMode) {
+      // In single cell mode, don't draw cursor (cell highlight handles it)
+      // Just keep cursor invisible
+    } else {
+      // Draw filled circle
+      this.brushCursor.beginFill(color, alpha * this.brushStrength);
+      this.brushCursor.drawCircle(0, 0, this.brushRadius);
+      this.brushCursor.endFill();
 
-    // Draw outline
-    this.brushCursor.lineStyle(2, color, 0.7);
-    this.brushCursor.drawCircle(0, 0, this.brushRadius);
+      // Draw outline
+      this.brushCursor.lineStyle(2, color, 0.7);
+      this.brushCursor.drawCircle(0, 0, this.brushRadius);
+    }
   }
 
   /**
@@ -750,7 +871,15 @@ export class GlobalMapTools {
     
     // Update cursor visibility
     if (this.brushCursor) {
-      this.brushCursor.visible = isActive;
+      this.brushCursor.visible = isActive && !this.singleCellMode;
+    }
+    
+    // Update cell highlight visibility
+    if (this.cellHighlight) {
+      this.cellHighlight.visible = isActive && this.singleCellMode;
+      if (!isActive || !this.singleCellMode) {
+        this.clearCellHighlight();
+      }
     }
   }
   
@@ -761,6 +890,10 @@ export class GlobalMapTools {
     if (this.brushCursor) {
       this.brushCursor.destroy();
       this.brushCursor = null;
+    }
+    if (this.cellHighlight) {
+      this.cellHighlight.destroy();
+      this.cellHighlight = null;
     }
   }
 
@@ -811,8 +944,14 @@ export class GlobalMapTools {
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Radius: <span id="radius-value">${this.brushRadius}</span>px</label>
-            <input type="range" id="global-map-radius" min="50" max="500" step="10" value="${this.brushRadius}" style="width: 100%;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+              <input type="checkbox" id="single-cell-mode" style="margin: 0;">
+              <span>Single Cell Mode</span>
+            </label>
+            <div id="radius-container">
+              <label style="display: block; margin-bottom: 5px;">Radius: <span id="radius-value">${this.brushRadius}</span>px</label>
+              <input type="range" id="global-map-radius" min="25" max="500" step="5" value="${this.brushRadius}" style="width: 100%;">
+            </div>
           </div>
 
           <div style="margin-bottom: 10px;">
@@ -835,8 +974,14 @@ export class GlobalMapTools {
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Radius: <span id="biome-radius-value">${this.brushRadius}</span>px</label>
-            <input type="range" id="global-map-biome-radius" min="50" max="500" step="10" value="${this.brushRadius}" style="width: 100%;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+              <input type="checkbox" id="biome-single-cell-mode" style="margin: 0;">
+              <span>Single Cell Mode</span>
+            </label>
+            <div id="biome-radius-container">
+              <label style="display: block; margin-bottom: 5px;">Radius: <span id="biome-radius-value">${this.brushRadius}</span>px</label>
+              <input type="range" id="global-map-biome-radius" min="25" max="500" step="5" value="${this.brushRadius}" style="width: 100%;">
+            </div>
           </div>
 
           <!-- Modify Biome Controls -->
@@ -976,6 +1121,25 @@ export class GlobalMapTools {
       this.setTool(e.target.value);
     });
 
+    $('#single-cell-mode').on('change', (e) => {
+      this.singleCellMode = e.target.checked;
+      // Sync both checkboxes
+      $('#biome-single-cell-mode').prop('checked', this.singleCellMode);
+      // Show/hide radius controls
+      if (this.singleCellMode) {
+        $('#radius-container').hide();
+        $('#biome-radius-container').hide();
+      } else {
+        $('#radius-container').show();
+        $('#biome-radius-container').show();
+      }
+      this.updateBrushCursorGraphics();
+      this.updateBrushUI();
+      if (!this.singleCellMode) {
+        this.clearCellHighlight();
+      }
+    });
+
     $('#global-map-radius').on('input', (e) => {
       this.brushRadius = parseInt(e.target.value);
       $('#radius-value').text(this.brushRadius);
@@ -994,6 +1158,25 @@ export class GlobalMapTools {
     $('#global-map-biome-tool').on('change', (e) => {
       this.setTool(e.target.value);
       updateBiomeToolUI(e.target.value);
+    });
+
+    $('#biome-single-cell-mode').on('change', (e) => {
+      this.singleCellMode = e.target.checked;
+      // Sync both checkboxes
+      $('#single-cell-mode').prop('checked', this.singleCellMode);
+      // Show/hide radius controls
+      if (this.singleCellMode) {
+        $('#radius-container').hide();
+        $('#biome-radius-container').hide();
+      } else {
+        $('#radius-container').show();
+        $('#biome-radius-container').show();
+      }
+      this.updateBrushCursorGraphics();
+      this.updateBrushUI();
+      if (!this.singleCellMode) {
+        this.clearCellHighlight();
+      }
     });
 
     $('#global-map-biome-radius').on('input', (e) => {
