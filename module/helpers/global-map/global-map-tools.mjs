@@ -8,12 +8,21 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten', 'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture', 'set-temp', 'set-moisture'
+    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'set-biome'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.targetHeight = 50;
-    this.targetTemperature = 3; // Target temperature for set-temp tool (1-5)
-    this.targetMoisture = 3; // Target moisture for set-moisture tool (1-6)
+    
+    // New biome tools settings
+    this.modifyTemp = 0; // -3 to 3
+    this.modifyMoisture = 0; // -3 to 3
+    this.modifyTempEnabled = false;
+    this.modifyMoistureEnabled = false;
+    this.setTemp = 3; // 1-5
+    this.setMoisture = 3; // 1-6
+    this.setTempEnabled = false;
+    this.setMoistureEnabled = false;
+    
     this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
     
     // Temperature/moisture editing
@@ -121,8 +130,7 @@ export class GlobalMapTools {
   setTool(tool) {
     const validTools = [
       'raise', 'lower', 'smooth', 'roughen', 'flatten',
-      'increase-temp', 'decrease-temp', 'increase-moisture', 'decrease-moisture',
-      'set-temp', 'set-moisture'
+      'modify-biome', 'set-biome'
     ];
     if (validTools.includes(tool)) {
       this.currentTool = tool;
@@ -256,9 +264,7 @@ export class GlobalMapTools {
 
           // Track affected cells for tools that process in commit
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen' ||
-              this.currentTool === 'increase-temp' || this.currentTool === 'decrease-temp' ||
-              this.currentTool === 'increase-moisture' || this.currentTool === 'decrease-moisture' ||
-              this.currentTool === 'set-temp' || this.currentTool === 'set-moisture') {
+              this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
             this.affectedCells.add(idx);
           }
 
@@ -274,18 +280,10 @@ export class GlobalMapTools {
               this.tempOverlay[idx] += (this.targetHeight - currentHeight) * effectiveStrength;
               break;
             case 'smooth':
-              // Mark for smoothing, processed in commit
-              break;
             case 'roughen':
-              // Mark for roughening, processed in commit
-              break;
-            case 'increase-temp':
-            case 'decrease-temp':
-            case 'increase-moisture':
-            case 'decrease-moisture':
-            case 'set-temp':
-            case 'set-moisture':
-              // Just collect cells, changes applied in commit
+            case 'modify-biome':
+            case 'set-biome':
+              // Mark cells, changes applied in commit
               break;
             default:
               break;
@@ -310,31 +308,29 @@ export class GlobalMapTools {
       this._applyRoughenOverlay(heights, rows, cols);
     }
 
-    // Apply temperature/moisture changes (±1 per cell or set value)
+    // Apply biome changes
     if (this.affectedCells.size > 0) {
-      if (this.currentTool === 'increase-temp') {
+      if (this.currentTool === 'modify-biome') {
+        // Modify: apply delta to temperature/moisture if enabled
         for (const idx of this.affectedCells) {
-          temperature[idx] = Math.min(5, temperature[idx] + 1);
+          if (this.modifyTempEnabled) {
+            const newTemp = temperature[idx] + this.modifyTemp;
+            temperature[idx] = Math.max(1, Math.min(5, newTemp));
+          }
+          if (this.modifyMoistureEnabled) {
+            const newMoisture = moisture[idx] + this.modifyMoisture;
+            moisture[idx] = Math.max(1, Math.min(6, newMoisture));
+          }
         }
-      } else if (this.currentTool === 'decrease-temp') {
+      } else if (this.currentTool === 'set-biome') {
+        // Set: set absolute values if enabled
         for (const idx of this.affectedCells) {
-          temperature[idx] = Math.max(1, temperature[idx] - 1);
-        }
-      } else if (this.currentTool === 'increase-moisture') {
-        for (const idx of this.affectedCells) {
-          moisture[idx] = Math.min(6, moisture[idx] + 1);
-        }
-      } else if (this.currentTool === 'decrease-moisture') {
-        for (const idx of this.affectedCells) {
-          moisture[idx] = Math.max(1, moisture[idx] - 1);
-        }
-      } else if (this.currentTool === 'set-temp') {
-        for (const idx of this.affectedCells) {
-          temperature[idx] = this.targetTemperature;
-        }
-      } else if (this.currentTool === 'set-moisture') {
-        for (const idx of this.affectedCells) {
-          moisture[idx] = this.targetMoisture;
+          if (this.setTempEnabled) {
+            temperature[idx] = this.setTemp;
+          }
+          if (this.setMoistureEnabled) {
+            moisture[idx] = this.setMoisture;
+          }
         }
       }
     }
@@ -450,26 +446,18 @@ export class GlobalMapTools {
       }
     }
 
-    // For temperature/moisture tools, show change for affected cells
+    // For biome tools, show change for affected cells
     if (this.affectedCells.size > 0) {
-      if (this.currentTool === 'increase-temp' || this.currentTool === 'decrease-temp') {
-        const delta = this.currentTool === 'increase-temp' ? 1 : -1;
+      if (this.currentTool === 'modify-biome') {
+        // Show delta as indicator
+        const delta = Math.abs(this.modifyTemp) + Math.abs(this.modifyMoisture);
         for (const idx of this.affectedCells) {
-          previewOverlay[idx] = delta;
+          previewOverlay[idx] = delta > 0 ? delta : 0.1;
         }
-      } else if (this.currentTool === 'increase-moisture' || this.currentTool === 'decrease-moisture') {
-        const delta = this.currentTool === 'increase-moisture' ? 1 : -1;
+      } else if (this.currentTool === 'set-biome') {
+        // Show fixed indicator
         for (const idx of this.affectedCells) {
-          previewOverlay[idx] = delta;
-        }
-      } else if (this.currentTool === 'set-temp') {
-        // For set tools, show target value indicator
-        for (const idx of this.affectedCells) {
-          previewOverlay[idx] = this.targetTemperature; // Use target value as indicator
-        }
-      } else if (this.currentTool === 'set-moisture') {
-        for (const idx of this.affectedCells) {
-          previewOverlay[idx] = this.targetMoisture; // Use target value as indicator
+          previewOverlay[idx] = 1;
         }
       }
     }
@@ -495,29 +483,13 @@ export class GlobalMapTools {
         positiveColor = 0xff9900; // Orange for roughened
         negativeColor = 0xff9900;
         break;
-      case 'increase-temp':
-        positiveColor = 0xff4444; // Red for warmer
-        negativeColor = 0x4444ff;
+      case 'modify-biome':
+        positiveColor = 0xaa66ff; // Purple for modify biome
+        negativeColor = 0xaa66ff;
         break;
-      case 'decrease-temp':
-        positiveColor = 0x4444ff; // Blue for colder
-        negativeColor = 0xff4444;
-        break;
-      case 'increase-moisture':
-        positiveColor = 0x4488ff; // Blue for wetter
-        negativeColor = 0xffaa44;
-        break;
-      case 'decrease-moisture':
-        positiveColor = 0xffaa44; // Orange for drier
-        negativeColor = 0x4488ff;
-        break;
-      case 'set-temp':
-        positiveColor = 0xff6666; // Light red for temperature set
-        negativeColor = 0xff6666;
-        break;
-      case 'set-moisture':
-        positiveColor = 0x66aaff; // Light blue for moisture set
-        negativeColor = 0x66aaff;
+      case 'set-biome':
+        positiveColor = 0x66ffaa; // Teal for set biome
+        negativeColor = 0x66ffaa;
         break;
     }
 
@@ -536,8 +508,8 @@ export class GlobalMapTools {
           let alpha;
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen') {
             alpha = Math.min(0.55, Math.abs(delta) / 5); // Brighter for smooth/roughen
-          } else if (this.currentTool.includes('temp') || this.currentTool.includes('moisture')) {
-            alpha = 0.6; // Fixed alpha for temp/moisture (always ±1)
+          } else if (this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
+            alpha = 0.6; // Fixed alpha for biome tools
           } else {
             alpha = Math.min(0.35, Math.abs(delta) / 10);
           }
@@ -729,23 +701,11 @@ export class GlobalMapTools {
       case 'flatten':
         color = 0x00ffff; // Cyan
         break;
-      case 'increase-temp':
-        color = 0xff4444; // Red for warmer
+      case 'modify-biome':
+        color = 0xaa66ff; // Purple for modify biome
         break;
-      case 'decrease-temp':
-        color = 0x4444ff; // Blue for colder
-        break;
-      case 'increase-moisture':
-        color = 0x4488ff; // Blue for wetter
-        break;
-      case 'decrease-moisture':
-        color = 0xffaa44; // Orange for drier
-        break;
-      case 'set-temp':
-        color = 0xff6666; // Light red for temperature set
-        break;
-      case 'set-moisture':
-        color = 0x66aaff; // Light blue for moisture set
+      case 'set-biome':
+        color = 0x66ffaa; // Teal for set biome
         break;
     }
 
@@ -869,12 +829,8 @@ export class GlobalMapTools {
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Tool:</label>
           <select id="global-map-biome-tool" style="width: 100%; padding: 5px;">
-            <option value="increase-temp" selected>Increase Temperature</option>
-            <option value="decrease-temp">Decrease Temperature</option>
-            <option value="set-temp">Set Temperature</option>
-            <option value="increase-moisture">Increase Moisture</option>
-            <option value="decrease-moisture">Decrease Moisture</option>
-            <option value="set-moisture">Set Moisture</option>
+            <option value="modify-biome" selected>Modify Biome</option>
+            <option value="set-biome">Set Biome</option>
           </select>
           </div>
 
@@ -883,19 +839,50 @@ export class GlobalMapTools {
             <input type="range" id="global-map-biome-radius" min="50" max="500" step="10" value="${this.brushRadius}" style="width: 100%;">
           </div>
 
-          <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Strength: <span id="biome-strength-value">${this.brushStrength.toFixed(1)}</span></label>
-            <input type="range" id="global-map-biome-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
+          <!-- Modify Biome Controls -->
+          <div id="modify-biome-controls" style="margin-bottom: 10px;">
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="modify-temp-enabled" style="margin: 0;">
+                <span>Temperature:</span>
+                <span id="modify-temp-value" style="margin-left: auto; font-weight: bold;">0</span>
+              </label>
+              <input type="range" id="modify-temp" min="-3" max="3" step="1" value="0" style="width: 100%; margin-top: 4px;">
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="modify-moisture-enabled" style="margin: 0;">
+                <span>Moisture:</span>
+                <span id="modify-moisture-value" style="margin-left: auto; font-weight: bold;">0</span>
+              </label>
+              <input type="range" id="modify-moisture" min="-3" max="3" step="1" value="0" style="width: 100%; margin-top: 4px;">
+            </div>
           </div>
 
-          <div id="biome-target-temp-container" style="margin-bottom: 10px; display: none;">
-            <label style="display: block; margin-bottom: 5px;">Target Temperature: <span id="biome-target-temp-value">${this.targetTemperature}</span></label>
-            <input type="range" id="global-map-biome-target-temp" min="1" max="5" step="1" value="${this.targetTemperature}" style="width: 100%;">
-          </div>
-
-          <div id="biome-target-moisture-container" style="margin-bottom: 10px; display: none;">
-            <label style="display: block; margin-bottom: 5px;">Target Moisture: <span id="biome-target-moisture-value">${this.targetMoisture}</span></label>
-            <input type="range" id="global-map-biome-target-moisture" min="1" max="6" step="1" value="${this.targetMoisture}" style="width: 100%;">
+          <!-- Set Biome Controls -->
+          <div id="set-biome-controls" style="margin-bottom: 10px; display: none;">
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="set-temp-enabled" style="margin: 0;">
+                <span>Temperature:</span>
+                <span id="set-temp-value" style="margin-left: auto; font-weight: bold;">3</span>
+              </label>
+              <input type="range" id="set-temp" min="1" max="5" step="1" value="3" style="width: 100%; margin-top: 4px;">
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="set-moisture-enabled" style="margin: 0;">
+                <span>Moisture:</span>
+                <span id="set-moisture-value" style="margin-left: auto; font-weight: bold;">3</span>
+              </label>
+              <input type="range" id="set-moisture" min="1" max="6" step="1" value="3" style="width: 100%; margin-top: 4px;">
+            </div>
+            
+            <!-- Biome Presets Matrix -->
+            <div style="margin-top: 10px;">
+              <label style="display: block; margin-bottom: 5px; font-size: 11px;">Biome Presets:</label>
+              <div id="biome-preset-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
+            </div>
           </div>
           
           <button id="biome-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
@@ -927,20 +914,60 @@ export class GlobalMapTools {
 
     $('body').append(html);
 
+    // Generate biome preset matrix
+    const generateBiomeMatrix = () => {
+      const matrix = $('#biome-preset-matrix');
+      matrix.empty();
+      
+      // Matrix: 6 rows (moisture 6 to 1, top to bottom) x 5 columns (temperature 1 to 5, left to right)
+      for (let moisture = 6; moisture >= 1; moisture--) {
+        for (let temp = 1; temp <= 5; temp++) {
+          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
+          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+          const colorHex = '#' + color.toString(16).padStart(6, '0');
+          
+          const cell = $('<div></div>').css({
+            'background-color': colorHex,
+            'aspect-ratio': '1',
+            'cursor': 'pointer',
+            'border': '1px solid rgba(0,0,0,0.3)',
+            'border-radius': '2px'
+          }).attr({
+            'data-temp': temp,
+            'data-moisture': moisture,
+            'title': `T:${temp} M:${moisture}`
+          });
+          
+          cell.on('click', () => {
+            this.setTemp = temp;
+            this.setMoisture = moisture;
+            this.setTempEnabled = true;
+            this.setMoistureEnabled = true;
+            $('#set-temp').val(temp);
+            $('#set-temp-value').text(temp);
+            $('#set-temp-enabled').prop('checked', true);
+            $('#set-moisture').val(moisture);
+            $('#set-moisture-value').text(moisture);
+            $('#set-moisture-enabled').prop('checked', true);
+          });
+          
+          matrix.append(cell);
+        }
+      }
+    };
+
     // Update UI visibility based on tool (biomes tab)
     const updateBiomeToolUI = (tool) => {
-      // Show/hide target temperature control
-      if (tool === 'set-temp') {
-        $('#biome-target-temp-container').show();
-      } else {
-        $('#biome-target-temp-container').hide();
-      }
-      
-      // Show/hide target moisture control
-      if (tool === 'set-moisture') {
-        $('#biome-target-moisture-container').show();
-      } else {
-        $('#biome-target-moisture-container').hide();
+      if (tool === 'modify-biome') {
+        $('#modify-biome-controls').show();
+        $('#set-biome-controls').hide();
+      } else if (tool === 'set-biome') {
+        $('#modify-biome-controls').hide();
+        $('#set-biome-controls').show();
+        // Generate matrix if not already generated
+        if ($('#biome-preset-matrix').children().length === 0) {
+          generateBiomeMatrix();
+        }
       }
     };
 
@@ -976,23 +1003,42 @@ export class GlobalMapTools {
       this.updateBrushCursorGraphics();
     });
 
-    $('#global-map-biome-strength').on('input', (e) => {
-      this.brushStrength = parseFloat(e.target.value);
-      $('#strength-value').text(this.brushStrength.toFixed(1));
-      $('#biome-strength-value').text(this.brushStrength.toFixed(1));
-      this.updateBrushCursorGraphics();
+    // Modify Biome controls
+    $('#modify-temp-enabled').on('change', (e) => {
+      this.modifyTempEnabled = e.target.checked;
     });
-
-    $('#global-map-biome-target-temp').on('input', (e) => {
-      this.targetTemperature = parseInt(e.target.value);
-      $('#biome-target-temp-value').text(this.targetTemperature);
-      this.updateOverlayPreview();
+    
+    $('#modify-temp').on('input', (e) => {
+      this.modifyTemp = parseInt(e.target.value);
+      $('#modify-temp-value').text(this.modifyTemp > 0 ? `+${this.modifyTemp}` : this.modifyTemp);
     });
-
-    $('#global-map-biome-target-moisture').on('input', (e) => {
-      this.targetMoisture = parseInt(e.target.value);
-      $('#biome-target-moisture-value').text(this.targetMoisture);
-      this.updateOverlayPreview();
+    
+    $('#modify-moisture-enabled').on('change', (e) => {
+      this.modifyMoistureEnabled = e.target.checked;
+    });
+    
+    $('#modify-moisture').on('input', (e) => {
+      this.modifyMoisture = parseInt(e.target.value);
+      $('#modify-moisture-value').text(this.modifyMoisture > 0 ? `+${this.modifyMoisture}` : this.modifyMoisture);
+    });
+    
+    // Set Biome controls
+    $('#set-temp-enabled').on('change', (e) => {
+      this.setTempEnabled = e.target.checked;
+    });
+    
+    $('#set-temp').on('input', (e) => {
+      this.setTemp = parseInt(e.target.value);
+      $('#set-temp-value').text(this.setTemp);
+    });
+    
+    $('#set-moisture-enabled').on('change', (e) => {
+      this.setMoistureEnabled = e.target.checked;
+    });
+    
+    $('#set-moisture').on('input', (e) => {
+      this.setMoisture = parseInt(e.target.value);
+      $('#set-moisture-value').text(this.setMoisture);
     });
     
     // Brush activation/deactivation
