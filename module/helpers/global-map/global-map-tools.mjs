@@ -939,8 +939,19 @@ export class GlobalMapTools {
         min-width: 250px;
         z-index: 1000;
         font-family: 'Signika', sans-serif;
+        cursor: move;
       ">
-        <h3 style="margin-top: 0; margin-bottom: 10px;">Global Map Tools</h3>
+        <div id="global-map-tools-titlebar" style="
+          cursor: move;
+          user-select: none;
+          margin: -15px -15px 10px -15px;
+          padding: 8px 15px;
+          background: rgba(0, 0, 0, 0.5);
+          border-bottom: 1px solid #444;
+          border-radius: 5px 5px 0 0;
+        ">
+          <h3 style="margin: 0; display: inline-block; flex: 1;">Global Map Tools</h3>
+        </div>
 
         <div style="display: flex; gap: 5px; margin-bottom: 10px;">
           <button id="tab-brush" data-tab="brush" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
@@ -1221,6 +1232,42 @@ export class GlobalMapTools {
     `;
 
     $('body').append(html);
+
+    // ===== DRAGGABLE UI =====
+    // Make the tools UI draggable
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    const toolsUI = $('#global-map-tools-ui');
+    const titlebar = $('#global-map-tools-titlebar');
+    
+    titlebar.on('mousedown', (e) => {
+      if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+        isDragging = true;
+        const rect = toolsUI[0].getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+        titlebar.css('background', 'rgba(0, 100, 200, 0.5)');
+        e.preventDefault();
+      }
+    });
+    
+    $(document).on('mousemove', (e) => {
+      if (isDragging) {
+        toolsUI.css({
+          'right': 'auto',
+          'left': (e.clientX - dragOffsetX) + 'px',
+          'top': (e.clientY - dragOffsetY) + 'px'
+        });
+      }
+    });
+    
+    $(document).on('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        titlebar.css('background', 'rgba(0, 0, 0, 0.5)');
+      }
+    });
 
     // Generate biome preset matrix (used in Set Biome)
     const generateBiomeMatrix = () => {
