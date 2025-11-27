@@ -26,6 +26,24 @@ export class GlobalMapTools {
     
     this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
     
+    // Brush filters - for Height tools (raise, lower, etc.)
+    this.heightFilterEnabled = false; // Enable filtering in height tools
+    this.heightFilterMin = 0; // Filter: min height (0-100)
+    this.heightFilterMax = 100; // Filter: max height (0-100)
+    this.heightFilterByBiomeEnabled = false; // Filter height tools by specific biomes
+    this.heightFilterBiomeIds = new Set(); // Biome IDs to affect when editing heights
+    
+    // Brush filters - for Biome tools (modify-biome, set-biome)
+    this.biomeFilterEnabled = false; // Enable filtering in biome tools
+    this.biomeFilterHeightMin = 0; // Filter: min height (0-100)
+    this.biomeFilterHeightMax = 100; // Filter: max height (0-100)
+    this.biomeFilterByBiomeEnabled = false; // Filter biome tools by specific biomes
+    this.biomeFilterExcludedIds = new Set(); // Biome IDs to exclude when editing biomes
+    
+    // Replace tool settings
+    this.replaceSourceBiomeIds = new Set(); // Source biomes for replacement (multiple)
+    this.replaceTargetBiomeId = null; // Target biome for replacement
+    
     // Temperature/moisture editing
     this.tempOverlayTemp = null; // Temporary delta for temperature
     this.tempOverlayMoisture = null; // Temporary delta for moisture
@@ -294,6 +312,11 @@ export class GlobalMapTools {
 
         if (inBrush) {
           const idx = row * cols + col;
+
+          // Check filters before applying brush
+          if (!this._isCellPassesFilter(idx, heights, temperature, moisture)) {
+            continue; // Skip this cell if it doesn't pass filter
+          }
 
           // Track affected cells for tools that process in commit
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen' ||
@@ -959,6 +982,41 @@ export class GlobalMapTools {
             <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
           </div>
           
+          <!-- Height Filter -->
+          <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 150, 100, 0.15); border-radius: 3px;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="height-filter-enabled" style="margin: 0;">
+              <span style="font-weight: bold; font-size: 12px;">Filter by Height</span>
+            </label>
+            <div style="display: none;" id="height-filter-controls">
+              <div style="margin-bottom: 6px;">
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Min: <span id="height-filter-min-value">0</span>%</label>
+                <input type="range" id="height-filter-min" min="0" max="100" step="1" value="0" style="width: 100%;" disabled>
+              </div>
+              <div style="margin-bottom: 6px;">
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Max: <span id="height-filter-max-value">100</span>%</label>
+                <input type="range" id="height-filter-max" min="0" max="100" step="1" value="100" style="width: 100%;" disabled>
+              </div>
+              <div style="font-size: 10px; color: #aaa; text-align: center;">
+                Range: <span id="height-filter-display">0-100</span>%
+              </div>
+            </div>
+          </div>
+          
+          <!-- Biome Filter for Height Tools -->
+          <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 150, 100, 0.15); border-radius: 3px;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="height-tool-biome-filter-enabled" style="margin: 0;">
+              <span style="font-weight: bold; font-size: 12px;">Filter by Biome</span>
+            </label>
+            <div style="display: none;" id="height-tool-biome-filter-controls">
+              <div id="height-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
+              <div style="font-size: 9px; color: #aaa; text-align: center;">
+                Click to select biomes to affect
+              </div>
+            </div>
+          </div>
+          
           <button id="brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
             Activate Brush
           </button>
@@ -1030,6 +1088,41 @@ export class GlobalMapTools {
             </div>
           </div>
           
+          <!-- Height Filter for Biome Tools -->
+          <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="biome-tool-height-filter-enabled" style="margin: 0;">
+              <span style="font-weight: bold; font-size: 12px;">Filter by Height</span>
+            </label>
+            <div style="display: none;" id="biome-tool-height-filter-controls">
+              <div style="margin-bottom: 6px;">
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Min: <span id="biome-tool-height-min-value">0</span>%</label>
+                <input type="range" id="biome-tool-height-min" min="0" max="100" step="1" value="0" style="width: 100%;" disabled>
+              </div>
+              <div style="margin-bottom: 6px;">
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Max: <span id="biome-tool-height-max-value">100</span>%</label>
+                <input type="range" id="biome-tool-height-max" min="0" max="100" step="1" value="100" style="width: 100%;" disabled>
+              </div>
+              <div style="font-size: 10px; color: #aaa; text-align: center;">
+                Range: <span id="biome-tool-height-display">0-100</span>%
+              </div>
+            </div>
+          </div>
+          
+          <!-- Biome Filter for Biome Tools -->
+          <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="biome-tool-biome-filter-enabled" style="margin: 0;">
+              <span style="font-weight: bold; font-size: 12px;">Filter by Biome</span>
+            </label>
+            <div style="display: none;" id="biome-tool-biome-filter-controls">
+              <div id="biome-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
+              <div style="font-size: 9px; color: #aaa; text-align: center;">
+                Click to exclude biomes from editing
+              </div>
+            </div>
+          </div>
+          
           <button id="biome-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
             Activate Brush
           </button>
@@ -1051,94 +1144,72 @@ export class GlobalMapTools {
             </button>
           </div>
 
-          <!-- Replace by Height -->
-          <div style="margin-bottom: 15px; padding: 10px; background: rgba(100, 200, 100, 0.1); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #99ff99; font-size: 13px;">Replace by Height:</label>
-            <div style="margin-bottom: 8px;">
-              <label style="display: block; margin-bottom: 3px; font-size: 11px;">From: <span id="replace-height-min-value">0</span>%</label>
-              <input type="range" id="replace-height-min" min="0" max="100" step="1" value="0" style="width: 100%;">
+          <!-- Unified Replace Tool -->
+          <div style="margin-bottom: 15px; padding: 10px; background: rgba(150, 150, 100, 0.1); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #ffff99; font-size: 13px;">Replace Cells:</label>
+            
+            <!-- Filters Section -->
+            <div style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 3px;">
+              <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #ccccff; font-size: 11px;">Filters (at least one):</label>
+              
+              <!-- Height Filter -->
+              <div style="margin-bottom: 8px;">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
+                  <input type="checkbox" id="replace-use-height" style="margin: 0;">
+                  <span>Height Range:</span>
+                </label>
+                <div style="margin-left: 20px; margin-top: 4px;">
+                  <label style="display: block; margin-bottom: 2px; font-size: 9px;">Min: <span id="replace-height-min-value">0</span>%</label>
+                  <input type="range" id="replace-height-min" min="0" max="100" step="1" value="0" style="width: 100%; margin-bottom: 4px;" disabled>
+                  <label style="display: block; margin-bottom: 2px; font-size: 9px;">Max: <span id="replace-height-max-value">100</span>%</label>
+                  <input type="range" id="replace-height-max" min="0" max="100" step="1" value="100" style="width: 100%;" disabled>
+                </div>
+              </div>
+              
+              <!-- Biome Filter -->
+              <div style="margin-bottom: 8px;">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
+                  <input type="checkbox" id="replace-use-biome" style="margin: 0;">
+                  <span>Source Biome:</span>
+                </label>
+                <div id="replace-source-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
+              </div>
             </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: block; margin-bottom: 3px; font-size: 11px;">To: <span id="replace-height-max-value">100</span>%</label>
-              <input type="range" id="replace-height-max" min="0" max="100" step="1" value="100" style="width: 100%;">
+            
+            <!-- Actions Section -->
+            <div style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 3px;">
+              <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #ccffcc; font-size: 11px;">Actions (at least one):</label>
+              
+              <!-- Set Height Action -->
+              <div style="margin-bottom: 8px;">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
+                  <input type="checkbox" id="replace-set-height" style="margin: 0;">
+                  <span>Set Height:</span>
+                  <input type="range" id="replace-set-height-val" min="0" max="100" step="1" value="50" style="flex: 1;" disabled>
+                  <span id="replace-set-height-display" style="font-size: 9px; color: #aaa; min-width: 25px;">50</span>
+                </label>
+              </div>
+              
+              <!-- Set Biome Action -->
+              <div style="margin-bottom: 0;">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
+                  <input type="checkbox" id="replace-set-biome" style="margin: 0;">
+                  <span>Set Biome:</span>
+                </label>
+                <div id="replace-target-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
+              </div>
             </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: block; margin-bottom: 3px; font-size: 11px;">Replace with: <span id="replace-height-target-value">50</span>%</label>
-              <input type="range" id="replace-height-target" min="0" max="100" step="1" value="50" style="width: 100%;">
+            
+            <!-- Preview and Action -->
+            <div style="margin-bottom: 8px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; font-size: 10px; color: #aaa;">
+              Matches: <span id="replace-preview-count">0</span> cells
             </div>
-            <div style="margin-bottom: 8px; font-size: 11px; color: #aaa;">
-              Matches: <span id="replace-height-count">0</span> cells
-            </div>
-            <button id="replace-height-btn" style="width: 100%; padding: 6px; margin-bottom: 4px; background: #66cc66; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
+            
+            <button id="replace-apply-btn" style="width: 100%; padding: 6px; margin-bottom: 4px; background: #88dd88; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
               Replace
             </button>
-            <button id="flatten-map-btn" style="width: 100%; padding: 6px; background: #ff9933; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
+            <button id="replace-flatten-btn" style="width: 100%; padding: 6px; background: #ffaa44; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
               Flatten All
-            </button>
-          </div>
-
-          <!-- Replace by Biome -->
-          <div style="margin-bottom: 15px; padding: 10px; background: rgba(100, 100, 200, 0.1); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #99ccff; font-size: 13px;">Replace by Biome:</label>
-            <div style="margin-bottom: 8px;">
-              <label style="display: block; margin-bottom: 3px; font-size: 11px;">From Biome:</label>
-              <select id="replace-biome-from" style="width: 100%; padding: 4px; font-size: 11px;"></select>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: block; margin-bottom: 3px; font-size: 11px;">To Biome:</label>
-              <select id="replace-biome-to" style="width: 100%; padding: 4px; font-size: 11px;"></select>
-            </div>
-            <div style="margin-bottom: 8px; font-size: 11px; color: #aaa;">
-              Matches: <span id="replace-biome-count">0</span> cells
-            </div>
-            <button id="replace-biome-btn" style="width: 100%; padding: 6px; background: #6699ff; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
-              Replace
-            </button>
-          </div>
-
-          <!-- Combined Replace -->
-          <div style="margin-bottom: 10px; padding: 10px; background: rgba(200, 100, 200, 0.1); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ff99ff; font-size: 13px;">Combined Replace:</label>
-            <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                <input type="checkbox" id="combined-use-biome" style="margin: 0;">
-                <span>Filter by Biome:</span>
-                <select id="combined-biome" style="flex: 1; padding: 3px; font-size: 10px;"></select>
-              </label>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                <input type="checkbox" id="combined-use-height" style="margin: 0;">
-                <span>Filter by Height:</span>
-              </label>
-              <div style="margin-top: 3px;">
-                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Min: <span id="combined-height-min-value">0</span>%</label>
-                <input type="range" id="combined-height-min" min="0" max="100" step="1" value="0" style="width: 100%;">
-              </div>
-              <div style="margin-top: 3px;">
-                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Max: <span id="combined-height-max-value">100</span>%</label>
-                <input type="range" id="combined-height-max" min="0" max="100" step="1" value="100" style="width: 100%;">
-              </div>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                <input type="checkbox" id="combined-set-biome" style="margin: 0;">
-                <span>Set to Biome:</span>
-                <select id="combined-set-biome-val" style="flex: 1; padding: 3px; font-size: 10px;"></select>
-              </label>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                <input type="checkbox" id="combined-set-height" style="margin: 0;">
-                <span>Set to Height:</span>
-                <input type="number" id="combined-set-height-val" min="0" max="100" value="50" style="flex: 1; padding: 3px; font-size: 10px;">
-              </label>
-            </div>
-            <div style="margin-bottom: 8px; font-size: 11px; color: #aaa;">
-              Matches: <span id="combined-count">0</span> cells
-            </div>
-            <button id="combined-replace-btn" style="width: 100%; padding: 6px; background: #ff99cc; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
-              Replace
             </button>
           </div>
         </div>
@@ -1151,7 +1222,7 @@ export class GlobalMapTools {
 
     $('body').append(html);
 
-    // Generate biome preset matrix
+    // Generate biome preset matrix (used in Set Biome)
     const generateBiomeMatrix = () => {
       const matrix = $('#biome-preset-matrix');
       matrix.empty();
@@ -1186,6 +1257,257 @@ export class GlobalMapTools {
             $('#set-moisture').val(moisture);
             $('#set-moisture-value').text(moisture);
             $('#set-moisture-enabled').prop('checked', true);
+          });
+          
+          matrix.append(cell);
+        }
+      }
+    };
+
+    // Generate biome selection matrix for Height tools filter (allowed biomes)
+    this._generateHeightFilterBiomeMatrix = () => {
+      const matrix = $('#height-filter-biome-matrix');
+      matrix.empty();
+      // 6 rows (moisture 6..1) x 5 cols (temp 1..5)
+      for (let moisture = 6; moisture >= 1; moisture--) {
+        for (let temp = 1; temp <= 5; temp++) {
+          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
+          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+          const colorHex = '#' + color.toString(16).padStart(6, '0');
+          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+          const selected = this.heightFilterBiomeIds.has(biomeId);
+          
+          const cellStyles = {
+            'aspect-ratio': '1',
+            'cursor': 'pointer',
+            'border': selected ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)',
+            'border-radius': '2px',
+            'box-shadow': selected ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none',
+            'position': 'relative',
+            'min-width': '50px',
+            'min-height': '50px'
+          };
+          
+          // Add pattern or solid background
+          if (pattern) {
+            const patternColor = this._getPatternColor(pattern, color);
+            if (patternColor) {
+              // Diagonal stripes: base color with pattern color stripes
+              cellStyles['background'] = `repeating-linear-gradient(
+                45deg,
+                ${colorHex},
+                ${colorHex} 10px,
+                ${patternColor} 10px,
+                ${patternColor} 20px
+              )`;
+            } else {
+              cellStyles['background-color'] = colorHex;
+            }
+          } else {
+            cellStyles['background-color'] = colorHex;
+          }
+          
+          const cell = $('<div></div>').css(cellStyles).attr({
+            'data-biome-id': biomeId,
+            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
+          });
+          
+          cell.on('click', () => {
+            if (this.heightFilterBiomeIds.has(biomeId)) {
+              this.heightFilterBiomeIds.delete(biomeId);
+            } else {
+              this.heightFilterBiomeIds.add(biomeId);
+            }
+            // Toggle style
+            const isSel = this.heightFilterBiomeIds.has(biomeId);
+            cell.css('border', isSel ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)');
+            cell.css('box-shadow', isSel ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none');
+          });
+          matrix.append(cell);
+        }
+      }
+    };
+
+    // Generate biome selection matrix for Biome tools filter (excluded biomes)
+    this._generateBiomeToolBiomeFilterMatrix = () => {
+      const matrix = $('#biome-filter-biome-matrix');
+      matrix.empty();
+      for (let moisture = 6; moisture >= 1; moisture--) {
+        for (let temp = 1; temp <= 5; temp++) {
+          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
+          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+          const colorHex = '#' + color.toString(16).padStart(6, '0');
+          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+          const excluded = this.biomeFilterExcludedIds.has(biomeId);
+          
+          const cellStyles = {
+            'aspect-ratio': '1',
+            'cursor': 'pointer',
+            'border': excluded ? '2px solid #ff6666' : '1px solid rgba(0,0,0,0.3)',
+            'border-radius': '2px',
+            'position': 'relative',
+            'min-width': '50px',
+            'min-height': '50px'
+          };
+          
+          // Add pattern or solid background
+          if (pattern) {
+            const patternColor = this._getPatternColor(pattern, color);
+            if (patternColor) {
+              // Diagonal stripes: base color with pattern color stripes
+              cellStyles['background'] = `repeating-linear-gradient(
+                45deg,
+                ${colorHex},
+                ${colorHex} 10px,
+                ${patternColor} 10px,
+                ${patternColor} 20px
+              )`;
+            } else {
+              cellStyles['background-color'] = colorHex;
+            }
+          } else {
+            cellStyles['background-color'] = colorHex;
+          }
+          
+          const cell = $('<div></div>').css(cellStyles).attr({
+            'data-biome-id': biomeId,
+            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
+          });
+          
+          // Add small X overlay when excluded
+          if (excluded) {
+            const overlay = $('<div></div>').css({
+              'position': 'absolute','inset':'0','display':'flex','align-items':'center','justify-content':'center','color':'#ffdddd','font-weight':'bold','text-shadow':'0 0 2px #000','font-size':'14px','background':'rgba(0,0,0,0.3)'
+            }).text('×');
+            cell.append(overlay);
+          }
+          
+          cell.on('click', () => {
+            if (this.biomeFilterExcludedIds.has(biomeId)) {
+              this.biomeFilterExcludedIds.delete(biomeId);
+            } else {
+              this.biomeFilterExcludedIds.add(biomeId);
+            }
+            // Regenerate to refresh overlays/styles
+            this._generateBiomeToolBiomeFilterMatrix();
+          });
+          matrix.append(cell);
+        }
+      }
+    };
+
+    // Generate replace source biome selection matrix
+    this._generateReplaceSourceBiomeMatrix = () => {
+      const matrix = $('#replace-source-biome-matrix');
+      matrix.empty();
+      const selectedBiomes = this.replaceSourceBiomeIds;
+      
+      for (let moisture = 6; moisture >= 1; moisture--) {
+        for (let temp = 1; temp <= 5; temp++) {
+          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
+          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+          const colorHex = '#' + color.toString(16).padStart(6, '0');
+          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+          const isSelected = selectedBiomes.has(biomeId);
+          
+          const cellStyles = {
+            'aspect-ratio': '1',
+            'cursor': 'pointer',
+            'border': isSelected ? '2px solid #ffff00' : '1px solid rgba(0,0,0,0.3)',
+            'border-radius': '2px',
+            'position': 'relative',
+            'min-width': '40px',
+            'min-height': '40px'
+          };
+          
+          // Add pattern or solid background
+          if (pattern) {
+            const patternColor = this._getPatternColor(pattern, color);
+            if (patternColor) {
+              cellStyles['background'] = `repeating-linear-gradient(
+                45deg,
+                ${colorHex},
+                ${colorHex} 10px,
+                ${patternColor} 10px,
+                ${patternColor} 20px
+              )`;
+            } else {
+              cellStyles['background-color'] = colorHex;
+            }
+          } else {
+            cellStyles['background-color'] = colorHex;
+          }
+          
+          const cell = $('<div></div>').css(cellStyles).attr({
+            'data-biome-id': biomeId,
+            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
+          });
+          
+          cell.on('click', () => {
+            if (this.replaceSourceBiomeIds.has(biomeId)) {
+              this.replaceSourceBiomeIds.delete(biomeId);
+            } else {
+              this.replaceSourceBiomeIds.add(biomeId);
+            }
+            this._generateReplaceSourceBiomeMatrix();
+            this.updateReplacePreview();
+          });
+          
+          matrix.append(cell);
+        }
+      }
+    };
+
+    // Generate replace target biome selection matrix
+    this._generateReplaceTargetBiomeMatrix = () => {
+      const matrix = $('#replace-target-biome-matrix');
+      matrix.empty();
+      const selectedBiome = this.replaceTargetBiomeId;
+      
+      for (let moisture = 6; moisture >= 1; moisture--) {
+        for (let temp = 1; temp <= 5; temp++) {
+          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
+          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+          const colorHex = '#' + color.toString(16).padStart(6, '0');
+          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+          const isSelected = selectedBiome === biomeId;
+          
+          const cellStyles = {
+            'aspect-ratio': '1',
+            'cursor': 'pointer',
+            'border': isSelected ? '2px solid #00ff00' : '1px solid rgba(0,0,0,0.3)',
+            'border-radius': '2px',
+            'position': 'relative',
+            'min-width': '40px',
+            'min-height': '40px'
+          };
+          
+          // Add pattern or solid background
+          if (pattern) {
+            const patternColor = this._getPatternColor(pattern, color);
+            if (patternColor) {
+              cellStyles['background'] = `repeating-linear-gradient(
+                45deg,
+                ${colorHex},
+                ${colorHex} 10px,
+                ${patternColor} 10px,
+                ${patternColor} 20px
+              )`;
+            } else {
+              cellStyles['background-color'] = colorHex;
+            }
+          } else {
+            cellStyles['background-color'] = colorHex;
+          }
+          
+          const cell = $('<div></div>').css(cellStyles).attr({
+            'data-biome-id': biomeId,
+            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
+          });
+          
+          cell.on('click', () => {
+            this.replaceTargetBiomeId = biomeId;
+            this._generateReplaceTargetBiomeMatrix();
           });
           
           matrix.append(cell);
@@ -1333,47 +1655,109 @@ export class GlobalMapTools {
       }
     });
 
-    // Helper to populate biome selects
-    const populateBiomeSelects = () => {
-      const selects = ['replace-biome-from', 'replace-biome-to', 'combined-biome', 'combined-set-biome-val'];
-      const self = this;
+    // ===== HEIGHTS TAB FILTERS =====
+    // Height Range Filter for height tools
+    $('#height-filter-enabled').on('change', (e) => {
+      this.heightFilterEnabled = e.target.checked;
+      $('#height-filter-controls').toggle(this.heightFilterEnabled);
+      $('#height-filter-min').prop('disabled', !this.heightFilterEnabled);
+      $('#height-filter-max').prop('disabled', !this.heightFilterEnabled);
+    });
+    
+    $('#height-filter-min').on('input', (e) => {
+      const minVal = parseInt(e.target.value);
+      $('#height-filter-min-value').text(minVal);
+      const maxVal = parseInt($('#height-filter-max').val());
+      if (minVal > maxVal) {
+        $('#height-filter-max').val(minVal);
+        $('#height-filter-max-value').text(minVal);
+      }
+      this.heightFilterMin = minVal;
+      const max = parseInt($('#height-filter-max').val());
+      $('#height-filter-display').text(`${minVal}-${max}`);
+    });
+    
+    $('#height-filter-max').on('input', (e) => {
+      const maxVal = parseInt(e.target.value);
+      $('#height-filter-max-value').text(maxVal);
+      const minVal = parseInt($('#height-filter-min').val());
+      if (maxVal < minVal) {
+        $('#height-filter-min').val(maxVal);
+        $('#height-filter-min-value').text(maxVal);
+      }
+      this.heightFilterMax = maxVal;
+      const min = parseInt($('#height-filter-min').val());
+      $('#height-filter-display').text(`${min}-${maxVal}`);
+    });
+
+    // Biome Filter for height tools (only affect selected biomes)
+    $('#height-tool-biome-filter-enabled').on('change', (e) => {
+      this.heightFilterByBiomeEnabled = e.target.checked;
+      $('#height-tool-biome-filter-controls').toggle(this.heightFilterByBiomeEnabled);
       
-      selects.forEach(selectId => {
-        const select = $(`#${selectId}`);
-        if (select.length === 0) return;
-        
-        select.empty();
-        select.append($('<option></option>').attr('value', '').text('- Select Biome -'));
-        
-        // Get unique biomes from grid
-        if (self.renderer.currentGrid) {
-          const { heights, temperature, moisture } = self.renderer.currentGrid;
-          const biomeSet = new Set();
-          
-          for (let i = 0; i < heights.length; i++) {
-            const t = temperature ? temperature[i] : 0;
-            const m = moisture ? moisture[i] : 0;
-            const h = heights[i];
-            const biomeId = self.processing.biomeResolver.getBiomeId(m, t, h);
-            if (biomeId > 0) biomeSet.add(biomeId);
-          }
-          
-          // Sort biome IDs and add to selects
-          const sortedBiomes = Array.from(biomeSet).sort((a, b) => a - b);
-          sortedBiomes.forEach(biomeId => {
-            const params = self.processing.biomeResolver.getParametersFromBiomeId(biomeId);
-            const color = self.processing.biomeResolver.getBiomeColor(biomeId);
-            const colorHex = '#' + color.toString(16).padStart(6, '0');
-            const name = params.name || `Biome ${biomeId}`;
-            const option = $('<option></option>')
-              .attr('value', biomeId)
-              .text(name)
-              .css('background-color', colorHex);
-            select.append(option);
-          });
+      if (this.heightFilterByBiomeEnabled) {
+        const matrix = $('#height-filter-biome-matrix');
+        if (matrix.children().length === 0) {
+          this._generateHeightFilterBiomeMatrix();
         }
-      });
-    };
+      }
+    });
+
+    // ===== BIOMES TAB FILTERS =====
+    // Height Range Filter for biome tools
+    $('#biome-tool-height-filter-enabled').on('change', (e) => {
+      this.biomeFilterEnabled = e.target.checked;
+      $('#biome-tool-height-filter-controls').toggle(this.biomeFilterEnabled);
+      $('#biome-tool-height-min').prop('disabled', !this.biomeFilterEnabled);
+      $('#biome-tool-height-max').prop('disabled', !this.biomeFilterEnabled);
+    });
+    
+    $('#biome-tool-height-min').on('input', (e) => {
+      const minVal = parseInt(e.target.value);
+      $('#biome-tool-height-min-value').text(minVal);
+      const maxVal = parseInt($('#biome-tool-height-max').val());
+      if (minVal > maxVal) {
+        $('#biome-tool-height-max').val(minVal);
+        $('#biome-tool-height-max-value').text(minVal);
+      }
+      this.biomeFilterHeightMin = minVal;
+      const max = parseInt($('#biome-tool-height-max').val());
+      $('#biome-tool-height-display').text(`${minVal}-${max}`);
+    });
+    
+    $('#biome-tool-height-max').on('input', (e) => {
+      const maxVal = parseInt(e.target.value);
+      $('#biome-tool-height-max-value').text(maxVal);
+      const minVal = parseInt($('#biome-tool-height-min').val());
+      if (maxVal < minVal) {
+        $('#biome-tool-height-min').val(maxVal);
+        $('#biome-tool-height-min-value').text(maxVal);
+      }
+      this.biomeFilterHeightMax = maxVal;
+      const min = parseInt($('#biome-tool-height-min').val());
+      $('#biome-tool-height-display').text(`${min}-${maxVal}`);
+    });
+
+    // Biome Filter for biome tools (exclude certain biomes)
+    $('#biome-tool-biome-filter-enabled').on('change', (e) => {
+      this.biomeFilterByBiomeEnabled = e.target.checked;
+      $('#biome-tool-biome-filter-controls').toggle(this.biomeFilterByBiomeEnabled);
+      
+      if (this.biomeFilterByBiomeEnabled) {
+        const matrix = $('#biome-filter-biome-matrix');
+        if (matrix.children().length === 0) {
+          this._generateBiomeToolBiomeFilterMatrix();
+        }
+      }
+    });
+    
+    $('#biome-tool-biome-filter-select').on('change', (e) => {
+      const selectedValues = $(e.target).val();
+      this.biomeFilterExcludedIds.clear();
+      if (selectedValues) {
+        selectedValues.forEach(val => this.biomeFilterExcludedIds.add(parseInt(val)));
+      }
+    });
 
     // Tabs switching
     const activateTab = (tab) => {
@@ -1399,8 +1783,6 @@ export class GlobalMapTools {
       } else if (tab === 'global') {
         $('#global-tab').show();
         $('#tab-global').css('background', '#0066cc').css('font-weight', 'bold');
-        // Populate biome selects when switching to global tab
-        populateBiomeSelects();
       }
     };
     $('#tab-brush').on('click', () => activateTab('brush'));
@@ -1422,7 +1804,49 @@ export class GlobalMapTools {
       try { this.globalSmooth(3); } finally { $('#global-smooth-3-btn').prop('disabled', false); }
     });
 
-    // Replace by Height events
+    // ===== UNIFIED REPLACE TOOL =====
+    // Update preview when filters or actions change
+    this.updateReplacePreview = () => {
+      const useBiome = $('#replace-use-biome').prop('checked');
+      const useHeight = $('#replace-use-height').prop('checked');
+      
+      if (!useBiome && !useHeight) {
+        $('#replace-preview-count').text('0');
+        return;
+      }
+      
+      const criteria = {
+        heightMin: useHeight ? parseInt($('#replace-height-min').val()) : null,
+        heightMax: useHeight ? parseInt($('#replace-height-max').val()) : null,
+        biomeIds: useBiome ? this.replaceSourceBiomeIds : null
+      };
+      
+      const count = this.getAffectedCellsCount(criteria);
+      $('#replace-preview-count').text(count);
+    };
+    
+    // Filter toggles
+    $('#replace-use-height').on('change', (e) => {
+      $('#replace-height-min').prop('disabled', !e.target.checked);
+      $('#replace-height-max').prop('disabled', !e.target.checked);
+      this.updateReplacePreview();
+    });
+    
+    $('#replace-use-biome').on('change', (e) => {
+      const isChecked = e.target.checked;
+      const matrix = $('#replace-source-biome-matrix');
+      if (isChecked) {
+        if (matrix.children().length === 0) {
+          this._generateReplaceSourceBiomeMatrix();
+        }
+        matrix.show();
+      } else {
+        matrix.hide();
+      }
+      this.updateReplacePreview();
+    });
+    
+    // Height filter sliders
     $('#replace-height-min').on('input', (e) => {
       const minVal = parseInt(e.target.value);
       $('#replace-height-min-value').text(minVal);
@@ -1431,9 +1855,7 @@ export class GlobalMapTools {
         $('#replace-height-max').val(minVal);
         $('#replace-height-max-value').text(minVal);
       }
-      const targetVal = parseInt($('#replace-height-target').val());
-      const count = this.getAffectedCellsCount({ heightMin: minVal * 100 / 100, heightMax: maxVal * 100 / 100, biomeId: null });
-      $('#replace-height-count').text(count);
+      this.updateReplacePreview();
     });
     
     $('#replace-height-max').on('input', (e) => {
@@ -1444,126 +1866,76 @@ export class GlobalMapTools {
         $('#replace-height-min').val(maxVal);
         $('#replace-height-min-value').text(maxVal);
       }
-      const count = this.getAffectedCellsCount({ heightMin: minVal * 100 / 100, heightMax: maxVal * 100 / 100, biomeId: null });
-      $('#replace-height-count').text(count);
+      this.updateReplacePreview();
     });
     
-    $('#replace-height-target').on('input', (e) => {
-      const val = parseInt(e.target.value);
-      $('#replace-height-target-value').text(val);
+    // Action toggles
+    $('#replace-set-height').on('change', (e) => {
+      $('#replace-set-height-val').prop('disabled', !e.target.checked);
     });
     
-    $('#replace-height-btn').on('click', () => {
-      const min = parseInt($('#replace-height-min').val());
-      const max = parseInt($('#replace-height-max').val());
-      const target = parseInt($('#replace-height-target').val());
-      this.applyReplaceByHeight(min, max, target);
-    });
-    
-    $('#flatten-map-btn').on('click', () => {
-      const confirmed = confirm('Flatten entire map to height ' + parseInt($('#replace-height-target').val()) + '?');
-      if (confirmed) {
-        const target = parseInt($('#replace-height-target').val());
-        this.applyFlattenMap(target);
-      }
-    });
-
-    // Replace by Biome events
-    $('#replace-biome-from').on('change', () => {
-      const sourceBiomeId = parseInt($('#replace-biome-from').val());
-      if (sourceBiomeId) {
-        const count = this.getAffectedCellsCount({ heightMin: null, heightMax: null, biomeId: sourceBiomeId });
-        $('#replace-biome-count').text(count);
+    $('#replace-set-biome').on('change', (e) => {
+      const isChecked = e.target.checked;
+      const matrix = $('#replace-target-biome-matrix');
+      if (isChecked) {
+        if (matrix.children().length === 0) {
+          this._generateReplaceTargetBiomeMatrix();
+        }
+        matrix.show();
       } else {
-        $('#replace-biome-count').text('0');
+        matrix.hide();
       }
     });
     
-    $('#replace-biome-btn').on('click', () => {
-      const sourceBiomeId = parseInt($('#replace-biome-from').val());
-      const targetBiomeId = parseInt($('#replace-biome-to').val());
-      
-      if (!sourceBiomeId || !targetBiomeId) {
-        ui.notifications.warn('Select both source and target biomes');
-        return;
-      }
-      
-      const targetParams = this.processing.biomeResolver.getParametersFromBiomeId(targetBiomeId);
-      this.applyReplaceByBiome(sourceBiomeId, targetParams.temperature, targetParams.moisture);
-    });
-
-    // Combined Replace events
-    $('#combined-use-biome').on('change', () => {
-      const enabled = $('#combined-use-biome').prop('checked');
-      $('#combined-biome').prop('disabled', !enabled);
+    // Set height slider
+    $('#replace-set-height-val').on('input', (e) => {
+      $('#replace-set-height-display').text(e.target.value);
     });
     
-    $('#combined-biome').on('change', () => {
-      this.updateCombinedPreview();
-    });
-    
-    $('#combined-use-height').on('change', () => {
-      const enabled = $('#combined-use-height').prop('checked');
-      $('#combined-height-min').prop('disabled', !enabled);
-      $('#combined-height-max').prop('disabled', !enabled);
-    });
-    
-    $('#combined-height-min').on('input', () => {
-      const minVal = parseInt($('#combined-height-min').val());
-      $('#combined-height-min-value').text(minVal);
-      const maxVal = parseInt($('#combined-height-max').val());
-      if (minVal > maxVal) {
-        $('#combined-height-max').val(minVal);
-        $('#combined-height-max-value').text(minVal);
-      }
-      this.updateCombinedPreview();
-    });
-    
-    $('#combined-height-max').on('input', () => {
-      const maxVal = parseInt($('#combined-height-max').val());
-      $('#combined-height-max-value').text(maxVal);
-      const minVal = parseInt($('#combined-height-min').val());
-      if (maxVal < minVal) {
-        $('#combined-height-min').val(maxVal);
-        $('#combined-height-min-value').text(maxVal);
-      }
-      this.updateCombinedPreview();
-    });
-    
-    $('#combined-set-biome').on('change', () => {
-      $('#combined-set-biome-val').prop('disabled', !$('#combined-set-biome').prop('checked'));
-    });
-    
-    $('#combined-set-height').on('change', () => {
-      $('#combined-set-height-val').prop('disabled', !$('#combined-set-height').prop('checked'));
-    });
-    
-    $('#combined-replace-btn').on('click', () => {
-      const useBiome = $('#combined-use-biome').prop('checked');
-      const useHeight = $('#combined-use-height').prop('checked');
-      const setBiome = $('#combined-set-biome').prop('checked');
-      const setHeight = $('#combined-set-height').prop('checked');
+    // Main Replace button
+    $('#replace-apply-btn').on('click', () => {
+      const useBiome = $('#replace-use-biome').prop('checked');
+      const useHeight = $('#replace-use-height').prop('checked');
+      const setHeight = $('#replace-set-height').prop('checked');
+      const setBiome = $('#replace-set-biome').prop('checked');
       
       if (!useBiome && !useHeight) {
-        ui.notifications.warn('Select at least one filter criteria');
+        ui.notifications.warn('Select at least one filter');
         return;
       }
       
-      if (!setBiome && !setHeight) {
-        ui.notifications.warn('Select at least one replacement option');
+      if (!setHeight && !setBiome) {
+        ui.notifications.warn('Select at least one action');
         return;
       }
       
       const criteria = {
-        heightMin: useHeight ? parseInt($('#combined-height-min').val()) : null,
-        heightMax: useHeight ? parseInt($('#combined-height-max').val()) : null,
-        sourceBiomeId: useBiome ? parseInt($('#combined-biome').val()) : null,
-        targetTemp: setBiome ? this.processing.biomeResolver.getParametersFromBiomeId(parseInt($('#combined-set-biome-val').val())).temperature : null,
-        targetMoisture: setBiome ? this.processing.biomeResolver.getParametersFromBiomeId(parseInt($('#combined-set-biome-val').val())).moisture : null,
-        targetHeight: setHeight ? parseInt($('#combined-set-height-val').val()) : null
+        heightMin: useHeight ? parseInt($('#replace-height-min').val()) : null,
+        heightMax: useHeight ? parseInt($('#replace-height-max').val()) : null,
+        sourceBiomeIds: useBiome ? this.replaceSourceBiomeIds : null,
+        targetHeight: setHeight ? parseInt($('#replace-set-height-val').val()) : null
       };
       
+      if (setBiome) {
+        if (!this.replaceTargetBiomeId) {
+          ui.notifications.warn('Select target biome');
+          return;
+        }
+        const targetParams = this.processing.biomeResolver.getParametersFromBiomeId(this.replaceTargetBiomeId);
+        criteria.targetTemp = targetParams.temperature;
+        criteria.targetMoisture = targetParams.moisture;
+      }
+      
       this.applyReplaceByCombinedFilter(criteria);
+    });
+    
+    // Flatten All button
+    $('#replace-flatten-btn').on('click', () => {
+      const targetHeight = parseInt($('#replace-set-height-val').val());
+      const confirmed = confirm(`Flatten entire map to height ${targetHeight}%?`);
+      if (confirmed) {
+        this.applyFlattenMap(targetHeight);
+      }
     });
 
     $('#global-map-exit').on('click', async () => {
@@ -1572,6 +1944,91 @@ export class GlobalMapTools {
     
     // Initialize UI state
     this.updateBrushUI();
+  }
+
+  /**
+   * Get pattern color or darken base color
+   * @private
+   * @param {Object} pattern - Pattern config from biome
+   * @param {number} baseColor - RGB color as hex
+   * @returns {string} RGB color string for pattern overlay
+   */
+  _getPatternColor(pattern, baseColor) {
+    if (!pattern) return null;
+    
+    if (pattern.patternColor) {
+      // Use explicit pattern color from config
+      const colorStr = pattern.patternColor;
+      if (colorStr.startsWith('#')) {
+        return colorStr;
+      }
+      // Parse hex string like "284828"
+      const color = parseInt(colorStr, 16);
+      const r = (color >> 16) & 0xFF;
+      const g = (color >> 8) & 0xFF;
+      const b = color & 0xFF;
+      return `rgb(${r},${g},${b})`;
+    }
+    
+    // Darken base color
+    const darkenFactor = pattern.darkenFactor || 0.3;
+    const r = Math.floor(((baseColor >> 16) & 0xFF) * (1 - darkenFactor));
+    const g = Math.floor(((baseColor >> 8) & 0xFF) * (1 - darkenFactor));
+    const b = Math.floor((baseColor & 0xFF) * (1 - darkenFactor));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  /**
+   * Check if cell passes current filters based on current tool
+   * @private
+   * @param {number} idx - Cell index in grid
+   * @param {Float32Array} heights - Heights array
+   * @param {Uint8Array} temperature - Temperature array
+   * @param {Uint8Array} moisture - Moisture array
+   * @returns {boolean} True if cell should be affected by brush
+   */
+  _isCellPassesFilter(idx, heights, temperature, moisture) {
+    const h = heights[idx];
+    const temp = temperature ? temperature[idx] : 0;
+    const moist = moisture ? moisture[idx] : 0;
+    const cellBiomeId = this.processing.biomeResolver.getBiomeId(moist, temp, h);
+
+    // Height-based tools: raise, lower, smooth, roughen, flatten
+    const isHeightTool = ['raise', 'lower', 'smooth', 'roughen', 'flatten'].includes(this.currentTool);
+    
+    if (isHeightTool) {
+      // Filter by height range
+      if (this.heightFilterEnabled) {
+        if (h < this.heightFilterMin || h > this.heightFilterMax) {
+          return false; // Cell height is outside filter range
+        }
+      }
+      
+      // Filter by specific biomes (only affect selected biomes)
+      if (this.heightFilterByBiomeEnabled && this.heightFilterBiomeIds.size > 0) {
+        if (!this.heightFilterBiomeIds.has(cellBiomeId)) {
+          return false; // Cell biome is not in the allowed list
+        }
+      }
+    }
+    // Biome-based tools: modify-biome, set-biome
+    else if (this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
+      // Filter by height range
+      if (this.biomeFilterEnabled) {
+        if (h < this.biomeFilterHeightMin || h > this.biomeFilterHeightMax) {
+          return false; // Cell height is outside filter range
+        }
+      }
+      
+      // Filter by specific biomes (exclude certain biomes)
+      if (this.biomeFilterByBiomeEnabled && this.biomeFilterExcludedIds.size > 0) {
+        if (this.biomeFilterExcludedIds.has(cellBiomeId)) {
+          return false; // Cell biome is in excluded list
+        }
+      }
+    }
+
+    return true; // Cell passes all filters
   }
 
   /**
@@ -1606,7 +2063,7 @@ export class GlobalMapTools {
 
   /**
    * Count cells matching criteria for preview
-   * @param {Object} criteria - Filter criteria
+   * @param {Object} criteria - Filter criteria {heightMin, heightMax, biomeId/biomeIds}
    * @returns {number} Count of matching cells
    */
   getAffectedCellsCount(criteria) {
@@ -1626,10 +2083,13 @@ export class GlobalMapTools {
       if (criteria.heightMin !== null && h < criteria.heightMin) matches = false;
       if (criteria.heightMax !== null && h > criteria.heightMax) matches = false;
 
-      // Check biome (temperature/moisture combination)
+      // Check biome (single or multiple)
       if (criteria.biomeId !== null && criteria.biomeId !== undefined) {
         const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
         if (cellBiomeId !== criteria.biomeId) matches = false;
+      } else if (criteria.biomeIds !== null && criteria.biomeIds !== undefined && criteria.biomeIds.size > 0) {
+        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
+        if (!criteria.biomeIds.has(cellBiomeId)) matches = false;
       }
 
       if (matches) count++;
@@ -1716,7 +2176,7 @@ export class GlobalMapTools {
 
   /**
    * Apply combined filter replacement (height AND/OR biome)
-   * @param {Object} criteria - {heightMin, heightMax, sourceBiomeId, targetTemp, targetMoisture, targetHeight}
+   * @param {Object} criteria - {heightMin, heightMax, sourceBiomeId/sourceBiomeIds, targetTemp, targetMoisture, targetHeight}
    * @returns {number} Number of cells modified
    */
   applyReplaceByCombinedFilter(criteria) {
@@ -1743,10 +2203,13 @@ export class GlobalMapTools {
         if (h > criteria.heightMax) matches = false;
       }
 
-      // Check biome (if specified)
+      // Check biome (single or multiple)
       if (matches && criteria.sourceBiomeId !== null && criteria.sourceBiomeId !== undefined) {
         const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
         if (cellBiomeId !== criteria.sourceBiomeId) matches = false;
+      } else if (matches && criteria.sourceBiomeIds !== null && criteria.sourceBiomeIds !== undefined && criteria.sourceBiomeIds.size > 0) {
+        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
+        if (!criteria.sourceBiomeIds.has(cellBiomeId)) matches = false;
       }
 
       if (matches) {
