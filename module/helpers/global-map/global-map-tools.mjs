@@ -1036,17 +1036,109 @@ export class GlobalMapTools {
         </div>
 
         <div id="global-tab" style="display: none;">
-          <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Smooth Strength: <span id="global-smooth-strength-value">${this.globalSmoothStrength.toFixed(1)}</span></label>
-            <input type="range" id="global-smooth-strength" min="0.1" max="1.0" step="0.1" value="${this.globalSmoothStrength}" style="width: 100%; margin-bottom: 10px;">
-          </div>
-          <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Global Operations:</label>
-            <button id="global-smooth-btn" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #ffff00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+          <!-- Smooth Operations -->
+          <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #555;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ffff00;">Smoothing:</label>
+            <div style="margin-bottom: 10px;">
+              <label style="display: block; margin-bottom: 5px; font-size: 12px;">Strength: <span id="global-smooth-strength-value">${this.globalSmoothStrength.toFixed(1)}</span></label>
+              <input type="range" id="global-smooth-strength" min="0.1" max="1.0" step="0.1" value="${this.globalSmoothStrength}" style="width: 100%;">
+            </div>
+            <button id="global-smooth-btn" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #ffff00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;">
               Smooth (1 pass)
             </button>
-            <button id="global-smooth-3-btn" style="width: 100%; padding: 8px; background: #ffdd00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+            <button id="global-smooth-3-btn" style="width: 100%; padding: 8px; background: #ffdd00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;">
               Smooth (3 passes)
+            </button>
+          </div>
+
+          <!-- Replace by Height -->
+          <div style="margin-bottom: 15px; padding: 10px; background: rgba(100, 200, 100, 0.1); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #99ff99; font-size: 13px;">Replace by Height:</label>
+            <div style="margin-bottom: 8px;">
+              <label style="display: block; margin-bottom: 3px; font-size: 11px;">From: <span id="replace-height-min-value">0</span>%</label>
+              <input type="range" id="replace-height-min" min="0" max="100" step="1" value="0" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: block; margin-bottom: 3px; font-size: 11px;">To: <span id="replace-height-max-value">100</span>%</label>
+              <input type="range" id="replace-height-max" min="0" max="100" step="1" value="100" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: block; margin-bottom: 3px; font-size: 11px;">Replace with: <span id="replace-height-target-value">50</span>%</label>
+              <input type="range" id="replace-height-target" min="0" max="100" step="1" value="50" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 8px; font-size: 11px; color: #aaa;">
+              Matches: <span id="replace-height-count">0</span> cells
+            </div>
+            <button id="replace-height-btn" style="width: 100%; padding: 6px; margin-bottom: 4px; background: #66cc66; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
+              Replace
+            </button>
+            <button id="flatten-map-btn" style="width: 100%; padding: 6px; background: #ff9933; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
+              Flatten All
+            </button>
+          </div>
+
+          <!-- Replace by Biome -->
+          <div style="margin-bottom: 15px; padding: 10px; background: rgba(100, 100, 200, 0.1); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #99ccff; font-size: 13px;">Replace by Biome:</label>
+            <div style="margin-bottom: 8px;">
+              <label style="display: block; margin-bottom: 3px; font-size: 11px;">From Biome:</label>
+              <select id="replace-biome-from" style="width: 100%; padding: 4px; font-size: 11px;"></select>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: block; margin-bottom: 3px; font-size: 11px;">To Biome:</label>
+              <select id="replace-biome-to" style="width: 100%; padding: 4px; font-size: 11px;"></select>
+            </div>
+            <div style="margin-bottom: 8px; font-size: 11px; color: #aaa;">
+              Matches: <span id="replace-biome-count">0</span> cells
+            </div>
+            <button id="replace-biome-btn" style="width: 100%; padding: 6px; background: #6699ff; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
+              Replace
+            </button>
+          </div>
+
+          <!-- Combined Replace -->
+          <div style="margin-bottom: 10px; padding: 10px; background: rgba(200, 100, 200, 0.1); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ff99ff; font-size: 13px;">Combined Replace:</label>
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                <input type="checkbox" id="combined-use-biome" style="margin: 0;">
+                <span>Filter by Biome:</span>
+                <select id="combined-biome" style="flex: 1; padding: 3px; font-size: 10px;"></select>
+              </label>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                <input type="checkbox" id="combined-use-height" style="margin: 0;">
+                <span>Filter by Height:</span>
+              </label>
+              <div style="margin-top: 3px;">
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Min: <span id="combined-height-min-value">0</span>%</label>
+                <input type="range" id="combined-height-min" min="0" max="100" step="1" value="0" style="width: 100%;">
+              </div>
+              <div style="margin-top: 3px;">
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Max: <span id="combined-height-max-value">100</span>%</label>
+                <input type="range" id="combined-height-max" min="0" max="100" step="1" value="100" style="width: 100%;">
+              </div>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                <input type="checkbox" id="combined-set-biome" style="margin: 0;">
+                <span>Set to Biome:</span>
+                <select id="combined-set-biome-val" style="flex: 1; padding: 3px; font-size: 10px;"></select>
+              </label>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                <input type="checkbox" id="combined-set-height" style="margin: 0;">
+                <span>Set to Height:</span>
+                <input type="number" id="combined-set-height-val" min="0" max="100" value="50" style="flex: 1; padding: 3px; font-size: 10px;">
+              </label>
+            </div>
+            <div style="margin-bottom: 8px; font-size: 11px; color: #aaa;">
+              Matches: <span id="combined-count">0</span> cells
+            </div>
+            <button id="combined-replace-btn" style="width: 100%; padding: 6px; background: #ff99cc; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
+              Replace
             </button>
           </div>
         </div>
@@ -1241,6 +1333,48 @@ export class GlobalMapTools {
       }
     });
 
+    // Helper to populate biome selects
+    const populateBiomeSelects = () => {
+      const selects = ['replace-biome-from', 'replace-biome-to', 'combined-biome', 'combined-set-biome-val'];
+      const self = this;
+      
+      selects.forEach(selectId => {
+        const select = $(`#${selectId}`);
+        if (select.length === 0) return;
+        
+        select.empty();
+        select.append($('<option></option>').attr('value', '').text('- Select Biome -'));
+        
+        // Get unique biomes from grid
+        if (self.renderer.currentGrid) {
+          const { heights, temperature, moisture } = self.renderer.currentGrid;
+          const biomeSet = new Set();
+          
+          for (let i = 0; i < heights.length; i++) {
+            const t = temperature ? temperature[i] : 0;
+            const m = moisture ? moisture[i] : 0;
+            const h = heights[i];
+            const biomeId = self.processing.biomeResolver.getBiomeId(m, t, h);
+            if (biomeId > 0) biomeSet.add(biomeId);
+          }
+          
+          // Sort biome IDs and add to selects
+          const sortedBiomes = Array.from(biomeSet).sort((a, b) => a - b);
+          sortedBiomes.forEach(biomeId => {
+            const params = self.processing.biomeResolver.getParametersFromBiomeId(biomeId);
+            const color = self.processing.biomeResolver.getBiomeColor(biomeId);
+            const colorHex = '#' + color.toString(16).padStart(6, '0');
+            const name = params.name || `Biome ${biomeId}`;
+            const option = $('<option></option>')
+              .attr('value', biomeId)
+              .text(name)
+              .css('background-color', colorHex);
+            select.append(option);
+          });
+        }
+      });
+    };
+
     // Tabs switching
     const activateTab = (tab) => {
       // Hide all tabs
@@ -1265,6 +1399,8 @@ export class GlobalMapTools {
       } else if (tab === 'global') {
         $('#global-tab').show();
         $('#tab-global').css('background', '#0066cc').css('font-weight', 'bold');
+        // Populate biome selects when switching to global tab
+        populateBiomeSelects();
       }
     };
     $('#tab-brush').on('click', () => activateTab('brush'));
@@ -1286,6 +1422,150 @@ export class GlobalMapTools {
       try { this.globalSmooth(3); } finally { $('#global-smooth-3-btn').prop('disabled', false); }
     });
 
+    // Replace by Height events
+    $('#replace-height-min').on('input', (e) => {
+      const minVal = parseInt(e.target.value);
+      $('#replace-height-min-value').text(minVal);
+      const maxVal = parseInt($('#replace-height-max').val());
+      if (minVal > maxVal) {
+        $('#replace-height-max').val(minVal);
+        $('#replace-height-max-value').text(minVal);
+      }
+      const targetVal = parseInt($('#replace-height-target').val());
+      const count = this.getAffectedCellsCount({ heightMin: minVal * 100 / 100, heightMax: maxVal * 100 / 100, biomeId: null });
+      $('#replace-height-count').text(count);
+    });
+    
+    $('#replace-height-max').on('input', (e) => {
+      const maxVal = parseInt(e.target.value);
+      $('#replace-height-max-value').text(maxVal);
+      const minVal = parseInt($('#replace-height-min').val());
+      if (maxVal < minVal) {
+        $('#replace-height-min').val(maxVal);
+        $('#replace-height-min-value').text(maxVal);
+      }
+      const count = this.getAffectedCellsCount({ heightMin: minVal * 100 / 100, heightMax: maxVal * 100 / 100, biomeId: null });
+      $('#replace-height-count').text(count);
+    });
+    
+    $('#replace-height-target').on('input', (e) => {
+      const val = parseInt(e.target.value);
+      $('#replace-height-target-value').text(val);
+    });
+    
+    $('#replace-height-btn').on('click', () => {
+      const min = parseInt($('#replace-height-min').val());
+      const max = parseInt($('#replace-height-max').val());
+      const target = parseInt($('#replace-height-target').val());
+      this.applyReplaceByHeight(min, max, target);
+    });
+    
+    $('#flatten-map-btn').on('click', () => {
+      const confirmed = confirm('Flatten entire map to height ' + parseInt($('#replace-height-target').val()) + '?');
+      if (confirmed) {
+        const target = parseInt($('#replace-height-target').val());
+        this.applyFlattenMap(target);
+      }
+    });
+
+    // Replace by Biome events
+    $('#replace-biome-from').on('change', () => {
+      const sourceBiomeId = parseInt($('#replace-biome-from').val());
+      if (sourceBiomeId) {
+        const count = this.getAffectedCellsCount({ heightMin: null, heightMax: null, biomeId: sourceBiomeId });
+        $('#replace-biome-count').text(count);
+      } else {
+        $('#replace-biome-count').text('0');
+      }
+    });
+    
+    $('#replace-biome-btn').on('click', () => {
+      const sourceBiomeId = parseInt($('#replace-biome-from').val());
+      const targetBiomeId = parseInt($('#replace-biome-to').val());
+      
+      if (!sourceBiomeId || !targetBiomeId) {
+        ui.notifications.warn('Select both source and target biomes');
+        return;
+      }
+      
+      const targetParams = this.processing.biomeResolver.getParametersFromBiomeId(targetBiomeId);
+      this.applyReplaceByBiome(sourceBiomeId, targetParams.temperature, targetParams.moisture);
+    });
+
+    // Combined Replace events
+    $('#combined-use-biome').on('change', () => {
+      const enabled = $('#combined-use-biome').prop('checked');
+      $('#combined-biome').prop('disabled', !enabled);
+    });
+    
+    $('#combined-biome').on('change', () => {
+      this.updateCombinedPreview();
+    });
+    
+    $('#combined-use-height').on('change', () => {
+      const enabled = $('#combined-use-height').prop('checked');
+      $('#combined-height-min').prop('disabled', !enabled);
+      $('#combined-height-max').prop('disabled', !enabled);
+    });
+    
+    $('#combined-height-min').on('input', () => {
+      const minVal = parseInt($('#combined-height-min').val());
+      $('#combined-height-min-value').text(minVal);
+      const maxVal = parseInt($('#combined-height-max').val());
+      if (minVal > maxVal) {
+        $('#combined-height-max').val(minVal);
+        $('#combined-height-max-value').text(minVal);
+      }
+      this.updateCombinedPreview();
+    });
+    
+    $('#combined-height-max').on('input', () => {
+      const maxVal = parseInt($('#combined-height-max').val());
+      $('#combined-height-max-value').text(maxVal);
+      const minVal = parseInt($('#combined-height-min').val());
+      if (maxVal < minVal) {
+        $('#combined-height-min').val(maxVal);
+        $('#combined-height-min-value').text(maxVal);
+      }
+      this.updateCombinedPreview();
+    });
+    
+    $('#combined-set-biome').on('change', () => {
+      $('#combined-set-biome-val').prop('disabled', !$('#combined-set-biome').prop('checked'));
+    });
+    
+    $('#combined-set-height').on('change', () => {
+      $('#combined-set-height-val').prop('disabled', !$('#combined-set-height').prop('checked'));
+    });
+    
+    $('#combined-replace-btn').on('click', () => {
+      const useBiome = $('#combined-use-biome').prop('checked');
+      const useHeight = $('#combined-use-height').prop('checked');
+      const setBiome = $('#combined-set-biome').prop('checked');
+      const setHeight = $('#combined-set-height').prop('checked');
+      
+      if (!useBiome && !useHeight) {
+        ui.notifications.warn('Select at least one filter criteria');
+        return;
+      }
+      
+      if (!setBiome && !setHeight) {
+        ui.notifications.warn('Select at least one replacement option');
+        return;
+      }
+      
+      const criteria = {
+        heightMin: useHeight ? parseInt($('#combined-height-min').val()) : null,
+        heightMax: useHeight ? parseInt($('#combined-height-max').val()) : null,
+        sourceBiomeId: useBiome ? parseInt($('#combined-biome').val()) : null,
+        targetTemp: setBiome ? this.processing.biomeResolver.getParametersFromBiomeId(parseInt($('#combined-set-biome-val').val())).temperature : null,
+        targetMoisture: setBiome ? this.processing.biomeResolver.getParametersFromBiomeId(parseInt($('#combined-set-biome-val').val())).moisture : null,
+        targetHeight: setHeight ? parseInt($('#combined-set-height-val').val()) : null
+      };
+      
+      this.applyReplaceByCombinedFilter(criteria);
+    });
+
     $('#global-map-exit').on('click', async () => {
       await this.deactivate();
     });
@@ -1299,6 +1579,231 @@ export class GlobalMapTools {
    */
   hideToolsUI() {
     $('#global-map-tools-ui').remove();
+  }
+
+  /**
+   * Update combined preview count
+   * @private
+   */
+  updateCombinedPreview() {
+    const useBiome = $('#combined-use-biome').prop('checked');
+    const useHeight = $('#combined-use-height').prop('checked');
+    
+    if (!useBiome && !useHeight) {
+      $('#combined-count').text('0');
+      return;
+    }
+    
+    const criteria = {
+      heightMin: useHeight ? parseInt($('#combined-height-min').val()) : null,
+      heightMax: useHeight ? parseInt($('#combined-height-max').val()) : null,
+      biomeId: useBiome ? parseInt($('#combined-biome').val()) : null
+    };
+    
+    const count = this.getAffectedCellsCount(criteria);
+    $('#combined-count').text(count);
+  }
+
+  /**
+   * Count cells matching criteria for preview
+   * @param {Object} criteria - Filter criteria
+   * @returns {number} Count of matching cells
+   */
+  getAffectedCellsCount(criteria) {
+    if (!this.renderer.currentGrid) return 0;
+
+    const { heights, temperature, moisture, rows, cols } = this.renderer.currentGrid;
+    let count = 0;
+
+    for (let i = 0; i < heights.length; i++) {
+      const h = heights[i];
+      const t = temperature ? temperature[i] : 0;
+      const m = moisture ? moisture[i] : 0;
+
+      let matches = true;
+
+      // Check height range
+      if (criteria.heightMin !== null && h < criteria.heightMin) matches = false;
+      if (criteria.heightMax !== null && h > criteria.heightMax) matches = false;
+
+      // Check biome (temperature/moisture combination)
+      if (criteria.biomeId !== null && criteria.biomeId !== undefined) {
+        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
+        if (cellBiomeId !== criteria.biomeId) matches = false;
+      }
+
+      if (matches) count++;
+    }
+
+    return count;
+  }
+
+  /**
+   * Replace all cells matching height criteria
+   * @param {number} heightMin - Minimum height to match
+   * @param {number} heightMax - Maximum height to match
+   * @param {number} replacementHeight - Height to replace with
+   * @returns {number} Number of cells modified
+   */
+  applyReplaceByHeight(heightMin, heightMax, replacementHeight) {
+    if (!this.renderer.currentGrid) {
+      ui.notifications.warn('No grid loaded');
+      return 0;
+    }
+
+    const { heights } = this.renderer.currentGrid;
+    let count = 0;
+
+    for (let i = 0; i < heights.length; i++) {
+      if (heights[i] >= heightMin && heights[i] <= heightMax) {
+        heights[i] = replacementHeight;
+        count++;
+      }
+    }
+
+    // Re-render
+    this.renderer.render(
+      this.renderer.currentGrid,
+      this.renderer.currentMetadata,
+      { mode: 'heights' }
+    );
+
+    console.log(`GlobalMapTools | ✓ Replaced ${count} cells by height`);
+    ui.notifications.info(`Replaced ${count} cells (height ${heightMin.toFixed(1)}-${heightMax.toFixed(1)} → ${replacementHeight.toFixed(1)})`);
+    return count;
+  }
+
+  /**
+   * Replace all cells with specific biome
+   * @param {number} sourceBiomeId - Biome ID to replace
+   * @param {number} targetTemp - New temperature
+   * @param {number} targetMoisture - New moisture
+   * @returns {number} Number of cells modified
+   */
+  applyReplaceByBiome(sourceBiomeId, targetTemp, targetMoisture) {
+    if (!this.renderer.currentGrid) {
+      ui.notifications.warn('No grid loaded');
+      return 0;
+    }
+
+    const { heights, temperature, moisture } = this.renderer.currentGrid;
+    let count = 0;
+
+    for (let i = 0; i < heights.length; i++) {
+      const h = heights[i];
+      const t = temperature ? temperature[i] : 0;
+      const m = moisture ? moisture[i] : 0;
+
+      const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
+      if (cellBiomeId === sourceBiomeId) {
+        if (temperature) temperature[i] = targetTemp;
+        if (moisture) moisture[i] = targetMoisture;
+        count++;
+      }
+    }
+
+    // Re-render
+    this.renderer.render(
+      this.renderer.currentGrid,
+      this.renderer.currentMetadata,
+      { mode: 'heights' }
+    );
+
+    console.log(`GlobalMapTools | ✓ Replaced ${count} cells by biome`);
+    ui.notifications.info(`Replaced ${count} cells: biome changed`);
+    return count;
+  }
+
+  /**
+   * Apply combined filter replacement (height AND/OR biome)
+   * @param {Object} criteria - {heightMin, heightMax, sourceBiomeId, targetTemp, targetMoisture, targetHeight}
+   * @returns {number} Number of cells modified
+   */
+  applyReplaceByCombinedFilter(criteria) {
+    if (!this.renderer.currentGrid) {
+      ui.notifications.warn('No grid loaded');
+      return 0;
+    }
+
+    const { heights, temperature, moisture } = this.renderer.currentGrid;
+    let count = 0;
+
+    for (let i = 0; i < heights.length; i++) {
+      const h = heights[i];
+      const t = temperature ? temperature[i] : 0;
+      const m = moisture ? moisture[i] : 0;
+
+      let matches = true;
+
+      // Check height range (if specified)
+      if (criteria.heightMin !== null && criteria.heightMin !== undefined) {
+        if (h < criteria.heightMin) matches = false;
+      }
+      if (criteria.heightMax !== null && criteria.heightMax !== undefined) {
+        if (h > criteria.heightMax) matches = false;
+      }
+
+      // Check biome (if specified)
+      if (matches && criteria.sourceBiomeId !== null && criteria.sourceBiomeId !== undefined) {
+        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
+        if (cellBiomeId !== criteria.sourceBiomeId) matches = false;
+      }
+
+      if (matches) {
+        // Apply replacements
+        if (criteria.targetHeight !== null && criteria.targetHeight !== undefined) {
+          heights[i] = criteria.targetHeight;
+        }
+        if (criteria.targetTemp !== null && criteria.targetTemp !== undefined && temperature) {
+          temperature[i] = criteria.targetTemp;
+        }
+        if (criteria.targetMoisture !== null && criteria.targetMoisture !== undefined && moisture) {
+          moisture[i] = criteria.targetMoisture;
+        }
+        count++;
+      }
+    }
+
+    // Re-render
+    this.renderer.render(
+      this.renderer.currentGrid,
+      this.renderer.currentMetadata,
+      { mode: 'heights' }
+    );
+
+    console.log(`GlobalMapTools | ✓ Applied combined filter replacement to ${count} cells`);
+    ui.notifications.info(`Replaced ${count} cells with combined criteria`);
+    return count;
+  }
+
+  /**
+   * Flatten entire map to single height
+   * @param {number} targetHeight - Height to set all cells to
+   * @returns {number} Always returns total number of cells
+   */
+  applyFlattenMap(targetHeight) {
+    if (!this.renderer.currentGrid) {
+      ui.notifications.warn('No grid loaded');
+      return 0;
+    }
+
+    const { heights } = this.renderer.currentGrid;
+    const count = heights.length;
+
+    for (let i = 0; i < heights.length; i++) {
+      heights[i] = targetHeight;
+    }
+
+    // Re-render
+    this.renderer.render(
+      this.renderer.currentGrid,
+      this.renderer.currentMetadata,
+      { mode: 'heights' }
+    );
+
+    console.log(`GlobalMapTools | ✓ Flattened entire map to height ${targetHeight}`);
+    ui.notifications.info(`Map flattened: all ${count} cells set to height ${targetHeight.toFixed(1)}`);
+    return count;
   }
 
   /**
