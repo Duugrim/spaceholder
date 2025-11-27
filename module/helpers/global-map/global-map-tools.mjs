@@ -8,7 +8,7 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'set-biome'
+    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'flatten', 'modify-biome'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.singleCellMode = false; // If true, brush affects only one cell
@@ -1037,8 +1037,8 @@ export class GlobalMapTools {
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Tool:</label>
           <select id="global-map-biome-tool" style="width: 100%; padding: 5px;">
-            <option value="modify-biome" selected>Modify Biome</option>
-            <option value="set-biome">Set Biome</option>
+            <option value="set-biome" selected>Set Biome</option>
+            <option value="modify-biome">Modify Biome</option>
           </select>
           </div>
 
@@ -1280,14 +1280,36 @@ export class GlobalMapTools {
           const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
           const color = this.processing.biomeResolver.getBiomeColor(biomeId);
           const colorHex = '#' + color.toString(16).padStart(6, '0');
+          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
           
-          const cell = $('<div></div>').css({
-            'background-color': colorHex,
+          const cellStyles = {
             'aspect-ratio': '1',
             'cursor': 'pointer',
             'border': '1px solid rgba(0,0,0,0.3)',
-            'border-radius': '2px'
-          }).attr({
+            'border-radius': '2px',
+            'position': 'relative'
+          };
+          
+          // Add pattern or solid background
+          if (pattern) {
+            const patternColor = this._getPatternColor(pattern, color);
+            if (patternColor) {
+              // Diagonal stripes: base color with pattern color stripes
+              cellStyles['background'] = `repeating-linear-gradient(
+                45deg,
+                ${colorHex},
+                ${colorHex} 8px,
+                ${patternColor} 8px,
+                ${patternColor} 16px
+              )`;
+            } else {
+              cellStyles['background-color'] = colorHex;
+            }
+          } else {
+            cellStyles['background-color'] = colorHex;
+          }
+          
+          const cell = $('<div></div>').css(cellStyles).attr({
             'data-temp': temp,
             'data-moisture': moisture,
             'title': `T:${temp} M:${moisture}`
