@@ -59,8 +59,8 @@
       "pattern": {
         "type": "diagonal",
 		"patternColor": "284828",
-        "spacing": 3,
-        "lineWidth": 1.5,
+        "spacing": 1,
+        "lineWidth": 0.5,
         "darkenFactor": 0.5,
         "opacity": 1
       }
@@ -71,9 +71,9 @@
       "color": "1A5958",
       "pattern": {
         "type": "diagonal",
-		"patternColor": "35682D",
-        "spacing": 3,
-        "lineWidth": 1.5,
+		"patternColor": "35502D",
+        "spacing": 1,
+        "lineWidth": 0.5,
         "darkenFactor": 0.5,
         "opacity": 1
       }
@@ -85,8 +85,8 @@
       "pattern": {
         "type": "diagonal",
 		"patternColor": "556b2f",
-        "spacing": 3,
-        "lineWidth": 1.5,
+        "spacing": 1,
+        "lineWidth": 0.5,
         "darkenFactor": 0.5,
         "opacity": 1
       }
@@ -98,8 +98,8 @@
       "pattern": {
         "type": "diagonal",
 		"patternColor": "35682D",
-        "spacing": 3,
-        "lineWidth": 1.5,
+        "spacing": 1,
+        "lineWidth": 0.5,
         "darkenFactor": 0.5,
         "opacity": 1
       }
@@ -111,8 +111,8 @@
       "pattern": {
         "type": "diagonal",
 		"patternColor": "C8D8E8",
-        "spacing": 3,
-        "lineWidth": 0.5,
+        "spacing": 1,
+        "lineWidth": 0.15,
         "darkenFactor": 0.35,
         "opacity": 1
       }
@@ -124,8 +124,8 @@
       "pattern": {
         "type": "diagonal",
 		"patternColor": "74883C",
-        "spacing": 3,
-        "lineWidth": 0.5,
+        "spacing": 1,
+        "lineWidth": 0.15,
         "darkenFactor": 0.35,
         "opacity": 1
       }
@@ -137,8 +137,8 @@
       "pattern": {
         "type": "diagonal",
 		"patternColor": "278E2A",
-        "spacing": 3,
-        "lineWidth": 0.5,
+        "spacing": 1,
+        "lineWidth": 0.15,
         "darkenFactor": 0.5,
         "opacity": 1
       }
@@ -150,8 +150,8 @@
       "pattern": {
         "type": "diagonal",
 		"patternColor": "D1A36E",
-        "spacing": 3,
-        "lineWidth": 0.5,
+        "spacing": 1,
+        "lineWidth": 0.15,
         "darkenFactor": 0.5,
         "opacity": 1
       }
@@ -162,8 +162,8 @@
       "color": "484820",
       "pattern": {
         "type": "diagonal",
-        "spacing": 2.5,
-        "lineWidth": 0.5,
+        "spacing": 1,
+        "lineWidth": 0.15,
         "darkenFactor": 0.5,
         "opacity": 0.85
       }
@@ -179,8 +179,8 @@
       "color": "D8E0E8",
       "pattern": {
         "type": "horizontal",
-        "spacing": 1,
-        "lineWidth": 0.1,
+        "spacing": 0.5,
+        "lineWidth": 0.05,
         "darkenFactor": 0.35,
         "opacity": 0.25
       }
@@ -191,8 +191,8 @@
       "color": "C0B098",
       "pattern": {
         "type": "horizontal",
-        "spacing": 1,
-        "lineWidth": 0.1,
+        "spacing": 0.5,
+        "lineWidth": 0.05,
         "darkenFactor": 0.35,
         "opacity": 0.25
       }
@@ -203,8 +203,8 @@
       "color": "B8A860",
       "pattern": {
         "type": "horizontal",
-        "spacing": 1,
-        "lineWidth": 0.1,
+        "spacing": 0.5,
+        "lineWidth": 0.05,
         "darkenFactor": 0.35,
         "opacity": 0.25
       }
@@ -215,8 +215,8 @@
       "color": "D8A850",
       "pattern": {
         "type": "horizontal",
-        "spacing": 1,
-        "lineWidth": 0.1,
+        "spacing": 0.5,
+        "lineWidth": 0.05,
         "darkenFactor": 0.35,
         "opacity": 0.25
       }
@@ -228,8 +228,8 @@
       "pattern": {
         "type": "horizontal",
 		"patternColor": "F75E25",
-        "spacing": 1,
-        "lineWidth": 0.1,
+        "spacing": 0.5,
+        "lineWidth": 0.05,
         "darkenFactor": 0.35,
         "opacity": 0.5
       }

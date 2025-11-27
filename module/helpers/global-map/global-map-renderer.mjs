@@ -12,7 +12,7 @@ export class GlobalMapRenderer {
     this.currentGrid = null; // Reference to current grid being rendered
     this.currentMetadata = null;
     // Separate render modes for heights and biomes
-    this.heightsMode = 'contours'; // 'contours', 'cells', 'off'
+    this.heightsMode = 'contours-bw'; // 'contours-bw', 'contours', 'cells', 'off'
     this.biomesMode = 'fancy'; // 'fancy', 'fancyDebug', 'cells', 'off'
     this.biomeResolver = new BiomeResolver(); // For dynamic biome determination
   }
@@ -82,10 +82,10 @@ export class GlobalMapRenderer {
 
   /**
    * Set heights render mode
-   * @param {string} mode - 'contours', 'cells', 'off'
+   * @param {string} mode - 'contours-bw', 'contours', 'cells', 'off'
    */
   setHeightsMode(mode) {
-    if (!['contours', 'cells', 'off'].includes(mode)) {
+    if (!['contours-bw', 'contours', 'cells', 'off'].includes(mode)) {
       console.warn(`GlobalMapRenderer | Invalid heights mode: ${mode}`);
       return;
     }
@@ -177,6 +177,9 @@ export class GlobalMapRenderer {
    */
   _renderHeightsLayer(gridData, metadata) {
     switch (this.heightsMode) {
+      case 'contours-bw':
+        this._renderHeightContoursBW(gridData, metadata);
+        break;
       case 'contours':
         this._renderHeightContours(gridData, metadata);
         break;
@@ -1238,7 +1241,39 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Render height contours
+   * Render height contours (black and white)
+   * @private
+   */
+  _renderHeightContoursBW(gridData, metadata) {
+    const { heights, rows, cols } = gridData;
+    const { cellSize, bounds, heightStats } = metadata;
+
+    // Create contour levels (20 levels for better detail)
+    const minHeight = heightStats.min;
+    const maxHeight = heightStats.max;
+    const range = maxHeight - minHeight;
+
+    // Skip if flat map
+    if (range < 0.1) {
+      console.log('GlobalMapRenderer | Skipping height contours (flat map)');
+      return;
+    }
+
+    const levels = [];
+    for (let i = 1; i <= 20; i++) {
+      const level = minHeight + (range * i / 20);
+      levels.push({ level });
+    }
+
+    // Draw contours for each level (all black)
+    for (const levelInfo of levels) {
+      const segments = this._marchingSquares(heights, rows, cols, bounds, cellSize, levelInfo.level);
+      this._drawContourSegmentsBW(segments, heights, rows, cols, bounds, cellSize);
+    }
+  }
+
+  /**
+   * Render height contours (colored)
    * @private
    */
   _renderHeightContours(gridData, metadata) {
@@ -1249,6 +1284,12 @@ export class GlobalMapRenderer {
     const minHeight = heightStats.min;
     const maxHeight = heightStats.max;
     const range = maxHeight - minHeight;
+
+    // Skip if flat map
+    if (range < 0.1) {
+      console.log('GlobalMapRenderer | Skipping height contours (flat map)');
+      return;
+    }
 
     const levels = [];
     for (let i = 1; i <= 20; i++) {
@@ -1463,7 +1504,29 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Draw contour line segments with outline and slope direction marks
+   * Draw contour line segments (black only)
+   * @private
+   */
+  _drawContourSegmentsBW(segments, heights, rows, cols, bounds, cellSize) {
+    if (segments.length === 0) return;
+
+    const graphics = new PIXI.Graphics();
+
+    // Draw black contour lines
+    graphics.lineStyle(1.5, 0x000000, 0.8);
+    for (const segment of segments) {
+      graphics.moveTo(segment[0].x, segment[0].y);
+      graphics.lineTo(segment[1].x, segment[1].y);
+    }
+
+    // Draw slope direction marks (hachures)
+    this._drawSlopeMarks(graphics, segments, heights, rows, cols, bounds, cellSize, 0x000000);
+
+    this.container.addChild(graphics);
+  }
+
+  /**
+   * Draw contour line segments with outline and slope direction marks (colored)
    * @private
    */
   _drawContourSegments(segments, color, heights, rows, cols, bounds, cellSize) {

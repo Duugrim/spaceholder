@@ -110,6 +110,11 @@ export class GlobalMapProcessing {
     const gridTemperature = new Uint8Array(gridSize);
 
     // Interpolate heights and biomes for each grid cell
+    // Normalize all heights to 0-100 range
+    const sourceMin = heightStats.min;
+    const sourceMax = heightStats.max;
+    const sourceRange = sourceMax - sourceMin;
+    
     for (let row = 0; row < gridRows; row++) {
       for (let col = 0; col < gridCols; col++) {
         const idx = row * gridCols + col;
@@ -139,7 +144,14 @@ export class GlobalMapProcessing {
           }
         }
 
-        gridHeights[idx] = nearestHeight;
+        // Normalize height to 0-100 range
+        let normalizedHeight;
+        if (sourceRange > 0) {
+          normalizedHeight = ((nearestHeight - sourceMin) / sourceRange) * 100;
+        } else {
+          normalizedHeight = 50; // If all heights are the same, use middle value
+        }
+        gridHeights[idx] = normalizedHeight;
         
         // Map Azgaar biome ID to our biome ID, then get moisture/temperature
         const mappedBiomeId = this.biomeResolver.mapAzgaarBiomeId(nearestBiome);
@@ -173,9 +185,9 @@ export class GlobalMapProcessing {
         maxY: sceneDims.height,
       },
       heightStats: {
-        min: heightStats.min,
-        max: heightStats.max,
-        range: heightStats.max - heightStats.min,
+        min: 0,
+        max: 100,
+        range: 100,
       },
       biomeStats: {
         uniqueBiomes,
@@ -209,7 +221,7 @@ export class GlobalMapProcessing {
     }
 
     const sceneDims = targetScene.dimensions;
-    const cellSize = (targetScene.canvas?.grid?.size || 64) / gridResolution;
+    const cellSize = (canvas.grid?.size || 64) / gridResolution;
 
     const gridCols = Math.ceil(sceneDims.width / cellSize);
     const gridRows = Math.ceil(sceneDims.height / cellSize);
@@ -245,9 +257,9 @@ export class GlobalMapProcessing {
         maxY: sceneDims.height,
       },
       heightStats: {
-        min: defaultHeight,
-        max: defaultHeight,
-        range: 0,
+        min: 0,
+        max: 100,
+        range: 100,
       },
       biomeStats: {
         uniqueBiomes: [],
@@ -351,9 +363,9 @@ export class GlobalMapProcessing {
         maxY: sceneDims.height,
       },
       heightStats: {
-        min: baseHeight,
-        max: baseHeight,
-        range: 0,
+        min: 0,
+        max: 100,
+        range: 100,
       },
       biomeStats: {
         uniqueBiomes: uniqueBiomes.sort((a, b) => a - b),

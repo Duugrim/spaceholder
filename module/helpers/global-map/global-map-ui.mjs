@@ -310,9 +310,10 @@ export function registerGlobalMapUI(controls, spaceholder) {
             return;
           }
 
-          const modes = ['contours', 'cells', 'off'];
+          const modes = ['contours-bw', 'contours', 'cells', 'off'];
           const modeNames = {
-            'contours': 'Контуры',
+            'contours-bw': 'Чёрные контуры',
+            'contours': 'Цветные контуры',
             'cells': 'Цветная сетка',
             'off': 'Выключено'
           };
