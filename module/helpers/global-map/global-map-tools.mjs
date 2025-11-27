@@ -8,10 +8,11 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'flatten', 'modify-biome'
+    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'draw-river', 'erase-river'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.singleCellMode = false; // If true, brush affects only one cell
+    this.savedSingleCellMode = false; // Save state when switching to rivers tool
     this.targetHeight = 50;
     
     // New biome tools settings
@@ -122,15 +123,36 @@ export class GlobalMapTools {
       // Heights tab is active
       const selectedTool = $('#global-map-tool').val();
       this.setTool(selectedTool);
+      // Restore saved single cell mode
+      this.singleCellMode = this.savedSingleCellMode;
     } else if ($('#biomes-tab').is(':visible')) {
       // Biomes tab is active
       const selectedTool = $('#global-map-biome-tool').val();
       this.setTool(selectedTool);
+      // Restore saved single cell mode
+      this.singleCellMode = this.savedSingleCellMode;
+    } else if ($('#rivers-tab').is(':visible')) {
+      // Rivers tab is active
+      const selectedTool = $('#global-map-river-tool').val();
+      this.setTool(selectedTool);
+      
+      // Save current mode and force single cell mode for rivers
+      this.savedSingleCellMode = this.singleCellMode;
+      this.singleCellMode = true;
+      
+      // Create cell highlight for rivers tool
+      this.createCellHighlight();
+      
+      // Initialize rivers array if it doesn't exist (for old saved maps)
+      if (this.renderer.currentGrid && !this.renderer.currentGrid.rivers) {
+        console.log('GlobalMapTools | Initializing rivers array for existing map');
+        this.renderer.currentGrid.rivers = new Uint8Array(this.renderer.currentGrid.heights.length);
+      }
     }
     
     this.isBrushActive = true;
     this.updateBrushUI();
-    console.log(`GlobalMapTools | Brush activated: ${this.currentTool}`);
+    console.log(`GlobalMapTools | Brush activated: ${this.currentTool} (singleCell: ${this.singleCellMode})`);
   }
   
   /**
@@ -150,7 +172,8 @@ export class GlobalMapTools {
   setTool(tool) {
     const validTools = [
       'raise', 'lower', 'smooth', 'roughen', 'flatten',
-      'modify-biome', 'set-biome'
+      'modify-biome', 'set-biome',
+      'draw-river', 'erase-river'
     ];
     if (validTools.includes(tool)) {
       this.currentTool = tool;
@@ -320,7 +343,8 @@ export class GlobalMapTools {
 
           // Track affected cells for tools that process in commit
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen' ||
-              this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
+              this.currentTool === 'modify-biome' || this.currentTool === 'set-biome' ||
+              this.currentTool === 'draw-river' || this.currentTool === 'erase-river') {
             this.affectedCells.add(idx);
           }
 
@@ -339,6 +363,8 @@ export class GlobalMapTools {
             case 'roughen':
             case 'modify-biome':
             case 'set-biome':
+            case 'draw-river':
+            case 'erase-river':
               // Mark cells, changes applied in commit
               break;
             default:
@@ -356,6 +382,14 @@ export class GlobalMapTools {
     if (!this.renderer.currentGrid || !this.tempOverlay) return;
 
     const { heights, moisture, temperature, rows, cols } = this.renderer.currentGrid;
+    let { rivers } = this.renderer.currentGrid;
+
+    // Initialize rivers array if it doesn't exist (for old saved maps)
+    if (!rivers) {
+      console.log('GlobalMapTools | Initializing rivers array for existing map');
+      rivers = new Uint8Array(heights.length);
+      this.renderer.currentGrid.rivers = rivers;
+    }
 
     // Apply smooth/roughen if needed
     if (this.currentTool === 'smooth' && this.affectedCells.size > 0) {
@@ -387,6 +421,16 @@ export class GlobalMapTools {
           if (this.setMoistureEnabled) {
             moisture[idx] = this.setMoisture;
           }
+        }
+      } else if (this.currentTool === 'draw-river') {
+        // Draw rivers
+        for (const idx of this.affectedCells) {
+          rivers[idx] = 1;
+        }
+      } else if (this.currentTool === 'erase-river') {
+        // Erase rivers
+        for (const idx of this.affectedCells) {
+          rivers[idx] = 0;
         }
       }
     }
@@ -518,6 +562,11 @@ export class GlobalMapTools {
         for (const idx of this.affectedCells) {
           previewOverlay[idx] = 1;
         }
+      } else if (this.currentTool === 'draw-river' || this.currentTool === 'erase-river') {
+        // Show river paint/erase indicator
+        for (const idx of this.affectedCells) {
+          previewOverlay[idx] = 1;
+        }
       }
     }
 
@@ -550,6 +599,14 @@ export class GlobalMapTools {
         positiveColor = 0x66ffaa; // Teal for set biome
         negativeColor = 0x66ffaa;
         break;
+      case 'draw-river':
+        positiveColor = 0x3399ff; // Blue for draw river
+        negativeColor = 0x3399ff;
+        break;
+      case 'erase-river':
+        positiveColor = 0xff6633; // Orange for erase river
+        negativeColor = 0xff6633;
+        break;
     }
 
     // Draw affected cells
@@ -569,6 +626,8 @@ export class GlobalMapTools {
             alpha = Math.min(0.55, Math.abs(delta) / 5); // Brighter for smooth/roughen
           } else if (this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
             alpha = 0.6; // Fixed alpha for biome tools
+          } else if (this.currentTool === 'draw-river' || this.currentTool === 'erase-river') {
+            alpha = 0.6; // Fixed alpha for river tools
           } else {
             alpha = Math.min(0.35, Math.abs(delta) / 10);
           }
@@ -781,6 +840,8 @@ export class GlobalMapTools {
       case 'flatten': color = 0x00ffff; break;
       case 'modify-biome': color = 0xaa66ff; break;
       case 'set-biome': color = 0x66ffaa; break;
+      case 'draw-river': color = 0x3399ff; break;
+      case 'erase-river': color = 0xff6633; break;
     }
     
     // Draw cell with tool color
@@ -846,6 +907,12 @@ export class GlobalMapTools {
       case 'set-biome':
         color = 0x66ffaa; // Teal for set biome
         break;
+      case 'draw-river':
+        color = 0x3399ff; // Blue for draw river
+        break;
+      case 'erase-river':
+        color = 0xff6633; // Orange for erase river
+        break;
     }
 
     if (this.singleCellMode) {
@@ -876,19 +943,23 @@ export class GlobalMapTools {
     const buttonColor = isActive ? '#cc0000' : '#00aa00';
     $('#brush-toggle').text(buttonText).css('background', buttonColor);
     $('#biome-brush-toggle').text(buttonText).css('background', buttonColor);
+    $('#river-brush-toggle').text(buttonText).css('background', buttonColor);
     
     // Disable/enable controls
     $('#global-map-tool').prop('disabled', isActive);
     $('#global-map-biome-tool').prop('disabled', isActive);
+    $('#global-map-river-tool').prop('disabled', isActive);
     
     // Disable/enable tab switching
     if (isActive) {
       $('#tab-brush').css('pointer-events', 'none').css('opacity', '0.5');
       $('#tab-biomes').css('pointer-events', 'none').css('opacity', '0.5');
+      $('#tab-rivers').css('pointer-events', 'none').css('opacity', '0.5');
       $('#tab-global').css('pointer-events', 'none').css('opacity', '0.5');
     } else {
       $('#tab-brush').css('pointer-events', 'auto').css('opacity', '1');
       $('#tab-biomes').css('pointer-events', 'auto').css('opacity', '1');
+      $('#tab-rivers').css('pointer-events', 'auto').css('opacity', '1');
       $('#tab-global').css('pointer-events', 'auto').css('opacity', '1');
     }
     
@@ -959,6 +1030,9 @@ export class GlobalMapTools {
           </button>
           <button id="tab-biomes" data-tab="biomes" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
             Biomes
+          </button>
+          <button id="tab-rivers" data-tab="rivers" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
+            Rivers
           </button>
           <button id="tab-global" data-tab="global" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
             Global
@@ -1135,6 +1209,20 @@ export class GlobalMapTools {
           </div>
           
           <button id="biome-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+            Activate Brush
+          </button>
+        </div>
+
+        <div id="rivers-tab" style="display: none;">
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Tool:</label>
+            <select id="global-map-river-tool" style="width: 100%; padding: 5px;">
+              <option value="draw-river" selected>Draw River</option>
+              <option value="erase-river">Erase River</option>
+            </select>
+          </div>
+          
+          <button id="river-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
             Activate Brush
           </button>
         </div>
@@ -1833,11 +1921,13 @@ export class GlobalMapTools {
       // Hide all tabs
       $('#brush-tab').hide();
       $('#biomes-tab').hide();
+      $('#rivers-tab').hide();
       $('#global-tab').hide();
       
       // Reset all tab buttons
       $('#tab-brush').css('background', '#333').css('font-weight', 'normal');
       $('#tab-biomes').css('background', '#333').css('font-weight', 'normal');
+      $('#tab-rivers').css('background', '#333').css('font-weight', 'normal');
       $('#tab-global').css('background', '#333').css('font-weight', 'normal');
       
       // Show selected tab and highlight button
@@ -1849,6 +1939,9 @@ export class GlobalMapTools {
         $('#tab-biomes').css('background', '#0066cc').css('font-weight', 'bold');
         // Initialize biome tool UI state
         updateBiomeToolUI($('#global-map-biome-tool').val());
+      } else if (tab === 'rivers') {
+        $('#rivers-tab').show();
+        $('#tab-rivers').css('background', '#0066cc').css('font-weight', 'bold');
       } else if (tab === 'global') {
         $('#global-tab').show();
         $('#tab-global').css('background', '#0066cc').css('font-weight', 'bold');
@@ -1856,7 +1949,22 @@ export class GlobalMapTools {
     };
     $('#tab-brush').on('click', () => activateTab('brush'));
     $('#tab-biomes').on('click', () => activateTab('biomes'));
+    $('#tab-rivers').on('click', () => activateTab('rivers'));
     $('#tab-global').on('click', () => activateTab('global'));
+
+    // ===== RIVERS TAB =====
+    $('#global-map-river-tool').on('change', (e) => {
+      const tool = e.target.value;
+      this.setTool(tool);
+    });
+
+    $('#river-brush-toggle').on('click', () => {
+      if (this.isBrushActive) {
+        this.deactivateBrush();
+      } else {
+        this.activateBrush();
+      }
+    });
 
     // Global operations
     $('#global-smooth-strength').on('input', (e) => {

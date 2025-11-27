@@ -7,7 +7,7 @@ import { BiomeResolver } from './global-map-biome-resolver.mjs';
  */
 export class GlobalMapProcessing {
   constructor() {
-    this.unifiedGrid = null; // Final rectangular grid: {heights, moisture, temperature, rows, cols}
+    this.unifiedGrid = null; // Final rectangular grid: {heights, moisture, temperature, rivers, rows, cols}
     this.gridMetadata = null; // Grid metadata: {bounds, cellSize, stats, timestamp}
     this.biomeResolver = new BiomeResolver();
   }
@@ -108,6 +108,7 @@ export class GlobalMapProcessing {
     const gridHeights = new Float32Array(gridSize);
     const gridMoisture = new Uint8Array(gridSize);
     const gridTemperature = new Uint8Array(gridSize);
+    const gridRivers = new Uint8Array(gridSize); // 0 = no river, 1 = river
 
     // Interpolate heights and biomes for each grid cell
     // Normalize all heights to 0-100 range
@@ -168,6 +169,7 @@ export class GlobalMapProcessing {
       heights: gridHeights,
       moisture: gridMoisture,
       temperature: gridTemperature,
+      rivers: gridRivers,
       rows: gridRows,
       cols: gridCols,
     };
@@ -237,10 +239,13 @@ export class GlobalMapProcessing {
     const gridTemperature = new Uint8Array(gridSize);
     gridTemperature.fill(3); // Default temperature = 3 (temperate)
 
+    const gridRivers = new Uint8Array(gridSize); // No rivers by default
+
     const unifiedGrid = {
       heights: gridHeights,
       moisture: gridMoisture,
       temperature: gridTemperature,
+      rivers: gridRivers,
       rows: gridRows,
       cols: gridCols,
     };
@@ -312,6 +317,7 @@ export class GlobalMapProcessing {
     const gridHeights = new Float32Array(gridSize);
     const gridMoisture = new Uint8Array(gridSize);
     const gridTemperature = new Uint8Array(gridSize);
+    const gridRivers = new Uint8Array(gridSize); // No rivers by default
 
     // Fill grid: each block corresponds to one biome from matrix
     for (let row = 0; row < gridRows; row++) {
@@ -336,6 +342,7 @@ export class GlobalMapProcessing {
       heights: gridHeights,
       moisture: gridMoisture,
       temperature: gridTemperature,
+      rivers: gridRivers,
       rows: gridRows,
       cols: gridCols,
     };

@@ -116,7 +116,7 @@ export class GlobalMapRenderer {
 
   /**
    * Render unified grid to canvas with separate biomes and heights modes
-   * @param {Object} gridData - Unified grid {heights, biomes, rows, cols}
+   * @param {Object} gridData - Unified grid {heights, biomes, rivers, rows, cols}
    * @param {Object} metadata - Grid metadata
    */
   async render(gridData, metadata) {
@@ -147,6 +147,11 @@ export class GlobalMapRenderer {
     // Render heights layer
     if (this.heightsMode !== 'off') {
       this._renderHeightsLayer(gridData, metadata);
+    }
+
+    // Render rivers layer (always on top)
+    if (gridData.rivers) {
+      this._renderRiversLayer(gridData, metadata);
     }
 
     this.isVisible = true;
@@ -1781,6 +1786,54 @@ export class GlobalMapRenderer {
   _normalizeValue(value, min, max) {
     if (max === min) return 0.5;
     return (value - min) / (max - min);
+  }
+
+  /**
+   * Render rivers layer (placeholder: blue dots)
+   * @private
+   */
+  _renderRiversLayer(gridData, metadata) {
+    const { rivers, rows, cols } = gridData;
+    const { cellSize, bounds } = metadata;
+
+    if (!rivers) return;
+
+    // Count rivers for logging
+    let riverCount = 0;
+    for (let i = 0; i < rivers.length; i++) {
+      if (rivers[i] === 1) riverCount++;
+    }
+
+    if (riverCount === 0) {
+      console.log('GlobalMapRenderer | No rivers to render');
+      return;
+    }
+
+    console.log(`GlobalMapRenderer | Rendering ${riverCount} river cells (cellSize=${cellSize})...`);
+
+    const graphics = new PIXI.Graphics();
+    const riverColor = 0x00aaff; // Bright cyan-blue
+    const dotRadius = Math.max(4, cellSize * 0.3); // Larger dot, 30% of cell size
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        
+        if (rivers[idx] === 1) {
+          // Calculate center of cell
+          const centerX = bounds.minX + col * cellSize;
+          const centerY = bounds.minY + row * cellSize;
+          
+          // Draw bright blue dot
+          graphics.beginFill(riverColor, 1.0); // Full opacity
+          graphics.drawCircle(centerX, centerY, dotRadius);
+          graphics.endFill();
+        }
+      }
+    }
+
+    this.container.addChild(graphics);
+    console.log(`GlobalMapRenderer | ✓ Rivers rendered: ${riverCount} dots, radius=${dotRadius}px`);
   }
 
   /**
