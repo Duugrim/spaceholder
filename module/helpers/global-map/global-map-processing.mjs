@@ -447,14 +447,16 @@ export class GlobalMapProcessing {
       const heightsArray = Array.from(this.unifiedGrid.heights);
       const moistureArray = Array.from(this.unifiedGrid.moisture);
       const temperatureArray = Array.from(this.unifiedGrid.temperature);
+      const riversArray = Array.from(this.unifiedGrid.rivers || new Uint8Array(this.unifiedGrid.heights.length));
 
       const gridData = {
-        version: 2, // New version with moisture/temperature
+        version: 3, // New version with rivers
         metadata: this.gridMetadata,
         grid: {
           heights: heightsArray,
           moisture: moistureArray,
           temperature: temperatureArray,
+          rivers: riversArray,
           rows: this.unifiedGrid.rows,
           cols: this.unifiedGrid.cols,
         },
@@ -526,12 +528,23 @@ export class GlobalMapProcessing {
       // Handle different versions
       let unifiedGrid;
       
-      if (gridData.version === 2) {
-        // Version 2: moisture/temperature format
+      if (gridData.version === 3) {
+        // Version 3: moisture/temperature/rivers format
         unifiedGrid = {
           heights: new Float32Array(gridData.grid.heights),
           moisture: new Uint8Array(gridData.grid.moisture),
           temperature: new Uint8Array(gridData.grid.temperature),
+          rivers: new Uint8Array(gridData.grid.rivers || new Array(gridData.grid.heights.length).fill(0)),
+          rows: gridData.grid.rows,
+          cols: gridData.grid.cols,
+        };
+      } else if (gridData.version === 2) {
+        // Version 2: moisture/temperature format (no rivers)
+        unifiedGrid = {
+          heights: new Float32Array(gridData.grid.heights),
+          moisture: new Uint8Array(gridData.grid.moisture),
+          temperature: new Uint8Array(gridData.grid.temperature),
+          rivers: new Uint8Array(gridData.grid.heights.length), // Empty rivers
           rows: gridData.grid.rows,
           cols: gridData.grid.cols,
         };
@@ -554,6 +567,7 @@ export class GlobalMapProcessing {
           heights,
           moisture,
           temperature,
+          rivers: new Uint8Array(heights.length), // Empty rivers for v1
           rows: gridData.grid.rows,
           cols: gridData.grid.cols,
         };

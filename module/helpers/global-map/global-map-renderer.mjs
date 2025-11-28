@@ -1789,11 +1789,11 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Render rivers layer (placeholder: blue dots)
+   * Render rivers layer with smooth Bezier curves and variable width
    * @private
    */
   _renderRiversLayer(gridData, metadata) {
-    const { rivers, rows, cols } = gridData;
+    const { rivers, moisture, temperature, heights, rows, cols } = gridData;
     const { cellSize, bounds } = metadata;
 
     if (!rivers) return;
@@ -1809,31 +1809,502 @@ export class GlobalMapRenderer {
       return;
     }
 
-    console.log(`GlobalMapRenderer | Rendering ${riverCount} river cells (cellSize=${cellSize})...`);
+    console.log(`GlobalMapRenderer | Rendering ${riverCount} river cells with Bezier curves...`);
 
+    // Find all river paths (from ocean mouths to sources)
+    const { paths: riverPaths, mainRiverCount, riverColors } = this._extractRiverPaths(rivers, moisture, temperature, rows, cols);
+    
+    console.log(`GlobalMapRenderer | Found ${riverPaths.length} river paths (${mainRiverCount} main, ${riverPaths.length - mainRiverCount} branches)`);
+
+    // Render each river path
     const graphics = new PIXI.Graphics();
-    const riverColor = 0x00aaff; // Bright cyan-blue
-    const dotRadius = Math.max(4, cellSize * 0.3); // Larger dot, 30% of cell size
 
+    for (let i = 0; i < riverPaths.length; i++) {
+      const path = riverPaths[i];
+      // Первые mainRiverCount путей - основные реки, остальные - ветки
+      const isSubRiver = i >= mainRiverCount;
+      const riverColor = riverColors[i] || 0x3A9BD9; // Цвет от океана или дефолтный
+      console.log(`GlobalMapRenderer | Drawing river ${i}: isSubRiver=${isSubRiver}, pathLength=${path.length}, color=${riverColor.toString(16)}`);
+      this._drawRiverPath(graphics, path, bounds, cellSize, riverColor, isSubRiver);
+    }
+
+    this.container.addChild(graphics);
+    console.log(`GlobalMapRenderer | ✓ Rivers rendered: ${riverPaths.length} paths`);
+  }
+
+  /**
+   * Extract river paths from grid
+   * Starts from ocean cells (moisture=6) and traces inland
+   * Builds linear paths with proper ordering and handles branches
+   * @private
+   */
+  _extractRiverPaths(rivers, moisture, temperature, rows, cols) {
+    const paths = [];
+    const riverColors = []; // Цвета рек (от океанов)
+    const drawnCells = new Set(); // Клетки, уже нарисованные в каких-либо реках
+
+    // Helper: get cell index
+    const idx = (row, col) => row * cols + col;
+
+    // Helper: check if cell is ocean (moisture = 6)
+    const isOcean = (row, col) => {
+      if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
+      return moisture[idx(row, col)] === 6;
+    };
+
+    // Helper: check if cell has river
+    const hasRiver = (row, col) => {
+      if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
+      return rivers[idx(row, col)] === 1;
+    };
+
+    // Helper: check if two cells are direct neighbors (share edge, not diagonal)
+    const isDirectNeighbor = (cell1, cell2) => {
+      const dr = Math.abs(cell1.row - cell2.row);
+      const dc = Math.abs(cell1.col - cell2.col);
+      return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+    };
+
+    // Helper: check if two cells are neighbors (8-connectivity)
+    const areNeighbors = (cell1, cell2) => {
+      const dr = Math.abs(cell1.row - cell2.row);
+      const dc = Math.abs(cell1.col - cell2.col);
+      return dr <= 1 && dc <= 1 && (dr !== 0 || dc !== 0);
+    };
+
+    // Helper: get most aligned neighbor (continues in same direction)
+    const getMostOppositeNeighbor = (current, prev, neighbors) => {
+      if (neighbors.length === 0) return null;
+      if (neighbors.length === 1) return neighbors[0];
+
+      // If prev is same as current (no direction), just return first
+      if (prev.row === current.row && prev.col === current.col) {
+        return neighbors[0];
+      }
+
+      // Calculate direction vector from prev to current
+      const dirRow = current.row - prev.row;
+      const dirCol = current.col - prev.col;
+
+      // Normalize direction (just for clarity, not strictly needed)
+      const dirLen = Math.sqrt(dirRow * dirRow + dirCol * dirCol);
+      const normDirRow = dirRow / dirLen;
+      const normDirCol = dirCol / dirLen;
+
+      // Find neighbor most aligned with this direction
+      let bestNeighbor = neighbors[0];
+      let bestDot = -Infinity;
+
+      for (const neighbor of neighbors) {
+        const nDirRow = neighbor.row - current.row;
+        const nDirCol = neighbor.col - current.col;
+        const nDirLen = Math.sqrt(nDirRow * nDirRow + nDirCol * nDirCol);
+        const normNDirRow = nDirRow / nDirLen;
+        const normNDirCol = nDirCol / nDirLen;
+        
+        // Dot product: 1 = same direction, -1 = opposite, 0 = perpendicular
+        const dot = normDirRow * normNDirRow + normDirCol * normNDirCol;
+        
+        if (dot > bestDot) {
+          bestDot = dot;
+          bestNeighbor = neighbor;
+        }
+      }
+
+      console.log(`GlobalMapRenderer | Selected neighbor (${bestNeighbor.row}, ${bestNeighbor.col}) with dot=${bestDot.toFixed(2)}`);
+      return bestNeighbor;
+    };
+
+    // Step 1: Find all river mouths (river cells adjacent to ocean)
+    const qRivers = [];
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        const idx = row * cols + col;
+        if (!hasRiver(row, col)) continue;
         
-        if (rivers[idx] === 1) {
-          // Calculate center of cell
-          const centerX = bounds.minX + col * cellSize;
-          const centerY = bounds.minY + row * cellSize;
-          
-          // Draw bright blue dot
-          graphics.beginFill(riverColor, 1.0); // Full opacity
-          graphics.drawCircle(centerX, centerY, dotRadius);
-          graphics.endFill();
+        // Check if adjacent to ocean
+        let hasOceanNeighbor = false;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            if (isOcean(row + dr, col + dc)) {
+              hasOceanNeighbor = true;
+              break;
+            }
+          }
+          if (hasOceanNeighbor) break;
+        }
+        
+        if (hasOceanNeighbor) {
+          qRivers.push({ row, col });
         }
       }
     }
 
-    this.container.addChild(graphics);
-    console.log(`GlobalMapRenderer | ✓ Rivers rendered: ${riverCount} dots, radius=${dotRadius}px`);
+    console.log(`GlobalMapRenderer | Found ${qRivers.length} river mouths`);
+
+    // Step 2: Process main rivers
+    const qSubRivers = [];
+    let mainRiverCount = 0;
+
+    for (const mouth of qRivers) {
+      const cellIdx = idx(mouth.row, mouth.col);
+      if (drawnCells.has(cellIdx)) {
+        console.log(`GlobalMapRenderer | Mouth at (${mouth.row}, ${mouth.col}) already drawn, skipping`);
+        continue;
+      }
+
+      const riverPath = this._traceRiver(mouth, null, drawnCells, qSubRivers, {
+        idx, isOcean, hasRiver, isDirectNeighbor, areNeighbors, getMostOppositeNeighbor,
+        rows, cols
+      }, null); // parentColor = null для основных рек
+
+      console.log(`GlobalMapRenderer | Traced river from (${mouth.row}, ${mouth.col}), path length: ${riverPath ? riverPath.length : 0}`);
+
+      if (riverPath && riverPath.length >= 2) {
+        paths.push(riverPath);
+        
+        // Определяем цвет от океана
+        const oceanColor = this._getOceanColorForMouth(mouth, moisture, temperature, rows, cols, idx);
+        riverColors.push(oceanColor);
+        
+        // Передаём цвет всем веткам этой реки
+        for (const subRiver of qSubRivers) {
+          if (subRiver.parentColor === null) {
+            subRiver.parentColor = oceanColor;
+          }
+        }
+        
+        mainRiverCount++; // Считаем только реально добавленные реки
+      } else if (riverPath && riverPath.length === 1) {
+        console.log(`GlobalMapRenderer | River path too short (1 cell), skipping`);
+      }
+    }
+
+    // Step 3: Process sub-rivers (branches)
+    console.log(`GlobalMapRenderer | Found ${qSubRivers.length} river branches`);
+
+    for (const subRiver of qSubRivers) {
+      const cellIdx = idx(subRiver.start.row, subRiver.start.col);
+      if (drawnCells.has(cellIdx)) continue;
+
+      const riverPath = this._traceRiver(subRiver.start, subRiver.parent, drawnCells, qSubRivers, {
+        idx, isOcean, hasRiver, isDirectNeighbor, areNeighbors, getMostOppositeNeighbor,
+        rows, cols
+      }, subRiver.parentColor); // Передаём цвет родителя
+
+      if (riverPath && riverPath.length >= 1) {
+        // Добавляем родительскую клетку в начало пути для соединения
+        riverPath.unshift(subRiver.parent);
+        paths.push(riverPath);
+        
+        // Ветки наследуют цвет родительской реки
+        riverColors.push(subRiver.parentColor || 0x3A9BD9);
+      }
+    }
+
+    return { paths, mainRiverCount, riverColors };
+  }
+
+  /**
+   * Get ocean color for river mouth
+   * Determines color based on ocean biome adjacent to mouth
+   * @private
+   */
+  _getOceanColorForMouth(mouth, moisture, temperature, rows, cols, idx) {
+    // Найти соседние океаны
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nRow = mouth.row + dr;
+        const nCol = mouth.col + dc;
+        
+        if (nRow < 0 || nRow >= rows || nCol < 0 || nCol >= cols) continue;
+        
+        const nIdx = idx(nRow, nCol);
+        const nMoisture = moisture[nIdx];
+        
+        // Проверяем, что это океан (moisture = 6)
+        if (nMoisture === 6) {
+          const nTemperature = temperature[nIdx];
+          const oceanBiomeId = this.biomeResolver.getBiomeId(nMoisture, nTemperature, 0);
+          const oceanColor = this.biomeResolver.getBiomeColor(oceanBiomeId);
+          
+          console.log(`GlobalMapRenderer | River mouth at (${mouth.row}, ${mouth.col}) uses ocean color from biome ${oceanBiomeId}: #${oceanColor.toString(16).padStart(6, '0')}`);
+          return oceanColor;
+        }
+      }
+    }
+    
+    // Дефолтный цвет воды
+    return 0x3A9BD9;
+  }
+
+  /**
+   * Trace a single river from start cell
+   * @private
+   */
+  _traceRiver(start, prevCell, drawnCells, qSubRivers, helpers, parentColor) {
+    const { idx, isOcean, hasRiver, isDirectNeighbor, areNeighbors, getMostOppositeNeighbor, rows, cols } = helpers;
+    const path = [];
+    let current = start;
+    let prev = prevCell;
+    let isFirstCell = (prev === null);
+    let stepCount = 0;
+    const maxSteps = 1000; // Защита от бесконечного цикла
+
+    while (current && stepCount < maxSteps) {
+      stepCount++;
+      const cellIdx = idx(current.row, current.col);
+      
+      // Skip if already drawn
+      if (drawnCells.has(cellIdx)) {
+        break;
+      }
+
+      // Add to path and mark as drawn
+      path.push(current);
+      drawnCells.add(cellIdx);
+
+      // Lookup neighbors
+      const oceanNeighbors = [];
+      const riverNeighbors = [];
+      let totalRiverNeighbors = 0; // Сколько всего соседей-рек (включая уже нарисованные)
+
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nRow = current.row + dr;
+          const nCol = current.col + dc;
+          if (nRow < 0 || nRow >= rows || nCol < 0 || nCol >= cols) continue;
+
+          const neighbor = { row: nRow, col: nCol };
+          const nIdx = idx(nRow, nCol);
+
+          // Skip previous cell
+          if (prev && prev.row === nRow && prev.col === nCol) continue;
+
+          if (isOcean(nRow, nCol)) {
+            oceanNeighbors.push({ ...neighbor, isDirect: isDirectNeighbor(current, neighbor) });
+          } else if (hasRiver(nRow, nCol)) {
+            totalRiverNeighbors++;
+            if (!drawnCells.has(nIdx)) {
+              riverNeighbors.push({ ...neighbor, isDirect: isDirectNeighbor(current, neighbor) });
+            }
+          }
+        }
+      }
+
+      console.log(`GlobalMapRenderer | Cell (${current.row}, ${current.col}): oceans=${oceanNeighbors.length}, rivers=${riverNeighbors.length}, totalRivers=${totalRiverNeighbors}, prev=${prev ? `(${prev.row}, ${prev.col})` : 'null'}`);
+
+      // Decision logic
+      let nextCell = null;
+
+      if (isFirstCell) {
+        console.log(`GlobalMapRenderer | First cell logic: oceanNeighbors=${oceanNeighbors.length}, riverNeighbors=${riverNeighbors.length}`);
+        
+        // First cell: check for strait/channel pattern
+        if (oceanNeighbors.length >= 2 && riverNeighbors.length === 0) {
+          // Check if oceans are NOT neighbors to each other
+          const ocean1 = oceanNeighbors[0];
+          const ocean2 = oceanNeighbors[1];
+          if (!areNeighbors(ocean1, ocean2)) {
+            // This is a strait - just a connector, end here
+            console.log(`GlobalMapRenderer | Detected strait at (${current.row}, ${current.col}), ending`);
+            break;
+          }
+        }
+
+        // Prefer direct ocean neighbor for mouth
+        const directOcean = oceanNeighbors.find(n => n.isDirect);
+        if (directOcean) {
+          prev = directOcean; // Set ocean as prev for direction
+          console.log(`GlobalMapRenderer | Set prev to direct ocean at (${prev.row}, ${prev.col})`);
+        } else if (oceanNeighbors.length > 0) {
+          prev = oceanNeighbors[0];
+          console.log(`GlobalMapRenderer | Set prev to diagonal ocean at (${prev.row}, ${prev.col})`);
+        }
+
+        isFirstCell = false;
+      }
+
+      // Find next river cell
+      if (riverNeighbors.length === 0) {
+        // No river neighbors - check if this is end or another ocean mouth
+        if (oceanNeighbors.length > 0) {
+          console.log(`GlobalMapRenderer | River ends at another ocean at (${current.row}, ${current.col})`);
+        } else {
+          console.log(`GlobalMapRenderer | End of river at (${current.row}, ${current.col}), no more neighbors`);
+        }
+        break;
+      } else if (riverNeighbors.length === 1) {
+        // Single neighbor - continue
+        nextCell = riverNeighbors[0];
+      } else {
+        // Multiple neighbors - junction
+        // Choose most opposite to previous direction
+        nextCell = getMostOppositeNeighbor(current, prev || current, riverNeighbors);
+
+        // Add other branches to sub-rivers queue
+        for (const neighbor of riverNeighbors) {
+          if (neighbor.row !== nextCell.row || neighbor.col !== nextCell.col) {
+            qSubRivers.push({ 
+              start: neighbor, 
+              parent: current,
+              parentColor: parentColor // Наследуем цвет от текущей реки
+            });
+          }
+        }
+      }
+
+      // Move to next cell
+      prev = current;
+      current = nextCell;
+    }
+
+    return path;
+  }
+
+  /**
+   * Draw a single river path with smooth Bezier curves and variable width
+   * Width decreases from mouth (wide) to source (narrow)
+   * @private
+   */
+  _drawRiverPath(graphics, path, bounds, cellSize, color, isSubRiver = false) {
+    if (path.length < 2) return;
+
+    // Convert path cells to world coordinates
+    const points = path.map(cell => ({
+      x: bounds.minX + cell.col * cellSize,
+      y: bounds.minY + cell.row * cellSize
+    }));
+
+    // Define width range
+    // Для саб-рек начальная ширина меньше (они впадают в основную реку)
+    const maxWidth = isSubRiver 
+      ? Math.max(2, cellSize * 0.4) // Узкое устье для веток
+      : Math.max(3, cellSize * 0.8); // Широкое устье для основных рек
+    const minWidth = Math.max(1, cellSize * 0.15); // Narrow at source
+    
+    console.log(`GlobalMapRenderer | _drawRiverPath: isSubRiver=${isSubRiver}, maxWidth=${maxWidth.toFixed(2)}, minWidth=${minWidth.toFixed(2)}, cellSize=${cellSize}`);
+
+    // Special case: very short paths (2 points - just connection)
+    if (points.length === 2) {
+      // Draw circles along the path with decreasing radius
+      const p1 = points[0];
+      const p2 = points[1];
+      
+      // Calculate direction and length
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      
+      if (length > 0) {
+        // Draw circles with decreasing radius
+        const circleCount = Math.max(5, Math.ceil(length / (maxWidth * 0.3)));
+        
+        for (let i = 0; i <= circleCount; i++) {
+          const t = i / circleCount;
+          const radius = (maxWidth * (1 - t) + minWidth * t) / 2;
+          
+          const x = p1.x + dx * t;
+          const y = p1.y + dy * t;
+          
+          graphics.beginFill(color, 0.9);
+          graphics.drawCircle(x, y, radius);
+          graphics.endFill();
+        }
+      }
+      return;
+    }
+
+    // Normal case: smooth the path with Catmull-Rom spline
+    const smoothPoints = this._smoothPathCatmullRom(points, 0.5, 10);
+
+    // Draw as overlapping circles with varying radius
+    // Увеличиваем частоту кругов чтобы избежать пробелов
+    for (let i = 0; i < smoothPoints.length; i++) {
+      const t = i / (smoothPoints.length - 1);
+      // Radius decreases from mouth (t=0) to source (t=1)
+      const radius = (maxWidth * (1 - t) + minWidth * t) / 2;
+
+      const point = smoothPoints[i];
+
+      graphics.beginFill(color, 0.9);
+      graphics.drawCircle(point.x, point.y, radius);
+      graphics.endFill();
+      
+      // Добавляем промежуточные круги между точками для избежания пробелов
+      if (i < smoothPoints.length - 1) {
+        const nextPoint = smoothPoints[i + 1];
+        const nextT = (i + 1) / (smoothPoints.length - 1);
+        const nextRadius = (maxWidth * (1 - nextT) + minWidth * nextT) / 2;
+        
+        // Вычисляем расстояние между точками
+        const dx = nextPoint.x - point.x;
+        const dy = nextPoint.y - point.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Определяем сколько промежуточных кругов нужно
+        const avgRadius = (radius + nextRadius) / 2;
+        const extraCircles = Math.ceil(dist / (avgRadius * 0.8)) - 1;
+        
+        // Рисуем промежуточные круги
+        for (let j = 1; j <= extraCircles; j++) {
+          const interpT = j / (extraCircles + 1);
+          const interpRadius = radius * (1 - interpT) + nextRadius * interpT;
+          const interpX = point.x + dx * interpT;
+          const interpY = point.y + dy * interpT;
+          
+          graphics.beginFill(color, 0.9);
+          graphics.drawCircle(interpX, interpY, interpRadius);
+          graphics.endFill();
+        }
+      }
+    }
+  }
+
+  /**
+   * Smooth path using Catmull-Rom spline
+   * @private
+   */
+  _smoothPathCatmullRom(points, tension = 0.5, segments = 10) {
+    if (points.length < 2) return points;
+    if (points.length === 2) return points;
+
+    const smoothed = [];
+
+    // Add first point
+    smoothed.push(points[0]);
+
+    // Interpolate between points
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+
+      for (let t = 0; t < segments; t++) {
+        const tt = t / segments;
+        const tt2 = tt * tt;
+        const tt3 = tt2 * tt;
+
+        // Catmull-Rom basis
+        const q0 = -tension * tt3 + 2 * tension * tt2 - tension * tt;
+        const q1 = (2 - tension) * tt3 + (tension - 3) * tt2 + 1;
+        const q2 = (tension - 2) * tt3 + (3 - 2 * tension) * tt2 + tension * tt;
+        const q3 = tension * tt3 - tension * tt2;
+
+        const x = p0.x * q0 + p1.x * q1 + p2.x * q2 + p3.x * q3;
+        const y = p0.y * q0 + p1.y * q1 + p2.y * q2 + p3.y * q3;
+
+        smoothed.push({ x, y });
+      }
+    }
+
+    // Add last point
+    smoothed.push(points[points.length - 1]);
+
+    return smoothed;
   }
 
   /**

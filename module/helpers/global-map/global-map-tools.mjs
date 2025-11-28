@@ -750,7 +750,9 @@ export class GlobalMapTools {
       // Save grid to scene flags
       const gridSnapshot = {
         heights: Array.from(this.renderer.currentGrid.heights),
-        biomes: Array.from(this.renderer.currentGrid.biomes),
+        moisture: Array.from(this.renderer.currentGrid.moisture),
+        temperature: Array.from(this.renderer.currentGrid.temperature),
+        rivers: Array.from(this.renderer.currentGrid.rivers || new Uint8Array(this.renderer.currentGrid.heights.length)),
         rows: this.renderer.currentGrid.rows,
         cols: this.renderer.currentGrid.cols,
         metadata: this.renderer.currentMetadata,
