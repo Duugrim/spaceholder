@@ -123,14 +123,14 @@ export class GlobalMapTools {
       // Heights tab is active
       const selectedTool = $('#global-map-tool').val();
       this.setTool(selectedTool);
-      // Restore saved single cell mode
-      this.singleCellMode = this.savedSingleCellMode;
+      // Read single cell mode from checkbox
+      this.singleCellMode = $('#single-cell-mode').prop('checked');
     } else if ($('#biomes-tab').is(':visible')) {
       // Biomes tab is active
       const selectedTool = $('#global-map-biome-tool').val();
       this.setTool(selectedTool);
-      // Restore saved single cell mode
-      this.singleCellMode = this.savedSingleCellMode;
+      // Read single cell mode from checkbox
+      this.singleCellMode = $('#biome-single-cell-mode').prop('checked');
     } else if ($('#rivers-tab').is(':visible')) {
       // Rivers tab is active
       const selectedTool = $('#global-map-river-tool').val();
@@ -140,14 +140,16 @@ export class GlobalMapTools {
       this.savedSingleCellMode = this.singleCellMode;
       this.singleCellMode = true;
       
-      // Create cell highlight for rivers tool
-      this.createCellHighlight();
-      
       // Initialize rivers array if it doesn't exist (for old saved maps)
       if (this.renderer.currentGrid && !this.renderer.currentGrid.rivers) {
         console.log('GlobalMapTools | Initializing rivers array for existing map');
         this.renderer.currentGrid.rivers = new Uint8Array(this.renderer.currentGrid.heights.length);
       }
+    }
+    
+    // Create cell highlight after setting mode
+    if (this.singleCellMode) {
+      this.createCellHighlight();
     }
     
     this.isBrushActive = true;
@@ -233,10 +235,12 @@ export class GlobalMapTools {
 
       const pos = event.data.getLocalPosition(canvas.stage);
 
-      // Update cursor and cell highlight
-      this.updateBrushCursorPosition(pos.x, pos.y);
-      if (this.singleCellMode) {
-        this.updateCellHighlight(pos.x, pos.y);
+      // Update cursor and cell highlight only when brush is active
+      if (this.isBrushActive) {
+        this.updateBrushCursorPosition(pos.x, pos.y);
+        if (this.singleCellMode) {
+          this.updateCellHighlight(pos.x, pos.y);
+        }
       }
 
       if (!this.isBrushActive || !this.isMouseDown) return;
@@ -1702,15 +1706,18 @@ export class GlobalMapTools {
       if (this.singleCellMode) {
         $('#radius-container').hide();
         $('#biome-radius-container').hide();
+        // Create cell highlight if brush is active
+        if (this.isBrushActive) {
+          this.createCellHighlight();
+        }
       } else {
         $('#radius-container').show();
         $('#biome-radius-container').show();
+        // Clear cell highlight
+        this.clearCellHighlight();
       }
       this.updateBrushCursorGraphics();
       this.updateBrushUI();
-      if (!this.singleCellMode) {
-        this.clearCellHighlight();
-      }
     });
 
     $('#global-map-radius').on('input', (e) => {
@@ -1741,15 +1748,18 @@ export class GlobalMapTools {
       if (this.singleCellMode) {
         $('#radius-container').hide();
         $('#biome-radius-container').hide();
+        // Create cell highlight if brush is active
+        if (this.isBrushActive) {
+          this.createCellHighlight();
+        }
       } else {
         $('#radius-container').show();
         $('#biome-radius-container').show();
+        // Clear cell highlight
+        this.clearCellHighlight();
       }
       this.updateBrushCursorGraphics();
       this.updateBrushUI();
-      if (!this.singleCellMode) {
-        this.clearCellHighlight();
-      }
     });
 
     $('#global-map-biome-radius').on('input', (e) => {
