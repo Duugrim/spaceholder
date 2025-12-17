@@ -43,6 +43,8 @@
       "gRange": 100,
       "gPower": 1,
       "gSide": "neutral",
+      "gLink": "",
+      "gFaction": "",
       "biography": ""
     }
   },

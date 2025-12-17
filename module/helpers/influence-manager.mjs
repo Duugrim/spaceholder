@@ -6,16 +6,6 @@ export class InfluenceManager {
     // Контейнер для графики
     this.influenceContainer = null;
     this.currentElements = [];
-    
-    // Цвета по умолчанию для сторон
-    this.defaultColors = {
-      'neutral': 0x808080,
-      'ally': 0x00AA00,
-      'enemy': 0xAA0000,
-      'faction1': 0x0088FF,
-      'faction2': 0xFF8800,
-      'faction3': 0xFF00FF
-    };
   }
   
   /**
@@ -55,7 +45,7 @@ export class InfluenceManager {
   
   /**
    * Собрать данные со всех Global Objects на сцене
-   * @returns {Array} Массив объектов {token, gRange, gPower, gSide, position}
+   * @returns {Array} Массив объектов {token, gRange, gPower, gFaction, position}
    */
   collectGlobalObjects() {
     const objects = [];
@@ -76,12 +66,17 @@ export class InfluenceManager {
       // Например: gRange=500 и gridSize=100 → 5 клеток → 500 пикселей
       const rangeInGridUnits = (system.gRange || 0) / 100; // 500 → 5
       const rangeInPixels = rangeInGridUnits * gridSize; // 5 × 100 = 500
+
+      // Фракция: по умолчанию — UUID связанного Journal (system.gFaction).
+      // Для обратной совместимости: если UUID не задан, используем legacy system.gSide.
+      const factionUuid = this._normalizeUuid(system.gFaction);
+      const factionKey = factionUuid || system.gSide || 'neutral';
       
       objects.push({
         token: token,
         gRange: rangeInPixels,
         gPower: system.gPower || 1,
-        gSide: system.gSide || 'neutral',
+        gFaction: factionKey,
         position: {
           x: token.center.x,
           y: token.center.y
@@ -93,31 +88,151 @@ export class InfluenceManager {
   }
   
   /**
-   * Группировать объекты по gSide
+   * Группировать объекты по фракции (gFaction)
    * @param {Array} objects - массив Global Objects
-   * @returns {Object} Объект {side: [objects]}
+   * @returns {Object} Объект {factionKey: [objects]}
    */
-  groupBySide(objects) {
+  groupByFaction(objects) {
     const groups = {};
     
     for (const obj of objects) {
-      const side = obj.gSide;
-      if (!groups[side]) {
-        groups[side] = [];
+      const key = obj.gFaction || 'neutral';
+      if (!groups[key]) {
+        groups[key] = [];
       }
-      groups[side].push(obj);
+      groups[key].push(obj);
     }
     
     return groups;
   }
   
   /**
-   * Получить цвет для стороны
+   * Получить цвет для фракции.
+   * Правило:
+   * - Если UUID указывает на JournalEntry и он лежит в Folder с заданным цветом — используем цвет папки.
+   * - Иначе: детерминированный fallback-цвет по хэшу строки.
    * @param {string} side
    * @returns {number} PIXI color
    */
   getColorForSide(side) {
-    return this.defaultColors[side] || 0x808080;
+    const raw = String(side ?? '').trim();
+    const key = this._normalizeUuid(raw) || raw || 'neutral';
+
+    const folderColorHex = this._getFactionFolderColorHex(key);
+    if (typeof folderColorHex === 'number') return folderColorHex;
+
+    const hue = this._hashStringToHue(key);
+    return this._hslToHex(hue, 65, 50);
+  }
+
+  /**
+   * Получить цвет (0xRRGGBB) папки журнала фракции, если доступно.
+   * @private
+   */
+  _getFactionFolderColorHex(factionKey) {
+    const entry = this._resolveJournalEntryForUuid(factionKey);
+    const color = entry?.folder?.color;
+    const hex = this._cssColorToHex(color);
+    return typeof hex === 'number' ? hex : null;
+  }
+
+  /**
+   * Попытаться синхронно резолвнуть JournalEntry по UUID.
+   * Поддерживает world UUID (JournalEntry.<id>[.JournalEntryPage.<id>]) и, если доступно, fromUuidSync.
+   * @private
+   */
+  _resolveJournalEntryForUuid(rawUuid) {
+    const uuid = this._normalizeUuid(rawUuid);
+    if (!uuid) return null;
+
+    // 1) Если доступен fromUuidSync — используем (может вернуть JournalEntryPage)
+    if (typeof fromUuidSync === 'function') {
+      try {
+        let doc = fromUuidSync(uuid);
+        if (doc?.documentName === 'JournalEntryPage' && doc.parent) doc = doc.parent;
+        if (doc?.documentName === 'JournalEntry') return doc;
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // 2) Быстрый путь для world UUID
+    const parts = uuid.split('.');
+    if (parts[0] === 'JournalEntry' && parts[1]) {
+      return game?.journal?.get?.(parts[1]) || null;
+    }
+
+    return null;
+  }
+
+  /**
+   * Преобразовать CSS hex (#RRGGBB или #RGB) в число 0xRRGGBB.
+   * @private
+   */
+  _cssColorToHex(color) {
+    const str = String(color ?? '').trim();
+    if (!str) return null;
+
+    const hex = str.startsWith('#') ? str.slice(1) : str;
+    if (/^[0-9a-fA-F]{6}$/.test(hex)) return parseInt(hex, 16);
+    if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+      const r = hex[0] + hex[0];
+      const g = hex[1] + hex[1];
+      const b = hex[2] + hex[2];
+      return parseInt(r + g + b, 16);
+    }
+
+    return null;
+  }
+
+  /**
+   * Нормализовать UUID-подобную строку (поддерживает @UUID[...]).
+   * @private
+   */
+  _normalizeUuid(raw) {
+    const str = String(raw ?? '').trim();
+    if (!str) return '';
+    const match = str.match(/@UUID\[(.+?)\]/);
+    return (match?.[1] ?? str).trim();
+  }
+
+  /**
+   * Преобразовать строку в hue (0..359)
+   * @private
+   */
+  _hashStringToHue(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash) % 360;
+  }
+
+  /**
+   * HSL -> 0xRRGGBB
+   * @private
+   */
+  _hslToHex(h, s, l) {
+    const sat = (s ?? 0) / 100;
+    const lig = (l ?? 0) / 100;
+    const c = (1 - Math.abs(2 * lig - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = lig - c / 2;
+
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+
+    const to255 = (v) => Math.max(0, Math.min(255, Math.round((v + m) * 255)));
+    const rr = to255(r);
+    const gg = to255(g);
+    const bb = to255(b);
+    return (rr << 16) + (gg << 8) + bb;
   }
   
   /**
@@ -141,9 +256,9 @@ export class InfluenceManager {
     
     console.log(`InfluenceManager: Found ${objects.length} Global Objects`);
     
-    // Группируем по сторонам
-    const groups = this.groupBySide(objects);
-    console.log('InfluenceManager: Groups by side:', groups);
+    // Группируем по фракциям
+    const groups = this.groupByFaction(objects);
+    console.log('InfluenceManager: Groups by faction:', groups);
     
     // Используем новый метод с силовым полем
     this._drawInfluenceWithPressure(groups, objects, debug);
@@ -371,14 +486,14 @@ export class InfluenceManager {
     for (const obj of allObjects) {
       if (obj.gRange <= 0) continue;
       
-      const color = this.getColorForSide(obj.gSide);
+      const color = this.getColorForSide(obj.gFaction);
       
       // Отладочная окружность радиуса gRange (только в режиме отладки)
       if (debug) {
         const debugCircle = new PIXI.Graphics();
         debugCircle.lineStyle(2, color, 0.5);
         debugCircle.drawCircle(obj.position.x, obj.position.y, obj.gRange);
-        debugCircle.name = `influence_debug_circle_${obj.gSide}_${obj.token.id}`;
+        debugCircle.name = `influence_debug_circle_${obj.gFaction}_${obj.token.id}`;
         debugCircle.interactive = false;
         this.influenceContainer.addChild(debugCircle);
         this.currentElements.push(debugCircle);
@@ -389,7 +504,7 @@ export class InfluenceManager {
       centerGraphics.beginFill(color, 0.9);
       centerGraphics.drawCircle(obj.position.x, obj.position.y, 5);
       centerGraphics.endFill();
-      centerGraphics.name = `influence_center_${obj.gSide}_${obj.token.id}`;
+      centerGraphics.name = `influence_center_${obj.gFaction}_${obj.token.id}`;
       centerGraphics.interactive = false;
       this.influenceContainer.addChild(centerGraphics);
       this.currentElements.push(centerGraphics);
