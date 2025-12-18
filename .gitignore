@@ -1,3 +1,7 @@
 ﻿# Test files
 test-*.js
 templates/actor/actor-character-sheet-test.hbs
+
+# Local backups / tooling
+module/data/globalmaps/biome-config.json.orig
+release.ps1

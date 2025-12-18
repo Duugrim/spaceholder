@@ -316,7 +316,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
             ui.notifications.info('Создание тестовой карты биомов...');
             const result = spaceholder.globalMapProcessing.createBiomeTestGrid(canvas.scene);
             await spaceholder.globalMapRenderer.render(result.gridData, result.metadata, { mode: 'heights' });
-            ui.notifications.info('Тестовая карта создана: сетка 5x6 биомов');
+            ui.notifications.info('Тестовая карта создана (биомы из реестра)');
           } catch (error) {
             console.error('GlobalMapUI | Error creating test grid:', error);
             ui.notifications.error(`Ошибка: ${error.message}`);

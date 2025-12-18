@@ -200,69 +200,101 @@ export class GlobalMapRenderer {
    * @private
    */
   _renderBiomesSmooth(gridData, metadata, drawBorders = false) {
-    const { moisture, temperature, heights, rows, cols } = gridData;
+    const { biomes, moisture, temperature, heights, rows, cols } = gridData;
     const { cellSize, bounds } = metadata;
 
-    if (!moisture || !temperature) {
+    // Prefer explicit biomes array; fall back to legacy moisture/temperature
+    let biomeIds;
+    if (biomes && biomes.length === rows * cols) {
+      biomeIds = biomes;
+    } else if (moisture && temperature) {
+      biomeIds = new Uint8Array(rows * cols);
+      for (let i = 0; i < rows * cols; i++) {
+        biomeIds[i] = this.biomeResolver.getBiomeId(moisture[i], temperature[i]);
+      }
+    } else {
       return;
     }
 
-    // Check if there are any biomes to render
-    const hasBiomes = moisture.some(m => m > 0) && temperature.some(t => t > 0);
-    if (!hasBiomes) {
+    if (!biomeIds || biomeIds.length === 0) {
       console.log('GlobalMapRenderer | No biomes to render');
       return;
     }
 
     console.log('GlobalMapRenderer | Rendering biomes with smooth boundaries...');
 
-    // 1. Build biomeId grid
-    const biomeIds = new Uint8Array(rows * cols);
+    // Build per-biome cell lists in one pass
     const uniqueBiomes = new Set();
-    
+    const biomeCells = new Map(); // biomeId -> Array<cellIndex>
+
     for (let i = 0; i < rows * cols; i++) {
-      const biomeId = this.biomeResolver.getBiomeId(moisture[i], temperature[i], heights[i]);
-      biomeIds[i] = biomeId;
+      const biomeId = biomeIds[i];
       uniqueBiomes.add(biomeId);
+      let arr = biomeCells.get(biomeId);
+      if (!arr) {
+        arr = [];
+        biomeCells.set(biomeId, arr);
+      }
+      arr.push(i);
     }
 
-    console.log(`GlobalMapRenderer | Found ${uniqueBiomes.size} unique biomes`);
+    const sortedBiomes = Array.from(uniqueBiomes).sort((a, b) => {
+      const rankA = this.biomeResolver.getBiomeRank(a);
+      const rankB = this.biomeResolver.getBiomeRank(b);
+      if (rankA !== rankB) return rankA - rankB;
+      return a - b;
+    });
 
-    // 2. Wave-based rendering: draw biomes in order of connectivity
-    // Start with wettest biome, then draw neighbors, then their neighbors, etc.
-    this._renderBiomesWaveBased(biomeIds, uniqueBiomes, rows, cols, bounds, cellSize);
+    console.log(`GlobalMapRenderer | Found ${sortedBiomes.length} unique biomes`);
 
-    // 3. Optional: Draw smooth borders between biomes
+    // Render biomes in deterministic rank order.
+    // IMPORTANT: to avoid gaps after smoothing at multi-biome junctions, we slightly expand each biome
+    // into neighboring (not-yet-processed) cells. This creates controlled overlaps that are resolved by
+    // render rank ordering.
+    const paintedCore = new Set();
+
+    for (const biomeId of sortedBiomes) {
+      const cells = biomeCells.get(biomeId);
+      if (!cells || cells.length === 0) continue;
+
+      const drawSet = new Set(cells);
+
+      // Expand into 8-neighborhood ring around the biome, but never into already-painted core cells
+      // (prevents later biomes from overwriting earlier biome ownership too aggressively).
+      for (const cellIdx of cells) {
+        const row = Math.floor(cellIdx / cols);
+        const col = cellIdx % cols;
+
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+
+            const nRow = row + dr;
+            const nCol = col + dc;
+            if (nRow < 0 || nRow >= rows || nCol < 0 || nCol >= cols) continue;
+
+            const nIdx = nRow * cols + nCol;
+            if (paintedCore.has(nIdx)) continue;
+            if (biomeIds[nIdx] === biomeId) continue;
+
+            drawSet.add(nIdx);
+          }
+        }
+      }
+
+      this._renderBiomeRegionLayered(Array.from(drawSet), rows, cols, bounds, cellSize, biomeId);
+
+      for (const cellIdx of cells) {
+        paintedCore.add(cellIdx);
+      }
+    }
+
+    // Optional: Draw smooth borders between biomes
     if (drawBorders) {
       this._drawBiomeBorders(biomeIds, rows, cols, bounds, cellSize, uniqueBiomes);
     }
 
     console.log('GlobalMapRenderer | ✓ Smooth biome boundaries rendered');
-
-    /* ALTERNATIVE APPROACH (commented out):
-    // 2. Sort biomes by moisture (ascending), then temperature (ascending)
-    // This ensures consistent overlap: drier renders first, then wetter
-    // Within same moisture: colder renders first, then hotter
-    const sortedBiomes = Array.from(uniqueBiomes).sort((a, b) => {
-      const paramsA = this.biomeResolver.getParametersFromBiomeId(a);
-      const paramsB = this.biomeResolver.getParametersFromBiomeId(b);
-      
-      // Primary sort: moisture (ascending)
-      if (paramsA.moisture !== paramsB.moisture) {
-        return paramsA.moisture - paramsB.moisture;
-      }
-      
-      // Secondary sort: temperature (ascending)
-      return paramsA.temperature - paramsB.temperature;
-    });
-
-    // 3. Render biomes in sorted order
-    // Later biomes will slightly overdraw earlier ones at boundaries
-    for (const biomeId of sortedBiomes) {
-      const color = this.biomeResolver.getBiomeColor(biomeId);
-      this._renderBiomeRegion(biomeIds, rows, cols, bounds, cellSize, biomeId, color);
-    }
-    */
   }
 
   /**
@@ -1216,12 +1248,8 @@ export class GlobalMapRenderer {
    * @private
    */
   _renderBiomesCells(gridData, metadata) {
-    const { moisture, temperature, heights, rows, cols } = gridData;
+    const { biomes, moisture, temperature, heights, rows, cols } = gridData;
     const { cellSize, bounds } = metadata;
-
-    if (!moisture || !temperature) {
-      return;
-    }
 
     console.log('GlobalMapRenderer | Rendering biomes as cells...');
     const graphics = new PIXI.Graphics();
@@ -1229,13 +1257,17 @@ export class GlobalMapRenderer {
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const idx = row * cols + col;
-        const biomeId = this.biomeResolver.getBiomeId(moisture[idx], temperature[idx], heights[idx]);
+
+        const biomeId = (biomes && biomes.length === rows * cols)
+          ? biomes[idx]
+          : this.biomeResolver.getBiomeId(moisture?.[idx] ?? 0, temperature?.[idx] ?? 0);
+
         const color = this.biomeResolver.getBiomeColor(biomeId);
-        
+
         // Draw cell centered at coordinate point (shift by half cell)
         const x = bounds.minX + col * cellSize - cellSize / 2;
         const y = bounds.minY + row * cellSize - cellSize / 2;
-        
+
         graphics.beginFill(color, 1.0);
         graphics.drawRect(x, y, cellSize, cellSize);
         graphics.endFill();
@@ -1940,10 +1972,31 @@ export class GlobalMapRenderer {
    * @private
    */
   _renderRiversLayer(gridData, metadata) {
-    const { rivers, moisture, temperature, heights, rows, cols } = gridData;
+    const { rivers, biomes, moisture, temperature, rows, cols } = gridData;
     const { cellSize, bounds } = metadata;
 
     if (!rivers) return;
+
+    // Rivers currently rely on ocean detection via legacy moisture/temperature.
+    // If those arrays are missing (v4+ saves), derive them from biome IDs.
+    let moistureIds = moisture;
+    let temperatureIds = temperature;
+
+    if ((!moistureIds || !temperatureIds) && biomes && biomes.length === rows * cols) {
+      moistureIds = new Uint8Array(rows * cols);
+      temperatureIds = new Uint8Array(rows * cols);
+
+      for (let i = 0; i < rows * cols; i++) {
+        const params = this.biomeResolver.getParametersFromBiomeId(biomes[i]);
+        moistureIds[i] = params?.moisture ?? 0;
+        temperatureIds[i] = params?.temperature ?? 0;
+      }
+    }
+
+    if (!moistureIds || !temperatureIds) {
+      console.warn('GlobalMapRenderer | Rivers: missing moisture/temperature and cannot derive from biomes');
+      return;
+    }
 
     // Count rivers for logging
     let riverCount = 0;
@@ -1959,7 +2012,7 @@ export class GlobalMapRenderer {
     console.log(`GlobalMapRenderer | Rendering ${riverCount} river cells with Bezier curves...`);
 
     // Find all river paths (from ocean mouths to sources)
-    const { paths: riverPaths, mainRiverCount, riverColors } = this._extractRiverPaths(rivers, moisture, temperature, rows, cols);
+    const { paths: riverPaths, mainRiverCount, riverColors } = this._extractRiverPaths(rivers, moistureIds, temperatureIds, rows, cols);
     
     console.log(`GlobalMapRenderer | Found ${riverPaths.length} river paths (${mainRiverCount} main, ${riverPaths.length - mainRiverCount} branches)`);
 

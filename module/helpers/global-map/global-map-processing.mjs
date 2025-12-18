@@ -7,7 +7,7 @@ import { BiomeResolver } from './global-map-biome-resolver.mjs';
  */
 export class GlobalMapProcessing {
   constructor() {
-    this.unifiedGrid = null; // Final rectangular grid: {heights, moisture, temperature, rivers, rows, cols}
+    this.unifiedGrid = null; // Final rectangular grid: {heights, biomes, rivers, rows, cols}
     this.gridMetadata = null; // Grid metadata: {bounds, cellSize, stats, timestamp}
     this.biomeResolver = new BiomeResolver();
   }
@@ -41,8 +41,17 @@ export class GlobalMapProcessing {
     }
 
     // At minimum we need heights OR biomes
-    if (!sampleCell.hasOwnProperty('h') && !sampleCell.hasOwnProperty('biome')) {
-      return { valid: false, error: 'Cells must have height (h) or biome data' };
+    const hasHeight = (
+      ('h' in sampleCell) ||
+      ('height' in sampleCell) ||
+      ('elevation' in sampleCell) ||
+      ('elev' in sampleCell)
+    );
+
+    const hasBiome = ('biome' in sampleCell);
+
+    if (!hasHeight && !hasBiome) {
+      return { valid: false, error: 'Cells must have height (h/height/elevation) or biome data' };
     }
 
     return { valid: true };
@@ -74,20 +83,34 @@ export class GlobalMapProcessing {
     console.log(`GlobalMapProcessing | Source map: ${srcMapWidth}x${srcMapHeight} Voronoi cells`);
 
     // Extract Voronoi cell data (will be discarded after interpolation)
-    const voronoiCells = cells.map(cell => ({
-      x: cell.p[0],
-      y: cell.p[1],
-      height: cell.h || 0,
-      biome: cell.biome || 0,
-    }));
+    const readNumber = (value) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const voronoiCells = cells.map(cell => {
+      const rawHeight = cell?.h ?? cell?.height ?? cell?.elevation ?? cell?.elev;
+      const height = readNumber(rawHeight) ?? 0;
+
+      const biome = readNumber(cell?.biome) ?? 0;
+
+      return {
+        x: cell.p[0],
+        y: cell.p[1],
+        height,
+        biome,
+      };
+    });
 
     // Calculate stats from source data
     const heights = voronoiCells.map(c => c.height);
     const biomes = voronoiCells.map(c => c.biome);
-    const validHeights = heights.filter(h => h > 0);
+
+    // Use full finite range (including oceans / negatives) to avoid flattening or negative normalization
+    const finiteHeights = heights.filter(h => Number.isFinite(h));
     const heightStats = {
-      min: validHeights.length > 0 ? Math.min(...validHeights) : 0,
-      max: validHeights.length > 0 ? Math.max(...validHeights) : 100,
+      min: finiteHeights.length > 0 ? Math.min(...finiteHeights) : 0,
+      max: finiteHeights.length > 0 ? Math.max(...finiteHeights) : 100,
     };
     const uniqueBiomes = [...new Set(biomes)].filter(b => b > 0).sort((a, b) => a - b);
 
@@ -106,8 +129,7 @@ export class GlobalMapProcessing {
 
     // Create unified grid by interpolating Voronoi cells
     const gridHeights = new Float32Array(gridSize);
-    const gridMoisture = new Uint8Array(gridSize);
-    const gridTemperature = new Uint8Array(gridSize);
+    const gridBiomes = new Uint8Array(gridSize);
     const gridRivers = new Uint8Array(gridSize); // 0 = no river, 1 = river
 
     // Interpolate heights and biomes for each grid cell
@@ -147,28 +169,37 @@ export class GlobalMapProcessing {
 
         // Normalize height to 0-100 range
         let normalizedHeight;
-        if (sourceRange > 0) {
+        if (Number.isFinite(nearestHeight) && sourceRange > 0) {
           normalizedHeight = ((nearestHeight - sourceMin) / sourceRange) * 100;
-        } else {
+        } else if (Number.isFinite(nearestHeight)) {
           normalizedHeight = 50; // If all heights are the same, use middle value
+        } else {
+          normalizedHeight = 0;
         }
-        gridHeights[idx] = normalizedHeight;
+
+        // Clamp to expected range (renderer expects 0..100)
+        gridHeights[idx] = Math.max(0, Math.min(100, normalizedHeight));
         
-        // Map Azgaar biome ID to our biome ID, then get moisture/temperature
+        // Map Azgaar biome ID to our biome ID
         const mappedBiomeId = this.biomeResolver.mapAzgaarBiomeId(nearestBiome);
-        const params = this.biomeResolver.getParametersFromBiomeId(mappedBiomeId);
-        gridMoisture[idx] = params.moisture;
-        gridTemperature[idx] = params.temperature;
+        gridBiomes[idx] = mappedBiomeId;
       }
     }
 
     // **IMPORTANT: Discard Voronoi data after interpolation**
     // voronoiCells is now garbage collected, we don't keep references to it
 
+    // Collect unique mapped biomes
+    const uniqueMappedBiomesSet = new Set();
+    for (let i = 0; i < gridBiomes.length; i++) {
+      const b = gridBiomes[i];
+      if (b > 0) uniqueMappedBiomesSet.add(b);
+    }
+    const uniqueMappedBiomes = Array.from(uniqueMappedBiomesSet).sort((a, b) => a - b);
+
     const unifiedGrid = {
       heights: gridHeights,
-      moisture: gridMoisture,
-      temperature: gridTemperature,
+      biomes: gridBiomes,
       rivers: gridRivers,
       rows: gridRows,
       cols: gridCols,
@@ -192,7 +223,9 @@ export class GlobalMapProcessing {
         range: 100,
       },
       biomeStats: {
-        uniqueBiomes,
+        // Source biomes are Azgaar indices; mapped biomes are our internal biome IDs
+        sourceUniqueBiomes: uniqueBiomes,
+        mappedUniqueBiomes: uniqueMappedBiomes,
         totalCells: gridSize,
       },
       timestamp: new Date().toISOString(),
@@ -229,22 +262,19 @@ export class GlobalMapProcessing {
     const gridRows = Math.ceil(sceneDims.height / cellSize);
     const gridSize = gridRows * gridCols;
 
-    // All cells have same height, default moisture/temperature
+    // All cells have same height, default biome
     const gridHeights = new Float32Array(gridSize);
     gridHeights.fill(defaultHeight);
 
-    const gridMoisture = new Uint8Array(gridSize);
-    gridMoisture.fill(3); // Default moisture = 3 (moderate)
-
-    const gridTemperature = new Uint8Array(gridSize);
-    gridTemperature.fill(3); // Default temperature = 3 (temperate)
+    const gridBiomes = new Uint8Array(gridSize);
+    const defaultBiomeId = this.biomeResolver.getDefaultBiomeId();
+    gridBiomes.fill(defaultBiomeId);
 
     const gridRivers = new Uint8Array(gridSize); // No rivers by default
 
     const unifiedGrid = {
       heights: gridHeights,
-      moisture: gridMoisture,
-      temperature: gridTemperature,
+      biomes: gridBiomes,
       rivers: gridRivers,
       rows: gridRows,
       cols: gridCols,
@@ -267,7 +297,7 @@ export class GlobalMapProcessing {
         range: 100,
       },
       biomeStats: {
-        uniqueBiomes: [],
+        mappedUniqueBiomes: [defaultBiomeId],
         totalCells: gridSize,
       },
       timestamp: new Date().toISOString(),
@@ -281,15 +311,15 @@ export class GlobalMapProcessing {
   }
 
   /**
-   * Create biome test grid (5x6 grid matching biome matrix)
-   * Each cell represents one biome from the biome matrix (temperature 1-5, moisture 1-6)
+   * Create biome test grid (blocks of all active biomes)
+   * Each block represents one biome from the registry (sorted by renderRank)
    * @param {Scene} scene - Target scene
    * @param {number} gridResolution - Cells per unit (default 2)
    * @param {number} baseHeight - Base height for all cells (default 20)
    * @returns {Object} {gridData, metadata}
    */
   createBiomeTestGrid(scene = null, gridResolution = 2, baseHeight = 20) {
-    console.log(`GlobalMapProcessing | Creating biome test grid (5x6 biome matrix)`);
+    console.log(`GlobalMapProcessing | Creating biome test grid (registry biomes)`);
 
     const targetScene = scene || canvas.scene;
     if (!targetScene) {
@@ -299,9 +329,14 @@ export class GlobalMapProcessing {
     const sceneDims = targetScene.dimensions;
     const cellSize = (targetScene.canvas?.grid?.size || 64) / gridResolution;
 
-    // Biome matrix: 5 temperatures (columns) x 6 moisture levels (rows)
-    const biomeCols = 5; // Temperature 1-5
-    const biomeRows = 6; // Moisture 1-6
+    const biomes = this.biomeResolver.listBiomes();
+    if (!biomes.length) {
+      throw new Error('No biomes available (registry not loaded?)');
+    }
+
+    // Layout blocks in a near-square grid
+    const biomeCols = Math.ceil(Math.sqrt(biomes.length));
+    const biomeRows = Math.ceil(biomes.length / biomeCols);
 
     // Calculate cells per biome block to fill scene
     const cellsPerBiomeX = Math.ceil(sceneDims.width / cellSize / biomeCols);
@@ -311,52 +346,49 @@ export class GlobalMapProcessing {
     const gridRows = biomeRows * cellsPerBiomeY;
     const gridSize = gridRows * gridCols;
 
-    console.log(`GlobalMapProcessing | Test grid: ${gridRows}x${gridCols} cells, ` +
-                `${cellsPerBiomeX}x${cellsPerBiomeY} cells per biome block`);
+    console.log(
+      `GlobalMapProcessing | Test grid: ${gridRows}x${gridCols} cells, ` +
+      `${cellsPerBiomeX}x${cellsPerBiomeY} cells per biome block, ` +
+      `${biomes.length} biomes`
+    );
 
     const gridHeights = new Float32Array(gridSize);
-    const gridMoisture = new Uint8Array(gridSize);
-    const gridTemperature = new Uint8Array(gridSize);
+    const gridBiomes = new Uint8Array(gridSize);
     const gridRivers = new Uint8Array(gridSize); // No rivers by default
 
-    // Fill grid: each block corresponds to one biome from matrix
+    const defaultBiomeId = this.biomeResolver.getDefaultBiomeId();
+
+    // Fill grid: each block corresponds to one biome
     for (let row = 0; row < gridRows; row++) {
       for (let col = 0; col < gridCols; col++) {
         const idx = row * gridCols + col;
 
-        // Determine which biome block this cell belongs to
-        const biomeCol = Math.floor(col / cellsPerBiomeX); // 0-4 → temperature 1-5
-        const biomeRow = Math.floor(row / cellsPerBiomeY); // 0-5 → moisture 1-6
+        const blockCol = Math.floor(col / cellsPerBiomeX);
+        const blockRow = Math.floor(row / cellsPerBiomeY);
+        const biomeIndex = blockRow * biomeCols + blockCol;
 
-        // Biome matrix coordinates
-        const temperature = biomeCol + 1; // 1-5
-        const moisture = 6 - biomeRow;     // 6-1 (inverted: top row = moisture 6)
+        const biomeId = biomeIndex < biomes.length ? biomes[biomeIndex].id : defaultBiomeId;
 
         gridHeights[idx] = baseHeight;
-        gridTemperature[idx] = temperature;
-        gridMoisture[idx] = moisture;
+        gridBiomes[idx] = biomeId;
       }
     }
 
+    // Collect unique biomes for stats
+    const uniqueBiomesSet = new Set();
+    for (let i = 0; i < gridBiomes.length; i++) {
+      const b = gridBiomes[i];
+      if (b > 0) uniqueBiomesSet.add(b);
+    }
+    const uniqueBiomes = Array.from(uniqueBiomesSet).sort((a, b) => a - b);
+
     const unifiedGrid = {
       heights: gridHeights,
-      moisture: gridMoisture,
-      temperature: gridTemperature,
+      biomes: gridBiomes,
       rivers: gridRivers,
       rows: gridRows,
       cols: gridCols,
     };
-
-    // Collect unique biomes for stats
-    const uniqueBiomes = [];
-    for (let temp = 1; temp <= 5; temp++) {
-      for (let moist = 1; moist <= 6; moist++) {
-        const biomeId = this.biomeResolver.getBiomeId(moist, temp);
-        if (!uniqueBiomes.includes(biomeId)) {
-          uniqueBiomes.push(biomeId);
-        }
-      }
-    }
 
     const gridMetadata = {
       sourceType: 'BiomeTestGrid',
@@ -375,10 +407,11 @@ export class GlobalMapProcessing {
         range: 100,
       },
       biomeStats: {
-        uniqueBiomes: uniqueBiomes.sort((a, b) => a - b),
+        mappedUniqueBiomes: uniqueBiomes,
         totalCells: gridSize,
         testGrid: true,
         biomeBlockSize: { x: cellsPerBiomeX, y: cellsPerBiomeY },
+        biomeLayout: { biomeRows, biomeCols },
       },
       timestamp: new Date().toISOString(),
       isBiomeTestGrid: true,
@@ -387,8 +420,10 @@ export class GlobalMapProcessing {
     this.unifiedGrid = unifiedGrid;
     this.gridMetadata = gridMetadata;
 
-    console.log(`GlobalMapProcessing | ✓ Biome test grid created: ${gridRows}x${gridCols}, ` +
-                `${uniqueBiomes.length} unique biomes`);
+    console.log(
+      `GlobalMapProcessing | ✓ Biome test grid created: ${gridRows}x${gridCols}, ` +
+      `${uniqueBiomes.length} unique biomes`
+    );
 
     return { gridData: unifiedGrid, metadata: gridMetadata };
   }
@@ -445,17 +480,15 @@ export class GlobalMapProcessing {
 
       // Convert typed arrays to regular arrays for JSON serialization
       const heightsArray = Array.from(this.unifiedGrid.heights);
-      const moistureArray = Array.from(this.unifiedGrid.moisture);
-      const temperatureArray = Array.from(this.unifiedGrid.temperature);
+      const biomesArray = Array.from(this.unifiedGrid.biomes || new Uint8Array(this.unifiedGrid.heights.length));
       const riversArray = Array.from(this.unifiedGrid.rivers || new Uint8Array(this.unifiedGrid.heights.length));
 
       const gridData = {
-        version: 3, // New version with rivers
+        version: 4, // Biomes + rivers
         metadata: this.gridMetadata,
         grid: {
           heights: heightsArray,
-          moisture: moistureArray,
-          temperature: temperatureArray,
+          biomes: biomesArray,
           rivers: riversArray,
           rows: this.unifiedGrid.rows,
           cols: this.unifiedGrid.cols,
@@ -528,45 +561,61 @@ export class GlobalMapProcessing {
       // Handle different versions
       let unifiedGrid;
       
-      if (gridData.version === 3) {
-        // Version 3: moisture/temperature/rivers format
+      if (gridData.version === 4) {
+        // Version 4: biomes + rivers
         unifiedGrid = {
           heights: new Float32Array(gridData.grid.heights),
-          moisture: new Uint8Array(gridData.grid.moisture),
-          temperature: new Uint8Array(gridData.grid.temperature),
+          biomes: new Uint8Array(gridData.grid.biomes),
           rivers: new Uint8Array(gridData.grid.rivers || new Array(gridData.grid.heights.length).fill(0)),
           rows: gridData.grid.rows,
           cols: gridData.grid.cols,
         };
-      } else if (gridData.version === 2) {
-        // Version 2: moisture/temperature format (no rivers)
+      } else if (gridData.version === 3) {
+        // Version 3 (legacy): moisture/temperature/rivers → convert to biomes
+        const heights = new Float32Array(gridData.grid.heights);
+        const moisture = new Uint8Array(gridData.grid.moisture);
+        const temperature = new Uint8Array(gridData.grid.temperature);
+        const rivers = new Uint8Array(gridData.grid.rivers || new Array(gridData.grid.heights.length).fill(0));
+
+        const biomes = new Uint8Array(heights.length);
+        for (let i = 0; i < biomes.length; i++) {
+          biomes[i] = this.biomeResolver.getBiomeId(moisture[i], temperature[i]);
+        }
+
         unifiedGrid = {
-          heights: new Float32Array(gridData.grid.heights),
-          moisture: new Uint8Array(gridData.grid.moisture),
-          temperature: new Uint8Array(gridData.grid.temperature),
-          rivers: new Uint8Array(gridData.grid.heights.length), // Empty rivers
+          heights,
+          biomes,
+          rivers,
+          rows: gridData.grid.rows,
+          cols: gridData.grid.cols,
+        };
+      } else if (gridData.version === 2) {
+        // Version 2 (legacy): moisture/temperature → convert to biomes
+        const heights = new Float32Array(gridData.grid.heights);
+        const moisture = new Uint8Array(gridData.grid.moisture);
+        const temperature = new Uint8Array(gridData.grid.temperature);
+        const rivers = new Uint8Array(gridData.grid.heights.length); // Empty rivers
+
+        const biomes = new Uint8Array(heights.length);
+        for (let i = 0; i < biomes.length; i++) {
+          biomes[i] = this.biomeResolver.getBiomeId(moisture[i], temperature[i]);
+        }
+
+        unifiedGrid = {
+          heights,
+          biomes,
+          rivers,
           rows: gridData.grid.rows,
           cols: gridData.grid.cols,
         };
       } else if (gridData.version === 1) {
-        // Version 1 (legacy): biomes format - convert to moisture/temperature
-        console.log('GlobalMapProcessing | Converting legacy format (v1) to v2...');
+        // Version 1 (legacy): biomes (no rivers)
         const heights = new Float32Array(gridData.grid.heights);
         const biomes = new Uint8Array(gridData.grid.biomes);
-        const moisture = new Uint8Array(biomes.length);
-        const temperature = new Uint8Array(biomes.length);
-        
-        // Convert each biome to moisture/temperature
-        for (let i = 0; i < biomes.length; i++) {
-          const params = this.biomeResolver.getParametersFromBiomeId(biomes[i]);
-          moisture[i] = params.moisture;
-          temperature[i] = params.temperature;
-        }
         
         unifiedGrid = {
           heights,
-          moisture,
-          temperature,
+          biomes,
           rivers: new Uint8Array(heights.length), // Empty rivers for v1
           rows: gridData.grid.rows,
           cols: gridData.grid.cols,
@@ -574,6 +623,13 @@ export class GlobalMapProcessing {
       } else {
         console.warn(`GlobalMapProcessing | Unsupported grid version: ${gridData.version}`);
         return null;
+      }
+
+      // Normalize biomes to enabled registry set (if registry is loaded)
+      if (unifiedGrid?.biomes?.length) {
+        for (let i = 0; i < unifiedGrid.biomes.length; i++) {
+          unifiedGrid.biomes[i] = this.biomeResolver.normalizeBiomeId(unifiedGrid.biomes[i]);
+        }
       }
 
       // Store in instance

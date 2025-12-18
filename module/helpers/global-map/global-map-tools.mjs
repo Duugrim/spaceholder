@@ -15,15 +15,10 @@ export class GlobalMapTools {
     this.savedSingleCellMode = false; // Save state when switching to rivers tool
     this.targetHeight = 50;
     
-    // New biome tools settings
-    this.modifyTemp = 0; // -3 to 3
-    this.modifyMoisture = 0; // -3 to 3
-    this.modifyTempEnabled = false;
-    this.modifyMoistureEnabled = false;
-    this.setTemp = 3; // 1-5
-    this.setMoisture = 3; // 1-6
-    this.setTempEnabled = false;
-    this.setMoistureEnabled = false;
+    // Biome tools settings (biomes are explicit IDs ordered by renderRank)
+    this.modifyBiomeDelta = 0; // -10..10 steps in biome list
+    this.modifyBiomeDeltaEnabled = false;
+    this.setBiomeId = this.processing?.biomeResolver?.getDefaultBiomeId?.() ?? 17;
     
     this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
     
@@ -45,10 +40,6 @@ export class GlobalMapTools {
     this.replaceSourceBiomeIds = new Set(); // Source biomes for replacement (multiple)
     this.replaceTargetBiomeId = null; // Target biome for replacement
     
-    // Temperature/moisture editing
-    this.tempOverlayTemp = null; // Temporary delta for temperature
-    this.tempOverlayMoisture = null; // Temporary delta for moisture
-
     // Brush state
     this.isBrushActive = false; // Whether brush is currently active and ready to paint
     
@@ -283,7 +274,7 @@ export class GlobalMapTools {
 
     const grid = this.renderer.currentGrid;
     const metadata = this.renderer.currentMetadata;
-    const { heights, moisture, temperature, rows, cols } = grid;
+    const { heights, biomes, moisture, temperature, rows, cols } = grid;
     const { cellSize, bounds } = metadata;
 
     // Convert world coords to grid coords
@@ -341,7 +332,7 @@ export class GlobalMapTools {
           const idx = row * cols + col;
 
           // Check filters before applying brush
-          if (!this._isCellPassesFilter(idx, heights, temperature, moisture)) {
+          if (!this._isCellPassesFilter(idx, heights, biomes, temperature, moisture)) {
             continue; // Skip this cell if it doesn't pass filter
           }
 
@@ -385,7 +376,7 @@ export class GlobalMapTools {
   commitOverlay() {
     if (!this.renderer.currentGrid || !this.tempOverlay) return;
 
-    const { heights, moisture, temperature, rows, cols } = this.renderer.currentGrid;
+    const { heights, biomes, moisture, temperature, rows, cols } = this.renderer.currentGrid;
     let { rivers } = this.renderer.currentGrid;
 
     // Initialize rivers array if it doesn't exist (for old saved maps)
@@ -405,25 +396,26 @@ export class GlobalMapTools {
     // Apply biome changes
     if (this.affectedCells.size > 0) {
       if (this.currentTool === 'modify-biome') {
-        // Modify: apply delta to temperature/moisture if enabled
-        for (const idx of this.affectedCells) {
-          if (this.modifyTempEnabled) {
-            const newTemp = temperature[idx] + this.modifyTemp;
-            temperature[idx] = Math.max(1, Math.min(5, newTemp));
-          }
-          if (this.modifyMoistureEnabled) {
-            const newMoisture = moisture[idx] + this.modifyMoisture;
-            moisture[idx] = Math.max(1, Math.min(6, newMoisture));
+        // Modify biome by shifting in renderRank-ordered list
+        if (this.modifyBiomeDeltaEnabled && this.modifyBiomeDelta !== 0 && biomes) {
+          const ordered = this.processing.biomeResolver.listBiomes().map(b => b.id);
+          const indexById = new Map();
+          for (let i = 0; i < ordered.length; i++) indexById.set(ordered[i], i);
+
+          for (const idx of this.affectedCells) {
+            const currentId = biomes[idx];
+            const currentIndex = indexById.get(currentId);
+            if (currentIndex === undefined) continue;
+
+            const nextIndex = Math.max(0, Math.min(ordered.length - 1, currentIndex + this.modifyBiomeDelta));
+            biomes[idx] = ordered[nextIndex];
           }
         }
       } else if (this.currentTool === 'set-biome') {
-        // Set: set absolute values if enabled
-        for (const idx of this.affectedCells) {
-          if (this.setTempEnabled) {
-            temperature[idx] = this.setTemp;
-          }
-          if (this.setMoistureEnabled) {
-            moisture[idx] = this.setMoisture;
+        // Set biome to selected ID
+        if (biomes) {
+          for (const idx of this.affectedCells) {
+            biomes[idx] = this.setBiomeId;
           }
         }
       } else if (this.currentTool === 'draw-river') {
@@ -557,7 +549,7 @@ export class GlobalMapTools {
     if (this.affectedCells.size > 0) {
       if (this.currentTool === 'modify-biome') {
         // Show delta as indicator
-        const delta = Math.abs(this.modifyTemp) + Math.abs(this.modifyMoisture);
+        const delta = this.modifyBiomeDeltaEnabled ? Math.abs(this.modifyBiomeDelta) : 0;
         for (const idx of this.affectedCells) {
           previewOverlay[idx] = delta > 0 ? delta : 0.1;
         }
@@ -753,9 +745,9 @@ export class GlobalMapTools {
     try {
       // Save grid to scene flags
       const gridSnapshot = {
+        version: 4,
         heights: Array.from(this.renderer.currentGrid.heights),
-        moisture: Array.from(this.renderer.currentGrid.moisture),
-        temperature: Array.from(this.renderer.currentGrid.temperature),
+        biomes: Array.from(this.renderer.currentGrid.biomes || new Uint8Array(this.renderer.currentGrid.heights.length)),
         rivers: Array.from(this.renderer.currentGrid.rivers || new Uint8Array(this.renderer.currentGrid.heights.length)),
         rows: this.renderer.currentGrid.rows,
         cols: this.renderer.currentGrid.cols,
@@ -1137,45 +1129,31 @@ export class GlobalMapTools {
           <div id="modify-biome-controls" style="margin-bottom: 10px;">
             <div style="margin-bottom: 8px;">
               <label style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="modify-temp-enabled" style="margin: 0;">
-                <span>Temperature:</span>
-                <span id="modify-temp-value" style="margin-left: auto; font-weight: bold;">0</span>
+                <input type="checkbox" id="modify-biome-delta-enabled" style="margin: 0;">
+                <span>Shift by Rank:</span>
+                <span id="modify-biome-delta-value" style="margin-left: auto; font-weight: bold;">0</span>
               </label>
-              <input type="range" id="modify-temp" min="-3" max="3" step="1" value="0" style="width: 100%; margin-top: 4px;">
+              <input type="range" id="modify-biome-delta" min="-10" max="10" step="1" value="0" style="width: 100%; margin-top: 4px;">
             </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="modify-moisture-enabled" style="margin: 0;">
-                <span>Moisture:</span>
-                <span id="modify-moisture-value" style="margin-left: auto; font-weight: bold;">0</span>
-              </label>
-              <input type="range" id="modify-moisture" min="-3" max="3" step="1" value="0" style="width: 100%; margin-top: 4px;">
+            <div style="font-size: 10px; color: #aaa; text-align: center;">
+              Positive = вверх (выше rank), negative = вниз
             </div>
           </div>
 
           <!-- Set Biome Controls -->
           <div id="set-biome-controls" style="margin-bottom: 10px; display: none;">
             <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="set-temp-enabled" style="margin: 0;">
-                <span>Temperature:</span>
-                <span id="set-temp-value" style="margin-left: auto; font-weight: bold;">3</span>
-              </label>
-              <input type="range" id="set-temp" min="1" max="5" step="1" value="3" style="width: 100%; margin-top: 4px;">
-            </div>
-            <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="set-moisture-enabled" style="margin: 0;">
-                <span>Moisture:</span>
-                <span id="set-moisture-value" style="margin-left: auto; font-weight: bold;">3</span>
-              </label>
-              <input type="range" id="set-moisture" min="1" max="6" step="1" value="3" style="width: 100%; margin-top: 4px;">
+              <label style="display: block; margin-bottom: 5px;">Biome:</label>
+              <select id="set-biome-select" style="width: 100%; padding: 5px;"></select>
             </div>
             
-            <!-- Biome Presets Matrix -->
+            <!-- Biome Palette -->
             <div style="margin-top: 10px;">
-              <label style="display: block; margin-bottom: 5px; font-size: 11px;">Biome Presets:</label>
+              <label style="display: block; margin-bottom: 5px; font-size: 11px;">Biome Palette:</label>
               <div id="biome-preset-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
+              <div style="font-size: 9px; color: #aaa; text-align: center;">
+                Click a biome swatch to select
+              </div>
             </div>
           </div>
           
@@ -1363,67 +1341,78 @@ export class GlobalMapTools {
       }
     });
 
-    // Generate biome preset matrix (used in Set Biome)
+    // Generate biome palette (used in Set Biome)
     const generateBiomeMatrix = () => {
+      const select = $('#set-biome-select');
       const matrix = $('#biome-preset-matrix');
+      
+      const biomes = this.processing.biomeResolver.listBiomes();
+      select.empty();
       matrix.empty();
       
-      // Matrix: 6 rows (moisture 6 to 1, top to bottom) x 5 columns (temperature 1 to 5, left to right)
-      for (let moisture = 6; moisture >= 1; moisture--) {
-        for (let temp = 1; temp <= 5; temp++) {
-          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
-          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
-          const colorHex = '#' + color.toString(16).padStart(6, '0');
-          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
-          
-          const cellStyles = {
-            'aspect-ratio': '1',
-            'cursor': 'pointer',
-            'border': '1px solid rgba(0,0,0,0.3)',
-            'border-radius': '2px',
-            'position': 'relative'
-          };
-          
-          // Add pattern or solid background
-          if (pattern) {
-            const patternColor = this._getPatternColor(pattern, color);
-            if (patternColor) {
-              // Diagonal stripes: base color with pattern color stripes
-              cellStyles['background'] = `repeating-linear-gradient(
-                45deg,
-                ${colorHex},
-                ${colorHex} 8px,
-                ${patternColor} 8px,
-                ${patternColor} 16px
-              )`;
-            } else {
-              cellStyles['background-color'] = colorHex;
-            }
+      for (const b of biomes) {
+        select.append(
+          $('<option></option>')
+            .attr('value', b.id)
+            .text(`${b.name} (ID:${b.id})`)
+        );
+      }
+
+      // Ensure current selection exists
+      if (!biomes.some(b => b.id === this.setBiomeId)) {
+        this.setBiomeId = this.processing.biomeResolver.getDefaultBiomeId();
+      }
+      select.val(this.setBiomeId);
+
+      for (const b of biomes) {
+        const biomeId = b.id;
+        const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+        const colorHex = '#' + color.toString(16).padStart(6, '0');
+        const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+        const isSelected = biomeId === this.setBiomeId;
+
+        const cellStyles = {
+          'aspect-ratio': '1',
+          'cursor': 'pointer',
+          'border': isSelected ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)',
+          'border-radius': '2px',
+          'box-shadow': isSelected ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none',
+          'position': 'relative'
+        };
+
+        // Add pattern or solid background (simple CSS preview)
+        if (pattern) {
+          const patternColor = this._getPatternColor(pattern, color);
+          if (patternColor) {
+            cellStyles['background'] = `repeating-linear-gradient(
+              45deg,
+              ${colorHex},
+              ${colorHex} 8px,
+              ${patternColor} 8px,
+              ${patternColor} 16px
+            )`;
           } else {
             cellStyles['background-color'] = colorHex;
           }
-          
-          const cell = $('<div></div>').css(cellStyles).attr({
-            'data-temp': temp,
-            'data-moisture': moisture,
-            'title': `T:${temp} M:${moisture}`
-          });
-          
-          cell.on('click', () => {
-            this.setTemp = temp;
-            this.setMoisture = moisture;
-            this.setTempEnabled = true;
-            this.setMoistureEnabled = true;
-            $('#set-temp').val(temp);
-            $('#set-temp-value').text(temp);
-            $('#set-temp-enabled').prop('checked', true);
-            $('#set-moisture').val(moisture);
-            $('#set-moisture-value').text(moisture);
-            $('#set-moisture-enabled').prop('checked', true);
-          });
-          
-          matrix.append(cell);
+        } else {
+          cellStyles['background-color'] = colorHex;
         }
+
+        const cell = $('<div></div>').css(cellStyles).attr({
+          'data-biome-id': biomeId,
+          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+        });
+
+        cell.on('click', () => {
+          this.setBiomeId = biomeId;
+          $('#set-biome-select').val(String(biomeId));
+
+          // Update selection highlight
+          $('#biome-preset-matrix').children().css('border', '1px solid rgba(0,0,0,0.3)').css('box-shadow', 'none');
+          cell.css('border', '2px solid #ffffff').css('box-shadow', '0 0 0 2px rgba(255,255,255,0.3) inset');
+        });
+
+        matrix.append(cell);
       }
     };
 
@@ -1431,63 +1420,61 @@ export class GlobalMapTools {
     this._generateHeightFilterBiomeMatrix = () => {
       const matrix = $('#height-filter-biome-matrix');
       matrix.empty();
-      // 6 rows (moisture 6..1) x 5 cols (temp 1..5)
-      for (let moisture = 6; moisture >= 1; moisture--) {
-        for (let temp = 1; temp <= 5; temp++) {
-          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
-          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
-          const colorHex = '#' + color.toString(16).padStart(6, '0');
-          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
-          const selected = this.heightFilterBiomeIds.has(biomeId);
-          
-          const cellStyles = {
-            'aspect-ratio': '1',
-            'cursor': 'pointer',
-            'border': selected ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)',
-            'border-radius': '2px',
-            'box-shadow': selected ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none',
-            'position': 'relative',
-            'min-width': '50px',
-            'min-height': '50px'
-          };
-          
-          // Add pattern or solid background
-          if (pattern) {
-            const patternColor = this._getPatternColor(pattern, color);
-            if (patternColor) {
-              // Diagonal stripes: base color with pattern color stripes
-              cellStyles['background'] = `repeating-linear-gradient(
-                45deg,
-                ${colorHex},
-                ${colorHex} 10px,
-                ${patternColor} 10px,
-                ${patternColor} 20px
-              )`;
-            } else {
-              cellStyles['background-color'] = colorHex;
-            }
+
+      const biomes = this.processing.biomeResolver.listBiomes();
+      for (const b of biomes) {
+        const biomeId = b.id;
+        const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+        const colorHex = '#' + color.toString(16).padStart(6, '0');
+        const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+        const selected = this.heightFilterBiomeIds.has(biomeId);
+
+        const cellStyles = {
+          'aspect-ratio': '1',
+          'cursor': 'pointer',
+          'border': selected ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)',
+          'border-radius': '2px',
+          'box-shadow': selected ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none',
+          'position': 'relative',
+          'min-width': '50px',
+          'min-height': '50px'
+        };
+
+        // Add pattern or solid background
+        if (pattern) {
+          const patternColor = this._getPatternColor(pattern, color);
+          if (patternColor) {
+            cellStyles['background'] = `repeating-linear-gradient(
+              45deg,
+              ${colorHex},
+              ${colorHex} 10px,
+              ${patternColor} 10px,
+              ${patternColor} 20px
+            )`;
           } else {
             cellStyles['background-color'] = colorHex;
           }
-          
-          const cell = $('<div></div>').css(cellStyles).attr({
-            'data-biome-id': biomeId,
-            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
-          });
-          
-          cell.on('click', () => {
-            if (this.heightFilterBiomeIds.has(biomeId)) {
-              this.heightFilterBiomeIds.delete(biomeId);
-            } else {
-              this.heightFilterBiomeIds.add(biomeId);
-            }
-            // Toggle style
-            const isSel = this.heightFilterBiomeIds.has(biomeId);
-            cell.css('border', isSel ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)');
-            cell.css('box-shadow', isSel ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none');
-          });
-          matrix.append(cell);
+        } else {
+          cellStyles['background-color'] = colorHex;
         }
+
+        const cell = $('<div></div>').css(cellStyles).attr({
+          'data-biome-id': biomeId,
+          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+        });
+
+        cell.on('click', () => {
+          if (this.heightFilterBiomeIds.has(biomeId)) {
+            this.heightFilterBiomeIds.delete(biomeId);
+          } else {
+            this.heightFilterBiomeIds.add(biomeId);
+          }
+          const isSel = this.heightFilterBiomeIds.has(biomeId);
+          cell.css('border', isSel ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)');
+          cell.css('box-shadow', isSel ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none');
+        });
+
+        matrix.append(cell);
       }
     };
 
@@ -1495,67 +1482,67 @@ export class GlobalMapTools {
     this._generateBiomeToolBiomeFilterMatrix = () => {
       const matrix = $('#biome-filter-biome-matrix');
       matrix.empty();
-      for (let moisture = 6; moisture >= 1; moisture--) {
-        for (let temp = 1; temp <= 5; temp++) {
-          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
-          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
-          const colorHex = '#' + color.toString(16).padStart(6, '0');
-          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
-          const excluded = this.biomeFilterExcludedIds.has(biomeId);
-          
-          const cellStyles = {
-            'aspect-ratio': '1',
-            'cursor': 'pointer',
-            'border': excluded ? '2px solid #ff6666' : '1px solid rgba(0,0,0,0.3)',
-            'border-radius': '2px',
-            'position': 'relative',
-            'min-width': '50px',
-            'min-height': '50px'
-          };
-          
-          // Add pattern or solid background
-          if (pattern) {
-            const patternColor = this._getPatternColor(pattern, color);
-            if (patternColor) {
-              // Diagonal stripes: base color with pattern color stripes
-              cellStyles['background'] = `repeating-linear-gradient(
-                45deg,
-                ${colorHex},
-                ${colorHex} 10px,
-                ${patternColor} 10px,
-                ${patternColor} 20px
-              )`;
-            } else {
-              cellStyles['background-color'] = colorHex;
-            }
+
+      const biomes = this.processing.biomeResolver.listBiomes();
+      for (const b of biomes) {
+        const biomeId = b.id;
+        const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+        const colorHex = '#' + color.toString(16).padStart(6, '0');
+        const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+        const excluded = this.biomeFilterExcludedIds.has(biomeId);
+
+        const cellStyles = {
+          'aspect-ratio': '1',
+          'cursor': 'pointer',
+          'border': excluded ? '2px solid #ff6666' : '1px solid rgba(0,0,0,0.3)',
+          'border-radius': '2px',
+          'position': 'relative',
+          'min-width': '50px',
+          'min-height': '50px'
+        };
+
+        // Add pattern or solid background
+        if (pattern) {
+          const patternColor = this._getPatternColor(pattern, color);
+          if (patternColor) {
+            cellStyles['background'] = `repeating-linear-gradient(
+              45deg,
+              ${colorHex},
+              ${colorHex} 10px,
+              ${patternColor} 10px,
+              ${patternColor} 20px
+            )`;
           } else {
             cellStyles['background-color'] = colorHex;
           }
-          
-          const cell = $('<div></div>').css(cellStyles).attr({
-            'data-biome-id': biomeId,
-            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
-          });
-          
-          // Add small X overlay when excluded
-          if (excluded) {
-            const overlay = $('<div></div>').css({
-              'position': 'absolute','inset':'0','display':'flex','align-items':'center','justify-content':'center','color':'#ffdddd','font-weight':'bold','text-shadow':'0 0 2px #000','font-size':'14px','background':'rgba(0,0,0,0.3)'
-            }).text('×');
-            cell.append(overlay);
-          }
-          
-          cell.on('click', () => {
-            if (this.biomeFilterExcludedIds.has(biomeId)) {
-              this.biomeFilterExcludedIds.delete(biomeId);
-            } else {
-              this.biomeFilterExcludedIds.add(biomeId);
-            }
-            // Regenerate to refresh overlays/styles
-            this._generateBiomeToolBiomeFilterMatrix();
-          });
-          matrix.append(cell);
+        } else {
+          cellStyles['background-color'] = colorHex;
         }
+
+        const cell = $('<div></div>').css(cellStyles).attr({
+          'data-biome-id': biomeId,
+          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+        });
+
+        // Add small X overlay when excluded
+        if (excluded) {
+          const overlay = $('<div></div>').css({
+            'position': 'absolute','inset':'0','display':'flex','align-items':'center','justify-content':'center','color':'#ffdddd','font-weight':'bold','text-shadow':'0 0 2px #000','font-size':'14px','background':'rgba(0,0,0,0.3)'
+          }).text('×');
+          cell.append(overlay);
+        }
+
+        cell.on('click', () => {
+          if (this.biomeFilterExcludedIds.has(biomeId)) {
+            this.biomeFilterExcludedIds.delete(biomeId);
+          } else {
+            this.biomeFilterExcludedIds.add(biomeId);
+          }
+          // Regenerate to refresh overlays/styles
+          this._generateBiomeToolBiomeFilterMatrix();
+        });
+
+        matrix.append(cell);
       }
     };
 
@@ -1564,60 +1551,59 @@ export class GlobalMapTools {
       const matrix = $('#replace-source-biome-matrix');
       matrix.empty();
       const selectedBiomes = this.replaceSourceBiomeIds;
-      
-      for (let moisture = 6; moisture >= 1; moisture--) {
-        for (let temp = 1; temp <= 5; temp++) {
-          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
-          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
-          const colorHex = '#' + color.toString(16).padStart(6, '0');
-          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
-          const isSelected = selectedBiomes.has(biomeId);
-          
-          const cellStyles = {
-            'aspect-ratio': '1',
-            'cursor': 'pointer',
-            'border': isSelected ? '2px solid #ffff00' : '1px solid rgba(0,0,0,0.3)',
-            'border-radius': '2px',
-            'position': 'relative',
-            'min-width': '40px',
-            'min-height': '40px'
-          };
-          
-          // Add pattern or solid background
-          if (pattern) {
-            const patternColor = this._getPatternColor(pattern, color);
-            if (patternColor) {
-              cellStyles['background'] = `repeating-linear-gradient(
-                45deg,
-                ${colorHex},
-                ${colorHex} 10px,
-                ${patternColor} 10px,
-                ${patternColor} 20px
-              )`;
-            } else {
-              cellStyles['background-color'] = colorHex;
-            }
+
+      const biomes = this.processing.biomeResolver.listBiomes();
+      for (const b of biomes) {
+        const biomeId = b.id;
+        const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+        const colorHex = '#' + color.toString(16).padStart(6, '0');
+        const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+        const isSelected = selectedBiomes.has(biomeId);
+
+        const cellStyles = {
+          'aspect-ratio': '1',
+          'cursor': 'pointer',
+          'border': isSelected ? '2px solid #ffff00' : '1px solid rgba(0,0,0,0.3)',
+          'border-radius': '2px',
+          'position': 'relative',
+          'min-width': '40px',
+          'min-height': '40px'
+        };
+
+        // Add pattern or solid background
+        if (pattern) {
+          const patternColor = this._getPatternColor(pattern, color);
+          if (patternColor) {
+            cellStyles['background'] = `repeating-linear-gradient(
+              45deg,
+              ${colorHex},
+              ${colorHex} 10px,
+              ${patternColor} 10px,
+              ${patternColor} 20px
+            )`;
           } else {
             cellStyles['background-color'] = colorHex;
           }
-          
-          const cell = $('<div></div>').css(cellStyles).attr({
-            'data-biome-id': biomeId,
-            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
-          });
-          
-          cell.on('click', () => {
-            if (this.replaceSourceBiomeIds.has(biomeId)) {
-              this.replaceSourceBiomeIds.delete(biomeId);
-            } else {
-              this.replaceSourceBiomeIds.add(biomeId);
-            }
-            this._generateReplaceSourceBiomeMatrix();
-            this.updateReplacePreview();
-          });
-          
-          matrix.append(cell);
+        } else {
+          cellStyles['background-color'] = colorHex;
         }
+
+        const cell = $('<div></div>').css(cellStyles).attr({
+          'data-biome-id': biomeId,
+          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+        });
+
+        cell.on('click', () => {
+          if (this.replaceSourceBiomeIds.has(biomeId)) {
+            this.replaceSourceBiomeIds.delete(biomeId);
+          } else {
+            this.replaceSourceBiomeIds.add(biomeId);
+          }
+          this._generateReplaceSourceBiomeMatrix();
+          this.updateReplacePreview();
+        });
+
+        matrix.append(cell);
       }
     };
 
@@ -1626,55 +1612,54 @@ export class GlobalMapTools {
       const matrix = $('#replace-target-biome-matrix');
       matrix.empty();
       const selectedBiome = this.replaceTargetBiomeId;
-      
-      for (let moisture = 6; moisture >= 1; moisture--) {
-        for (let temp = 1; temp <= 5; temp++) {
-          const biomeId = this.processing.biomeResolver.getBiomeId(moisture, temp, 20);
-          const color = this.processing.biomeResolver.getBiomeColor(biomeId);
-          const colorHex = '#' + color.toString(16).padStart(6, '0');
-          const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
-          const isSelected = selectedBiome === biomeId;
-          
-          const cellStyles = {
-            'aspect-ratio': '1',
-            'cursor': 'pointer',
-            'border': isSelected ? '2px solid #00ff00' : '1px solid rgba(0,0,0,0.3)',
-            'border-radius': '2px',
-            'position': 'relative',
-            'min-width': '40px',
-            'min-height': '40px'
-          };
-          
-          // Add pattern or solid background
-          if (pattern) {
-            const patternColor = this._getPatternColor(pattern, color);
-            if (patternColor) {
-              cellStyles['background'] = `repeating-linear-gradient(
-                45deg,
-                ${colorHex},
-                ${colorHex} 10px,
-                ${patternColor} 10px,
-                ${patternColor} 20px
-              )`;
-            } else {
-              cellStyles['background-color'] = colorHex;
-            }
+
+      const biomes = this.processing.biomeResolver.listBiomes();
+      for (const b of biomes) {
+        const biomeId = b.id;
+        const color = this.processing.biomeResolver.getBiomeColor(biomeId);
+        const colorHex = '#' + color.toString(16).padStart(6, '0');
+        const pattern = this.processing.biomeResolver.getBiomePattern(biomeId);
+        const isSelected = selectedBiome === biomeId;
+
+        const cellStyles = {
+          'aspect-ratio': '1',
+          'cursor': 'pointer',
+          'border': isSelected ? '2px solid #00ff00' : '1px solid rgba(0,0,0,0.3)',
+          'border-radius': '2px',
+          'position': 'relative',
+          'min-width': '40px',
+          'min-height': '40px'
+        };
+
+        // Add pattern or solid background
+        if (pattern) {
+          const patternColor = this._getPatternColor(pattern, color);
+          if (patternColor) {
+            cellStyles['background'] = `repeating-linear-gradient(
+              45deg,
+              ${colorHex},
+              ${colorHex} 10px,
+              ${patternColor} 10px,
+              ${patternColor} 20px
+            )`;
           } else {
             cellStyles['background-color'] = colorHex;
           }
-          
-          const cell = $('<div></div>').css(cellStyles).attr({
-            'data-biome-id': biomeId,
-            'title': `T:${temp} M:${moisture} (ID:${biomeId})`
-          });
-          
-          cell.on('click', () => {
-            this.replaceTargetBiomeId = biomeId;
-            this._generateReplaceTargetBiomeMatrix();
-          });
-          
-          matrix.append(cell);
+        } else {
+          cellStyles['background-color'] = colorHex;
         }
+
+        const cell = $('<div></div>').css(cellStyles).attr({
+          'data-biome-id': biomeId,
+          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+        });
+
+        cell.on('click', () => {
+          this.replaceTargetBiomeId = biomeId;
+          this._generateReplaceTargetBiomeMatrix();
+        });
+
+        matrix.append(cell);
       }
     };
 
@@ -1686,8 +1671,8 @@ export class GlobalMapTools {
       } else if (tool === 'set-biome') {
         $('#modify-biome-controls').hide();
         $('#set-biome-controls').show();
-        // Generate matrix if not already generated
-        if ($('#biome-preset-matrix').children().length === 0) {
+        // Generate palette/select if not already generated
+        if ($('#biome-preset-matrix').children().length === 0 || $('#set-biome-select').children().length === 0) {
           generateBiomeMatrix();
         }
       }
@@ -1769,44 +1754,25 @@ export class GlobalMapTools {
       this.updateBrushCursorGraphics();
     });
 
-    // Modify Biome controls
-    $('#modify-temp-enabled').on('change', (e) => {
-      this.modifyTempEnabled = e.target.checked;
+    // Modify Biome controls (shift by renderRank order)
+    $('#modify-biome-delta-enabled').on('change', (e) => {
+      this.modifyBiomeDeltaEnabled = e.target.checked;
     });
-    
-    $('#modify-temp').on('input', (e) => {
-      this.modifyTemp = parseInt(e.target.value);
-      $('#modify-temp-value').text(this.modifyTemp > 0 ? `+${this.modifyTemp}` : this.modifyTemp);
+
+    $('#modify-biome-delta').on('input', (e) => {
+      this.modifyBiomeDelta = parseInt(e.target.value);
+      $('#modify-biome-delta-value').text(this.modifyBiomeDelta > 0 ? `+${this.modifyBiomeDelta}` : this.modifyBiomeDelta);
     });
-    
-    $('#modify-moisture-enabled').on('change', (e) => {
-      this.modifyMoistureEnabled = e.target.checked;
-    });
-    
-    $('#modify-moisture').on('input', (e) => {
-      this.modifyMoisture = parseInt(e.target.value);
-      $('#modify-moisture-value').text(this.modifyMoisture > 0 ? `+${this.modifyMoisture}` : this.modifyMoisture);
-    });
-    
+
     // Set Biome controls
-    $('#set-temp-enabled').on('change', (e) => {
-      this.setTempEnabled = e.target.checked;
+    $('#set-biome-select').on('change', (e) => {
+      this.setBiomeId = parseInt(e.target.value);
+
+      // Update palette selection highlight
+      const matrix = $('#biome-preset-matrix');
+      matrix.children().css('border', '1px solid rgba(0,0,0,0.3)').css('box-shadow', 'none');
+      matrix.find(`[data-biome-id="${this.setBiomeId}"]`).css('border', '2px solid #ffffff').css('box-shadow', '0 0 0 2px rgba(255,255,255,0.3) inset');
     });
-    
-    $('#set-temp').on('input', (e) => {
-      this.setTemp = parseInt(e.target.value);
-      $('#set-temp-value').text(this.setTemp);
-    });
-    
-    $('#set-moisture-enabled').on('change', (e) => {
-      this.setMoistureEnabled = e.target.checked;
-    });
-    
-    $('#set-moisture').on('input', (e) => {
-      this.setMoisture = parseInt(e.target.value);
-      $('#set-moisture-value').text(this.setMoisture);
-    });
-    
     // Brush activation/deactivation
     $('#brush-toggle').on('click', () => {
       if (this.isBrushActive) {
@@ -2110,9 +2076,7 @@ export class GlobalMapTools {
           ui.notifications.warn('Select target biome');
           return;
         }
-        const targetParams = this.processing.biomeResolver.getParametersFromBiomeId(this.replaceTargetBiomeId);
-        criteria.targetTemp = targetParams.temperature;
-        criteria.targetMoisture = targetParams.moisture;
+        criteria.targetBiomeId = this.replaceTargetBiomeId;
       }
       
       this.applyReplaceByCombinedFilter(criteria);
@@ -2176,11 +2140,13 @@ export class GlobalMapTools {
    * @param {Uint8Array} moisture - Moisture array
    * @returns {boolean} True if cell should be affected by brush
    */
-  _isCellPassesFilter(idx, heights, temperature, moisture) {
+  _isCellPassesFilter(idx, heights, biomes, temperature = null, moisture = null) {
     const h = heights[idx];
-    const temp = temperature ? temperature[idx] : 0;
-    const moist = moisture ? moisture[idx] : 0;
-    const cellBiomeId = this.processing.biomeResolver.getBiomeId(moist, temp, h);
+
+    // Prefer explicit biome IDs; fall back to legacy moisture/temperature
+    const cellBiomeId = (biomes && biomes.length)
+      ? biomes[idx]
+      : this.processing.biomeResolver.getBiomeId(moisture ? moisture[idx] : 0, temperature ? temperature[idx] : 0);
 
     // Height-based tools: raise, lower, smooth, roughen, flatten
     const isHeightTool = ['raise', 'lower', 'smooth', 'roughen', 'flatten'].includes(this.currentTool);
@@ -2258,13 +2224,11 @@ export class GlobalMapTools {
   getAffectedCellsCount(criteria) {
     if (!this.renderer.currentGrid) return 0;
 
-    const { heights, temperature, moisture, rows, cols } = this.renderer.currentGrid;
+    const { heights, biomes, moisture, temperature } = this.renderer.currentGrid;
     let count = 0;
 
     for (let i = 0; i < heights.length; i++) {
       const h = heights[i];
-      const t = temperature ? temperature[i] : 0;
-      const m = moisture ? moisture[i] : 0;
 
       let matches = true;
 
@@ -2272,12 +2236,14 @@ export class GlobalMapTools {
       if (criteria.heightMin !== null && h < criteria.heightMin) matches = false;
       if (criteria.heightMax !== null && h > criteria.heightMax) matches = false;
 
+      const cellBiomeId = (biomes && biomes.length)
+        ? biomes[i]
+        : this.processing.biomeResolver.getBiomeId(moisture ? moisture[i] : 0, temperature ? temperature[i] : 0);
+
       // Check biome (single or multiple)
       if (criteria.biomeId !== null && criteria.biomeId !== undefined) {
-        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
         if (cellBiomeId !== criteria.biomeId) matches = false;
       } else if (criteria.biomeIds !== null && criteria.biomeIds !== undefined && criteria.biomeIds.size > 0) {
-        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
         if (!criteria.biomeIds.has(cellBiomeId)) matches = false;
       }
 
@@ -2325,28 +2291,27 @@ export class GlobalMapTools {
   /**
    * Replace all cells with specific biome
    * @param {number} sourceBiomeId - Biome ID to replace
-   * @param {number} targetTemp - New temperature
-   * @param {number} targetMoisture - New moisture
+   * @param {number} targetBiomeId - Biome ID to set
    * @returns {number} Number of cells modified
    */
-  applyReplaceByBiome(sourceBiomeId, targetTemp, targetMoisture) {
+  applyReplaceByBiome(sourceBiomeId, targetBiomeId) {
     if (!this.renderer.currentGrid) {
       ui.notifications.warn('No grid loaded');
       return 0;
     }
 
-    const { heights, temperature, moisture } = this.renderer.currentGrid;
+    const { biomes, moisture, temperature, heights } = this.renderer.currentGrid;
+    if (!biomes) {
+      ui.notifications.warn('No biomes array available');
+      return 0;
+    }
+
     let count = 0;
 
-    for (let i = 0; i < heights.length; i++) {
-      const h = heights[i];
-      const t = temperature ? temperature[i] : 0;
-      const m = moisture ? moisture[i] : 0;
-
-      const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
+    for (let i = 0; i < biomes.length; i++) {
+      const cellBiomeId = biomes[i] ?? this.processing.biomeResolver.getBiomeId(moisture ? moisture[i] : 0, temperature ? temperature[i] : 0);
       if (cellBiomeId === sourceBiomeId) {
-        if (temperature) temperature[i] = targetTemp;
-        if (moisture) moisture[i] = targetMoisture;
+        biomes[i] = targetBiomeId;
         count++;
       }
     }
@@ -2365,7 +2330,7 @@ export class GlobalMapTools {
 
   /**
    * Apply combined filter replacement (height AND/OR biome)
-   * @param {Object} criteria - {heightMin, heightMax, sourceBiomeId/sourceBiomeIds, targetTemp, targetMoisture, targetHeight}
+   * @param {Object} criteria - {heightMin, heightMax, sourceBiomeId/sourceBiomeIds, targetBiomeId, targetHeight}
    * @returns {number} Number of cells modified
    */
   applyReplaceByCombinedFilter(criteria) {
@@ -2374,13 +2339,11 @@ export class GlobalMapTools {
       return 0;
     }
 
-    const { heights, temperature, moisture } = this.renderer.currentGrid;
+    const { heights, biomes, moisture, temperature } = this.renderer.currentGrid;
     let count = 0;
 
     for (let i = 0; i < heights.length; i++) {
       const h = heights[i];
-      const t = temperature ? temperature[i] : 0;
-      const m = moisture ? moisture[i] : 0;
 
       let matches = true;
 
@@ -2392,12 +2355,14 @@ export class GlobalMapTools {
         if (h > criteria.heightMax) matches = false;
       }
 
+      const cellBiomeId = (biomes && biomes.length)
+        ? biomes[i]
+        : this.processing.biomeResolver.getBiomeId(moisture ? moisture[i] : 0, temperature ? temperature[i] : 0);
+
       // Check biome (single or multiple)
       if (matches && criteria.sourceBiomeId !== null && criteria.sourceBiomeId !== undefined) {
-        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
         if (cellBiomeId !== criteria.sourceBiomeId) matches = false;
       } else if (matches && criteria.sourceBiomeIds !== null && criteria.sourceBiomeIds !== undefined && criteria.sourceBiomeIds.size > 0) {
-        const cellBiomeId = this.processing.biomeResolver.getBiomeId(m, t, h);
         if (!criteria.sourceBiomeIds.has(cellBiomeId)) matches = false;
       }
 
@@ -2406,11 +2371,8 @@ export class GlobalMapTools {
         if (criteria.targetHeight !== null && criteria.targetHeight !== undefined) {
           heights[i] = criteria.targetHeight;
         }
-        if (criteria.targetTemp !== null && criteria.targetTemp !== undefined && temperature) {
-          temperature[i] = criteria.targetTemp;
-        }
-        if (criteria.targetMoisture !== null && criteria.targetMoisture !== undefined && moisture) {
-          moisture[i] = criteria.targetMoisture;
+        if (criteria.targetBiomeId !== null && criteria.targetBiomeId !== undefined && biomes) {
+          biomes[i] = criteria.targetBiomeId;
         }
         count++;
       }
@@ -2597,25 +2559,22 @@ export class GlobalMapTools {
     const moist = moisture ? moisture[idx] : null;
     const temp = temperature ? temperature[idx] : null;
 
-    // Get biome name and color from BiomeResolver
-    let biomeName = 'Unknown';
-    let biomeColor = 0x888888; // Default gray
-    if (moist !== null && temp !== null && this.processing?.biomeResolver) {
-      // Calculate biome ID from moisture, temperature, and height
-      const biomeId = this.processing.biomeResolver.getBiomeId(moist, temp, height);
-      const params = this.processing.biomeResolver.getParametersFromBiomeId(biomeId);
-      biomeName = params.name || `Biome ${biomeId}`;
-      
-      // Get biome color
-      biomeColor = this.processing.biomeResolver.getBiomeColor(biomeId);
-    }
+    // Resolve biome ID (prefer explicit biomes array; fallback to legacy moisture/temperature)
+    const resolver = this.processing?.biomeResolver;
+    const biomeId = (biomes && biomes.length)
+      ? biomes[idx]
+      : (resolver ? resolver.getBiomeId(moist ?? 0, temp ?? 0) : 0);
+
+    const biomeName = resolver ? resolver.getBiomeName(biomeId) : `Biome ${biomeId}`;
+    const biomeColor = resolver ? resolver.getBiomeColor(biomeId) : 0x888888;
+    const biomeRank = resolver ? resolver.getBiomeRank(biomeId) : 0;
 
     // Format color as hex string
     const colorHex = '#' + ('000000' + biomeColor.toString(16)).slice(-6).toUpperCase();
-    
+
     // Log to console with color styling
     console.log(
-      `%c${biomeName}%c (h=${height.toFixed(1)}, t=${temp ?? '?'}, m=${moist ?? '?'})`,
+      `%c${biomeName}%c (id=${biomeId}, rank=${biomeRank}, h=${height.toFixed(1)}, t=${temp ?? '?'}, m=${moist ?? '?'})`,
       `background-color: ${colorHex}; color: ${this._getContrastColor(biomeColor)}; padding: 2px 6px; border-radius: 3px; font-weight: bold;`,
       `color: inherit; padding: 2px 0;`
     );

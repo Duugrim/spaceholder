@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "defaultBiomeId": 17,
+  "biomes": [
+    { "id": 0, "renderRank": 11, "enabled": true },
+    { "id": 1, "renderRank": 12, "enabled": true },
+    { "id": 2, "renderRank": 13, "enabled": true },
+    { "id": 3, "renderRank": 14, "enabled": true },
+    { "id": 4, "renderRank": 15, "enabled": true },
+
+    { "id": 5, "renderRank": 151, "enabled": true },
+    { "id": 6, "renderRank": 152, "enabled": true },
+    { "id": 7, "renderRank": 153, "enabled": true },
+    { "id": 8, "renderRank": 154, "enabled": true },
+    { "id": 9, "renderRank": 155, "enabled": true },
+
+    { "id": 10, "renderRank": 141, "enabled": true },
+    { "id": 11, "renderRank": 142, "enabled": true },
+    { "id": 12, "renderRank": 143, "enabled": true },
+    { "id": 13, "renderRank": 144, "enabled": true },
+    { "id": 14, "renderRank": 145, "enabled": true },
+
+    { "id": 15, "renderRank": 131, "enabled": true },
+    { "id": 16, "renderRank": 132, "enabled": true },
+    { "id": 17, "renderRank": 133, "enabled": true },
+    { "id": 18, "renderRank": 134, "enabled": true },
+    { "id": 19, "renderRank": 135, "enabled": true },
+
+    { "id": 20, "renderRank": 121, "enabled": true },
+    { "id": 21, "renderRank": 122, "enabled": true },
+    { "id": 22, "renderRank": 123, "enabled": true },
+    { "id": 23, "renderRank": 124, "enabled": true },
+    { "id": 24, "renderRank": 125, "enabled": true },
+
+    { "id": 25, "renderRank": 111, "enabled": true },
+    { "id": 26, "renderRank": 112, "enabled": true },
+    { "id": 27, "renderRank": 113, "enabled": true },
+    { "id": 28, "renderRank": 114, "enabled": true },
+    { "id": 29, "renderRank": 115, "enabled": true }
+  ]
+}
