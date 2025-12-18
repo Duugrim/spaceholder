@@ -19,7 +19,13 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     form: {
       submitOnChange: true
     }
-  });
+  }, { inplace: false });
+
+  /** @override */
+  get title() {
+    // Хотим, чтобы в заголовке окна всегда было только имя (без префикса типа)
+    return this.document?.name ?? super.title;
+  }
   
   /**
    * Переопределяем _getHeaderControls для удаления дубликатов и неподходящих опций
@@ -411,6 +417,13 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     await super._onRender(context, options);
     const el = this.element;
 
+    // Profile image: open avatar file picker on click
+    // (в ActorSheetV2 data-edit="img" не всегда обрабатывается автоматически)
+    const profileHandler = this._onProfileImageClickBound ??= this._onProfileImageClick.bind(this);
+    el?.querySelectorAll('img.profile-img[data-edit], img.profile-img').forEach((img) => {
+      img.addEventListener('click', profileHandler);
+    });
+
     // Re-apply active tab on every render to ensure section classes are correct
     const hasAnyParts = !!(this.actor.system?.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
     const desiredTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? (hasAnyParts ? 'stats' : 'health');
@@ -768,6 +781,44 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
+   * Клик по портрету: открыть FilePicker для смены аватара
+   * @private
+   */
+  async _onProfileImageClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const imgEl = event.currentTarget;
+    const field = imgEl?.dataset?.edit || 'img';
+
+    // Если лист не редактируемый — просто показываем попап изображения
+    if (!this.isEditable) {
+      const src = foundry.utils.getProperty(this.document, field) ?? this.document?.img;
+      if (src && typeof ImagePopout === 'function') {
+        new ImagePopout(src, { title: this.document?.name ?? 'Image' }).render(true);
+      }
+      return;
+    }
+
+    const Picker = globalThis.FilePicker;
+    if (typeof Picker !== 'function') {
+      ui.notifications?.warn?.('FilePicker недоступен');
+      return;
+    }
+
+    const current = foundry.utils.getProperty(this.document, field) ?? this.document?.img ?? '';
+    const fp = new Picker({
+      type: 'image',
+      current,
+      callback: async (path) => {
+        await this.document.update({ [field]: path });
+      },
+    });
+
+    fp.render(true);
+  }
+
+  /**
    * Handle clickable rolls.
    * @param {Event} event   The originating click event
    * @private
@@ -847,7 +898,7 @@ export class SpaceHolderNPCSheet extends SpaceHolderBaseActorSheet {
 export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
     position: { width: 420, height: 'auto' },
-  });
+  }, { inplace: false });
 
   static PARTS = {
     body: { root: true, template: 'systems/spaceholder/templates/actor/actor-globalobject-sheet.hbs' },
@@ -865,6 +916,9 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Имена для отображения (как content-link в тексте Foundry)
     context.gLinkName = await this._resolveJournalName(context.system.gLink);
     context.gFactionName = await this._resolveJournalName(context.system.gFaction);
+
+    // Цвет фракции для подсветки интерфейса
+    context.factionColor = this._getFactionColorCss(context.system);
 
     return context;
   }
@@ -920,6 +974,59 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     }
 
     return doc?.name || uuid;
+  }
+
+  /**
+   * Получить CSS-цвет для подсветки (из InfluenceManager, либо детерминированный fallback)
+   * @private
+   */
+  _getFactionColorCss(system) {
+    const gFaction = String(system?.gFaction ?? '').trim();
+    const gSide = String(system?.gSide ?? '').trim();
+    const key = gFaction || (gSide && gSide !== 'neutral' ? gSide : '');
+    if (!key) return '';
+
+    const im = game?.spaceholder?.influenceManager;
+    const n = im?.getColorForSide?.(key);
+    if (typeof n === 'number') return `#${n.toString(16).padStart(6, '0')}`;
+
+    // Fallback: hash -> hue -> hex
+    const hue = this._hashStringToHue(key);
+    const hex = this._hslToHex(hue, 65, 50);
+    return `#${hex.toString(16).padStart(6, '0')}`;
+  }
+
+  /** @private */
+  _hashStringToHue(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash) % 360;
+  }
+
+  /** @private */
+  _hslToHex(h, s, l) {
+    const sat = (s ?? 0) / 100;
+    const lig = (l ?? 0) / 100;
+    const c = (1 - Math.abs(2 * lig - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = lig - c / 2;
+
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+
+    const to255 = (v) => Math.max(0, Math.min(255, Math.round((v + m) * 255)));
+    const rr = to255(r);
+    const gg = to255(g);
+    const bb = to255(b);
+    return (rr << 16) + (gg << 8) + bb;
   }
 
   /**

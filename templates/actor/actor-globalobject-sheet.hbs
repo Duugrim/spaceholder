@@ -1,10 +1,44 @@
-<form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off">
+<form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off" data-faction="{{system.gFaction}}" {{#if factionColor}}style="--faction-color: {{factionColor}};"{{/if}}>
 
   {{!-- Sheet Header --}}
   <header class="sheet-header">
     <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
     <div class="header-fields">
       <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Name"/></h1>
+
+      {{!-- Фракция под именем актёра --}}
+      <div class="form-group globalobject-faction">
+        <label for="system.gFaction">Фракция</label>
+        <div class="form-fields" style="flex-wrap: wrap;">
+          {{#if system.gFaction}}
+            <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
+            <a class="content-link" data-action="uuid-open" data-uuid="{{system.gFaction}}">
+              <i class="fa-solid fa-flag"></i> {{gFactionName}}
+            </a>
+            <button type="button" class="icon-btn" data-action="uuid-clear" data-field="system.gFaction">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          {{else}}
+            <input
+              type="text"
+              name="system.gFaction"
+              value="{{system.gFaction}}"
+              placeholder="Journal UUID"
+              data-action="uuid-drop"
+              data-field="system.gFaction"
+            />
+          {{/if}}
+
+          {{!-- Явный индикатор цвета (inline style, чтобы CSS не мог незаметно “съесть” подсветку) --}}
+          {{#if factionColor}}
+            <div
+              class="faction-color-preview"
+              title="{{factionColor}}"
+              style="display: block !important; flex: 0 0 100%; width: 100%; height: 8px; margin-top: 2px; border-radius: 4px; background: {{factionColor}} !important; border: 1px solid {{factionColor}} !important;"
+            ></div>
+          {{/if}}
+        </div>
+      </div>
     </div>
   </header>
 
@@ -43,29 +77,6 @@
             value="{{system.gLink}}"
             data-action="uuid-drop"
             data-field="system.gLink"
-          />
-        {{/if}}
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="system.gFaction">Фракция</label>
-      <div class="form-fields">
-        {{#if system.gFaction}}
-          <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
-          <a class="content-link" data-action="uuid-open" data-uuid="{{system.gFaction}}">
-            <i class="fa-solid fa-flag"></i> {{gFactionName}}
-          </a>
-          <button type="button" class="icon-btn" data-action="uuid-clear" data-field="system.gFaction">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        {{else}}
-          <input
-            type="text"
-            name="system.gFaction"
-            value="{{system.gFaction}}"
-            data-action="uuid-drop"
-            data-field="system.gFaction"
           />
         {{/if}}
       </div>

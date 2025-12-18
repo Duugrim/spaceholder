@@ -11,6 +11,7 @@
     },
     "SheetLabels": {
       "Actor": "SpaceHolder Actor Sheet",
+      "GlobalObject": "SpaceHolder Global Object Sheet",
       "Item": "SpaceHolder Item Sheet"
     },
     "Tabs": {
@@ -39,7 +40,8 @@
   "TYPES": {
     "Actor": {
       "character": "Character",
-      "npc": "NPC"
+      "npc": "NPC",
+      "globalobject": "Global Object"
     },
     "Item": {
       "item": "Item",
