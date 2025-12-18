@@ -104,6 +104,147 @@ async function showGlobalMapImportDialog(processing, renderer) {
 }
 
 /**
+ * Show dialog for baking current render into a background image
+ * @returns {Promise<{scale:number, mimeType:'image/webp'|'image/png', quality:number} | null>}
+ */
+async function showGlobalMapBakeDialog() {
+  const scene = canvas?.scene;
+  const renderer = canvas?.app?.renderer;
+
+  const sceneWidth = scene?.dimensions?.width;
+  const sceneHeight = scene?.dimensions?.height;
+  const maxSize = renderer?.texture?.maxSize || renderer?.gl?.getParameter(renderer.gl.MAX_TEXTURE_SIZE);
+
+  let maxSafeScale = null;
+  if (maxSize && sceneWidth && sceneHeight) {
+    maxSafeScale = Math.max(0.01, Math.min(maxSize / sceneWidth, maxSize / sceneHeight));
+  }
+
+  const maxSafeScaleRounded = maxSafeScale ? (Math.floor(maxSafeScale * 100) / 100) : null;
+
+  const defaultScale = (() => {
+    if (!maxSafeScaleRounded) return 2;
+    if (maxSafeScaleRounded >= 2) return 2;
+    if (maxSafeScaleRounded >= 1.5) return 1.5;
+    if (maxSafeScaleRounded > 1.05) return maxSafeScaleRounded;
+    return 1;
+  })();
+
+  const baseScaleOptions = [1, 1.5, 2, 3];
+  const scaleOptions = [...baseScaleOptions];
+  if (maxSafeScaleRounded && maxSafeScaleRounded > 1 && !scaleOptions.some(v => Math.abs(v - maxSafeScaleRounded) < 0.01)) {
+    scaleOptions.push(maxSafeScaleRounded);
+  }
+  scaleOptions.sort((a, b) => a - b);
+
+  const scaleOptionsHtml = scaleOptions.map((v) => {
+    const isMax = maxSafeScaleRounded && Math.abs(v - maxSafeScaleRounded) < 0.01;
+    const label = isMax ? `Максимум (${v}×)` : `${v}×`;
+    const selected = Math.abs(v - defaultScale) < 0.01 ? 'selected' : '';
+    return `<option value="${v}" ${selected}>${label}</option>`;
+  }).join('');
+
+  const maxInfo = (maxSize && maxSafeScaleRounded)
+    ? `<p class="notes">Максимум на этой видеокарте: <b>${maxSafeScaleRounded}×</b> (лимит текстуры: ${maxSize}px).</p>`
+    : '';
+
+  const content = `
+    <form>
+      <div class="form-group">
+        <label>Разрешение (множитель)</label>
+        <div class="form-fields">
+          <select name="scale">
+            ${scaleOptionsHtml}
+          </select>
+        </div>
+        <p class="notes">
+          При множителе &gt; 1 фон будет автоматически уменьшен (scale) так, чтобы совпасть с размерами сцены.
+        </p>
+        ${maxInfo}
+      </div>
+
+      <div class="form-group">
+        <label>Формат</label>
+        <div class="form-fields">
+          <select name="mimeType">
+            <option value="image/webp" selected>WebP (меньше размер)</option>
+            <option value="image/png">PNG (без потерь, но больше размер)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Качество WebP</label>
+        <div class="form-fields">
+          <input type="range" name="quality" min="0.70" max="1.00" step="0.01" value="0.92" style="flex: 1;">
+          <span class="global-map-webp-quality" style="min-width: 3em; text-align: right;">0.92</span>
+        </div>
+        <p class="notes">
+          PNG игнорирует этот параметр.
+        </p>
+      </div>
+    </form>
+  `;
+
+  return new Promise((resolve) => {
+    const dialog = new Dialog(
+      {
+        title: 'Запечь карту в фон сцены',
+        content,
+        buttons: {
+          bake: {
+            icon: '<i class="fas fa-check"></i>',
+            label: 'Запечь',
+            callback: (html) => {
+              const scaleRaw = html.find('select[name="scale"]').val();
+              const mimeTypeRaw = html.find('select[name="mimeType"]').val();
+              const qualityRaw = html.find('input[name="quality"]').val();
+
+              const scale = Math.max(0.1, Math.min(4, Number(scaleRaw) || 1));
+              const mimeType = mimeTypeRaw === 'image/png' ? 'image/png' : 'image/webp';
+              const quality = Math.max(0.7, Math.min(1, Number(qualityRaw) || 0.92));
+
+              resolve({ scale, mimeType, quality });
+            },
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: 'Отмена',
+            callback: () => resolve(null),
+          },
+        },
+        default: 'bake',
+        render: (html) => {
+          const qualityInput = html.find('input[name="quality"]');
+          const qualityLabel = html.find('.global-map-webp-quality');
+          const mimeTypeSelect = html.find('select[name="mimeType"]');
+
+          const syncQualityLabel = () => {
+            qualityLabel.text(qualityInput.val());
+          };
+
+          const syncQualityEnabled = () => {
+            const isWebp = mimeTypeSelect.val() === 'image/webp';
+            qualityInput.prop('disabled', !isWebp);
+            qualityLabel.css('opacity', isWebp ? '1' : '0.5');
+          };
+
+          qualityInput.on('input', syncQualityLabel);
+          mimeTypeSelect.on('change', syncQualityEnabled);
+
+          syncQualityLabel();
+          syncQualityEnabled();
+        },
+        close: () => resolve(null),
+      },
+      { width: 520 }
+    );
+
+    dialog.render(true);
+  });
+}
+
+/**
  * Register Global Map UI controls
  * @param {Object} controls - Scene controls object
  * @param {Object} spaceholder - game.spaceholder context
@@ -222,6 +363,122 @@ export function registerGlobalMapUI(controls, spaceholder) {
             ui.notifications.info('Карта загружена из файла');
           } else {
             ui.notifications.warn('Файл карты не найден');
+          }
+        },
+        button: true,
+      },
+
+      'bake-map-background': {
+        name: 'bake-map-background',
+        title: 'Запечь в фон сцены',
+        icon: 'fas fa-file-image',
+        onChange: async (isActive) => {
+          const scene = canvas.scene;
+          if (!scene) {
+            ui.notifications.warn('Нет активной сцены');
+            return;
+          }
+
+          if (!game.user?.isGM) {
+            ui.notifications.warn('Только ГМ может менять фон сцены');
+            return;
+          }
+
+          if (!spaceholder.globalMapRenderer?.currentGrid) {
+            ui.notifications.warn('Нет загруженной карты');
+            return;
+          }
+
+          const bakeOptions = await showGlobalMapBakeDialog();
+          if (!bakeOptions) {
+            return;
+          }
+
+          try {
+            ui.notifications.info('Экспорт карты в изображение...');
+
+            const requestedScale = bakeOptions.scale;
+            const { blob, width, height, scale: actualScale, maxSize } = await spaceholder.globalMapRenderer.exportToBlob({
+              mimeType: bakeOptions.mimeType,
+              quality: bakeOptions.quality,
+              scale: requestedScale,
+              allowDownscale: true,
+            });
+
+            if (Math.abs(actualScale - requestedScale) > 0.01) {
+              const maxInfo = maxSize ? ` (лимит текстуры: ${maxSize}px)` : '';
+              ui.notifications.warn(`Масштаб ограничен до ${actualScale.toFixed(2)}×${maxInfo}`);
+            }
+
+            const sceneSlug = scene.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const ext = bakeOptions.mimeType === 'image/png' ? 'png' : 'webp';
+            const fileName = `${sceneSlug}_${scene.id}_globalmap_${timestamp}_${actualScale.toFixed(2)}x.${ext}`;
+
+            const directory = `worlds/${game.world.id}/global-maps/renders`;
+
+            // Create directory if needed
+            try {
+              await foundry.applications.apps.FilePicker.implementation.createDirectory('data', directory, {});
+            } catch (err) {
+              // Directory might already exist
+            }
+
+            const file = new File([blob], fileName, { type: blob.type });
+            const response = await foundry.applications.apps.FilePicker.implementation.upload(
+              'data',
+              directory,
+              file,
+              {}
+            );
+
+            if (!response?.path) {
+              throw new Error('Upload failed');
+            }
+
+            // If the export is higher resolution, scale background down to keep scene size consistent.
+            const backgroundScale = 1 / Math.max(0.1, Number(actualScale) || 1);
+
+            // Store for reference
+            await scene.setFlag('spaceholder', 'globalMapBackground', {
+              src: response.path,
+              width,
+              height,
+              mimeType: blob.type,
+              exportScaleRequested: bakeOptions.scale,
+              exportScaleUsed: actualScale,
+              backgroundScale,
+              updatedAt: new Date().toISOString(),
+            });
+
+            // Apply as scene background (Foundry v11+)
+            try {
+              await scene.update({
+                'background.src': response.path,
+                'background.scaleX': backgroundScale,
+                'background.scaleY': backgroundScale,
+              });
+            } catch (e1) {
+              // Some Foundry versions prefer nested object updates
+              try {
+                console.warn('GlobalMapUI | Failed to set background.* paths, trying background object update:', e1);
+                await scene.update({
+                  background: {
+                    src: response.path,
+                    scaleX: backgroundScale,
+                    scaleY: backgroundScale,
+                  },
+                });
+              } catch (e2) {
+                console.warn('GlobalMapUI | Failed to set background via background object, falling back to img:', e2);
+                await scene.update({ img: response.path });
+              }
+            }
+
+            ui.notifications.info('Фон сцены обновлён');
+          } catch (error) {
+            console.error('GlobalMapUI | Bake failed:', error);
+            ui.notifications.error(`Не удалось запечь фон: ${error.message}`);
           }
         },
         button: true,

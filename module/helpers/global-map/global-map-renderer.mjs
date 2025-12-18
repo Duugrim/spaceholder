@@ -1780,6 +1780,153 @@ export class GlobalMapRenderer {
   }
 
   /**
+   * Export the current rendered map (PIXI container) to an image Blob.
+   * This exports the current render state (current modes, already-rendered graphics).
+   *
+   * @param {Object} [options]
+   * @param {number} [options.width] - Export width in pixels (defaults to active scene width)
+   * @param {number} [options.height] - Export height in pixels (defaults to active scene height)
+   * @param {number} [options.scale=1] - Scale factor (1 = full size)
+   * @param {'image/webp'|'image/png'} [options.mimeType='image/webp']
+   * @param {number} [options.quality=0.92] - WebP quality 0..1
+   * @returns {Promise<{blob: Blob, width: number, height: number}>}
+   */
+  async exportToBlob(options = {}) {
+    const scene = canvas?.scene;
+    if (!scene) {
+      throw new Error('No active scene');
+    }
+
+    if (!this.container) {
+      throw new Error('Renderer container not initialized');
+    }
+
+    const renderer = canvas?.app?.renderer;
+    if (!renderer) {
+      throw new Error('PIXI renderer not available');
+    }
+
+    const {
+      width = scene.dimensions?.width,
+      height = scene.dimensions?.height,
+      scale = 1,
+      mimeType = 'image/webp',
+      quality = 0.92,
+      allowDownscale = true,
+    } = options;
+
+    if (!width || !height) {
+      throw new Error('Scene dimensions not available');
+    }
+
+    let requestedScale = Math.max(0.05, Math.min(4, Number(scale) || 1));
+
+    // Guard against GPU texture size limits
+    const maxSize = renderer.texture?.maxSize || renderer.gl?.getParameter(renderer.gl.MAX_TEXTURE_SIZE);
+    if (maxSize) {
+      const maxScaleX = maxSize / width;
+      const maxScaleY = maxSize / height;
+      const maxSafeScale = Math.max(0.01, Math.min(maxScaleX, maxScaleY));
+
+      // Round down a bit to avoid floating-point edge cases
+      const maxSafeScaleRounded = Math.floor(maxSafeScale * 1000) / 1000;
+
+      if (requestedScale > maxSafeScaleRounded) {
+        if (!allowDownscale) {
+          const exportWidth = Math.max(1, Math.floor(width * requestedScale));
+          const exportHeight = Math.max(1, Math.floor(height * requestedScale));
+          throw new Error(`Export size ${exportWidth}x${exportHeight} exceeds max texture size ${maxSize}`);
+        }
+        requestedScale = maxSafeScaleRounded;
+      }
+    }
+
+    const exportScale = requestedScale;
+    const exportWidth = Math.max(1, Math.floor(width * exportScale));
+    const exportHeight = Math.max(1, Math.floor(height * exportScale));
+
+    if (maxSize && (exportWidth > maxSize || exportHeight > maxSize)) {
+      throw new Error(`Export size ${exportWidth}x${exportHeight} exceeds max texture size ${maxSize}`);
+    }
+
+    const rt = PIXI.RenderTexture.create({
+      width: exportWidth,
+      height: exportHeight,
+      resolution: 1,
+    });
+
+    // Temporarily detach from the canvas (to avoid pan/zoom transforms) and render in scene coordinates.
+    const originalParent = this.container.parent;
+    const originalVisible = this.container.visible;
+    const originalX = this.container.x;
+    const originalY = this.container.y;
+    const originalScaleX = this.container.scale.x;
+    const originalScaleY = this.container.scale.y;
+    const originalRotation = this.container.rotation;
+
+    const tempRoot = new PIXI.Container();
+
+    try {
+      this.container.visible = true;
+
+      if (originalParent) {
+        originalParent.removeChild(this.container);
+      }
+      tempRoot.addChild(this.container);
+
+      // Reset transform to predictable export space
+      this.container.x = 0;
+      this.container.y = 0;
+      this.container.rotation = 0;
+      this.container.scale.set(exportScale, exportScale);
+
+      renderer.render(this.container, { renderTexture: rt, clear: true });
+
+      const extract = renderer.plugins?.extract || renderer.extract;
+      if (!extract?.canvas) {
+        throw new Error('PIXI extract plugin not available');
+      }
+
+      const exportCanvas = extract.canvas(rt);
+
+      const blob = await new Promise((resolve, reject) => {
+        const encoderOptions = mimeType === 'image/webp' ? quality : undefined;
+        exportCanvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Failed to convert canvas to Blob'));
+        }, mimeType, encoderOptions);
+      });
+
+      return { blob, width: exportWidth, height: exportHeight, scale: exportScale, maxSize };
+    } finally {
+      try {
+        rt.destroy(true);
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        tempRoot.removeChild(this.container);
+      } catch (e) {
+        // ignore
+      }
+
+      if (originalParent) {
+        originalParent.addChild(this.container);
+        if (originalParent.sortableChildren) {
+          originalParent.sortChildren();
+        }
+      }
+
+      this.container.visible = originalVisible;
+      this.container.x = originalX;
+      this.container.y = originalY;
+      this.container.scale.set(originalScaleX, originalScaleY);
+      this.container.rotation = originalRotation;
+    }
+  }
+
+  /**
    * Normalize value to 0-1 range
    * @private
    */
