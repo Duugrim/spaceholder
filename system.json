@@ -12,10 +12,10 @@
                         "discord":  ".pizzaWizard"
                     }
                 ],
-    "url":  "Replace this with a link to your public repository",
+    "url":  "https://github.com/Duugrim/spaceholder",
     "license":  "LICENSE.txt",
     "readme":  "README.md",
-    "bugs":  "Replace this with a link to file issues or tickets",
+    "bugs":  "https://github.com/Duugrim/spaceholder/issues",
     "changelog":  "CHANGELOG.md",
     "media":  [
                   {
@@ -24,7 +24,7 @@
                       "thumbnail":  "systems/spaceholder/assets/anvil-impact.png"
                   }
               ],
-    "version":  "0.5.2",
+    "version":  "0.86",
     "compatibility":  {
                           "minimum":  13,
                           "verified":  "13"
@@ -49,8 +49,8 @@
 
                     ],
     "socket":  true,
-    "manifest":  "Replace this with a link to the /latest release system.json so people can receive updates after they\u0027ve installed the system",
-    "download":  "This must link to a .zip file of the current version",
+    "manifest":  "https://raw.githubusercontent.com/Duugrim/spaceholder/master/system.json",
+    "download":  "https://github.com/Duugrim/spaceholder/releases/download/v0.86/spaceholder-0.86.zip",
     "background":  "systems/spaceholder/assets/anvil-impact.png",
     "grid":  {
                  "distance":  1,
