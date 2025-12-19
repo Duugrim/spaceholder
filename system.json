@@ -24,7 +24,7 @@
                       "thumbnail":  "systems/spaceholder/assets/anvil-impact.png"
                   }
               ],
-    "version":  "0.86",
+    "version":  "0.87",
     "compatibility":  {
                           "minimum":  13,
                           "verified":  "13"
@@ -50,7 +50,7 @@
                     ],
     "socket":  true,
     "manifest":  "https://raw.githubusercontent.com/Duugrim/spaceholder/master/system.json",
-    "download":  "https://github.com/Duugrim/spaceholder/releases/download/v0.86/spaceholder-0.86.zip",
+    "download":  "https://github.com/Duugrim/spaceholder/releases/download/v0.87/spaceholder-0.87.zip",
     "background":  "systems/spaceholder/assets/anvil-impact.png",
     "grid":  {
                  "distance":  1,
