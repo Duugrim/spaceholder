@@ -1,0 +1,10 @@
+# Keep the Foundry release ZIP clean when building via `git archive`.
+# Files marked export-ignore will NOT be included in archives.
+
+release.ps1 export-ignore
+WARP.md export-ignore
+package.json export-ignore
+package-lock.json export-ignore
+src/ export-ignore
+basic-socket-test.js export-ignore
+GLOBAL_MAP_ARCHITECTURE.md export-ignore
