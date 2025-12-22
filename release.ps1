@@ -42,10 +42,11 @@ $newVersion = "0.$nextNumber"
 
 Write-Host "Next tag: $nextVersion" -ForegroundColor Yellow
 
-# N -> делаем только commit/tag/push (для бекапа), без релиза и без обновления system.json
-# y -> обновляем system.json (version/manifest/download) и создаём GitHub Release с ассетами
-$createRelease = Read-Host "Update system.json to version $newVersion and create GitHub Release? (y/N)"
-$shouldCreateRelease = $createRelease -eq "y"
+# По умолчанию (Enter) создаём GitHub Release и загружаем ассеты.
+# Чтобы пропустить релиз: n / no / нет
+$createRelease = Read-Host "Create GitHub Release for $nextVersion and upload assets? (Y/n)"
+$answer = ($createRelease + "").Trim().ToLowerInvariant()
+$shouldCreateRelease = -not (@("n", "no", "нет", "н") -contains $answer)
 
 $systemJsonPath = Join-Path $PSScriptRoot "system.json"
 
@@ -113,10 +114,8 @@ if ([string]::IsNullOrWhiteSpace($branch)) {
     throw "Could not determine current branch"
 }
 
-if ($didCommit) {
-    git push origin $branch
-    Assert-LastExitCode "git push origin $branch"
-}
+git push origin $branch
+Assert-LastExitCode "git push origin $branch"
 
 git push origin $nextVersion
 Assert-LastExitCode "git push origin $nextVersion"
@@ -124,13 +123,16 @@ Assert-LastExitCode "git push origin $nextVersion"
 Write-Host "Done! Pushed tag $nextVersion" -ForegroundColor Green
 
 if (-not $shouldCreateRelease) {
-    Write-Host "Skipping GitHub Release creation (system.json not updated)" -ForegroundColor Yellow
+    Write-Host "Skipping GitHub Release creation" -ForegroundColor Yellow
     exit 0
 }
 
 Write-Host "Creating release artifacts..." -ForegroundColor Cyan
 $zipFileName = "spaceholder.zip"
-$zipPath = Join-Path $PSScriptRoot $zipFileName
+
+# Create the archive outside the repository to avoid touching any tracked spaceholder.zip file.
+$tempDir = [System.IO.Path]::GetTempPath()
+$zipPath = Join-Path $tempDir $zipFileName
 
 if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force
@@ -154,7 +156,7 @@ Write-Host "Upload these files to the GitHub Release for ${nextVersion}:" -Foreg
 Write-Host "Creating/Updating GitHub Release..." -ForegroundColor Cyan
 
 # Если релиз уже существует — перезаливаем ассеты. Иначе — создаём новый релиз.
-gh release view $nextVersion -ErrorAction SilentlyContinue *> $null
+gh release view $nextVersion *> $null
 $releaseExists = ($LASTEXITCODE -eq 0)
 
 if (-not $releaseExists) {
