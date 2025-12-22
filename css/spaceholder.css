@@ -244,38 +244,16 @@
   margin: 0;
 }
 
-/* Global Object: подсветка по цвету фракции (Journal Folder color / fallback hash)
-   NOTE: используем selector через <form data-faction>, т.к. классы приложения в V2 могут быть не на form. */
-.spaceholder form[data-faction]:not([data-faction=""]) .sheet-header {
-  position: relative;
-  border-left: 6px solid var(--faction-color, #666);
-  padding-left: 8px;
-  padding-bottom: 8px;
-  box-shadow: inset 0 0 0 2px var(--faction-color, #666);
-  border-radius: 6px;
-}
-
-/* Яркая полоса снизу заголовка */
-.spaceholder form[data-faction]:not([data-faction=""]) .sheet-header::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 4px;
+/* Global Object: индикатор цвета фракции — компактный квадратик рядом с названием */
+.spaceholder .globalobject-faction .faction-color-swatch {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 2px;
   background: var(--faction-color, #666);
-  opacity: 0.9;
-}
-
-.spaceholder form[data-faction]:not([data-faction=""]) .sheet-header h1.charname {
-  border-bottom: 2px solid var(--faction-color, #666);
-}
-
-/* Рамка вокруг портрета — самый заметный индикатор */
-.spaceholder form[data-faction]:not([data-faction=""]) .sheet-header .profile-img {
-  border-radius: 6px;
-  outline: 2px solid var(--faction-color, #666);
-  outline-offset: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  flex: 0 0 auto;
 }
 
 .spaceholder.sheet.actor.globalobject .globalobject-faction {
@@ -291,10 +269,6 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.spaceholder form[data-faction]:not([data-faction=""]) .globalobject-faction .fa-flag {
-  color: var(--faction-color, #666);
 }
 
 .spaceholder .sheet-tabs {

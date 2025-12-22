@@ -555,15 +555,7 @@ export class GlobalMapRenderer {
       // Draw filled regions (default behavior)
       const graphics = new PIXI.Graphics();
       graphics.beginFill(color, 1.0);
-      for (const contour of smoothedContours) {
-        if (contour.length < 3) continue;
-
-        graphics.moveTo(contour[0].x, contour[0].y);
-        for (let i = 1; i < contour.length; i++) {
-          graphics.lineTo(contour[i].x, contour[i].y);
-        }
-        graphics.closePath();
-      }
+      this._drawContoursWithHoles(graphics, smoothedContours);
       graphics.endFill();
 
       this.container.addChild(graphics);
@@ -578,14 +570,7 @@ export class GlobalMapRenderer {
     // 1. Сначала рисуем заливку основным цветом
     const baseGraphics = new PIXI.Graphics();
     baseGraphics.beginFill(color, 1.0);
-    for (const contour of smoothedContours) {
-      if (contour.length < 3) continue;
-      baseGraphics.moveTo(contour[0].x, contour[0].y);
-      for (let i = 1; i < contour.length; i++) {
-        baseGraphics.lineTo(contour[i].x, contour[i].y);
-      }
-      baseGraphics.closePath();
-    }
+    this._drawContoursWithHoles(baseGraphics, smoothedContours);
     baseGraphics.endFill();
     this.container.addChild(baseGraphics);
     
@@ -607,14 +592,7 @@ export class GlobalMapRenderer {
     // 4. Маска для паттерна (та же форма биома)
     const mask = new PIXI.Graphics();
     mask.beginFill(0xFFFFFF);
-    for (const contour of smoothedContours) {
-      if (contour.length < 3) continue;
-      mask.moveTo(contour[0].x, contour[0].y);
-      for (let i = 1; i < contour.length; i++) {
-        mask.lineTo(contour[i].x, contour[i].y);
-      }
-      mask.closePath();
-    }
+    this._drawContoursWithHoles(mask, smoothedContours);
     mask.endFill();
     
     // 5. Рисуем паттерн согласно конфигурации
@@ -1241,6 +1219,252 @@ export class GlobalMapRenderer {
     }
 
     return smoothed;
+  }
+
+  /**
+   * Draw contour paths to Graphics, preserving holes (nested contours).
+   * Fixes cases when a biome fully surrounds another biome and would otherwise fill over it.
+   * @private
+   */
+  _drawContoursWithHoles(graphics, contours) {
+    if (!graphics || !contours || contours.length === 0) return;
+
+    const validContours = contours.filter(c => c && c.length >= 3);
+    if (validContours.length === 0) return;
+
+    if (validContours.length === 1) {
+      this._drawContourPath(graphics, validContours[0]);
+      return;
+    }
+
+    // PIXI hole shapes must be defined immediately after the shape they cut.
+    // So we must group holes by their parent contour (not just rely on depth ordering).
+    const hierarchy = this._buildContourHierarchy(validContours);
+
+    // Build children lists for hierarchy traversal
+    const children = hierarchy.map(() => []);
+    for (let i = 0; i < hierarchy.length; i++) {
+      const p = hierarchy[i].parent;
+      if (p !== -1) {
+        children[p].push(i);
+      }
+    }
+
+    // Deterministic ordering: larger roots first; smaller holes first
+    for (let i = 0; i < children.length; i++) {
+      children[i].sort((a, b) => hierarchy[a].area - hierarchy[b].area);
+    }
+
+    const roots = [];
+    for (let i = 0; i < hierarchy.length; i++) {
+      if (hierarchy[i].parent === -1) {
+        roots.push(i);
+      }
+    }
+    roots.sort((a, b) => hierarchy[b].area - hierarchy[a].area);
+
+    const drawSolidWithHoles = (idx) => {
+      const contour = hierarchy[idx]?.contour;
+      if (!contour || contour.length < 3) return;
+
+      // Draw the solid contour
+      this._drawContourPath(graphics, contour);
+
+      // Punch direct children as holes
+      const holeIndices = children[idx] || [];
+      for (const holeIdx of holeIndices) {
+        const holeContour = hierarchy[holeIdx]?.contour;
+        if (!holeContour || holeContour.length < 3) continue;
+
+        graphics.beginHole();
+        this._drawContourPath(graphics, holeContour);
+        graphics.endHole();
+      }
+
+      // Draw islands inside each hole (grandchildren), recursively
+      for (const holeIdx of holeIndices) {
+        const islandIndices = children[holeIdx] || [];
+        for (const islandIdx of islandIndices) {
+          drawSolidWithHoles(islandIdx);
+        }
+      }
+    };
+
+    for (const rootIdx of roots) {
+      drawSolidWithHoles(rootIdx);
+    }
+  }
+
+  /**
+   * Draw a single closed contour path.
+   * @private
+   */
+  _drawContourPath(graphics, contour) {
+    graphics.moveTo(contour[0].x, contour[0].y);
+    for (let i = 1; i < contour.length; i++) {
+      graphics.lineTo(contour[i].x, contour[i].y);
+    }
+    graphics.closePath();
+  }
+
+  /**
+   * Build contour hierarchy (nesting) to identify holes.
+   * @private
+   */
+  _buildContourHierarchy(contours) {
+    const items = contours.map(contour => ({
+      contour,
+      parent: -1,
+      area: this._calculatePolygonArea(contour),
+      bounds: this._getContourBounds(contour)
+    }));
+
+    const eps = 0.5;
+    const boundsContain = (outer, inner) => {
+      return inner.minX >= outer.minX - eps &&
+        inner.minY >= outer.minY - eps &&
+        inner.maxX <= outer.maxX + eps &&
+        inner.maxY <= outer.maxY + eps;
+    };
+
+    for (let i = 0; i < items.length; i++) {
+      let parent = -1;
+      let minArea = Infinity;
+
+      for (let j = 0; j < items.length; j++) {
+        if (i === j) continue;
+
+        // Parent must be larger than child
+        if (items[j].area <= items[i].area) continue;
+        if (!boundsContain(items[j].bounds, items[i].bounds)) continue;
+
+        if (this._isContourInsideContour(items[i].contour, items[j].contour)) {
+          if (items[j].area < minArea) {
+            minArea = items[j].area;
+            parent = j;
+          }
+        }
+      }
+
+      items[i].parent = parent;
+    }
+
+    return items;
+  }
+
+  /**
+   * Compute bounds of a contour.
+   * @private
+   */
+  _getContourBounds(contour) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    for (const p of contour) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    return { minX, minY, maxX, maxY };
+  }
+
+  /**
+   * Calculate polygon area (absolute).
+   * @private
+   */
+  _calculatePolygonArea(polygon) {
+    if (!polygon || polygon.length < 3) return 0;
+
+    let area = 0;
+    for (let i = 0; i < polygon.length; i++) {
+      const j = (i + 1) % polygon.length;
+      area += polygon[i].x * polygon[j].y;
+      area -= polygon[j].x * polygon[i].y;
+    }
+
+    return Math.abs(area / 2);
+  }
+
+  /**
+   * Check whether contour A is inside contour B.
+   * @private
+   */
+  _isContourInsideContour(contourA, contourB) {
+    const sampleCount = Math.min(5, contourA.length);
+    for (let i = 0; i < sampleCount; i++) {
+      if (!this._isPointInPolygonInclusive(contourA[i], contourB)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Point-in-polygon test (ray casting), treating boundary points as inside.
+   * @private
+   */
+  _isPointInPolygonInclusive(point, polygon, epsilon = 0.5) {
+    if (!point || !polygon || polygon.length < 3) return false;
+
+    // Boundary check (needed because contours may share borders exactly)
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      if (this._isPointOnSegment(point, polygon[j], polygon[i], epsilon)) return true;
+    }
+
+    // Ray casting
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x;
+      const yi = polygon[i].y;
+      const xj = polygon[j].x;
+      const yj = polygon[j].y;
+
+      const intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
+  }
+
+  /**
+   * Check if point lies on segment AB within epsilon.
+   * @private
+   */
+  _isPointOnSegment(point, a, b, epsilon = 0.5) {
+    const px = point.x;
+    const py = point.y;
+    const ax = a.x;
+    const ay = a.y;
+    const bx = b.x;
+    const by = b.y;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+
+    const abLenSq = abx * abx + aby * aby;
+    const epsSq = epsilon * epsilon;
+
+    // Degenerate segment
+    if (abLenSq === 0) {
+      const dx = px - ax;
+      const dy = py - ay;
+      return dx * dx + dy * dy <= epsSq;
+    }
+
+    const t = (apx * abx + apy * aby) / abLenSq;
+    if (t < 0 || t > 1) return false;
+
+    const closestX = ax + t * abx;
+    const closestY = ay + t * aby;
+    const dx = px - closestX;
+    const dy = py - closestY;
+
+    return dx * dx + dy * dy <= epsSq;
   }
 
   /**

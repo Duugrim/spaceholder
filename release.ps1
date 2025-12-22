@@ -145,7 +145,7 @@ Write-Host "Archive created: $zipFileName" -ForegroundColor Green
 $ghInstalled = Get-Command gh -ErrorAction SilentlyContinue
 if (-not $ghInstalled) {
     Write-Host "GitHub CLI (gh) not installed. Install it with: winget install GitHub.cli" -ForegroundColor Yellow
-    Write-Host "Upload these files to the GitHub Release for $nextVersion:" -ForegroundColor Yellow
+Write-Host "Upload these files to the GitHub Release for ${nextVersion}:" -ForegroundColor Yellow
     Write-Host "  $zipPath" -ForegroundColor Yellow
     Write-Host "  $systemJsonPath" -ForegroundColor Yellow
     exit 0

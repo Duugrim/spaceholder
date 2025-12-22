@@ -13,7 +13,13 @@
           {{#if system.gFaction}}
             <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
             <a class="content-link" data-action="uuid-open" data-uuid="{{system.gFaction}}">
-              <i class="fa-solid fa-flag"></i> {{gFactionName}}
+              <span
+                class="faction-color-swatch"
+                title="{{factionColor}}"
+                aria-hidden="true"
+                {{#if factionColor}}style="--faction-color: {{factionColor}};"{{/if}}
+              ></span>
+              {{gFactionName}}
             </a>
             <button type="button" class="icon-btn" data-action="uuid-clear" data-field="system.gFaction">
               <i class="fa-solid fa-xmark"></i>
@@ -27,15 +33,6 @@
               data-action="uuid-drop"
               data-field="system.gFaction"
             />
-          {{/if}}
-
-          {{!-- Явный индикатор цвета (inline style, чтобы CSS не мог незаметно “съесть” подсветку) --}}
-          {{#if factionColor}}
-            <div
-              class="faction-color-preview"
-              title="{{factionColor}}"
-              style="display: block !important; flex: 0 0 100%; width: 100%; height: 8px; margin-top: 2px; border-radius: 4px; background: {{factionColor}} !important; border: 1px solid {{factionColor}} !important;"
-            ></div>
           {{/if}}
         </div>
       </div>
