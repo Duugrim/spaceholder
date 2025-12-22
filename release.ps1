@@ -154,7 +154,7 @@ Write-Host "Upload these files to the GitHub Release for ${nextVersion}:" -Foreg
 Write-Host "Creating/Updating GitHub Release..." -ForegroundColor Cyan
 
 # Если релиз уже существует — перезаливаем ассеты. Иначе — создаём новый релиз.
-gh release view $nextVersion *> $null
+gh release view $nextVersion -ErrorAction SilentlyContinue *> $null
 $releaseExists = ($LASTEXITCODE -eq 0)
 
 if (-not $releaseExists) {
