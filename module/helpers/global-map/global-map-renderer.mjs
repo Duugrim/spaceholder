@@ -7,14 +7,35 @@ import { BiomeResolver } from './global-map-biome-resolver.mjs';
  */
 export class GlobalMapRenderer {
   constructor() {
-    this.container = null; // PIXI.Container for rendering
+    this.container = null; // Root PIXI.Container (added to canvas.primary)
+    this.mapLayer = null; // Biomes + heights live here
+    this.riversLayer = null; // Vector rivers live here
+    this.riverLabelsLayer = null; // River labels live here
+
     this.isVisible = false;
     this.currentGrid = null; // Reference to current grid being rendered
     this.currentMetadata = null;
+
     // Separate render modes for heights and biomes
     this.heightsMode = 'contours-bw'; // 'contours-bw', 'contours', 'cells', 'off'
     this.biomesMode = 'fancy'; // 'fancy', 'fancyDebug', 'cells', 'off'
+
     this.biomeResolver = new BiomeResolver(); // For dynamic biome determination
+
+    // Legacy (cell-mask) rivers are disabled by default (we use vector rivers instead)
+    this.legacyRiversEnabled = false;
+
+    // Vector rivers state (loaded from scene flags or set by tools)
+    this.vectorRiversData = null; // {version:1, settings:{labelMode,snapToEndpoints}, rivers:[...]}
+
+    // Hover label runtime
+    this._riverHoverHandler = null;
+    this._hoveredRiverId = null;
+    this._riverHoverLabel = null; // PIXI.Text
+
+    // Cached per-river render metadata
+    this._riverLabelAnchors = new Map(); // riverId -> {x,y}
+    this._riverBounds = new Map(); // riverId -> {minX,minY,maxX,maxY, pad}
   }
 
   /**
@@ -44,7 +65,21 @@ export class GlobalMapRenderer {
   async onCanvasReady() {
     console.log('GlobalMapRenderer | onCanvasReady');
     this.isVisible = false;
+
+    // Recreate container/layers for this canvas
     this.setupContainer();
+
+    // Reload rivers for the active scene (new scene = new flags)
+    this.vectorRiversData = null;
+    await this.loadVectorRiversFromScene();
+
+    // Hover labels for rivers (works outside of editing tools)
+    this._installRiverHoverHandler();
+
+    // If a grid is already rendered, redraw rivers on top
+    if (this.currentMetadata && this.vectorRiversData) {
+      this.renderVectorRivers(this.vectorRiversData, this.currentMetadata);
+    }
   }
 
   /**
@@ -60,15 +95,45 @@ export class GlobalMapRenderer {
 
     // Clear existing container
     if (this.container) {
-      this.container.destroy({ children: true });
+      try {
+        this.container.destroy({ children: true });
+      } catch (e) {
+        // ignore
+      }
     }
+
+    // Reset layer refs
+    this.container = null;
+    this.mapLayer = null;
+    this.riversLayer = null;
+    this.riverLabelsLayer = null;
 
     this.container = new PIXI.Container();
     this.container.name = 'globalMapContainer';
-    
+
+    // Ensure zIndex ordering works within this container
+    this.container.sortableChildren = true;
+
+    // Dedicated layers: map (biomes/heights) + rivers + labels
+    this.mapLayer = new PIXI.Container();
+    this.mapLayer.name = 'globalMapMapLayer';
+    this.mapLayer.zIndex = 0;
+
+    this.riversLayer = new PIXI.Container();
+    this.riversLayer.name = 'globalMapRiversLayer';
+    this.riversLayer.zIndex = 2000;
+
+    this.riverLabelsLayer = new PIXI.Container();
+    this.riverLabelsLayer.name = 'globalMapRiverLabelsLayer';
+    this.riverLabelsLayer.zIndex = 2100;
+
+    this.container.addChild(this.mapLayer);
+    this.container.addChild(this.riversLayer);
+    this.container.addChild(this.riverLabelsLayer);
+
     // Устанавливаем высокий zIndex, чтобы быть поверх фона, но под токенами
     this.container.zIndex = 1000;
-    
+
     primaryLayer.addChild(this.container);
     
     // Включаем сортировку по zIndex для primary layer
@@ -131,13 +196,13 @@ export class GlobalMapRenderer {
     this.currentGrid = gridData;
     this.currentMetadata = metadata;
 
-    // Make sure container exists
-    if (!this.container) {
+    // Make sure container/layers exist
+    if (!this.container || !this.mapLayer || !this.riversLayer || !this.riverLabelsLayer) {
       this.setupContainer();
     }
 
-    // Clear previous rendering
-    this.container.removeChildren();
+    // Clear previous map rendering (keep rivers/labels/overlays)
+    this.mapLayer.removeChildren();
 
     // Render biomes layer
     if (this.biomesMode !== 'off') {
@@ -149,9 +214,19 @@ export class GlobalMapRenderer {
       this._renderHeightsLayer(gridData, metadata);
     }
 
-    // Render rivers layer (always on top)
-    if (gridData.rivers) {
+    // Legacy rivers layer (cell-mask) is disabled by default
+    if (this.legacyRiversEnabled && gridData.rivers) {
       this._renderRiversLayer(gridData, metadata);
+    }
+
+    // Vector rivers (new system)
+    if (this.vectorRiversData === null) {
+      await this.loadVectorRiversFromScene();
+    }
+    if (this.vectorRiversData) {
+      this.renderVectorRivers(this.vectorRiversData, metadata);
+    } else {
+      this.clearVectorRivers();
     }
 
     this.isVisible = true;
@@ -558,7 +633,7 @@ export class GlobalMapRenderer {
       this._drawContoursWithHoles(graphics, smoothedContours);
       graphics.endFill();
 
-      this.container.addChild(graphics);
+      this.mapLayer.addChild(graphics);
     }
   }
 
@@ -572,7 +647,7 @@ export class GlobalMapRenderer {
     baseGraphics.beginFill(color, 1.0);
     this._drawContoursWithHoles(baseGraphics, smoothedContours);
     baseGraphics.endFill();
-    this.container.addChild(baseGraphics);
+    this.mapLayer.addChild(baseGraphics);
     
     // 2. Вычисляем реальный bounding box биома из контуров
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -654,7 +729,7 @@ export class GlobalMapRenderer {
     // 7. Добавляем всё на сцену
     patternContainer.addChild(mask);
     patternContainer.addChild(pattern);
-    this.container.addChild(patternContainer);
+    this.mapLayer.addChild(patternContainer);
   }
 
   /**
@@ -1073,7 +1148,7 @@ export class GlobalMapRenderer {
       graphics.closePath();
     }
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
   }
 
   /**
@@ -1131,7 +1206,7 @@ export class GlobalMapRenderer {
     }
     graphics.endFill();
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
   }
 
   /**
@@ -1498,7 +1573,7 @@ export class GlobalMapRenderer {
       }
     }
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
   }
 
   /**
@@ -1596,7 +1671,7 @@ export class GlobalMapRenderer {
       }
     }
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
   }
 
   /**
@@ -1648,7 +1723,7 @@ export class GlobalMapRenderer {
       }
     }
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
     console.log('GlobalMapRenderer | ✓ Biome base layer rendered');
   }
 
@@ -1783,7 +1858,7 @@ export class GlobalMapRenderer {
     // Draw slope direction marks (hachures)
     this._drawSlopeMarks(graphics, segments, heights, rows, cols, bounds, cellSize, 0x000000);
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
   }
 
   /**
@@ -1812,7 +1887,7 @@ export class GlobalMapRenderer {
     // Draw slope direction marks (hachures)
     this._drawSlopeMarks(graphics, segments, heights, rows, cols, bounds, cellSize, color);
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
   }
 
   /**
@@ -1988,7 +2063,7 @@ export class GlobalMapRenderer {
       }
     }
 
-    this.container.addChild(graphics);
+    this.mapLayer.addChild(graphics);
   }
 
   /**
@@ -2028,8 +2103,18 @@ export class GlobalMapRenderer {
    * Clear rendering
    */
   clear() {
-    if (this.container) {
-      this.container.removeChildren();
+    if (!this.container) return;
+
+    try {
+      this.mapLayer?.removeChildren();
+      this.riversLayer?.removeChildren();
+      this.riverLabelsLayer?.removeChildren();
+
+      // If layers are missing for some reason, fall back to clearing root
+      if (!this.mapLayer || !this.riversLayer || !this.riverLabelsLayer) {
+        this.container.removeChildren();
+      }
+    } finally {
       this.isVisible = false;
       console.log('GlobalMapRenderer | Cleared');
     }
@@ -2122,6 +2207,9 @@ export class GlobalMapRenderer {
 
     const tempRoot = new PIXI.Container();
 
+    // Hover labels should not end up in exported images
+    const originalHoverLabelVisible = this._riverHoverLabel?.visible;
+
     try {
       this.container.visible = true;
 
@@ -2135,6 +2223,10 @@ export class GlobalMapRenderer {
       this.container.y = 0;
       this.container.rotation = 0;
       this.container.scale.set(exportScale, exportScale);
+
+      if (this._riverHoverLabel) {
+        this._riverHoverLabel.visible = false;
+      }
 
       renderer.render(this.container, { renderTexture: rt, clear: true });
 
@@ -2179,6 +2271,10 @@ export class GlobalMapRenderer {
       this.container.y = originalY;
       this.container.scale.set(originalScaleX, originalScaleY);
       this.container.rotation = originalRotation;
+
+      if (this._riverHoverLabel && typeof originalHoverLabelVisible === 'boolean') {
+        this._riverHoverLabel.visible = originalHoverLabelVisible;
+      }
     }
   }
 
@@ -2189,6 +2285,444 @@ export class GlobalMapRenderer {
   _normalizeValue(value, min, max) {
     if (max === min) return 0.5;
     return (value - min) / (max - min);
+  }
+
+  /**
+   * Load vector rivers data from the active scene flags.
+   * This is the new (non-grid) rivers system.
+   */
+  async loadVectorRiversFromScene(scene = canvas?.scene) {
+    try {
+      const raw = scene?.getFlag?.('spaceholder', 'globalMapRivers');
+      this.vectorRiversData = this._normalizeVectorRiversData(raw);
+      return this.vectorRiversData;
+    } catch (e) {
+      console.warn('GlobalMapRenderer | Failed to load globalMapRivers flag, using empty rivers', e);
+      this.vectorRiversData = this._normalizeVectorRiversData(null);
+      return this.vectorRiversData;
+    }
+  }
+
+  /**
+   * Set vector rivers data in memory (used by tools while editing).
+   */
+  setVectorRiversData(data, metadata = null) {
+    this.vectorRiversData = this._normalizeVectorRiversData(data);
+
+    const md = metadata || this.currentMetadata;
+    if (md) {
+      this.renderVectorRivers(this.vectorRiversData, md);
+    }
+  }
+
+  /**
+   * Clear rendered vector rivers (graphics + labels).
+   */
+  clearVectorRivers() {
+    try {
+      this.riversLayer?.removeChildren();
+      this.riverLabelsLayer?.removeChildren();
+    } catch (e) {
+      // ignore
+    }
+
+    this._riverLabelAnchors.clear();
+    this._riverBounds.clear();
+    this._hoveredRiverId = null;
+    this._riverHoverLabel = null;
+  }
+
+  /**
+   * Normalize persisted vector rivers structure.
+   * @private
+   */
+  _normalizeVectorRiversData(data) {
+    const defaults = {
+      version: 1,
+      settings: {
+        labelMode: 'hover',
+        snapToEndpoints: true,
+      },
+      rivers: [],
+    };
+
+    if (!data || typeof data !== 'object') {
+      return foundry?.utils?.duplicate ? foundry.utils.duplicate(defaults) : JSON.parse(JSON.stringify(defaults));
+    }
+
+    const settingsRaw = (data.settings && typeof data.settings === 'object') ? data.settings : {};
+    const labelMode = ['off', 'hover', 'always'].includes(settingsRaw.labelMode) ? settingsRaw.labelMode : 'hover';
+    const snapToEndpoints = settingsRaw.snapToEndpoints === undefined ? true : !!settingsRaw.snapToEndpoints;
+
+    const riversRaw = Array.isArray(data.rivers) ? data.rivers : [];
+
+    const normalizePoint = (p) => {
+      if (!p || typeof p !== 'object') return null;
+      const x = Number(p.x);
+      const y = Number(p.y);
+      const widthRaw = (p.width !== undefined) ? p.width : p.w;
+      const width = Number(widthRaw);
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+      // No hard limits: just ensure it's a finite positive number; fall back to a sane default.
+      const safeWidth = Number.isFinite(width) && width > 0 ? width : 24;
+
+      return { x, y, width: safeWidth };
+    };
+
+    const rivers = riversRaw
+      .filter(r => r && typeof r === 'object')
+      .map((r, i) => {
+        const id = (typeof r.id === 'string' && r.id.trim().length) ? r.id.trim() : `river_${i}_${Math.random().toString(36).slice(2, 8)}`;
+        const name = (typeof r.name === 'string' && r.name.trim().length) ? r.name.trim() : `River ${i + 1}`;
+        const pointsRaw = Array.isArray(r.points) ? r.points : [];
+        const points = pointsRaw.map(normalizePoint).filter(Boolean);
+
+        return { id, name, points };
+      });
+
+    return {
+      version: Number(data.version) || 1,
+      settings: { labelMode, snapToEndpoints },
+      rivers,
+    };
+  }
+
+  /**
+   * Render vector rivers on top of the map.
+   * @param {Object} riversData - normalized rivers data
+   */
+  renderVectorRivers(riversData = this.vectorRiversData, metadata = this.currentMetadata) {
+    if (!this.riversLayer || !this.riverLabelsLayer) return;
+
+    // Clear previous rivers render
+    this.riversLayer.removeChildren();
+    this.riverLabelsLayer.removeChildren();
+    this._riverLabelAnchors.clear();
+    this._riverBounds.clear();
+    this._hoveredRiverId = null;
+    this._riverHoverLabel = null;
+
+    const rivers = riversData?.rivers || [];
+    if (!Array.isArray(rivers) || rivers.length === 0) return;
+
+    const labelMode = riversData?.settings?.labelMode || 'hover';
+
+    const riverGraphics = new PIXI.Graphics();
+    riverGraphics.name = 'globalMapVectorRiversGraphics';
+
+    // Default river color: match "Океан" biome color so mouths blend without special logic
+    const oceanBiomeId = this.biomeResolver?.getBiomeId?.(6, 3) ?? 2; // moisture=6 (ocean), temperature=3 (temperate)
+    const defaultColor = this.biomeResolver?.getBiomeColor?.(oceanBiomeId) ?? 0x1A4780;
+
+    for (const river of rivers) {
+      const pts = Array.isArray(river?.points) ? river.points : [];
+      if (pts.length < 2) continue;
+
+      const { bounds, maxWidth } = this._computeRiverBounds(pts);
+      const pad = maxWidth / 2 + 10;
+      this._riverBounds.set(river.id, { ...bounds, pad });
+
+      const anchor = this._computePolylineMidpoint(pts);
+      if (anchor) {
+        this._riverLabelAnchors.set(river.id, anchor);
+      }
+
+      this._drawVectorRiverStamped(riverGraphics, pts, river.color ?? defaultColor);
+
+      if (labelMode === 'always' && anchor && river?.name) {
+        const text = this._createRiverLabelText(String(river.name));
+        text.position.set(anchor.x, anchor.y);
+        this.riverLabelsLayer.addChild(text);
+      }
+    }
+
+    this.riversLayer.addChild(riverGraphics);
+
+    // Hover label
+    if (labelMode === 'hover') {
+      this._riverHoverLabel = this._createRiverLabelText('');
+      this._riverHoverLabel.visible = false;
+      this.riverLabelsLayer.addChild(this._riverHoverLabel);
+    }
+  }
+
+  /**
+   * Install hover handler for showing river names.
+   * @private
+   */
+  _installRiverHoverHandler() {
+    if (!canvas?.stage) return;
+
+    // Remove previous handler
+    if (this._riverHoverHandler) {
+      try {
+        canvas.stage.off('pointermove', this._riverHoverHandler);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    this._riverHoverHandler = (event) => {
+      try {
+        this._handleRiverHover(event);
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    canvas.stage.on('pointermove', this._riverHoverHandler);
+  }
+
+  /**
+   * Handle pointer move for hover labels.
+   * @private
+   */
+  _handleRiverHover(event) {
+    const labelMode = this.vectorRiversData?.settings?.labelMode || 'hover';
+    if (labelMode !== 'hover') {
+      if (this._riverHoverLabel) this._riverHoverLabel.visible = false;
+      return;
+    }
+
+    if (!this.isVisible || !this._riverHoverLabel) {
+      return;
+    }
+
+    const rivers = this.vectorRiversData?.rivers || [];
+    if (!Array.isArray(rivers) || rivers.length === 0) {
+      this._riverHoverLabel.visible = false;
+      return;
+    }
+
+    const pos = event?.data?.getLocalPosition?.(canvas.stage);
+    if (!pos) return;
+
+    const hit = this._findNearestRiverHit(pos.x, pos.y, rivers);
+    if (!hit) {
+      this._riverHoverLabel.visible = false;
+      this._hoveredRiverId = null;
+      return;
+    }
+
+    const river = rivers.find(r => r?.id === hit.riverId);
+    const anchor = this._riverLabelAnchors.get(hit.riverId);
+
+    if (!river?.name || !anchor) {
+      this._riverHoverLabel.visible = false;
+      this._hoveredRiverId = null;
+      return;
+    }
+
+    this._hoveredRiverId = hit.riverId;
+    this._riverHoverLabel.text = String(river.name);
+    this._riverHoverLabel.position.set(anchor.x, anchor.y);
+    this._riverHoverLabel.visible = true;
+  }
+
+  /**
+   * Create PIXI.Text for river labels.
+   * @private
+   */
+  _createRiverLabelText(text) {
+    const style = new PIXI.TextStyle({
+      fontFamily: 'Signika',
+      fontSize: 18,
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+
+    const t = new PIXI.Text(text, style);
+    t.name = 'globalMapRiverLabel';
+    if (t.anchor?.set) t.anchor.set(0.5);
+    return t;
+  }
+
+  /**
+   * Draw a vector river by stamping overlapping circles along each segment.
+   * This approach avoids gaps on joins and supports variable width.
+   * @private
+   */
+  _drawVectorRiverStamped(graphics, points, color) {
+    if (!graphics || !points || points.length < 2) return;
+
+    // Rivers should be opaque (0% transparency)
+    graphics.beginFill(color, 1.0);
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i];
+      const p1 = points[i + 1];
+
+      const x0 = p0.x;
+      const y0 = p0.y;
+      const x1 = p1.x;
+      const y1 = p1.y;
+
+      const w0 = Number.isFinite(p0.width) ? p0.width : 24;
+      const w1 = Number.isFinite(p1.width) ? p1.width : w0;
+
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len = Math.sqrt(dx * dx + dy * dy);
+
+      // Degenerate segment: just stamp once
+      if (len < 0.001) {
+        const r = Math.max(0.5, w0 / 2);
+        graphics.drawCircle(x0, y0, r);
+        continue;
+      }
+
+      const r0 = Math.max(0.5, w0 / 2);
+      const r1 = Math.max(0.5, w1 / 2);
+
+      // Stamp density:
+      // Previously we used avg radius -> if width changes a lot, avg gets large and thin parts become under-sampled.
+      // Use the minimum radius to guarantee enough overlap across the whole segment.
+      const minR = Math.min(r0, r1);
+      const step = Math.max(1, minR * 0.75);
+      const steps = Math.max(1, Math.ceil(len / step));
+
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        const x = x0 + dx * t;
+        const y = y0 + dy * t;
+        const r = r0 * (1 - t) + r1 * t;
+        graphics.drawCircle(x, y, r);
+      }
+    }
+
+    graphics.endFill();
+  }
+
+  /**
+   * Compute bounding box and max width for a river polyline.
+   * @private
+   */
+  _computeRiverBounds(points) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let maxWidth = 0;
+
+    for (const p of points) {
+      if (!p) continue;
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+      if (Number.isFinite(p.width) && p.width > maxWidth) maxWidth = p.width;
+    }
+
+    if (!Number.isFinite(minX)) {
+      minX = minY = maxX = maxY = 0;
+    }
+
+    return { bounds: { minX, minY, maxX, maxY }, maxWidth };
+  }
+
+  /**
+   * Compute midpoint (by length) of a polyline.
+   * @private
+   */
+  _computePolylineMidpoint(points) {
+    if (!points || points.length < 2) return null;
+
+    // Total length
+    let total = 0;
+    const segLens = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      const dx = points[i + 1].x - points[i].x;
+      const dy = points[i + 1].y - points[i].y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      segLens.push(len);
+      total += len;
+    }
+
+    if (total < 0.001) {
+      return { x: points[0].x, y: points[0].y };
+    }
+
+    const target = total / 2;
+    let acc = 0;
+    for (let i = 0; i < segLens.length; i++) {
+      const len = segLens[i];
+      if (acc + len >= target) {
+        const t = (target - acc) / Math.max(0.0001, len);
+        const x = points[i].x + (points[i + 1].x - points[i].x) * t;
+        const y = points[i].y + (points[i + 1].y - points[i].y) * t;
+        return { x, y };
+      }
+      acc += len;
+    }
+
+    return { x: points[points.length - 1].x, y: points[points.length - 1].y };
+  }
+
+  /**
+   * Find nearest river hit for hover label.
+   * @private
+   */
+  _findNearestRiverHit(x, y, rivers) {
+    let best = null;
+    let bestDistSq = Infinity;
+
+    for (const river of rivers) {
+      const pts = river?.points;
+      if (!pts || pts.length < 2) continue;
+
+      const rb = this._riverBounds.get(river.id);
+      if (rb) {
+        const pad = rb.pad ?? 0;
+        if (x < rb.minX - pad || x > rb.maxX + pad || y < rb.minY - pad || y > rb.maxY + pad) {
+          continue;
+        }
+      }
+
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i];
+        const p1 = pts[i + 1];
+        const distSq = this._distancePointToSegmentSq(x, y, p0.x, p0.y, p1.x, p1.y);
+
+        const w0 = Number.isFinite(p0.width) ? p0.width : 24;
+        const w1 = Number.isFinite(p1.width) ? p1.width : w0;
+        const threshold = Math.max(w0, w1) / 2 + 6;
+
+        if (distSq <= threshold * threshold && distSq < bestDistSq) {
+          bestDistSq = distSq;
+          best = { riverId: river.id, distSq };
+        }
+      }
+    }
+
+    return best;
+  }
+
+  /**
+   * Distance from point to segment squared.
+   * @private
+   */
+  _distancePointToSegmentSq(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) {
+      const ax = px - x1;
+      const ay = py - y1;
+      return ax * ax + ay * ay;
+    }
+
+    let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+
+    const cx = x1 + t * dx;
+    const cy = y1 + t * dy;
+
+    const ex = px - cx;
+    const ey = py - cy;
+    return ex * ex + ey * ey;
   }
 
   /**
@@ -2252,7 +2786,7 @@ export class GlobalMapRenderer {
       this._drawRiverPath(graphics, path, bounds, cellSize, riverColor, isSubRiver);
     }
 
-    this.container.addChild(graphics);
+    this.riversLayer.addChild(graphics);
     console.log(`GlobalMapRenderer | ✓ Rivers rendered: ${riverPaths.length} paths`);
   }
 

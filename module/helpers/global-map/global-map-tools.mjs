@@ -8,13 +8,23 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'draw-river', 'erase-river'
+    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'river-draw', 'river-edit'
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.singleCellMode = false; // If true, brush affects only one cell
     this.savedSingleCellMode = false; // Save state when switching to rivers tool
     this.targetHeight = 50;
-    
+
+    // ===== Vector Rivers (new system) =====
+    // Stored separately in scene flags: scene.flags.spaceholder.globalMapRivers
+    this.vectorRivers = null; // {version:1, settings:{labelMode,snapToEndpoints}, rivers:[...]}
+    this.vectorRiversDirty = false;
+    this.selectedRiverId = null;
+    this.selectedRiverPointIndex = null;
+    this.riverDefaultPointWidth = 24;
+    this.riverHandles = null; // PIXI.Graphics overlay for point handles
+    this._riverDrag = null; // {riverId, pointIndex}
+
     // Biome tools settings (biomes are explicit IDs ordered by renderRank)
     this.modifyBiomeDelta = 0; // -10..10 steps in biome list
     this.modifyBiomeDeltaEnabled = false;
@@ -98,6 +108,18 @@ export class GlobalMapTools {
     // Destroy UI elements
     this.destroyBrushCursor();
     this.destroyOverlayPreview();
+
+    // River editor overlay
+    this._riverDrag = null;
+    if (this.riverHandles) {
+      try {
+        this.riverHandles.destroy();
+      } catch (e) {
+        // ignore
+      }
+      this.riverHandles = null;
+    }
+
     this.hideToolsUI();
 
     console.log('GlobalMapTools | ✓ Deactivated');
@@ -123,19 +145,18 @@ export class GlobalMapTools {
       // Read single cell mode from checkbox
       this.singleCellMode = $('#biome-single-cell-mode').prop('checked');
     } else if ($('#rivers-tab').is(':visible')) {
-      // Rivers tab is active
-      const selectedTool = $('#global-map-river-tool').val();
+      // Rivers tab is active (vector rivers editor)
+      const selectedTool = $('#global-map-river-mode').val();
       this.setTool(selectedTool);
-      
-      // Save current mode and force single cell mode for rivers
-      this.savedSingleCellMode = this.singleCellMode;
-      this.singleCellMode = true;
-      
-      // Initialize rivers array if it doesn't exist (for old saved maps)
-      if (this.renderer.currentGrid && !this.renderer.currentGrid.rivers) {
-        console.log('GlobalMapTools | Initializing rivers array for existing map');
-        this.renderer.currentGrid.rivers = new Uint8Array(this.renderer.currentGrid.heights.length);
-      }
+
+      // River editor doesn't use grid-cell highlighting/cursor
+      this.singleCellMode = false;
+
+      // Ensure we have rivers data in memory
+      this._ensureVectorRiversInitialized();
+
+      // Ensure handle overlay exists
+      this._ensureRiverHandles();
     }
     
     // Create cell highlight after setting mode
@@ -153,8 +174,15 @@ export class GlobalMapTools {
    */
   deactivateBrush() {
     if (!this.isBrushActive) return;
-    
+
     this.isBrushActive = false;
+    this._riverDrag = null;
+
+    if (this.riverHandles) {
+      this.riverHandles.clear();
+      this.riverHandles.visible = false;
+    }
+
     this.updateBrushUI();
     console.log('GlobalMapTools | Brush deactivated');
   }
@@ -166,7 +194,7 @@ export class GlobalMapTools {
     const validTools = [
       'raise', 'lower', 'smooth', 'roughen', 'flatten',
       'modify-biome', 'set-biome',
-      'draw-river', 'erase-river'
+      'river-draw', 'river-edit'
     ];
     if (validTools.includes(tool)) {
       this.currentTool = tool;
@@ -189,6 +217,725 @@ export class GlobalMapTools {
     this.updateBrushCursorGraphics();
   }
 
+  // ==========================
+  // Vector Rivers editor
+  // ==========================
+
+  _isRiverTool() {
+    return this.currentTool === 'river-draw' || this.currentTool === 'river-edit';
+  }
+
+  _escapeHtml(text) {
+    const s = String(text ?? '');
+    try {
+      if (foundry?.utils?.escapeHTML) return foundry.utils.escapeHTML(s);
+    } catch (e) {
+      // ignore
+    }
+    return s
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  async _confirmDialog(title, htmlContent) {
+    try {
+      if (globalThis.Dialog) {
+        return await new Promise((resolve) => {
+          new Dialog({
+            title,
+            content: htmlContent,
+            buttons: {
+              yes: {
+                label: 'Yes',
+                callback: () => resolve(true),
+              },
+              no: {
+                label: 'No',
+                callback: () => resolve(false),
+              },
+            },
+            default: 'no',
+            close: () => resolve(false),
+          }).render(true);
+        });
+      }
+    } catch (e) {
+      // fall back
+    }
+
+    return window.confirm(title);
+  }
+
+  async _promptDialog(title, label, initialValue = '') {
+    const safeTitle = String(title ?? '');
+    const safeLabel = String(label ?? '');
+    const safeValue = this._escapeHtml(initialValue);
+
+    try {
+      if (globalThis.Dialog) {
+        return await new Promise((resolve) => {
+          new Dialog({
+            title: safeTitle,
+            content: `<form><div class="form-group"><label>${this._escapeHtml(safeLabel)}</label><input type="text" name="value" value="${safeValue}"/></div></form>`,
+            buttons: {
+              ok: {
+                label: 'OK',
+                callback: (html) => {
+                  const v = html.find('input[name="value"]').val();
+                  resolve(typeof v === 'string' ? v : String(v ?? ''));
+                },
+              },
+              cancel: {
+                label: 'Cancel',
+                callback: () => resolve(null),
+              },
+            },
+            default: 'ok',
+            close: () => resolve(null),
+          }).render(true);
+        });
+      }
+    } catch (e) {
+      // fall back
+    }
+
+    const v = window.prompt(safeTitle, String(initialValue ?? ''));
+    return typeof v === 'string' ? v : null;
+  }
+
+  _applyVectorRiversToRenderer() {
+    if (!this.renderer?.setVectorRiversData) return;
+
+    this.renderer.setVectorRiversData(this.vectorRivers);
+
+    // renderer normalizes and may replace object references
+    this.vectorRivers = this.renderer.vectorRiversData;
+  }
+
+  _ensureVectorRiversInitialized() {
+    if (this.vectorRivers) return this.vectorRivers;
+
+    const scene = canvas?.scene;
+    let raw = null;
+    try {
+      raw = scene?.getFlag?.('spaceholder', 'globalMapRivers');
+    } catch (e) {
+      raw = null;
+    }
+
+    // Default structure (in case renderer is not available)
+    this.vectorRivers = {
+      version: 1,
+      settings: {
+        labelMode: 'hover',
+        snapToEndpoints: true,
+      },
+      rivers: [],
+    };
+
+    // Prefer renderer's normalization (single source of truth)
+    if (this.renderer?.setVectorRiversData) {
+      this.renderer.setVectorRiversData(raw);
+      this.vectorRivers = this.renderer.vectorRiversData;
+    } else if (raw && typeof raw === 'object') {
+      this.vectorRivers = raw;
+    }
+
+    if (!this.vectorRivers || typeof this.vectorRivers !== 'object') {
+      this.vectorRivers = {
+        version: 1,
+        settings: {
+          labelMode: 'hover',
+          snapToEndpoints: true,
+        },
+        rivers: [],
+      };
+    }
+
+    if (!this.vectorRivers.settings || typeof this.vectorRivers.settings !== 'object') {
+      this.vectorRivers.settings = { labelMode: 'hover', snapToEndpoints: true };
+    }
+
+    if (!['off', 'hover', 'always'].includes(this.vectorRivers.settings.labelMode)) {
+      this.vectorRivers.settings.labelMode = 'hover';
+    }
+
+    if (this.vectorRivers.settings.snapToEndpoints === undefined) {
+      this.vectorRivers.settings.snapToEndpoints = true;
+    }
+    this.vectorRivers.settings.snapToEndpoints = !!this.vectorRivers.settings.snapToEndpoints;
+
+    if (!Array.isArray(this.vectorRivers.rivers)) {
+      this.vectorRivers.rivers = [];
+    }
+
+    // Default selection
+    if (!this.selectedRiverId && this.vectorRivers.rivers.length) {
+      this.selectedRiverId = String(this.vectorRivers.rivers[0].id);
+    }
+
+    return this.vectorRivers;
+  }
+
+  _ensureRiverHandles() {
+    if (this.riverHandles) return;
+
+    this.riverHandles = new PIXI.Graphics();
+    this.riverHandles.name = 'globalMapRiverHandles';
+    this.riverHandles.visible = false;
+
+    // Put handles on interface layer so they don't get baked into exports
+    if (canvas?.interface) {
+      canvas.interface.addChild(this.riverHandles);
+    } else if (canvas?.stage) {
+      canvas.stage.addChild(this.riverHandles);
+    }
+  }
+
+  _renderRiverHandles() {
+    if (!this.riverHandles) return;
+
+    this.riverHandles.clear();
+
+    const shouldShow = this.isBrushActive && this._isRiverTool();
+    this.riverHandles.visible = shouldShow;
+    if (!shouldShow) return;
+
+    this._ensureVectorRiversInitialized();
+
+    const rivers = Array.isArray(this.vectorRivers?.rivers) ? this.vectorRivers.rivers : [];
+    for (const river of rivers) {
+      const pts = Array.isArray(river?.points) ? river.points : [];
+      const isSelectedRiver = river?.id === this.selectedRiverId;
+
+      // Draw polyline
+      if (pts.length >= 2) {
+        this.riverHandles.lineStyle(2, isSelectedRiver ? 0xffffff : 0xaaaaaa, isSelectedRiver ? 0.7 : 0.4);
+        this.riverHandles.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          this.riverHandles.lineTo(pts[i].x, pts[i].y);
+        }
+      }
+
+      // Draw points
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (!p) continue;
+
+        const isSelectedPoint = isSelectedRiver && i === this.selectedRiverPointIndex;
+        const isEndpoint = i === 0 || i === pts.length - 1;
+
+        const radius = isSelectedPoint ? 7 : (isEndpoint ? 6 : 4);
+        const color = isSelectedPoint ? 0xffff00 : (isSelectedRiver ? 0xffffff : 0x888888);
+        const alpha = isSelectedRiver ? 0.95 : 0.6;
+
+        this.riverHandles.lineStyle(2, 0x000000, alpha);
+        this.riverHandles.beginFill(color, alpha);
+        this.riverHandles.drawCircle(p.x, p.y, radius);
+        this.riverHandles.endFill();
+      }
+    }
+  }
+
+  _refreshRiversUI() {
+    if (!$('#global-map-tools-ui').length) return;
+
+    this._ensureVectorRiversInitialized();
+
+    const rivers = Array.isArray(this.vectorRivers?.rivers) ? this.vectorRivers.rivers : [];
+    const select = $('#global-map-river-select');
+
+    // Preserve selection when possible
+    const existing = String(this.selectedRiverId || '');
+    select.empty();
+
+    if (rivers.length === 0) {
+      select.append($('<option></option>').attr('value', '').text('(no rivers)'));
+      this.selectedRiverId = null;
+    } else {
+      for (const r of rivers) {
+        const id = String(r.id);
+        const name = String(r.name || id);
+        select.append($('<option></option>').attr('value', id).text(name));
+      }
+
+      if (existing && rivers.some(r => String(r.id) === existing)) {
+        select.val(existing);
+        this.selectedRiverId = existing;
+      } else {
+        this.selectedRiverId = String(rivers[0].id);
+        select.val(this.selectedRiverId);
+      }
+    }
+
+    // Settings controls
+    $('#river-label-mode').val(this.vectorRivers.settings?.labelMode || 'hover');
+    $('#river-snap-endpoints').prop('checked', !!this.vectorRivers.settings?.snapToEndpoints);
+
+    // Selected point width
+    const river = this._getSelectedRiver();
+    const point = (river && this.selectedRiverPointIndex !== null && this.selectedRiverPointIndex !== undefined)
+      ? river.points?.[this.selectedRiverPointIndex]
+      : null;
+
+    if (point) {
+      const w = Math.max(1, Number(point.width) || 1);
+      $('#river-point-width').prop('disabled', false).val(String(Math.round(w)));
+      $('#river-point-width-value').text(String(Math.round(w)));
+    } else {
+      $('#river-point-width').prop('disabled', true);
+      $('#river-point-width-value').text('-');
+    }
+
+    // Buttons enabled/disabled
+    const hasRiver = !!river;
+    $('#river-delete').prop('disabled', !hasRiver);
+    $('#river-rename').prop('disabled', !hasRiver);
+
+    // Save indicator
+    $('#river-save').text(this.vectorRiversDirty ? 'Save rivers*' : 'Save rivers');
+  }
+
+  _onRiversTabShown() {
+    this._ensureVectorRiversInitialized();
+    this._applyVectorRiversToRenderer();
+    this._refreshRiversUI();
+    this._renderRiverHandles();
+  }
+
+  _getSelectedRiver() {
+    this._ensureVectorRiversInitialized();
+
+    const rivers = Array.isArray(this.vectorRivers?.rivers) ? this.vectorRivers.rivers : [];
+    if (!this.selectedRiverId) return null;
+
+    return rivers.find(r => String(r.id) === String(this.selectedRiverId)) || null;
+  }
+
+  _makeRiverId() {
+    try {
+      if (foundry?.utils?.randomID) return foundry.utils.randomID();
+    } catch (e) {
+      // ignore
+    }
+    return `river_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  async createNewRiver() {
+    this._ensureVectorRiversInitialized();
+
+    const id = this._makeRiverId();
+    const n = (this.vectorRivers.rivers?.length || 0) + 1;
+    const river = { id, name: `River ${n}`, points: [] };
+
+    this.vectorRivers.rivers.push(river);
+    this.selectedRiverId = id;
+    this.selectedRiverPointIndex = null;
+    this.vectorRiversDirty = true;
+
+    this._applyVectorRiversToRenderer();
+  }
+
+  async deleteSelectedRiver() {
+    const river = this._getSelectedRiver();
+    if (!river) return;
+
+    const ok = await this._confirmDialog('Delete River', `<p>Delete river <b>${this._escapeHtml(river.name)}</b>?</p>`);
+    if (!ok) return;
+
+    this._ensureVectorRiversInitialized();
+    const rivers = this.vectorRivers.rivers;
+    const idx = rivers.findIndex(r => String(r.id) === String(river.id));
+    if (idx >= 0) {
+      rivers.splice(idx, 1);
+    }
+
+    // Update selection
+    if (rivers.length === 0) {
+      this.selectedRiverId = null;
+      this.selectedRiverPointIndex = null;
+    } else {
+      const next = rivers[Math.min(idx, rivers.length - 1)];
+      this.selectedRiverId = String(next.id);
+      this.selectedRiverPointIndex = null;
+    }
+
+    this.vectorRiversDirty = true;
+    this._applyVectorRiversToRenderer();
+  }
+
+  async renameSelectedRiver() {
+    const river = this._getSelectedRiver();
+    if (!river) return;
+
+    const currentName = String(river.name || '');
+    const newNameRaw = await this._promptDialog('Rename River', 'Name', currentName);
+
+    if (typeof newNameRaw !== 'string') return;
+    const newName = newNameRaw.trim();
+    if (!newName) return;
+
+    river.name = newName;
+    this.vectorRiversDirty = true;
+    this._applyVectorRiversToRenderer();
+  }
+
+  async saveVectorRivers() {
+    this._ensureVectorRiversInitialized();
+
+    const scene = canvas?.scene;
+    if (!scene?.setFlag) return;
+
+    try {
+      await scene.setFlag('spaceholder', 'globalMapRivers', this.vectorRivers);
+      this.vectorRiversDirty = false;
+      ui.notifications?.info?.('Rivers saved');
+      console.log('GlobalMapTools | ✓ Rivers saved to scene');
+    } catch (error) {
+      console.error('GlobalMapTools | Failed to save rivers:', error);
+      ui.notifications?.error?.(`Failed to save rivers: ${error.message}`);
+    }
+  }
+
+  _findNearestRiverPoint(x, y, maxDist = 12) {
+    this._ensureVectorRiversInitialized();
+
+    const rivers = Array.isArray(this.vectorRivers?.rivers) ? this.vectorRivers.rivers : [];
+    const maxDistSq = maxDist * maxDist;
+
+    // Prefer selected river if any
+    const ordered = [];
+    const sel = this._getSelectedRiver();
+    if (sel) ordered.push(sel);
+    for (const r of rivers) {
+      if (sel && String(r.id) === String(sel.id)) continue;
+      ordered.push(r);
+    }
+
+    let best = null;
+    let bestDistSq = maxDistSq;
+
+    for (const river of ordered) {
+      const pts = Array.isArray(river?.points) ? river.points : [];
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (!p) continue;
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= bestDistSq) {
+          bestDistSq = d2;
+          best = { riverId: String(river.id), pointIndex: i, distSq: d2 };
+        }
+      }
+    }
+
+    return best;
+  }
+
+  _closestPointOnSegment(x, y, ax, ay, bx, by) {
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = x - ax;
+    const apy = y - ay;
+
+    const abLenSq = abx * abx + aby * aby;
+    if (abLenSq <= 1e-6) {
+      const dx = x - ax;
+      const dy = y - ay;
+      return { t: 0, x: ax, y: ay, distSq: dx * dx + dy * dy };
+    }
+
+    let t = (apx * abx + apy * aby) / abLenSq;
+    t = Math.max(0, Math.min(1, t));
+
+    const cx = ax + abx * t;
+    const cy = ay + aby * t;
+
+    const dx = x - cx;
+    const dy = y - cy;
+
+    return { t, x: cx, y: cy, distSq: dx * dx + dy * dy };
+  }
+
+  _findNearestRiverSegment(x, y, maxDist = 20) {
+    this._ensureVectorRiversInitialized();
+
+    const rivers = Array.isArray(this.vectorRivers?.rivers) ? this.vectorRivers.rivers : [];
+    const maxDistSq = maxDist * maxDist;
+
+    // Prefer selected river first
+    const ordered = [];
+    const sel = this._getSelectedRiver();
+    if (sel) ordered.push(sel);
+    for (const r of rivers) {
+      if (sel && String(r.id) === String(sel.id)) continue;
+      ordered.push(r);
+    }
+
+    let best = null;
+    let bestDistSq = maxDistSq;
+
+    for (const river of ordered) {
+      const pts = Array.isArray(river?.points) ? river.points : [];
+      if (pts.length < 2) continue;
+
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i];
+        const p1 = pts[i + 1];
+        if (!p0 || !p1) continue;
+
+        const hit = this._closestPointOnSegment(x, y, p0.x, p0.y, p1.x, p1.y);
+        if (hit.distSq <= bestDistSq) {
+          bestDistSq = hit.distSq;
+          best = {
+            riverId: String(river.id),
+            segmentIndex: i,
+            t: hit.t,
+            x: hit.x,
+            y: hit.y,
+            distSq: hit.distSq,
+          };
+        }
+      }
+    }
+
+    return best;
+  }
+
+  _findNearestEndpoint(x, y, maxDist = 18, exclude = null) {
+    this._ensureVectorRiversInitialized();
+
+    const rivers = Array.isArray(this.vectorRivers?.rivers) ? this.vectorRivers.rivers : [];
+    const maxDistSq = maxDist * maxDist;
+
+    let best = null;
+    let bestDistSq = maxDistSq;
+
+    for (const river of rivers) {
+      const pts = Array.isArray(river?.points) ? river.points : [];
+      if (pts.length === 0) continue;
+
+      const endpoints = [
+        { pointIndex: 0, p: pts[0] },
+        { pointIndex: pts.length - 1, p: pts[pts.length - 1] },
+      ];
+
+      for (const ep of endpoints) {
+        const p = ep.p;
+        if (!p) continue;
+
+        if (exclude && String(exclude.riverId) === String(river.id) && exclude.pointIndex === ep.pointIndex) {
+          continue;
+        }
+
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= bestDistSq) {
+          bestDistSq = d2;
+          best = { riverId: String(river.id), pointIndex: ep.pointIndex, x: p.x, y: p.y, distSq: d2 };
+        }
+      }
+    }
+
+    return best;
+  }
+
+  _maybeSnapToEndpoint(x, y, exclude = null) {
+    const enabled = !!this.vectorRivers?.settings?.snapToEndpoints;
+    if (!enabled) return { x, y, snapped: false };
+
+    const hit = this._findNearestEndpoint(x, y, 18, exclude);
+    if (!hit) return { x, y, snapped: false };
+
+    return { x: hit.x, y: hit.y, snapped: true, target: hit };
+  }
+
+  _deleteRiverPoint(riverId, pointIndex) {
+    this._ensureVectorRiversInitialized();
+
+    const river = this.vectorRivers.rivers.find(r => String(r.id) === String(riverId));
+    if (!river) return false;
+
+    const pts = Array.isArray(river.points) ? river.points : [];
+    if (pointIndex < 0 || pointIndex >= pts.length) return false;
+
+    pts.splice(pointIndex, 1);
+
+    // Update selection indices if needed
+    if (String(this.selectedRiverId) === String(riverId)) {
+      if (this.selectedRiverPointIndex === pointIndex) {
+        this.selectedRiverPointIndex = null;
+      } else if (this.selectedRiverPointIndex !== null && this.selectedRiverPointIndex > pointIndex) {
+        this.selectedRiverPointIndex -= 1;
+      }
+    }
+
+    river.points = pts;
+    return true;
+  }
+
+  _onRiverPointerDown(x, y, event) {
+    this._ensureVectorRiversInitialized();
+    this._ensureRiverHandles();
+
+    const oe = event?.data?.originalEvent || {};
+    const alt = !!oe.altKey;
+    const ctrl = !!oe.ctrlKey || !!oe.metaKey;
+
+    if (this.currentTool === 'river-draw') {
+      if (!this.selectedRiverId) {
+        // Create one automatically for convenience
+        const id = this._makeRiverId();
+        const n = (this.vectorRivers.rivers?.length || 0) + 1;
+        this.vectorRivers.rivers.push({ id, name: `River ${n}`, points: [] });
+        this.selectedRiverId = id;
+      }
+
+      const river = this._getSelectedRiver();
+      if (!river) return;
+
+      const snap = this._maybeSnapToEndpoint(x, y, null);
+      const p = { x: snap.x, y: snap.y, width: this.riverDefaultPointWidth };
+
+      if (!Array.isArray(river.points)) river.points = [];
+      river.points.push(p);
+
+      this.selectedRiverPointIndex = river.points.length - 1;
+      this.vectorRiversDirty = true;
+
+      this._applyVectorRiversToRenderer();
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+      return;
+    }
+
+    // Edit mode
+    if (this.currentTool !== 'river-edit') return;
+
+    if (ctrl) {
+      const hit = this._findNearestRiverPoint(x, y, 14);
+      if (hit) {
+        this.selectedRiverId = hit.riverId;
+        this.selectedRiverPointIndex = hit.pointIndex;
+
+        if (this._deleteRiverPoint(hit.riverId, hit.pointIndex)) {
+          this.vectorRiversDirty = true;
+          this._applyVectorRiversToRenderer();
+        }
+
+        this._renderRiverHandles();
+        this._refreshRiversUI();
+      }
+      return;
+    }
+
+    if (alt) {
+      const seg = this._findNearestRiverSegment(x, y, 22);
+      if (seg) {
+        this.selectedRiverId = seg.riverId;
+        const river = this._getSelectedRiver();
+        if (!river || !Array.isArray(river.points) || river.points.length < 2) return;
+
+        const i = seg.segmentIndex;
+        const p0 = river.points[i];
+        const p1 = river.points[i + 1];
+
+        const w0 = Number(p0?.width) || this.riverDefaultPointWidth;
+        const w1 = Number(p1?.width) || w0;
+        const w = w0 + (w1 - w0) * seg.t;
+
+        const insertIndex = i + 1;
+        river.points.splice(insertIndex, 0, { x: seg.x, y: seg.y, width: w });
+
+        this.selectedRiverPointIndex = insertIndex;
+        this._riverDrag = { riverId: seg.riverId, pointIndex: insertIndex };
+
+        this.vectorRiversDirty = true;
+        this._applyVectorRiversToRenderer();
+        this._renderRiverHandles();
+        this._refreshRiversUI();
+      }
+      return;
+    }
+
+    // Select/drag point
+    const hitPoint = this._findNearestRiverPoint(x, y, 14);
+    if (hitPoint) {
+      this.selectedRiverId = hitPoint.riverId;
+      this.selectedRiverPointIndex = hitPoint.pointIndex;
+      this._riverDrag = { riverId: hitPoint.riverId, pointIndex: hitPoint.pointIndex };
+
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+      return;
+    }
+
+    // Select river by clicking near segment
+    const hitSeg = this._findNearestRiverSegment(x, y, 22);
+    if (hitSeg) {
+      this.selectedRiverId = hitSeg.riverId;
+      this.selectedRiverPointIndex = null;
+      this._riverDrag = null;
+
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+      return;
+    }
+
+    // Clicked empty space
+    this.selectedRiverPointIndex = null;
+    this._riverDrag = null;
+    this._renderRiverHandles();
+    this._refreshRiversUI();
+  }
+
+  _onRiverPointerMove(x, y, _event) {
+    if (!this._riverDrag) return;
+
+    this._ensureVectorRiversInitialized();
+
+    const river = this.vectorRivers.rivers.find(r => String(r.id) === String(this._riverDrag.riverId));
+    if (!river || !Array.isArray(river.points)) {
+      this._riverDrag = null;
+      return;
+    }
+
+    const idx = this._riverDrag.pointIndex;
+    const p = river.points[idx];
+    if (!p) {
+      this._riverDrag = null;
+      return;
+    }
+
+    let nx = x;
+    let ny = y;
+
+    // Snap endpoints only (makes connecting rivers easier and avoids weird mid-point snapping)
+    const isEndpoint = idx === 0 || idx === river.points.length - 1;
+    if (isEndpoint) {
+      const snap = this._maybeSnapToEndpoint(nx, ny, { riverId: river.id, pointIndex: idx });
+      nx = snap.x;
+      ny = snap.y;
+    }
+
+    p.x = nx;
+    p.y = ny;
+
+    this.vectorRiversDirty = true;
+
+    this._applyVectorRiversToRenderer();
+    this._renderRiverHandles();
+  }
+
+  _onRiverPointerUp(_event) {
+    this._riverDrag = null;
+  }
+
   /**
    * Set up canvas event listeners
    */
@@ -205,7 +952,17 @@ export class GlobalMapTools {
 
       event.stopPropagation();
 
+      const pos = event.data.getLocalPosition(canvas.stage);
       this.isMouseDown = true;
+      this.lastPosition = pos;
+
+      // Vector rivers editor
+      if (this._isRiverTool()) {
+        this._onRiverPointerDown(pos.x, pos.y, event);
+        return;
+      }
+
+      if (!this.renderer.currentGrid?.heights?.length) return;
 
       // Start temporary overlay for this stroke
       const gridSize = this.renderer.currentGrid.heights.length;
@@ -214,10 +971,8 @@ export class GlobalMapTools {
       this.tempOverlayMoisture = new Float32Array(gridSize);
       this.affectedCells = new Set();
 
-      const pos = event.data.getLocalPosition(canvas.stage);
       this.applyBrushStroke(pos.x, pos.y);
       this.updateOverlayPreview();
-      this.lastPosition = pos;
     });
 
     // Mouse move
@@ -225,6 +980,12 @@ export class GlobalMapTools {
       if (!this.isActive) return;
 
       const pos = event.data.getLocalPosition(canvas.stage);
+
+      // Vector rivers editor (dragging)
+      if (this.isBrushActive && this._isRiverTool()) {
+        this._onRiverPointerMove(pos.x, pos.y, event);
+        return;
+      }
 
       // Update cursor and cell highlight only when brush is active
       if (this.isBrushActive) {
@@ -256,6 +1017,12 @@ export class GlobalMapTools {
 
       this.isMouseDown = false;
       this.lastPosition = null;
+
+      // Vector rivers editor
+      if (this._isRiverTool()) {
+        this._onRiverPointerUp(event);
+        return;
+      }
 
       // Commit overlay to grid
       if (this.tempOverlay) {
@@ -878,6 +1645,12 @@ export class GlobalMapTools {
   updateBrushCursorGraphics() {
     if (!this.brushCursor) return;
 
+    // River editor doesn't use the brush cursor
+    if (this._isRiverTool()) {
+      this.brushCursor.clear();
+      return;
+    }
+
     this.brushCursor.clear();
 
     let color = 0xffffff;
@@ -963,7 +1736,17 @@ export class GlobalMapTools {
     
     // Update cursor visibility
     if (this.brushCursor) {
-      this.brushCursor.visible = isActive && !this.singleCellMode;
+      this.brushCursor.visible = isActive && !this.singleCellMode && !this._isRiverTool();
+    }
+
+    // River editor handles overlay
+    if (this.riverHandles) {
+      if (isActive && this._isRiverTool()) {
+        this._renderRiverHandles();
+      } else {
+        this.riverHandles.clear();
+        this.riverHandles.visible = false;
+      }
     }
     
     // Update cell highlight visibility
@@ -1199,15 +1982,62 @@ export class GlobalMapTools {
 
         <div id="rivers-tab" style="display: none;">
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Tool:</label>
-            <select id="global-map-river-tool" style="width: 100%; padding: 5px;">
-              <option value="draw-river" selected>Draw River</option>
-              <option value="erase-river">Erase River</option>
+            <label style="display: block; margin-bottom: 5px;">River:</label>
+            <select id="global-map-river-select" style="width: 100%; padding: 5px;"></select>
+          </div>
+
+          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button id="river-new" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">New</button>
+            <button id="river-rename" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Rename</button>
+            <button id="river-delete" style="flex: 1; padding: 8px; background: #883333; border: none; color: white; border-radius: 3px; cursor: pointer;">Delete</button>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Mode:</label>
+            <select id="global-map-river-mode" style="width: 100%; padding: 5px;">
+              <option value="river-draw" selected>Draw (points)</option>
+              <option value="river-edit">Edit</option>
             </select>
           </div>
-          
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+              <input type="checkbox" id="river-snap-endpoints" style="margin: 0;" checked>
+              <span>Snap to endpoints</span>
+            </label>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Default point width: <span id="river-default-width-value">${this.riverDefaultPointWidth}</span>px</label>
+            <input type="range" id="river-default-width" min="1" max="200" step="1" value="${this.riverDefaultPointWidth}" style="width: 100%;">
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Selected point width: <span id="river-point-width-value">-</span>px</label>
+            <input type="range" id="river-point-width" min="1" max="200" step="1" value="${this.riverDefaultPointWidth}" style="width: 100%;" disabled>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Labels:</label>
+            <select id="river-label-mode" style="width: 100%; padding: 5px;">
+              <option value="hover" selected>Hover</option>
+              <option value="always">Always</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button id="river-finish" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Finish</button>
+            <button id="river-save" style="flex: 1; padding: 8px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Save rivers</button>
+          </div>
+
+          <div style="font-size: 10px; color: #aaa; line-height: 1.3; margin-bottom: 10px;">
+            <div><b>Draw:</b> click to add points.</div>
+            <div><b>Edit:</b> drag point to move; <b>Alt+click</b> on segment to insert; <b>Ctrl+click</b> on point to delete.</div>
+          </div>
+
           <button id="river-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Activate Brush
+            Activate River Editor
           </button>
         </div>
 
@@ -1920,6 +2750,7 @@ export class GlobalMapTools {
       } else if (tab === 'rivers') {
         $('#rivers-tab').show();
         $('#tab-rivers').css('background', '#0066cc').css('font-weight', 'bold');
+        this._onRiversTabShown();
       } else if (tab === 'global') {
         $('#global-tab').show();
         $('#tab-global').css('background', '#0066cc').css('font-weight', 'bold');
@@ -1930,10 +2761,87 @@ export class GlobalMapTools {
     $('#tab-rivers').on('click', () => activateTab('rivers'));
     $('#tab-global').on('click', () => activateTab('global'));
 
-    // ===== RIVERS TAB =====
-    $('#global-map-river-tool').on('change', (e) => {
+    // ===== RIVERS TAB (vector rivers) =====
+    $('#global-map-river-mode').on('change', (e) => {
       const tool = e.target.value;
       this.setTool(tool);
+      this.selectedRiverPointIndex = null;
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+    });
+
+    $('#global-map-river-select').on('change', (e) => {
+      this.selectedRiverId = String(e.target.value || '');
+      this.selectedRiverPointIndex = null;
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+    });
+
+    $('#river-new').on('click', async () => {
+      await this.createNewRiver();
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+    });
+
+    $('#river-delete').on('click', async () => {
+      await this.deleteSelectedRiver();
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+    });
+
+    $('#river-rename').on('click', async () => {
+      await this.renameSelectedRiver();
+      this._refreshRiversUI();
+    });
+
+    $('#river-snap-endpoints').on('change', (e) => {
+      this._ensureVectorRiversInitialized();
+      this.vectorRivers.settings.snapToEndpoints = !!e.target.checked;
+      this.vectorRiversDirty = true;
+    });
+
+    $('#river-default-width').on('input', (e) => {
+      const v = Math.max(1, Number(e.target.value) || 1);
+      this.riverDefaultPointWidth = v;
+      $('#river-default-width-value').text(String(v));
+    });
+
+    $('#river-point-width').on('input', (e) => {
+      const v = Math.max(1, Number(e.target.value) || 1);
+      const river = this._getSelectedRiver();
+      if (!river) return;
+      if (this.selectedRiverPointIndex === null || this.selectedRiverPointIndex === undefined) return;
+
+      const p = river.points?.[this.selectedRiverPointIndex];
+      if (!p) return;
+      p.width = v;
+      $('#river-point-width-value').text(String(v));
+      this.vectorRiversDirty = true;
+
+      this._applyVectorRiversToRenderer();
+      this._renderRiverHandles();
+    });
+
+    $('#river-label-mode').on('change', (e) => {
+      this._ensureVectorRiversInitialized();
+      const mode = String(e.target.value || 'hover');
+      this.vectorRivers.settings.labelMode = mode;
+      this.vectorRiversDirty = true;
+      this._applyVectorRiversToRenderer();
+    });
+
+    $('#river-finish').on('click', () => {
+      // Convenience: switch from Draw to Edit
+      $('#global-map-river-mode').val('river-edit');
+      this.setTool('river-edit');
+      this.selectedRiverPointIndex = null;
+      this._renderRiverHandles();
+      this._refreshRiversUI();
+    });
+
+    $('#river-save').on('click', async () => {
+      await this.saveVectorRivers();
+      this._refreshRiversUI();
     });
 
     $('#river-brush-toggle').on('click', () => {
