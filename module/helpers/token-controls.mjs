@@ -20,31 +20,13 @@ export function installTokenControlsHooks() {
   // Хук для добавления пользовательских кнопок в Token Controls
   Hooks.on('getSceneControlButtons', (controls) => {
     try {
-      // Проверяем структуру controls
-      
-      if (controls && typeof controls === 'object') {
-        // Проверяем, есть ли tokens ключ
-        if (controls.tokens) {
-          addTestButton(controls.tokens);
-          return;
-        }
-        
-        console.warn('SpaceHolder | tokens key not found in controls');
+      const tokenControls = resolveTokenControlsGroup(controls);
+      if (!tokenControls) {
+        console.warn('SpaceHolder | Token controls group not found');
         return;
       }
-      
-      // Обработка случая, если controls - это массив (для совместимости)
-      if (Array.isArray(controls)) {
-        const tokenControls = controls.find(c => c.name === 'token' || c.name === 'tokens');
-        if (tokenControls) {
-          addTestButton(tokenControls);
-        } else {
-          console.warn('SpaceHolder | Token controls group not found in array');
-        }
-        return;
-      }
-      
-      console.warn('SpaceHolder | Unsupported controls structure');
+
+      addCustomButtons(tokenControls);
     } catch (error) {
       console.error('SpaceHolder | Error in getSceneControlButtons hook:', error);
     }
@@ -52,38 +34,97 @@ export function installTokenControlsHooks() {
 }
 
 /**
- * Вспомогательная функция для добавления тестовой кнопки
+ * Найти группу Token Controls в различных форматах Foundry.
  */
-function addTestButton(tokenControls) {
+function resolveTokenControlsGroup(controls) {
+  // В v11/v12 часто массив, в других окружениях может быть объект
+  if (Array.isArray(controls)) {
+    return controls.find((c) => c?.name === 'token' || c?.name === 'tokens') || null;
+  }
+
+  if (controls && typeof controls === 'object') {
+    return controls.tokens || controls.token || null;
+  }
+
+  return null;
+}
+
+/**
+ * Добавить пользовательские кнопки в Token Controls.
+ */
+function addCustomButtons(tokenControls) {
   if (!tokenControls) {
     console.error('SpaceHolder | tokenControls is null or undefined');
     return;
   }
-  
-  
-  // Проверяем, есть ли объект tools
-  if (!tokenControls.tools || typeof tokenControls.tools !== 'object') {
-    console.error('SpaceHolder | tokenControls.tools is not an object:', tokenControls.tools);
-    return;
-  }
-  
-  // Проверяем, не добавлена ли кнопка уже
-  if (tokenControls.tools['aiming-tool']) {
-    console.log('SpaceHolder | Aiming Tool already exists, skipping');
-    return;
-  }
-  
-  // Добавляем кнопку прицеливания
-  tokenControls.tools['aiming-tool'] = {
+
+  const addedAiming = upsertTool(tokenControls, {
     name: 'aiming-tool',
     title: 'Настройка прицеливания',
     icon: 'fas fa-bullseye',
     onChange: (isActive) => handleAimingToolChange(isActive),
     button: true,
-    order: 10 // Порядок отображения
-  };
-  
-  console.log('SpaceHolder | Added Test Button to Token Controls');
+    order: 10,
+  });
+
+  const addedInfluence = upsertTool(tokenControls, {
+    name: 'toggle-influence',
+    title: 'Показать влияние',
+    icon: 'fas fa-flag',
+    onChange: (isActive) => {
+      // На кнопках Foundry/окружения могут вызывать onChange и при «снятии» — не переключаемся обратно.
+      if (isActive === false) return;
+      handleInfluenceToggle();
+    },
+    button: true,
+    order: 20,
+  });
+
+  if (addedAiming || addedInfluence) {
+    console.log('SpaceHolder | Added custom Token Control buttons');
+  }
+}
+
+/**
+ * Добавить инструмент в tokenControls.tools (object или array) без дублей.
+ */
+function upsertTool(tokenControls, tool) {
+  if (!tokenControls.tools) {
+    // Предпочитаем объект-формат (как в нашем global-map-ui)
+    tokenControls.tools = {};
+  }
+
+  const tools = tokenControls.tools;
+
+  if (Array.isArray(tools)) {
+    const exists = tools.some((t) => t?.name === tool.name);
+    if (exists) return false;
+    tools.push(tool);
+    return true;
+  }
+
+  if (typeof tools === 'object') {
+    if (tools[tool.name]) return false;
+    tools[tool.name] = tool;
+    return true;
+  }
+
+  console.error('SpaceHolder | tokenControls.tools has unsupported type:', tools);
+  return false;
+}
+
+/**
+ * Переключить отображение влияния.
+ */
+function handleInfluenceToggle() {
+  const manager = game.spaceholder?.influenceManager;
+  if (!manager) {
+    ui.notifications.warn('Менеджер влияния недоступен');
+    return;
+  }
+
+  const enabled = manager.toggle({ debug: false });
+  ui.notifications.info(enabled ? 'Влияние отображено' : 'Влияние скрыто');
 }
 
 /**

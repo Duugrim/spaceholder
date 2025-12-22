@@ -9,6 +9,12 @@ export class GlobalMapTools {
     this.processing = processing;
     this.isActive = false;
     this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'river-draw', 'river-edit'
+
+    // UI selection (per tab). We use buttons instead of selects, so keep explicit state.
+    this._selectedHeightsTool = 'raise';
+    this._selectedBiomesTool = 'set-biome';
+    this._selectedRiversTool = 'river-draw';
+
     this.brushRadius = 100;
     this.brushStrength = 0.5;
     this.singleCellMode = false; // If true, brush affects only one cell
@@ -196,19 +202,19 @@ export class GlobalMapTools {
     // Sync currentTool with selected tool from active tab
     if ($('#brush-tab').is(':visible')) {
       // Heights tab is active
-      const selectedTool = $('#global-map-tool').val();
+      const selectedTool = this._selectedHeightsTool || 'raise';
       this.setTool(selectedTool);
       // Read single cell mode from checkbox
       this.singleCellMode = $('#single-cell-mode').prop('checked');
     } else if ($('#biomes-tab').is(':visible')) {
       // Biomes tab is active
-      const selectedTool = $('#global-map-biome-tool').val();
+      const selectedTool = this._selectedBiomesTool || 'set-biome';
       this.setTool(selectedTool);
       // Read single cell mode from checkbox
       this.singleCellMode = $('#biome-single-cell-mode').prop('checked');
     } else if ($('#rivers-tab').is(':visible')) {
       // Rivers tab is active (vector rivers editor)
-      const selectedTool = $('#global-map-river-mode').val();
+      const selectedTool = this._selectedRiversTool || 'river-draw';
       this.setTool(selectedTool);
 
       // River editor doesn't use grid-cell highlighting/cursor
@@ -2231,10 +2237,13 @@ export class GlobalMapTools {
     $('#biome-brush-toggle').text(buttonText).css('background', buttonColor);
     $('#river-brush-toggle').text(buttonText).css('background', buttonColor);
     
-    // Disable/enable controls
-    $('#global-map-tool').prop('disabled', isActive);
-    $('#global-map-biome-tool').prop('disabled', isActive);
-    $('#global-map-river-mode').prop('disabled', isActive);
+    // Disable/enable tool selection buttons (tool/mode)
+    const toolButtons = $('#global-map-height-tool-buttons button, #global-map-biome-tool-buttons button, #global-map-river-mode-buttons button');
+    if (toolButtons.length) {
+      toolButtons.prop('disabled', isActive);
+      toolButtons.css('opacity', isActive ? '0.6' : '1');
+      toolButtons.css('cursor', isActive ? 'not-allowed' : 'pointer');
+    }
     
     // Disable/enable tab switching
     if (isActive) {
@@ -2350,13 +2359,13 @@ export class GlobalMapTools {
         <div id="brush-tab" style="display: block;">
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Tool:</label>
-          <select id="global-map-tool" style="width: 100%; padding: 5px;">
-            <option value="raise" selected>Raise Terrain</option>
-            <option value="lower">Lower Terrain</option>
-            <option value="smooth">Smooth</option>
-            <option value="roughen">Roughen</option>
-            <option value="flatten">Flatten</option>
-          </select>
+            <div id="global-map-height-tool-buttons" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;">
+              <button type="button" data-tool="raise" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Raise Terrain</button>
+              <button type="button" data-tool="lower" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Lower Terrain</button>
+              <button type="button" data-tool="smooth" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Smooth</button>
+              <button type="button" data-tool="roughen" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Roughen</button>
+              <button type="button" data-tool="flatten" style="grid-column: 1 / -1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Flatten</button>
+            </div>
           </div>
 
           <div style="margin-bottom: 10px;">
@@ -2425,10 +2434,10 @@ export class GlobalMapTools {
         <div id="biomes-tab" style="display: none;">
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Tool:</label>
-          <select id="global-map-biome-tool" style="width: 100%; padding: 5px;">
-            <option value="set-biome" selected>Set Biome</option>
-            <option value="modify-biome">Modify Biome</option>
-          </select>
+            <div id="global-map-biome-tool-buttons" style="display: flex; gap: 4px;">
+              <button type="button" data-tool="set-biome" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Set Biome</button>
+              <button type="button" data-tool="modify-biome" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Modify Biome</button>
+            </div>
           </div>
 
           <div style="margin-bottom: 10px;">
@@ -2528,10 +2537,10 @@ export class GlobalMapTools {
 
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Mode:</label>
-            <select id="global-map-river-mode" style="width: 100%; padding: 5px;">
-              <option value="river-draw" selected>Draw (points)</option>
-              <option value="river-edit">Edit</option>
-            </select>
+            <div id="global-map-river-mode-buttons" style="display: flex; gap: 4px;">
+              <button type="button" data-tool="river-draw" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Draw (points)</button>
+              <button type="button" data-tool="river-edit" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Edit</button>
+            </div>
           </div>
 
           <div style="margin-bottom: 10px;">
@@ -3060,10 +3069,79 @@ export class GlobalMapTools {
       }
     };
 
-    $('#global-map-tool').on('change', (e) => {
-      const tool = e.target.value;
+    // Tool selection buttons (replacing legacy selects)
+    const toolActiveBg = {
+      'raise': '#006622',
+      'lower': '#662222',
+      'smooth': '#665500',
+      'roughen': '#663300',
+      'flatten': '#004c4c',
+      'set-biome': '#004c3a',
+      'modify-biome': '#3b1f66',
+      'river-draw': '#003a66',
+      'river-edit': '#003a66',
+    };
+
+    const syncToolButtonGroup = (containerSelector, activeTool) => {
+      const buttons = $(`${containerSelector} button[data-tool]`);
+      if (!buttons.length) return;
+
+      const active = String(activeTool || '');
+      buttons.each((_i, el) => {
+        const b = $(el);
+        const t = String(b.data('tool') || '');
+        const isActiveBtn = t === active;
+        const bg = isActiveBtn ? (toolActiveBg[t] || '#0066cc') : '#444';
+
+        b.css('background', bg);
+        b.css('box-shadow', isActiveBtn ? '0 0 0 1px rgba(255,255,255,0.22) inset' : 'none');
+        b.css('opacity', isActiveBtn ? '1' : '0.85');
+      });
+    };
+
+    const syncAllToolButtons = () => {
+      // Visual-only sync; does not call setTool().
+      syncToolButtonGroup('#global-map-height-tool-buttons', this._selectedHeightsTool);
+      syncToolButtonGroup('#global-map-biome-tool-buttons', this._selectedBiomesTool);
+      syncToolButtonGroup('#global-map-river-mode-buttons', this._selectedRiversTool);
+    };
+
+    // Heights: tool buttons
+    $('#global-map-height-tool-buttons button[data-tool]').on('click', (e) => {
+      if (this.isBrushActive) return;
+
+      const tool = String($(e.currentTarget).data('tool') || 'raise');
+      this._selectedHeightsTool = tool;
+      syncAllToolButtons();
+
       this.setTool(tool);
       updateHeightToolUI(tool);
+    });
+
+    // Biomes: tool buttons
+    $('#global-map-biome-tool-buttons button[data-tool]').on('click', (e) => {
+      if (this.isBrushActive) return;
+
+      const tool = String($(e.currentTarget).data('tool') || 'set-biome');
+      this._selectedBiomesTool = tool;
+      syncAllToolButtons();
+
+      this.setTool(tool);
+      updateBiomeToolUI(tool);
+    });
+
+    // Rivers: mode buttons
+    $('#global-map-river-mode-buttons button[data-tool]').on('click', (e) => {
+      if (this.isBrushActive) return;
+
+      const tool = String($(e.currentTarget).data('tool') || 'river-draw');
+      this._selectedRiversTool = tool;
+      syncAllToolButtons();
+
+      this.setTool(tool);
+      this.selectedRiverPointIndex = null;
+      this._renderRiverHandles();
+      this._refreshRiversUI();
     });
 
     $('#flatten-target-height').on('input', (e) => {
@@ -3106,12 +3184,6 @@ export class GlobalMapTools {
       $('#strength-value').text(this.brushStrength.toFixed(1));
       $('#biome-strength-value').text(this.brushStrength.toFixed(1));
       this.updateBrushCursorGraphics();
-    });
-
-    // Event listeners for Biomes tab
-    $('#global-map-biome-tool').on('change', (e) => {
-      this.setTool(e.target.value);
-      updateBiomeToolUI(e.target.value);
     });
 
     $('#biome-single-cell-mode').on('change', (e) => {
@@ -3301,14 +3373,17 @@ export class GlobalMapTools {
       if (tab === 'brush') {
         $('#brush-tab').show();
         $('#tab-brush').css('background', '#0066cc').css('font-weight', 'bold');
+        syncAllToolButtons();
+        updateHeightToolUI(this._selectedHeightsTool);
       } else if (tab === 'biomes') {
         $('#biomes-tab').show();
         $('#tab-biomes').css('background', '#0066cc').css('font-weight', 'bold');
-        // Initialize biome tool UI state
-        updateBiomeToolUI($('#global-map-biome-tool').val());
+        syncAllToolButtons();
+        updateBiomeToolUI(this._selectedBiomesTool);
       } else if (tab === 'rivers') {
         $('#rivers-tab').show();
         $('#tab-rivers').css('background', '#0066cc').css('font-weight', 'bold');
+        syncAllToolButtons();
         this._onRiversTabShown();
       } else if (tab === 'global') {
         $('#global-tab').show();
@@ -3321,13 +3396,6 @@ export class GlobalMapTools {
     $('#tab-global').on('click', () => activateTab('global'));
 
     // ===== RIVERS TAB (vector rivers) =====
-    $('#global-map-river-mode').on('change', (e) => {
-      const tool = e.target.value;
-      this.setTool(tool);
-      this.selectedRiverPointIndex = null;
-      this._renderRiverHandles();
-      this._refreshRiversUI();
-    });
 
     $('#global-map-river-select').on('change', (e) => {
       this.selectedRiverId = String(e.target.value || '');
@@ -3390,8 +3458,10 @@ export class GlobalMapTools {
     });
 
     $('#river-finish').on('click', () => {
-      // Convenience: switch from Draw to Edit
-      $('#global-map-river-mode').val('river-edit');
+      // Convenience: switch from Draw to Edit (even while brush is active)
+      this._selectedRiversTool = 'river-edit';
+      syncAllToolButtons();
+
       this.setTool('river-edit');
       this.selectedRiverPointIndex = null;
       this._renderRiverHandles();
@@ -3571,7 +3641,8 @@ export class GlobalMapTools {
     });
     
     // Initialize UI state
-    updateHeightToolUI($('#global-map-tool').val());
+    syncAllToolButtons();
+    updateHeightToolUI(this._selectedHeightsTool || 'raise');
     this._syncFlattenUI();
     this.updateBrushUI();
     this._updateUndoRedoUI();

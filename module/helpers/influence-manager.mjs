@@ -5,14 +5,71 @@ export class InfluenceManager {
   constructor() {
     // Контейнер для графики
     this.influenceContainer = null;
+
+    // Текущее состояние (режим «влияния»)
+    this.enabled = false;
+    this.debug = false;
+
+    // Для авто-перерисовки (debounce)
+    this._redrawTimeout = null;
+    this._redrawDelayMs = 75;
+
+    // Ожидание окончания анимации перемещения токена перед пересчётом
+    this._tokenMoveRafById = new Map();
+    this._tokenSettleEpsilonPx = 1.5;
+    this._tokenSettleMaxMs = 2000;
+
+    // Пул графики: не создаём/уничтожаем PIXI.Graphics на каждый пересчёт
+    this._graphicsPool = [];
+
     this.currentElements = [];
+
+    this._hooksInstalled = false;
   }
-  
+
   /**
    * Инициализация менеджера
    */
   initialize() {
     this._createContainer();
+    this._installHooks();
+  }
+
+  /**
+   * Включить отображение влияния (и авто-обновление).
+   * @param {object} [opts]
+   * @param {boolean} [opts.debug=false]
+   */
+  enable({ debug = false } = {}) {
+    this.enabled = true;
+    this.debug = Boolean(debug);
+    this.drawInfluenceZones(this.debug);
+  }
+
+  /**
+   * Выключить отображение влияния (и авто-обновление).
+   */
+  disable() {
+    this.enabled = false;
+    this._cancelScheduledRedraw();
+    this._cancelTokenMoveWatchers();
+    this.clearAll();
+  }
+
+  /**
+   * Переключить режим влияния.
+   * @param {object} [opts]
+   * @param {boolean} [opts.debug]
+   * @returns {boolean} Новое состояние enabled
+   */
+  toggle({ debug = this.debug } = {}) {
+    if (this.enabled) {
+      this.disable();
+      return false;
+    }
+
+    this.enable({ debug });
+    return true;
   }
   
   /**
@@ -42,6 +99,269 @@ export class InfluenceManager {
       }
     }
   }
+
+  /**
+   * Установить хуки для авто-обновления влияния.
+   * @private
+   */
+  _installHooks() {
+    if (this._hooksInstalled) return;
+    this._hooksInstalled = true;
+
+    // При смене/готовности canvas — пересоздадим контейнер и перерисуем при необходимости
+    Hooks.on('canvasReady', () => {
+      if (!this.enabled) return;
+      this._createContainer();
+      this._scheduleRedraw({ reason: 'canvasReady', delayMs: 0 });
+    });
+
+    // Движение токена (пересчёт только если двигается globalobject)
+    Hooks.on('updateToken', (tokenDoc, change, options) => {
+      if (!this.enabled) return;
+      if (!tokenDoc?.actor || tokenDoc.actor.type !== 'globalobject') return;
+      if (!this._isTokenMoveChange(change)) return;
+
+      // Нам не нужен пересчёт "в процессе". Ждём, пока токен доедет до целевых координат,
+      // и только после этого перерисовываем.
+      this._watchTokenMoveAndRedraw(tokenDoc, change, options);
+    });
+
+    // Создание/удаление токена globalobject тоже влияет на зоны
+    Hooks.on('createToken', (tokenDoc) => {
+      if (!this.enabled) return;
+      if (tokenDoc?.actor?.type !== 'globalobject') return;
+      this._scheduleRedraw({ reason: 'tokenCreate', delayMs: 0 });
+    });
+
+    Hooks.on('deleteToken', (tokenDoc) => {
+      if (!this.enabled) return;
+      if (tokenDoc?.actor?.type !== 'globalobject') return;
+      this._scheduleRedraw({ reason: 'tokenDelete', delayMs: 0 });
+    });
+
+    // Изменение параметров актора globalobject (range/power/side/faction)
+    Hooks.on('updateActor', (actor, change) => {
+      if (!this.enabled) return;
+      if (actor?.type !== 'globalobject') return;
+      if (!this._isInfluenceActorChange(change)) return;
+      this._scheduleRedraw({ reason: 'actorUpdate' });
+    });
+  }
+
+  /**
+   * Это updateToken с изменением позиции?
+   * @private
+   */
+  _isTokenMoveChange(change) {
+    if (!change || typeof change !== 'object') return false;
+    return Object.prototype.hasOwnProperty.call(change, 'x')
+      || Object.prototype.hasOwnProperty.call(change, 'y');
+  }
+
+  /**
+   * Это updateActor, который может менять влияние?
+   * @private
+   */
+  _isInfluenceActorChange(change) {
+    if (!change || typeof change !== 'object') return false;
+
+    // Вложенная форма: {system: {gRange: ...}}
+    const sys = change.system;
+    if (sys && typeof sys === 'object') {
+      if ('gRange' in sys || 'gPower' in sys || 'gSide' in sys || 'gFaction' in sys) return true;
+    }
+
+    // Dotted форма: {"system.gRange": ...}
+    for (const k of Object.keys(change)) {
+      if (k === 'system.gRange' || k === 'system.gPower' || k === 'system.gSide' || k === 'system.gFaction') return true;
+      if (k.startsWith('system.gRange') || k.startsWith('system.gPower') || k.startsWith('system.gSide') || k.startsWith('system.gFaction')) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Запланировать перерисовку (debounce).
+   * @private
+   */
+  _scheduleRedraw({ reason = 'unknown', delayMs = this._redrawDelayMs } = {}) {
+    // Небольшой debounce, чтобы при серии апдейтов (перетаскивание, мультиселект) не лагало
+    this._cancelScheduledRedraw();
+
+    const ms = Math.max(0, Number(delayMs) || 0);
+    this._redrawTimeout = setTimeout(() => {
+      this._redrawTimeout = null;
+      if (!this.enabled) return;
+
+      try {
+        this.drawInfluenceZones(this.debug);
+      } catch (e) {
+        console.error('InfluenceManager: redraw failed:', e);
+      }
+    }, ms);
+
+    if (this.debug) {
+      console.debug(`InfluenceManager: scheduled redraw (${reason}) in ${ms}ms`);
+    }
+  }
+
+  /**
+   * Отменить запланированную перерисовку.
+   * @private
+   */
+  _cancelScheduledRedraw() {
+    if (!this._redrawTimeout) return;
+    clearTimeout(this._redrawTimeout);
+    this._redrawTimeout = null;
+  }
+
+  /**
+   * Отменить ожидания окончания анимации перемещения токенов.
+   * @private
+   */
+  _cancelTokenMoveWatchers() {
+    if (!this._tokenMoveRafById) return;
+
+    for (const rafId of this._tokenMoveRafById.values()) {
+      try {
+        if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    this._tokenMoveRafById.clear();
+  }
+
+  /**
+   * Подождать завершения движения (анимации) токена до целевой позиции и затем перерисовать влияние.
+   * Используем координаты из change (они надёжнее, чем tokenDoc.x/y в момент хука).
+   * @private
+   */
+  _watchTokenMoveAndRedraw(tokenDoc, change, options) {
+    const tokenId = tokenDoc?.id;
+    if (!tokenId) {
+      this._scheduleRedraw({ reason: 'tokenMove:noId', delayMs: 0 });
+      return;
+    }
+
+    // Сбрасываем предыдущий watcher для этого токена
+    try {
+      const prev = this._tokenMoveRafById.get(tokenId);
+      if (prev && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(prev);
+    } catch (e) {
+      // ignore
+    }
+
+    const targetX = Object.prototype.hasOwnProperty.call(change, 'x') ? Number(change.x) : Number(tokenDoc.x);
+    const targetY = Object.prototype.hasOwnProperty.call(change, 'y') ? Number(change.y) : Number(tokenDoc.y);
+    const targetCenter = this._getTokenDocCenter(tokenDoc, { x: targetX, y: targetY });
+
+    const epsilon = Math.max(0.1, Number(this._tokenSettleEpsilonPx) || 1.5);
+    const epsSq = epsilon * epsilon;
+    const maxMs = Math.max(100, Number(this._tokenSettleMaxMs) || 2000);
+    const startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+    const tick = () => {
+      if (!this.enabled) {
+        this._tokenMoveRafById.delete(tokenId);
+        return;
+      }
+
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      if ((now - startedAt) > maxMs) {
+        // Таймаут ожидания — всё равно обновим.
+        this._tokenMoveRafById.delete(tokenId);
+        this._scheduleRedraw({ reason: 'tokenMove:timeout', delayMs: 0 });
+        return;
+      }
+
+      const obj = tokenDoc.object;
+      const c = obj?.center;
+
+      // Если объекта нет (например, токен не на канвасе) — обновим сразу.
+      if (!c) {
+        this._tokenMoveRafById.delete(tokenId);
+        this._scheduleRedraw({ reason: 'tokenMove:noObject', delayMs: 0 });
+        return;
+      }
+
+      const dx = c.x - targetCenter.x;
+      const dy = c.y - targetCenter.y;
+      const distSq = (dx * dx) + (dy * dy);
+
+      if (distSq <= epsSq) {
+        this._tokenMoveRafById.delete(tokenId);
+        this._scheduleRedraw({ reason: 'tokenMove:settled', delayMs: 0 });
+        return;
+      }
+
+      const rafId = requestAnimationFrame(tick);
+      this._tokenMoveRafById.set(tokenId, rafId);
+    };
+
+    const rafId = requestAnimationFrame(tick);
+    this._tokenMoveRafById.set(tokenId, rafId);
+  }
+
+  /**
+   * Получить Graphics из пула.
+   * @private
+   */
+  _acquireGraphics() {
+    const g = this._graphicsPool.pop() || new PIXI.Graphics();
+
+    // PIXI v7/v8
+    if (typeof g.clear === 'function') g.clear();
+    g.name = '';
+    g.visible = true;
+    g.renderable = true;
+    g.alpha = 1;
+
+    // Non-interactive
+    if ('eventMode' in g) g.eventMode = 'none';
+    g.interactive = false;
+    g.interactiveChildren = false;
+
+    return g;
+  }
+
+  /**
+   * Вернуть DisplayObject в пул (если это Graphics), иначе уничтожить.
+   * @private
+   */
+  _recycleDisplayObject(obj) {
+    if (!obj) return;
+
+    try {
+      obj.removeFromParent?.();
+    } catch (e) {
+      // ignore
+    }
+
+    if (obj instanceof PIXI.Graphics) {
+      try {
+        obj.clear();
+      } catch (e) {
+        // ignore
+      }
+      obj.name = '';
+      obj.visible = true;
+      obj.renderable = true;
+      obj.alpha = 1;
+      if ('eventMode' in obj) obj.eventMode = 'none';
+      obj.interactive = false;
+      obj.interactiveChildren = false;
+      this._graphicsPool.push(obj);
+      return;
+    }
+
+    try {
+      obj.destroy?.({ children: true });
+    } catch (e) {
+      // ignore
+    }
+  }
   
   /**
    * Собрать данные со всех Global Objects на сцене
@@ -49,19 +369,25 @@ export class InfluenceManager {
    */
   collectGlobalObjects() {
     const objects = [];
-    
-    if (!canvas.tokens) return objects;
-    
+
+    const scene = canvas?.scene;
+    if (!scene) return objects;
+
     // Размер клетки сцены в пикселях
     const gridSize = canvas.grid.size || 100;
-    
-    for (const token of canvas.tokens.placeables) {
-      // Проверяем, является ли актор типом globalobject
-      if (token.actor?.type !== 'globalobject') continue;
-      
-      const system = token.actor.system;
+
+    // Важно: берём TokenDocument'ы сцены, а не canvas.tokens.placeables.
+    // Это избавляет от ситуации, когда Token-объект на канвасе ещё не успел синхронизироваться,
+    // и мы получаем координаты "на шаг позади".
+    const tokenDocs = scene.tokens?.contents || Array.from(scene.tokens || []);
+
+    for (const tokenDoc of tokenDocs) {
+      const actor = tokenDoc?.actor;
+      if (actor?.type !== 'globalobject') continue;
+
+      const system = actor.system;
       if (!system) continue;
-      
+
       // Конвертируем gRange из единиц сетки×100 в пиксели
       // Например: gRange=500 и gridSize=100 → 5 клеток → 500 пикселей
       const rangeInGridUnits = (system.gRange || 0) / 100; // 500 → 5
@@ -71,20 +397,48 @@ export class InfluenceManager {
       // Для обратной совместимости: если UUID не задан, используем legacy system.gSide.
       const factionUuid = this._normalizeUuid(system.gFaction);
       const factionKey = factionUuid || system.gSide || 'neutral';
-      
+
+      const gPower = Number(system.gPower ?? 1) || 1;
+      const gRange = Number(rangeInPixels) || 0;
+      const gRangeSq = gRange > 0 ? (gRange * gRange) : 0;
+      const gInvRangeSq = gRangeSq > 0 ? (1 / gRangeSq) : 0;
+
+      const center = this._getTokenDocCenter(tokenDoc);
+
       objects.push({
-        token: token,
-        gRange: rangeInPixels,
-        gPower: system.gPower || 1,
+        token: tokenDoc,
+        gRange,
+        gRangeSq,
+        gInvRangeSq,
+        gPower,
         gFaction: factionKey,
         position: {
-          x: token.center.x,
-          y: token.center.y
+          x: center.x,
+          y: center.y
         }
       });
     }
-    
+
     return objects;
+  }
+
+  /**
+   * Центр токена на основе TokenDocument.
+   * @private
+   */
+  _getTokenDocCenter(tokenDoc, { x = null, y = null } = {}) {
+    const gridSize = canvas.grid?.size || 100;
+
+    const docX = Number(x ?? tokenDoc?.x ?? 0) || 0;
+    const docY = Number(y ?? tokenDoc?.y ?? 0) || 0;
+
+    const scaleX = Number(tokenDoc?.texture?.scaleX ?? 1) || 1;
+    const scaleY = Number(tokenDoc?.texture?.scaleY ?? 1) || 1;
+
+    const w = (Number(tokenDoc?.width) || 1) * gridSize * scaleX;
+    const h = (Number(tokenDoc?.height) || 1) * gridSize * scaleY;
+
+    return { x: docX + (w / 2), y: docY + (h / 2) };
   }
   
   /**
@@ -240,6 +594,8 @@ export class InfluenceManager {
    * @param {boolean} debug - отображать ли отладочные окружности gRange
    */
   drawInfluenceZones(debug = false) {
+    this.debug = Boolean(debug);
+
     // Очищаем предыдущую графику
     this.clearAll();
     
@@ -247,21 +603,27 @@ export class InfluenceManager {
     this._createContainer();
     
     // Собираем данные
-    const objects = this.collectGlobalObjects();
+    const allObjects = this.collectGlobalObjects();
+    const objects = allObjects.filter((o) => o.gRange > 0);
     
-    if (objects.length === 0) {
-      console.log('InfluenceManager: No Global Objects found on scene');
+    if (allObjects.length === 0) {
+      if (this.debug) console.debug('InfluenceManager: No Global Objects found on scene');
       return;
     }
-    
-    console.log(`InfluenceManager: Found ${objects.length} Global Objects`);
+
+    if (objects.length === 0) {
+      if (this.debug) console.debug('InfluenceManager: All Global Objects have gRange <= 0');
+      return;
+    }
+
+    if (this.debug) console.debug(`InfluenceManager: Found ${objects.length} Global Objects`);
     
     // Группируем по фракциям
     const groups = this.groupByFaction(objects);
-    console.log('InfluenceManager: Groups by faction:', groups);
+    if (this.debug) console.debug('InfluenceManager: Groups by faction:', groups);
     
-    // Используем новый метод с силовым полем
-    this._drawInfluenceWithPressure(groups, objects, debug);
+    // Используем метод с силовым полем
+    this._drawInfluenceWithPressure(groups, objects, this.debug);
   }
   
   /**
@@ -300,12 +662,11 @@ export class InfluenceManager {
     
     // Рисуем центральные точки источников
     validObjects.forEach(obj => {
-      const centerGraphics = new PIXI.Graphics();
+      const centerGraphics = this._acquireGraphics();
       centerGraphics.beginFill(color, 0.9);
       centerGraphics.drawCircle(obj.position.x, obj.position.y, 5);
       centerGraphics.endFill();
       centerGraphics.name = `influence_center_${side}_${obj.token.id}`;
-      centerGraphics.interactive = false;
       this.influenceContainer.addChild(centerGraphics);
       this.currentElements.push(centerGraphics);
     });
@@ -316,13 +677,12 @@ export class InfluenceManager {
    * @private
    */
   _drawSimpleCircle(obj, color, side) {
-    const graphics = new PIXI.Graphics();
+    const graphics = this._acquireGraphics();
     graphics.lineStyle(2, color, 0.8);
     graphics.beginFill(color, 0.2);
     graphics.drawCircle(obj.position.x, obj.position.y, obj.gRange);
     graphics.endFill();
     graphics.name = `influence_${side}_${obj.token.id}`;
-    graphics.interactive = false;
     this.influenceContainer.addChild(graphics);
     this.currentElements.push(graphics);
   }
@@ -416,7 +776,7 @@ export class InfluenceManager {
   _drawUnionPolygon(polygon, color, side) {
     if (!polygon || polygon.length < 3) return;
     
-    const graphics = new PIXI.Graphics();
+    const graphics = this._acquireGraphics();
     graphics.lineStyle(3, color, 0.9);
     graphics.beginFill(color, 0.25);
     
@@ -429,7 +789,6 @@ export class InfluenceManager {
     graphics.endFill();
     
     graphics.name = `influence_union_${side}`;
-    graphics.interactive = false;
     this.influenceContainer.addChild(graphics);
     this.currentElements.push(graphics);
   }
@@ -438,22 +797,32 @@ export class InfluenceManager {
    * Очистить все нарисованные элементы
    */
   clearAll() {
-    for (const element of this.currentElements) {
-      element.destroy({ children: true });
-    }
-    this.currentElements = [];
-    
     if (this.influenceContainer && !this.influenceContainer.destroyed) {
-      this.influenceContainer.removeChildren();
+      const removed = this.influenceContainer.removeChildren();
+      for (const child of removed) {
+        this._recycleDisplayObject(child);
+      }
     }
+
+    this.currentElements = [];
   }
   
   /**
    * Уничтожить менеджер
    */
   destroy() {
-    this.clearAll();
-    
+    this.disable();
+
+    // Уничтожаем пул графики
+    for (const g of this._graphicsPool) {
+      try {
+        g.destroy?.({ children: true });
+      } catch (e) {
+        // ignore
+      }
+    }
+    this._graphicsPool = [];
+
     if (this.influenceContainer && !this.influenceContainer.destroyed) {
       this.influenceContainer.destroy({ children: true });
     }
@@ -477,8 +846,30 @@ export class InfluenceManager {
     // Размер ячейки сетки (в пикселях canvas)
     // Меньше значение = точнее, но медленнее
     const gridSize = canvas.grid.size || 100;
-    const cellSize = gridSize / 4; // Уменьшаем для более плавных контуров
-    
+
+    // Базовое качество
+    let cellSize = gridSize / 4;
+
+    // Небольшая адаптация шага под размер области и число источников, чтобы не ловить фризы
+    // (оценка: количество узлов сетки ~ (W/cellSize)*(H/cellSize), а расчёт доминирования ~ nodes * sources)
+    try {
+      const w = Math.max(1, bounds.maxX - bounds.minX);
+      const h = Math.max(1, bounds.maxY - bounds.minY);
+      const sources = Math.max(1, allObjects.length);
+      const cols0 = Math.ceil(w / cellSize);
+      const rows0 = Math.ceil(h / cellSize);
+      const nodes0 = (rows0 + 1) * (cols0 + 1);
+      const work0 = nodes0 * sources;
+      const maxWork = 1_200_000;
+
+      if (work0 > maxWork) {
+        const factor = Math.sqrt(work0 / maxWork);
+        cellSize = Math.min(gridSize, Math.max(5, cellSize * factor));
+      }
+    } catch (e) {
+      // ignore
+    }
+
     // Используем метод метабольных шаров с Marching Squares
     this._drawInfluenceWithMetaballs(groups, bounds, cellSize);
     
@@ -490,22 +881,20 @@ export class InfluenceManager {
       
       // Отладочная окружность радиуса gRange (только в режиме отладки)
       if (debug) {
-        const debugCircle = new PIXI.Graphics();
+        const debugCircle = this._acquireGraphics();
         debugCircle.lineStyle(2, color, 0.5);
         debugCircle.drawCircle(obj.position.x, obj.position.y, obj.gRange);
         debugCircle.name = `influence_debug_circle_${obj.gFaction}_${obj.token.id}`;
-        debugCircle.interactive = false;
         this.influenceContainer.addChild(debugCircle);
         this.currentElements.push(debugCircle);
       }
       
       // Центральная точка
-      const centerGraphics = new PIXI.Graphics();
+      const centerGraphics = this._acquireGraphics();
       centerGraphics.beginFill(color, 0.9);
       centerGraphics.drawCircle(obj.position.x, obj.position.y, 5);
       centerGraphics.endFill();
       centerGraphics.name = `influence_center_${obj.gFaction}_${obj.token.id}`;
-      centerGraphics.interactive = false;
       this.influenceContainer.addChild(centerGraphics);
       this.currentElements.push(centerGraphics);
     }
@@ -551,20 +940,23 @@ export class InfluenceManager {
    * @private
    */
   _calculateInfluenceStrength(obj, x, y) {
+    const rangeSq = obj.gRangeSq || (obj.gRange > 0 ? (obj.gRange * obj.gRange) : 0);
+    if (!rangeSq) return 0;
+
     const dx = x - obj.position.x;
     const dy = y - obj.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
+    const distSq = (dx * dx) + (dy * dy);
+
     // Если точка вне радиуса влияния - сила 0
-    if (distance > obj.gRange) return 0;
-    
-    // Используем квадратичный спад влияния
-    // Можно настроить: linear, quadratic, exponential
-    const normalizedDistance = distance / obj.gRange; // 0..1
-    const falloff = 1 - (normalizedDistance * normalizedDistance); // квадратичный спад
-    
+    if (distSq > rangeSq) return 0;
+
+    // Квадратичный спад без sqrt: 1 - (distance/range)^2 = 1 - distSq/rangeSq
+    const invRangeSq = obj.gInvRangeSq || (1 / rangeSq);
+    const normalizedSq = distSq * invRangeSq; // 0..1
+    const falloff = Math.max(0, 1 - normalizedSq);
+
     // Умножаем на мощность объекта
-    return falloff * obj.gPower;
+    return falloff * (obj.gPower || 1);
   }
   
   /**
@@ -707,7 +1099,7 @@ export class InfluenceManager {
       const polygon = polygons[i];
       if (!polygon || polygon.length < 3) continue;
       
-      const graphics = new PIXI.Graphics();
+      const graphics = this._acquireGraphics();
       graphics.lineStyle(3, color, 0.9);
       graphics.beginFill(color, 0.25);
       
@@ -720,7 +1112,6 @@ export class InfluenceManager {
       graphics.endFill();
       
       graphics.name = `influence_territory_${side}_${i}`;
-      graphics.interactive = false;
       this.influenceContainer.addChild(graphics);
       this.currentElements.push(graphics);
     }
@@ -736,27 +1127,23 @@ export class InfluenceManager {
   _drawInfluenceWithMetaballs(groups, bounds, cellSize) {
     const cols = Math.ceil((bounds.maxX - bounds.minX) / cellSize);
     const rows = Math.ceil((bounds.maxY - bounds.minY) / cellSize);
+
+    // Фильтруем только реальные источники (gRange > 0)
+    const validGroups = {};
+    for (const [side, objects] of Object.entries(groups)) {
+      const validObjects = (objects || []).filter((obj) => obj.gRange > 0);
+      if (validObjects.length > 0) validGroups[side] = validObjects;
+    }
+
+    if (Object.keys(validGroups).length === 0) return;
     
     // Вычисляем доминирование фракций (какая фракция доминирует в каждой точке)
-    const dominanceField = this._calculateDominanceField(groups, bounds, cellSize, rows, cols);
+    const dominanceField = this._calculateDominanceField(validGroups, bounds, cellSize, rows, cols);
     
     // Для каждой фракции строим изоконтуры её территории
-    for (const [side, objects] of Object.entries(groups)) {
-      if (objects.length === 0) continue;
-      
-      const validObjects = objects.filter(obj => obj.gRange > 0);
-      if (validObjects.length === 0) continue;
-      
-      // Создаём поле силы влияния с учётом доминирования
-      const territoryField = this._extractTerritoryFieldWithStrength(
-        dominanceField, 
-        validObjects, 
-        side, 
-        bounds, 
-        cellSize, 
-        rows, 
-        cols
-      );
+    for (const side of Object.keys(validGroups)) {
+      // Из dominanceField уже можно получить «силу» территории (maxStrength доминирующей стороны)
+      const territoryField = this._extractTerritoryFieldFromDominance(dominanceField, side, rows, cols);
       
       // Используем Marching Squares для построения изоконтуров
       const threshold = 0.3; // Порог для предотвращения перекрытия зон
@@ -780,7 +1167,10 @@ export class InfluenceManager {
    */
   _calculateDominanceField(groups, bounds, cellSize, rows, cols) {
     const field = [];
-    
+
+    // Важно: Object.entries в горячем цикле даёт лишние аллокации. Берём один раз.
+    const entries = Object.entries(groups || {});
+
     for (let row = 0; row <= rows; row++) {
       field[row] = [];
       for (let col = 0; col <= cols; col++) {
@@ -791,7 +1181,7 @@ export class InfluenceManager {
         let maxStrength = 0;
         let dominantSide = null;
         
-        for (const [side, objects] of Object.entries(groups)) {
+        for (const [side, objects] of entries) {
           let totalStrength = 0;
           
           for (const obj of objects) {
@@ -815,45 +1205,27 @@ export class InfluenceManager {
   }
   
   /**
-   * Извлечь поле территории с учётом реальной силы влияния
-   * @param {Array} dominanceField - поле доминирования
-   * @param {Array} objects - объекты этой фракции
-   * @param {string} side - сторона
-   * @param {Object} bounds - границы
-   * @param {number} cellSize - размер ячейки
-   * @param {number} rows - количество строк
-   * @param {number} cols - количество столбцов
+   * Извлечь поле территории из dominanceField.
+   * dominanceField уже содержит maxStrength доминирующей стороны в каждой точке,
+   * поэтому повторный пересчёт силы по объектам не нужен.
+   * @param {Array} dominanceField
+   * @param {string} side
+   * @param {number} rows
+   * @param {number} cols
    * @returns {Array} двумерный массив значений 0-1
    * @private
    */
-  _extractTerritoryFieldWithStrength(dominanceField, objects, side, bounds, cellSize, rows, cols) {
+  _extractTerritoryFieldFromDominance(dominanceField, side, rows, cols) {
     const field = [];
-    
+
     for (let row = 0; row <= rows; row++) {
       field[row] = [];
       for (let col = 0; col <= cols; col++) {
         const cell = dominanceField[row][col];
-        
-        // Только если эта фракция доминирует в этой точке
-        if (cell.side === side) {
-          // Вычисляем реальную силу влияния в этой точке
-          const x = bounds.minX + col * cellSize;
-          const y = bounds.minY + row * cellSize;
-          
-          let totalStrength = 0;
-          for (const obj of objects) {
-            totalStrength += this._calculateInfluenceStrength(obj, x, y);
-          }
-          
-          // Нормализуем значение (0-1)
-          field[row][col] = Math.min(totalStrength, 1);
-        } else {
-          // Чужая территория
-          field[row][col] = 0;
-        }
+        field[row][col] = (cell.side === side) ? Math.min(cell.strength, 1) : 0;
       }
     }
-    
+
     return field;
   }
   
@@ -983,7 +1355,7 @@ export class InfluenceManager {
       const contour = item.contour;
       if (!contour || contour.length < 3) continue;
       
-      const graphics = new PIXI.Graphics();
+      const graphics = this._acquireGraphics();
       graphics.lineStyle(3, color, 0.9);
       graphics.beginFill(color, 0.25);
       
@@ -1011,7 +1383,6 @@ export class InfluenceManager {
       graphics.endFill();
       
       graphics.name = `influence_metaball_${side}_${i}`;
-      graphics.interactive = false;
       this.influenceContainer.addChild(graphics);
       this.currentElements.push(graphics);
     }

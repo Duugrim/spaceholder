@@ -71,8 +71,9 @@ Hooks.once('init', function () {
     rollItemMacro,
     anatomyManager,
     // Helper functions for influence zones
-    showInfluence: () => game.spaceholder.influenceManager?.drawInfluenceZones(),
-    hideInfluence: () => game.spaceholder.influenceManager?.clearAll(),
+    showInfluence: (debug = false) => game.spaceholder.influenceManager?.enable({ debug }),
+    hideInfluence: () => game.spaceholder.influenceManager?.disable(),
+    toggleInfluence: (debug = false) => game.spaceholder.influenceManager?.toggle({ debug }),
     // Global map helpers (new system)
     // TODO: Add new global map helpers when ready
     
