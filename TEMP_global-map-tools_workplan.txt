@@ -1,0 +1,54 @@
+Global Map Tools — план работ (временный)
+
+Цель:
+- Устранить накопление обработчиков/событий и связанные баги активации/деактивации.
+- Нормализовать жизненный цикл инструмента (сброс состояния, закрытие UI).
+- Доделать Flatten: режим "to value" + хоткей "пипетка" для взятия высоты.
+- Привести имена инструментов/DOM id к консистентности.
+- НЕ трогаем сдвиг на пол-клетки (это намеренно), но добавляем поясняющие комментарии.
+
+План (P0 — делаем сейчас)
+P0.1 Event lifecycle (canvas.stage):
+- Сделать именованные handler’ы pointerdown/pointermove/pointerup (+ pointerupoutside/pointercancel).
+- Устанавливать handlers при activate(), снимать при deactivate().
+- Гарантировать, что повторный activate() не создаёт дубликаты.
+
+P0.2 State reset при deactivate()/закрытии UI:
+- deactivate() должен гарантированно выключать brush, сбрасывать isMouseDown/lastPosition/_riverDrag, чистить preview.
+- Определиться с политикой незавершённого stroke при выходе (по умолчанию discard).
+
+P0.3 Flatten (to value) + пипетка:
+- Добавить UI-контрол выбора targetHeight (0..100) и показывать его только для Flatten.
+- Добавить хоткей-пипетку: Alt+Click на карте при активной кисти Flatten → взять текущую высоту клетки как targetHeight (без рисования).
+- Синхронизировать UI (слайдер/лейбл) при пипетке.
+
+P0.4 Консистентность инструментов / DOM id:
+- Убрать/пофиксить упоминания старых имён (draw-river/erase-river) или привести их к актуальному набору.
+- Поправить updateBrushUI(): отключать реальный #global-map-river-mode (сейчас неверный id).
+
+P0.5 Tools UI cleanup:
+- Drag handlers на document повесить неймспейсом и снимать в hideToolsUI()/deactivate().
+
+P0.6 Комментарии про -cellSize/2:
+- Добавить комментарий в местах отрисовки клеток/preview/подсветки, зачем нужен полуклеточный сдвиг.
+
+План (P1 — после P0, в следующие итерации)
+- [x] P1.1 Clamp высот в диапазон 0..100 при commit/операциях.
+- [x] P1.2 Undo/Redo (хотя бы 1 шаг) для кисти.
+- [x] P1.3 Корректная реакция на смену сцены/canvasReady (авто-deactivate или безопасный reset overlays).
+- [ ] P1.4 Переход UI выбора инструментов с select на кнопки (категории + режимы).
+
+Прогресс (обновляется по мере работы)
+- [x] P0.1 Event lifecycle (canvas.stage)
+- [x] P0.2 State reset
+- [x] P0.3 Flatten + pipette
+- [x] P0.4 Tool/DOM consistency
+- [x] P0.5 UI cleanup
+- [x] P0.6 Comments
+
+Лог
+- 2025-12-22: план создан
+- 2025-12-22: выполнены P0.1–P0.6 (listeners lifecycle, reset state, Flatten UI + Alt+Click pipette, консистентность tool/id, cleanup document handlers, комментарии про half-cell offset)
+- 2025-12-22: выполнен P1.2 (Undo/Redo для grid-правок: кнопки + Ctrl/Cmd+Z, Ctrl+Y, Ctrl+Shift+Z)
+- 2025-12-22: выполнен P1.1 (Clamp высот 0..100 при commit и глобальных операциях)
+- 2025-12-22: выполнен P1.3 (canvasReady: авто-deactivate при смене сцены; same-scene refresh: rebind stage listeners + пересоздание overlay/cursor/handles; renderer хранит scene id, очищает stale refs и пере-рендерит карту после canvas rebuild; rivers не перезатираются при несохранённых правках на same-scene refresh)

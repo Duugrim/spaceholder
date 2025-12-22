@@ -15,6 +15,8 @@ export class GlobalMapRenderer {
     this.isVisible = false;
     this.currentGrid = null; // Reference to current grid being rendered
     this.currentMetadata = null;
+    this.currentSceneId = null; // Scene id this grid/metadata belongs to (prevents editing wrong scene)
+    this._canvasSceneId = null; // Last scene id we saw in onCanvasReady (used for scene-change detection even without a grid)
 
     // Separate render modes for heights and biomes
     this.heightsMode = 'contours-bw'; // 'contours-bw', 'contours', 'cells', 'off'
@@ -66,17 +68,42 @@ export class GlobalMapRenderer {
     console.log('GlobalMapRenderer | onCanvasReady');
     this.isVisible = false;
 
+    // Detect scene changes on canvas rebuild
+    const sceneId = canvas?.scene?.id || null;
+    const prevCanvasSceneId = this._canvasSceneId;
+    const sceneChanged = !!(prevCanvasSceneId && sceneId && prevCanvasSceneId !== sceneId);
+    this._canvasSceneId = sceneId;
+
+    // If we have a grid from another scene, drop it to prevent cross-scene editing/rendering bugs
+    const gridSceneMismatch = !!(this.currentSceneId && sceneId && this.currentSceneId !== sceneId);
+    if (gridSceneMismatch) {
+      this.currentGrid = null;
+      this.currentMetadata = null;
+      this.currentSceneId = null;
+    }
+
     // Recreate container/layers for this canvas
     this.setupContainer();
 
-    // Reload rivers for the active scene (new scene = new flags)
-    this.vectorRiversData = null;
-    await this.loadVectorRiversFromScene();
+    // Reload rivers for the active scene.
+    // If the scene changed, we must read new flags.
+    // If the scene did NOT change, preserve in-memory rivers (they may include unsaved edits) and only load if empty.
+    if (sceneChanged || this.vectorRiversData === null || this.vectorRiversData === undefined) {
+      this.vectorRiversData = null;
+      await this.loadVectorRiversFromScene();
+    }
 
     // Hover labels for rivers (works outside of editing tools)
     this._installRiverHoverHandler();
 
-    // If a grid is already rendered, redraw rivers on top
+    // If we already have a rendered grid (same scene refresh), re-render it into the new container.
+    // Without this, the map disappears after canvas rebuild until something else triggers render().
+    if (this.currentGrid && this.currentMetadata) {
+      await this.render(this.currentGrid, this.currentMetadata);
+      return;
+    }
+
+    // Otherwise, if a grid is already rendered but we don't want to re-render the whole map, at least redraw rivers on top
     if (this.currentMetadata && this.vectorRiversData) {
       this.renderVectorRivers(this.vectorRiversData, this.currentMetadata);
     }
@@ -195,6 +222,7 @@ export class GlobalMapRenderer {
     // Store reference to current grid
     this.currentGrid = gridData;
     this.currentMetadata = metadata;
+    this.currentSceneId = canvas?.scene?.id || null;
 
     // Make sure container/layers exist
     if (!this.container || !this.mapLayer || !this.riversLayer || !this.riverLabelsLayer) {
@@ -1563,7 +1591,8 @@ export class GlobalMapRenderer {
 
         const color = this.biomeResolver.getBiomeColor(biomeId);
 
-        // Draw cell centered at coordinate point (shift by half cell)
+        // IMPORTANT: the unified grid is treated as samples at cell *centers*.
+        // When drawing a rect per sample, we center it on the sample point ⇒ shift by half a cell.
         const x = bounds.minX + col * cellSize - cellSize / 2;
         const y = bounds.minY + row * cellSize - cellSize / 2;
 
@@ -2115,6 +2144,11 @@ export class GlobalMapRenderer {
         this.container.removeChildren();
       }
     } finally {
+      // Also clear references so UI won't think a map is still loaded
+      this.currentGrid = null;
+      this.currentMetadata = null;
+      this.currentSceneId = null;
+
       this.isVisible = false;
       console.log('GlobalMapRenderer | Cleared');
     }

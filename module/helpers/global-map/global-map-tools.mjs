@@ -69,6 +69,35 @@ export class GlobalMapTools {
     // Cell inspector
     this.isCellInspectorActive = false;
     this.cellInspectorHandler = null;
+
+    // ===== Event lifecycle (important to avoid handler accumulation) =====
+    this._stageListenersActive = false;
+    this._stageForListeners = null; // canvas.stage instance we installed listeners on
+    this._onStagePointerDown = null;
+    this._onStagePointerMove = null;
+    this._onStagePointerUp = null;
+
+    // Namespace for document-level UI handlers (drag)
+    this._uiDocNamespace = '.globalMapToolsUI';
+
+    // ===== Undo/Redo (grid edits) =====
+    this._undoStack = []; // stack of snapshots
+    this._redoStack = []; // stack of snapshots
+    this._undoMax = 20;
+    this._strokeHasChanges = false;
+
+    // Keyboard shortcuts (Ctrl/Cmd+Z / Ctrl+Y / Ctrl+Shift+Z)
+    this._keyListenersActive = false;
+    this._onDocKeyDown = null;
+    this._keyDocNamespace = '.globalMapToolsKeys';
+
+    // Scene/canvas lifecycle
+    this._activeSceneId = null;
+    this._canvasHookInstalled = false;
+    this._onCanvasReadyHook = null;
+
+    // Install canvas hooks once
+    this._installCanvasHooks();
   }
 
   /**
@@ -80,6 +109,13 @@ export class GlobalMapTools {
     console.log('GlobalMapTools | Activating...');
     this.isActive = true;
 
+    // New editing session: reset undo/redo history
+    this._undoStack = [];
+    this._redoStack = [];
+
+    // Remember which scene we started editing on (scene changes should cancel editing)
+    this._activeSceneId = canvas?.scene?.id || null;
+
     // Show renderer if not visible
     if (!this.renderer.isVisible) {
       this.renderer.show();
@@ -87,6 +123,7 @@ export class GlobalMapTools {
 
     // Set up event listeners
     this.setupEventListeners();
+    this._installKeyListeners();
 
     // Create UI elements
     this.createBrushCursor();
@@ -103,7 +140,32 @@ export class GlobalMapTools {
     if (!this.isActive) return;
 
     console.log('GlobalMapTools | Deactivating...');
+
+    // Mark inactive first so any late events are ignored
     this.isActive = false;
+
+    // IMPORTANT: Remove stage listeners to avoid handler accumulation across activate/deactivate cycles
+    this._removeStageEventListeners();
+    this._removeKeyListeners();
+
+    // Stop brush and cancel any in-progress stroke (discard by default)
+    if (this.isBrushActive) {
+      this.deactivateBrush();
+    }
+
+    this.isMouseDown = false;
+    this.lastPosition = null;
+    this.tempOverlay = null;
+    this.affectedCells = null;
+    this._strokeHasChanges = false;
+
+    this.clearOverlayPreview();
+    this.clearCellHighlight();
+
+    // Release undo/redo memory on exit
+    this._undoStack = [];
+    this._redoStack = [];
+    this._activeSceneId = null;
 
     // Destroy UI elements
     this.destroyBrushCursor();
@@ -175,12 +237,26 @@ export class GlobalMapTools {
   deactivateBrush() {
     if (!this.isBrushActive) return;
 
+    // Stop any active stroke/drag immediately (discard overlay by default)
+    this.isMouseDown = false;
+    this.lastPosition = null;
+    this.tempOverlay = null;
+    this.affectedCells = null;
+    this._strokeHasChanges = false;
+
     this.isBrushActive = false;
     this._riverDrag = null;
 
+    this.clearOverlayPreview();
+    this.clearCellHighlight();
+
     if (this.riverHandles) {
-      this.riverHandles.clear();
-      this.riverHandles.visible = false;
+      try {
+        this.riverHandles.clear();
+        this.riverHandles.visible = false;
+      } catch (e) {
+        this.riverHandles = null;
+      }
     }
 
     this.updateBrushUI();
@@ -381,24 +457,53 @@ export class GlobalMapTools {
   }
 
   _ensureRiverHandles() {
-    if (this.riverHandles) return;
+    const desiredParent = canvas?.interface || canvas?.stage;
+
+    if (this.riverHandles) {
+      // River handles can get destroyed or detached when the canvas/interface is rebuilt.
+      // Try to reattach and ensure it's still usable; if that fails, recreate.
+      try {
+        if (desiredParent && this.riverHandles.parent !== desiredParent) {
+          this.riverHandles.parent?.removeChild?.(this.riverHandles);
+          desiredParent.addChild(this.riverHandles);
+        }
+
+        // Ensure it's still usable (Graphics can become a dead ref after destroy)
+        this.riverHandles.clear();
+        return;
+      } catch (e) {
+        try {
+          this.riverHandles.destroy();
+        } catch (err) {
+          // ignore
+        }
+        this.riverHandles = null;
+      }
+    }
 
     this.riverHandles = new PIXI.Graphics();
     this.riverHandles.name = 'globalMapRiverHandles';
     this.riverHandles.visible = false;
 
     // Put handles on interface layer so they don't get baked into exports
-    if (canvas?.interface) {
-      canvas.interface.addChild(this.riverHandles);
-    } else if (canvas?.stage) {
-      canvas.stage.addChild(this.riverHandles);
+    if (desiredParent) {
+      desiredParent.addChild(this.riverHandles);
     }
   }
 
   _renderRiverHandles() {
+    this._ensureRiverHandles();
     if (!this.riverHandles) return;
 
-    this.riverHandles.clear();
+    try {
+      this.riverHandles.clear();
+    } catch (e) {
+      // Recreate handles if they were destroyed by a canvas rebuild
+      this.riverHandles = null;
+      this._ensureRiverHandles();
+      if (!this.riverHandles) return;
+      this.riverHandles.clear();
+    }
 
     const shouldShow = this.isBrushActive && this._isRiverTool();
     this.riverHandles.visible = shouldShow;
@@ -940,19 +1045,42 @@ export class GlobalMapTools {
    * Set up canvas event listeners
    */
   setupEventListeners() {
-    if (!canvas.stage) return;
+    this._installStageEventListeners();
+  }
 
-    // Mouse down
-    canvas.stage.on('pointerdown', (event) => {
+  /**
+   * Install PIXI stage listeners.
+   * IMPORTANT: We must be able to remove them to avoid handler accumulation after multiple activate/deactivate cycles.
+   * @private
+   */
+  _installStageEventListeners() {
+    const stage = canvas?.stage;
+    if (!stage) return;
+    if (this._stageListenersActive) return;
+
+    this._stageForListeners = stage;
+
+    this._onStagePointerDown = (event) => {
       if (!this.isActive || !this.isBrushActive) return;
 
       // Allow right-click panning
-      if (event.data.button === 2) return;
-      if (event.data.button !== 0) return;
+      if (event?.data?.button === 2) return;
+      if (event?.data?.button !== 0) return;
 
       event.stopPropagation();
 
-      const pos = event.data.getLocalPosition(canvas.stage);
+      const pos = event.data.getLocalPosition(stage);
+
+      // Flatten pipette hotkey: Alt+Click picks target height from the clicked cell (no painting)
+      const oe = event?.data?.originalEvent || {};
+      const alt = !!oe.altKey;
+      if (!this._isRiverTool() && this.currentTool === 'flatten' && alt) {
+        if (this._pickFlattenTargetHeightAt(pos.x, pos.y)) {
+          this._syncFlattenUI();
+        }
+        return;
+      }
+
       this.isMouseDown = true;
       this.lastPosition = pos;
 
@@ -967,19 +1095,17 @@ export class GlobalMapTools {
       // Start temporary overlay for this stroke
       const gridSize = this.renderer.currentGrid.heights.length;
       this.tempOverlay = new Float32Array(gridSize);
-      this.tempOverlayTemp = new Float32Array(gridSize);
-      this.tempOverlayMoisture = new Float32Array(gridSize);
       this.affectedCells = new Set();
+      this._strokeHasChanges = false;
 
       this.applyBrushStroke(pos.x, pos.y);
       this.updateOverlayPreview();
-    });
+    };
 
-    // Mouse move
-    canvas.stage.on('pointermove', (event) => {
+    this._onStagePointerMove = (event) => {
       if (!this.isActive) return;
 
-      const pos = event.data.getLocalPosition(canvas.stage);
+      const pos = event.data.getLocalPosition(stage);
 
       // Vector rivers editor (dragging)
       if (this.isBrushActive && this._isRiverTool()) {
@@ -1009,12 +1135,12 @@ export class GlobalMapTools {
           this.lastPosition = pos;
         }
       }
-    });
+    };
 
-    // Mouse up
-    canvas.stage.on('pointerup', (event) => {
-      if (!this.isActive || !this.isBrushActive || !this.isMouseDown) return;
+    this._onStagePointerUp = (event) => {
+      if (!this.isActive || !this.isBrushActive) return;
 
+      const wasMouseDown = this.isMouseDown;
       this.isMouseDown = false;
       this.lastPosition = null;
 
@@ -1024,13 +1150,374 @@ export class GlobalMapTools {
         return;
       }
 
+      if (!wasMouseDown) return;
+
       // Commit overlay to grid
       if (this.tempOverlay) {
         this.commitOverlay();
         this.tempOverlay = null;
+        this.affectedCells = null;
         this.clearOverlayPreview();
       }
-    });
+    };
+
+    stage.on('pointerdown', this._onStagePointerDown);
+    stage.on('pointermove', this._onStagePointerMove);
+    stage.on('pointerup', this._onStagePointerUp);
+
+    // Important: prevent stuck drag/stroke state if pointer leaves canvas or gets cancelled
+    stage.on('pointerupoutside', this._onStagePointerUp);
+    stage.on('pointercancel', this._onStagePointerUp);
+
+    this._stageListenersActive = true;
+  }
+
+  /**
+   * Remove PIXI stage listeners.
+   * @private
+   */
+  _removeStageEventListeners() {
+    const stage = this._stageForListeners || canvas?.stage;
+
+    if (!stage) {
+      this._stageListenersActive = false;
+      this._stageForListeners = null;
+      return;
+    }
+    if (!this._stageListenersActive) {
+      this._stageForListeners = null;
+      return;
+    }
+
+    try {
+      if (this._onStagePointerDown) stage.off('pointerdown', this._onStagePointerDown);
+      if (this._onStagePointerMove) stage.off('pointermove', this._onStagePointerMove);
+      if (this._onStagePointerUp) {
+        stage.off('pointerup', this._onStagePointerUp);
+        stage.off('pointerupoutside', this._onStagePointerUp);
+        stage.off('pointercancel', this._onStagePointerUp);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    this._onStagePointerDown = null;
+    this._onStagePointerMove = null;
+    this._onStagePointerUp = null;
+    this._stageListenersActive = false;
+    this._stageForListeners = null;
+  }
+
+  // ==========================
+  // Scene / canvas lifecycle
+  // ==========================
+
+  _installCanvasHooks() {
+    if (this._canvasHookInstalled) return;
+
+    try {
+      if (!globalThis.Hooks?.on) return;
+
+      this._onCanvasReadyHook = () => {
+        // Defer to allow renderer (and other hooks) to rebuild containers first.
+        setTimeout(() => {
+          try {
+            this._handleCanvasReady();
+          } catch (e) {
+            // ignore
+          }
+        }, 0);
+      };
+
+      Hooks.on('canvasReady', this._onCanvasReadyHook);
+      this._canvasHookInstalled = true;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  async _handleCanvasReady() {
+    if (!this.isActive) return;
+
+    const newSceneId = canvas?.scene?.id || null;
+
+    // Cancel any in-progress stroke/drag on canvas rebuild
+    this.isMouseDown = false;
+    this.lastPosition = null;
+    this.tempOverlay = null;
+    this.affectedCells = null;
+    this._strokeHasChanges = false;
+    this._riverDrag = null;
+
+    // If the scene changed while tools were active, exit edit mode to avoid editing the wrong scene.
+    if (this._activeSceneId !== newSceneId) {
+      try {
+        ui.notifications?.warn?.('Редактор глобальной карты выключен из-за смены сцены');
+      } catch (e) {
+        // ignore
+      }
+
+      await this.deactivate();
+      return;
+    }
+
+    // Same-scene canvas refresh: rebind stage listeners (canvas.stage can be recreated) and reattach overlays.
+    this._removeStageEventListeners();
+    this._installStageEventListeners();
+
+    // UI may still be open; ensure helper graphics are attached to the new canvas layers/containers.
+    this.createBrushCursor();
+    this.createOverlayPreview();
+    if (this.singleCellMode) {
+      this.createCellHighlight();
+    }
+
+    // River handles live on interface/stage; ensure they are reattached if river tool is active
+    if (this._isRiverTool()) {
+      this._ensureRiverHandles();
+      this._renderRiverHandles();
+    }
+
+    this.updateBrushCursorGraphics();
+    this.updateBrushUI();
+    this._updateUndoRedoUI();
+  }
+
+  // ==========================
+  // Undo / Redo (grid edits)
+  // ==========================
+
+  _installKeyListeners() {
+    if (this._keyListenersActive) return;
+
+    const ns = this._keyDocNamespace || '.globalMapToolsKeys';
+
+    // Defensive: remove any previous stale handler for this namespace
+    try {
+      $(document).off(`keydown${ns}`);
+    } catch (e) {
+      // ignore
+    }
+
+    this._onDocKeyDown = (e) => {
+      try {
+        if (!this.isActive) return;
+        if (!e) return;
+
+        // Don't steal shortcuts while typing in inputs
+        const t = e.target;
+        const tag = String(t?.tagName || '').toLowerCase();
+        const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || !!t?.isContentEditable;
+        if (isTyping) return;
+
+        // Ignore while painting/dragging a stroke
+        if (this.isMouseDown) return;
+
+        const ctrlOrMeta = !!e.ctrlKey || !!e.metaKey;
+        if (!ctrlOrMeta) return;
+
+        const key = String(e.key || '').toLowerCase();
+
+        // Ctrl+Z / Cmd+Z => undo
+        // Ctrl+Shift+Z / Cmd+Shift+Z => redo
+        // Ctrl+Y => redo
+        if (key === 'z') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.shiftKey) {
+            this.redo();
+          } else {
+            this.undo();
+          }
+        } else if (key === 'y') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.redo();
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    $(document).on(`keydown${ns}`, this._onDocKeyDown);
+    this._keyListenersActive = true;
+  }
+
+  _removeKeyListeners() {
+    const ns = this._keyDocNamespace || '.globalMapToolsKeys';
+
+    try {
+      $(document).off(`keydown${ns}`);
+    } catch (e) {
+      // ignore
+    }
+
+    this._onDocKeyDown = null;
+    this._keyListenersActive = false;
+  }
+
+  _captureGridSnapshot() {
+    const grid = this.renderer?.currentGrid;
+    if (!grid?.heights?.length) return null;
+
+    return {
+      heights: new Float32Array(grid.heights),
+      biomes: grid.biomes ? new Uint8Array(grid.biomes) : null,
+      rivers: grid.rivers ? new Uint8Array(grid.rivers) : null,
+      rows: grid.rows,
+      cols: grid.cols,
+    };
+  }
+
+  _applyGridSnapshot(snapshot) {
+    if (!snapshot) return false;
+    const grid = this.renderer?.currentGrid;
+    if (!grid) return false;
+
+    // Heights
+    if (!grid.heights || grid.heights.length !== snapshot.heights.length) {
+      grid.heights = new Float32Array(snapshot.heights.length);
+    }
+    grid.heights.set(snapshot.heights);
+
+    // Biomes
+    if (snapshot.biomes) {
+      if (!grid.biomes || grid.biomes.length !== snapshot.biomes.length) {
+        grid.biomes = new Uint8Array(snapshot.biomes.length);
+      }
+      grid.biomes.set(snapshot.biomes);
+    }
+
+    // Rivers (legacy cell-mask rivers)
+    if (snapshot.rivers) {
+      if (!grid.rivers || grid.rivers.length !== snapshot.rivers.length) {
+        grid.rivers = new Uint8Array(snapshot.rivers.length);
+      }
+      grid.rivers.set(snapshot.rivers);
+    }
+
+    return true;
+  }
+
+  _pushUndoSnapshot(label = '') {
+    const snap = this._captureGridSnapshot();
+    if (!snap) return false;
+
+    this._undoStack.push({ label: String(label || ''), snapshot: snap, ts: Date.now() });
+
+    // Trim oldest
+    if (this._undoStack.length > this._undoMax) {
+      this._undoStack.splice(0, this._undoStack.length - this._undoMax);
+    }
+
+    // New edit invalidates redo
+    this._redoStack = [];
+
+    this._updateUndoRedoUI();
+    return true;
+  }
+
+  _canUndo() {
+    return Array.isArray(this._undoStack) && this._undoStack.length > 0;
+  }
+
+  _canRedo() {
+    return Array.isArray(this._redoStack) && this._redoStack.length > 0;
+  }
+
+  _updateUndoRedoUI() {
+    if (!$('#global-map-tools-ui').length) return;
+
+    const undoBtn = $('#global-map-undo');
+    const redoBtn = $('#global-map-redo');
+
+    const canUndo = this._canUndo();
+    const canRedo = this._canRedo();
+
+    if (undoBtn.length) {
+      undoBtn.prop('disabled', !canUndo);
+      undoBtn.css('opacity', canUndo ? '1' : '0.5');
+    }
+    if (redoBtn.length) {
+      redoBtn.prop('disabled', !canRedo);
+      redoBtn.css('opacity', canRedo ? '1' : '0.5');
+    }
+  }
+
+  _rerenderAfterEdit() {
+    if (!this.renderer?.currentGrid || !this.renderer?.currentMetadata) return;
+
+    // Re-render map
+    this.renderer.render(
+      this.renderer.currentGrid,
+      this.renderer.currentMetadata,
+      { mode: 'heights' }
+    );
+
+    // Ensure overlays remain attached even if renderer recreated containers
+    this.createOverlayPreview();
+    if (this.singleCellMode) {
+      this.createCellHighlight();
+    }
+
+    this._updateUndoRedoUI();
+  }
+
+  undo() {
+    if (!this._canUndo()) return false;
+    if (this.isMouseDown) return false;
+    if (!this.renderer?.currentGrid) return false;
+
+    const entry = this._undoStack.pop();
+    if (!entry?.snapshot) {
+      this._updateUndoRedoUI();
+      return false;
+    }
+
+    const current = this._captureGridSnapshot();
+    if (current) {
+      this._redoStack.push({ label: entry.label, snapshot: current, ts: Date.now() });
+    }
+
+    const ok = this._applyGridSnapshot(entry.snapshot);
+    if (ok) {
+      this._rerenderAfterEdit();
+    } else {
+      this._updateUndoRedoUI();
+    }
+
+    return ok;
+  }
+
+  redo() {
+    if (!this._canRedo()) return false;
+    if (this.isMouseDown) return false;
+    if (!this.renderer?.currentGrid) return false;
+
+    const entry = this._redoStack.pop();
+    if (!entry?.snapshot) {
+      this._updateUndoRedoUI();
+      return false;
+    }
+
+    const current = this._captureGridSnapshot();
+    if (current) {
+      this._undoStack.push({ label: entry.label, snapshot: current, ts: Date.now() });
+
+      // Trim oldest
+      if (this._undoStack.length > this._undoMax) {
+        this._undoStack.splice(0, this._undoStack.length - this._undoMax);
+      }
+    }
+
+    const ok = this._applyGridSnapshot(entry.snapshot);
+    if (ok) {
+      this._rerenderAfterEdit();
+    } else {
+      this._updateUndoRedoUI();
+    }
+
+    return ok;
   }
 
   /**
@@ -1103,10 +1590,12 @@ export class GlobalMapTools {
             continue; // Skip this cell if it doesn't pass filter
           }
 
+          // We have at least one affected cell in this stroke
+          this._strokeHasChanges = true;
+
           // Track affected cells for tools that process in commit
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen' ||
-              this.currentTool === 'modify-biome' || this.currentTool === 'set-biome' ||
-              this.currentTool === 'draw-river' || this.currentTool === 'erase-river') {
+              this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
             this.affectedCells.add(idx);
           }
 
@@ -1125,8 +1614,6 @@ export class GlobalMapTools {
             case 'roughen':
             case 'modify-biome':
             case 'set-biome':
-            case 'draw-river':
-            case 'erase-river':
               // Mark cells, changes applied in commit
               break;
             default:
@@ -1142,6 +1629,15 @@ export class GlobalMapTools {
    */
   commitOverlay() {
     if (!this.renderer.currentGrid || !this.tempOverlay) return;
+
+    // Skip no-op strokes (e.g. everything filtered out)
+    if (!this._strokeHasChanges) {
+      console.log('GlobalMapTools | No changes to apply (stroke was empty)');
+      return;
+    }
+
+    // Capture undo snapshot BEFORE modifying the grid
+    this._pushUndoSnapshot(`brush:${this.currentTool}`);
 
     const { heights, biomes, moisture, temperature, rows, cols } = this.renderer.currentGrid;
     let { rivers } = this.renderer.currentGrid;
@@ -1185,23 +1681,14 @@ export class GlobalMapTools {
             biomes[idx] = this.setBiomeId;
           }
         }
-      } else if (this.currentTool === 'draw-river') {
-        // Draw rivers
-        for (const idx of this.affectedCells) {
-          rivers[idx] = 1;
-        }
-      } else if (this.currentTool === 'erase-river') {
-        // Erase rivers
-        for (const idx of this.affectedCells) {
-          rivers[idx] = 0;
-        }
       }
     }
 
     // Apply overlay to heights
     for (let i = 0; i < heights.length; i++) {
       if (Math.abs(this.tempOverlay[i]) > 0.001) {
-        heights[i] = Math.max(0, heights[i] + this.tempOverlay[i]);
+        const next = heights[i] + this.tempOverlay[i];
+        heights[i] = Math.max(0, Math.min(100, next));
       }
     }
 
@@ -1245,9 +1732,21 @@ export class GlobalMapTools {
    * Update overlay preview visualization
    */
   updateOverlayPreview() {
-    if (!this.overlayPreview || !this.tempOverlay || !this.renderer.currentGrid) return;
+    if (!this.tempOverlay || !this.renderer.currentGrid) return;
 
-    this.overlayPreview.clear();
+    if (!this.overlayPreview || !this.overlayPreview.parent) {
+      this.createOverlayPreview();
+      if (!this.overlayPreview) return;
+    }
+
+    try {
+      this.overlayPreview.clear();
+    } catch (e) {
+      // If overlay graphics were destroyed by a canvas rebuild, recreate them
+      this.createOverlayPreview();
+      if (!this.overlayPreview) return;
+      this.overlayPreview.clear();
+    }
 
     const { heights, rows, cols } = this.renderer.currentGrid;
     const { bounds, cellSize } = this.renderer.currentMetadata;
@@ -1325,11 +1824,6 @@ export class GlobalMapTools {
         for (const idx of this.affectedCells) {
           previewOverlay[idx] = 1;
         }
-      } else if (this.currentTool === 'draw-river' || this.currentTool === 'erase-river') {
-        // Show river paint/erase indicator
-        for (const idx of this.affectedCells) {
-          previewOverlay[idx] = 1;
-        }
       }
     }
 
@@ -1362,14 +1856,6 @@ export class GlobalMapTools {
         positiveColor = 0x66ffaa; // Teal for set biome
         negativeColor = 0x66ffaa;
         break;
-      case 'draw-river':
-        positiveColor = 0x3399ff; // Blue for draw river
-        negativeColor = 0x3399ff;
-        break;
-      case 'erase-river':
-        positiveColor = 0xff6633; // Orange for erase river
-        negativeColor = 0xff6633;
-        break;
     }
 
     // Draw affected cells
@@ -1379,7 +1865,8 @@ export class GlobalMapTools {
         let delta = previewOverlay[idx];
         
         if (Math.abs(delta) > 0.05) {
-          // Draw cell centered at coordinate point (shift by half cell)
+          // IMPORTANT: our unified grid is treated as samples at cell *centers*.
+          // To visualize a cell as a rect around that sample, we shift by half a cell.
           const x = bounds.minX + col * cellSize - cellSize / 2;
           const y = bounds.minY + row * cellSize - cellSize / 2;
           const color = delta > 0 ? positiveColor : negativeColor;
@@ -1389,8 +1876,6 @@ export class GlobalMapTools {
             alpha = Math.min(0.55, Math.abs(delta) / 5); // Brighter for smooth/roughen
           } else if (this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
             alpha = 0.6; // Fixed alpha for biome tools
-          } else if (this.currentTool === 'draw-river' || this.currentTool === 'erase-river') {
-            alpha = 0.6; // Fixed alpha for river tools
           } else {
             alpha = Math.min(0.35, Math.abs(delta) / 10);
           }
@@ -1407,7 +1892,11 @@ export class GlobalMapTools {
    */
   clearOverlayPreview() {
     if (this.overlayPreview) {
-      this.overlayPreview.clear();
+      try {
+        this.overlayPreview.clear();
+      } catch (e) {
+        // ignore
+      }
     }
   }
 
@@ -1416,7 +1905,11 @@ export class GlobalMapTools {
    */
   destroyOverlayPreview() {
     if (this.overlayPreview) {
-      this.overlayPreview.destroy();
+      try {
+        this.overlayPreview.destroy();
+      } catch (e) {
+        // ignore
+      }
       this.overlayPreview = null;
     }
   }
@@ -1536,14 +2029,19 @@ export class GlobalMapTools {
    */
   createBrushCursor() {
     if (this.brushCursor) {
-      this.brushCursor.destroy();
+      try {
+        this.brushCursor.destroy();
+      } catch (e) {
+        // ignore
+      }
     }
 
     this.brushCursor = new PIXI.Graphics();
     this.brushCursor.name = 'globalMapBrushCursor';
 
-    if (canvas.interface) {
-      canvas.interface.addChild(this.brushCursor);
+    const parent = canvas?.interface || canvas?.stage;
+    if (parent) {
+      parent.addChild(this.brushCursor);
     }
 
     this.updateBrushCursorGraphics();
@@ -1571,7 +2069,7 @@ export class GlobalMapTools {
    * Update cell highlight position in single cell mode
    */
   updateCellHighlight(worldX, worldY) {
-    if (!this.cellHighlight || !this.renderer.currentGrid) {
+    if (!this.cellHighlight || !this.cellHighlight.parent || !this.renderer.currentGrid) {
       this.createCellHighlight();
       if (!this.cellHighlight) return;
     }
@@ -1588,12 +2086,21 @@ export class GlobalMapTools {
     
     // Check bounds
     if (targetRow < 0 || targetRow >= rows || targetCol < 0 || targetCol >= cols) {
-      this.cellHighlight.clear();
+      try {
+        this.cellHighlight.clear();
+      } catch (e) {
+        this.cellHighlight = null;
+      }
       return;
     }
     
     // Draw cell highlight
-    this.cellHighlight.clear();
+    try {
+      this.cellHighlight.clear();
+    } catch (e) {
+      this.cellHighlight = null;
+      return;
+    }
     
     // Get color based on current tool
     let color = 0xffffff;
@@ -1605,11 +2112,11 @@ export class GlobalMapTools {
       case 'flatten': color = 0x00ffff; break;
       case 'modify-biome': color = 0xaa66ff; break;
       case 'set-biome': color = 0x66ffaa; break;
-      case 'draw-river': color = 0x3399ff; break;
-      case 'erase-river': color = 0xff6633; break;
     }
     
     // Draw cell with tool color
+    // IMPORTANT: our unified grid is treated as samples at cell *centers*.
+    // The visual rect is centered on the sample point ⇒ shift by half a cell.
     const x = bounds.minX + targetCol * cellSize - cellSize / 2;
     const y = bounds.minY + targetRow * cellSize - cellSize / 2;
     
@@ -1627,7 +2134,11 @@ export class GlobalMapTools {
    */
   clearCellHighlight() {
     if (this.cellHighlight) {
-      this.cellHighlight.clear();
+      try {
+        this.cellHighlight.clear();
+      } catch (e) {
+        // ignore
+      }
     }
   }
 
@@ -1636,7 +2147,12 @@ export class GlobalMapTools {
    */
   updateBrushCursorPosition(x, y) {
     if (!this.brushCursor) return;
-    this.brushCursor.position.set(x, y);
+    try {
+      this.brushCursor.position.set(x, y);
+    } catch (e) {
+      // Cursor can get destroyed during canvas rebuild
+      this.brushCursor = null;
+    }
   }
 
   /**
@@ -1645,59 +2161,58 @@ export class GlobalMapTools {
   updateBrushCursorGraphics() {
     if (!this.brushCursor) return;
 
-    // River editor doesn't use the brush cursor
-    if (this._isRiverTool()) {
+    try {
+      // River editor doesn't use the brush cursor
+      if (this._isRiverTool()) {
+        this.brushCursor.clear();
+        return;
+      }
+
       this.brushCursor.clear();
-      return;
-    }
 
-    this.brushCursor.clear();
+      let color = 0xffffff;
+      let alpha = 0.3;
 
-    let color = 0xffffff;
-    let alpha = 0.3;
+      switch (this.currentTool) {
+        case 'raise':
+          color = 0x00ff00; // Green
+          break;
+        case 'lower':
+          color = 0xff0000; // Red
+          break;
+        case 'smooth':
+          color = 0xffff00; // Yellow
+          break;
+        case 'roughen':
+          color = 0xff9900; // Orange
+          break;
+        case 'flatten':
+          color = 0x00ffff; // Cyan
+          break;
+        case 'modify-biome':
+          color = 0xaa66ff; // Purple for modify biome
+          break;
+        case 'set-biome':
+          color = 0x66ffaa; // Teal for set biome
+          break;
+      }
 
-    switch (this.currentTool) {
-      case 'raise':
-        color = 0x00ff00; // Green
-        break;
-      case 'lower':
-        color = 0xff0000; // Red
-        break;
-      case 'smooth':
-        color = 0xffff00; // Yellow
-        break;
-      case 'roughen':
-        color = 0xff9900; // Orange
-        break;
-      case 'flatten':
-        color = 0x00ffff; // Cyan
-        break;
-      case 'modify-biome':
-        color = 0xaa66ff; // Purple for modify biome
-        break;
-      case 'set-biome':
-        color = 0x66ffaa; // Teal for set biome
-        break;
-      case 'draw-river':
-        color = 0x3399ff; // Blue for draw river
-        break;
-      case 'erase-river':
-        color = 0xff6633; // Orange for erase river
-        break;
-    }
+      if (this.singleCellMode) {
+        // In single cell mode, don't draw cursor (cell highlight handles it)
+        // Just keep cursor invisible
+      } else {
+        // Draw filled circle
+        this.brushCursor.beginFill(color, alpha * this.brushStrength);
+        this.brushCursor.drawCircle(0, 0, this.brushRadius);
+        this.brushCursor.endFill();
 
-    if (this.singleCellMode) {
-      // In single cell mode, don't draw cursor (cell highlight handles it)
-      // Just keep cursor invisible
-    } else {
-      // Draw filled circle
-      this.brushCursor.beginFill(color, alpha * this.brushStrength);
-      this.brushCursor.drawCircle(0, 0, this.brushRadius);
-      this.brushCursor.endFill();
-
-      // Draw outline
-      this.brushCursor.lineStyle(2, color, 0.7);
-      this.brushCursor.drawCircle(0, 0, this.brushRadius);
+        // Draw outline
+        this.brushCursor.lineStyle(2, color, 0.7);
+        this.brushCursor.drawCircle(0, 0, this.brushRadius);
+      }
+    } catch (e) {
+      // Cursor graphics can be destroyed during canvas rebuild
+      this.brushCursor = null;
     }
   }
 
@@ -1719,7 +2234,7 @@ export class GlobalMapTools {
     // Disable/enable controls
     $('#global-map-tool').prop('disabled', isActive);
     $('#global-map-biome-tool').prop('disabled', isActive);
-    $('#global-map-river-tool').prop('disabled', isActive);
+    $('#global-map-river-mode').prop('disabled', isActive);
     
     // Disable/enable tab switching
     if (isActive) {
@@ -1740,12 +2255,16 @@ export class GlobalMapTools {
     }
 
     // River editor handles overlay
-    if (this.riverHandles) {
+    if (this.riverHandles || (isActive && this._isRiverTool())) {
       if (isActive && this._isRiverTool()) {
         this._renderRiverHandles();
-      } else {
-        this.riverHandles.clear();
-        this.riverHandles.visible = false;
+      } else if (this.riverHandles) {
+        try {
+          this.riverHandles.clear();
+          this.riverHandles.visible = false;
+        } catch (e) {
+          this.riverHandles = null;
+        }
       }
     }
     
@@ -1763,11 +2282,19 @@ export class GlobalMapTools {
    */
   destroyBrushCursor() {
     if (this.brushCursor) {
-      this.brushCursor.destroy();
+      try {
+        this.brushCursor.destroy();
+      } catch (e) {
+        // ignore
+      }
       this.brushCursor = null;
     }
     if (this.cellHighlight) {
-      this.cellHighlight.destroy();
+      try {
+        this.cellHighlight.destroy();
+      } catch (e) {
+        // ignore
+      }
       this.cellHighlight = null;
     }
   }
@@ -1846,6 +2373,13 @@ export class GlobalMapTools {
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px;">Strength: <span id="strength-value">${this.brushStrength.toFixed(1)}</span></label>
             <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
+          </div>
+
+          <!-- Flatten target height (only for Flatten tool) -->
+          <div id="flatten-target-container" style="margin-bottom: 10px; display: none; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">Target height: <span id="flatten-target-value">${Math.round(this.targetHeight)}</span>%</label>
+            <input type="range" id="flatten-target-height" min="0" max="100" step="1" value="${Math.round(this.targetHeight)}" style="width: 100%;">
+            <div style="font-size: 10px; color: #aaa; text-align: center; margin-top: 4px;">Alt+Click = pick from map</div>
           </div>
           
           <!-- Height Filter -->
@@ -2127,6 +2661,11 @@ export class GlobalMapTools {
           </div>
         </div>
 
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+          <button id="global-map-undo" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Undo</button>
+          <button id="global-map-redo" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Redo</button>
+        </div>
+
         <button id="global-map-exit" style="width: 100%; padding: 8px; margin-top: 5px; background: #888; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
           Exit
         </button>
@@ -2154,7 +2693,11 @@ export class GlobalMapTools {
       }
     });
     
-    $(document).on('mousemove', (e) => {
+    // IMPORTANT: use a namespace and remove previous handlers to avoid accumulation after reopening the UI
+    const docNs = this._uiDocNamespace || '.globalMapToolsUI';
+    $(document).off(`mousemove${docNs}`).off(`mouseup${docNs}`);
+
+    $(document).on(`mousemove${docNs}`, (e) => {
       if (isDragging) {
         toolsUI.css({
           'right': 'auto',
@@ -2164,7 +2707,7 @@ export class GlobalMapTools {
       }
     });
     
-    $(document).on('mouseup', () => {
+    $(document).on(`mouseup${docNs}`, () => {
       if (isDragging) {
         isDragging = false;
         titlebar.css('background', 'rgba(0, 0, 0, 0.5)');
@@ -2509,8 +3052,24 @@ export class GlobalMapTools {
     };
 
     // Event listeners for Heights tab
+    const updateHeightToolUI = (tool) => {
+      const isFlatten = tool === 'flatten';
+      $('#flatten-target-container').toggle(isFlatten);
+      if (isFlatten) {
+        this._syncFlattenUI();
+      }
+    };
+
     $('#global-map-tool').on('change', (e) => {
-      this.setTool(e.target.value);
+      const tool = e.target.value;
+      this.setTool(tool);
+      updateHeightToolUI(tool);
+    });
+
+    $('#flatten-target-height').on('input', (e) => {
+      const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+      this.targetHeight = v;
+      this._syncFlattenUI();
     });
 
     $('#single-cell-mode').on('change', (e) => {
@@ -2999,12 +3558,67 @@ export class GlobalMapTools {
       }
     });
 
+    // Undo / Redo
+    $('#global-map-undo').on('click', () => {
+      this.undo();
+    });
+    $('#global-map-redo').on('click', () => {
+      this.redo();
+    });
+
     $('#global-map-exit').on('click', async () => {
       await this.deactivate();
     });
     
     // Initialize UI state
+    updateHeightToolUI($('#global-map-tool').val());
+    this._syncFlattenUI();
     this.updateBrushUI();
+    this._updateUndoRedoUI();
+  }
+
+  /**
+   * Sync Flatten target height controls (if UI is open).
+   * @private
+   */
+  _syncFlattenUI() {
+    if (!$('#global-map-tools-ui').length) return;
+
+    const v = Math.round(Math.max(0, Math.min(100, Number(this.targetHeight) || 0)));
+    this.targetHeight = v;
+
+    const input = $('#flatten-target-height');
+    if (input.length) {
+      input.val(String(v));
+    }
+    $('#flatten-target-value').text(String(v));
+  }
+
+  /**
+   * Pick target height for Flatten from the grid cell under the cursor.
+   * Used by the Alt+Click "pipette".
+   * @private
+   * @returns {boolean} true if a height was picked
+   */
+  _pickFlattenTargetHeightAt(worldX, worldY) {
+    if (!this.renderer?.currentGrid || !this.renderer?.currentMetadata) return false;
+
+    const { heights, rows, cols } = this.renderer.currentGrid;
+    const { cellSize, bounds } = this.renderer.currentMetadata;
+
+    const gridCol = Math.floor((worldX - bounds.minX) / cellSize);
+    const gridRow = Math.floor((worldY - bounds.minY) / cellSize);
+
+    if (gridRow < 0 || gridRow >= rows || gridCol < 0 || gridCol >= cols) {
+      return false;
+    }
+
+    const idx = gridRow * cols + gridCol;
+    const h = heights?.[idx];
+    if (!Number.isFinite(h)) return false;
+
+    this.targetHeight = Math.round(Math.max(0, Math.min(100, h)));
+    return true;
   }
 
   /**
@@ -3098,6 +3712,14 @@ export class GlobalMapTools {
    * Hide tools UI panel
    */
   hideToolsUI() {
+    // Remove document-level handlers that can outlive the UI element
+    const docNs = this._uiDocNamespace || '.globalMapToolsUI';
+    try {
+      $(document).off(`mousemove${docNs}`).off(`mouseup${docNs}`);
+    } catch (e) {
+      // ignore
+    }
+
     $('#global-map-tools-ui').remove();
   }
 
@@ -3174,12 +3796,14 @@ export class GlobalMapTools {
       return 0;
     }
 
+    this._pushUndoSnapshot('replace:height');
+
     const { heights } = this.renderer.currentGrid;
     let count = 0;
 
     for (let i = 0; i < heights.length; i++) {
       if (heights[i] >= heightMin && heights[i] <= heightMax) {
-        heights[i] = replacementHeight;
+        heights[i] = Math.max(0, Math.min(100, replacementHeight));
         count++;
       }
     }
@@ -3214,6 +3838,8 @@ export class GlobalMapTools {
       return 0;
     }
 
+    this._pushUndoSnapshot('replace:biome');
+
     let count = 0;
 
     for (let i = 0; i < biomes.length; i++) {
@@ -3247,6 +3873,8 @@ export class GlobalMapTools {
       return 0;
     }
 
+    this._pushUndoSnapshot('replace:combined');
+
     const { heights, biomes, moisture, temperature } = this.renderer.currentGrid;
     let count = 0;
 
@@ -3277,7 +3905,7 @@ export class GlobalMapTools {
       if (matches) {
         // Apply replacements
         if (criteria.targetHeight !== null && criteria.targetHeight !== undefined) {
-          heights[i] = criteria.targetHeight;
+          heights[i] = Math.max(0, Math.min(100, criteria.targetHeight));
         }
         if (criteria.targetBiomeId !== null && criteria.targetBiomeId !== undefined && biomes) {
           biomes[i] = criteria.targetBiomeId;
@@ -3309,11 +3937,13 @@ export class GlobalMapTools {
       return 0;
     }
 
+    this._pushUndoSnapshot('flattenAll');
+
     const { heights } = this.renderer.currentGrid;
     const count = heights.length;
 
     for (let i = 0; i < heights.length; i++) {
-      heights[i] = targetHeight;
+      heights[i] = Math.max(0, Math.min(100, targetHeight));
     }
 
     // Re-render
@@ -3337,6 +3967,8 @@ export class GlobalMapTools {
       ui.notifications.warn('No grid loaded');
       return;
     }
+
+    this._pushUndoSnapshot(`globalSmooth:${iterations}`);
 
     console.log(`GlobalMapTools | Applying global smooth (${iterations} iterations, strength: ${this.globalSmoothStrength})...`);
     const { heights, rows, cols } = this.renderer.currentGrid;
@@ -3369,7 +4001,7 @@ export class GlobalMapTools {
 
           const avg = sum / count;
           const delta = (avg - heights[idx]) * this.globalSmoothStrength;
-          heights[idx] += delta;
+          heights[idx] = Math.max(0, Math.min(100, heights[idx] + delta));
         }
       }
     }
