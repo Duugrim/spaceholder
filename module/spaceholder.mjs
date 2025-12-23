@@ -13,6 +13,8 @@ import { anatomyManager } from './anatomy-manager.mjs';
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
+// User -> Factions (Journal UUID) mapping
+import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -74,6 +76,11 @@ Hooks.once('init', function () {
     showInfluence: (debug = false) => game.spaceholder.influenceManager?.enable({ debug }),
     hideInfluence: () => game.spaceholder.influenceManager?.disable(),
     toggleInfluence: (debug = false) => game.spaceholder.influenceManager?.toggle({ debug }),
+    // User -> Factions helpers
+    getUserFactionUuids: (user) => getUserFactionUuidsForUser(user),
+    getUsersForFaction: (factionUuid) => getUsersForFactionByUuid(factionUuid),
+    getUsersForToken: (tokenLike) => getUsersForTokenByFaction(tokenLike),
+    normalizeUuid: (raw) => normalizeUuidValue(raw),
     // Global map helpers (new system)
     // TODO: Add new global map helpers when ready
     
@@ -122,6 +129,8 @@ Hooks.once('init', function () {
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks
   installTokenRotator();
+  // Install User -> Factions hooks (UserConfig injection)
+  installUserFactionsHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
   // installAimingSystemHooks();
   // Install Token Controls hooks
