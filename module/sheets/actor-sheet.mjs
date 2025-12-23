@@ -913,6 +913,11 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     context.system.gLink ??= '';
     context.system.gFaction ??= '';
 
+    // Flags (на случай старых актёров)
+    context.flags = context.flags || {};
+    context.flags.spaceholder = context.flags.spaceholder || {};
+    context.flags.spaceholder.tokenVisibility ??= 'public';
+
     // Имена для отображения (как content-link в тексте Foundry)
     context.gLinkName = await this._resolveJournalName(context.system.gLink);
     context.gFactionName = await this._resolveJournalName(context.system.gFaction);

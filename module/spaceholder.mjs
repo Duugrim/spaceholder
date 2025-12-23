@@ -47,6 +47,8 @@ import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
+// Token visibility (advanced)
+import { installTokenVisibilityHooks } from './helpers/token-visibility.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -131,6 +133,8 @@ Hooks.once('init', function () {
   installTokenRotator();
   // Install User -> Factions hooks (UserConfig injection)
   installUserFactionsHooks();
+  // Install Token visibility hooks
+  installTokenVisibilityHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
   // installAimingSystemHooks();
   // Install Token Controls hooks

@@ -57,6 +57,18 @@
     </div>
 
     <div class="form-group">
+      <label for="flags.spaceholder.tokenVisibility">Видимость токена</label>
+      <div class="form-fields">
+        <select name="flags.spaceholder.tokenVisibility">
+          <option value="public" {{#if (eq flags.spaceholder.tokenVisibility "public")}}selected{{/if}}>Публичный (обычный)</option>
+          <option value="halfHidden" {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}selected{{/if}}>HalfHidden (виден всем в чужой зоне)</option>
+          <option value="fullHidden" {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}selected{{/if}}>FullHidden (виден владельцу зоны)</option>
+          <option value="secret" {{#if (eq flags.spaceholder.tokenVisibility "secret")}}selected{{/if}}>Секретный</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
       <label for="system.gLink">Ссылка</label>
       <div class="form-fields">
         {{#if system.gLink}}
