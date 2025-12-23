@@ -8,7 +8,7 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'flatten', 'modify-biome', 'river-draw', 'river-edit'
+    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'roughen', 'flatten', 'river-draw', 'river-edit'
 
     // UI selection (per tab). We use buttons instead of selects, so keep explicit state.
     this._selectedHeightsTool = 'raise';
@@ -32,8 +32,6 @@ export class GlobalMapTools {
     this._riverDrag = null; // {riverId, pointIndex}
 
     // Biome tools settings (biomes are explicit IDs ordered by renderRank)
-    this.modifyBiomeDelta = 0; // -10..10 steps in biome list
-    this.modifyBiomeDeltaEnabled = false;
     this.setBiomeId = this.processing?.biomeResolver?.getDefaultBiomeId?.() ?? 17;
     
     this.globalSmoothStrength = 1.0; // Strength for global smooth (0.1-1.0)
@@ -45,7 +43,7 @@ export class GlobalMapTools {
     this.heightFilterByBiomeEnabled = false; // Filter height tools by specific biomes
     this.heightFilterBiomeIds = new Set(); // Biome IDs to affect when editing heights
     
-    // Brush filters - for Biome tools (modify-biome, set-biome)
+    // Brush filters - for Biome tools (set-biome)
     this.biomeFilterEnabled = false; // Enable filtering in biome tools
     this.biomeFilterHeightMin = 0; // Filter: min height (0-100)
     this.biomeFilterHeightMax = 100; // Filter: max height (0-100)
@@ -275,7 +273,7 @@ export class GlobalMapTools {
   setTool(tool) {
     const validTools = [
       'raise', 'lower', 'smooth', 'roughen', 'flatten',
-      'modify-biome', 'set-biome',
+      'set-biome',
       'river-draw', 'river-edit'
     ];
     if (validTools.includes(tool)) {
@@ -1601,7 +1599,7 @@ export class GlobalMapTools {
 
           // Track affected cells for tools that process in commit
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen' ||
-              this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
+              this.currentTool === 'set-biome') {
             this.affectedCells.add(idx);
           }
 
@@ -1618,7 +1616,6 @@ export class GlobalMapTools {
               break;
             case 'smooth':
             case 'roughen':
-            case 'modify-biome':
             case 'set-biome':
               // Mark cells, changes applied in commit
               break;
@@ -1663,29 +1660,11 @@ export class GlobalMapTools {
     }
 
     // Apply biome changes
-    if (this.affectedCells.size > 0) {
-      if (this.currentTool === 'modify-biome') {
-        // Modify biome by shifting in renderRank-ordered list
-        if (this.modifyBiomeDeltaEnabled && this.modifyBiomeDelta !== 0 && biomes) {
-          const ordered = this.processing.biomeResolver.listBiomes().map(b => b.id);
-          const indexById = new Map();
-          for (let i = 0; i < ordered.length; i++) indexById.set(ordered[i], i);
-
-          for (const idx of this.affectedCells) {
-            const currentId = biomes[idx];
-            const currentIndex = indexById.get(currentId);
-            if (currentIndex === undefined) continue;
-
-            const nextIndex = Math.max(0, Math.min(ordered.length - 1, currentIndex + this.modifyBiomeDelta));
-            biomes[idx] = ordered[nextIndex];
-          }
-        }
-      } else if (this.currentTool === 'set-biome') {
-        // Set biome to selected ID
-        if (biomes) {
-          for (const idx of this.affectedCells) {
-            biomes[idx] = this.setBiomeId;
-          }
+    if (this.currentTool === 'set-biome' && this.affectedCells.size > 0) {
+      // Set biome to selected ID
+      if (biomes) {
+        for (const idx of this.affectedCells) {
+          biomes[idx] = this.setBiomeId;
         }
       }
     }
@@ -1819,13 +1798,7 @@ export class GlobalMapTools {
 
     // For biome tools, show change for affected cells
     if (this.affectedCells.size > 0) {
-      if (this.currentTool === 'modify-biome') {
-        // Show delta as indicator
-        const delta = this.modifyBiomeDeltaEnabled ? Math.abs(this.modifyBiomeDelta) : 0;
-        for (const idx of this.affectedCells) {
-          previewOverlay[idx] = delta > 0 ? delta : 0.1;
-        }
-      } else if (this.currentTool === 'set-biome') {
+      if (this.currentTool === 'set-biome') {
         // Show fixed indicator
         for (const idx of this.affectedCells) {
           previewOverlay[idx] = 1;
@@ -1854,10 +1827,6 @@ export class GlobalMapTools {
         positiveColor = 0xff9900; // Orange for roughened
         negativeColor = 0xff9900;
         break;
-      case 'modify-biome':
-        positiveColor = 0xaa66ff; // Purple for modify biome
-        negativeColor = 0xaa66ff;
-        break;
       case 'set-biome':
         positiveColor = 0x66ffaa; // Teal for set biome
         negativeColor = 0x66ffaa;
@@ -1880,7 +1849,7 @@ export class GlobalMapTools {
           let alpha;
           if (this.currentTool === 'smooth' || this.currentTool === 'roughen') {
             alpha = Math.min(0.55, Math.abs(delta) / 5); // Brighter for smooth/roughen
-          } else if (this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
+          } else if (this.currentTool === 'set-biome') {
             alpha = 0.6; // Fixed alpha for biome tools
           } else {
             alpha = Math.min(0.35, Math.abs(delta) / 10);
@@ -2116,7 +2085,6 @@ export class GlobalMapTools {
       case 'smooth': color = 0xffff00; break;
       case 'roughen': color = 0xff9900; break;
       case 'flatten': color = 0x00ffff; break;
-      case 'modify-biome': color = 0xaa66ff; break;
       case 'set-biome': color = 0x66ffaa; break;
     }
     
@@ -2194,9 +2162,6 @@ export class GlobalMapTools {
           break;
         case 'flatten':
           color = 0x00ffff; // Cyan
-          break;
-        case 'modify-biome':
-          color = 0xaa66ff; // Purple for modify biome
           break;
         case 'set-biome':
           color = 0x66ffaa; // Teal for set biome
@@ -2384,6 +2349,13 @@ export class GlobalMapTools {
             <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
           </div>
 
+          <!-- Height contour opacity (test) -->
+          <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">Contour opacity: <span id="height-contour-alpha-value">${(Number.isFinite(this.renderer?.heightContourAlpha) ? this.renderer.heightContourAlpha : 0.8).toFixed(2)}</span></label>
+            <input type="range" id="height-contour-alpha" min="0" max="1" step="0.05" value="${Number.isFinite(this.renderer?.heightContourAlpha) ? this.renderer.heightContourAlpha : 0.8}" style="width: 100%;">
+            <div style="font-size: 10px; color: #aaa; text-align: center;">Affects height contour lines (debug)</div>
+          </div>
+
           <!-- Flatten target height (only for Flatten tool) -->
           <div id="flatten-target-container" style="margin-bottom: 10px; display: none; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
             <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">Target height: <span id="flatten-target-value">${Math.round(this.targetHeight)}</span>%</label>
@@ -2436,7 +2408,6 @@ export class GlobalMapTools {
             <label style="display: block; margin-bottom: 5px;">Tool:</label>
             <div id="global-map-biome-tool-buttons" style="display: flex; gap: 4px;">
               <button type="button" data-tool="set-biome" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Set Biome</button>
-              <button type="button" data-tool="modify-biome" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Modify Biome</button>
             </div>
           </div>
 
@@ -2451,23 +2422,8 @@ export class GlobalMapTools {
             </div>
           </div>
 
-          <!-- Modify Biome Controls -->
-          <div id="modify-biome-controls" style="margin-bottom: 10px;">
-            <div style="margin-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="modify-biome-delta-enabled" style="margin: 0;">
-                <span>Shift by Rank:</span>
-                <span id="modify-biome-delta-value" style="margin-left: auto; font-weight: bold;">0</span>
-              </label>
-              <input type="range" id="modify-biome-delta" min="-10" max="10" step="1" value="0" style="width: 100%; margin-top: 4px;">
-            </div>
-            <div style="font-size: 10px; color: #aaa; text-align: center;">
-              Positive = вверх (выше rank), negative = вниз
-            </div>
-          </div>
-
           <!-- Set Biome Controls -->
-          <div id="set-biome-controls" style="margin-bottom: 10px; display: none;">
+          <div id="set-biome-controls" style="margin-bottom: 10px;">
             <div style="margin-bottom: 8px;">
               <label style="display: block; margin-bottom: 5px;">Biome:</label>
               <select id="set-biome-select" style="width: 100%; padding: 5px;"></select>
@@ -3046,17 +3002,15 @@ export class GlobalMapTools {
     };
 
     // Update UI visibility based on tool (biomes tab)
-    const updateBiomeToolUI = (tool) => {
-      if (tool === 'modify-biome') {
-        $('#modify-biome-controls').show();
-        $('#set-biome-controls').hide();
-      } else if (tool === 'set-biome') {
-        $('#modify-biome-controls').hide();
-        $('#set-biome-controls').show();
-        // Generate palette/select if not already generated
-        if ($('#biome-preset-matrix').children().length === 0 || $('#set-biome-select').children().length === 0) {
-          generateBiomeMatrix();
-        }
+    const updateBiomeToolUI = (_tool) => {
+      // Only one biome tool remains.
+      this._selectedBiomesTool = 'set-biome';
+
+      $('#set-biome-controls').show();
+
+      // Generate palette/select if not already generated
+      if ($('#biome-preset-matrix').children().length === 0 || $('#set-biome-select').children().length === 0) {
+        generateBiomeMatrix();
       }
     };
 
@@ -3077,7 +3031,6 @@ export class GlobalMapTools {
       'roughen': '#663300',
       'flatten': '#004c4c',
       'set-biome': '#004c3a',
-      'modify-biome': '#3b1f66',
       'river-draw': '#003a66',
       'river-edit': '#003a66',
     };
@@ -3186,6 +3139,24 @@ export class GlobalMapTools {
       this.updateBrushCursorGraphics();
     });
 
+    // Height contour opacity (debug/test)
+    $('#height-contour-alpha').on('input', (e) => {
+      const v = Math.max(0, Math.min(1, Number(e.target.value)));
+      if (!Number.isFinite(v)) return;
+
+      $('#height-contour-alpha-value').text(v.toFixed(2));
+
+      if (this.renderer?.setHeightContourAlpha) {
+        this.renderer.setHeightContourAlpha(v);
+      } else if (this.renderer) {
+        // Fallback for older renderer versions
+        this.renderer.heightContourAlpha = v;
+        if (this.renderer.currentGrid && this.renderer.currentMetadata) {
+          this.renderer.render(this.renderer.currentGrid, this.renderer.currentMetadata);
+        }
+      }
+    });
+
     $('#biome-single-cell-mode').on('change', (e) => {
       this.singleCellMode = e.target.checked;
       // Sync both checkboxes
@@ -3213,16 +3184,6 @@ export class GlobalMapTools {
       $('#radius-value').text(this.brushRadius);
       $('#biome-radius-value').text(this.brushRadius);
       this.updateBrushCursorGraphics();
-    });
-
-    // Modify Biome controls (shift by renderRank order)
-    $('#modify-biome-delta-enabled').on('change', (e) => {
-      this.modifyBiomeDeltaEnabled = e.target.checked;
-    });
-
-    $('#modify-biome-delta').on('input', (e) => {
-      this.modifyBiomeDelta = parseInt(e.target.value);
-      $('#modify-biome-delta-value').text(this.modifyBiomeDelta > 0 ? `+${this.modifyBiomeDelta}` : this.modifyBiomeDelta);
     });
 
     // Set Biome controls
@@ -3759,8 +3720,8 @@ export class GlobalMapTools {
         }
       }
     }
-    // Biome-based tools: modify-biome, set-biome
-    else if (this.currentTool === 'modify-biome' || this.currentTool === 'set-biome') {
+    // Biome-based tools: set-biome
+    else if (this.currentTool === 'set-biome') {
       // Filter by height range
       if (this.biomeFilterEnabled) {
         if (h < this.biomeFilterHeightMin || h > this.biomeFilterHeightMax) {

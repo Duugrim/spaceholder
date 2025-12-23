@@ -22,6 +22,9 @@ export class GlobalMapRenderer {
     this.heightsMode = 'contours-bw'; // 'contours-bw', 'contours', 'cells', 'off'
     this.biomesMode = 'fancy'; // 'fancy', 'fancyDebug', 'cells', 'off'
 
+    // Visual tuning (debug/test)
+    this.heightContourAlpha = 0.8; // Opacity for height contour lines (0..1)
+
     this.biomeResolver = new BiomeResolver(); // For dynamic biome determination
 
     // Legacy (cell-mask) rivers are disabled by default (we use vector rivers instead)
@@ -183,6 +186,25 @@ export class GlobalMapRenderer {
     }
     this.heightsMode = mode;
     console.log(`GlobalMapRenderer | Heights mode set to: ${mode}`);
+    // Re-render if data available
+    if (this.currentGrid && this.currentMetadata) {
+      this.render(this.currentGrid, this.currentMetadata);
+    }
+  }
+
+  /**
+   * Set opacity for height contour lines (applies to contours modes).
+   * @param {number} alpha - 0..1
+   */
+  setHeightContourAlpha(alpha) {
+    const n = Number(alpha);
+    if (!Number.isFinite(n)) return;
+
+    const clamped = Math.max(0, Math.min(1, n));
+    this.heightContourAlpha = clamped;
+
+    console.log(`GlobalMapRenderer | Height contour alpha set to: ${clamped}`);
+
     // Re-render if data available
     if (this.currentGrid && this.currentMetadata) {
       this.render(this.currentGrid, this.currentMetadata);
@@ -1877,8 +1899,11 @@ export class GlobalMapRenderer {
 
     const graphics = new PIXI.Graphics();
 
+    const baseAlpha = Number.isFinite(this.heightContourAlpha) ? this.heightContourAlpha : 0.8;
+    const lineAlpha = Math.max(0, Math.min(1, baseAlpha));
+
     // Draw black contour lines
-    graphics.lineStyle(1.5, 0x000000, 0.8);
+    graphics.lineStyle(1.5, 0x000000, lineAlpha);
     for (const segment of segments) {
       graphics.moveTo(segment[0].x, segment[0].y);
       graphics.lineTo(segment[1].x, segment[1].y);
@@ -1899,15 +1924,20 @@ export class GlobalMapRenderer {
 
     const graphics = new PIXI.Graphics();
 
+    // Keep the same default look as before (line=0.8, outline=0.6), but allow tuning via slider.
+    const baseAlpha = Number.isFinite(this.heightContourAlpha) ? this.heightContourAlpha : 0.8;
+    const lineAlpha = Math.max(0, Math.min(1, baseAlpha));
+    const outlineAlpha = Math.max(0, Math.min(1, lineAlpha * 0.75));
+
     // Draw black outline first (for better visibility)
-    graphics.lineStyle(2, 0x000000, 0.6);
+    graphics.lineStyle(2, 0x000000, outlineAlpha);
     for (const segment of segments) {
       graphics.moveTo(segment[0].x, segment[0].y);
       graphics.lineTo(segment[1].x, segment[1].y);
     }
 
     // Draw colored contour lines
-    graphics.lineStyle(1, color, 0.8);
+    graphics.lineStyle(1, color, lineAlpha);
     for (const segment of segments) {
       graphics.moveTo(segment[0].x, segment[0].y);
       graphics.lineTo(segment[1].x, segment[1].y);
@@ -1926,6 +1956,10 @@ export class GlobalMapRenderer {
   _drawSlopeMarks(graphics, segments, heightValues, rows, cols, bounds, cellSize, color) {
     const hachureLength = 4;
     const hachureSpacing = 25;
+
+    const baseAlpha = Number.isFinite(this.heightContourAlpha) ? this.heightContourAlpha : 0.8;
+    const lineAlpha = Math.max(0, Math.min(1, baseAlpha));
+    const markAlpha = Math.max(0, Math.min(1, lineAlpha * 0.875));
 
     for (const segment of segments) {
       const dx = segment[1].x - segment[0].x;
@@ -1973,7 +2007,8 @@ export class GlobalMapRenderer {
         const hx = px + markNx * hachureLength;
         const hy = py + markNy * hachureLength;
 
-        graphics.lineStyle(1, 0x000000, 0.7);
+        // Keep marks black for readability
+        graphics.lineStyle(1, 0x000000, markAlpha);
         graphics.moveTo(px, py);
         graphics.lineTo(hx, hy);
       }
