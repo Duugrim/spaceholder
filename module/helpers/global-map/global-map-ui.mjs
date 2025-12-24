@@ -258,6 +258,28 @@ export function registerGlobalMapUI(controls, spaceholder) {
     return;
   }
 
+  // GM/Assistant GM only actions
+  const canManageGlobalMap = (() => {
+    try {
+      if (game.user?.isGM) return true;
+
+      const assistantRole = CONST?.USER_ROLES?.ASSISTANT;
+      if (assistantRole !== undefined && typeof game.user?.hasRole === 'function') {
+        return game.user.hasRole(assistantRole);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    return false;
+  })();
+
+  const requireGMOrAssistant = (action = 'использовать этот инструмент') => {
+    if (canManageGlobalMap) return true;
+    ui.notifications?.warn?.(`Только ГМ или ассистент ГМа может ${action}`);
+    return false;
+  };
+
   // Create Global Map control group
   controls.globalmap = {
     name: 'globalmap',
@@ -278,6 +300,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: false,
+        visible: true,
       },
 
       'inspect-cell': {
@@ -292,6 +315,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: false,
+        visible: true,
       },
 
       'import-map': {
@@ -299,12 +323,15 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Импортировать карту',
         icon: 'fas fa-download',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('импортировать карту')) return;
+
           await showGlobalMapImportDialog(
             spaceholder.globalMapProcessing,
             spaceholder.globalMapRenderer
           );
         },
         button: true,
+        visible: canManageGlobalMap,
       },
 
       'create-test-grid': {
@@ -312,6 +339,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Создать тестовую сетку биомов',
         icon: 'fas fa-th',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('создавать тестовую сетку')) return;
+
           try {
             ui.notifications.info('Создание тестовой карты биомов...');
             const result = spaceholder.globalMapProcessing.createBiomeTestGrid(canvas.scene);
@@ -323,6 +352,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: true,
+        visible: canManageGlobalMap,
       },
 
       'toggle-map': {
@@ -333,6 +363,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           spaceholder.globalMapRenderer?.toggle();
         },
         button: true,
+        visible: true,
       },
 
 'save-map': {
@@ -340,6 +371,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Сохранить в файл',
         icon: 'fas fa-save',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('сохранять карту')) return;
+
           if (!spaceholder.globalMapRenderer?.currentGrid) {
             ui.notifications.warn('Нет карты для сохранения');
             return;
@@ -350,6 +383,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: true,
+        visible: canManageGlobalMap,
       },
 
       'load-map': {
@@ -366,6 +400,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: true,
+        visible: true,
       },
 
       'bake-map-background': {
@@ -373,14 +408,11 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Запечь в фон сцены',
         icon: 'fas fa-file-image',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('менять фон сцены')) return;
+
           const scene = canvas.scene;
           if (!scene) {
             ui.notifications.warn('Нет активной сцены');
-            return;
-          }
-
-          if (!game.user?.isGM) {
-            ui.notifications.warn('Только ГМ может менять фон сцены');
             return;
           }
 
@@ -482,6 +514,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: true,
+        visible: canManageGlobalMap,
       },
 
       'edit-map': {
@@ -489,6 +522,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Редактировать карту',
         icon: 'fas fa-pencil',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('редактировать карту')) return;
+
           if (!spaceholder.globalMapRenderer?.currentGrid) {
             ui.notifications.warn('Сначала импортируйте карту');
             return;
@@ -501,6 +536,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: true,
+        visible: canManageGlobalMap,
       },
 
       'clear-map': {
@@ -508,6 +544,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Очистить карту',
         icon: 'fas fa-trash',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('очищать карту')) return;
+
           if (!spaceholder.globalMapRenderer?.currentGrid) {
             ui.notifications.warn('Нет загруженной карты');
             return;
@@ -527,6 +565,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
         },
         button: true,
+        visible: canManageGlobalMap,
       },
 
       'toggle-biomes-mode': {
@@ -534,6 +573,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Режим биомов',
         icon: 'fas fa-seedling',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('переключать режим биомов')) return;
+
           if (!spaceholder.globalMapRenderer?.currentGrid) {
             ui.notifications.warn('Нет загруженной карты');
             return;
@@ -555,6 +596,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           ui.notifications.info(`Биомы: ${modeNames[newMode]}`);
         },
         button: true,
+        visible: canManageGlobalMap,
       },
 
       'toggle-heights-mode': {
@@ -562,6 +604,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Режим высот',
         icon: 'fas fa-mountain',
         onChange: async (isActive) => {
+          if (!requireGMOrAssistant('переключать режим высот')) return;
+
           if (!spaceholder.globalMapRenderer?.currentGrid) {
             ui.notifications.warn('Нет загруженной карты');
             return;
@@ -583,6 +627,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           ui.notifications.info(`Высоты: ${modeNames[newMode]}`);
         },
         button: true,
+        visible: canManageGlobalMap,
       },
     },
   };
