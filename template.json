@@ -40,11 +40,12 @@
       "cr": 0
     },
     "globalobject": {
-      "gRange": 100,
-      "gPower": 1,
+      "gRange": 0,
+      "gPower": 0,
       "gSide": "neutral",
       "gLink": "",
       "gFaction": "",
+      "gActors": [],
       "biography": ""
     }
   },

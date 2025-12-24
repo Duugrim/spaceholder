@@ -271,6 +271,45 @@
   gap: 6px;
 }
 
+/* Global Object: имя чуть компактнее */
+.spaceholder.sheet.actor.globalobject .sheet-header h1.charname input {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+/* Global Object: компактная строка "Влияние [gRange]/[gPower]" */
+.spaceholder.sheet.actor.globalobject .globalobject-influence .influence-fields {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.spaceholder.sheet.actor.globalobject .globalobject-influence .influence-input {
+  width: 90px;
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.spaceholder.sheet.actor.globalobject .globalobject-influence .influence-sep {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+
+/* Global Object: контейнер актёров */
+.spaceholder.sheet.actor.globalobject .globalobject-actors-panel {
+  margin-top: 10px;
+}
+
+.spaceholder.sheet.actor.globalobject .globalobject-actor-type {
+  font-size: 11px;
+  color: #aaaaaa;
+  border: 1px solid rgba(74, 110, 74, 0.9);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
 .spaceholder .sheet-tabs {
   flex: 0;
 }

@@ -42,32 +42,7 @@
   {{!-- Sheet Body (no tabs) --}}
   <section class="sheet-body">
 
-    <div class="form-group">
-      <label for="system.gRange">Радиус</label>
-      <div class="form-fields">
-        <input type="number" name="system.gRange" value="{{system.gRange}}" data-dtype="Number" min="0" step="10"/>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="system.gPower">Сила</label>
-      <div class="form-fields">
-        <input type="number" name="system.gPower" value="{{system.gPower}}" data-dtype="Number" min="0" step="0.1"/>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="flags.spaceholder.tokenVisibility">Видимость токена</label>
-      <div class="form-fields">
-        <select name="flags.spaceholder.tokenVisibility">
-          <option value="public" {{#if (eq flags.spaceholder.tokenVisibility "public")}}selected{{/if}}>Публичный (обычный)</option>
-          <option value="halfHidden" {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}selected{{/if}}>HalfHidden (виден всем в чужой зоне)</option>
-          <option value="fullHidden" {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}selected{{/if}}>FullHidden (виден владельцу зоны)</option>
-          <option value="secret" {{#if (eq flags.spaceholder.tokenVisibility "secret")}}selected{{/if}}>Секретный</option>
-        </select>
-      </div>
-    </div>
-
+    {{!-- Ссылка (вверх списка параметров) --}}
     <div class="form-group">
       <label for="system.gLink">Ссылка</label>
       <div class="form-fields">
@@ -89,6 +64,84 @@
           />
         {{/if}}
       </div>
+    </div>
+
+    <div class="form-group globalobject-influence">
+      <label for="system.gRange" title="Левое поле — радиус (в клетках), правое — сила">Влияние</label>
+      <div class="form-fields influence-fields">
+        <input
+          class="influence-input"
+          type="number"
+          name="system.gRange"
+          value="{{system.gRange}}"
+          data-dtype="Number"
+          min="0"
+          step="0.1"
+          title="Радиус влияния (клетки)"
+        />
+        <span class="influence-sep">/</span>
+        <input
+          class="influence-input"
+          type="number"
+          name="system.gPower"
+          value="{{system.gPower}}"
+          data-dtype="Number"
+          min="0"
+          step="0.1"
+          title="Сила влияния"
+        />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="flags.spaceholder.tokenVisibility">Видимость</label>
+      <div class="form-fields">
+        <select name="flags.spaceholder.tokenVisibility">
+          <option value="public" {{#if (eq flags.spaceholder.tokenVisibility "public")}}selected{{/if}}>Публичный (обычный)</option>
+          <option value="halfHidden" {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}selected{{/if}}>HalfHidden (виден всем в чужой зоне)</option>
+          <option value="fullHidden" {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}selected{{/if}}>FullHidden (виден владельцу зоны)</option>
+          <option value="secret" {{#if (eq flags.spaceholder.tokenVisibility "secret")}}selected{{/if}}>Секретный</option>
+        </select>
+      </div>
+    </div>
+
+    {{!-- Контейнер актёров (drag&drop сюда) --}}
+    <div class="inventory-panel globalobject-actors-panel" data-action="gactors-drop">
+      {{#if gActorsResolved.length}}
+        <div class="inventory-list">
+          {{#each gActorsResolved as |a|}}
+            <div class="inventory-item-card rimworld-header" data-uuid="{{a.uuid}}">
+              <div class="item-main">
+                <div class="item-image">
+                  <img
+                    src="{{a.img}}"
+                    title="{{a.name}}"
+                    width="32"
+                    height="32"
+                  />
+                </div>
+                <div class="item-info">
+                  <div class="item-name">{{a.name}}</div>
+                </div>
+              </div>
+              <div class="globalobject-actor-type" title="Тип актора">{{a.typeLabel}}</div>
+              <div class="item-controls">
+                <button type="button" class="icon-btn" data-action="gactor-open" data-uuid="{{a.uuid}}" title="Открыть">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </button>
+                <button type="button" class="icon-btn" data-action="gactor-remove" data-uuid="{{a.uuid}}" title="Убрать">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="empty-inventory">
+          <i class="fas fa-box-open"></i>
+          <p><em>Тут пока пусто. Перетащите актёра сюда, чтобы добавить.</em></p>
+        </div>
+      {{/if}}
     </div>
 
   </section>

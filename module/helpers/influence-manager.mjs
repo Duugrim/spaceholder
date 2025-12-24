@@ -388,10 +388,10 @@ export class InfluenceManager {
       const system = actor.system;
       if (!system) continue;
 
-      // Конвертируем gRange из единиц сетки×100 в пиксели
-      // Например: gRange=500 и gridSize=100 → 5 клеток → 500 пикселей
-      const rangeInGridUnits = (system.gRange || 0) / 100; // 500 → 5
-      const rangeInPixels = rangeInGridUnits * gridSize; // 5 × 100 = 500
+      // gRange задаётся в клетках → переводим в пиксели
+      // Например: gRange=5 и gridSize=100 → 500 пикселей
+      const rangeInCells = Number(system.gRange ?? 0) || 0;
+      const rangeInPixels = rangeInCells * gridSize;
 
       // Фракция: по умолчанию — UUID связанного Journal (system.gFaction).
       // Для обратной совместимости: если UUID не задан, используем legacy system.gSide.

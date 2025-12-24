@@ -912,6 +912,8 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     context.system = context.system || {};
     context.system.gLink ??= '';
     context.system.gFaction ??= '';
+    context.system.gActors ??= [];
+    if (!Array.isArray(context.system.gActors)) context.system.gActors = [];
 
     // Flags (на случай старых актёров)
     context.flags = context.flags || {};
@@ -921,6 +923,39 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Имена для отображения (как content-link в тексте Foundry)
     context.gLinkName = await this._resolveJournalName(context.system.gLink);
     context.gFactionName = await this._resolveJournalName(context.system.gFaction);
+
+    // Контейнер актёров (UUID -> данные для шаблона)
+    context.gActorsResolved = [];
+    for (const raw of context.system.gActors) {
+      const uuid = String(raw ?? '').trim();
+      if (!uuid) continue;
+
+      let doc = null;
+      try {
+        doc = await fromUuid(uuid);
+      } catch (e) {
+        doc = null;
+      }
+
+      if (doc?.documentName === 'Actor') {
+        const a = doc;
+        context.gActorsResolved.push({
+          uuid,
+          name: a?.name || uuid,
+          img: a?.img || 'icons/svg/mystery-man.svg',
+          type: a?.type || '',
+          typeLabel: this._getActorTypeLabel(a?.type),
+        });
+      } else {
+        context.gActorsResolved.push({
+          uuid,
+          name: `${uuid} (не найдено)`,
+          img: 'icons/svg/mystery-man.svg',
+          type: '',
+          typeLabel: '—',
+        });
+      }
+    }
 
     // Цвет фракции для подсветки интерфейса
     context.factionColor = this._getFactionColorCss(context.system);
@@ -933,7 +968,24 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     await super._onRender(context, options);
 
     const el = this.element;
-    if (!el || !this.isEditable) return;
+    if (!el) return;
+
+    // Контейнер актёров: открыть (доступно и в read-only)
+    el.querySelectorAll('[data-action="gactor-open"]').forEach((btn) => {
+      btn.addEventListener('click', this._onGActorOpen.bind(this));
+    });
+
+    // Всё ниже — только когда лист редактируемый
+    if (!this.isEditable) return;
+
+    // Контейнер актёров: drag&drop + убрать
+    el.querySelectorAll('[data-action="gactors-drop"]').forEach((panel) => {
+      panel.addEventListener('dragover', (ev) => ev.preventDefault());
+      panel.addEventListener('drop', this._onGActorsDrop.bind(this));
+    });
+    el.querySelectorAll('[data-action="gactor-remove"]').forEach((btn) => {
+      btn.addEventListener('click', this._onGActorRemove.bind(this));
+    });
 
     // Drag & drop UUID в текстовые поля
     el.querySelectorAll('[data-action="uuid-drop"]').forEach((input) => {
@@ -1032,6 +1084,105 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     const gg = to255(g);
     const bb = to255(b);
     return (rr << 16) + (gg << 8) + bb;
+  }
+
+  /** @private */
+  _getActorTypeLabel(type) {
+    const t = String(type ?? '').trim();
+    switch (t) {
+      case 'character': return 'Персонаж';
+      case 'npc': return 'NPC';
+      case 'globalobject': return 'Глоб. объект';
+      default: return t || '—';
+    }
+  }
+
+  /**
+   * Контейнер актёров: drop Actor UUID в system.gActors
+   * @private
+   */
+  async _onGActorsDrop(event) {
+    event.preventDefault();
+
+    const uuid = this._extractUuidFromDropEvent(event);
+    if (!uuid) {
+      ui.notifications.warn('Не удалось извлечь UUID из перетаскивания');
+      return;
+    }
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc || doc.documentName !== 'Actor') {
+      ui.notifications.warn('Ожидался Actor');
+      return;
+    }
+
+    const actorUuid = doc.uuid ?? uuid;
+
+    const current = Array.isArray(this.actor.system?.gActors)
+      ? foundry.utils.deepClone(this.actor.system.gActors)
+      : [];
+
+    if (current.includes(actorUuid)) return;
+
+    current.push(actorUuid);
+    await this.actor.update({ 'system.gActors': current });
+    this.render(false);
+  }
+
+  /**
+   * Контейнер актёров: открыть добавленного актора
+   * @private
+   */
+  async _onGActorOpen(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const uuid = this._normalizeUuid(event.currentTarget?.dataset?.uuid);
+    if (!uuid) return;
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc) {
+      ui.notifications.warn('Документ по UUID не найден');
+      return;
+    }
+
+    if (doc.documentName !== 'Actor') {
+      ui.notifications.warn('Ожидался Actor');
+      return;
+    }
+
+    doc.sheet?.render?.(true);
+  }
+
+  /**
+   * Контейнер актёров: убрать UUID из system.gActors
+   * @private
+   */
+  async _onGActorRemove(event) {
+    event.preventDefault();
+
+    const uuid = this._normalizeUuid(event.currentTarget?.dataset?.uuid);
+    if (!uuid) return;
+
+    const current = Array.isArray(this.actor.system?.gActors)
+      ? foundry.utils.deepClone(this.actor.system.gActors)
+      : [];
+
+    const next = current.filter((u) => String(u) !== uuid);
+    await this.actor.update({ 'system.gActors': next });
+    this.render(false);
   }
 
   /**
