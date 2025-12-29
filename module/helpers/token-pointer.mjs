@@ -133,7 +133,13 @@ export class TokenPointer {
       const color = fp.color ?? this.color;
       const distanceFactor = Number(fp.distance ?? this.distance);
       const scaleFactor = Number(fp.scale ?? this.scale) || 1.0;
-      const mode = Number(fp.mode ?? this.mode);
+
+      // Default mode: for Global Object tokens we hide the pointer unless explicitly enabled
+      const actorType = token.actor?.type ?? token.document?.actor?.type ?? null;
+      const hasMode = fp.mode !== undefined && fp.mode !== null;
+      const defaultMode = actorType === 'globalobject' ? 0 : this.mode;
+      const mode = Number(hasMode ? fp.mode : defaultMode);
+
       const pointerType = fp.pointerType ?? this.pointerType;
       const underToken = !!(fp.underToken ?? this.underToken ?? false);
 
@@ -516,6 +522,11 @@ export function installTokenPointerHooks() {
       const doc = data?.document ?? data?.source;
       const fp = doc?.flags?.spaceholder?.tokenpointer ?? {};
       const tab = data?.tabs?.spaceholderPointer ?? { active: false };
+
+      const actorType = doc?.actor?.type ?? doc?.parent?.type ?? null;
+      const hasMode = fp?.mode !== undefined && fp?.mode !== null;
+      const fallbackMode = actorType === 'globalobject' ? 0 : (game.spaceholder?.tokenpointer?.mode ?? 2);
+
       const ctx = {
         tab,
         group,
@@ -523,7 +534,7 @@ export function installTokenPointerHooks() {
         color: fp.color ?? game.spaceholder?.tokenpointer?.color ?? '#000000',
         distance: Number(fp.distance ?? game.spaceholder?.tokenpointer?.distance ?? 1.4),
         scale: Number(fp.scale ?? game.spaceholder?.tokenpointer?.scale ?? 1.0),
-        mode: Number(fp.mode ?? game.spaceholder?.tokenpointer?.mode ?? 2),
+        mode: Number(hasMode ? fp.mode : fallbackMode),
         lockToGrid: !!(fp.lockToGrid ?? game.spaceholder?.tokenpointer?.lockToGrid ?? false),
         underToken: !!(fp.underToken ?? game.spaceholder?.tokenpointer?.underToken ?? false),
         disableAutoRotation: !!(fp.disableAutoRotation ?? true),
@@ -630,7 +641,7 @@ export function installTokenPointerHooks() {
   Hooks.on('preUpdateToken', (tokenDocument, updates, options, userId) => {
     // Check if automatic rotation should be disabled for this token
     const fp = tokenDocument.getFlag('spaceholder', 'tokenpointer') ?? {};
-    const disableAutoRotation = !!(fp.disableAutoRotation ?? false);
+    const disableAutoRotation = !!(fp.disableAutoRotation ?? true);
     
     // Only block automatic rotation (when position changes), not manual rotation
     const hasPositionChange = updates.x !== undefined || updates.y !== undefined;

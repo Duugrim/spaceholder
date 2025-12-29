@@ -897,7 +897,7 @@ export class SpaceHolderNPCSheet extends SpaceHolderBaseActorSheet {
 // Global Object sheet (Application V2)
 export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
-    position: { width: 420, height: 'auto' },
+    position: { width: 560, height: 'auto' },
   }, { inplace: false });
 
   static PARTS = {
@@ -996,6 +996,11 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Открытие Journal по UUID
     el.querySelectorAll('[data-action="uuid-open"]').forEach((a) => {
       a.addEventListener('click', this._onUuidOpen.bind(this));
+    });
+
+    // Видимость токена: кнопки режимов
+    el.querySelectorAll('[data-action="token-visibility-set"]').forEach((btn) => {
+      btn.addEventListener('click', this._onTokenVisibilitySet.bind(this));
     });
 
     // Очистка UUID поля
@@ -1182,6 +1187,29 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
 
     const next = current.filter((u) => String(u) !== uuid);
     await this.actor.update({ 'system.gActors': next });
+    this.render(false);
+  }
+
+  /**
+   * Видимость токена: установить режим (через скрытое поле формы)
+   * @private
+   */
+  async _onTokenVisibilitySet(event) {
+    event.preventDefault();
+
+    const value = event.currentTarget?.dataset?.value;
+    if (!value) return;
+
+    // Важно: делаем прямое сохранение флага.
+    // Вариант с hidden input + submitOnChange в некоторых случаях не даёт стабильного результата,
+    // из‑за чего подсветка активной кнопки «мигает» и откатывается.
+    await this.actor.setFlag('spaceholder', 'tokenVisibility', value);
+
+    // Обновим скрытое поле, если оно есть (на случай если render отложен)
+    const root = this.element;
+    const input = root?.querySelector('input[name="flags.spaceholder.tokenVisibility"]');
+    if (input) input.value = value;
+
     this.render(false);
   }
 

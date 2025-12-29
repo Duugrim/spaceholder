@@ -6,7 +6,7 @@
     <div class="header-fields">
       <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Name"/></h1>
 
-      {{!-- Фракция под именем актёра --}}
+      {{!-- Фракция под именем актёра (вернули в хедер) --}}
       <div class="form-group globalobject-faction">
         <label for="system.gFaction">Фракция</label>
         <div class="form-fields" style="flex-wrap: wrap;">
@@ -42,7 +42,70 @@
   {{!-- Sheet Body (no tabs) --}}
   <section class="sheet-body">
 
-    {{!-- Ссылка (вверх списка параметров) --}}
+    {{!-- Видимость (без заголовка) --}}
+    <div class="form-group globalobject-visibility">
+      <div class="form-fields" style="display: block; text-align: right;">
+        <div class="token-visibility-buttons" role="group" aria-label="Видимость" style="display: inline-block; white-space: nowrap;">
+          <input type="hidden" name="flags.spaceholder.tokenVisibility" value="{{flags.spaceholder.tokenVisibility}}" />
+
+          <span
+            class="visibility-current"
+            data-tooltip="Текущий режим"
+            style="margin-right: 8px; font-size: 12px; opacity: 0.9; vertical-align: middle;"
+          >
+            {{#if (eq flags.spaceholder.tokenVisibility "public")}}Публичный{{else}}
+              {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}HalfHidden{{else}}
+                {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}FullHidden{{else}}
+                  {{#if (eq flags.spaceholder.tokenVisibility "secret")}}Секретный{{else}}—{{/if}}
+                {{/if}}
+              {{/if}}
+            {{/if}}
+          </span>
+
+          <button
+            type="button"
+            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "public")}}is-active{{/if}}"
+            data-action="token-visibility-set"
+            data-value="public"
+            data-tooltip="Публичный (обычный)"
+            aria-label="Публичный (обычный)"
+            {{#unless editable}}disabled{{/unless}}
+          ><i class="fa-solid fa-user"></i></button>
+
+          <button
+            type="button"
+            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}is-active{{/if}}"
+            data-action="token-visibility-set"
+            data-value="halfHidden"
+            data-tooltip="HalfHidden (виден всем в чужой зоне)"
+            aria-label="HalfHidden (виден всем в чужой зоне)"
+            {{#unless editable}}disabled{{/unless}}
+          ><i class="fa-solid fa-user-magnifying-glass"></i></button>
+
+          <button
+            type="button"
+            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}is-active{{/if}}"
+            data-action="token-visibility-set"
+            data-value="fullHidden"
+            data-tooltip="FullHidden (виден владельцу зоны)"
+            aria-label="FullHidden (виден владельцу зоны)"
+            {{#unless editable}}disabled{{/unless}}
+          ><i class="fa-solid fa-user-lock"></i></button>
+
+          <button
+            type="button"
+            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "secret")}}is-active{{/if}}"
+            data-action="token-visibility-set"
+            data-value="secret"
+            data-tooltip="Секретный"
+            aria-label="Секретный"
+            {{#unless editable}}disabled{{/unless}}
+          ><i class="fa-solid fa-user-secret"></i></button>
+        </div>
+      </div>
+    </div>
+
+    {{!-- Ссылка --}}
     <div class="form-group">
       <label for="system.gLink">Ссылка</label>
       <div class="form-fields">
@@ -66,9 +129,11 @@
       </div>
     </div>
 
+    {{!-- Влияние --}}
     <div class="form-group globalobject-influence">
-      <label for="system.gRange" title="Левое поле — радиус (в клетках), правое — сила">Влияние</label>
+      <label for="system.gRange" title="r: радиус (клетки), p: сила влияния">Влияние</label>
       <div class="form-fields influence-fields">
+        <span class="influence-prefix" data-tooltip="Радиус (клетки)">r:</span>
         <input
           class="influence-input"
           type="number"
@@ -80,6 +145,7 @@
           title="Радиус влияния (клетки)"
         />
         <span class="influence-sep">/</span>
+        <span class="influence-prefix" data-tooltip="Сила влияния">p:</span>
         <input
           class="influence-input"
           type="number"
@@ -90,18 +156,6 @@
           step="0.1"
           title="Сила влияния"
         />
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="flags.spaceholder.tokenVisibility">Видимость</label>
-      <div class="form-fields">
-        <select name="flags.spaceholder.tokenVisibility">
-          <option value="public" {{#if (eq flags.spaceholder.tokenVisibility "public")}}selected{{/if}}>Публичный (обычный)</option>
-          <option value="halfHidden" {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}selected{{/if}}>HalfHidden (виден всем в чужой зоне)</option>
-          <option value="fullHidden" {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}selected{{/if}}>FullHidden (виден владельцу зоны)</option>
-          <option value="secret" {{#if (eq flags.spaceholder.tokenVisibility "secret")}}selected{{/if}}>Секретный</option>
-        </select>
       </div>
     </div>
 

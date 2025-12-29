@@ -111,7 +111,10 @@ function updateRotations() {
         // ensure visibility if mode allows it
         if (tok.tokenPointerIndicator) {
           const fp = tok.document.getFlag('spaceholder', 'tokenpointer') ?? {};
-          const mode = Number(fp.mode ?? tp?.mode ?? 2);
+          const actorType = tok.actor?.type ?? tok.document?.actor?.type ?? null;
+          const hasMode = fp.mode !== undefined && fp.mode !== null;
+          const fallbackMode = actorType === 'globalobject' ? 0 : (tp?.mode ?? 2);
+          const mode = Number(hasMode ? fp.mode : fallbackMode);
           if (mode === 0) tok.tokenPointerIndicator.graphics.visible = false;
           else if (mode === 1) tok.tokenPointerIndicator.graphics.visible = !!tok.hover;
           else tok.tokenPointerIndicator.graphics.visible = true;
