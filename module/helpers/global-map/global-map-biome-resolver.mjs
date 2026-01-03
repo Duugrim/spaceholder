@@ -15,6 +15,9 @@ export class BiomeResolver {
     this.legacyRemap = null; // Map<legacyBiomeId, biomeId>
     this.azgaarBiomeMappings = null;
     this.settings = null;
+
+    // World overrides (stored as JSON in the world folder)
+    this.worldBiomeOverrides = null; // {version, biomes:[...]} (raw loaded structure)
   }
 
   /**
@@ -315,6 +318,313 @@ export class BiomeResolver {
     if (this.biomePatterns && this.biomePatterns.has(biomeId)) {
       return this.biomePatterns.get(biomeId);
     }
+    return null;
+  }
+
+  // ==========================
+  // World overrides (JSON file)
+  // ==========================
+
+  _getWorldOverridesDirectory() {
+    try {
+      const worldId = game?.world?.id;
+      if (!worldId) return null;
+      return `worlds/${worldId}/global-maps`;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  getWorldOverridesPath() {
+    const dir = this._getWorldOverridesDirectory();
+    if (!dir) return null;
+    return `${dir}/biome-overrides.json`;
+  }
+
+  _normalizeHexColorToInt(value) {
+    if (value === null || value === undefined) return null;
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value & 0xFFFFFF;
+    }
+
+    let s = String(value).trim();
+    if (!s) return null;
+
+    if (s.startsWith('#')) s = s.slice(1);
+    if (s.startsWith('0x') || s.startsWith('0X')) s = s.slice(2);
+
+    // Keep only hex digits
+    s = s.replace(/[^0-9a-fA-F]/g, '');
+
+    // Expand short form (#abc)
+    if (s.length === 3) {
+      s = s.split('').map((ch) => ch + ch).join('');
+    }
+
+    if (s.length !== 6) return null;
+
+    const n = parseInt(s, 16);
+    if (!Number.isFinite(n)) return null;
+
+    return n & 0xFFFFFF;
+  }
+
+  _normalizeHexColorToHex6(value) {
+    const n = this._normalizeHexColorToInt(value);
+    if (n === null) return null;
+    return n.toString(16).padStart(6, '0').toUpperCase();
+  }
+
+  _normalizePatternConfig(pattern, baseColorInt = null) {
+    if (!pattern || typeof pattern !== 'object') return null;
+
+    const typeRaw = String(pattern.type || '').trim();
+    const type = [
+      'circles',
+      'diagonal',
+      'crosshatch',
+      'vertical',
+      'horizontal',
+      'dots',
+      'waves',
+      'hexagons',
+      'spots',
+    ].includes(typeRaw) ? typeRaw : null;
+
+    if (!type) return null;
+
+    const patternColorHex6 = this._normalizeHexColorToHex6(pattern.patternColor);
+
+    const spacing = Number(pattern.spacing);
+    const lineWidth = Number(pattern.lineWidth);
+    const opacity = Number(pattern.opacity);
+    const darkenFactor = Number(pattern.darkenFactor);
+
+    const out = {
+      type,
+    };
+
+    // Keep patternColor as hex WITHOUT '#', because renderer does parseInt(str, 16)
+    if (patternColorHex6) {
+      out.patternColor = patternColorHex6;
+    }
+
+    if (Number.isFinite(spacing) && spacing > 0) out.spacing = spacing;
+    if (Number.isFinite(lineWidth) && lineWidth > 0) out.lineWidth = lineWidth;
+    if (Number.isFinite(opacity) && opacity >= 0 && opacity <= 1) out.opacity = opacity;
+    if (Number.isFinite(darkenFactor) && darkenFactor >= 0 && darkenFactor <= 1) out.darkenFactor = darkenFactor;
+
+    return out;
+  }
+
+  async loadOverridesFromWorldFile(path = null) {
+    const p = path || this.getWorldOverridesPath();
+    if (!p) return null;
+
+    try {
+      const response = await fetch(p);
+      if (!response.ok) {
+        // Not found is OK: no overrides.
+        if (response.status === 404) return null;
+        console.warn(`BiomeResolver | Failed to load world biome overrides (${response.status} ${response.statusText})`);
+        return null;
+      }
+
+      const json = await response.json();
+      if (!json || typeof json !== 'object') return null;
+      return json;
+    } catch (e) {
+      console.warn('BiomeResolver | Failed to load world biome overrides:', e);
+      return null;
+    }
+  }
+
+  async saveOverridesToWorldFile(overrides, path = null) {
+    const p = path || this.getWorldOverridesPath();
+    const dir = this._getWorldOverridesDirectory();
+
+    if (!p || !dir) {
+      throw new Error('World overrides path is not available');
+    }
+
+    // GM/Assistant only (same intent as map editing)
+    try {
+      const canWrite = (() => {
+        if (game.user?.isGM) return true;
+        const assistantRole = CONST?.USER_ROLES?.ASSISTANT;
+        if (assistantRole !== undefined && typeof game.user?.hasRole === 'function') {
+          return game.user.hasRole(assistantRole);
+        }
+        return false;
+      })();
+
+      if (!canWrite) {
+        throw new Error('Only GM or Assistant GM can save biome overrides');
+      }
+    } catch (e) {
+      throw e;
+    }
+
+    const fileName = p.split('/').pop() || 'biome-overrides.json';
+
+    // Ensure directory exists
+    try {
+      await foundry.applications.apps.FilePicker.implementation.createDirectory('data', dir, {});
+    } catch (err) {
+      // may already exist
+    }
+
+    const payload = overrides && typeof overrides === 'object' ? overrides : { version: 1, biomes: [] };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const file = new File([blob], fileName, { type: 'application/json' });
+
+    const response = await foundry.applications.apps.FilePicker.implementation.upload(
+      'data',
+      dir,
+      file,
+      {}
+    );
+
+    return response?.path || p;
+  }
+
+  applyBiomeOverrides(overrides) {
+    if (!overrides || typeof overrides !== 'object') return;
+
+    const biomes = Array.isArray(overrides.biomes) ? overrides.biomes : [];
+    if (!biomes.length) return;
+
+    // Ensure maps exist (defensive)
+    if (!this.biomeColors) this.biomeColors = new Map();
+    if (!this.biomeNames) this.biomeNames = new Map();
+    if (!this.biomePatterns) this.biomePatterns = new Map();
+    if (!this.biomeRanks) this.biomeRanks = new Map();
+    if (!this.enabledBiomeIds) this.enabledBiomeIds = new Set();
+
+    // Ensure registry exists so listBiomes() includes custom entries.
+    if (!this.biomeRegistry || typeof this.biomeRegistry !== 'object') {
+      this.biomeRegistry = {
+        version: 1,
+        defaultBiomeId: this.getDefaultBiomeId(),
+        biomes: [],
+      };
+    }
+    if (!Array.isArray(this.biomeRegistry.biomes)) {
+      this.biomeRegistry.biomes = [];
+    }
+
+    for (const raw of biomes) {
+      if (!raw || typeof raw !== 'object') continue;
+
+      const id = Number(raw.id);
+      if (!Number.isFinite(id) || id < 0 || id > 255) continue;
+
+      const name = (typeof raw.name === 'string') ? raw.name.trim() : '';
+      if (name) {
+        this.biomeNames.set(id, name);
+      }
+
+      const colorInt = this._normalizeHexColorToInt(raw.color);
+      if (colorInt !== null) {
+        this.biomeColors.set(id, colorInt);
+      }
+
+      // Pattern: allow explicit null/empty to remove
+      if (raw.pattern === null) {
+        this.biomePatterns.delete(id);
+      } else {
+        const baseColor = (colorInt !== null)
+          ? colorInt
+          : (this.biomeColors?.get?.(id) ?? null);
+
+        const normalizedPattern = this._normalizePatternConfig(raw.pattern, baseColor);
+        if (normalizedPattern) {
+          this.biomePatterns.set(id, normalizedPattern);
+        }
+      }
+
+      const rank = Number(raw.renderRank);
+      if (Number.isFinite(rank)) {
+        this.biomeRanks.set(id, rank);
+      }
+
+      // Ensure biome is present in registry and enabled.
+      let regEntry = this.biomeRegistry.biomes.find(e => e && typeof e.id === 'number' && e.id === id);
+      if (!regEntry) {
+        regEntry = { id, renderRank: Number.isFinite(rank) ? rank : this.getBiomeRank(id), enabled: true };
+        this.biomeRegistry.biomes.push(regEntry);
+      } else {
+        if (Number.isFinite(rank)) {
+          regEntry.renderRank = rank;
+        }
+        if (regEntry.enabled === false) {
+          regEntry.enabled = true;
+        }
+      }
+
+      this.enabledBiomeIds.add(id);
+    }
+
+    // Rebuild ranks/enabled sets from registry to keep everything consistent.
+    try {
+      const nextRanks = new Map();
+      const nextEnabled = new Set();
+
+      for (const entry of this.biomeRegistry.biomes) {
+        if (!entry || typeof entry.id !== 'number') continue;
+        if (entry.enabled === false) continue;
+        nextEnabled.add(entry.id);
+        if (typeof entry.renderRank === 'number') {
+          nextRanks.set(entry.id, entry.renderRank);
+        }
+      }
+
+      this.enabledBiomeIds = nextEnabled;
+      this.biomeRanks = nextRanks;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  async reloadConfigWithWorldOverrides() {
+    const ok = await this.loadConfig();
+    if (!ok) return false;
+
+    const overrides = await this.loadOverridesFromWorldFile();
+    this.worldBiomeOverrides = overrides;
+
+    if (overrides) {
+      this.applyBiomeOverrides(overrides);
+    }
+
+    return true;
+  }
+
+  getNextFreeBiomeId() {
+    const used = new Set();
+
+    try {
+      if (this.biomeColors) {
+        for (const id of this.biomeColors.keys()) {
+          used.add(Number(id));
+        }
+      }
+
+      if (this.biomeRegistry?.biomes?.length) {
+        for (const entry of this.biomeRegistry.biomes) {
+          if (typeof entry?.id === 'number') used.add(entry.id);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    for (let id = 0; id <= 255; id++) {
+      if (!used.has(id)) return id;
+    }
+
     return null;
   }
 

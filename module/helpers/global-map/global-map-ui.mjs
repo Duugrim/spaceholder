@@ -391,6 +391,18 @@ export function registerGlobalMapUI(controls, spaceholder) {
         title: 'Загрузить из файла',
         icon: 'fas fa-upload',
         onChange: async (isActive) => {
+          // Ensure biome overrides are loaded before we normalize/render biomes.
+          try {
+            await spaceholder.globalMapProcessing?.biomeResolver?.reloadConfigWithWorldOverrides?.();
+          } catch (e) {
+            // ignore
+          }
+          try {
+            await spaceholder.globalMapRenderer?.biomeResolver?.reloadConfigWithWorldOverrides?.();
+          } catch (e) {
+            // ignore
+          }
+
           const loaded = await spaceholder.globalMapProcessing.loadGridFromFile(canvas.scene);
           if (loaded && loaded.gridData) {
             await spaceholder.globalMapRenderer.render(loaded.gridData, loaded.metadata, { mode: 'heights' });

@@ -49,8 +49,12 @@ export class GlobalMapRenderer {
   async initialize() {
     console.log('GlobalMapRenderer | Initializing...');
 
-    // Load biome resolver config
-    await this.biomeResolver.loadConfig();
+    // Load biome resolver config + world overrides (if any)
+    if (typeof this.biomeResolver.reloadConfigWithWorldOverrides === 'function') {
+      await this.biomeResolver.reloadConfigWithWorldOverrides();
+    } else {
+      await this.biomeResolver.loadConfig();
+    }
 
     Hooks.on('canvasReady', async () => {
       await this.onCanvasReady();

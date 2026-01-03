@@ -1,3 +1,5 @@
+import { GlobalMapBiomeEditorApp } from './global-map-biome-editor-app.mjs';
+
 /**
  * Global Map Tools
  * Editing and manipulation tools for unified grid
@@ -2473,6 +2475,13 @@ export class GlobalMapTools {
               </div>
             </div>
           </div>
+
+          <button id="open-biome-editor" style="width: 100%; padding: 10px; margin-top: 8px; background: #4466cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+            Редактировать список биомов…
+          </button>
+          <div style="font-size: 10px; color: #aaa; text-align: center; margin-top: 4px;">
+            Сохраняется в <b>worlds/.../global-maps/biome-overrides.json</b>
+          </div>
           
           <button id="biome-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
             Activate Brush
@@ -2753,6 +2762,9 @@ export class GlobalMapTools {
         matrix.append(cell);
       }
     };
+
+    // Expose for external refresh (biome editor)
+    this._generateBiomeMatrix = generateBiomeMatrix;
 
     // Generate biome selection matrix for Height tools filter (allowed biomes)
     this._generateHeightFilterBiomeMatrix = () => {
@@ -3195,6 +3207,20 @@ export class GlobalMapTools {
       matrix.children().css('border', '1px solid rgba(0,0,0,0.3)').css('box-shadow', 'none');
       matrix.find(`[data-biome-id="${this.setBiomeId}"]`).css('border', '2px solid #ffffff').css('box-shadow', '0 0 0 2px rgba(255,255,255,0.3) inset');
     });
+
+    // Open biome editor (separate window)
+    $('#open-biome-editor').on('click', async () => {
+      try {
+        const app = new GlobalMapBiomeEditorApp({
+          biomeResolver: this.processing?.biomeResolver,
+        });
+        app.render(true);
+      } catch (e) {
+        console.error('GlobalMapTools | Failed to open biome editor:', e);
+        ui.notifications?.error?.(`Не удалось открыть редактор биомов: ${e.message}`);
+      }
+    });
+
     // Brush activation/deactivation
     $('#brush-toggle').on('click', () => {
       if (this.isBrushActive) {
@@ -3738,6 +3764,20 @@ export class GlobalMapTools {
     }
 
     return true; // Cell passes all filters
+  }
+
+  /**
+   * Refresh biome-related UI lists (palette + filter matrices) if the tools UI is open.
+   * Useful after updating biome overrides.
+   */
+  refreshBiomeLists() {
+    if (!$('#global-map-tools-ui').length) return;
+
+    try { this._generateBiomeMatrix?.(); } catch (e) { /* ignore */ }
+    try { this._generateHeightFilterBiomeMatrix?.(); } catch (e) { /* ignore */ }
+    try { this._generateBiomeToolBiomeFilterMatrix?.(); } catch (e) { /* ignore */ }
+    try { this._generateReplaceSourceBiomeMatrix?.(); } catch (e) { /* ignore */ }
+    try { this._generateReplaceTargetBiomeMatrix?.(); } catch (e) { /* ignore */ }
   }
 
   /**

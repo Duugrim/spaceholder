@@ -16,7 +16,13 @@ export class GlobalMapProcessing {
    * Initialize processing - load biome resolver config
    */
   async initialize() {
-    await this.biomeResolver.loadConfig();
+    // Load base config + world overrides (if any)
+    if (typeof this.biomeResolver.reloadConfigWithWorldOverrides === 'function') {
+      await this.biomeResolver.reloadConfigWithWorldOverrides();
+    } else {
+      await this.biomeResolver.loadConfig();
+    }
+
     console.log('GlobalMapProcessing | Initialized');
   }
 
