@@ -1,17 +1,120 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
-/* Global styles */
-.window-app {
+/* Global styles (scoped inside partials) */
+.window-app.spaceholder,
+.spaceholder {
+  --sh-bg: #0b0b0b;
+  --sh-surface-1: #111111;
+  --sh-surface-2: #1a1a1a;
+  --sh-surface-3: #242424;
+  --sh-text: #e8e8e8;
+  --sh-text-muted: #c8c8c8;
+  --sh-text-dim: #9a9a9a;
+  --sh-border: rgba(255, 255, 255, 0.12);
+  --sh-border-strong: rgba(255, 255, 255, 0.2);
+  --sh-accent: #4a6e4a;
+  --sh-accent-strong: #8fb98f;
+  --sh-accent-blue: #1d4ed8;
+  --sh-danger: #cc4444;
+  --sh-warning: #ffc107;
+  --sh-radius-sm: 4px;
+  --sh-radius-md: 6px;
+  --sh-radius-lg: 8px;
+  --sh-focus-ring: rgba(143, 185, 143, 0.35);
+  --sh-border-focus: rgba(143, 185, 143, 0.65);
+  color-scheme: dark;
   font-family: "Roboto", sans-serif;
+  background: var(--sh-bg);
+  color: var(--sh-text);
 }
-
-.spaceholder .rollable:hover, .spaceholder .rollable:focus {
-  color: #000;
-  text-shadow: 0 0 10px red;
+.window-app.spaceholder,
+.window-app.spaceholder *,
+.spaceholder,
+.spaceholder * {
+  box-sizing: border-box;
+}
+.window-app.spaceholder *::before,
+.window-app.spaceholder *::after,
+.spaceholder *::before,
+.spaceholder *::after {
+  box-sizing: border-box;
+}
+.window-app.spaceholder :where(h1, h2, h3, h4, h5, h6),
+.spaceholder :where(h1, h2, h3, h4, h5, h6) {
+  color: var(--sh-text);
+  text-shadow: none;
+}
+.window-app.spaceholder :where(code),
+.spaceholder :where(code) {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.95em;
+  color: var(--sh-text);
+}
+.window-app.spaceholder a,
+.spaceholder a {
+  color: var(--sh-accent-strong);
+  text-decoration: none;
+  text-decoration-color: var(--sh-text-muted);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.window-app.spaceholder a:hover, .window-app.spaceholder a:focus,
+.spaceholder a:hover,
+.spaceholder a:focus {
+  color: #fff;
+  text-decoration: underline;
+}
+.window-app.spaceholder .window-header,
+.spaceholder .window-header {
+  background: linear-gradient(to bottom, var(--sh-surface-3), var(--sh-surface-2));
+  border-bottom: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .window-title,
+.spaceholder .window-title {
+  color: var(--sh-text);
+}
+.window-app.spaceholder .window-content,
+.spaceholder .window-content {
+  background: var(--sh-bg);
+  color: var(--sh-text);
+  overflow: auto;
+}
+.window-app.spaceholder ::-webkit-scrollbar,
+.spaceholder ::-webkit-scrollbar {
+  background: var(--sh-surface-2);
+  width: 8px;
+  height: 8px;
+}
+.window-app.spaceholder ::-webkit-scrollbar-thumb,
+.spaceholder ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+}
+.window-app.spaceholder ::-webkit-scrollbar-thumb:hover,
+.spaceholder ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+.window-app.spaceholder .rollable,
+.spaceholder .rollable {
   cursor: pointer;
 }
+.window-app.spaceholder .rollable:hover, .window-app.spaceholder .rollable:focus,
+.spaceholder .rollable:hover,
+.spaceholder .rollable:focus {
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 107, 107, 0.65);
+}
 
-.grid,
-.grid-2col {
+.window-app.spaceholder.sheet .sheet-body .tab,
+.spaceholder.sheet .sheet-body .tab {
+  display: none;
+}
+.window-app.spaceholder.sheet .sheet-body .tab.active,
+.spaceholder.sheet .sheet-body .tab.active {
+  display: block;
+}
+
+.window-app.spaceholder .grid,
+.window-app.spaceholder .grid-2col {
   display: grid;
   grid-column: span 2/span 2;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -19,2628 +122,1407 @@
   margin: 10px 0;
   padding: 0;
 }
-
-.grid-3col {
+.window-app.spaceholder .grid-3col {
   grid-column: span 3/span 3;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-
-.grid-4col {
+.window-app.spaceholder .grid-4col {
   grid-column: span 4/span 4;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-
-.grid-5col {
+.window-app.spaceholder .grid-5col {
   grid-column: span 5/span 5;
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
-
-.grid-6col {
+.window-app.spaceholder .grid-6col {
   grid-column: span 6/span 6;
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
-
-.grid-7col {
+.window-app.spaceholder .grid-7col {
   grid-column: span 7/span 7;
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
-
-.grid-8col {
+.window-app.spaceholder .grid-8col {
   grid-column: span 8/span 8;
   grid-template-columns: repeat(8, minmax(0, 1fr));
 }
-
-.grid-9col {
+.window-app.spaceholder .grid-9col {
   grid-column: span 9/span 9;
   grid-template-columns: repeat(9, minmax(0, 1fr));
 }
-
-.grid-10col {
+.window-app.spaceholder .grid-10col {
   grid-column: span 10/span 10;
   grid-template-columns: repeat(10, minmax(0, 1fr));
 }
-
-.grid-11col {
+.window-app.spaceholder .grid-11col {
   grid-column: span 11/span 11;
   grid-template-columns: repeat(11, minmax(0, 1fr));
 }
-
-.grid-12col {
+.window-app.spaceholder .grid-12col {
   grid-column: span 12/span 12;
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }
-
-.grid-start-2 {
+.window-app.spaceholder .grid-start-2 {
   grid-column-start: 2;
 }
-
-.grid-start-3 {
+.window-app.spaceholder .grid-start-3 {
   grid-column-start: 3;
 }
-
-.grid-start-4 {
+.window-app.spaceholder .grid-start-4 {
   grid-column-start: 4;
 }
-
-.grid-start-5 {
+.window-app.spaceholder .grid-start-5 {
   grid-column-start: 5;
 }
-
-.grid-start-6 {
+.window-app.spaceholder .grid-start-6 {
   grid-column-start: 6;
 }
-
-.grid-start-7 {
+.window-app.spaceholder .grid-start-7 {
   grid-column-start: 7;
 }
-
-.grid-start-8 {
+.window-app.spaceholder .grid-start-8 {
   grid-column-start: 8;
 }
-
-.grid-start-9 {
+.window-app.spaceholder .grid-start-9 {
   grid-column-start: 9;
 }
-
-.grid-start-10 {
+.window-app.spaceholder .grid-start-10 {
   grid-column-start: 10;
 }
-
-.grid-start-11 {
+.window-app.spaceholder .grid-start-11 {
   grid-column-start: 11;
 }
-
-.grid-start-12 {
+.window-app.spaceholder .grid-start-12 {
   grid-column-start: 12;
 }
-
-.grid-span-2 {
+.window-app.spaceholder .grid-span-2 {
   grid-column-end: span 2;
 }
-
-.grid-span-3 {
+.window-app.spaceholder .grid-span-3 {
   grid-column-end: span 3;
 }
-
-.grid-span-4 {
+.window-app.spaceholder .grid-span-4 {
   grid-column-end: span 4;
 }
-
-.grid-span-5 {
+.window-app.spaceholder .grid-span-5 {
   grid-column-end: span 5;
 }
-
-.grid-span-6 {
+.window-app.spaceholder .grid-span-6 {
   grid-column-end: span 6;
 }
-
-.grid-span-7 {
+.window-app.spaceholder .grid-span-7 {
   grid-column-end: span 7;
 }
-
-.grid-span-8 {
+.window-app.spaceholder .grid-span-8 {
   grid-column-end: span 8;
 }
-
-.grid-span-9 {
+.window-app.spaceholder .grid-span-9 {
   grid-column-end: span 9;
 }
-
-.grid-span-10 {
+.window-app.spaceholder .grid-span-10 {
   grid-column-end: span 10;
 }
-
-.grid-span-11 {
+.window-app.spaceholder .grid-span-11 {
   grid-column-end: span 11;
 }
-
-.grid-span-12 {
+.window-app.spaceholder .grid-span-12 {
   grid-column-end: span 12;
 }
 
-.flex-group-center,
-.flex-group-left,
-.flex-group-right {
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-.flex-group-left {
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.flex-group-right {
-  justify-content: flex-end;
-  text-align: right;
-}
-
-.flexshrink {
-  flex: 0;
-}
-
-.flex-between {
-  justify-content: space-between;
-}
-
-.flexlarge {
-  flex: 2;
-}
-
-.align-left {
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.align-right {
-  justify-content: flex-end;
-  text-align: right;
-}
-
-.align-center {
-  justify-content: center;
-  text-align: center;
-}
-
-/* Styles limited to spaceholder sheets */
-.spaceholder .item-form {
-  font-family: "Roboto", sans-serif;
-}
-.spaceholder .sheet-header {
-  flex: 0 auto;
-  overflow: hidden;
+.window-app.spaceholder .flexrow,
+.spaceholder .flexrow {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+  min-width: 0;
+}
+.window-app.spaceholder .flexcol,
+.spaceholder .flexcol {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  min-width: 0;
+  min-height: 0;
+}
+.window-app.spaceholder .flex-center,
+.spaceholder .flex-center {
+  align-items: center;
+}
+.window-app.spaceholder .flex-group-center,
+.window-app.spaceholder .flex-group-left,
+.window-app.spaceholder .flex-group-right,
+.spaceholder .flex-group-center,
+.spaceholder .flex-group-left,
+.spaceholder .flex-group-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.window-app.spaceholder .flex-group-left,
+.spaceholder .flex-group-left {
   justify-content: flex-start;
-  margin-bottom: 10px;
+  align-items: flex-start;
+  text-align: left;
+}
+.window-app.spaceholder .flex-group-right,
+.spaceholder .flex-group-right {
+  justify-content: flex-end;
+  align-items: flex-end;
+  text-align: right;
+}
+.window-app.spaceholder .flexshrink,
+.spaceholder .flexshrink {
+  flex: 0;
+}
+.window-app.spaceholder .flex-between,
+.spaceholder .flex-between {
+  justify-content: space-between;
+}
+.window-app.spaceholder .flexlarge,
+.spaceholder .flexlarge {
+  flex: 2;
+}
+.window-app.spaceholder .align-left,
+.spaceholder .align-left {
+  justify-content: flex-start;
+  text-align: left;
+}
+.window-app.spaceholder .align-right,
+.spaceholder .align-right {
+  justify-content: flex-end;
+  text-align: right;
+}
+.window-app.spaceholder .align-center,
+.spaceholder .align-center {
+  justify-content: center;
+  text-align: center;
 }
 
-/* Actor sheets: фиксируем высоту хедера, чтобы ресайз окна не «съедал» аватар/поля */
-.spaceholder.sheet.actor .sheet-header {
-  flex: 0 0 100px;
-  min-height: 100px;
-  max-height: 100px;
+/* Components (each partial is responsible for scoping to .window-app.spaceholder) */
+.window-app.spaceholder .form-group,
+.spaceholder .form-group {
+  margin: 0 0 10px 0;
 }
-.spaceholder .sheet-header .profile-img {
-  flex: 0 0 100px;
-  height: 100px;
-  margin-right: 10px;
+.window-app.spaceholder .form-group > label,
+.spaceholder .form-group > label {
+  display: block;
+  margin: 0 0 4px 0;
+  color: var(--sh-text-muted);
+  font-weight: 600;
+}
+.window-app.spaceholder .form-fields,
+.spaceholder .form-fields {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder input[type=text],
+.window-app.spaceholder input[type=number],
+.window-app.spaceholder input[type=password],
+.window-app.spaceholder textarea,
+.window-app.spaceholder select,
+.spaceholder input[type=text],
+.spaceholder input[type=number],
+.spaceholder input[type=password],
+.spaceholder textarea,
+.spaceholder select {
+  background: var(--sh-surface-1);
+  color: var(--sh-text);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  padding: 6px 8px;
+}
+.window-app.spaceholder input[type=text],
+.window-app.spaceholder input[type=number],
+.window-app.spaceholder input[type=password],
+.window-app.spaceholder select,
+.spaceholder input[type=text],
+.spaceholder input[type=number],
+.spaceholder input[type=password],
+.spaceholder select {
+  height: 32px;
+}
+.window-app.spaceholder textarea,
+.spaceholder textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.window-app.spaceholder input:focus,
+.window-app.spaceholder textarea:focus,
+.window-app.spaceholder select:focus,
+.spaceholder input:focus,
+.spaceholder textarea:focus,
+.spaceholder select:focus {
+  outline: none;
+  border-color: var(--sh-border-focus);
+  box-shadow: 0 0 0 2px var(--sh-focus-ring);
+}
+.window-app.spaceholder button,
+.spaceholder button {
+  background: var(--sh-surface-2);
+  color: var(--sh-text);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  padding: 6px 10px;
   cursor: pointer;
 }
+.window-app.spaceholder button:hover,
+.spaceholder button:hover {
+  background: var(--sh-surface-3);
+  border-color: var(--sh-border-strong);
+}
+.window-app.spaceholder button:disabled,
+.spaceholder button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.window-app.spaceholder button.primary,
+.spaceholder button.primary {
+  background: var(--sh-accent-blue);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.window-app.spaceholder button.danger,
+.spaceholder button.danger {
+  background: rgba(204, 68, 68, 0.22);
+  border-color: rgba(204, 68, 68, 0.6);
+}
+.window-app.spaceholder button.success,
+.spaceholder button.success {
+  background: rgba(74, 110, 74, 0.35);
+  border-color: rgba(74, 110, 74, 0.75);
+}
+.window-app.spaceholder .btn-text,
+.spaceholder .btn-text {
+  line-height: 1;
+}
+.window-app.spaceholder .icon-btn,
+.spaceholder .icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--sh-text);
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sh-radius-sm);
+  padding: 0;
+}
+.window-app.spaceholder .icon-btn:hover,
+.spaceholder .icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.window-app.spaceholder .icon-btn i,
+.spaceholder .icon-btn i {
+  pointer-events: none;
+  font-size: 12px;
+}
+.window-app.spaceholder .spaceholder.sheet,
+.spaceholder .spaceholder.sheet {
+  color: var(--sh-text);
+}
+.window-app.spaceholder .sheet-header,
+.spaceholder .sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin: 0 0 10px 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0));
+  border-bottom: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .sheet-header .profile-img,
+.spaceholder .sheet-header .profile-img {
+  flex: 0 0 100px;
+  width: 100px;
+  height: 100px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid var(--sh-border);
+  cursor: pointer;
+}
+.window-app.spaceholder .sheet-header .header-fields,
 .spaceholder .sheet-header .header-fields {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
 }
+.window-app.spaceholder .sheet-header h1.charname,
 .spaceholder .sheet-header h1.charname {
-  height: 50px;
-  padding: 0px;
-  margin: 5px 0;
-  border-bottom: 0;
+  margin: 0 0 6px 0;
+  border: none;
 }
+.window-app.spaceholder .sheet-header h1.charname input,
 .spaceholder .sheet-header h1.charname input {
   width: 100%;
-  height: 100%;
+  height: 42px;
+  padding: 4px 10px;
   margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  background: transparent;
+  border: 1px solid var(--sh-border);
+}
+.window-app.spaceholder.sheet.actor .sheet-header,
+.spaceholder.sheet.actor .sheet-header {
+  flex: 0 0 auto;
+  min-height: 100px;
+}
+.window-app.spaceholder .sheet-tabs,
+.spaceholder .sheet-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 8px 10px;
+  margin: 0;
+  border-bottom: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .sheet-tabs .item,
+.spaceholder .sheet-tabs .item {
+  background: var(--sh-surface-2);
+  color: var(--sh-text-muted);
+  border: 1px solid var(--sh-border);
+  border-bottom: none;
+  border-radius: var(--sh-radius-md) var(--sh-radius-md) 0 0;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.window-app.spaceholder .sheet-tabs .item:hover,
+.spaceholder .sheet-tabs .item:hover {
+  background: var(--sh-surface-3);
+  color: #fff;
+}
+.window-app.spaceholder .sheet-tabs .item.active,
+.spaceholder .sheet-tabs .item.active {
+  background: var(--sh-bg);
+  color: #fff;
+  border-color: var(--sh-border-strong);
+}
+.window-app.spaceholder .sheet-body,
+.spaceholder .sheet-body {
+  padding: 10px;
+  min-height: 0;
+}
+.window-app.spaceholder .editor,
+.spaceholder .editor {
+  background: var(--sh-surface-1);
+  color: var(--sh-text);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+}
+.window-app.spaceholder .editor .editor-content,
+.spaceholder .editor .editor-content {
+  background: transparent;
+  color: inherit;
 }
 
-/* Global Object: индикатор цвета фракции — компактный квадратик рядом с названием */
-.spaceholder .globalobject-faction .faction-color-swatch {
-  display: inline-block;
-  width: 0.9em;
-  height: 0.9em;
-  border-radius: 2px;
-  background: var(--faction-color, #666);
-  border: 1px solid rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+.window-app.spaceholder .resource-label {
+  font-weight: 700;
+  color: var(--sh-text-muted);
+}
+
+.window-app.spaceholder .items-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  color: var(--sh-text);
+}
+.window-app.spaceholder .items-list .item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.window-app.spaceholder .items-list .items-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px 0;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  font-weight: 700;
+}
+.window-app.spaceholder .items-list .items-header > * {
+  font-size: 12px;
+}
+.window-app.spaceholder .items-list .items-header .item-name {
+  flex: 1 1 auto;
+}
+.window-app.spaceholder .items-list .item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .items-list .item:last-child {
+  border-bottom: none;
+}
+.window-app.spaceholder .items-list .item-name {
+  flex: 2 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.window-app.spaceholder .items-list .item-name h3,
+.window-app.spaceholder .items-list .item-name h4 {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.window-app.spaceholder .items-list .item-image img {
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .items-list .item-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
   flex: 0 0 auto;
 }
+.window-app.spaceholder .items-list .item-controls a {
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .items-list .item-controls a:hover {
+  color: #fff;
+}
+.window-app.spaceholder .items-list .item-prop {
+  text-align: center;
+  font-size: 12px;
+  color: var(--sh-text-dim);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.window-app.spaceholder .item-formula {
+  flex: 0 0 200px;
+  padding: 0 8px;
+}
 
-.spaceholder.sheet.actor.globalobject .globalobject-faction {
+.window-app.spaceholder .effects-list .effect-source,
+.window-app.spaceholder .effects-list .effect-duration {
+  text-align: center;
+  font-size: 12px;
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .effects .item .effect-source,
+.window-app.spaceholder .effects .item .effect-duration,
+.window-app.spaceholder .effects .item .effect-controls {
+  text-align: center;
+  font-size: 12px;
+}
+.window-app.spaceholder .effects .item .effect-controls {
+  border: none;
+}
+
+.window-app.spaceholder .rimworld-health-section,
+.spaceholder .rimworld-health-section {
+  margin: 0;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-lg);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
+}
+.window-app.spaceholder .rimworld-health-section > .rimworld-header,
+.window-app.spaceholder .inventory-panel > .rimworld-header,
+.spaceholder .rimworld-health-section > .rimworld-header,
+.spaceholder .inventory-panel > .rimworld-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px 0;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(44, 74, 45, 0.95) 0%, rgba(61, 90, 62, 0.95) 100%);
+  color: #ffffff;
+  border-radius: var(--sh-radius-md);
+  border: 1px solid rgba(74, 110, 74, 0.8);
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+.window-app.spaceholder .rimworld-health-section > .rimworld-header i,
+.window-app.spaceholder .inventory-panel > .rimworld-header i,
+.spaceholder .rimworld-health-section > .rimworld-header i,
+.spaceholder .inventory-panel > .rimworld-header i {
+  color: var(--sh-accent-strong);
+  font-size: 16px;
+}
+.window-app.spaceholder .capacities-list,
+.spaceholder .capacities-list {
   margin: 0;
 }
-
-.spaceholder.sheet.actor.globalobject .globalobject-faction label {
-  font-size: 12px;
-  opacity: 0.85;
+.window-app.spaceholder .capacity-line,
+.spaceholder .capacity-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-
-.spaceholder.sheet.actor.globalobject .globalobject-faction .content-link {
+.window-app.spaceholder .capacity-line:last-child,
+.spaceholder .capacity-line:last-child {
+  border-bottom: none;
+}
+.window-app.spaceholder .capacity-name,
+.spaceholder .capacity-name {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sh-text);
+}
+.window-app.spaceholder .capacity-name .abbr,
+.spaceholder .capacity-name .abbr {
+  display: inline-block;
+  min-width: 30px;
+  padding: 2px 6px;
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--sh-border);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 11px;
+  color: var(--sh-text-muted);
+  text-align: center;
+}
+.window-app.spaceholder .capacity-value,
+.spaceholder .capacity-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.window-app.spaceholder .capacity-value input,
+.spaceholder .capacity-value input {
+  width: 64px;
+  text-align: center;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.window-app.spaceholder .capacity-value .ability-mod,
+.spaceholder .capacity-value .ability-mod {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 2px 8px;
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--sh-border);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 700;
+  color: #ffffff;
 }
 
-/* Global Object: имя чуть компактнее */
-.spaceholder.sheet.actor.globalobject .sheet-header h1.charname input {
-  font-size: 24px;
+.window-app.spaceholder .health-container,
+.spaceholder .health-container {
+  width: 100%;
+}
+.window-app.spaceholder .health-main-layout,
+.spaceholder .health-main-layout {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+.window-app.spaceholder .health-bodyparts-column,
+.spaceholder .health-bodyparts-column {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder .body-parts-hierarchy,
+.spaceholder .body-parts-hierarchy {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-lg);
+  padding: 12px;
+}
+.window-app.spaceholder .parts-tree,
+.spaceholder .parts-tree {
+  width: 100%;
+  overflow-x: auto;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
   line-height: 1.1;
 }
-
-/* Global Object: уменьшить зазор между хедером и первой строкой тела */
-.spaceholder.sheet.actor.globalobject .sheet-header {
-  margin-bottom: 4px;
+.window-app.spaceholder .body-part-line,
+.spaceholder .body-part-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.1;
+  margin: 0;
+  padding: 2px 0;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder .tree-structure,
+.spaceholder .tree-structure {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre;
+  color: var(--sh-text-dim);
+  flex: 0 0 auto;
+}
+.window-app.spaceholder .part-name,
+.spaceholder .part-name {
+  color: var(--sh-text);
+  font-weight: 600;
+}
+.window-app.spaceholder .part-spacer,
+.spaceholder .part-spacer {
+  flex: 1 1 auto;
+  min-width: 12px;
+}
+.window-app.spaceholder .part-status-text,
+.spaceholder .part-status-text {
+  font-size: 11px;
+  color: var(--sh-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.window-app.spaceholder .health-numbers,
+.spaceholder .health-numbers {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  min-width: 80px;
+  text-align: right;
+}
+.window-app.spaceholder .body-part-line.healthy .part-name,
+.window-app.spaceholder .body-part-line.healthy .health-numbers,
+.spaceholder .body-part-line.healthy .part-name,
+.spaceholder .body-part-line.healthy .health-numbers {
+  color: rgba(255, 255, 255, 0.7);
+}
+.window-app.spaceholder .body-part-line.injured.status-bruised .part-name,
+.window-app.spaceholder .body-part-line.injured.status-bruised .health-numbers,
+.spaceholder .body-part-line.injured.status-bruised .part-name,
+.spaceholder .body-part-line.injured.status-bruised .health-numbers {
+  color: #ffc107;
+}
+.window-app.spaceholder .body-part-line.injured.status-injured .part-name,
+.window-app.spaceholder .body-part-line.injured.status-injured .health-numbers,
+.spaceholder .body-part-line.injured.status-injured .part-name,
+.spaceholder .body-part-line.injured.status-injured .health-numbers {
+  color: #ff9800;
+}
+.window-app.spaceholder .body-part-line.injured.status-badly_injured .part-name,
+.window-app.spaceholder .body-part-line.injured.status-badly_injured .health-numbers,
+.spaceholder .body-part-line.injured.status-badly_injured .part-name,
+.spaceholder .body-part-line.injured.status-badly_injured .health-numbers {
+  color: #ff6b6b;
+}
+.window-app.spaceholder .body-part-line.injured.status-destroyed .part-name,
+.window-app.spaceholder .body-part-line.injured.status-destroyed .health-numbers,
+.spaceholder .body-part-line.injured.status-destroyed .part-name,
+.spaceholder .body-part-line.injured.status-destroyed .health-numbers {
+  color: #c084fc;
+}
+.window-app.spaceholder .body-part-line.injured.status-missing .part-name,
+.window-app.spaceholder .body-part-line.injured.status-missing .health-numbers,
+.spaceholder .body-part-line.injured.status-missing .part-name,
+.spaceholder .body-part-line.injured.status-missing .health-numbers {
+  color: #90a4ae;
+  text-decoration: line-through;
+}
+.window-app.spaceholder .no-body-parts,
+.spaceholder .no-body-parts {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-lg);
+  padding: 20px;
+  text-align: center;
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .anatomy-management-container,
+.spaceholder .anatomy-management-container {
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+}
+.window-app.spaceholder .current-anatomy,
+.spaceholder .current-anatomy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder .current-anatomy label,
+.spaceholder .current-anatomy label {
+  font-weight: 700;
+  color: var(--sh-text);
+  margin: 0;
+  white-space: nowrap;
+}
+.window-app.spaceholder .anatomy-name,
+.spaceholder .anatomy-name {
+  color: var(--sh-accent-strong);
+  font-weight: 600;
+  padding: 4px 8px;
+  background: rgba(143, 185, 143, 0.1);
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid rgba(143, 185, 143, 0.25);
+}
+.window-app.spaceholder .no-anatomy,
+.spaceholder .no-anatomy {
+  color: rgba(255, 152, 0, 0.95);
+  font-style: italic;
+  padding: 4px 8px;
+  background: rgba(255, 152, 0, 0.1);
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid rgba(255, 152, 0, 0.22);
+}
+.window-app.spaceholder .anatomy-toggle-btn,
+.spaceholder .anatomy-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid var(--sh-border);
+  background: transparent;
+  color: var(--sh-text);
+}
+.window-app.spaceholder .anatomy-toggle-btn:hover,
+.spaceholder .anatomy-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--sh-border-strong);
+}
+.window-app.spaceholder .anatomy-toggle-btn.primary,
+.spaceholder .anatomy-toggle-btn.primary {
+  border-color: rgba(29, 78, 216, 0.65);
+  background: rgba(29, 78, 216, 0.18);
+}
+.window-app.spaceholder .anatomy-toggle-btn.danger,
+.spaceholder .anatomy-toggle-btn.danger {
+  border-color: rgba(204, 68, 68, 0.75);
+  background: rgba(204, 68, 68, 0.18);
 }
 
-/* Global Object: компактная строка "Влияние r:[gRange]/p:[gPower]" */
-.spaceholder.sheet.actor.globalobject .globalobject-influence .influence-fields {
+.window-app.spaceholder .injuries-container,
+.spaceholder .injuries-container {
+  width: 100%;
+}
+.window-app.spaceholder .injuries-panel,
+.spaceholder .injuries-panel {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-lg);
+  padding: 12px;
+}
+.window-app.spaceholder .injuries-actions,
+.spaceholder .injuries-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 10px 0;
+}
+.window-app.spaceholder .injury-create-open-btn,
+.spaceholder .injury-create-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--sh-text);
+  border: 1px solid rgba(74, 110, 74, 0.75);
+  border-radius: var(--sh-radius-md);
+  padding: 6px 10px;
+}
+.window-app.spaceholder .injury-create-open-btn:hover,
+.spaceholder .injury-create-open-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(143, 185, 143, 0.85);
+}
+.window-app.spaceholder .injury-create-open-btn i,
+.spaceholder .injury-create-open-btn i {
+  color: var(--sh-accent-strong);
+}
+.window-app.spaceholder .injuries-list,
+.spaceholder .injuries-list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.window-app.spaceholder .injury-card,
+.spaceholder .injury-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--sh-surface-2) 0%, var(--sh-surface-3) 100%);
+  border: 1px solid rgba(74, 110, 74, 0.7);
+  border-radius: var(--sh-radius-md);
+  padding: 8px 10px;
+}
+.window-app.spaceholder .injury-main,
+.spaceholder .injury-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder .injury-line,
+.spaceholder .injury-line {
+  color: var(--sh-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .injury-when,
+.spaceholder .injury-when {
+  color: var(--sh-accent-strong);
+  opacity: 0.9;
+  flex: 0 0 auto;
+}
+.window-app.spaceholder .injury-actions,
+.spaceholder .injury-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.window-app.spaceholder .inventory-panel,
+.spaceholder .inventory-panel {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-lg);
+  padding: 12px;
+}
+.window-app.spaceholder .inventory-stats,
+.spaceholder .inventory-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 12px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.window-app.spaceholder .inventory-stat,
+.spaceholder .inventory-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.window-app.spaceholder .inventory-stat i,
+.spaceholder .inventory-stat i {
+  width: 16px;
+  text-align: center;
+  color: var(--sh-accent-strong);
+}
+.window-app.spaceholder .inventory-stat .stat-label,
+.spaceholder .inventory-stat .stat-label {
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .inventory-stat .stat-value,
+.spaceholder .inventory-stat .stat-value {
+  color: #ffffff;
+  font-weight: 700;
+}
+.window-app.spaceholder .inventory-controls,
+.spaceholder .inventory-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 12px 0;
+}
+.window-app.spaceholder .item-create-btn,
+.spaceholder .item-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--sh-text);
+  border: 1px solid rgba(74, 110, 74, 0.75);
+  border-radius: var(--sh-radius-md);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.window-app.spaceholder .item-create-btn:hover,
+.spaceholder .item-create-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(143, 185, 143, 0.85);
+  color: #fff;
+}
+.window-app.spaceholder .item-create-btn i,
+.spaceholder .item-create-btn i {
+  color: var(--sh-accent-strong);
+}
+.window-app.spaceholder .inventory-list,
+.spaceholder .inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+.window-app.spaceholder .inventory-item-card,
+.spaceholder .inventory-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--sh-surface-2) 0%, var(--sh-surface-3) 100%);
+  border: 1px solid rgba(74, 110, 74, 0.6);
+  border-radius: var(--sh-radius-md);
+  padding: 8px 10px;
+}
+.window-app.spaceholder .inventory-item-card:hover,
+.spaceholder .inventory-item-card:hover {
+  border-color: rgba(143, 185, 143, 0.7);
+  background: linear-gradient(135deg, rgb(32, 32, 32) 0%, rgb(44, 44, 44) 100%);
+}
+.window-app.spaceholder .inventory-item-card .item-main,
+.spaceholder .inventory-item-card .item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder .inventory-item-card .item-image,
+.spaceholder .inventory-item-card .item-image {
+  flex: 0 0 auto;
+}
+.window-app.spaceholder .inventory-item-card .item-image img,
+.spaceholder .inventory-item-card .item-image img {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .inventory-item-card .item-info,
+.spaceholder .inventory-item-card .item-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder .inventory-item-card .item-name,
+.spaceholder .inventory-item-card .item-name {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.window-app.spaceholder .inventory-item-card .item-description,
+.spaceholder .inventory-item-card .item-description {
+  color: var(--sh-text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0 0 4px 0;
+}
+.window-app.spaceholder .inventory-item-card .item-details,
+.spaceholder .inventory-item-card .item-details {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .inventory-item-card .item-controls,
+.spaceholder .inventory-item-card .item-controls {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.window-app.spaceholder .empty-inventory,
+.spaceholder .empty-inventory {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .empty-inventory i,
+.spaceholder .empty-inventory i {
+  display: block;
+  font-size: 40px;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.25);
+}
+.window-app.spaceholder .empty-inventory p,
+.spaceholder .empty-inventory p {
+  margin: 0;
+}
+
+.window-app.spaceholder .faction-color-swatch,
+.spaceholder .faction-color-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  border-radius: 3px;
+  background: var(--faction-color, #666);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  vertical-align: middle;
+}
+
+.window-app.spaceholder .globalobject .globalobject-faction,
+.spaceholder.globalobject .globalobject-faction {
+  margin: 0;
+}
+.window-app.spaceholder .globalobject .globalobject-faction label,
+.spaceholder.globalobject .globalobject-faction label {
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  margin: 0 0 4px 0;
+}
+.window-app.spaceholder .globalobject .globalobject-faction a.content-link,
+.spaceholder.globalobject .globalobject-faction a.content-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sh-border);
+  border-left: 4px solid var(--faction-color, #666);
+  color: var(--sh-text);
+  text-decoration: none;
+}
+.window-app.spaceholder .globalobject .globalobject-faction a.content-link:hover,
+.spaceholder.globalobject .globalobject-faction a.content-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--sh-border-strong);
+  color: #fff;
+}
+.window-app.spaceholder .globalobject .globalobject-faction .faction-color-swatch,
+.spaceholder.globalobject .globalobject-faction .faction-color-swatch {
+  flex: 0 0 12px;
+}
+.window-app.spaceholder .globalobject .sheet-header,
+.spaceholder.globalobject .sheet-header {
+  margin-bottom: 6px;
+}
+.window-app.spaceholder .globalobject .sheet-header .profile-img,
+.spaceholder.globalobject .sheet-header .profile-img {
+  border-width: 2px;
+  border-color: var(--faction-color, var(--sh-border));
+}
+.window-app.spaceholder .globalobject .sheet-header h1.charname input,
+.spaceholder.globalobject .sheet-header h1.charname input {
+  height: 42px;
+}
+.window-app.spaceholder .globalobject .globalobject-visibility .globalobject-visibility__fields,
+.spaceholder.globalobject .globalobject-visibility .globalobject-visibility__fields {
+  justify-content: flex-end;
+}
+.window-app.spaceholder .globalobject .token-visibility-buttons,
+.spaceholder.globalobject .token-visibility-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+}
+.window-app.spaceholder .globalobject .token-visibility-buttons .visibility-current,
+.spaceholder.globalobject .token-visibility-buttons .visibility-current {
+  margin-right: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+  color: var(--sh-text-muted);
+  white-space: nowrap;
+}
+.window-app.spaceholder .globalobject .token-visibility-buttons .visibility-btn,
+.spaceholder.globalobject .token-visibility-buttons .visibility-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sh-radius-sm);
+}
+.window-app.spaceholder .globalobject .token-visibility-buttons .visibility-btn.is-active,
+.spaceholder.globalobject .token-visibility-buttons .visibility-btn.is-active {
+  background: rgba(74, 110, 74, 0.35);
+  border: 1px solid rgba(74, 110, 74, 0.9);
+  color: #9fe39f;
+  box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+}
+.window-app.spaceholder .globalobject .token-visibility-buttons .visibility-btn:disabled,
+.spaceholder.globalobject .token-visibility-buttons .visibility-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.window-app.spaceholder .globalobject .token-visibility-buttons .visibility-btn.is-active:disabled,
+.spaceholder.globalobject .token-visibility-buttons .visibility-btn.is-active:disabled {
+  opacity: 0.75;
+}
+.window-app.spaceholder .globalobject .globalobject-influence .influence-fields,
+.spaceholder.globalobject .globalobject-influence .influence-fields {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: nowrap;
 }
-
-.spaceholder.sheet.actor.globalobject .globalobject-influence .influence-prefix {
+.window-app.spaceholder .globalobject .globalobject-influence .influence-prefix,
+.spaceholder.globalobject .globalobject-influence .influence-prefix {
   flex: 0 0 auto;
   font-size: 12px;
-  opacity: 0.85;
+  color: var(--sh-text-dim);
 }
-
-.spaceholder.sheet.actor.globalobject .globalobject-influence .influence-input {
-  width: 90px !important;
+.window-app.spaceholder .globalobject .globalobject-influence .influence-input,
+.spaceholder.globalobject .globalobject-influence .influence-input {
+  width: 90px;
   max-width: 90px;
-  flex: 0 0 90px !important;
+  flex: 0 0 90px;
   text-align: center;
   margin: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
-
-.spaceholder.sheet.actor.globalobject .globalobject-influence .influence-sep {
+.window-app.spaceholder .globalobject .globalobject-influence .influence-sep,
+.spaceholder.globalobject .globalobject-influence .influence-sep {
   flex: 0 0 auto;
   opacity: 0.75;
 }
-
-/* Global Object: видимость — группа иконок */
-.spaceholder.sheet.actor.globalobject .token-visibility-buttons {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.spaceholder.sheet.actor.globalobject .token-visibility-buttons .visibility-btn {
-  width: 28px !important;
-  height: 28px !important;
-}
-
-/* Подсветка активного режима */
-.spaceholder.sheet.actor.globalobject .token-visibility-buttons .visibility-btn.is-active {
-  background: rgba(74, 110, 74, 0.35) !important;
-  border: 1px solid rgba(74, 110, 74, 0.9) !important;
-  color: #9fe39f !important;
-  box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
-}
-
-.spaceholder.sheet.actor.globalobject .token-visibility-buttons .visibility-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-/* Чтобы активный режим был различим даже в read-only */
-.spaceholder.sheet.actor.globalobject .token-visibility-buttons .visibility-btn.is-active:disabled {
-  opacity: 0.75;
-}
-
-/* Global Object: контейнер актёров */
-.spaceholder.sheet.actor.globalobject .globalobject-actors-panel {
-  margin-top: 10px;
-}
-
-.spaceholder.sheet.actor.globalobject .globalobject-actor-type {
+.window-app.spaceholder .globalobject .globalobject-actor-type,
+.spaceholder.globalobject .globalobject-actor-type {
   font-size: 11px;
-  color: #aaaaaa;
-  border: 1px solid rgba(74, 110, 74, 0.9);
-  border-radius: 4px;
+  color: var(--sh-text-muted);
+  border: 1px solid rgba(74, 110, 74, 0.8);
+  border-radius: var(--sh-radius-sm);
   padding: 2px 6px;
   white-space: nowrap;
 }
-
-.spaceholder .sheet-tabs {
-  flex: 0;
+.window-app.spaceholder .globalobject .globalobject-actors-panel,
+.spaceholder.globalobject .globalobject-actors-panel {
+  margin-top: 10px;
 }
-.spaceholder .sheet-body,
-.spaceholder .sheet-body .tab,
-.spaceholder .sheet-body .tab .editor {
+
+#spaceholder-globalmap-biome-editor .sh-biome-editor,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor,
+.spaceholder.globalmap-biome-editor .sh-biome-editor {
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--sh-text);
+  padding: 12px;
+  border-radius: var(--sh-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: "Signika", sans-serif;
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
-.spaceholder .tox .tox-editor-container {
-  background: #fff;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__input--rank,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__input--rank,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__input--rank {
+  width: 110px;
 }
-.spaceholder .tox .tox-edit-area {
-  padding: 0 8px;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__input--xs,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__input--xs,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__input--xs {
+  width: 90px;
 }
-.spaceholder .resource-label {
-  font-weight: bold;
-}
-.spaceholder .items-header {
+#spaceholder-globalmap-biome-editor .sh-biome-editor input[type=color],
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor input[type=color],
+.spaceholder.globalmap-biome-editor .sh-biome-editor input[type=color] {
+  width: 46px;
   height: 28px;
-  margin: 2px 0;
   padding: 0;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.05);
-  border: 2px groove #eeede0;
-  font-weight: bold;
-}
-.spaceholder .items-header > * {
-  font-size: 14px;
-  text-align: center;
-}
-.spaceholder .items-header .item-name {
-  font-weight: bold;
-  padding-left: 5px;
-  text-align: left;
-  display: flex;
-}
-.spaceholder .items-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  color: #444;
-}
-.spaceholder .items-list .item-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.spaceholder .items-list .item-name {
-  flex: 2;
-  margin: 0;
-  overflow: hidden;
-  font-size: 13px;
-  text-align: left;
-  align-items: center;
-  display: flex;
-}
-.spaceholder .items-list .item-name h3, .spaceholder .items-list .item-name h4 {
-  margin: 0;
-  white-space: nowrap;
-  overflow-x: hidden;
-}
-.spaceholder .items-list .item-controls {
-  display: flex;
-  flex: 0 0 100px;
-  justify-content: flex-end;
-}
-.spaceholder .items-list .item-controls a {
-  font-size: 12px;
-  text-align: center;
-  margin: 0 6px;
-}
-.spaceholder .items-list .item {
-  align-items: center;
-  padding: 0 2px;
-  border-bottom: 1px solid #c9c7b8;
-}
-.spaceholder .items-list .item:last-child {
-  border-bottom: none;
-}
-.spaceholder .items-list .item .item-name {
-  color: #191813;
-}
-.spaceholder .items-list .item .item-name .item-image {
-  flex: 0 0 30px;
-  height: 30px;
-  background-size: 30px;
   border: none;
-  margin-right: 5px;
-}
-.spaceholder .items-list .item-prop {
-  text-align: center;
-  border-left: 1px solid #c9c7b8;
-  border-right: 1px solid #c9c7b8;
-  font-size: 12px;
-}
-.spaceholder .items-list .items-header {
-  height: 28px;
-  margin: 2px 0;
-  padding: 0;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.05);
-  border: 2px groove #eeede0;
-  font-weight: bold;
-}
-.spaceholder .items-list .items-header > * {
-  font-size: 12px;
-  text-align: center;
-}
-.spaceholder .items-list .items-header .item-name {
-  padding-left: 5px;
-  text-align: left;
-}
-.spaceholder .item-formula {
-  flex: 0 0 200px;
-  padding: 0 8px;
-}
-.spaceholder .effects .item .effect-source,
-.spaceholder .effects .item .effect-duration,
-.spaceholder .effects .item .effect-controls {
-  text-align: center;
-  border-left: 1px solid #c9c7b8;
-  border-right: 1px solid #c9c7b8;
-  font-size: 12px;
-}
-.spaceholder .effects .item .effect-controls {
-  border: none;
-}
-
-/* ========================================= */
-/* Health System Styles (RimWorld inspired) */
-/* ========================================= */
-
-.spaceholder .health-container {
-  padding: 10px;
-}
-
-.spaceholder .health-debug-toggle {
-  margin-bottom: 15px;
-  padding: 5px;
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid #ccc;
-  border-radius: 3px;
-}
-
-.spaceholder .health-debug-toggle label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  margin: 0;
-}
-
-.spaceholder .health-debug-toggle input[type="checkbox"] {
-  margin-right: 8px;
-}
-
-.spaceholder .health-summary {
-  margin-bottom: 20px;
-  padding: 10px;
-  background: rgba(0, 50, 0, 0.1);
-  border: 1px solid #4a5c4a;
-  border-radius: 5px;
-}
-
-.spaceholder .health-summary h3 {
-  margin: 0 0 10px 0;
-  color: #2d4a2d;
-}
-
-.spaceholder .health-bar {
-  width: 100%;
-  height: 20px;
-  background: #3a3a3a;
-  border: 1px solid #666;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 5px;
-}
-
-.spaceholder .health-bar.small {
-  height: 14px;
-  border-radius: 2px;
-}
-
-.spaceholder .health-fill {
-  height: 100%;
-  background: linear-gradient(to right, #4a9a4a 0%, #6db86d 50%, #8cc68c 100%);
-  transition: width 0.3s ease;
-  min-width: 2px;
-}
-
-/* Injured health bar - red gradient */
-.spaceholder .body-part.injured .health-fill {
-  background: linear-gradient(to right, #cc4444 0%, #dd6666 50%, #ee8888 100%);
-}
-
-.spaceholder .health-numbers {
-  font-size: 12px;
-  color: #555;
-  font-weight: bold;
-}
-
-.spaceholder .no-injuries {
-  text-align: center;
-  padding: 30px;
-  color: #888;
-  font-style: italic;
-}
-
-.spaceholder .injured-parts h3,
-.spaceholder .debug-parts h3 {
-  margin: 0 0 15px 0;
-  padding-bottom: 5px;
-  border-bottom: 2px solid #666666;
-  color: #ffffff !important;
   background: transparent;
 }
-
-.spaceholder .body-part {
-  margin-bottom: 10px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.spaceholder .body-part.injured {
-  background: rgba(204, 68, 68, 0.1);
-  border-color: #cc4444;
-}
-
-.spaceholder .body-part.healthy {
-  background: rgba(74, 154, 74, 0.1);
-  border-color: #4a9a4a;
-}
-
-.spaceholder .body-part.debug {
-  border-style: dashed;
-}
-
-.spaceholder .part-info {
+#spaceholder-globalmap-biome-editor .sh-biome-editor__header,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__header,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__header {
   display: flex;
-  align-items: center;
   gap: 10px;
-  margin-bottom: 0;
-  padding: 4px 0;
-}
-
-.spaceholder .part-name {
-  font-weight: bold;
-  font-size: 14px;
-  color: #333;
-  min-width: 120px;
-  flex-shrink: 0;
-}
-
-.spaceholder .part-status {
-  font-size: 13px;
-  padding: 4px 10px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  font-weight: bold;
-  min-width: 70px;
-  text-align: center;
-  flex-shrink: 0;
-  /* Толстая чёрная обводка для отличной читаемости на любом фоне */
-  text-shadow: 
-    -2px -2px 0 #000,
-     2px -2px 0 #000,
-    -2px  2px 0 #000,
-     2px  2px 0 #000,
-    -2px  0px 0 #000,
-     2px  0px 0 #000,
-     0px -2px 0 #000,
-     0px  2px 0 #000,
-    -1px -1px 0 #000,
-     1px -1px 0 #000,
-    -1px  1px 0 #000,
-     1px  1px 0 #000,
-    -1px  0px 0 #000,
-     1px  0px 0 #000,
-     0px -1px 0 #000,
-     0px  1px 0 #000;
-}
-
-.spaceholder .part-status.status-healthy {
-  background: #4a9a4a;
-  color: white;
-}
-
-.spaceholder .part-status.status-bruised {
-  background: #ccaa44;
-  color: white;
-}
-
-.spaceholder .part-status.status-injured {
-  background: #cc6644;
-  color: white;
-}
-
-.spaceholder .part-status.status-badly_injured {
-  background: #cc4444;
-  color: white;
-}
-
-.spaceholder .part-status.status-destroyed {
-  background: #444;
-  color: white;
-}
-
-.spaceholder .part-health {
-  display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
-
-.spaceholder .part-health .health-bar {
-  width: 80px;
-  flex-shrink: 0;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__title,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__title,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__title {
+  font-weight: 700;
+  font-size: 16px;
   margin: 0;
 }
-
-.spaceholder .debug-info {
-  margin-top: 5px;
-  padding: 3px 6px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 2px;
-  font-family: monospace;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__meta,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__meta,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__meta {
   font-size: 11px;
-  color: #666;
+  color: var(--sh-text-dim);
+  margin-top: 2px;
 }
-
-.spaceholder .children-list {
-  margin-top: 3px;
-  padding: 3px 6px;
-  background: rgba(0, 0, 100, 0.05);
-  border-radius: 2px;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__meta code,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__meta code,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__meta code {
+  color: var(--sh-text-muted);
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__actions,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__actions,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__hint,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__hint,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__hint {
   font-size: 11px;
-  color: #555;
+  color: var(--sh-text-dim);
+  margin: 0 0 10px 0;
 }
-
-/* ========================================= */
-/* Hierarchical Body Parts Tree Styles     */
-/* ========================================= */
-
-.spaceholder .body-parts-tree {
-  font-family: monospace;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.02);
+#spaceholder-globalmap-biome-editor .sh-biome-editor__list,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__list,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 6px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__card,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__card,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-lg);
   padding: 10px;
 }
-
-.spaceholder .body-part-node {
-  position: relative;
-  margin: 2px 0;
-}
-
-.spaceholder .tree-toggle {
-  background: none;
-  border: none;
-  color: #666;
-}
-
-/* ========================================= */
-/* Health Layout: Two Columns + Bottom      */
-/* ========================================= */
-
-.spaceholder .health-main-layout {
+#spaceholder-globalmap-biome-editor .sh-biome-editor__cardRow,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__cardRow,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__cardRow {
   display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
+  gap: 12px;
   align-items: flex-start;
 }
-
-.spaceholder .health-stats-column {
-  width: 320px;
-  flex-shrink: 0;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__preview,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__preview,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__preview {
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--sh-radius-sm);
+  background: #000;
+  flex: 0 0 auto;
 }
-
-.spaceholder .health-bodyparts-column {
-  width: 420px;
-  flex-shrink: 0;
-}
-
-/* Dark theme for body parts hierarchy - Override existing styles */
-.spaceholder .health-bodyparts-column .body-parts-hierarchy {
-  background: rgba(0,0,0,0.4) !important;
-  border: 1px solid #444 !important;
-  border-radius: 6px;
-  padding: 15px;
-  min-width: 400px;
-  overflow-x: auto;
-  margin: 0;
-}
-
-.spaceholder .health-bodyparts-column .body-parts-hierarchy .rimworld-header {
+#spaceholder-globalmap-biome-editor .sh-biome-editor__fields,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__fields,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__fields {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  margin: 0 0 15px 0;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #2c4a2d 0%, #3d5a3e 100%);
-  color: #ffffff;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-  border: 1px solid #4a6e4a;
 }
-
-.spaceholder .health-bodyparts-column .body-parts-hierarchy .rimworld-header i {
-  font-size: 16px;
-  color: #8fb98f;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__row,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__row,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
-
-.spaceholder .health-bodyparts-column .parts-tree {
-  background: transparent !important;
-  border: none !important;
-  padding: 0;
-}
-
-.spaceholder .health-bodyparts-column .body-part-line {
-  background: transparent !important;
-  color: #cccccc;
-  padding: 2px 0;
-  border-bottom: none !important;
-  white-space: nowrap;
-  min-height: 18px;
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-}
-
-.spaceholder .health-bodyparts-column .part-name {
-  color: #cccccc !important;
-  font-weight: bold;
-}
-
-.spaceholder .health-bodyparts-column .health-numbers {
-  color: #aaaaaa !important;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__id,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__id,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__id {
+  min-width: 90px;
   font-size: 12px;
-}
-
-.spaceholder .health-bodyparts-column .part-status-text {
-  color: #aaaaaa !important;
-  font-size: 12px;
-}
-
-.spaceholder .health-bodyparts-column .tree-structure {
-  color: #666 !important;
-  margin-right: 0;
-}
-
-.spaceholder .health-bodyparts-column .part-indicator {
-  color: #666 !important;
-  margin: 0 5px;
-}
-
-.spaceholder .health-bodyparts-column .part-spacer {
-  flex-grow: 1;
-}
-
-.spaceholder .health-bodyparts-column .no-body-parts {
-  background: rgba(0,0,0,0.4) !important;
-  border: 1px solid #444 !important;
-  border-radius: 6px;
-  padding: 20px;
-  text-align: center;
-  color: #888;
-}
-
-/* ========================================= */
-/* RimWorld-style Physical Capacities       */
-/* ========================================= */
-
-.spaceholder .rimworld-health-section {
-  margin: 0;
-  padding: 15px;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  border: 1px solid #444;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-}
-
-.spaceholder .rimworld-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 15px 0;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #2c4a2d 0%, #3d5a3e 100%);
-  color: #ffffff;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-  border: 1px solid #4a6e4a;
-}
-
-.spaceholder .rimworld-header i {
-  font-size: 16px;
-  color: #8fb98f;
-}
-
-/* Vital Status List */
-.spaceholder .vital-status-list {
-  margin: 0 0 15px 0;
-}
-
-.spaceholder .vital-stat-line {
-  display: flex;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.spaceholder .vital-stat-line:last-child {
-  border-bottom: none;
-}
-
-.spaceholder .vital-stat-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: bold;
-  color: #cccccc;
-  min-width: 80px;
-}
-
-.spaceholder .vital-stat-label i {
-  font-size: 14px;
-  width: 16px;
-}
-
-.spaceholder .vital-stat-value {
-  flex: 1;
-  font-size: 12px;
-  color: #aaaaaa;
-  margin-left: 10px;
-}
-
-.spaceholder .vital-warning {
-  margin-left: 10px;
-  font-size: 10px;
-  font-weight: bold;
-  color: #ff6b6b;
-  animation: pulse-warning 2s infinite;
-}
-
-.spaceholder .vital-warning.pain-shock {
-  color: #ffa500;
-}
-
-@keyframes pulse-warning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* Physical Capacities List */
-.spaceholder .capacities-list {
-  /* No special styling needed - just a container */
-}
-
-.spaceholder .capacity-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.spaceholder .capacity-line:last-child {
-  border-bottom: none;
-}
-
-.spaceholder .capacity-name {
-  font-size: 12px;
-  color: #cccccc;
-  font-weight: normal;
-}
-
-.spaceholder .capacity-value {
-  font-size: 12px;
-  color: #88cc88;
-  font-weight: bold;
-}
-
-.spaceholder .capacity-line.impaired .capacity-name {
-  color: #ffcc66;
-}
-
-.spaceholder .capacity-line.impaired .capacity-value {
-  color: #ffaa00;
-}
-
-.spaceholder .capacity-line.critical .capacity-name {
-  color: #ff9999;
-}
-
-.spaceholder .capacity-line.critical .capacity-value {
-  color: #ff6666;
-}
-
-/* Section Headers */
-.spaceholder .section-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.75rem 0;
-  padding: 0.5rem;
-  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-  color: white;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.spaceholder .section-header i {
-  font-size: 1.1em;
-}
-
-/* Health Overview */
-.spaceholder .health-overview {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.spaceholder .anatomy-management,
-.spaceholder .vital-signs {
-  flex: 1;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  padding: 0.75rem;
-}
-
-.spaceholder .anatomy-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.spaceholder .anatomy-name {
-  flex: 1;
-  font-weight: bold;
-  color: #495057;
-}
-
-.spaceholder .no-anatomy {
-  flex: 1;
-  font-style: italic;
-  color: #6c757d;
-}
-
-.spaceholder .anatomy-toggle-btn {
-  padding: 0.25rem 0.5rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-}
-
-.spaceholder .anatomy-toggle-btn.primary {
-  background: #007bff;
-  color: white;
-}
-
-.spaceholder .anatomy-toggle-btn.primary:hover {
-  background: #0056b3;
-}
-
-.spaceholder .anatomy-toggle-btn.danger {
-  background: #dc3545;
-  color: white;
-}
-
-.spaceholder .anatomy-toggle-btn.danger:hover {
-  background: #c82333;
-}
-
-/* Vital Signs */
-.spaceholder .vital-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.spaceholder .vital-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.spaceholder .vital-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: bold;
-  color: #495057;
-  font-size: 0.9rem;
-}
-
-.spaceholder .vital-display {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.spaceholder .vital-value {
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-/* Health Bars Override */
-.spaceholder .health-bar.large {
-  height: 24px;
-}
-
-.spaceholder .blood-fill {
-  background: linear-gradient(90deg, #dc3545 0%, #fd7e14 50%, #ffc107 100%);
-}
-
-.spaceholder .pain-fill {
-  background: linear-gradient(90deg, #6c757d 0%, #fd7e14 50%, #dc3545 100%);
-}
-
-/* Status Indicators */
-.spaceholder .status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  padding: 0.125rem 0.375rem;
-  border-radius: 12px;
-  font-weight: bold;
-}
-
-.spaceholder .status-indicator.bleeding {
-  background: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
-  border: 1px solid rgba(220, 53, 69, 0.2);
-}
-
-.spaceholder .status-indicator.pain-shock {
-  background: rgba(255, 193, 7, 0.1);
-  color: #856404;
-  border: 1px solid rgba(255, 193, 7, 0.2);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* Physical Capacities */
-.spaceholder .physical-capacities-section {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.spaceholder .capacities-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-.spaceholder .capacity-item {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 4px;
-  padding: 0.5rem;
-  transition: all 0.2s;
-}
-
-.spaceholder .capacity-item:hover {
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.spaceholder .capacity-item.impaired {
-  border-color: #ffc107;
-  background: rgba(255, 193, 7, 0.05);
-}
-
-.spaceholder .capacity-item.critical {
-  border-color: #dc3545;
-  background: rgba(220, 53, 69, 0.05);
-}
-
-.spaceholder .capacity-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.25rem;
-}
-
-.spaceholder .capacity-label {
-  font-size: 0.875rem;
-  font-weight: bold;
-  color: #495057;
-}
-
-.spaceholder .capacity-value {
-  font-size: 0.875rem;
-  font-weight: bold;
-  color: #6c757d;
-}
-
-.spaceholder .capacity-item.impaired .capacity-value {
-  color: #856404;
-}
-
-.spaceholder .capacity-item.critical .capacity-value {
-  color: #721c24;
-}
-
-.spaceholder .capacity-bar {
-  height: 8px;
-  background: #e9ecef;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.spaceholder .capacity-fill {
-  height: 100%;
-  background: #28a745;
-  transition: width 0.3s ease;
-}
-
-.spaceholder .capacity-item.impaired .capacity-fill {
-  background: #ffc107;
-}
-
-.spaceholder .capacity-item.critical .capacity-fill {
-  background: #dc3545;
-}
-
-/* Body Parts Section */
-.spaceholder .body-parts-section {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  padding: 0.75rem;
-}
-
-.spaceholder .body-parts-hierarchy {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 4px;
-  padding: 0.5rem;
-}
-
-.spaceholder .parts-tree {
-  font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
-  line-height: 1.1;
-}
-
-.spaceholder .body-part-line {
-  display: flex;
-  align-items: baseline;
-  padding: 0;
-  margin: 0;
-  line-height: 1.1;
-  border-bottom: none;
-  transition: background-color 0.2s;
-}
-
-.spaceholder .body-part-line:hover {
-  background: rgba(0,0,0,0.02);
-}
-
-.spaceholder .body-part-line:last-child {
-  border-bottom: none;
-}
-
-/* Ensure tight vertical alignment of ASCII tree lines */
-.spaceholder .part-status-text,
-.spaceholder .health-numbers {
-  line-height: 1.1;
-}
-
-.spaceholder .tree-structure {
-  color: #6c757d;
-  margin-right: 0.25rem;
-  white-space: pre;
-  line-height: 1.1;
-}
-
-.spaceholder .part-name {
-  flex: 1;
-  font-weight: 500;
-  color: #495057;
-  line-height: 1.1;
-}
-
-.spaceholder .part-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.spaceholder .part-health-bar {
-  width: 60px;
-  height: 12px;
-  background: #e9ecef;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.spaceholder .part-health-fill {
-  height: 100%;
-  background: #28a745;
-  transition: width 0.3s ease;
-}
-
-.spaceholder .body-part-line.injured .part-health-fill {
-  background: linear-gradient(90deg, #dc3545 0%, #fd7e14 50%, #ffc107 75%, #28a745 100%);
-}
-
-.spaceholder .part-status.healthy {
-  background: rgba(40, 167, 69, 0.1);
-  color: #155724;
-  border: 1px solid rgba(40, 167, 69, 0.2);
-  text-shadow: none;
-}
-
-.spaceholder .part-status.injured {
-  background: rgba(220, 53, 69, 0.1);
-  color: #721c24;
-  border: 1px solid rgba(220, 53, 69, 0.2);
-  text-shadow: none;
-}
-
-.spaceholder .part-hp {
-  font-size: 0.75rem;
-  color: #6c757d;
-  min-width: 50px;
-  text-align: right;
-  line-height: 1.1;
-}
-
-/* Empty State */
-.spaceholder .empty-state {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: #6c757d;
-}
-
-.spaceholder .empty-state i {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
-}
-
-.spaceholder .empty-state p {
-  margin: 0.5rem 0;
-  font-weight: bold;
-}
-
-.spaceholder .empty-state small {
-  font-style: italic;
-  opacity: 0.8;
-}
-.spaceholder .tree-toggle {
-  cursor: pointer;
-  padding: 0;
-  margin: 0 5px 0 0;
-  font-size: 12px;
-  width: 15px;
-  text-align: center;
-  display: inline-block;
-  vertical-align: top;
-}
-
-.spaceholder .tree-toggle:hover {
-  color: #333;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 2px;
-}
-
-.spaceholder .tree-spacer {
-  color: #999;
-  font-size: 10px;
-  margin: 0 6px 0 2px;
-  display: inline-block;
-  width: 13px;
-  text-align: center;
-  vertical-align: top;
-}
-
-.spaceholder .body-part-node .body-part {
-  display: inline-block;
-  width: calc(100% - 20px);
-  margin: 0;
-  vertical-align: top;
-}
-
-.spaceholder .tree-children {
-  border-left: 1px dashed #ccc;
-  margin-left: 10px;
-  padding-left: 5px;
-}
-
-.spaceholder .tree-children[data-collapsed="true"] {
-  display: none;
-}
-
-/* Tree connection lines */
-.spaceholder .body-part-node::before {
-  content: '';
-  position: absolute;
-  left: -15px;
-  top: 12px;
-  width: 12px;
-  height: 1px;
-  background: #ccc;
-  display: block;
-}
-
-.spaceholder .body-part-node:first-child::before {
-  display: none;
-}
-
-/* Depth-based coloring */
-.spaceholder .body-part-node[style*="margin-left: 0px"] .body-part {
-  border-left: 3px solid #4a9a4a;
-}
-
-.spaceholder .body-part-node[style*="margin-left: 20px"] .body-part {
-  border-left: 3px solid #6db86d;
-}
-
-.spaceholder .body-part-node[style*="margin-left: 40px"] .body-part {
-  border-left: 3px solid #8cc68c;
-}
-
-.spaceholder .body-part-node[style*="margin-left: 60px"] .body-part {
-  border-left: 3px solid #aaddaa;
-}
-
-/* ========================================= */
-/* Dark Theme for Character Sheets          */
-/* ========================================= */
-
-/* Main window background - чёрный фон */
-.spaceholder.sheet {
-  background: #000000 !important;
-  color: #e0e0e0 !important;
-}
-
-/* Обработка основного чёрного фона окна */
-.window-app.spaceholder {
-  background: #000000 !important;
-}
-
-/* Обработка внутреннего содержимого */
-.window-app.spaceholder .window-content {
-  background: #000000 !important;
-  color: #e0e0e0 !important;
-}
-
-/* Header styling */
-.spaceholder .sheet-header {
-  background: linear-gradient(to bottom, #2a2a2a, #1e1e1e);
-  border-bottom: 1px solid #404040;
-  color: #e0e0e0;
-}
-
-.spaceholder .sheet-header h1.charname input {
-  background: transparent;
-  color: #ffffff;
-  border: 1px solid #404040;
-}
-
-.spaceholder .sheet-header h1.charname input:focus {
-  border-color: #666666;
-  box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
-}
-
-/* Resource boxes */
-.spaceholder .flex-group-center,
-.spaceholder .flex-group-left,
-.spaceholder .flex-group-right {
-  background: #252525;
-  border: 1px solid #404040;
-  color: #e0e0e0;
-}
-
-.spaceholder .resource-label {
-  color: #cccccc;
-}
-
-/* Tabs */
-.spaceholder .sheet-tabs {
-  background: #2a2a2a;
-  border-bottom: 1px solid #404040;
-}
-
-.spaceholder .sheet-tabs .item {
-  background: #333333;
-  color: #cccccc;
-  border: 1px solid #404040;
-  border-bottom: none;
-  /* Добавим скругления и внутренние отступы под общий «rounded» стиль */
-  border-radius: 8px 8px 0 0;
-  padding: 6px 12px;
-  margin-right: 6px;
-}
-
-.spaceholder .sheet-tabs .item.active {
-  background: #1a1a1a;
-  color: #ffffff;
-  border-bottom: 1px solid #1a1a1a;
-  border-radius: 8px 8px 0 0;
-}
-
-.spaceholder .sheet-tabs .item:hover {
-  background: #444444;
-  color: #ffffff;
-}
-
-/* Sheet body */
-.spaceholder .sheet-body {
-  background: #000000;
-  color: #e0e0e0;
-  overflow: auto;
-}
-
-/* Ensure v2 window content scrolls for our sheets */
-.window-app.spaceholder .window-content {
-  overflow: auto;
-}
-
-/* Application v2 tabs: show only active tab section */
-.window-app.spaceholder .sheet-body .tab {
-  display: none;
-}
-.window-app.spaceholder .sheet-body .tab.active {
-  display: block;
-}
-
-/* Input fields */
-.spaceholder input[type="text"],
-.spaceholder input[type="number"],
-.spaceholder textarea,
-.spaceholder select {
-  background: #111111;
-  color: #e0e0e0;
-  border: 1px solid #404040;
-}
-
-.spaceholder input[type="text"]:focus,
-.spaceholder input[type="number"]:focus,
-.spaceholder textarea:focus,
-.spaceholder select:focus {
-  border-color: #666666;
-  background: #333333;
-  box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
-}
-
-/* Abilities section */
-.spaceholder .abilities .ability {
-  background: #252525;
-  border: 1px solid #404040;
-}
-
-.spaceholder .ability-mod {
-  background: #333333;
-  color: #ffffff;
-  border: 1px solid #555555;
-}
-
-/* Items list */
-.spaceholder .items-header {
-  background: #333333;
-  color: #cccccc;
-  border: 1px solid #555555;
-}
-
-.spaceholder .items-list .item {
-  background: #252525;
-  border-bottom: 1px solid #404040;
-  color: #e0e0e0;
-}
-
-.spaceholder .items-list .item:hover {
-  background: #2a2a2a;
-}
-
-.spaceholder .items-list .item .item-name {
-  color: #ffffff;
-}
-
-.spaceholder .item-prop {
-  border-left: 1px solid #404040;
-  border-right: 1px solid #404040;
-  background: #2a2a2a;
-}
-
-/* Health system dark theme */
-.window-app.spaceholder .health-container {
-  background: #000000 !important;
-  border: 1px solid #404040;
-  border-radius: 5px;
-  padding: 15px;
-}
-
-.window-app.spaceholder .health-summary {
-  background: rgba(0, 50, 0, 0.3) !important;
-  border: 1px solid #4a5c4a;
-}
-
-.window-app.spaceholder .health-summary h3 {
-  color: #90ee90 !important;
-}
-
-/* Дополнительные стили для health */
-.window-app.spaceholder .injured-parts h3,
-.window-app.spaceholder .debug-parts h3 {
-  color: #ffffff !important;
-  background: transparent !important;
-  border-bottom: 2px solid #666666 !important;
-}
-
-.window-app.spaceholder .health-debug-toggle {
-  background: #252525 !important;
-  border: 1px solid #404040 !important;
-}
-
-.window-app.spaceholder .health-debug-toggle label {
-  color: #e0e0e0 !important;
-}
-
-/* Тёмная тема для нового одностроково дизайна */
-.window-app.spaceholder .part-name {
-  color: #ffffff !important;
-}
-
-.window-app.spaceholder .health-numbers {
-  color: #cccccc !important;
-  font-size: 12px;
-  min-width: 55px;
-  text-align: center;
-  flex-shrink: 0;
-  font-weight: bold;
-}
-
-/* Обновляем и обычные health-numbers */
-.spaceholder .health-numbers {
-  font-size: 12px;
-  color: #555;
-  font-weight: bold;
-  min-width: 55px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-/* Сделаем body-part более компактным */
-.window-app.spaceholder .body-part {
-  margin-bottom: 4px !important;
-  padding: 6px 8px !important;
-}
-
-.spaceholder .health-bar {
-  background: #1a1a1a;
-  border: 1px solid #555555;
-}
-
-.spaceholder .health-numbers {
-  color: #cccccc;
-}
-
-.spaceholder .body-part {
-  background: rgba(40, 40, 40, 0.8);
-  border: 1px solid #555555;
-  color: #e0e0e0;
-}
-
-.spaceholder .body-part.injured {
-  background: rgba(204, 68, 68, 0.2);
-  border-color: #cc4444;
-}
-
-.spaceholder .body-part.healthy {
-  background: rgba(74, 154, 74, 0.2);
-  border-color: #4a9a4a;
-}
-
-.spaceholder .part-name {
-  color: #ffffff;
-}
-
-.spaceholder .debug-info {
-  background: rgba(0, 0, 0, 0.3);
-  color: #aaaaaa;
-  border: 1px solid #333333;
-}
-
-.spaceholder .no-injuries {
-  color: #999999;
-}
-
-/* Buttons */
-.spaceholder button {
-  background: #333333;
-  color: #e0e0e0;
-  border: 1px solid #555555;
-}
-
-.spaceholder button:hover {
-  background: #444444;
-  border-color: #666666;
-}
-
-/* Rollable elements */
-.spaceholder .rollable:hover,
-.spaceholder .rollable:focus {
-  color: #ffffff;
-  text-shadow: 0 0 10px #ff6b6b;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-/* Editor (ProseMirror) */
-.spaceholder .editor {
-  background: #1a1a1a;
-  color: #e0e0e0;
-  border: 1px solid #404040;
-}
-
-.spaceholder .editor .editor-content {
-  background: #1a1a1a;
-  color: #e0e0e0;
-}
-
-/* Универсальные стили для тёмной темы */
-.window-app.spaceholder h1,
-.window-app.spaceholder h2,
-.window-app.spaceholder h3,
-.window-app.spaceholder h4,
-.window-app.spaceholder h5,
-.window-app.spaceholder h6 {
-  color: #ffffff !important;
-  text-shadow: none;
-}
-
-.window-app.spaceholder p,
-.window-app.spaceholder span,
-.window-app.spaceholder div,
-.window-app.spaceholder label {
-  color: #e0e0e0 !important;
-}
-
-/* Переопределение Foundry стилей */
-.window-app.spaceholder .window-header {
-  background: #2a2a2a !important;
-  border-bottom: 1px solid #404040;
-}
-
-.window-app.spaceholder .window-title {
-  color: #ffffff !important;
-}
-
-/* Исправление белых областей */
-.window-app.spaceholder .tab {
-  background: #000000 !important;
-  color: #e0e0e0 !important;
-}
-
-.window-app.spaceholder .tab.active {
-  background: #000000 !important;
-}
-
-/* Скроллбары */
-.window-app.spaceholder ::-webkit-scrollbar {
-  background: #333333;
-  width: 8px;
-}
-
-.window-app.spaceholder ::-webkit-scrollbar-thumb {
-  background: #666666;
-  border-radius: 4px;
-}
-
-.window-app.spaceholder ::-webkit-scrollbar-thumb:hover {
-  background: #888888;
-}
-
-/* === HIERARCHICAL HEALTH SYSTEM STYLES === */
-
-/* Anatomy management styles */
-.spaceholder .anatomy-management-container {
-  margin-bottom: 15px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  border: 1px solid #404040;
-}
-
-.spaceholder .current-anatomy {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.spaceholder .current-anatomy label {
-  font-weight: bold;
-  color: #ffffff !important;
-  white-space: nowrap;
-  margin: 0;
-}
-
-.spaceholder .anatomy-name {
-  color: #4CAF50 !important;
-  font-weight: 500;
-  padding: 4px 8px;
-  background: rgba(76, 175, 80, 0.1);
-  border-radius: 4px;
-  border: 1px solid rgba(76, 175, 80, 0.3);
-}
-
-.spaceholder .no-anatomy {
-  color: #ff9800 !important;
-  font-style: italic;
-  padding: 4px 8px;
-  background: rgba(255, 152, 0, 0.1);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 152, 0, 0.3);
-}
-
-.spaceholder .change-anatomy-btn {
-  background: #0078d4 !important;
-  color: white !important;
-  border: 1px solid #106ebe;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: var(--sh-text-muted);
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__id b,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__id b,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__id b {
+  color: #fff;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__field,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__field {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-
-.spaceholder .change-anatomy-btn:hover {
-  background: #106ebe !important;
-  border-color: #005a9e;
-  transform: translateY(-1px);
-}
-
-.spaceholder .change-anatomy-btn:active {
-  transform: translateY(0);
-}
-
-.spaceholder .change-anatomy-btn i {
+#spaceholder-globalmap-biome-editor .sh-biome-editor__field .sh-biome-editor__label,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field .sh-biome-editor__label,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__field .sh-biome-editor__label {
   font-size: 12px;
-}
-
-/* Injuries block */
-.spaceholder .injuries-panel {
-  background: rgba(0,0,0,0.4);
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 12px;
-}
-.spaceholder .injuries-actions {
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: flex-end;
-}
-.spaceholder .injuries-list {
-  margin: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 2px !important; /* ещё компактнее между карточками */
-}
-.spaceholder .injury-card {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  background: linear-gradient(135deg, #1a1a1a 0%, #262626 100%) !important;
-  border: 1px solid #4a6e4a !important; /* визуальное выделение */
-  border-radius: 6px !important;
-  padding: 6px 8px !important;
-  gap: 8px !important;
-  margin: 0 !important; /* переопределяем rimworld-header margin-bottom */
-}
-.spaceholder .injury-card.rimworld-header { margin: 0 !important; }
-.spaceholder .injury-main {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-}
-.spaceholder .injury-line {
-  color: #e0e0e0 !important;
-}
-.spaceholder .injury-when {
-  color: #8fb98f !important;
-  opacity: 0.9 !important;
-  margin-left: 6px !important;
-}
-.spaceholder .injury-actions {
-  display: flex !important;
-  gap: 6px !important;
-  flex: 0 0 auto !important;
-  white-space: nowrap !important;
-  align-items: center !important;
-}
-.spaceholder .injury-actions button {
-  padding: 2px 6px !important;
-  line-height: 18px !important;
-  font-size: 12px !important;
-}
-
-/* Icon-only buttons (borderless) */
-.spaceholder .icon-btn {
-  background: transparent !important;
-  border: none !important;
-  color: #e0e0e0 !important;
-  width: 24px !important;
-  height: 24px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 4px !important;
-}
-.spaceholder .icon-btn:hover {
-  background: rgba(255,255,255,0.08) !important;
-  color: #ffffff !important;
-}
-.spaceholder .icon-btn i { pointer-events: none; }
-
-/* Add Injury button (text button, right-aligned) */
-.spaceholder .injuries-actions .injury-create-open-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  color: #e0e0e0;
-  border: 1px solid #4a6e4a;
-  border-radius: 6px;
-  padding: 4px 10px;
-  white-space: nowrap;
-}
-.spaceholder .injuries-actions .injury-create-open-btn:hover {
-  background: rgba(255,255,255,0.06);
-}
-
-/* Health summary */
-.spaceholder .health-container .health-summary {
-  margin-bottom: 20px;
-}
-
-.spaceholder .health-container .total-health {
-  text-align: center;
-}
-
-.spaceholder .health-container .total-health h3 {
-  margin-bottom: 10px;
-  color: #ffffff !important;
-}
-
-.spaceholder .health-container .health-bar {
-  width: 100%;
-  height: 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #555;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 5px;
-}
-
-.spaceholder .health-container .health-fill {
-  height: 100%;
-  background: linear-gradient(90deg, 
-    #e74c3c 0%, 
-    #f39c12 25%, 
-    #f1c40f 50%, 
-    #27ae60 75%, 
-    #2ecc71 100%);
-  border-radius: 10px;
-  transition: width 0.3s ease;
-}
-
-.spaceholder .health-container .health-numbers {
-  font-weight: bold;
-  color: #ffffff !important;
-}
-
-/* ASCII Tree body parts styles */
-.spaceholder .body-parts-hierarchy {
-  margin-top: 20px;
-}
-
-.spaceholder .body-parts-hierarchy h3 {
-  margin-bottom: 15px;
-  color: #ffffff !important;
-  border-bottom: 2px solid #0078d4;
-  padding-bottom: 5px;
-}
-
-.spaceholder .parts-tree {
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.1;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #333;
-}
-
-.spaceholder .body-part-line {
-  display: flex;
-  align-items: baseline;
-  margin: 0;
-  padding: 0;
-  line-height: 1.1;
-  white-space: pre;
-}
-
-/* Tree structure characters */
-.spaceholder .tree-structure {
-  color: #666 !important;
-  white-space: pre;
-  line-height: 1.1;
-  margin-right: 6px;
-  flex-shrink: 0;
-}
-
-/* Part name */
-.spaceholder .part-name {
-  color: #fff !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  line-height: 1.1;
-  flex-shrink: 0;
-}
-
-/* Spacer to push right-aligned content */
-.spaceholder .part-spacer {
-  flex: 1;
-  min-width: 20px;
-}
-
-/* Part indicator */
-.spaceholder .part-indicator {
-  color: #ccc !important;
-  margin-right: 5px;
-  flex-shrink: 0;
-}
-
-/* Health numbers */
-.spaceholder .health-numbers {
-  color: #ccc !important;
-  margin-right: 5px;
+  color: var(--sh-text-muted);
   min-width: 70px;
-  text-align: right;
-  line-height: 1.1;
-  flex-shrink: 0;
 }
-
-/* Status text */
-.spaceholder .part-status-text {
-  color: #888 !important;
-  line-height: 1.1;
-  flex-shrink: 0;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__field.wide,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide {
+  flex: 1 1 240px;
+  min-width: 240px;
 }
-
-/* Color coding for different health statuses */
-.spaceholder .body-part-line.healthy {
-  color: #aaa !important;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__field.wide input,
+#spaceholder-globalmap-biome-editor .sh-biome-editor__field.wide select,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide input,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide select,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide input,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide select {
+  flex: 1 1 auto;
+  min-width: 0;
 }
-
-.spaceholder .body-part-line.healthy .part-name {
-  color: #aaa !important;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__patternCode,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__patternCode,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__patternCode {
+  color: var(--sh-text-dim);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
 }
-
-.spaceholder .body-part-line.healthy .health-numbers {
-  color: #888 !important;
-}
-
-.spaceholder .body-part-line.healthy .part-status-text {
-  color: #666 !important;
-}
-
-/* Injured parts */
-.spaceholder .body-part-line.injured.status-bruised .part-name {
-  color: #ffc107 !important;
-}
-
-.spaceholder .body-part-line.injured.status-bruised .health-numbers {
-  color: #ffc107 !important;
-}
-
-.spaceholder .body-part-line.injured.status-bruised .part-status-text {
-  color: #ffc107 !important;
-}
-
-.spaceholder .body-part-line.injured.status-injured .part-name {
-  color: #ff9800 !important;
-}
-
-.spaceholder .body-part-line.injured.status-injured .health-numbers {
-  color: #ff9800 !important;
-}
-
-.spaceholder .body-part-line.injured.status-injured .part-status-text {
-  color: #ff9800 !important;
-}
-
-.spaceholder .body-part-line.injured.status-badly_injured .part-name {
-  color: #f44336 !important;
-}
-
-.spaceholder .body-part-line.injured.status-badly_injured .health-numbers {
-  color: #f44336 !important;
-}
-
-.spaceholder .body-part-line.injured.status-badly_injured .part-status-text {
-  color: #f44336 !important;
-}
-
-.spaceholder .body-part-line.injured.status-destroyed .part-name {
-  color: #9c27b0 !important;
-}
-
-.spaceholder .body-part-line.injured.status-destroyed .health-numbers {
-  color: #9c27b0 !important;
-}
-
-.spaceholder .body-part-line.injured.status-destroyed .part-status-text {
-  color: #9c27b0 !important;
-}
-
-.spaceholder .body-part-line.injured.status-missing .part-name {
-  color: #607d8b !important;
-  text-decoration: line-through;
-}
-
-.spaceholder .body-part-line.injured.status-missing .health-numbers {
-  color: #607d8b !important;
-  text-decoration: line-through;
-}
-
-.spaceholder .body-part-line.injured.status-missing .part-status-text {
-  color: #607d8b !important;
-}
-
-/* Debug info */
-.spaceholder .body-part-line .debug-info {
-  margin-top: 3px;
-  padding-left: 20px;
-}
-
-.spaceholder .body-part-line .debug-info small {
-  color: #666 !important;
-  font-size: 0.75em;
-}
-
-/* Debug toggle */
-.spaceholder .health-debug-toggle {
-  margin-bottom: 15px;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__details,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__details,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__details {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-lg);
   padding: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #404040;
-  border-radius: 4px;
 }
-
-.spaceholder .health-debug-toggle .checkbox {
+#spaceholder-globalmap-biome-editor .sh-biome-editor__details summary,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__details summary,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__details summary {
+  cursor: pointer;
+  color: var(--sh-text-muted);
+  font-size: 12px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__details .sh-biome-editor__detailsBody,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__details .sh-biome-editor__detailsBody,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__details .sh-biome-editor__detailsBody {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-}
-
-.spaceholder .health-debug-toggle input[type="checkbox"] {
-  margin: 0;
-}
-
-.spaceholder .health-debug-toggle label {
-  margin: 0;
-  font-size: 0.9em;
-  color: #ccc !important;
-}
-
-/* No body parts message */
-.spaceholder .no-body-parts {
-  text-align: center;
-  padding: 40px 20px;
-  color: #999 !important;
-}
-
-.spaceholder .no-body-parts p {
-  margin: 0;
-  font-style: italic;
-  color: #999 !important;
-}
-
-/* ====== INVENTORY STYLES (Dark Theme) ====== */
-
-/* Inventory Panel */
-.spaceholder .inventory-panel {
-  background: rgba(0,0,0,0.4);
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 12px;
-}
-
-.spaceholder .inventory-panel .rimworld-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 15px 0;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #2c4a2d 0%, #3d5a3e 100%);
-  color: #ffffff;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-  border: 1px solid #4a6e4a;
-}
-
-.spaceholder .inventory-panel .rimworld-header i {
-  font-size: 16px;
-  color: #8fb98f;
-}
-
-.spaceholder .inventory-stats {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 15px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.spaceholder .inventory-stat {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #e0e0e0;
-  font-size: 13px;
-}
-
-.spaceholder .inventory-stat i {
-  color: #8fb98f;
-  font-size: 14px;
-  width: 16px;
-  text-align: center;
-}
-
-.spaceholder .inventory-stat .stat-label {
-  color: #cccccc;
-}
-
-.spaceholder .inventory-stat .stat-value {
-  color: #ffffff;
-  font-weight: bold;
-}
-
-/* Inventory Controls */
-.spaceholder .inventory-controls {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-}
-
-.spaceholder .item-create-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  background: transparent !important;
-  color: #e0e0e0 !important;
-  border: 1px solid #4a6e4a !important;
-  border-radius: 6px !important;
-  padding: 4px 10px !important;
-  white-space: nowrap !important;
-  cursor: pointer !important;
-  font-size: 12px !important;
-  transition: all 0.2s ease !important;
-}
-
-.spaceholder .item-create-btn:hover {
-  background: rgba(255,255,255,0.06) !important;
-  color: #ffffff !important;
-}
-
-.spaceholder .item-create-btn i {
-  color: #8fb98f !important;
-}
-
-/* Inventory List */
-.spaceholder .inventory-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 2px !important;
-}
-
-.spaceholder .inventory-item-card {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  background: linear-gradient(135deg, #1a1a1a 0%, #262626 100%) !important;
-  border: 1px solid #4a6e4a !important;
-  border-radius: 6px !important;
-  padding: 6px 8px !important;
-  gap: 8px !important;
-  margin: 0 !important;
-  transition: all 0.2s ease !important;
-}
-
-.spaceholder .inventory-item-card:hover {
-  background: linear-gradient(135deg, #202020 0%, #2c2c2c 100%) !important;
-  border-color: #5a7e5a !important;
-}
-
-.spaceholder .inventory-item-card.rimworld-header {
-  margin: 0 !important;
-}
-
-.spaceholder .inventory-item-card .item-main {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-}
-
-.spaceholder .inventory-item-card .item-image {
-  flex-shrink: 0 !important;
-  width: 32px !important;
-  height: 32px !important;
-}
-
-.spaceholder .inventory-item-card .item-image img {
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 4px !important;
-  border: 1px solid #555 !important;
-}
-
-.spaceholder .inventory-item-card .item-info {
-  flex: 1 !important;
-  min-width: 0 !important;
-}
-
-.spaceholder .inventory-item-card .item-name {
-  color: #ffffff !important;
-  font-size: 14px !important;
-  font-weight: bold !important;
-  margin-bottom: 2px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-.spaceholder .inventory-item-card .item-description {
-  color: #cccccc !important;
-  font-size: 11px !important;
-  line-height: 1.2 !important;
-  margin-bottom: 4px !important;
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
-  overflow: hidden !important;
-}
-
-.spaceholder .inventory-item-card .item-details {
-  display: flex !important;
-  gap: 12px !important;
-  font-size: 11px !important;
-}
-
-.spaceholder .inventory-item-card .item-quantity,
-.spaceholder .inventory-item-card .item-weight {
-  color: #aaaaaa !important;
-}
-
-.spaceholder .inventory-item-card .item-controls {
-  display: flex !important;
-  gap: 4px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Icon buttons */
-.spaceholder .inventory-item-card .icon-btn {
-  background: transparent !important;
-  border: none !important;
-  color: #e0e0e0 !important;
-  width: 24px !important;
-  height: 24px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 4px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-}
-
-.spaceholder .inventory-item-card .icon-btn:hover {
-  background: rgba(255,255,255,0.08) !important;
-  color: #ffffff !important;
-}
-
-.spaceholder .inventory-item-card .icon-btn i {
-  pointer-events: none !important;
-  font-size: 12px !important;
-}
-
-/* Empty inventory message */
-.spaceholder .empty-inventory {
-  text-align: center !important;
-  padding: 40px 20px !important;
-  color: #888 !important;
-}
-
-.spaceholder .empty-inventory i {
-  font-size: 48px !important;
-  color: #555 !important;
-  margin-bottom: 15px !important;
-  display: block !important;
-}
-
-.spaceholder .empty-inventory p {
-  margin: 0 !important;
-  color: #aaa !important;
-  font-size: 13px !important;
-  line-height: 1.4 !important;
-}
-
-/* Legacy inventory styles - keeping for backward compatibility */
-.spaceholder .total-weight, 
-.spaceholder .total-items {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-weight: bold;
-}
-
-.spaceholder .total-weight i, 
-.spaceholder .total-items i {
-  color: #8b4513;
-  font-size: 1.2em;
-}
-
-.spaceholder .weight-value, 
-.spaceholder .items-count {
-  color: #f0f0e0;
-  font-size: 1.1em;
-}
-
-/* Inventory List */
-.spaceholder .inventory-list {
-  flex: 1;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-}
-
-.spaceholder .inventory-item {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-  padding: 8px 5px;
-  transition: background-color 0.2s ease;
-}
-
-.spaceholder .inventory-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.spaceholder .inventory-item .item-image {
-  width: 40px;
-  min-width: 40px;
-  text-align: center;
-}
-
-.spaceholder .inventory-item .item-image img {
-  border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-}
-
-.spaceholder .inventory-item .item-name {
-  flex: 2;
-  min-width: 150px;
-}
-
-.spaceholder .inventory-item .item-name h4 {
-  margin: 0 0 2px 0;
-  font-size: 0.9em;
-  font-weight: bold;
-  color: #f0f0e0;
-  line-height: 1.2;
-}
-
-.spaceholder .inventory-item .item-description {
-  font-size: 0.75em;
-  color: #999;
-  line-height: 1.1;
-  margin-top: 2px;
-  max-height: 2.2em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.spaceholder .inventory-item .item-quantity {
-  width: 80px;
-  min-width: 80px;
-  text-align: center;
-}
-
-.spaceholder .quantity-input {
-  width: 60px;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  border-radius: 3px;
-  color: #f0f0e0;
-  padding: 2px 5px;
-  font-size: 0.85em;
-}
-
-.spaceholder .quantity-input:focus {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: #8b4513;
-  outline: none;
-}
-
-.spaceholder .inventory-item .item-weight, 
-.spaceholder .inventory-item .item-total-weight {
-  width: 80px;
-  min-width: 80px;
-  text-align: center;
-  font-size: 0.85em;
-  color: #999;
-  white-space: nowrap;
-}
-
-.spaceholder .inventory-item .item-total-weight {
-  font-weight: bold;
-  color: #f0f0e0;
-}
-
-/* Inventory Header */
-.spaceholder .inventory-list .items-header {
-  background: rgba(0, 0, 0, 0.2);
-  border-top: 2px solid #8b4513;
-  border-bottom: 2px solid #8b4513;
-  font-weight: bold;
-  font-size: 0.85em;
-  color: #f0f0e0;
-  padding: 8px 5px;
-}
-
-.spaceholder .inventory-list .items-header .item-image {
-  width: 40px;
-  min-width: 40px;
-}
-
-.spaceholder .inventory-list .items-header .item-name {
-  flex: 2;
-  min-width: 150px;
-}
-
-.spaceholder .inventory-list .items-header .item-quantity, 
-.spaceholder .inventory-list .items-header .item-weight, 
-.spaceholder .inventory-list .items-header .item-total-weight {
-  width: 80px;
-  min-width: 80px;
-  text-align: center;
-}
-
-.spaceholder .inventory-list .items-header .item-controls {
-  width: 120px;
-  min-width: 120px;
-  text-align: center;
-}
-
-.spaceholder .inventory-list .items-header .item-create {
-  background: rgba(139, 69, 19, 0.8);
-  color: white;
-  border: 1px solid #8b4513;
-  border-radius: 4px;
-  padding: 4px 8px;
-  text-decoration: none;
-  font-size: 0.75em;
-  font-weight: bold;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s ease;
-}
-
-.spaceholder .inventory-list .items-header .item-create:hover {
-  background: rgba(139, 69, 19, 1);
-  transform: translateY(-1px);
-}
-
-.spaceholder .inventory-list .items-header .item-create i {
-  font-size: 0.9em;
-}
-
-/* Empty Inventory */
-.spaceholder .empty-inventory {
-  text-align: center;
-  padding: 30px;
-  color: #999;
-}
-
-.spaceholder .empty-inventory .empty-message i {
-  font-size: 3em;
-  margin-bottom: 15px;
-  color: #8b4513;
-  opacity: 0.6;
-}
-
-.spaceholder .empty-inventory .empty-message p {
-  margin: 0;
-  font-style: italic;
-}
-
-/* Item Controls - Updated */
-.spaceholder .inventory-item .item-controls {
-  width: 80px;
-  min-width: 80px;
-  text-align: center;
-}
-
-.spaceholder .item-control {
-  display: inline-block;
-  margin: 0 2px;
-  padding: 4px;
-  width: 24px;
-  height: 24px;
-  text-align: center;
-  line-height: 16px;
-  border-radius: 3px;
-  transition: all 0.2s ease;
-  text-decoration: none;
-}
-
-.spaceholder .item-control i {
-  font-size: 0.8em;
-}
-
-.spaceholder .item-control.item-edit {
-  background: rgba(0, 123, 255, 0.8);
-  color: white;
-  border: 1px solid rgba(0, 123, 255, 1);
-}
-
-.spaceholder .item-control.item-edit:hover {
-  background: rgba(0, 123, 255, 1);
-  transform: translateY(-1px);
-}
-
-.spaceholder .item-control.item-delete {
-  background: rgba(220, 53, 69, 0.8);
-  color: white;
-  border: 1px solid rgba(220, 53, 69, 1);
-}
-
-.spaceholder .item-control.item-delete:hover {
-  background: rgba(220, 53, 69, 1);
-  transform: translateY(-1px);
-}
-
-/* Responsive adjustments for smaller screens */
-@media (max-width: 700px) {
-  .spaceholder .inventory-stats {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .spaceholder .inventory-item .item-description {
-    display: none;
-  }
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__btn,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__btn,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__btn {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__btnAdd,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__btnAdd,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__btnAdd {
+  background: rgba(45, 106, 79, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__btnSave,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__btnSave,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__btnSave {
+  background: rgba(29, 78, 216, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__btnDanger,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__btnDanger,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__btnDanger {
+  background: rgba(90, 26, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
 }

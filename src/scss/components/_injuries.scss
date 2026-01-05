@@ -1,0 +1,93 @@
+// Injuries tab (Character sheet)
+
+.window-app.spaceholder,
+.spaceholder {
+  .injuries-container {
+    width: 100%;
+  }
+
+  .injuries-panel {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    padding: 12px;
+  }
+
+  .injuries-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 10px 0;
+  }
+
+  .injury-create-open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    background: transparent;
+    color: var(--sh-text);
+    border: 1px solid rgba(74, 110, 74, 0.75);
+    border-radius: var(--sh-radius-md);
+    padding: 6px 10px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(143, 185, 143, 0.85);
+    }
+
+    i {
+      color: var(--sh-accent-strong);
+    }
+  }
+
+  .injuries-list {
+    margin: 0;
+    padding: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .injury-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    background: linear-gradient(135deg, var(--sh-surface-2) 0%, var(--sh-surface-3) 100%);
+    border: 1px solid rgba(74, 110, 74, 0.70);
+    border-radius: var(--sh-radius-md);
+
+    padding: 8px 10px;
+  }
+
+  .injury-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .injury-line {
+    color: var(--sh-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .injury-when {
+    color: var(--sh-accent-strong);
+    opacity: 0.9;
+    flex: 0 0 auto;
+  }
+
+  .injury-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+}

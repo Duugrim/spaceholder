@@ -1,5 +1,5 @@
 {{!-- Injuries Tab Content --}}
-<div class="injuries-container" style="display: block; width: 100%;">
+<div class="injuries-container">
   <div class="injuries-panel">
     <div class="injuries-actions">
       <button type="button" class="injury-create-open-btn" data-action="injury-open-create">
@@ -10,7 +10,7 @@
     <div class="injuries-list">
       {{#if injuriesList}}
         {{#each injuriesList as |inj|}}
-          <div class="injury-card rimworld-header" data-injury-id="{{inj.id}}">
+          <div class="injury-card" data-injury-id="{{inj.id}}">
             <div class="injury-main">
               <span class="injury-line">
                 {{inj.partName}}, {{inj.amountDisplay}}{{#if inj.type}}, {{inj.type}}{{/if}}{{#if inj.status}}, {{inj.status}}{{/if}}{{#if inj.source}}, {{inj.source}}{{/if}}

@@ -1,12 +1,129 @@
-.window-app {
+// Base application styles for SpaceHolder (Foundry v13)
+// Keep everything scoped to our application class to avoid leaking into other systems/modules.
+
+.window-app.spaceholder,
+.spaceholder {
+  // Theme tokens (CSS variables)
+  --sh-bg: #{$sh-bg};
+  --sh-surface-1: #{$sh-surface-1};
+  --sh-surface-2: #{$sh-surface-2};
+  --sh-surface-3: #{$sh-surface-3};
+
+  --sh-text: #{$sh-text};
+  --sh-text-muted: #{$sh-text-muted};
+  --sh-text-dim: #{$sh-text-dim};
+
+  --sh-border: #{$sh-border};
+  --sh-border-strong: #{$sh-border-strong};
+
+  --sh-accent: #{$sh-accent};
+  --sh-accent-strong: #{$sh-accent-strong};
+  --sh-accent-blue: #{$sh-accent-blue};
+
+  --sh-danger: #{$sh-danger};
+  --sh-warning: #{$sh-warning};
+
+  --sh-radius-sm: #{$sh-radius-sm};
+  --sh-radius-md: #{$sh-radius-md};
+  --sh-radius-lg: #{$sh-radius-lg};
+
+  --sh-focus-ring: rgba(143, 185, 143, 0.35);
+  --sh-border-focus: rgba(143, 185, 143, 0.65);
+
+  color-scheme: dark;
   font-family: $font-primary;
+
+  background: var(--sh-bg);
+  color: var(--sh-text);
+
+  // Safer box-sizing reset, scoped to this app only.
+  &,
+  * {
+    box-sizing: border-box;
+  }
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  // Basic typography (avoid !important; keep specificity low)
+  :where(h1, h2, h3, h4, h5, h6) {
+    color: var(--sh-text);
+    text-shadow: none;
+  }
+
+  :where(code) {
+    font-family: $font-mono;
+    font-size: 0.95em;
+    color: var(--sh-text);
+  }
+
+  // Links
+  a {
+    color: var(--sh-accent-strong);
+    text-decoration: none;
+
+    // Keep underline/decoration subtle (not neon green)
+    text-decoration-color: var(--sh-text-muted);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+
+    &:hover,
+    &:focus {
+      color: #fff;
+      text-decoration: underline;
+    }
+  }
+
+  // Window chrome
+  .window-header {
+    background: linear-gradient(to bottom, var(--sh-surface-3), var(--sh-surface-2));
+    border-bottom: 1px solid var(--sh-border);
+  }
+
+  .window-title {
+    color: var(--sh-text);
+  }
+
+  .window-content {
+    background: var(--sh-bg);
+    color: var(--sh-text);
+    overflow: auto;
+  }
+
+  // Scrollbars (Chromium)
+  ::-webkit-scrollbar {
+    background: var(--sh-surface-2);
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.32);
+  }
+
+  // Rollable elements
+  .rollable {
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      color: #fff;
+      text-shadow: 0 0 10px rgba(255, 107, 107, 0.65);
+    }
+  }
 }
 
-.rollable {
-  &:hover,
-  &:focus {
-    color: #000;
-    text-shadow: 0 0 10px red;
-    cursor: pointer;
+// V2 sheets: show only active tab section (guard against core style changes)
+.window-app.spaceholder.sheet,
+.spaceholder.sheet {
+  .sheet-body .tab {
+    display: none;
+  }
+  .sheet-body .tab.active {
+    display: block;
   }
 }

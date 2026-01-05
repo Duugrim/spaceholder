@@ -1,7 +1,20 @@
-$c-white: #fff;
-$c-black: #000;
+// SpaceHolder theme palette (dark-first)
 
-$c-dark: #191813;
-$c-faint: #c9c7b8;
-$c-beige: #b5b3a4;
-$c-tan: #444;
+$sh-bg: #0b0b0b;
+$sh-surface-1: #111111;
+$sh-surface-2: #1a1a1a;
+$sh-surface-3: #242424;
+
+$sh-text: #e8e8e8;
+$sh-text-muted: #c8c8c8;
+$sh-text-dim: #9a9a9a;
+
+$sh-border: rgba(255, 255, 255, 0.12);
+$sh-border-strong: rgba(255, 255, 255, 0.20);
+
+$sh-accent: #4a6e4a;
+$sh-accent-strong: #8fb98f;
+$sh-accent-blue: #1d4ed8;
+
+$sh-danger: #cc4444;
+$sh-warning: #ffc107;

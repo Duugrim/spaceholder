@@ -1,0 +1,169 @@
+// Global Object sheet
+
+// Faction color swatch is a generic helper used inside content links.
+// Define it globally (scoped) so it never collapses to 0px width.
+.window-app.spaceholder .faction-color-swatch,
+.spaceholder .faction-color-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  border-radius: 3px;
+  background: var(--faction-color, #666);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  vertical-align: middle;
+}
+
+// ApplicationV2: actor.type class ("globalobject") is on the sheet <form>.
+// Keep selector loose enough to survive Foundry/core class changes.
+.window-app.spaceholder .globalobject,
+.spaceholder.globalobject {
+  // Faction line
+  .globalobject-faction {
+    margin: 0;
+
+    label {
+      font-size: 12px;
+      color: var(--sh-text-muted);
+      margin: 0 0 4px 0;
+    }
+
+    // Journal content link: make it look like an input-like control + show faction accent
+    a.content-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+
+      min-height: $sh-control-height;
+      padding: 0 10px;
+      border-radius: var(--sh-radius-sm);
+
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--sh-border);
+      border-left: 4px solid var(--faction-color, #666);
+
+      // Override base link color without using !important
+      color: var(--sh-text);
+      text-decoration: none;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--sh-border-strong);
+        color: #fff;
+      }
+    }
+
+    // Ensure swatch never collapses in flex layouts
+    .faction-color-swatch {
+      flex: 0 0 12px;
+    }
+  }
+
+  // Tighten header spacing
+  .sheet-header {
+    margin-bottom: 6px;
+
+    // Make faction color feel present in the header as well
+    .profile-img {
+      border-width: 2px;
+      border-color: var(--faction-color, var(--sh-border));
+    }
+
+    h1.charname input {
+      // ensure no clipping even with large font
+      height: 42px;
+    }
+  }
+
+  // Visibility button group
+  .globalobject-visibility {
+    .globalobject-visibility__fields {
+      justify-content: flex-end;
+    }
+  }
+
+  .token-visibility-buttons {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+
+    .visibility-current {
+      margin-right: 8px;
+      font-size: 12px;
+      opacity: 0.9;
+      color: var(--sh-text-muted);
+      white-space: nowrap;
+    }
+
+    .visibility-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--sh-radius-sm);
+    }
+
+    .visibility-btn.is-active {
+      background: rgba(74, 110, 74, 0.35);
+      border: 1px solid rgba(74, 110, 74, 0.90);
+      color: #9fe39f;
+      box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+    }
+
+    .visibility-btn:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    .visibility-btn.is-active:disabled {
+      opacity: 0.75;
+    }
+  }
+
+  // Influence compact row
+  .globalobject-influence {
+    .influence-fields {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+
+    .influence-prefix {
+      flex: 0 0 auto;
+      font-size: 12px;
+      color: var(--sh-text-dim);
+    }
+
+    .influence-input {
+      width: 90px;
+      max-width: 90px;
+      flex: 0 0 90px;
+      text-align: center;
+      margin: 0;
+      font-family: $font-mono;
+    }
+
+    .influence-sep {
+      flex: 0 0 auto;
+      opacity: 0.75;
+    }
+  }
+
+  // Actors panel tag
+  .globalobject-actor-type {
+    font-size: 11px;
+    color: var(--sh-text-muted);
+    border: 1px solid rgba(74, 110, 74, 0.80);
+    border-radius: var(--sh-radius-sm);
+    padding: 2px 6px;
+    white-space: nowrap;
+  }
+
+  // Actors panel spacing
+  .globalobject-actors-panel {
+    margin-top: 10px;
+  }
+}

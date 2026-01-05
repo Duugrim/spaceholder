@@ -1,3 +1,6 @@
-.resource-label {
-  font-weight: bold;
+.window-app.spaceholder {
+  .resource-label {
+    font-weight: 700;
+    color: var(--sh-text-muted);
+  }
 }

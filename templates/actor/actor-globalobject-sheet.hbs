@@ -9,7 +9,7 @@
       {{!-- Фракция под именем актёра (вернули в хедер) --}}
       <div class="form-group globalobject-faction">
         <label for="system.gFaction">Фракция</label>
-        <div class="form-fields" style="flex-wrap: wrap;">
+        <div class="form-fields">
           {{#if system.gFaction}}
             <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
             <a class="content-link" data-action="uuid-open" data-uuid="{{system.gFaction}}">
@@ -44,14 +44,13 @@
 
     {{!-- Видимость (без заголовка) --}}
     <div class="form-group globalobject-visibility">
-      <div class="form-fields" style="display: block; text-align: right;">
-        <div class="token-visibility-buttons" role="group" aria-label="Видимость" style="display: inline-block; white-space: nowrap;">
+      <div class="form-fields globalobject-visibility__fields">
+        <div class="token-visibility-buttons" role="group" aria-label="Видимость">
           <input type="hidden" name="flags.spaceholder.tokenVisibility" value="{{flags.spaceholder.tokenVisibility}}" />
 
           <span
             class="visibility-current"
             data-tooltip="Текущий режим"
-            style="margin-right: 8px; font-size: 12px; opacity: 0.9; vertical-align: middle;"
           >
             {{#if (eq flags.spaceholder.tokenVisibility "public")}}Публичный{{else}}
               {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}HalfHidden{{else}}

@@ -2,5 +2,8 @@
 test-*.js
 templates/actor/actor-character-sheet-test.hbs
 
+# Node tooling
+node_modules/
+
 # Local backups / tooling
 module/data/globalmaps/biome-config.json.orig

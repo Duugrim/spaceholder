@@ -1,219 +1,107 @@
-<div id="global-map-biome-editor" style="
-  background: rgba(0,0,0,0.85);
-  color: #e8e8e8;
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.08);
-  font-family: 'Signika', sans-serif;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-">
-  <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+<div id="global-map-biome-editor" class="sh-biome-editor">
+  <div class="sh-biome-editor__header">
     <div>
-      <div style="font-weight: bold; font-size: 16px;">Редактор биомов (Global Map)</div>
+      <div class="sh-biome-editor__title">Редактор биомов (Global Map)</div>
       {{#if filePath}}
-        <div style="font-size: 11px; color: #aaa; margin-top: 2px;">
-          Файл overrides: <code style="color:#ddd;">{{filePath}}</code>
+        <div class="sh-biome-editor__meta">
+          Файл overrides: <code>{{filePath}}</code>
         </div>
       {{/if}}
-      <div style="font-size: 11px; color: #aaa; margin-top: 2px;">
+      <div class="sh-biome-editor__meta">
         Примечание: чтобы игроки подтянули новые биомы, им достаточно нажать «Загрузить из файла» в панели Global Map.
       </div>
     </div>
 
-    <div style="display:flex; gap: 6px; align-items:center;">
-      <button type="button" data-action="add-biome" style="
-        padding: 8px 10px;
-        background: #2d6a4f;
-        border: 1px solid rgba(255,255,255,0.12);
-        color: #fff;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-      ">Новый биом</button>
-
-      <button type="button" data-action="reload" style="
-        padding: 8px 10px;
-        background: #333;
-        border: 1px solid rgba(255,255,255,0.12);
-        color: #fff;
-        border-radius: 4px;
-        cursor: pointer;
-      ">Перезагрузить</button>
-
-      <button type="button" data-action="reset-overrides" style="
-        padding: 8px 10px;
-        background: #5a1a1a;
-        border: 1px solid rgba(255,255,255,0.12);
-        color: #fff;
-        border-radius: 4px;
-        cursor: pointer;
-      ">Сбросить overrides</button>
-
-      <button type="button" data-action="save" style="
-        padding: 8px 12px;
-        background: #1d4ed8;
-        border: 1px solid rgba(255,255,255,0.12);
-        color: #fff;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-      ">Сохранить</button>
+    <div class="sh-biome-editor__actions">
+      <button type="button" data-action="add-biome" class="sh-biome-editor__btn sh-biome-editor__btnAdd">Новый биом</button>
+      <button type="button" data-action="reload" class="sh-biome-editor__btn">Перезагрузить</button>
+      <button type="button" data-action="reset-overrides" class="sh-biome-editor__btn sh-biome-editor__btnDanger">Сбросить overrides</button>
+      <button type="button" data-action="save" class="sh-biome-editor__btn sh-biome-editor__btnSave">Сохранить</button>
     </div>
   </div>
 
-  <div style="display:flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-    <div style="font-size: 11px; color: #aaa;">
-      Ограничение: ID биома 0..255 (Uint8Array).
-    </div>
+  <div class="sh-biome-editor__hint">
+    Ограничение: ID биома 0..255 (Uint8Array).
   </div>
 
-  <div style="
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-y: auto;
-    flex: 1 1 auto;
-    min-height: 0;
-    padding-right: 6px;
-  ">
+  <div class="sh-biome-editor__list">
     {{#each biomes as |b|}}
-      <div data-biome-id="{{b.id}}" style="
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 6px;
-        padding: 10px;
-      ">
-        <div style="display: flex; gap: 12px; align-items: flex-start;">
-          <canvas data-preview="biome" data-biome-id="{{b.id}}" width="64" height="64" style="
-            width: 64px;
-            height: 64px;
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 4px;
-            background: #000;
-            flex: 0 0 auto;
-          "></canvas>
+      <div class="sh-biome-editor__card" data-biome-id="{{b.id}}">
+        <div class="sh-biome-editor__cardRow">
+          <canvas
+            class="sh-biome-editor__preview"
+            data-preview="biome"
+            data-biome-id="{{b.id}}"
+            width="64"
+            height="64"
+          ></canvas>
 
-          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div style="min-width: 90px; font-size: 12px; color: #bbb;">
-                ID: <b style="color:#fff;">{{b.id}}</b>
-              </div>
+          <div class="sh-biome-editor__fields">
+            <div class="sh-biome-editor__row">
+              <div class="sh-biome-editor__id">ID: <b>{{b.id}}</b></div>
 
-              <label style="display:flex; align-items:center; gap: 6px; flex: 1; min-width: 240px;">
-                <span style="font-size: 12px; color: #bbb; min-width: 70px;">Название</span>
-                <input type="text" data-field="name" value="{{b.name}}" style="
-                  flex: 1;
-                  padding: 6px 8px;
-                  border-radius: 4px;
-                  border: 1px solid rgba(255,255,255,0.12);
-                  background: rgba(0,0,0,0.35);
-                  color: #fff;
-                "/>
+              <label class="sh-biome-editor__field wide">
+                <span class="sh-biome-editor__label">Название</span>
+                <input type="text" data-field="name" value="{{b.name}}" />
               </label>
 
-              <label style="display:flex; align-items:center; gap: 6px; min-width: 180px;">
-                <span style="font-size: 12px; color: #bbb; min-width: 42px;">Ранг</span>
-                <input type="number" data-field="renderRank" value="{{b.renderRank}}" step="1" style="
-                  width: 110px;
-                  padding: 6px 8px;
-                  border-radius: 4px;
-                  border: 1px solid rgba(255,255,255,0.12);
-                  background: rgba(0,0,0,0.35);
-                  color: #fff;
-                "/>
+              <label class="sh-biome-editor__field">
+                <span class="sh-biome-editor__label">Ранг</span>
+                <input
+                  type="number"
+                  data-field="renderRank"
+                  value="{{b.renderRank}}"
+                  step="1"
+                  class="sh-biome-editor__input--rank"
+                />
               </label>
             </div>
 
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <label style="display:flex; align-items:center; gap: 6px; min-width: 220px;">
-                <span style="font-size: 12px; color: #bbb; min-width: 70px;">Цвет</span>
-                <input type="color" data-field="color" value="{{b.color}}" style="width: 46px; height: 28px; padding: 0; border: none; background: transparent;" />
-                <code style="color:#bbb;">{{b.color}}</code>
+            <div class="sh-biome-editor__row">
+              <label class="sh-biome-editor__field">
+                <span class="sh-biome-editor__label">Цвет</span>
+                <input type="color" data-field="color" value="{{b.color}}" />
+                <code class="sh-biome-editor__patternCode">{{b.color}}</code>
               </label>
 
-              <label style="display:flex; align-items:center; gap: 6px; min-width: 340px;">
-                <span style="font-size: 12px; color: #bbb; min-width: 70px;">Паттерн</span>
-                <select data-field="pattern.type" style="
-                  flex: 1;
-                  padding: 6px 8px;
-                  border-radius: 4px;
-                  border: 1px solid rgba(255,255,255,0.12);
-                  background: rgba(0,0,0,0.35);
-                  color: #fff;
-                ">
+              <label class="sh-biome-editor__field wide">
+                <span class="sh-biome-editor__label">Паттерн</span>
+                <select data-field="pattern.type">
                   {{#each ../patternTypes as |pt|}}
                     <option value="{{pt.value}}" {{#if (eq pt.value b.pattern.type)}}selected{{/if}}>{{pt.label}}</option>
                   {{/each}}
                 </select>
               </label>
-              <label style="display:flex; align-items:center; gap: 6px; min-width: 260px;">
-                <span style="font-size: 12px; color: #bbb; min-width: 110px;">Цвет паттерна</span>
-                <input type="color" data-field="pattern.patternColor" value="{{#if b.pattern.patternColor}}{{b.pattern.patternColor}}{{else}}#000000{{/if}}" style="width: 46px; height: 28px; padding: 0; border: none; background: transparent;" />
-                <button type="button" data-action="pattern-color-auto" style="
-                  padding: 6px 8px;
-                  background: #333;
-                  border: 1px solid rgba(255,255,255,0.12);
-                  color: #fff;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-size: 11px;
-                ">Авто</button>
-                <code data-display="pattern.patternColor" style="color:#bbb;">{{#if b.pattern.patternColor}}{{b.pattern.patternColor}}{{else}}(авто){{/if}}</code>
+
+              <label class="sh-biome-editor__field wide">
+                <span class="sh-biome-editor__label">Цвет паттерна</span>
+                <input type="color" data-field="pattern.patternColor" value="{{#if b.pattern.patternColor}}{{b.pattern.patternColor}}{{else}}#000000{{/if}}" />
+                <button type="button" data-action="pattern-color-auto" class="sh-biome-editor__btn">Авто</button>
+                <code data-display="pattern.patternColor" class="sh-biome-editor__patternCode">{{#if b.pattern.patternColor}}{{b.pattern.patternColor}}{{else}}(авто){{/if}}</code>
               </label>
             </div>
 
-            <details style="background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px;">
-              <summary style="cursor: pointer; color: #bbb; font-size: 12px;">Доп. параметры паттерна</summary>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-                <label style="display:flex; align-items:center; gap:6px;">
-                  <span style="font-size: 12px; color: #bbb;">Spacing</span>
-                  <input type="number" data-field="pattern.spacing" value="{{b.pattern.spacing}}" step="0.1" min="0.1" style="
-                    width: 90px;
-                    padding: 6px 8px;
-                    border-radius: 4px;
-                    border: 1px solid rgba(255,255,255,0.12);
-                    background: rgba(0,0,0,0.35);
-                    color: #fff;
-                  "/>
+            <details class="sh-biome-editor__details">
+              <summary>Доп. параметры паттерна</summary>
+              <div class="sh-biome-editor__detailsBody">
+                <label class="sh-biome-editor__field">
+                  <span class="sh-biome-editor__label">Spacing</span>
+                  <input type="number" data-field="pattern.spacing" value="{{b.pattern.spacing}}" step="0.1" min="0.1" class="sh-biome-editor__input--xs" />
                 </label>
 
-                <label style="display:flex; align-items:center; gap:6px;">
-                  <span style="font-size: 12px; color: #bbb;">LineWidth</span>
-                  <input type="number" data-field="pattern.lineWidth" value="{{b.pattern.lineWidth}}" step="0.05" min="0.01" style="
-                    width: 90px;
-                    padding: 6px 8px;
-                    border-radius: 4px;
-                    border: 1px solid rgba(255,255,255,0.12);
-                    background: rgba(0,0,0,0.35);
-                    color: #fff;
-                  "/>
+                <label class="sh-biome-editor__field">
+                  <span class="sh-biome-editor__label">LineWidth</span>
+                  <input type="number" data-field="pattern.lineWidth" value="{{b.pattern.lineWidth}}" step="0.05" min="0.01" class="sh-biome-editor__input--xs" />
                 </label>
 
-                <label style="display:flex; align-items:center; gap:6px;">
-                  <span style="font-size: 12px; color: #bbb;">Opacity</span>
-                  <input type="number" data-field="pattern.opacity" value="{{b.pattern.opacity}}" step="0.05" min="0" max="1" style="
-                    width: 90px;
-                    padding: 6px 8px;
-                    border-radius: 4px;
-                    border: 1px solid rgba(255,255,255,0.12);
-                    background: rgba(0,0,0,0.35);
-                    color: #fff;
-                  "/>
+                <label class="sh-biome-editor__field">
+                  <span class="sh-biome-editor__label">Opacity</span>
+                  <input type="number" data-field="pattern.opacity" value="{{b.pattern.opacity}}" step="0.05" min="0" max="1" class="sh-biome-editor__input--xs" />
                 </label>
 
-                <label style="display:flex; align-items:center; gap:6px;">
-                  <span style="font-size: 12px; color: #bbb;">Darken</span>
-                  <input type="number" data-field="pattern.darkenFactor" value="{{b.pattern.darkenFactor}}" step="0.05" min="0" max="1" style="
-                    width: 90px;
-                    padding: 6px 8px;
-                    border-radius: 4px;
-                    border: 1px solid rgba(255,255,255,0.12);
-                    background: rgba(0,0,0,0.35);
-                    color: #fff;
-                  "/>
+                <label class="sh-biome-editor__field">
+                  <span class="sh-biome-editor__label">Darken</span>
+                  <input type="number" data-field="pattern.darkenFactor" value="{{b.pattern.darkenFactor}}" step="0.05" min="0" max="1" class="sh-biome-editor__input--xs" />
                 </label>
               </div>
             </details>

@@ -1,0 +1,201 @@
+// Global Map Biome Editor
+// ApplicationV2: the app root uses id "spaceholder-globalmap-biome-editor" and classes
+// "spaceholder globalmap-biome-editor" (not always ".window-app").
+
+#spaceholder-globalmap-biome-editor,
+.window-app.spaceholder.globalmap-biome-editor,
+.spaceholder.globalmap-biome-editor {
+  .sh-biome-editor {
+    background: rgba(0, 0, 0, 0.85);
+    color: var(--sh-text);
+    padding: 12px;
+    border-radius: var(--sh-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    font-family: 'Signika', sans-serif;
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  // Compact inputs used in the editor
+  .sh-biome-editor__input--rank { width: 110px; }
+  .sh-biome-editor__input--xs { width: 90px; }
+
+  // Color inputs: keep native swatch, avoid boxed input styling
+  .sh-biome-editor input[type='color'] {
+    width: 46px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  .sh-biome-editor__header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .sh-biome-editor__title {
+    font-weight: 700;
+    font-size: 16px;
+    margin: 0;
+  }
+
+  .sh-biome-editor__meta {
+    font-size: 11px;
+    color: var(--sh-text-dim);
+    margin-top: 2px;
+
+    code {
+      color: var(--sh-text-muted);
+    }
+  }
+
+  .sh-biome-editor__actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .sh-biome-editor__hint {
+    font-size: 11px;
+    color: var(--sh-text-dim);
+    margin: 0 0 10px 0;
+  }
+
+  .sh-biome-editor__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-right: 6px;
+  }
+
+  .sh-biome-editor__card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-lg);
+    padding: 10px;
+  }
+
+  .sh-biome-editor__cardRow {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .sh-biome-editor__preview {
+    width: 64px;
+    height: 64px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--sh-radius-sm);
+    background: #000;
+    flex: 0 0 auto;
+  }
+
+  .sh-biome-editor__fields {
+    flex: 1 1 auto;
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sh-biome-editor__row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .sh-biome-editor__id {
+    min-width: 90px;
+    font-size: 12px;
+    color: var(--sh-text-muted);
+
+    b {
+      color: #fff;
+    }
+  }
+
+  .sh-biome-editor__field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .sh-biome-editor__label {
+      font-size: 12px;
+      color: var(--sh-text-muted);
+      min-width: 70px;
+    }
+
+    &.wide {
+      flex: 1 1 240px;
+      min-width: 240px;
+
+      input,
+      select {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+    }
+  }
+
+  .sh-biome-editor__patternCode {
+    color: var(--sh-text-dim);
+    font-family: $font-mono;
+    font-size: 12px;
+  }
+
+  .sh-biome-editor__details {
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-lg);
+    padding: 8px;
+
+    summary {
+      cursor: pointer;
+      color: var(--sh-text-muted);
+      font-size: 12px;
+    }
+
+    .sh-biome-editor__detailsBody {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+  }
+
+  // Small helper button in biome editor
+  .sh-biome-editor__btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .sh-biome-editor__btnAdd {
+    background: rgba(45, 106, 79, 0.85);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .sh-biome-editor__btnSave {
+    background: rgba(29, 78, 216, 0.85);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .sh-biome-editor__btnDanger {
+    background: rgba(90, 26, 26, 0.85);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}

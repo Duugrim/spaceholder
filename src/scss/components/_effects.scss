@@ -1,14 +1,23 @@
-.effects .item {
-  .effect-source,
-  .effect-duration,
-  .effect-controls {
-    text-align: center;
-    border-left: 1px solid #c9c7b8;
-    border-right: 1px solid #c9c7b8;
-    font-size: 12px;
+.window-app.spaceholder {
+  .effects-list {
+    .effect-source,
+    .effect-duration {
+      text-align: center;
+      font-size: 12px;
+      color: var(--sh-text-dim);
+    }
   }
 
-  .effect-controls {
-    border: none;
+  .effects .item {
+    .effect-source,
+    .effect-duration,
+    .effect-controls {
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .effect-controls {
+      border: none;
+    }
   }
 }

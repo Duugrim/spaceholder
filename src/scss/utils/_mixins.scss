@@ -14,3 +14,10 @@
 @mixin hide {
   display: none;
 }
+
+// Standard focus style (scoped via CSS variables set on .window-app.spaceholder)
+@mixin sh-focus-ring {
+  outline: none;
+  border-color: var(--sh-border-focus);
+  box-shadow: 0 0 0 2px var(--sh-focus-ring);
+}
