@@ -79,7 +79,20 @@
 
   // Visibility button group
   .globalobject-visibility {
+    // В Foundry standard-form .form-group часто ведёт себя как строка (label | fields).
+    // Здесь лейбла нет, поэтому принудительно прижимаем содержимое вправо,
+    // не растягивая сам блок с кнопками.
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+
     .globalobject-visibility__fields {
+      // Не занимаем всю ширину: пусть блок остаётся по ширине контента,
+      // но будет стоять у правого края за счёт justify-content у родителя.
+      flex: 0 0 auto;
+
+      // Если .form-fields всё же станет шире (например, из core-стилей),
+      // внутри тоже держим элементы у правого края.
       justify-content: flex-end;
     }
   }
@@ -87,6 +100,12 @@
   .token-visibility-buttons {
     display: inline-flex;
     align-items: center;
+    // Foundry standard-form иногда даёт прямым детям .form-fields flex-grow,
+    // из-за чего группа растягивается на всю ширину и визуально остаётся слева.
+    // Эти две строки гарантируют прижатие к правому краю.
+    margin-left: auto;
+    justify-content: flex-end;
+
     gap: 6px;
     flex-wrap: nowrap;
     flex: 0 0 auto;
@@ -165,5 +184,20 @@
   // Actors panel spacing
   .globalobject-actors-panel {
     margin-top: 10px;
+  }
+}
+
+// NOTE: ActorSheetV2 (Foundry v13) wraps content in .standard-form and applies
+// flex sizing rules to direct children of .form-fields (often flex-grow: 1; display: block).
+// Это ломает выравнивание нашей группы кнопок (она растягивается на всю ширину).
+// Делаем локальный override по уникальным классам globalobject.
+.window-app.spaceholder,
+.spaceholder {
+  .globalobject-visibility__fields > .token-visibility-buttons {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
   }
 }

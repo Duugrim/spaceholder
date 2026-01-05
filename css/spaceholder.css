@@ -1218,14 +1218,23 @@
 .spaceholder.globalobject .sheet-header h1.charname input {
   height: 42px;
 }
+.window-app.spaceholder .globalobject .globalobject-visibility,
+.spaceholder.globalobject .globalobject-visibility {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
 .window-app.spaceholder .globalobject .globalobject-visibility .globalobject-visibility__fields,
 .spaceholder.globalobject .globalobject-visibility .globalobject-visibility__fields {
+  flex: 0 0 auto;
   justify-content: flex-end;
 }
 .window-app.spaceholder .globalobject .token-visibility-buttons,
 .spaceholder.globalobject .token-visibility-buttons {
   display: inline-flex;
   align-items: center;
+  margin-left: auto;
+  justify-content: flex-end;
   gap: 6px;
   flex-wrap: nowrap;
   flex: 0 0 auto;
@@ -1299,6 +1308,15 @@
 .window-app.spaceholder .globalobject .globalobject-actors-panel,
 .spaceholder.globalobject .globalobject-actors-panel {
   margin-top: 10px;
+}
+
+.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons,
+.spaceholder .globalobject-visibility__fields > .token-visibility-buttons {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: auto;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 #spaceholder-globalmap-biome-editor .sh-biome-editor,
