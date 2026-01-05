@@ -77,38 +77,62 @@
     }
   }
 
-  // Visibility button group
-  .globalobject-visibility {
-    // В Foundry standard-form .form-group часто ведёт себя как строка (label | fields).
-    // Здесь лейбла нет, поэтому принудительно прижимаем содержимое вправо,
-    // не растягивая сам блок с кнопками.
+  // Actor buttons row (header)
+  .actor-buttons {
     display: flex;
     justify-content: flex-end;
     align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 
-    .globalobject-visibility__fields {
-      // Не занимаем всю ширину: пусть блок остаётся по ширине контента,
-      // но будет стоять у правого края за счёт justify-content у родителя.
-      flex: 0 0 auto;
-
-      // Если .form-fields всё же станет шире (например, из core-стилей),
-      // внутри тоже держим элементы у правого края.
-      justify-content: flex-end;
-    }
+    margin-top: 6px;
   }
 
+  // ActorLink toggle
+  .actor-linkdata-buttons {
+    display: inline-flex;
+    align-items: center;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    padding: 4px;
+  }
+
+  .actorlink-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--sh-radius-sm);
+  }
+
+  .actorlink-btn.is-active {
+    background: rgba(74, 110, 74, 0.35);
+    border: 1px solid rgba(74, 110, 74, 0.90);
+    color: #9fe39f;
+    box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+  }
+
+  .actorlink-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .actorlink-btn.is-active:disabled {
+    opacity: 0.75;
+  }
+
+  // Token visibility button group
   .token-visibility-buttons {
     display: inline-flex;
     align-items: center;
-    // Foundry standard-form иногда даёт прямым детям .form-fields flex-grow,
-    // из-за чего группа растягивается на всю ширину и визуально остаётся слева.
-    // Эти две строки гарантируют прижатие к правому краю.
-    margin-left: auto;
-    justify-content: flex-end;
-
     gap: 6px;
     flex-wrap: nowrap;
     flex: 0 0 auto;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    padding: 4px;
 
     .visibility-btn {
       width: 28px;
@@ -179,24 +203,62 @@
   }
 }
 
-// NOTE: ActorSheetV2 (Foundry v13) wraps content in .standard-form and applies
-// flex sizing rules to direct children of .form-fields (often flex-grow: 1; display: block).
-// Это ломает выравнивание нашей группы кнопок (она растягивается на всю ширину).
-// Делаем локальный override по уникальным классам globalobject.
+// Fallback styles: в некоторых контекстах Foundry/ActorSheetV2 класс "globalobject"
+// может не оказаться на ожидаемом контейнере в DOM. Тогда теряется подсветка/оформление.
+// Эти правила завязаны на .actor-buttons, поэтому не затрагивают другие листы.
 .window-app.spaceholder,
 .spaceholder {
-  .globalobject-visibility__fields > .token-visibility-buttons {
-    // Выравнивание + защита от Foundry standard-form (flex-grow: 1; display: block)
+  .actor-buttons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .actor-buttons .actor-linkdata-buttons {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    padding: 4px;
+  }
 
+  .actor-buttons .actorlink-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--sh-radius-sm);
+  }
+
+  .actor-buttons .actorlink-btn.is-active {
+    background: rgba(74, 110, 74, 0.35);
+    border: 1px solid rgba(74, 110, 74, 0.90);
+    color: #9fe39f;
+    box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+  }
+
+  .actor-buttons .actorlink-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .actor-buttons .actorlink-btn.is-active:disabled {
+    opacity: 0.75;
+  }
+
+  .actor-buttons .token-visibility-buttons {
+    display: inline-flex;
+    align-items: center;
     gap: 6px;
     flex-wrap: nowrap;
-
     flex: 0 0 auto;
-    width: auto;
-    margin-left: auto;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    padding: 4px;
 
     .visibility-btn {
       width: 28px;

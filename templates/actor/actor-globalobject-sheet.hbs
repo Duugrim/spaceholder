@@ -36,15 +36,22 @@
           {{/if}}
         </div>
       </div>
-    </div>
-  </header>
 
-  {{!-- Sheet Body (no tabs) --}}
-  <section class="sheet-body">
+      {{!-- Кнопки актора/токена (в хедере) --}}
+      <div class="actor-buttons">
+        {{!-- Привязка данных актёра (actorLink) --}}
+        <div class="actor-linkdata-buttons" role="group" aria-label="Привязка данных актёра">
+          <button
+            type="button"
+            class="icon-btn actorlink-btn {{#if tokenActorLink}}is-active{{/if}}"
+            data-action="token-actorlink-toggle"
+            data-tooltip="Привязка данных актёра"
+            aria-label="Привязка данных актёра"
+            {{#unless canToggleActorLink}}disabled{{/unless}}
+          ><i class="fa-solid {{#if tokenActorLink}}fa-link{{else}}fa-link-slash{{/if}}"></i></button>
+        </div>
 
-    {{!-- Видимость (без заголовка) --}}
-    <div class="form-group globalobject-visibility">
-      <div class="form-fields globalobject-visibility__fields">
+        {{!-- Видимость --}}
         <div class="token-visibility-buttons" role="group" aria-label="Видимость">
           <input type="hidden" name="flags.spaceholder.tokenVisibility" value="{{flags.spaceholder.tokenVisibility}}" />
 
@@ -90,6 +97,10 @@
         </div>
       </div>
     </div>
+  </header>
+
+  {{!-- Sheet Body (no tabs) --}}
+  <section class="sheet-body">
 
     {{!-- Ссылка --}}
     <div class="form-group">

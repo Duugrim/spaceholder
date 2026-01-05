@@ -28,44 +28,64 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
   
   /**
-   * Переопределяем _getHeaderControls для удаления дубликатов и неподходящих опций
+   * Попытаться определить TokenDocument, из которого открыт лист.
+   * В Foundry v13 контекст токена может храниться не только в this.document.token.
+   * @protected
+   */
+  _getTokenDocumentFromContext() {
+    // 1) Synthetic actor обычно имеет document.token
+    const direct = this.document?.token;
+    if (direct?.documentName === 'Token') return direct;
+
+    // 2) Некоторые варианты передают токен через options
+    const opt = this.options?.token;
+    if (opt?.documentName === 'Token') return opt;
+    if (opt?.document?.documentName === 'Token') return opt.document;
+
+    // 3) Fallback: извлечь из id приложения (обычно включает Scene-...-Token-...)
+    const id = String(this.id ?? this.element?.id ?? '');
+    const m = id.match(/Scene-([^-]+)-Token-([^-]+)-Actor-/);
+    if (m) {
+      const sceneId = m[1];
+      const tokenId = m[2];
+      const scene = game?.scenes?.get?.(sceneId) ?? null;
+      const tokenDoc = scene?.tokens?.get?.(tokenId) ?? null;
+      if (tokenDoc?.documentName === 'Token') return tokenDoc;
+    }
+
+    return null;
+  }
+
+  /**
+   * Переопределяем _getHeaderControls:
+   * - удаляем дубликаты
+   * - убираем Token-контрол, если реального контекста токена нет (иначе Foundry падает на null.sheet)
    * @override
    */
   _getHeaderControls() {
     const controls = super._getHeaderControls();
-    
-    // Определяем, есть ли привязанный токен на сцене
-    const hasToken = !!this.document.token;
-    const hasPrototype = !!this.document.prototypeToken;
-    
-    console.log(`ActorSheet | Context: hasToken=${hasToken}, hasPrototype=${hasPrototype}`);
-    console.log(`ActorSheet | Original controls:`, controls.map(c => c.label || c.action));
-    
-    // Удаляем дубликаты и фильтруем неподходящие опции
+
+    const tokenDoc = this._getTokenDocumentFromContext();
+    const hasTokenContext = Boolean(tokenDoc);
+    const hasPrototype = Boolean(this.document?.prototypeToken);
+
     const seen = new Set();
-    const filtered = controls.filter(control => {
+    return controls.filter((control) => {
       const key = control.label || control.icon || control.action;
-      
-      // Фильтруем дубликаты
-      if (seen.has(key)) {
-        console.log(`ActorSheet | Filtered duplicate: ${key}`);
-        return false;
-      }
+      if (seen.has(key)) return false;
       seen.add(key);
-      
-      // Фильтруем опции в зависимости от контекста
-      // Если лист открыт НЕ через токен, убираем опцию "Token"
-      if (!hasToken && (control.action === 'token' || control.label === 'SIDEBAR.CharArt' || control.label === 'Token')) {
-        console.log(`ActorSheet | Filtered (no token): ${key}`);
-        return false;
+
+      // Если контекста токена нет, но и prototypeToken тоже отсутствует,
+      // не показываем конфигурацию токена.
+      if (!hasTokenContext && !hasPrototype) {
+        if (control.action === 'token') return false;
       }
-      
+
+      // Если контекста токена нет — убираем token action (Foundry пытается открыть null.sheet)
+      if (!hasTokenContext && control.action === 'token') return false;
+
       return true;
     });
-    
-    console.log(`ActorSheet | Filtered controls:`, filtered.map(c => c.label || c.action));
-    console.log(`ActorSheet | Header controls: ${controls.length} -> ${filtered.length}`);
-    return filtered;
   }
 
 
@@ -960,6 +980,17 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Цвет фракции для подсветки интерфейса
     context.factionColor = this._getFactionColorCss(context.system);
 
+    // Привязка данных актёра (actorLink)
+    // - если лист открыт через токен: показываем состояние TokenDocument.actorLink, но НЕ даём менять
+    // - если лист открыт как обычный актёр: меняем prototypeToken.actorLink
+    const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+    const idStr = String(this.id ?? '');
+    const isTokenContext = Boolean(tokenDoc) || idStr.includes('-Token-');
+
+    const protoToken = this.document?.prototypeToken ?? this.actor?.prototypeToken ?? null;
+    context.tokenActorLink = Boolean((tokenDoc?.actorLink) ?? protoToken?.actorLink);
+    context.canToggleActorLink = Boolean(this.isEditable) && !isTokenContext;
+
     return context;
   }
 
@@ -1001,6 +1032,11 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Видимость токена: кнопки режимов
     el.querySelectorAll('[data-action="token-visibility-set"]').forEach((btn) => {
       btn.addEventListener('click', this._onTokenVisibilitySet.bind(this));
+    });
+
+    // Привязка данных актёра (actorLink)
+    el.querySelectorAll('[data-action="token-actorlink-toggle"]').forEach((btn) => {
+      btn.addEventListener('click', this._onTokenActorLinkToggle.bind(this));
     });
 
     // Очистка UUID поля
@@ -1209,6 +1245,32 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     const root = this.element;
     const input = root?.querySelector('input[name="flags.spaceholder.tokenVisibility"]');
     if (input) input.value = value;
+
+    this.render(false);
+  }
+
+  /**
+   * Привязка данных актёра (actorLink): переключить.
+   * Если лист открыт через токен — меняем сам TokenDocument.
+   * Иначе меняем prototypeToken актёра.
+   * @private
+   */
+  async _onTokenActorLinkToggle(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Важно: по запросу — НЕ даём переключать actorLink, когда лист открыт через токен.
+    // Это переключение меняет тип документа (linked <-> synthetic) и может ломать дальнейшие действия
+    // в заголовке (например, открытие Token Config).
+    const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+    const idStr = String(this.id ?? '');
+    const isTokenContext = Boolean(tokenDoc) || idStr.includes('-Token-');
+    if (isTokenContext) return;
+
+    // Это настройки prototype token.
+    const current = Boolean(this.actor?.prototypeToken?.actorLink);
+    const next = !current;
+    await this.actor.update({ 'prototypeToken.actorLink': next });
 
     this.render(false);
   }

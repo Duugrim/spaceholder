@@ -1218,26 +1218,57 @@
 .spaceholder.globalobject .sheet-header h1.charname input {
   height: 42px;
 }
-.window-app.spaceholder .globalobject .globalobject-visibility,
-.spaceholder.globalobject .globalobject-visibility {
+.window-app.spaceholder .globalobject .actor-buttons,
+.spaceholder.globalobject .actor-buttons {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
 }
-.window-app.spaceholder .globalobject .globalobject-visibility .globalobject-visibility__fields,
-.spaceholder.globalobject .globalobject-visibility .globalobject-visibility__fields {
-  flex: 0 0 auto;
-  justify-content: flex-end;
+.window-app.spaceholder .globalobject .actor-linkdata-buttons,
+.spaceholder.globalobject .actor-linkdata-buttons {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  padding: 4px;
+}
+.window-app.spaceholder .globalobject .actorlink-btn,
+.spaceholder.globalobject .actorlink-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sh-radius-sm);
+}
+.window-app.spaceholder .globalobject .actorlink-btn.is-active,
+.spaceholder.globalobject .actorlink-btn.is-active {
+  background: rgba(74, 110, 74, 0.35);
+  border: 1px solid rgba(74, 110, 74, 0.9);
+  color: #9fe39f;
+  box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+}
+.window-app.spaceholder .globalobject .actorlink-btn:disabled,
+.spaceholder.globalobject .actorlink-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.window-app.spaceholder .globalobject .actorlink-btn.is-active:disabled,
+.spaceholder.globalobject .actorlink-btn.is-active:disabled {
+  opacity: 0.75;
 }
 .window-app.spaceholder .globalobject .token-visibility-buttons,
 .spaceholder.globalobject .token-visibility-buttons {
   display: inline-flex;
   align-items: center;
-  margin-left: auto;
-  justify-content: flex-end;
   gap: 6px;
   flex-wrap: nowrap;
   flex: 0 0 auto;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  padding: 4px;
 }
 .window-app.spaceholder .globalobject .token-visibility-buttons .visibility-btn,
 .spaceholder.globalobject .token-visibility-buttons .visibility-btn {
@@ -1302,37 +1333,78 @@
   margin-top: 10px;
 }
 
-.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons,
-.spaceholder .globalobject-visibility__fields > .token-visibility-buttons {
+.window-app.spaceholder .actor-buttons,
+.spaceholder .actor-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.window-app.spaceholder .actor-buttons .actor-linkdata-buttons,
+.spaceholder .actor-buttons .actor-linkdata-buttons {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-wrap: nowrap;
-  flex: 0 0 auto;
-  width: auto;
-  margin-left: auto;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  padding: 4px;
 }
-.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn,
-.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn {
+.window-app.spaceholder .actor-buttons .actorlink-btn,
+.spaceholder .actor-buttons .actorlink-btn {
   width: 28px;
   height: 28px;
   border-radius: var(--sh-radius-sm);
 }
-.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active,
-.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active {
+.window-app.spaceholder .actor-buttons .actorlink-btn.is-active,
+.spaceholder .actor-buttons .actorlink-btn.is-active {
   background: rgba(74, 110, 74, 0.35);
   border: 1px solid rgba(74, 110, 74, 0.9);
   color: #9fe39f;
   box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
 }
-.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn:disabled,
-.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn:disabled {
+.window-app.spaceholder .actor-buttons .actorlink-btn:disabled,
+.spaceholder .actor-buttons .actorlink-btn:disabled {
   opacity: 0.55;
   cursor: default;
 }
-.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active:disabled,
-.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active:disabled {
+.window-app.spaceholder .actor-buttons .actorlink-btn.is-active:disabled,
+.spaceholder .actor-buttons .actorlink-btn.is-active:disabled {
+  opacity: 0.75;
+}
+.window-app.spaceholder .actor-buttons .token-visibility-buttons,
+.spaceholder .actor-buttons .token-visibility-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  padding: 4px;
+}
+.window-app.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn,
+.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sh-radius-sm);
+}
+.window-app.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn.is-active,
+.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn.is-active {
+  background: rgba(74, 110, 74, 0.35);
+  border: 1px solid rgba(74, 110, 74, 0.9);
+  color: #9fe39f;
+  box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+}
+.window-app.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn:disabled,
+.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.window-app.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn.is-active:disabled,
+.spaceholder .actor-buttons .token-visibility-buttons .visibility-btn.is-active:disabled {
   opacity: 0.75;
 }
 
