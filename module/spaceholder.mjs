@@ -15,6 +15,8 @@ import { registerTokenRotatorSettings, installTokenRotator } from './helpers/tok
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
 // User -> Factions (Journal UUID) mapping
 import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
+// Journal Directory helpers
+import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -133,6 +135,8 @@ Hooks.once('init', function () {
   installTokenRotator();
   // Install User -> Factions hooks (UserConfig injection)
   installUserFactionsHooks();
+  // Install Journal Directory hooks (Clear Journals button)
+  installJournalDirectoryHooks();
   // Install Token visibility hooks
   installTokenVisibilityHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
