@@ -1239,14 +1239,6 @@
   flex-wrap: nowrap;
   flex: 0 0 auto;
 }
-.window-app.spaceholder .globalobject .token-visibility-buttons .visibility-current,
-.spaceholder.globalobject .token-visibility-buttons .visibility-current {
-  margin-right: 8px;
-  font-size: 12px;
-  opacity: 0.9;
-  color: var(--sh-text-muted);
-  white-space: nowrap;
-}
 .window-app.spaceholder .globalobject .token-visibility-buttons .visibility-btn,
 .spaceholder.globalobject .token-visibility-buttons .visibility-btn {
   width: 28px;
@@ -1313,10 +1305,35 @@
 .window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons,
 .spaceholder .globalobject-visibility__fields > .token-visibility-buttons {
   display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
   flex: 0 0 auto;
   width: auto;
   margin-left: auto;
-  justify-content: flex-end;
+}
+.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn,
+.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sh-radius-sm);
+}
+.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active,
+.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active {
+  background: rgba(74, 110, 74, 0.35);
+  border: 1px solid rgba(74, 110, 74, 0.9);
+  color: #9fe39f;
+  box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+}
+.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn:disabled,
+.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.window-app.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active:disabled,
+.spaceholder .globalobject-visibility__fields > .token-visibility-buttons .visibility-btn.is-active:disabled {
+  opacity: 0.75;
 }
 
 #spaceholder-globalmap-biome-editor .sh-biome-editor,

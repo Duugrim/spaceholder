@@ -48,19 +48,6 @@
         <div class="token-visibility-buttons" role="group" aria-label="Видимость">
           <input type="hidden" name="flags.spaceholder.tokenVisibility" value="{{flags.spaceholder.tokenVisibility}}" />
 
-          <span
-            class="visibility-current"
-            data-tooltip="Текущий режим"
-          >
-            {{#if (eq flags.spaceholder.tokenVisibility "public")}}Публичный{{else}}
-              {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}HalfHidden{{else}}
-                {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}FullHidden{{else}}
-                  {{#if (eq flags.spaceholder.tokenVisibility "secret")}}Секретный{{else}}—{{/if}}
-                {{/if}}
-              {{/if}}
-            {{/if}}
-          </span>
-
           <button
             type="button"
             class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "public")}}is-active{{/if}}"

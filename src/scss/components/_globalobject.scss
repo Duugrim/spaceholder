@@ -110,14 +110,6 @@
     flex-wrap: nowrap;
     flex: 0 0 auto;
 
-    .visibility-current {
-      margin-right: 8px;
-      font-size: 12px;
-      opacity: 0.9;
-      color: var(--sh-text-muted);
-      white-space: nowrap;
-    }
-
     .visibility-btn {
       width: 28px;
       height: 28px;
@@ -194,10 +186,38 @@
 .window-app.spaceholder,
 .spaceholder {
   .globalobject-visibility__fields > .token-visibility-buttons {
+    // Выравнивание + защита от Foundry standard-form (flex-grow: 1; display: block)
     display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 6px;
+    flex-wrap: nowrap;
+
     flex: 0 0 auto;
     width: auto;
     margin-left: auto;
-    justify-content: flex-end;
+
+    .visibility-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--sh-radius-sm);
+    }
+
+    .visibility-btn.is-active {
+      background: rgba(74, 110, 74, 0.35);
+      border: 1px solid rgba(74, 110, 74, 0.90);
+      color: #9fe39f;
+      box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
+    }
+
+    .visibility-btn:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    .visibility-btn.is-active:disabled {
+      opacity: 0.75;
+    }
   }
 }
