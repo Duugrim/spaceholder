@@ -12,19 +12,17 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 Команды (pwsh / Node.js)
 
-Внимание к правилам проекта: не запускать сборку SCSS→CSS без явного подтверждения владельца репо.
-
 - Установка зависимостей
 ```powershell path=null start=null
 npm install
 ```
 
-- Сборка CSS из SCSS (требует явного подтверждения перед запуском)
+- Сборка CSS из SCSS
 ```powershell path=null start=null
 npm run build
 ```
 
-- Наблюдение за SCSS и автосборка (требует явного подтверждения перед запуском)
+- Наблюдение за SCSS и автосборка
 ```powershell path=null start=null
 npm run watch
 ```
@@ -73,6 +71,8 @@ npm run watch
     - createActorAnatomy() формирует копию шаблона для актёра (maxHp с учётом коэффициента, currentHp из maxHp)
     - getAvailableAnatomies(), getAnatomyDisplayName(), reload(), getStats()
   - Данные: module/data/anatomy/registry.json описывает список доступных анатомий, категории и отключённые варианты (с префиксом "_")
+  
+- Модули глобальной карты находятся в module\helpers\global-map
 
 - Стили
   - Источник: src/scss/** (компоненты, утилиты, глобальные стили)
@@ -80,15 +80,13 @@ npm run watch
 
 Замечания по разработке в этом репозитории
 
-- Проект специфичен для Foundry VTT: для проверки UI используется запуск Foundry; лежит в Data/systems/spaceholder, сборка CSS обновляет внешний вид листов (не запускайте сборку без подтверждения)
+- Проект специфичен для Foundry VTT: для проверки UI используется запуск Foundry; лежит в Data/systems/spaceholder, сборка CSS обновляет внешний вид листов
 - README.md краткий: «Boilerplate fork for personal system development» — ориентируйтесь на текущую архитектуру как на персональную основу
 
 Проектные правила (важно для Warp)
 
-- Не делать push автоматически. Для публикации (commit/tag/push/release) использовать скрипт `release.ps1` по запросу владельца репо.
-- Версии: теги вида `v0.NN` (инкремент на 1). При релизе обновлять `system.json` (version/manifest/download) и создавать GitHub Release.
+- Не делать push автоматически. Для публикации (commit/tag/push/release) владелец репо будет использовать скрипт `release.ps1` вручную.
+- Версии: теги вида `v0.NN` (инкремент на 1). При релизе обновлять `system.json` (version/manifest/download) и создавать GitHub Release. Этот функционал включён в `release.ps1`.
 - Установка/обновления Foundry: ориентируемся на манифест из последнего релиза — `https://github.com/Duugrim/spaceholder/releases/latest/download/system.json`.
-  - В релиз прикреплять ассеты: `spaceholder.zip` и `system.json`.
-- Не запускать сборку SCSS→CSS без явного подтверждения владельца
+  - В релиз прикреплять ассеты: `spaceholder.zip` и `system.json`. Этот функционал включён в `release.ps1`.
 - Предпочтительный язык ответов для работы в проекте: русский
-- В коде по возможности избегать дробных вычислений в бизнес-логике — использовать целые числа, умноженные на 100, и оставлять комментарий о причине (см. правило для предотвращения ошибок округления)

@@ -9,6 +9,12 @@ export class GlobalMapRenderer {
   constructor() {
     this.container = null; // Root PIXI.Container (added to canvas.primary)
     this.mapLayer = null; // Biomes + heights live here
+
+    // Regions layer (vector polygons)
+    this.regionsLayer = null; // Base regions (fill + stroke)
+    this.regionHoverLayer = null; // Hover outline overlay (PIXI.Graphics)
+    this.regionLabelsLayer = null; // Region labels live here
+
     this.riversLayer = null; // Vector rivers live here
     this.riverLabelsLayer = null; // River labels live here
 
@@ -29,6 +35,20 @@ export class GlobalMapRenderer {
 
     // Legacy (cell-mask) rivers are disabled by default (we use vector rivers instead)
     this.legacyRiversEnabled = false;
+
+    // Vector regions state (loaded from scene flags or set by tools)
+    this.vectorRegionsData = null; // {version:1, settings:{labelMode,clickAction,clickModifier}, regions:[...]}
+
+    // Regions hover/click runtime
+    this._regionHoverHandler = null;
+    this._regionClickHandler = null;
+    this._hoveredRegionId = null;
+    this._regionHoverLabel = null; // PIXI.Text
+
+    // Cached per-region render metadata
+    this._regionLabelAnchors = new Map(); // regionId -> {x,y}
+    this._regionBounds = new Map(); // regionId -> {minX,minY,maxX,maxY, pad}
+    this._regionRenderPoints = new Map(); // regionId -> points[] used for render/hit-test
 
     // Vector rivers state (loaded from scene flags or set by tools)
     this.vectorRiversData = null; // {version:1, settings:{labelMode,snapToEndpoints}, rivers:[...]}
@@ -92,6 +112,14 @@ export class GlobalMapRenderer {
     // Recreate container/layers for this canvas
     this.setupContainer();
 
+    // Reload regions for the active scene.
+    // If the scene changed, we must read new flags.
+    // If the scene did NOT change, preserve in-memory regions (they may include unsaved edits) and only load if empty.
+    if (sceneChanged || this.vectorRegionsData === null || this.vectorRegionsData === undefined) {
+      this.vectorRegionsData = null;
+      await this.loadVectorRegionsFromScene();
+    }
+
     // Reload rivers for the active scene.
     // If the scene changed, we must read new flags.
     // If the scene did NOT change, preserve in-memory rivers (they may include unsaved edits) and only load if empty.
@@ -100,7 +128,9 @@ export class GlobalMapRenderer {
       await this.loadVectorRiversFromScene();
     }
 
-    // Hover labels for rivers (works outside of editing tools)
+    // Hover labels / click handlers (work outside of editing tools)
+    this._installRegionHoverHandler();
+    this._installRegionClickHandler();
     this._installRiverHoverHandler();
 
     // If we already have a rendered grid (same scene refresh), re-render it into the new container.
@@ -110,9 +140,14 @@ export class GlobalMapRenderer {
       return;
     }
 
-    // Otherwise, if a grid is already rendered but we don't want to re-render the whole map, at least redraw rivers on top
-    if (this.currentMetadata && this.vectorRiversData) {
-      this.renderVectorRivers(this.vectorRiversData, this.currentMetadata);
+    // Otherwise, if a grid is already rendered but we don't want to re-render the whole map, at least redraw overlays on top
+    if (this.currentMetadata) {
+      if (this.vectorRegionsData) {
+        this.renderVectorRegions(this.vectorRegionsData, this.currentMetadata);
+      }
+      if (this.vectorRiversData) {
+        this.renderVectorRivers(this.vectorRiversData, this.currentMetadata);
+      }
     }
   }
 
@@ -139,6 +174,11 @@ export class GlobalMapRenderer {
     // Reset layer refs
     this.container = null;
     this.mapLayer = null;
+
+    this.regionsLayer = null;
+    this.regionHoverLayer = null;
+    this.regionLabelsLayer = null;
+
     this.riversLayer = null;
     this.riverLabelsLayer = null;
 
@@ -148,10 +188,23 @@ export class GlobalMapRenderer {
     // Ensure zIndex ordering works within this container
     this.container.sortableChildren = true;
 
-    // Dedicated layers: map (biomes/heights) + rivers + labels
+    // Dedicated layers: map (biomes/heights) + regions + rivers + labels
     this.mapLayer = new PIXI.Container();
     this.mapLayer.name = 'globalMapMapLayer';
     this.mapLayer.zIndex = 0;
+
+    this.regionsLayer = new PIXI.Container();
+    this.regionsLayer.name = 'globalMapRegionsLayer';
+    this.regionsLayer.zIndex = 1500;
+
+    // Hover outline is a Graphics overlay so we can redraw without rebuilding base regions graphics
+    this.regionHoverLayer = new PIXI.Graphics();
+    this.regionHoverLayer.name = 'globalMapRegionHoverLayer';
+    this.regionHoverLayer.zIndex = 2040;
+
+    this.regionLabelsLayer = new PIXI.Container();
+    this.regionLabelsLayer.name = 'globalMapRegionLabelsLayer';
+    this.regionLabelsLayer.zIndex = 2050;
 
     this.riversLayer = new PIXI.Container();
     this.riversLayer.name = 'globalMapRiversLayer';
@@ -162,7 +215,10 @@ export class GlobalMapRenderer {
     this.riverLabelsLayer.zIndex = 2100;
 
     this.container.addChild(this.mapLayer);
+    this.container.addChild(this.regionsLayer);
     this.container.addChild(this.riversLayer);
+    this.container.addChild(this.regionHoverLayer);
+    this.container.addChild(this.regionLabelsLayer);
     this.container.addChild(this.riverLabelsLayer);
 
     // Устанавливаем высокий zIndex, чтобы быть поверх фона, но под токенами
@@ -271,6 +327,16 @@ export class GlobalMapRenderer {
     // Legacy rivers layer (cell-mask) is disabled by default
     if (this.legacyRiversEnabled && gridData.rivers) {
       this._renderRiversLayer(gridData, metadata);
+    }
+
+    // Vector regions (new system)
+    if (this.vectorRegionsData === null) {
+      await this.loadVectorRegionsFromScene();
+    }
+    if (this.vectorRegionsData) {
+      this.renderVectorRegions(this.vectorRegionsData, metadata);
+    } else {
+      this.clearVectorRegions();
     }
 
     // Vector rivers (new system)
@@ -2175,6 +2241,15 @@ export class GlobalMapRenderer {
 
     try {
       this.mapLayer?.removeChildren();
+
+      this.regionsLayer?.removeChildren();
+      this.regionLabelsLayer?.removeChildren();
+      try {
+        this.regionHoverLayer?.clear?.();
+      } catch (e) {
+        // ignore
+      }
+
       this.riversLayer?.removeChildren();
       this.riverLabelsLayer?.removeChildren();
 
@@ -2280,8 +2355,10 @@ export class GlobalMapRenderer {
 
     const tempRoot = new PIXI.Container();
 
-    // Hover labels should not end up in exported images
-    const originalHoverLabelVisible = this._riverHoverLabel?.visible;
+    // Hover labels / hover overlays should not end up in exported images
+    const originalRiverHoverLabelVisible = this._riverHoverLabel?.visible;
+    const originalRegionHoverLabelVisible = this._regionHoverLabel?.visible;
+    const originalRegionHoverLayerVisible = this.regionHoverLayer?.visible;
 
     try {
       this.container.visible = true;
@@ -2299,6 +2376,12 @@ export class GlobalMapRenderer {
 
       if (this._riverHoverLabel) {
         this._riverHoverLabel.visible = false;
+      }
+      if (this._regionHoverLabel) {
+        this._regionHoverLabel.visible = false;
+      }
+      if (this.regionHoverLayer) {
+        this.regionHoverLayer.visible = false;
       }
 
       renderer.render(this.container, { renderTexture: rt, clear: true });
@@ -2345,8 +2428,14 @@ export class GlobalMapRenderer {
       this.container.scale.set(originalScaleX, originalScaleY);
       this.container.rotation = originalRotation;
 
-      if (this._riverHoverLabel && typeof originalHoverLabelVisible === 'boolean') {
-        this._riverHoverLabel.visible = originalHoverLabelVisible;
+      if (this._riverHoverLabel && typeof originalRiverHoverLabelVisible === 'boolean') {
+        this._riverHoverLabel.visible = originalRiverHoverLabelVisible;
+      }
+      if (this._regionHoverLabel && typeof originalRegionHoverLabelVisible === 'boolean') {
+        this._regionHoverLabel.visible = originalRegionHoverLabelVisible;
+      }
+      if (this.regionHoverLayer && typeof originalRegionHoverLayerVisible === 'boolean') {
+        this.regionHoverLayer.visible = originalRegionHoverLayerVisible;
       }
     }
   }
@@ -2358,6 +2447,678 @@ export class GlobalMapRenderer {
   _normalizeValue(value, min, max) {
     if (max === min) return 0.5;
     return (value - min) / (max - min);
+  }
+
+  // ==========================
+  // Vector Regions (new system)
+  // ==========================
+
+  /**
+   * Load vector regions data from the active scene flags.
+   */
+  async loadVectorRegionsFromScene(scene = canvas?.scene) {
+    try {
+      const raw = scene?.getFlag?.('spaceholder', 'globalMapRegions');
+      this.vectorRegionsData = this._normalizeVectorRegionsData(raw);
+      return this.vectorRegionsData;
+    } catch (e) {
+      console.warn('GlobalMapRenderer | Failed to load globalMapRegions flag, using empty regions', e);
+      this.vectorRegionsData = this._normalizeVectorRegionsData(null);
+      return this.vectorRegionsData;
+    }
+  }
+
+  /**
+   * Set vector regions data in memory (used by tools while editing).
+   */
+  setVectorRegionsData(data, metadata = null) {
+    this.vectorRegionsData = this._normalizeVectorRegionsData(data);
+
+    const md = metadata || this.currentMetadata;
+    if (md) {
+      this.renderVectorRegions(this.vectorRegionsData, md);
+    } else {
+      // We can render regions without metadata as they are in scene coordinates.
+      this.renderVectorRegions(this.vectorRegionsData, null);
+    }
+  }
+
+  /**
+   * Clear rendered vector regions (graphics + labels + hover).
+   */
+  clearVectorRegions() {
+    try {
+      this.regionsLayer?.removeChildren();
+      this.regionLabelsLayer?.removeChildren();
+      this.regionHoverLayer?.clear?.();
+      if (this.regionHoverLayer) this.regionHoverLayer.visible = false;
+    } catch (e) {
+      // ignore
+    }
+
+    this._regionLabelAnchors.clear();
+    this._regionBounds.clear();
+    this._regionRenderPoints.clear();
+    this._hoveredRegionId = null;
+    this._regionHoverLabel = null;
+  }
+
+  /**
+   * Normalize persisted vector regions structure.
+   * @private
+   */
+  _normalizeVectorRegionsData(data) {
+    const defaults = {
+      version: 1,
+      settings: {
+        labelMode: 'hover',
+        clickAction: 'openJournal',
+        clickModifier: 'ctrl',
+        smoothIterations: 1,
+      },
+      regions: [],
+    };
+
+    const clone = (obj) => {
+      return foundry?.utils?.duplicate ? foundry.utils.duplicate(obj) : JSON.parse(JSON.stringify(obj));
+    };
+
+    if (!data || typeof data !== 'object') {
+      return clone(defaults);
+    }
+
+    const settingsRaw = (data.settings && typeof data.settings === 'object') ? data.settings : {};
+
+    const labelMode = ['off', 'hover', 'always'].includes(settingsRaw.labelMode) ? settingsRaw.labelMode : 'hover';
+    const clickAction = ['none', 'openJournal'].includes(settingsRaw.clickAction) ? settingsRaw.clickAction : 'openJournal';
+    const clickModifier = ['none', 'ctrl', 'alt', 'shift'].includes(settingsRaw.clickModifier) ? settingsRaw.clickModifier : 'ctrl';
+
+    let smoothIterations = Number.parseInt(settingsRaw.smoothIterations, 10);
+    if (!Number.isFinite(smoothIterations)) smoothIterations = 1;
+    smoothIterations = Math.max(0, Math.min(4, smoothIterations));
+
+    const regionsRaw = Array.isArray(data.regions) ? data.regions : [];
+
+    const normalizeColorInt = (value, fallback) => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value & 0xFFFFFF;
+
+      const s0 = String(value ?? '').trim();
+      if (!s0) return fallback;
+
+      let s = s0;
+      if (s.startsWith('#')) s = s.slice(1);
+      if (s.startsWith('0x') || s.startsWith('0X')) s = s.slice(2);
+      s = s.replace(/[^0-9a-fA-F]/g, '');
+
+      if (s.length === 3) {
+        s = s.split('').map(ch => ch + ch).join('');
+      }
+      if (s.length !== 6) return fallback;
+
+      const n = parseInt(s, 16);
+      if (!Number.isFinite(n)) return fallback;
+      return n & 0xFFFFFF;
+    };
+
+    const clamp01 = (n, fallback = 0) => {
+      const v = Number(n);
+      if (!Number.isFinite(v)) return fallback;
+      return Math.max(0, Math.min(1, v));
+    };
+
+    const clampPositive = (n, fallback = 1) => {
+      const v = Number(n);
+      if (!Number.isFinite(v)) return fallback;
+      return Math.max(0.1, v);
+    };
+
+    const normalizePoint = (p) => {
+      if (!p || typeof p !== 'object') return null;
+      const x = Number(p.x);
+      const y = Number(p.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+      return { x, y };
+    };
+
+    const defaultBaseColor = 0x2E7DFF;
+
+    const regions = regionsRaw
+      .filter(r => r && typeof r === 'object')
+      .map((r, i) => {
+        const id = (typeof r.id === 'string' && r.id.trim().length) ? r.id.trim() : `region_${i}_${Math.random().toString(36).slice(2, 8)}`;
+        const name = (typeof r.name === 'string' && r.name.trim().length) ? r.name.trim() : `Region ${i + 1}`;
+
+        const pointsRaw = Array.isArray(r.points) ? r.points : [];
+        const points = pointsRaw.map(normalizePoint).filter(Boolean);
+
+        let closed = !!r.closed;
+        if (closed && points.length < 3) closed = false;
+
+        const baseColor = normalizeColorInt(r.color, defaultBaseColor);
+
+        const fillColor = normalizeColorInt(r.fillColor, baseColor);
+        const strokeColor = normalizeColorInt(r.strokeColor, baseColor);
+
+        const fillAlpha = clamp01(r.fillAlpha, 0.18);
+        const strokeAlpha = clamp01(r.strokeAlpha, 0.9);
+        const strokeWidth = clampPositive(r.strokeWidth, 3);
+
+        const journalUuid = (typeof r.journalUuid === 'string' && r.journalUuid.trim().length) ? r.journalUuid.trim() : '';
+
+        return {
+          id,
+          name,
+          points,
+          closed,
+          fillColor,
+          fillAlpha,
+          strokeColor,
+          strokeAlpha,
+          strokeWidth,
+          journalUuid,
+        };
+      });
+
+    return {
+      version: Number(data.version) || 1,
+      settings: { labelMode, clickAction, clickModifier, smoothIterations },
+      regions,
+    };
+  }
+
+  /**
+   * Render vector regions on top of the map.
+   */
+  renderVectorRegions(regionsData = this.vectorRegionsData, _metadata = this.currentMetadata) {
+    if (!this.regionsLayer || !this.regionLabelsLayer || !this.regionHoverLayer) return;
+
+    // Clear previous regions render
+    try {
+      this.regionsLayer.removeChildren();
+      this.regionLabelsLayer.removeChildren();
+      this.regionHoverLayer.clear();
+      this.regionHoverLayer.visible = false;
+    } catch (e) {
+      // ignore
+    }
+
+    this._regionLabelAnchors.clear();
+    this._regionBounds.clear();
+    this._regionRenderPoints.clear();
+    this._hoveredRegionId = null;
+    this._regionHoverLabel = null;
+
+    const regions = regionsData?.regions || [];
+    if (!Array.isArray(regions) || regions.length === 0) return;
+
+    const labelMode = regionsData?.settings?.labelMode || 'hover';
+    const smoothIterationsRaw = Number.parseInt(regionsData?.settings?.smoothIterations, 10);
+    const smoothIterations = Number.isFinite(smoothIterationsRaw) ? Math.max(0, Math.min(4, smoothIterationsRaw)) : 0;
+
+    const graphics = new PIXI.Graphics();
+    graphics.name = 'globalMapVectorRegionsGraphics';
+
+    const flatten = (pts) => {
+      const out = [];
+      for (const p of pts) {
+        out.push(p.x, p.y);
+      }
+      return out;
+    };
+
+    const computeBounds = (pts) => {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const p of pts) {
+        if (!p) continue;
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+
+      if (!Number.isFinite(minX)) {
+        minX = minY = maxX = maxY = 0;
+      }
+
+      return { minX, minY, maxX, maxY };
+    };
+
+    for (const region of regions) {
+      const pts = Array.isArray(region?.points) ? region.points : [];
+      if (pts.length < 2) continue;
+
+      const renderPts = (region.closed && pts.length >= 3 && smoothIterations > 0)
+        ? this._smoothContour(pts, smoothIterations)
+        : pts;
+      this._regionRenderPoints.set(region.id, renderPts);
+
+      const strokeWidth = Number(region.strokeWidth) || 0;
+      const strokeColor = Number(region.strokeColor) || 0xFFFFFF;
+      const strokeAlpha = Number.isFinite(Number(region.strokeAlpha)) ? Math.max(0, Math.min(1, Number(region.strokeAlpha))) : 1;
+
+      const fillColor = Number(region.fillColor) || strokeColor;
+      const fillAlpha = Number.isFinite(Number(region.fillAlpha)) ? Math.max(0, Math.min(1, Number(region.fillAlpha))) : 0;
+
+      const bounds = computeBounds(renderPts);
+      const pad = Math.max(0, strokeWidth / 2) + 10;
+      this._regionBounds.set(region.id, { ...bounds, pad });
+
+      // Anchor for labels
+      let anchor = null;
+      if (region.closed && renderPts.length >= 3) {
+        anchor = this._computePolygonCentroid(renderPts);
+      } else {
+        anchor = this._computePolylineMidpoint(renderPts);
+      }
+      if (anchor) {
+        this._regionLabelAnchors.set(region.id, anchor);
+      }
+
+      if (region.closed && renderPts.length >= 3) {
+        // Ensure fill does not leak between shapes
+        graphics.lineStyle(strokeWidth > 0 && strokeAlpha > 0 ? strokeWidth : 0, strokeColor, strokeAlpha);
+        graphics.beginFill(fillColor, fillAlpha);
+        graphics.drawPolygon(flatten(renderPts));
+        graphics.endFill();
+      } else {
+        // Preview polyline (not closed)
+        if (strokeWidth > 0 && strokeAlpha > 0 && renderPts.length >= 2) {
+          graphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
+          graphics.moveTo(renderPts[0].x, renderPts[0].y);
+          for (let i = 1; i < renderPts.length; i++) {
+            graphics.lineTo(renderPts[i].x, renderPts[i].y);
+          }
+        }
+      }
+
+      if (labelMode === 'always' && anchor && region?.name) {
+        const text = this._createRegionLabelText(String(region.name));
+        text.position.set(anchor.x, anchor.y);
+        this.regionLabelsLayer.addChild(text);
+      }
+    }
+
+    this.regionsLayer.addChild(graphics);
+
+    // Hover label
+    if (labelMode === 'hover') {
+      this._regionHoverLabel = this._createRegionLabelText('');
+      this._regionHoverLabel.visible = false;
+      this.regionLabelsLayer.addChild(this._regionHoverLabel);
+    }
+  }
+
+  /**
+   * Install hover handler for showing region names and highlighting outlines.
+   * @private
+   */
+  _installRegionHoverHandler() {
+    if (!canvas?.stage) return;
+
+    // Remove previous handler
+    if (this._regionHoverHandler) {
+      try {
+        canvas.stage.off('pointermove', this._regionHoverHandler);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    this._regionHoverHandler = (event) => {
+      try {
+        this._handleRegionHover(event);
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    canvas.stage.on('pointermove', this._regionHoverHandler);
+  }
+
+  /**
+   * Install click handler for opening region journals.
+   * @private
+   */
+  _installRegionClickHandler() {
+    if (!canvas?.stage) return;
+
+    // Remove previous handler
+    if (this._regionClickHandler) {
+      try {
+        canvas.stage.off('pointerdown', this._regionClickHandler);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    this._regionClickHandler = (event) => {
+      this._handleRegionClick(event).catch(() => {});
+    };
+
+    canvas.stage.on('pointerdown', this._regionClickHandler);
+  }
+
+  async _handleRegionClick(event) {
+    if (!this.isVisible) return;
+
+    const regionsData = this.vectorRegionsData;
+    const settings = regionsData?.settings || {};
+
+    if (settings.clickAction !== 'openJournal') return;
+
+    // Left click only
+    if (event?.data?.button !== 0) return;
+
+    // Don't open journals while the editor is active (otherwise ctrl/alt clicks conflict with editing gestures)
+    const tools = game?.spaceholder?.globalMapTools;
+    if (tools?.isActive && tools?.isBrushActive) return;
+
+    // Avoid interfering with clicks on tokens/drawings/etc.
+    const target = event?.target;
+    const isInLayer = (layer) => {
+      if (!layer || !target) return false;
+      let p = target;
+      while (p) {
+        if (p === layer) return true;
+        p = p.parent;
+      }
+      return false;
+    };
+
+    if (
+      isInLayer(canvas?.tokens) ||
+      isInLayer(canvas?.drawings) ||
+      isInLayer(canvas?.notes) ||
+      isInLayer(canvas?.templates) ||
+      isInLayer(canvas?.controls)
+    ) {
+      return;
+    }
+
+    const oe = event?.data?.originalEvent || {};
+    const want = String(settings.clickModifier || 'ctrl');
+    const hasCtrl = !!oe.ctrlKey || !!oe.metaKey;
+    const hasAlt = !!oe.altKey;
+    const hasShift = !!oe.shiftKey;
+
+    const modifierOk = (() => {
+      if (want === 'none') return true;
+      if (want === 'ctrl') return hasCtrl;
+      if (want === 'alt') return hasAlt;
+      if (want === 'shift') return hasShift;
+      return hasCtrl;
+    })();
+
+    if (!modifierOk) return;
+
+    const regions = regionsData?.regions || [];
+    if (!Array.isArray(regions) || regions.length === 0) return;
+
+    const pos = event?.data?.getLocalPosition?.(canvas.stage);
+    if (!pos) return;
+
+    const hit = this._findNearestRegionHit(pos.x, pos.y, regions);
+    if (!hit) return;
+
+    const region = regions.find(r => r?.id === hit.regionId);
+    const uuid = region?.journalUuid ? String(region.journalUuid).trim() : '';
+    if (!uuid) return;
+
+    // Prevent side-effects (like token multi-select) once we decide to handle a region click
+    try {
+      event.stopPropagation?.();
+      event.stopImmediatePropagation?.();
+    } catch (e) {
+      // ignore
+    }
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      console.warn('GlobalMapRenderer | Failed to resolve region journal uuid', { uuid, error: e });
+      doc = null;
+    }
+
+    if (!doc) return;
+    const name = doc.documentName;
+    if (!['JournalEntry', 'JournalEntryPage'].includes(name)) return;
+
+    if (name === 'JournalEntryPage' && doc.parent?.sheet?.render) {
+      doc.parent.sheet.render(true);
+      return;
+    }
+
+    if (doc.sheet?.render) {
+      doc.sheet.render(true);
+    }
+  }
+
+  _handleRegionHover(event) {
+    const labelMode = this.vectorRegionsData?.settings?.labelMode || 'hover';
+    if (labelMode !== 'hover') {
+      if (this._regionHoverLabel) this._regionHoverLabel.visible = false;
+      if (this.regionHoverLayer) {
+        this.regionHoverLayer.clear();
+        this.regionHoverLayer.visible = false;
+      }
+      return;
+    }
+
+    if (!this.isVisible || !this._regionHoverLabel || !this.regionHoverLayer) {
+      return;
+    }
+
+    const regions = this.vectorRegionsData?.regions || [];
+    if (!Array.isArray(regions) || regions.length === 0) {
+      this._regionHoverLabel.visible = false;
+      this.regionHoverLayer.clear();
+      this.regionHoverLayer.visible = false;
+      return;
+    }
+
+    const pos = event?.data?.getLocalPosition?.(canvas.stage);
+    if (!pos) return;
+
+    const hit = this._findNearestRegionHit(pos.x, pos.y, regions);
+    if (!hit) {
+      this._regionHoverLabel.visible = false;
+      this.regionHoverLayer.clear();
+      this.regionHoverLayer.visible = false;
+      this._hoveredRegionId = null;
+      return;
+    }
+
+    const region = regions.find(r => r?.id === hit.regionId);
+    const anchor = this._regionLabelAnchors.get(hit.regionId);
+
+    if (!region?.name || !anchor) {
+      this._regionHoverLabel.visible = false;
+      this.regionHoverLayer.clear();
+      this.regionHoverLayer.visible = false;
+      this._hoveredRegionId = null;
+      return;
+    }
+
+    this._hoveredRegionId = hit.regionId;
+
+    // Label
+    this._regionHoverLabel.text = String(region.name);
+    this._regionHoverLabel.position.set(anchor.x, anchor.y);
+    this._regionHoverLabel.visible = true;
+
+    // Hover outline
+    const ptsRaw = Array.isArray(region?.points) ? region.points : [];
+    const pts = this._regionRenderPoints.get(hit.regionId) || ptsRaw;
+    if (pts.length >= 2) {
+      const strokeWidth = Number(region.strokeWidth) || 1;
+      const strokeColor = Number(region.strokeColor) || 0xFFFFFF;
+      const strokeAlpha = Number.isFinite(Number(region.strokeAlpha)) ? Math.max(0, Math.min(1, Number(region.strokeAlpha))) : 1;
+
+      const w = Math.max(1, strokeWidth + 2);
+      const a = Math.min(1, strokeAlpha + 0.2);
+
+      this.regionHoverLayer.clear();
+      this.regionHoverLayer.lineStyle(w, strokeColor, a);
+
+      if (region.closed && pts.length >= 3) {
+        const poly = [];
+        for (const p of pts) poly.push(p.x, p.y);
+        this.regionHoverLayer.drawPolygon(poly);
+      } else {
+        this.regionHoverLayer.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          this.regionHoverLayer.lineTo(pts[i].x, pts[i].y);
+        }
+      }
+
+      this.regionHoverLayer.visible = true;
+    } else {
+      this.regionHoverLayer.clear();
+      this.regionHoverLayer.visible = false;
+    }
+  }
+
+  _createRegionLabelText(text) {
+    const style = new PIXI.TextStyle({
+      fontFamily: 'Signika',
+      fontSize: 18,
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+
+    const t = new PIXI.Text(text, style);
+    t.name = 'globalMapRegionLabel';
+    if (t.anchor?.set) t.anchor.set(0.5);
+    return t;
+  }
+
+  _computePolygonCentroid(points) {
+    if (!points || points.length < 3) return null;
+
+    let area2 = 0;
+    let cx = 0;
+    let cy = 0;
+
+    for (let i = 0; i < points.length; i++) {
+      const p0 = points[i];
+      const p1 = points[(i + 1) % points.length];
+      const cross = p0.x * p1.y - p1.x * p0.y;
+      area2 += cross;
+      cx += (p0.x + p1.x) * cross;
+      cy += (p0.y + p1.y) * cross;
+    }
+
+    if (Math.abs(area2) < 1e-6) {
+      // Fallback: average
+      let sx = 0;
+      let sy = 0;
+      for (const p of points) {
+        sx += p.x;
+        sy += p.y;
+      }
+      return { x: sx / points.length, y: sy / points.length };
+    }
+
+    const area6 = area2 * 3;
+    return { x: cx / area6, y: cy / area6 };
+  }
+
+  _pointInPolygon(x, y, points) {
+    // Ray casting
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const xi = points[i].x;
+      const yi = points[i].y;
+      const xj = points[j].x;
+      const yj = points[j].y;
+
+      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / Math.max(1e-9, (yj - yi)) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  _findNearestRegionHit(x, y, regions) {
+    // Prefer inside hits; if none, allow near-border hits.
+    let bestInside = null;
+    let bestInsideDistSq = Infinity;
+
+    for (const region of regions) {
+      const ptsRaw = region?.points;
+      const pts = this._regionRenderPoints.get(region.id) || ptsRaw;
+      if (!pts || pts.length < 3 || !region?.closed) continue;
+
+      const rb = this._regionBounds.get(region.id);
+      if (rb) {
+        const pad = rb.pad ?? 0;
+        if (x < rb.minX - pad || x > rb.maxX + pad || y < rb.minY - pad || y > rb.maxY + pad) {
+          continue;
+        }
+      }
+
+      if (!this._pointInPolygon(x, y, pts)) {
+        continue;
+      }
+
+      // Tie-break: nearest edge (smaller = more specific)
+      let minEdgeDistSq = Infinity;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % pts.length];
+        const d2 = this._distancePointToSegmentSq(x, y, a.x, a.y, b.x, b.y);
+        if (d2 < minEdgeDistSq) minEdgeDistSq = d2;
+      }
+
+      if (minEdgeDistSq < bestInsideDistSq) {
+        bestInsideDistSq = minEdgeDistSq;
+        bestInside = { regionId: region.id, distSq: minEdgeDistSq };
+      }
+    }
+
+    if (bestInside) return bestInside;
+
+    let best = null;
+    let bestDistSq = Infinity;
+
+    for (const region of regions) {
+      const ptsRaw = region?.points;
+      const pts = this._regionRenderPoints.get(region.id) || ptsRaw;
+      if (!pts || pts.length < 2) continue;
+
+      const rb = this._regionBounds.get(region.id);
+      if (rb) {
+        const pad = rb.pad ?? 0;
+        if (x < rb.minX - pad || x > rb.maxX + pad || y < rb.minY - pad || y > rb.maxY + pad) {
+          continue;
+        }
+      }
+
+      const strokeWidth = Number(region.strokeWidth) || 1;
+      const threshold = strokeWidth / 2 + 6;
+      const thresholdSq = threshold * threshold;
+
+      // Segments: polyline, and if closed treat as polygon
+      const segCount = region.closed && pts.length >= 3 ? pts.length : (pts.length - 1);
+      for (let i = 0; i < segCount; i++) {
+        const p0 = pts[i];
+        const p1 = pts[(i + 1) % pts.length];
+        if (!p0 || !p1) continue;
+
+        const distSq = this._distancePointToSegmentSq(x, y, p0.x, p0.y, p1.x, p1.y);
+        if (distSq <= thresholdSq && distSq < bestDistSq) {
+          bestDistSq = distSq;
+          best = { regionId: region.id, distSq };
+        }
+      }
+    }
+
+    return best;
   }
 
   /**

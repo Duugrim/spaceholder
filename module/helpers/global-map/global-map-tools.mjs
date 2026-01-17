@@ -10,12 +10,13 @@ export class GlobalMapTools {
     this.renderer = renderer;
     this.processing = processing;
     this.isActive = false;
-    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'roughen', 'flatten', 'river-draw', 'river-edit'
+    this.currentTool = 'set-biome'; // 'set-biome', 'raise', 'lower', 'smooth', 'roughen', 'flatten', 'river-draw', 'river-edit', 'region-draw', 'region-edit'
 
     // UI selection (per tab). We use buttons instead of selects, so keep explicit state.
     this._selectedHeightsTool = 'raise';
     this._selectedBiomesTool = 'set-biome';
     this._selectedRiversTool = 'river-draw';
+    this._selectedRegionsTool = 'region-draw';
 
     this.brushRadius = 100;
     this.brushStrength = 0.5;
@@ -32,6 +33,22 @@ export class GlobalMapTools {
     this.riverDefaultPointWidth = 24;
     this.riverHandles = null; // PIXI.Graphics overlay for point handles
     this._riverDrag = null; // {riverId, pointIndex}
+
+    // ===== Vector Regions (new system) =====
+    // Stored separately in scene flags: scene.flags.spaceholder.globalMapRegions
+    this.vectorRegions = null; // {version:1, settings:{labelMode,clickAction,clickModifier}, regions:[...]}
+    this.vectorRegionsDirty = false;
+    this.selectedRegionId = null;
+    this.selectedRegionPointIndex = null;
+    this.regionHandles = null; // PIXI.Graphics overlay for point handles
+    this._regionDrag = null; // {regionId, pointIndex}
+
+    // Default style for newly created regions
+    this.regionDefaultFillColor = 0x2E7DFF;
+    this.regionDefaultFillAlpha = 0.18;
+    this.regionDefaultStrokeColor = 0x2E7DFF;
+    this.regionDefaultStrokeAlpha = 0.9;
+    this.regionDefaultStrokeWidth = 3;
 
     // Biome tools settings (biomes are explicit IDs ordered by renderRank)
     this.setBiomeId = this.processing?.biomeResolver?.getDefaultBiomeId?.() ?? 17;
@@ -188,6 +205,17 @@ export class GlobalMapTools {
       this.riverHandles = null;
     }
 
+    // Region editor overlay
+    this._regionDrag = null;
+    if (this.regionHandles) {
+      try {
+        this.regionHandles.destroy();
+      } catch (e) {
+        // ignore
+      }
+      this.regionHandles = null;
+    }
+
     this.hideToolsUI();
 
     console.log('GlobalMapTools | ✓ Deactivated');
@@ -212,6 +240,19 @@ export class GlobalMapTools {
       this.setTool(selectedTool);
       // Read single cell mode from checkbox
       this.singleCellMode = $('#biome-single-cell-mode').prop('checked');
+    } else if ($('#regions-tab').is(':visible')) {
+      // Regions tab is active (vector regions editor)
+      const selectedTool = this._selectedRegionsTool || 'region-draw';
+      this.setTool(selectedTool);
+
+      // Region editor doesn't use grid-cell highlighting/cursor
+      this.singleCellMode = false;
+
+      // Ensure we have regions data in memory
+      this._ensureVectorRegionsInitialized();
+
+      // Ensure handle overlay exists
+      this._ensureRegionHandles();
     } else if ($('#rivers-tab').is(':visible')) {
       // Rivers tab is active (vector rivers editor)
       const selectedTool = this._selectedRiversTool || 'river-draw';
@@ -252,6 +293,7 @@ export class GlobalMapTools {
 
     this.isBrushActive = false;
     this._riverDrag = null;
+    this._regionDrag = null;
 
     this.clearOverlayPreview();
     this.clearCellHighlight();
@@ -262,6 +304,15 @@ export class GlobalMapTools {
         this.riverHandles.visible = false;
       } catch (e) {
         this.riverHandles = null;
+      }
+    }
+
+    if (this.regionHandles) {
+      try {
+        this.regionHandles.clear();
+        this.regionHandles.visible = false;
+      } catch (e) {
+        this.regionHandles = null;
       }
     }
 
@@ -276,7 +327,8 @@ export class GlobalMapTools {
     const validTools = [
       'raise', 'lower', 'smooth', 'roughen', 'flatten',
       'set-biome',
-      'river-draw', 'river-edit'
+      'river-draw', 'river-edit',
+      'region-draw', 'region-edit'
     ];
     if (validTools.includes(tool)) {
       this.currentTool = tool;
@@ -307,6 +359,10 @@ export class GlobalMapTools {
     return this.currentTool === 'river-draw' || this.currentTool === 'river-edit';
   }
 
+  _isRegionTool() {
+    return this.currentTool === 'region-draw' || this.currentTool === 'region-edit';
+  }
+
   _escapeHtml(text) {
     const s = String(text ?? '');
     try {
@@ -318,8 +374,93 @@ export class GlobalMapTools {
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
+      .replaceAll('\"', '&quot;')
       .replaceAll("'", '&#039;');
+  }
+
+  _intToCssHex(colorInt) {
+    const v = Number(colorInt);
+    if (!Number.isFinite(v)) return '#000000';
+    return `#${(v & 0xFFFFFF).toString(16).padStart(6, '0')}`;
+  }
+
+  _cssHexToInt(value, fallback = 0) {
+    const s0 = String(value ?? '').trim();
+    if (!s0) return fallback;
+
+    let s = s0;
+    if (s.startsWith('#')) s = s.slice(1);
+    if (s.startsWith('0x') || s.startsWith('0X')) s = s.slice(2);
+    s = s.replace(/[^0-9a-fA-F]/g, '');
+
+    if (s.length === 3) {
+      s = s.split('').map(ch => ch + ch).join('');
+    }
+    if (s.length !== 6) return fallback;
+
+    const n = parseInt(s, 16);
+    if (!Number.isFinite(n)) return fallback;
+    return n & 0xFFFFFF;
+  }
+
+  _normalizeUuid(raw) {
+    const str = String(raw ?? '').trim();
+    if (!str) return '';
+    const match = str.match(/@UUID\[(.+?)\]/);
+    return (match?.[1] ?? str).trim();
+  }
+
+  _extractUuidFromDropEvent(event) {
+    const dt = event?.dataTransfer;
+    if (!dt) return '';
+
+    const rawCandidates = [
+      dt.getData('application/json'),
+      dt.getData('text/plain'),
+    ].filter(Boolean);
+
+    for (const raw of rawCandidates) {
+      try {
+        const data = JSON.parse(raw);
+        const uuid = data?.uuid || data?.data?.uuid;
+        if (uuid) return this._normalizeUuid(uuid);
+      } catch (e) {
+        const uuid = this._normalizeUuid(raw);
+        if (uuid) return uuid;
+      }
+    }
+
+    return '';
+  }
+
+  async _openJournalUuid(rawUuid) {
+    const uuid = this._normalizeUuid(rawUuid);
+    if (!uuid) return false;
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc) {
+      ui.notifications?.warn?.('Документ по UUID не найден');
+      return false;
+    }
+
+    if (doc.documentName === 'JournalEntryPage' && doc.parent?.sheet?.render) {
+      doc.parent.sheet.render(true);
+      return true;
+    }
+
+    if (doc.documentName === 'JournalEntry' && doc.sheet?.render) {
+      doc.sheet.render(true);
+      return true;
+    }
+
+    ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+    return false;
   }
 
   async _confirmDialog(title, htmlContent) {
@@ -1047,6 +1188,678 @@ export class GlobalMapTools {
     this._riverDrag = null;
   }
 
+  // ==========================
+  // Vector Regions editor
+  // ==========================
+
+  _applyVectorRegionsToRenderer() {
+    if (!this.renderer?.setVectorRegionsData) return;
+
+    this.renderer.setVectorRegionsData(this.vectorRegions);
+
+    // renderer normalizes and may replace object references
+    this.vectorRegions = this.renderer.vectorRegionsData;
+  }
+
+  _ensureVectorRegionsInitialized() {
+    if (this.vectorRegions) return this.vectorRegions;
+
+    const scene = canvas?.scene;
+    let raw = null;
+    try {
+      raw = scene?.getFlag?.('spaceholder', 'globalMapRegions');
+    } catch (e) {
+      raw = null;
+    }
+
+    // Default structure (in case renderer is not available)
+    this.vectorRegions = {
+      version: 1,
+      settings: {
+        labelMode: 'hover',
+        clickAction: 'openJournal',
+        clickModifier: 'ctrl',
+        smoothIterations: 1,
+      },
+      regions: [],
+    };
+
+    // Prefer renderer's normalization (single source of truth)
+    if (this.renderer?.setVectorRegionsData) {
+      this.renderer.setVectorRegionsData(raw);
+      this.vectorRegions = this.renderer.vectorRegionsData;
+    } else if (raw && typeof raw === 'object') {
+      this.vectorRegions = raw;
+    }
+
+    if (!this.vectorRegions || typeof this.vectorRegions !== 'object') {
+      this.vectorRegions = {
+        version: 1,
+        settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 1 },
+        regions: [],
+      };
+    }
+
+    if (!this.vectorRegions.settings || typeof this.vectorRegions.settings !== 'object') {
+      this.vectorRegions.settings = { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 1 };
+    }
+
+    if (!['off', 'hover', 'always'].includes(this.vectorRegions.settings.labelMode)) {
+      this.vectorRegions.settings.labelMode = 'hover';
+    }
+
+    if (!['none', 'openJournal'].includes(this.vectorRegions.settings.clickAction)) {
+      this.vectorRegions.settings.clickAction = 'openJournal';
+    }
+
+    if (!['none', 'ctrl', 'alt', 'shift'].includes(this.vectorRegions.settings.clickModifier)) {
+      this.vectorRegions.settings.clickModifier = 'ctrl';
+    }
+
+    const smoothIterationsRaw = Number.parseInt(this.vectorRegions.settings.smoothIterations, 10);
+    this.vectorRegions.settings.smoothIterations = Number.isFinite(smoothIterationsRaw)
+      ? Math.max(0, Math.min(4, smoothIterationsRaw))
+      : 1;
+
+    if (!Array.isArray(this.vectorRegions.regions)) {
+      this.vectorRegions.regions = [];
+    }
+
+    // Default selection
+    if (!this.selectedRegionId && this.vectorRegions.regions.length) {
+      this.selectedRegionId = String(this.vectorRegions.regions[0].id);
+    }
+
+    return this.vectorRegions;
+  }
+
+  _ensureRegionHandles() {
+    const desiredParent = canvas?.interface || canvas?.stage;
+
+    if (this.regionHandles) {
+      // Region handles can get destroyed or detached when the canvas/interface is rebuilt.
+      // Try to reattach and ensure it's still usable; if that fails, recreate.
+      try {
+        if (desiredParent && this.regionHandles.parent !== desiredParent) {
+          this.regionHandles.parent?.removeChild?.(this.regionHandles);
+          desiredParent.addChild(this.regionHandles);
+        }
+
+        // Ensure it's still usable (Graphics can become a dead ref after destroy)
+        this.regionHandles.clear();
+        return;
+      } catch (e) {
+        try {
+          this.regionHandles.destroy();
+        } catch (err) {
+          // ignore
+        }
+        this.regionHandles = null;
+      }
+    }
+
+    this.regionHandles = new PIXI.Graphics();
+    this.regionHandles.name = 'globalMapRegionHandles';
+    this.regionHandles.visible = false;
+
+    // Put handles on interface layer so they don't get baked into exports
+    if (desiredParent) {
+      desiredParent.addChild(this.regionHandles);
+    }
+  }
+
+  _renderRegionHandles() {
+    this._ensureRegionHandles();
+    if (!this.regionHandles) return;
+
+    try {
+      this.regionHandles.clear();
+    } catch (e) {
+      // Recreate handles if they were destroyed by a canvas rebuild
+      this.regionHandles = null;
+      this._ensureRegionHandles();
+      if (!this.regionHandles) return;
+      this.regionHandles.clear();
+    }
+
+    const shouldShow = this.isBrushActive && this._isRegionTool();
+    this.regionHandles.visible = shouldShow;
+    if (!shouldShow) return;
+
+    this._ensureVectorRegionsInitialized();
+
+    const regions = Array.isArray(this.vectorRegions?.regions) ? this.vectorRegions.regions : [];
+    for (const region of regions) {
+      const pts = Array.isArray(region?.points) ? region.points : [];
+      const isSelectedRegion = region?.id === this.selectedRegionId;
+
+      // Draw outline / polyline
+      if (pts.length >= 2) {
+        this.regionHandles.lineStyle(2, isSelectedRegion ? 0xffffff : 0xaaaaaa, isSelectedRegion ? 0.7 : 0.35);
+        this.regionHandles.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          this.regionHandles.lineTo(pts[i].x, pts[i].y);
+        }
+        if (region?.closed && pts.length >= 3) {
+          this.regionHandles.lineTo(pts[0].x, pts[0].y);
+        }
+      }
+
+      // Draw points
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (!p) continue;
+
+        const isSelectedPoint = isSelectedRegion && i === this.selectedRegionPointIndex;
+
+        const radius = isSelectedPoint ? 7 : 5;
+        const color = isSelectedPoint ? 0xffff00 : (isSelectedRegion ? 0xffffff : 0x888888);
+        const alpha = isSelectedRegion ? 0.95 : 0.6;
+
+        this.regionHandles.lineStyle(2, 0x000000, alpha);
+        this.regionHandles.beginFill(color, alpha);
+        this.regionHandles.drawCircle(p.x, p.y, radius);
+        this.regionHandles.endFill();
+      }
+    }
+  }
+
+  _refreshRegionsUI() {
+    if (!$('#global-map-tools-ui').length) return;
+
+    this._ensureVectorRegionsInitialized();
+
+    const regions = Array.isArray(this.vectorRegions?.regions) ? this.vectorRegions.regions : [];
+    const select = $('#global-map-region-select');
+
+    // Preserve selection when possible
+    const existing = String(this.selectedRegionId || '');
+    select.empty();
+
+    if (regions.length === 0) {
+      select.append($('<option></option>').attr('value', '').text('(no regions)'));
+      this.selectedRegionId = null;
+    } else {
+      for (const r of regions) {
+        const id = String(r.id);
+        const name = String(r.name || id);
+        select.append($('<option></option>').attr('value', id).text(name));
+      }
+
+      if (existing && regions.some(r => String(r.id) === existing)) {
+        select.val(existing);
+        this.selectedRegionId = existing;
+      } else {
+        this.selectedRegionId = String(regions[0].id);
+        select.val(this.selectedRegionId);
+      }
+    }
+
+    // Settings controls
+    $('#region-label-mode').val(this.vectorRegions.settings?.labelMode || 'hover');
+    $('#region-smooth-iterations').val(String(this.vectorRegions.settings?.smoothIterations ?? 1));
+
+    const region = this._getSelectedRegion();
+    const hasRegion = !!region;
+
+    // Buttons enabled/disabled
+    $('#region-delete').prop('disabled', !hasRegion);
+    $('#region-rename').prop('disabled', !hasRegion);
+    $('#region-finish').prop('disabled', !hasRegion);
+
+    // Style + journal fields
+    const setDisabled = (sel, disabled) => {
+      try { $(sel).prop('disabled', disabled); } catch (e) { /* ignore */ }
+    };
+
+    if (!hasRegion) {
+      setDisabled('#region-fill-color', true);
+      setDisabled('#region-fill-alpha', true);
+      setDisabled('#region-stroke-color', true);
+      setDisabled('#region-stroke-alpha', true);
+      setDisabled('#region-stroke-width', true);
+      setDisabled('#region-journal-uuid', true);
+      setDisabled('#region-journal-open', true);
+      setDisabled('#region-journal-clear', true);
+
+      $('#region-fill-alpha-value').text('-');
+      $('#region-stroke-alpha-value').text('-');
+      $('#region-stroke-width-value').text('-');
+      $('#region-journal-uuid').val('');
+    } else {
+      setDisabled('#region-fill-color', false);
+      setDisabled('#region-fill-alpha', false);
+      setDisabled('#region-stroke-color', false);
+      setDisabled('#region-stroke-alpha', false);
+      setDisabled('#region-stroke-width', false);
+      setDisabled('#region-journal-uuid', false);
+
+      const fillAlpha = Math.max(0, Math.min(1, Number(region.fillAlpha) || 0));
+      const strokeAlpha = Math.max(0, Math.min(1, Number(region.strokeAlpha) || 0));
+      const strokeWidth = Math.max(0.1, Number(region.strokeWidth) || 1);
+
+      $('#region-fill-color').val(this._intToCssHex(region.fillColor));
+      $('#region-fill-alpha').val(String(fillAlpha));
+      $('#region-fill-alpha-value').text(fillAlpha.toFixed(2));
+
+      $('#region-stroke-color').val(this._intToCssHex(region.strokeColor));
+      $('#region-stroke-alpha').val(String(strokeAlpha));
+      $('#region-stroke-alpha-value').text(strokeAlpha.toFixed(2));
+
+      $('#region-stroke-width').val(String(Math.round(strokeWidth)));
+      $('#region-stroke-width-value').text(String(Math.round(strokeWidth)));
+
+      const uuid = String(region.journalUuid || '').trim();
+      $('#region-journal-uuid').val(uuid);
+      setDisabled('#region-journal-open', !uuid);
+      setDisabled('#region-journal-clear', !uuid);
+    }
+
+    // Save indicator
+    $('#region-save').text(this.vectorRegionsDirty ? 'Save regions*' : 'Save regions');
+  }
+
+  _onRegionsTabShown() {
+    this._ensureVectorRegionsInitialized();
+    this._applyVectorRegionsToRenderer();
+    this._refreshRegionsUI();
+    this._renderRegionHandles();
+  }
+
+  _getSelectedRegion() {
+    this._ensureVectorRegionsInitialized();
+
+    const regions = Array.isArray(this.vectorRegions?.regions) ? this.vectorRegions.regions : [];
+    if (!this.selectedRegionId) return null;
+
+    return regions.find(r => String(r.id) === String(this.selectedRegionId)) || null;
+  }
+
+  _makeRegionId() {
+    try {
+      if (foundry?.utils?.randomID) return foundry.utils.randomID();
+    } catch (e) {
+      // ignore
+    }
+    return `region_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  _createRegionDefaultStyle() {
+    return {
+      fillColor: this.regionDefaultFillColor,
+      fillAlpha: this.regionDefaultFillAlpha,
+      strokeColor: this.regionDefaultStrokeColor,
+      strokeAlpha: this.regionDefaultStrokeAlpha,
+      strokeWidth: this.regionDefaultStrokeWidth,
+    };
+  }
+
+  async createNewRegion() {
+    this._ensureVectorRegionsInitialized();
+
+    const id = this._makeRegionId();
+    const n = (this.vectorRegions.regions?.length || 0) + 1;
+
+    const style = this._createRegionDefaultStyle();
+
+    const region = {
+      id,
+      name: `Region ${n}`,
+      points: [],
+      closed: false,
+      ...style,
+      journalUuid: '',
+    };
+
+    this.vectorRegions.regions.push(region);
+    this.selectedRegionId = id;
+    this.selectedRegionPointIndex = null;
+    this.vectorRegionsDirty = true;
+
+    this._applyVectorRegionsToRenderer();
+  }
+
+  async deleteSelectedRegion() {
+    const region = this._getSelectedRegion();
+    if (!region) return;
+
+    const ok = await this._confirmDialog('Delete Region', `<p>Delete region <b>${this._escapeHtml(region.name)}</b>?</p>`);
+    if (!ok) return;
+
+    this._ensureVectorRegionsInitialized();
+    const regions = this.vectorRegions.regions;
+    const idx = regions.findIndex(r => String(r.id) === String(region.id));
+    if (idx >= 0) {
+      regions.splice(idx, 1);
+    }
+
+    // Update selection
+    if (regions.length === 0) {
+      this.selectedRegionId = null;
+      this.selectedRegionPointIndex = null;
+    } else {
+      const next = regions[Math.min(idx, regions.length - 1)];
+      this.selectedRegionId = String(next.id);
+      this.selectedRegionPointIndex = null;
+    }
+
+    this.vectorRegionsDirty = true;
+    this._applyVectorRegionsToRenderer();
+  }
+
+  async renameSelectedRegion() {
+    const region = this._getSelectedRegion();
+    if (!region) return;
+
+    const currentName = String(region.name || '');
+    const newNameRaw = await this._promptDialog('Rename Region', 'Name', currentName);
+
+    if (typeof newNameRaw !== 'string') return;
+    const newName = newNameRaw.trim();
+    if (!newName) return;
+
+    region.name = newName;
+    this.vectorRegionsDirty = true;
+    this._applyVectorRegionsToRenderer();
+  }
+
+  async finishSelectedRegion() {
+    const region = this._getSelectedRegion();
+    if (!region) return;
+
+    const pts = Array.isArray(region.points) ? region.points : [];
+    if (pts.length < 3) {
+      ui.notifications?.warn?.('Region needs at least 3 points to close');
+      return;
+    }
+
+    region.closed = true;
+    this.vectorRegionsDirty = true;
+
+    // Convenience: switch to Edit
+    this._selectedRegionsTool = 'region-edit';
+    this.setTool('region-edit');
+    this.selectedRegionPointIndex = null;
+
+    this._applyVectorRegionsToRenderer();
+  }
+
+  async saveVectorRegions() {
+    this._ensureVectorRegionsInitialized();
+
+    const scene = canvas?.scene;
+    if (!scene?.setFlag) return;
+
+    try {
+      await scene.setFlag('spaceholder', 'globalMapRegions', this.vectorRegions);
+      this.vectorRegionsDirty = false;
+      ui.notifications?.info?.('Regions saved');
+      console.log('GlobalMapTools | ✓ Regions saved to scene');
+    } catch (error) {
+      console.error('GlobalMapTools | Failed to save regions:', error);
+      ui.notifications?.error?.(`Failed to save regions: ${error.message}`);
+    }
+  }
+
+  _findNearestRegionPoint(x, y, maxDist = 14) {
+    this._ensureVectorRegionsInitialized();
+
+    const regions = Array.isArray(this.vectorRegions?.regions) ? this.vectorRegions.regions : [];
+    const maxDistSq = maxDist * maxDist;
+
+    // Prefer selected region if any
+    const ordered = [];
+    const sel = this._getSelectedRegion();
+    if (sel) ordered.push(sel);
+    for (const r of regions) {
+      if (sel && String(r.id) === String(sel.id)) continue;
+      ordered.push(r);
+    }
+
+    let best = null;
+    let bestDistSq = maxDistSq;
+
+    for (const region of ordered) {
+      const pts = Array.isArray(region?.points) ? region.points : [];
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (!p) continue;
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= bestDistSq) {
+          bestDistSq = d2;
+          best = { regionId: String(region.id), pointIndex: i, distSq: d2 };
+        }
+      }
+    }
+
+    return best;
+  }
+
+  _findNearestRegionSegment(x, y, maxDist = 22) {
+    this._ensureVectorRegionsInitialized();
+
+    const regions = Array.isArray(this.vectorRegions?.regions) ? this.vectorRegions.regions : [];
+    const maxDistSq = maxDist * maxDist;
+
+    // Prefer selected region first
+    const ordered = [];
+    const sel = this._getSelectedRegion();
+    if (sel) ordered.push(sel);
+    for (const r of regions) {
+      if (sel && String(r.id) === String(sel.id)) continue;
+      ordered.push(r);
+    }
+
+    let best = null;
+    let bestDistSq = maxDistSq;
+
+    for (const region of ordered) {
+      const pts = Array.isArray(region?.points) ? region.points : [];
+      if (pts.length < 2) continue;
+
+      const segCount = region?.closed && pts.length >= 3 ? pts.length : (pts.length - 1);
+      for (let i = 0; i < segCount; i++) {
+        const p0 = pts[i];
+        const p1 = pts[(i + 1) % pts.length];
+        if (!p0 || !p1) continue;
+
+        const hit = this._closestPointOnSegment(x, y, p0.x, p0.y, p1.x, p1.y);
+        if (hit.distSq <= bestDistSq) {
+          bestDistSq = hit.distSq;
+          best = {
+            regionId: String(region.id),
+            segmentIndex: i,
+            t: hit.t,
+            x: hit.x,
+            y: hit.y,
+            distSq: hit.distSq,
+          };
+        }
+      }
+    }
+
+    return best;
+  }
+
+  _deleteRegionPoint(regionId, pointIndex) {
+    this._ensureVectorRegionsInitialized();
+
+    const region = this.vectorRegions.regions.find(r => String(r.id) === String(regionId));
+    if (!region) return false;
+
+    const pts = Array.isArray(region.points) ? region.points : [];
+    if (pointIndex < 0 || pointIndex >= pts.length) return false;
+
+    pts.splice(pointIndex, 1);
+
+    // If region becomes invalid for polygon, open it
+    if (region.closed && pts.length < 3) {
+      region.closed = false;
+    }
+
+    // Update selection indices if needed
+    if (String(this.selectedRegionId) === String(regionId)) {
+      if (this.selectedRegionPointIndex === pointIndex) {
+        this.selectedRegionPointIndex = null;
+      } else if (this.selectedRegionPointIndex !== null && this.selectedRegionPointIndex > pointIndex) {
+        this.selectedRegionPointIndex -= 1;
+      }
+    }
+
+    region.points = pts;
+    return true;
+  }
+
+  _onRegionPointerDown(x, y, event) {
+    this._ensureVectorRegionsInitialized();
+    this._ensureRegionHandles();
+
+    const oe = event?.data?.originalEvent || {};
+    const alt = !!oe.altKey;
+    const ctrl = !!oe.ctrlKey || !!oe.metaKey;
+
+    if (this.currentTool === 'region-draw') {
+      if (!this.selectedRegionId) {
+        // Create one automatically for convenience
+        const id = this._makeRegionId();
+        const n = (this.vectorRegions.regions?.length || 0) + 1;
+        const style = this._createRegionDefaultStyle();
+        this.vectorRegions.regions.push({
+          id,
+          name: `Region ${n}`,
+          points: [],
+          closed: false,
+          ...style,
+          journalUuid: '',
+        });
+        this.selectedRegionId = id;
+      }
+
+      const region = this._getSelectedRegion();
+      if (!region) return;
+
+      if (region.closed) {
+        ui.notifications?.warn?.('Region is already closed. Create a new one or switch to Edit.');
+        return;
+      }
+
+      if (!Array.isArray(region.points)) region.points = [];
+      region.points.push({ x, y });
+
+      this.selectedRegionPointIndex = region.points.length - 1;
+      this.vectorRegionsDirty = true;
+
+      this._applyVectorRegionsToRenderer();
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
+      return;
+    }
+
+    // Edit mode
+    if (this.currentTool !== 'region-edit') return;
+
+    if (ctrl) {
+      const hit = this._findNearestRegionPoint(x, y, 14);
+      if (hit) {
+        this.selectedRegionId = hit.regionId;
+        this.selectedRegionPointIndex = hit.pointIndex;
+
+        if (this._deleteRegionPoint(hit.regionId, hit.pointIndex)) {
+          this.vectorRegionsDirty = true;
+          this._applyVectorRegionsToRenderer();
+        }
+
+        this._renderRegionHandles();
+        this._refreshRegionsUI();
+      }
+      return;
+    }
+
+    if (alt) {
+      const seg = this._findNearestRegionSegment(x, y, 22);
+      if (seg) {
+        this.selectedRegionId = seg.regionId;
+        const region = this._getSelectedRegion();
+        if (!region || !Array.isArray(region.points) || region.points.length < 2) return;
+
+        const insertIndex = seg.segmentIndex + 1;
+        region.points.splice(insertIndex, 0, { x: seg.x, y: seg.y });
+
+        this.selectedRegionPointIndex = insertIndex;
+        this._regionDrag = { regionId: seg.regionId, pointIndex: insertIndex };
+
+        this.vectorRegionsDirty = true;
+        this._applyVectorRegionsToRenderer();
+        this._renderRegionHandles();
+        this._refreshRegionsUI();
+      }
+      return;
+    }
+
+    // Select/drag point
+    const hitPoint = this._findNearestRegionPoint(x, y, 14);
+    if (hitPoint) {
+      this.selectedRegionId = hitPoint.regionId;
+      this.selectedRegionPointIndex = hitPoint.pointIndex;
+      this._regionDrag = { regionId: hitPoint.regionId, pointIndex: hitPoint.pointIndex };
+
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
+      return;
+    }
+
+    // Select region by clicking near segment
+    const hitSeg = this._findNearestRegionSegment(x, y, 22);
+    if (hitSeg) {
+      this.selectedRegionId = hitSeg.regionId;
+      this.selectedRegionPointIndex = null;
+      this._regionDrag = null;
+
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
+      return;
+    }
+
+    // Clicked empty space
+    this.selectedRegionPointIndex = null;
+    this._regionDrag = null;
+    this._renderRegionHandles();
+    this._refreshRegionsUI();
+  }
+
+  _onRegionPointerMove(x, y, _event) {
+    if (!this._regionDrag) return;
+
+    this._ensureVectorRegionsInitialized();
+
+    const region = this.vectorRegions.regions.find(r => String(r.id) === String(this._regionDrag.regionId));
+    if (!region || !Array.isArray(region.points)) {
+      this._regionDrag = null;
+      return;
+    }
+
+    const idx = this._regionDrag.pointIndex;
+    const p = region.points[idx];
+    if (!p) {
+      this._regionDrag = null;
+      return;
+    }
+
+    p.x = x;
+    p.y = y;
+
+    this.vectorRegionsDirty = true;
+
+    this._applyVectorRegionsToRenderer();
+    this._renderRegionHandles();
+  }
+
+  _onRegionPointerUp(_event) {
+    this._regionDrag = null;
+  }
+
   /**
    * Set up canvas event listeners
    */
@@ -1090,6 +1903,12 @@ export class GlobalMapTools {
       this.isMouseDown = true;
       this.lastPosition = pos;
 
+      // Vector regions editor
+      if (this._isRegionTool()) {
+        this._onRegionPointerDown(pos.x, pos.y, event);
+        return;
+      }
+
       // Vector rivers editor
       if (this._isRiverTool()) {
         this._onRiverPointerDown(pos.x, pos.y, event);
@@ -1112,6 +1931,12 @@ export class GlobalMapTools {
       if (!this.isActive) return;
 
       const pos = event.data.getLocalPosition(stage);
+
+      // Vector regions editor (dragging)
+      if (this.isBrushActive && this._isRegionTool()) {
+        this._onRegionPointerMove(pos.x, pos.y, event);
+        return;
+      }
 
       // Vector rivers editor (dragging)
       if (this.isBrushActive && this._isRiverTool()) {
@@ -1149,6 +1974,12 @@ export class GlobalMapTools {
       const wasMouseDown = this.isMouseDown;
       this.isMouseDown = false;
       this.lastPosition = null;
+
+      // Vector regions editor
+      if (this._isRegionTool()) {
+        this._onRegionPointerUp(event);
+        return;
+      }
 
       // Vector rivers editor
       if (this._isRiverTool()) {
@@ -1254,6 +2085,7 @@ export class GlobalMapTools {
     this.affectedCells = null;
     this._strokeHasChanges = false;
     this._riverDrag = null;
+    this._regionDrag = null;
 
     // If the scene changed while tools were active, exit edit mode to avoid editing the wrong scene.
     if (this._activeSceneId !== newSceneId) {
@@ -1282,6 +2114,12 @@ export class GlobalMapTools {
     if (this._isRiverTool()) {
       this._ensureRiverHandles();
       this._renderRiverHandles();
+    }
+
+    // Region handles live on interface/stage; ensure they are reattached if region tool is active
+    if (this._isRegionTool()) {
+      this._ensureRegionHandles();
+      this._renderRegionHandles();
     }
 
     this.updateBrushCursorGraphics();
@@ -2138,8 +2976,8 @@ export class GlobalMapTools {
     if (!this.brushCursor) return;
 
     try {
-      // River editor doesn't use the brush cursor
-      if (this._isRiverTool()) {
+      // River/Region editors don't use the brush cursor
+      if (this._isRiverTool() || this._isRegionTool()) {
         this.brushCursor.clear();
         return;
       }
@@ -2203,9 +3041,10 @@ export class GlobalMapTools {
     $('#brush-toggle').text(buttonText).css('background', buttonColor);
     $('#biome-brush-toggle').text(buttonText).css('background', buttonColor);
     $('#river-brush-toggle').text(buttonText).css('background', buttonColor);
+    $('#region-brush-toggle').text(buttonText).css('background', buttonColor);
     
     // Disable/enable tool selection buttons (tool/mode)
-    const toolButtons = $('#global-map-height-tool-buttons button, #global-map-biome-tool-buttons button, #global-map-river-mode-buttons button');
+    const toolButtons = $('#global-map-height-tool-buttons button, #global-map-biome-tool-buttons button, #global-map-river-mode-buttons button, #global-map-region-mode-buttons button');
     if (toolButtons.length) {
       toolButtons.prop('disabled', isActive);
       toolButtons.css('opacity', isActive ? '0.6' : '1');
@@ -2217,17 +3056,19 @@ export class GlobalMapTools {
       $('#tab-brush').css('pointer-events', 'none').css('opacity', '0.5');
       $('#tab-biomes').css('pointer-events', 'none').css('opacity', '0.5');
       $('#tab-rivers').css('pointer-events', 'none').css('opacity', '0.5');
+      $('#tab-regions').css('pointer-events', 'none').css('opacity', '0.5');
       $('#tab-global').css('pointer-events', 'none').css('opacity', '0.5');
     } else {
       $('#tab-brush').css('pointer-events', 'auto').css('opacity', '1');
       $('#tab-biomes').css('pointer-events', 'auto').css('opacity', '1');
       $('#tab-rivers').css('pointer-events', 'auto').css('opacity', '1');
+      $('#tab-regions').css('pointer-events', 'auto').css('opacity', '1');
       $('#tab-global').css('pointer-events', 'auto').css('opacity', '1');
     }
     
     // Update cursor visibility
     if (this.brushCursor) {
-      this.brushCursor.visible = isActive && !this.singleCellMode && !this._isRiverTool();
+      this.brushCursor.visible = isActive && !this.singleCellMode && !this._isRiverTool() && !this._isRegionTool();
     }
 
     // River editor handles overlay
@@ -2240,6 +3081,20 @@ export class GlobalMapTools {
           this.riverHandles.visible = false;
         } catch (e) {
           this.riverHandles = null;
+        }
+      }
+    }
+
+    // Region editor handles overlay
+    if (this.regionHandles || (isActive && this._isRegionTool())) {
+      if (isActive && this._isRegionTool()) {
+        this._renderRegionHandles();
+      } else if (this.regionHandles) {
+        try {
+          this.regionHandles.clear();
+          this.regionHandles.visible = false;
+        } catch (e) {
+          this.regionHandles = null;
         }
       }
     }
@@ -2317,6 +3172,9 @@ export class GlobalMapTools {
           </button>
           <button id="tab-rivers" data-tab="rivers" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
             Rivers
+          </button>
+          <button id="tab-regions" data-tab="regions" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
+            Regions
           </button>
           <button id="tab-global" data-tab="global" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
             Global
@@ -2546,6 +3404,92 @@ export class GlobalMapTools {
 
           <button id="river-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
             Activate River Editor
+          </button>
+        </div>
+
+        <div id="regions-tab" style="display: none;">
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Region:</label>
+            <select id="global-map-region-select" style="width: 100%; padding: 5px;"></select>
+          </div>
+
+          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button id="region-new" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">New</button>
+            <button id="region-rename" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Rename</button>
+            <button id="region-delete" style="flex: 1; padding: 8px; background: #883333; border: none; color: white; border-radius: 3px; cursor: pointer;">Delete</button>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Mode:</label>
+            <div id="global-map-region-mode-buttons" style="display: flex; gap: 4px;">
+              <button type="button" data-tool="region-draw" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Draw (points)</button>
+              <button type="button" data-tool="region-edit" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Edit</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Labels:</label>
+            <select id="region-label-mode" style="width: 100%; padding: 5px;">
+              <option value="hover" selected>Hover</option>
+              <option value="always">Always</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Smoothing:</label>
+            <select id="region-smooth-iterations" style="width: 100%; padding: 5px;">
+              <option value="0">Off (exact)</option>
+              <option value="1" selected>Low</option>
+              <option value="2">Medium</option>
+              <option value="3">High</option>
+              <option value="4">Very High</option>
+            </select>
+            <div style="font-size: 10px; color: #aaa; margin-top: 4px;">Сглаживание влияет только на отображение/клик; точки не меняются.</div>
+          </div>
+
+          <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px;">Fill</label>
+            <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+              <input type="color" id="region-fill-color" value="#2e7dff" style="width: 44px; height: 28px; padding: 0; border: none; background: transparent;">
+              <div style="flex: 1; font-size: 10px; color: #aaa;">Alpha: <span id="region-fill-alpha-value">${this.regionDefaultFillAlpha.toFixed(2)}</span></div>
+            </div>
+            <input type="range" id="region-fill-alpha" min="0" max="1" step="0.05" value="${this.regionDefaultFillAlpha}" style="width: 100%;">
+          </div>
+
+          <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px;">Stroke</label>
+            <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+              <input type="color" id="region-stroke-color" value="#2e7dff" style="width: 44px; height: 28px; padding: 0; border: none; background: transparent;">
+              <div style="flex: 1; font-size: 10px; color: #aaa;">Alpha: <span id="region-stroke-alpha-value">${this.regionDefaultStrokeAlpha.toFixed(2)}</span></div>
+            </div>
+            <input type="range" id="region-stroke-alpha" min="0" max="1" step="0.05" value="${this.regionDefaultStrokeAlpha}" style="width: 100%; margin-bottom: 8px;">
+            <div style="font-size: 10px; color: #aaa; margin-bottom: 4px;">Width: <span id="region-stroke-width-value">${Math.round(this.regionDefaultStrokeWidth)}</span>px</div>
+            <input type="range" id="region-stroke-width" min="1" max="40" step="1" value="${Math.round(this.regionDefaultStrokeWidth)}" style="width: 100%;">
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Journal UUID (optional):</label>
+            <input type="text" id="region-journal-uuid" placeholder="Drag&drop Journal сюда или вставьте UUID" style="width: 100%; padding: 5px;">
+            <div style="display: flex; gap: 5px; margin-top: 6px;">
+              <button id="region-journal-open" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Open</button>
+              <button id="region-journal-clear" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Clear</button>
+            </div>
+            <div style="font-size: 10px; color: #aaa; margin-top: 4px;">Tip: Ctrl+Click on a region opens its Journal (outside editor).</div>
+          </div>
+
+          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button id="region-finish" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Finish</button>
+            <button id="region-save" style="flex: 1; padding: 8px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Save regions</button>
+          </div>
+
+          <div style="font-size: 10px; color: #aaa; line-height: 1.3; margin-bottom: 10px;">
+            <div><b>Draw:</b> click to add points.</div>
+            <div><b>Edit:</b> drag point to move; <b>Alt+click</b> on segment to insert; <b>Ctrl+click</b> on point to delete.</div>
+          </div>
+
+          <button id="region-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
+            Activate Region Editor
           </button>
         </div>
 
@@ -3045,6 +3989,8 @@ export class GlobalMapTools {
       'set-biome': '#004c3a',
       'river-draw': '#003a66',
       'river-edit': '#003a66',
+      'region-draw': '#004466',
+      'region-edit': '#004466',
     };
 
     const syncToolButtonGroup = (containerSelector, activeTool) => {
@@ -3069,6 +4015,7 @@ export class GlobalMapTools {
       syncToolButtonGroup('#global-map-height-tool-buttons', this._selectedHeightsTool);
       syncToolButtonGroup('#global-map-biome-tool-buttons', this._selectedBiomesTool);
       syncToolButtonGroup('#global-map-river-mode-buttons', this._selectedRiversTool);
+      syncToolButtonGroup('#global-map-region-mode-buttons', this._selectedRegionsTool);
     };
 
     // Heights: tool buttons
@@ -3107,6 +4054,20 @@ export class GlobalMapTools {
       this.selectedRiverPointIndex = null;
       this._renderRiverHandles();
       this._refreshRiversUI();
+    });
+
+    // Regions: mode buttons
+    $('#global-map-region-mode-buttons button[data-tool]').on('click', (e) => {
+      if (this.isBrushActive) return;
+
+      const tool = String($(e.currentTarget).data('tool') || 'region-draw');
+      this._selectedRegionsTool = tool;
+      syncAllToolButtons();
+
+      this.setTool(tool);
+      this.selectedRegionPointIndex = null;
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
     });
 
     $('#flatten-target-height').on('input', (e) => {
@@ -3348,12 +4309,14 @@ export class GlobalMapTools {
       $('#brush-tab').hide();
       $('#biomes-tab').hide();
       $('#rivers-tab').hide();
+      $('#regions-tab').hide();
       $('#global-tab').hide();
       
       // Reset all tab buttons
       $('#tab-brush').css('background', '#333').css('font-weight', 'normal');
       $('#tab-biomes').css('background', '#333').css('font-weight', 'normal');
       $('#tab-rivers').css('background', '#333').css('font-weight', 'normal');
+      $('#tab-regions').css('background', '#333').css('font-weight', 'normal');
       $('#tab-global').css('background', '#333').css('font-weight', 'normal');
       
       // Show selected tab and highlight button
@@ -3372,6 +4335,11 @@ export class GlobalMapTools {
         $('#tab-rivers').css('background', '#0066cc').css('font-weight', 'bold');
         syncAllToolButtons();
         this._onRiversTabShown();
+      } else if (tab === 'regions') {
+        $('#regions-tab').show();
+        $('#tab-regions').css('background', '#0066cc').css('font-weight', 'bold');
+        syncAllToolButtons();
+        this._onRegionsTabShown();
       } else if (tab === 'global') {
         $('#global-tab').show();
         $('#tab-global').css('background', '#0066cc').css('font-weight', 'bold');
@@ -3380,6 +4348,7 @@ export class GlobalMapTools {
     $('#tab-brush').on('click', () => activateTab('brush'));
     $('#tab-biomes').on('click', () => activateTab('biomes'));
     $('#tab-rivers').on('click', () => activateTab('rivers'));
+    $('#tab-regions').on('click', () => activateTab('regions'));
     $('#tab-global').on('click', () => activateTab('global'));
 
     // ===== RIVERS TAB (vector rivers) =====
@@ -3461,6 +4430,190 @@ export class GlobalMapTools {
     });
 
     $('#river-brush-toggle').on('click', () => {
+      if (this.isBrushActive) {
+        this.deactivateBrush();
+      } else {
+        this.activateBrush();
+      }
+    });
+
+    // ===== REGIONS TAB (vector regions) =====
+
+    $('#global-map-region-select').on('change', (e) => {
+      this.selectedRegionId = String(e.target.value || '');
+      this.selectedRegionPointIndex = null;
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-new').on('click', async () => {
+      await this.createNewRegion();
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-delete').on('click', async () => {
+      await this.deleteSelectedRegion();
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-rename').on('click', async () => {
+      await this.renameSelectedRegion();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-label-mode').on('change', (e) => {
+      this._ensureVectorRegionsInitialized();
+      const mode = String(e.target.value || 'hover');
+      this.vectorRegions.settings.labelMode = mode;
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-smooth-iterations').on('change', (e) => {
+      this._ensureVectorRegionsInitialized();
+      const vRaw = Number.parseInt(e.target.value, 10);
+      const v = Number.isFinite(vRaw) ? Math.max(0, Math.min(4, vRaw)) : 1;
+      this.vectorRegions.settings.smoothIterations = v;
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+      this._refreshRegionsUI();
+    });
+
+    // Style controls (per-region)
+    $('#region-fill-color').on('input', (e) => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      region.fillColor = this._cssHexToInt(e.target.value, region.fillColor ?? this.regionDefaultFillColor);
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+    });
+
+    $('#region-fill-alpha').on('input', (e) => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      const v = Math.max(0, Math.min(1, Number(e.target.value)));
+      if (!Number.isFinite(v)) return;
+      region.fillAlpha = v;
+      $('#region-fill-alpha-value').text(v.toFixed(2));
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+    });
+
+    $('#region-stroke-color').on('input', (e) => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      region.strokeColor = this._cssHexToInt(e.target.value, region.strokeColor ?? this.regionDefaultStrokeColor);
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+    });
+
+    $('#region-stroke-alpha').on('input', (e) => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      const v = Math.max(0, Math.min(1, Number(e.target.value)));
+      if (!Number.isFinite(v)) return;
+      region.strokeAlpha = v;
+      $('#region-stroke-alpha-value').text(v.toFixed(2));
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+    });
+
+    $('#region-stroke-width').on('input', (e) => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      const v = Math.max(1, Number(e.target.value) || 1);
+      region.strokeWidth = v;
+      $('#region-stroke-width-value').text(String(Math.round(v)));
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+      this._renderRegionHandles();
+    });
+
+    // Journal UUID
+    const journalInput = $('#region-journal-uuid');
+    journalInput.on('change', () => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      const uuid = String(journalInput.val() || '').trim();
+      region.journalUuid = uuid;
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+      this._refreshRegionsUI();
+    });
+
+    journalInput.on('dragover', (ev) => {
+      ev.preventDefault();
+    });
+
+    journalInput.on('drop', async (ev) => {
+      ev.preventDefault();
+
+      const region = this._getSelectedRegion();
+      if (!region) return;
+
+      const uuid = this._extractUuidFromDropEvent(ev.originalEvent);
+      if (!uuid) {
+        ui.notifications?.warn?.('Не удалось извлечь UUID из перетаскивания');
+        return;
+      }
+
+      // Validate: JournalEntry/JournalEntryPage
+      let doc = null;
+      try {
+        doc = await fromUuid(uuid);
+      } catch (e) {
+        doc = null;
+      }
+
+      if (!doc) {
+        ui.notifications?.warn?.('Документ по UUID не найден');
+        return;
+      }
+
+      if (!['JournalEntry', 'JournalEntryPage'].includes(doc.documentName)) {
+        ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+        return;
+      }
+
+      region.journalUuid = uuid;
+      journalInput.val(uuid);
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-journal-open').on('click', async () => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      await this._openJournalUuid(region.journalUuid);
+    });
+
+    $('#region-journal-clear').on('click', () => {
+      const region = this._getSelectedRegion();
+      if (!region) return;
+      region.journalUuid = '';
+      journalInput.val('');
+      this.vectorRegionsDirty = true;
+      this._applyVectorRegionsToRenderer();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-finish').on('click', async () => {
+      await this.finishSelectedRegion();
+      syncAllToolButtons();
+      this._renderRegionHandles();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-save').on('click', async () => {
+      await this.saveVectorRegions();
+      this._refreshRegionsUI();
+    });
+
+    $('#region-brush-toggle').on('click', () => {
       if (this.isBrushActive) {
         this.deactivateBrush();
       } else {
