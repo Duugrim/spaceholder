@@ -29,14 +29,15 @@
     position: relative;
     z-index: 2;
 
-    width: min(980px, calc(100vw - 40px));
+    width: min(650px, calc(100vw - 20px));
     overflow: visible;
   }
 
   .sh-gm-edge__top {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 
     width: 100%;
 
@@ -45,36 +46,58 @@
     border-radius: var(--sh-radius-lg);
     padding: 8px;
 
-    // Keep it low: allow horizontal scroll instead of wrapping
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
   }
 
-  .sh-gm-edge__brand {
-    width: 30px;
-    height: 30px;
+  .sh-gm-edge__leftCluster,
+  .sh-gm-edge__rightCluster {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
   }
 
-  .sh-gm-edge__spacer {
-    flex: 1 1 auto;
-    min-width: 0;
+  .sh-gm-edge__identity {
+    justify-self: center;
+
+    width: min(320px, 100%);
+    max-width: 320px;
+    min-width: 160px;
+
+    height: 42px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .sh-gm-edge__sceneName {
-    max-width: 220px;
+  .sh-gm-edge__name,
+  .sh-gm-edge__faction {
+    width: 100%;
+    max-width: 100%;
+
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    font-size: 11px;
-    color: var(--sh-text-dim);
+    text-align: center;
+    line-height: 1.05;
   }
 
-  .sh-gm-edge__edgeControls {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex: 0 0 auto;
+  .sh-gm-edge__name {
+    font-weight: 700;
+    font-size: 20px;
+  }
+
+  .sh-gm-edge__faction {
+    font-weight: 400;
+    font-size: 16px;
+    color: var(--sh-text-dim);
   }
 
   .sh-gm-edge__edgeBtn {
@@ -107,6 +130,34 @@
     white-space: nowrap;
   }
 
+  .sh-gm-edge__flyoutGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+
+    .sh-gm-edge__btn {
+      width: 100%;
+    }
+  }
+
+  .sh-gm-edge__setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    & + & { margin-top: 8px; }
+  }
+
+  .sh-gm-edge__settingLabel {
+    flex: 0 0 86px;
+    min-width: 86px;
+
+    font-size: 12px;
+    color: var(--sh-text-muted);
+    white-space: nowrap;
+  }
+
   // ===== Selector (segmented) =====
   .sh-gm-edge__selector {
     display: inline-flex;
@@ -123,6 +174,11 @@
     padding: 4px;
   }
 
+  .sh-gm-edge__selector--mini {
+    padding: 3px;
+    gap: 4px;
+  }
+
   .sh-gm-edge__selectorBtn {
     flex: 0 0 auto;
     min-width: 0;
@@ -130,6 +186,11 @@
     padding: 6px 10px;
     font-size: 12px;
     white-space: nowrap;
+  }
+
+  .sh-gm-edge__selector--mini .sh-gm-edge__selectorBtn {
+    padding: 5px 8px;
+    font-size: 11px;
   }
 
   .sh-gm-edge__selectorBtn.is-active {
@@ -174,7 +235,9 @@
     position: absolute;
     top: 0;
 
-    width: 240px;
+    width: 280px;
+    max-height: calc(100vh - 20px);
+    overflow: auto;
 
     background: rgba(0, 0, 0, 0.80);
     border: 1px solid var(--sh-border);
@@ -194,22 +257,13 @@
 
   .sh-gm-edge__flyout--right {
     left: calc(100% + 12px);
-  }
-
-  .sh-gm-edge__flyoutHeader {
-    font-weight: 700;
-    font-size: 13px;
-    margin-bottom: 10px;
+    width: 340px;
   }
 
   .sh-gm-edge__flyoutBody {
     display: flex;
     flex-direction: column;
     gap: 8px;
-
-    .sh-gm-edge__row .sh-gm-edge__btn {
-      flex: 1 1 0;
-    }
   }
 
   &.is-flyout-left-open {
@@ -233,7 +287,7 @@
     position: relative;
     z-index: 1;
 
-    width: min(620px, calc(100vw - 120px));
+    width: min(420px, calc(100vw - 120px));
 
     background: rgba(0, 0, 0, 0.78);
     border: 1px solid var(--sh-border);

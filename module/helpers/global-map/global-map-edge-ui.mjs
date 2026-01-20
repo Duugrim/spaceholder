@@ -35,6 +35,14 @@ class GlobalMapEdgeUI {
     this.inspectorOpen = true;
 
     this._onClick = this._onClick.bind(this);
+    this._onResize = this._onResize.bind(this);
+
+    // Keep placeholder identity text fitted when viewport changes
+    try {
+      window.addEventListener('resize', this._onResize);
+    } catch (e) {
+      // ignore
+    }
   }
 
   get element() {
@@ -45,6 +53,7 @@ class GlobalMapEdgeUI {
     const existing = this.element;
     if (existing) {
       this._syncUiState(existing);
+      this._fitAll(existing);
       return;
     }
 
@@ -60,6 +69,7 @@ class GlobalMapEdgeUI {
     document.body.appendChild(el);
     el.addEventListener('click', this._onClick);
     this._syncUiState(el);
+    this._fitAll(el);
   }
 
   destroy() {
@@ -73,6 +83,36 @@ class GlobalMapEdgeUI {
     }
 
     el.remove();
+  }
+
+  _onResize() {
+    const root = this.element;
+    if (!root) return;
+    this._fitAll(root);
+  }
+
+  _fitText(el) {
+    if (!el) return;
+
+    const max = Math.max(1, Number(el.dataset.fitMax) || 12);
+    const min = Math.max(1, Number(el.dataset.fitMin) || 8);
+
+    // Reset to max before measuring
+    el.style.fontSize = `${max}px`;
+
+    // Reduce font size until it fits
+    for (let size = max; size >= min; size--) {
+      el.style.fontSize = `${size}px`;
+      if (el.scrollWidth <= el.clientWidth + 1) break;
+    }
+  }
+
+  _fitAll(root) {
+    try {
+      root.querySelectorAll('[data-autofit]').forEach((el) => this._fitText(el));
+    } catch (e) {
+      // ignore
+    }
   }
 
   _syncUiState(root) {
@@ -138,11 +178,17 @@ class GlobalMapEdgeUI {
     });
   }
 
-  _onClick(event) {
+  async _onClick(event) {
     const btn = event.target?.closest?.('button[data-action]');
     if (!btn) return;
 
     const action = btn.dataset.action;
+
+    if (action === 'load-map') {
+      event.preventDefault();
+      await this._loadMapFromFile();
+      return;
+    }
 
     if (action === 'toggle-flyout') {
       event.preventDefault();
@@ -181,6 +227,40 @@ class GlobalMapEdgeUI {
 
     // placeholder: no-op
     event.preventDefault();
+  }
+
+  async _loadMapFromFile() {
+    const scene = canvas?.scene;
+    const sh = game?.spaceholder;
+    const processing = sh?.globalMapProcessing;
+    const renderer = sh?.globalMapRenderer;
+
+    if (!scene || !processing || !renderer) return;
+
+    // Ensure biome overrides are loaded before we normalize/render biomes.
+    try {
+      await processing?.biomeResolver?.reloadConfigWithWorldOverrides?.();
+    } catch (e) {
+      // ignore
+    }
+    try {
+      await renderer?.biomeResolver?.reloadConfigWithWorldOverrides?.();
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      const loaded = await processing.loadGridFromFile(scene);
+      if (loaded && loaded.gridData) {
+        await renderer.render(loaded.gridData, loaded.metadata, { mode: 'heights' });
+        ui.notifications?.info?.('Карта обновлена');
+      } else {
+        ui.notifications?.warn?.('Файл карты не найден');
+      }
+    } catch (e) {
+      console.error('SpaceHolder | Global map edge UI: load-map failed', e);
+      ui.notifications?.error?.('Не удалось обновить карту');
+    }
   }
 }
 

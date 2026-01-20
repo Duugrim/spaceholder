@@ -1654,47 +1654,68 @@
 .spaceholder.globalmap-edge-ui .sh-gm-edge__topWrap {
   position: relative;
   z-index: 2;
-  width: min(980px, 100vw - 40px);
+  width: min(650px, 100vw - 20px);
   overflow: visible;
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__top,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__top {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
   padding: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-#spaceholder-globalmap-edge-ui .sh-gm-edge__brand,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__brand {
-  width: 30px;
-  height: 30px;
-}
-#spaceholder-globalmap-edge-ui .sh-gm-edge__spacer,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__spacer {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-#spaceholder-globalmap-edge-ui .sh-gm-edge__sceneName,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__sceneName {
-  max-width: 220px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  color: var(--sh-text-dim);
 }
-#spaceholder-globalmap-edge-ui .sh-gm-edge__edgeControls,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__edgeControls {
+#spaceholder-globalmap-edge-ui .sh-gm-edge__leftCluster,
+#spaceholder-globalmap-edge-ui .sh-gm-edge__rightCluster,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__leftCluster,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__rightCluster {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__identity,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__identity {
+  justify-self: center;
+  width: min(320px, 100%);
+  max-width: 320px;
+  min-width: 160px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+  overflow: hidden;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__name,
+#spaceholder-globalmap-edge-ui .sh-gm-edge__faction,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__name,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__faction {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.05;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__name,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__name {
+  font-weight: 700;
+  font-size: 20px;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__faction,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__faction {
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--sh-text-dim);
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__edgeBtn,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__edgeBtn {
@@ -1733,6 +1754,37 @@
   line-height: 1;
   white-space: nowrap;
 }
+#spaceholder-globalmap-edge-ui .sh-gm-edge__flyoutGrid,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__flyoutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__flyoutGrid .sh-gm-edge__btn,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__flyoutGrid .sh-gm-edge__btn {
+  width: 100%;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__setting,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__setting + #spaceholder-globalmap-edge-ui .sh-gm-edge__setting,
+#spaceholder-globalmap-edge-ui .sh-gm-edge__setting + .spaceholder.globalmap-edge-ui .sh-gm-edge__setting,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__setting + #spaceholder-globalmap-edge-ui .sh-gm-edge__setting,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__setting + .spaceholder.globalmap-edge-ui .sh-gm-edge__setting {
+  margin-top: 8px;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__settingLabel,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__settingLabel {
+  flex: 0 0 86px;
+  min-width: 86px;
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  white-space: nowrap;
+}
 #spaceholder-globalmap-edge-ui .sh-gm-edge__selector,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__selector {
   display: inline-flex;
@@ -1747,6 +1799,11 @@
 .spaceholder.globalmap-edge-ui .sh-gm-edge__selector--compact {
   padding: 4px;
 }
+#spaceholder-globalmap-edge-ui .sh-gm-edge__selector--mini,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__selector--mini {
+  padding: 3px;
+  gap: 4px;
+}
 #spaceholder-globalmap-edge-ui .sh-gm-edge__selectorBtn,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__selectorBtn {
   flex: 0 0 auto;
@@ -1754,6 +1811,11 @@
   padding: 6px 10px;
   font-size: 12px;
   white-space: nowrap;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__selector--mini .sh-gm-edge__selectorBtn,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__selector--mini .sh-gm-edge__selectorBtn {
+  padding: 5px 8px;
+  font-size: 11px;
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__selectorBtn.is-active,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__selectorBtn.is-active {
@@ -1794,7 +1856,9 @@
 .spaceholder.globalmap-edge-ui .sh-gm-edge__flyout {
   position: absolute;
   top: 0;
-  width: 240px;
+  width: 280px;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
@@ -1811,22 +1875,13 @@
 #spaceholder-globalmap-edge-ui .sh-gm-edge__flyout--right,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__flyout--right {
   left: calc(100% + 12px);
-}
-#spaceholder-globalmap-edge-ui .sh-gm-edge__flyoutHeader,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__flyoutHeader {
-  font-weight: 700;
-  font-size: 13px;
-  margin-bottom: 10px;
+  width: 340px;
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__flyoutBody,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__flyoutBody {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-#spaceholder-globalmap-edge-ui .sh-gm-edge__flyoutBody .sh-gm-edge__row .sh-gm-edge__btn,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__flyoutBody .sh-gm-edge__row .sh-gm-edge__btn {
-  flex: 1 1 0;
 }
 #spaceholder-globalmap-edge-ui.is-flyout-left-open .sh-gm-edge__flyout--left,
 .spaceholder.globalmap-edge-ui.is-flyout-left-open .sh-gm-edge__flyout--left {
@@ -1844,7 +1899,7 @@
 .spaceholder.globalmap-edge-ui .sh-gm-edge__inspector {
   position: relative;
   z-index: 1;
-  width: min(620px, 100vw - 120px);
+  width: min(420px, 100vw - 120px);
   background: rgba(0, 0, 0, 0.78);
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
