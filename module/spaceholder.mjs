@@ -44,6 +44,7 @@ import { GlobalMapRenderer } from './helpers/global-map/global-map-renderer.mjs'
 import { GlobalMapTools } from './helpers/global-map/global-map-tools.mjs';
 import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
+import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edge-ui.mjs';
 // import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
 // import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
 // import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
@@ -132,6 +133,8 @@ Hooks.once('init', function () {
   });
   // Scene config hooks for global map flag
   installGlobalMapSceneConfigHooks();
+  // Edge UI (fixed panel) for global map scenes
+  installGlobalMapEdgeUiHooks();
   // Install Token Pointer hooks
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks

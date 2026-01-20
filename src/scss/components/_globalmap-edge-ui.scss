@@ -1,0 +1,284 @@
+// Global Map Edge UI (placeholder)
+// Injected into <body>, not a Foundry window.
+
+#spaceholder-globalmap-edge-ui,
+.spaceholder.globalmap-edge-ui {
+  // Override base .spaceholder background on the outer wrapper
+  background: transparent;
+
+  --sh-gm-edge-gap: 6px;
+
+  position: fixed;
+  top: var(--sh-gm-edge-gap);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 101;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  // keep visual gap == top offset while inspector overlaps slightly
+  gap: calc(var(--sh-gm-edge-gap) + 2px);
+
+  // Allow flyouts to overflow
+  overflow: visible;
+  max-width: calc(100vw - 20px);
+
+  // ===== Top (main) menu =====
+  .sh-gm-edge__topWrap {
+    position: relative;
+    z-index: 2;
+
+    width: min(980px, calc(100vw - 40px));
+    overflow: visible;
+  }
+
+  .sh-gm-edge__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    width: 100%;
+
+    background: rgba(0, 0, 0, 0.80);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    padding: 8px;
+
+    // Keep it low: allow horizontal scroll instead of wrapping
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .sh-gm-edge__brand {
+    width: 30px;
+    height: 30px;
+  }
+
+  .sh-gm-edge__spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sh-gm-edge__sceneName {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 11px;
+    color: var(--sh-text-dim);
+  }
+
+  .sh-gm-edge__edgeControls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+
+  .sh-gm-edge__edgeBtn {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--sh-radius-sm);
+  }
+
+  // ===== Compact rows/buttons =====
+  .sh-gm-edge__row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+
+    & + & { margin-top: 6px; }
+  }
+
+  .sh-gm-edge__row--compact {
+    gap: 6px;
+
+    & + & { margin-top: 0; }
+  }
+
+  .sh-gm-edge__btn {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  // ===== Selector (segmented) =====
+  .sh-gm-edge__selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    padding: 4px;
+  }
+
+  .sh-gm-edge__selector--compact {
+    padding: 4px;
+  }
+
+  .sh-gm-edge__selectorBtn {
+    flex: 0 0 auto;
+    min-width: 0;
+
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .sh-gm-edge__selectorBtn.is-active {
+    background: rgba(74, 110, 74, 0.35);
+    border: 1px solid rgba(74, 110, 74, 0.90);
+    color: #9fe39f;
+    box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.20), 0 0 10px rgba(74, 110, 74, 0.14);
+  }
+
+  // ===== Icon groups =====
+  .sh-gm-edge__iconGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    padding: 4px;
+  }
+
+  .sh-gm-edge__iconGroup--compact {
+    padding: 4px;
+  }
+
+  .sh-gm-edge__iconBtn {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--sh-radius-sm);
+  }
+
+  .sh-gm-edge__iconBtn.is-active {
+    background: rgba(74, 110, 74, 0.35);
+    border: 1px solid rgba(74, 110, 74, 0.90);
+    color: #9fe39f;
+    box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.20), 0 0 10px rgba(74, 110, 74, 0.14);
+  }
+
+  // ===== Flyouts (left/right) =====
+  .sh-gm-edge__flyout {
+    position: absolute;
+    top: 0;
+
+    width: 240px;
+
+    background: rgba(0, 0, 0, 0.80);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    padding: 10px;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transform: translateY(-6px);
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+
+  .sh-gm-edge__flyout--left {
+    right: calc(100% + 12px);
+  }
+
+  .sh-gm-edge__flyout--right {
+    left: calc(100% + 12px);
+  }
+
+  .sh-gm-edge__flyoutHeader {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .sh-gm-edge__flyoutBody {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .sh-gm-edge__row .sh-gm-edge__btn {
+      flex: 1 1 0;
+    }
+  }
+
+  &.is-flyout-left-open {
+    .sh-gm-edge__flyout--left {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+  }
+
+  &.is-flyout-right-open {
+    .sh-gm-edge__flyout--right {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+  }
+
+  // ===== Inspector (bottom) =====
+  .sh-gm-edge__inspector {
+    position: relative;
+    z-index: 1;
+
+    width: min(620px, calc(100vw - 120px));
+
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    padding: 8px;
+
+    // "slides out" feel
+    margin-top: -2px;
+
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+
+  .sh-gm-edge__inspectorHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .sh-gm-edge__inspectorHint {
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--sh-text-dim);
+  }
+
+  .sh-gm-edge__inspectorBody {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &.is-inspector-open {
+    .sh-gm-edge__inspector {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+  }
+}

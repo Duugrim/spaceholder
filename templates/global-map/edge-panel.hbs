@@ -1,0 +1,153 @@
+<section
+  id="spaceholder-globalmap-edge-ui"
+  class="spaceholder globalmap-edge-ui sh-gm-edge"
+  data-flyout-left="false"
+  data-flyout-right="false"
+  data-inspector="true"
+  aria-label="Глобальная карта"
+>
+  <div class="sh-gm-edge__topWrap">
+    <div class="sh-gm-edge__top" role="region" aria-label="Меню">
+      <button
+        type="button"
+        class="icon-btn sh-gm-edge__brand"
+        data-action="noop"
+        aria-label="Глобальная карта"
+        data-tooltip="Глобальная карта"
+      ><i class="fa-solid fa-globe" aria-hidden="true"></i></button>
+
+      <div class="sh-gm-edge__selector sh-gm-edge__selector--compact" data-select="mode" data-value="view" role="group" aria-label="Режим">
+        <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="mode" data-value="view" aria-pressed="true">Просмотр</button>
+        <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="mode" data-value="edit" aria-pressed="false">Правка</button>
+        <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="mode" data-value="inspect" aria-pressed="false">Инспект</button>
+      </div>
+
+      <div class="sh-gm-edge__row sh-gm-edge__row--compact" role="group" aria-label="Действия">
+        <button type="button" class="sh-gm-edge__btn" data-action="noop">Импорт…</button>
+        <button type="button" class="sh-gm-edge__btn" data-action="noop">Запечь…</button>
+        <button type="button" class="sh-gm-edge__btn" data-action="noop">Сохранить</button>
+        <button type="button" class="sh-gm-edge__btn" data-action="noop">Загрузить</button>
+      </div>
+
+      <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--compact" role="group" aria-label="Переключатели">
+        <button type="button" class="icon-btn sh-gm-edge__iconBtn" data-action="toggle" aria-pressed="false" data-tooltip="Показать/скрыть">
+          <i class="fa-solid fa-eye" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn sh-gm-edge__iconBtn" data-action="toggle" aria-pressed="false" data-tooltip="Режим биомов">
+          <i class="fa-solid fa-seedling" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn sh-gm-edge__iconBtn" data-action="toggle" aria-pressed="false" data-tooltip="Режим высот">
+          <i class="fa-solid fa-mountain" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--compact" role="group" aria-label="Видимость" data-select="visibility" data-value="public">
+        <button
+          type="button"
+          class="icon-btn sh-gm-edge__iconBtn is-active"
+          data-action="select"
+          data-select="visibility"
+          data-value="public"
+          aria-pressed="true"
+          data-tooltip="Публично"
+        ><i class="fa-solid fa-user" aria-hidden="true"></i></button>
+
+        <button
+          type="button"
+          class="icon-btn sh-gm-edge__iconBtn"
+          data-action="select"
+          data-select="visibility"
+          data-value="gm"
+          aria-pressed="false"
+          data-tooltip="Только ГМ"
+        ><i class="fa-solid fa-user-lock" aria-hidden="true"></i></button>
+
+        <button
+          type="button"
+          class="icon-btn sh-gm-edge__iconBtn"
+          data-action="select"
+          data-select="visibility"
+          data-value="secret"
+          aria-pressed="false"
+          data-tooltip="Секретно"
+        ><i class="fa-solid fa-user-secret" aria-hidden="true"></i></button>
+      </div>
+
+      <div class="sh-gm-edge__spacer"></div>
+
+
+      <div class="sh-gm-edge__edgeControls" role="group" aria-label="Меню">
+        <button
+          type="button"
+          class="icon-btn sh-gm-edge__edgeBtn"
+          data-action="toggle-flyout"
+          data-side="left"
+          aria-label="Меню"
+          aria-expanded="false"
+          data-tooltip="Меню"
+        ><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+
+        <button
+          type="button"
+          class="icon-btn sh-gm-edge__edgeBtn"
+          data-action="toggle-inspector"
+          aria-label="Инспектор"
+          aria-expanded="true"
+          data-tooltip="Инспектор"
+        ><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>
+
+        <button
+          type="button"
+          class="icon-btn sh-gm-edge__edgeBtn"
+          data-action="toggle-flyout"
+          data-side="right"
+          aria-label="Меню"
+          aria-expanded="false"
+          data-tooltip="Меню"
+        ><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+      </div>
+    </div>
+
+    <aside class="sh-gm-edge__flyout sh-gm-edge__flyout--left" aria-hidden="true">
+      <div class="sh-gm-edge__flyoutBody">
+        <div class="sh-gm-edge__row">
+          <button type="button" class="sh-gm-edge__btn" data-action="noop">Инструменты…</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="noop">Слои…</button>
+        </div>
+        <div class="sh-gm-edge__row">
+          <button type="button" class="sh-gm-edge__btn" data-action="noop">Реки…</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="noop">Регионы…</button>
+        </div>
+      </div>
+    </aside>
+
+    <aside class="sh-gm-edge__flyout sh-gm-edge__flyout--right" aria-hidden="true">
+      <div class="sh-gm-edge__flyoutBody">
+        <div class="sh-gm-edge__row">
+          <button type="button" class="sh-gm-edge__btn" data-action="noop">Настройки…</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="noop">Экспорт…</button>
+        </div>
+        <div class="sh-gm-edge__row">
+          <button type="button" class="sh-gm-edge__btn danger" data-action="noop">Очистить…</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="noop">Отладка</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="sh-gm-edge__inspector" role="region" aria-label="Инспектор" aria-hidden="false">
+    <div class="sh-gm-edge__inspectorBody">
+      <div class="sh-gm-edge__row sh-gm-edge__row--compact">
+        <button type="button" class="sh-gm-edge__btn" data-action="noop">Клетка</button>
+        <button type="button" class="sh-gm-edge__btn" data-action="noop">Регион</button>
+        <button type="button" class="sh-gm-edge__btn" data-action="noop">Река</button>
+      </div>
+
+      <div class="sh-gm-edge__selector sh-gm-edge__selector--compact" data-select="inspectMode" data-value="hover" role="group" aria-label="Инспект">
+        <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="inspectMode" data-value="hover" aria-pressed="true">Hover</button>
+        <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="inspectMode" data-value="click" aria-pressed="false">Click</button>
+        <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="inspectMode" data-value="off" aria-pressed="false">Off</button>
+      </div>
+    </div>
+  </div>
+</section>
