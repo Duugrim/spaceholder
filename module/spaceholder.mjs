@@ -43,6 +43,7 @@ import { GlobalMapProcessing } from './helpers/global-map/global-map-processing.
 import { GlobalMapRenderer } from './helpers/global-map/global-map-renderer.mjs';
 import { GlobalMapTools } from './helpers/global-map/global-map-tools.mjs';
 import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
+import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
 // import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
 // import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
 // import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
@@ -129,6 +130,8 @@ Hooks.once('init', function () {
   Hooks.on('getSceneControlButtons', (controls) => {
     registerGlobalMapUI(controls, game.spaceholder);
   });
+  // Scene config hooks for global map flag
+  installGlobalMapSceneConfigHooks();
   // Install Token Pointer hooks
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks

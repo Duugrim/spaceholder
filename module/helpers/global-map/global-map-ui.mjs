@@ -5,6 +5,7 @@
 
 /**
  * Show dialog for importing map or creating flat map
+ * TODO: перевести на DialogV2, когда решим проблемы с FilePicker в DialogV2.
  */
 async function showGlobalMapImportDialog(processing, renderer) {
   const content = `
@@ -105,6 +106,7 @@ async function showGlobalMapImportDialog(processing, renderer) {
 
 /**
  * Show dialog for baking current render into a background image
+ * TODO: перевести на DialogV2, когда решим проблемы с FilePicker в DialogV2.
  * @returns {Promise<{scale:number, mimeType:'image/webp'|'image/png', quality:number} | null>}
  */
 async function showGlobalMapBakeDialog() {
@@ -255,6 +257,16 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
   if (typeof controls !== 'object' || controls === null) {
     console.warn('GlobalMapUI | Controls is not an object');
+    return;
+  }
+
+  const scene = canvas?.scene;
+  const isGlobalMapScene = !!(
+    scene?.getFlag?.('spaceholder', 'isGlobalMap')
+    ?? scene?.flags?.spaceholder?.isGlobalMap
+  );
+
+  if (!scene || !isGlobalMapScene) {
     return;
   }
 
