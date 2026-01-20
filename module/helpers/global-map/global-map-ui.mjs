@@ -7,7 +7,7 @@
  * Show dialog for importing map or creating flat map
  * TODO: перевести на DialogV2, когда решим проблемы с FilePicker в DialogV2.
  */
-async function showGlobalMapImportDialog(processing, renderer) {
+export async function showGlobalMapImportDialog(processing, renderer) {
   const content = `
     <form>
       <div class="form-group">
@@ -109,7 +109,7 @@ async function showGlobalMapImportDialog(processing, renderer) {
  * TODO: перевести на DialogV2, когда решим проблемы с FilePicker в DialogV2.
  * @returns {Promise<{scale:number, mimeType:'image/webp'|'image/png', quality:number} | null>}
  */
-async function showGlobalMapBakeDialog() {
+export async function showGlobalMapBakeDialog() {
   const scene = canvas?.scene;
   const renderer = canvas?.app?.renderer;
 
@@ -244,6 +244,117 @@ async function showGlobalMapBakeDialog() {
 
     dialog.render(true);
   });
+}
+
+/**
+ * Bake current global map render into a scene background image.
+ * @param {import('./global-map-renderer.mjs').GlobalMapRenderer} globalMapRenderer
+ * @param {Scene} scene
+ */
+export async function bakeGlobalMapToSceneBackground(globalMapRenderer, scene) {
+  if (!scene) {
+    ui.notifications?.warn?.('Нет активной сцены');
+    return false;
+  }
+
+  if (!globalMapRenderer?.currentGrid) {
+    ui.notifications?.warn?.('Нет загруженной карты');
+    return false;
+  }
+
+  const bakeOptions = await showGlobalMapBakeDialog();
+  if (!bakeOptions) {
+    return false;
+  }
+
+  try {
+    ui.notifications?.info?.('Экспорт карты в изображение...');
+
+    const requestedScale = bakeOptions.scale;
+    const { blob, width, height, scale: actualScale, maxSize } = await globalMapRenderer.exportToBlob({
+      mimeType: bakeOptions.mimeType,
+      quality: bakeOptions.quality,
+      scale: requestedScale,
+      allowDownscale: true,
+    });
+
+    if (Math.abs(actualScale - requestedScale) > 0.01) {
+      const maxInfo = maxSize ? ` (лимит текстуры: ${maxSize}px)` : '';
+      ui.notifications?.warn?.(`Масштаб ограничен до ${actualScale.toFixed(2)}×${maxInfo}`);
+    }
+
+    const sceneSlug = scene.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const ext = bakeOptions.mimeType === 'image/png' ? 'png' : 'webp';
+    const fileName = `${sceneSlug}_${scene.id}_globalmap_${timestamp}_${actualScale.toFixed(2)}x.${ext}`;
+
+    const directory = `worlds/${game.world.id}/global-maps/renders`;
+
+    // Create directory if needed
+    try {
+      await foundry.applications.apps.FilePicker.implementation.createDirectory('data', directory, {});
+    } catch (err) {
+      // Directory might already exist
+    }
+
+    const file = new File([blob], fileName, { type: blob.type });
+    const response = await foundry.applications.apps.FilePicker.implementation.upload(
+      'data',
+      directory,
+      file,
+      {}
+    );
+
+    if (!response?.path) {
+      throw new Error('Upload failed');
+    }
+
+    // If the export is higher resolution, scale background down to keep scene size consistent.
+    const backgroundScale = 1 / Math.max(0.1, Number(actualScale) || 1);
+
+    // Store for reference
+    await scene.setFlag('spaceholder', 'globalMapBackground', {
+      src: response.path,
+      width,
+      height,
+      mimeType: blob.type,
+      exportScaleRequested: bakeOptions.scale,
+      exportScaleUsed: actualScale,
+      backgroundScale,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Apply as scene background (Foundry v11+)
+    try {
+      await scene.update({
+        'background.src': response.path,
+        'background.scaleX': backgroundScale,
+        'background.scaleY': backgroundScale,
+      });
+    } catch (e1) {
+      // Some Foundry versions prefer nested object updates
+      try {
+        console.warn('GlobalMapUI | Failed to set background.* paths, trying background object update:', e1);
+        await scene.update({
+          background: {
+            src: response.path,
+            scaleX: backgroundScale,
+            scaleY: backgroundScale,
+          },
+        });
+      } catch (e2) {
+        console.warn('GlobalMapUI | Failed to set background via background object, falling back to img:', e2);
+        await scene.update({ img: response.path });
+      }
+    }
+
+    ui.notifications?.info?.('Фон сцены обновлён');
+    return true;
+  } catch (error) {
+    console.error('GlobalMapUI | Bake failed:', error);
+    ui.notifications?.error?.(`Не удалось запечь фон: ${error.message}`);
+    return false;
+  }
 }
 
 /**

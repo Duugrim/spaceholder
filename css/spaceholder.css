@@ -1668,6 +1668,8 @@
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
   padding: 8px;
+  outline: var(--sh-gm-edge-faction-outline-width, 0px) solid var(--sh-gm-edge-faction-outline-color, transparent);
+  outline-offset: 0;
   overflow: hidden;
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__leftCluster,
@@ -1844,6 +1846,19 @@
   width: 30px;
   height: 30px;
   border-radius: var(--sh-radius-sm);
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__statusIcon,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__statusIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--sh-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  color: var(--sh-text);
+  pointer-events: none;
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__iconBtn.is-active,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__iconBtn.is-active {

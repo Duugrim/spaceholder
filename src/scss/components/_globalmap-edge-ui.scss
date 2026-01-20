@@ -46,6 +46,10 @@
     border-radius: var(--sh-radius-lg);
     padding: 8px;
 
+    // Accent outline for selected token faction
+    outline: var(--sh-gm-edge-faction-outline-width, 0px) solid var(--sh-gm-edge-faction-outline-color, transparent);
+    outline-offset: 0;
+
     overflow: hidden;
   }
 
@@ -221,6 +225,24 @@
     width: 30px;
     height: 30px;
     border-radius: var(--sh-radius-sm);
+  }
+
+  // Status icon (non-clickable)
+  .sh-gm-edge__statusIcon {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--sh-radius-sm);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    // Keep it visually consistent with icon buttons, but without hover/click affordance
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+    color: var(--sh-text);
+
+    pointer-events: none;
   }
 
   .sh-gm-edge__iconBtn.is-active {
