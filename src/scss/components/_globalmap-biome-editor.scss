@@ -20,18 +20,8 @@
     min-height: 0;
   }
 
-  // Compact inputs used in the editor
-  .sh-biome-editor__input--rank { width: 110px; }
-  .sh-biome-editor__input--xs { width: 90px; }
-
-  // Color inputs: keep native swatch, avoid boxed input styling
-  .sh-biome-editor input[type='color'] {
-    width: 46px;
-    height: 28px;
-    padding: 0;
-    border: none;
-    background: transparent;
-  }
+  // Compact inputs used in the table
+  .sh-biome-editor__input--rank { width: 96px; }
 
   .sh-biome-editor__header {
     display: flex;
@@ -65,120 +55,112 @@
     flex-wrap: wrap;
   }
 
-  .sh-biome-editor__hint {
-    font-size: 11px;
-    color: var(--sh-text-dim);
-    margin: 0 0 10px 0;
-  }
-
-  .sh-biome-editor__list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-y: auto;
+  .sh-biome-editor__tableWrap {
     flex: 1 1 auto;
     min-height: 0;
-    padding-right: 6px;
-  }
+    overflow: auto;
 
-  .sh-biome-editor__card {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--sh-radius-lg);
-    padding: 10px;
   }
 
-  .sh-biome-editor__cardRow {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
+  .sh-biome-editor__table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .sh-biome-editor__th,
+  .sh-biome-editor__cell {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    vertical-align: middle;
+  }
+
+  .sh-biome-editor__th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--sh-text-muted);
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .sh-biome-editor__th--preview { width: 56px; }
+  .sh-biome-editor__th--id { width: 60px; }
+  .sh-biome-editor__th--rank { width: 110px; }
+  .sh-biome-editor__th--actions { width: 64px; }
+
+  .sh-biome-editor__row:hover {
+    background: rgba(255, 255, 255, 0.03);
   }
 
   .sh-biome-editor__preview {
-    width: 64px;
-    height: 64px;
+    width: 32px;
+    height: 32px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--sh-radius-sm);
     background: #000;
-    flex: 0 0 auto;
+    display: block;
   }
 
-  .sh-biome-editor__fields {
-    flex: 1 1 auto;
+  .sh-biome-editor__cell--id {
+    code {
+      font-family: $font-mono;
+      color: var(--sh-text);
+    }
+  }
+
+  .sh-biome-editor__cell--name input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .sh-biome-editor__cell--link {
+    overflow: hidden;
+  }
+
+  .sh-biome-editor__linkWrap {
+    display: flex;
+    gap: 6px;
+    align-items: center;
     min-width: 0;
 
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    .content-link {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    input[type='text'] {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
+    }
   }
 
-  .sh-biome-editor__row {
+  .sh-biome-editor__rowActions {
     display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
   }
 
-  .sh-biome-editor__id {
-    min-width: 90px;
-    font-size: 12px;
-    color: var(--sh-text-muted);
+  // Icon buttons in the table
+  .icon-btn.danger {
+    color: rgba(255, 145, 145, 0.95);
 
-    b {
+    &:hover {
       color: #fff;
+      background: rgba(204, 68, 68, 0.22);
     }
   }
 
-  .sh-biome-editor__field {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    .sh-biome-editor__label {
-      font-size: 12px;
-      color: var(--sh-text-muted);
-      min-width: 70px;
-    }
-
-    &.wide {
-      flex: 1 1 240px;
-      min-width: 240px;
-
-      input,
-      select {
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-    }
-  }
-
-  .sh-biome-editor__patternCode {
-    color: var(--sh-text-dim);
-    font-family: $font-mono;
-    font-size: 12px;
-  }
-
-  .sh-biome-editor__details {
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--sh-radius-lg);
-    padding: 8px;
-
-    summary {
-      cursor: pointer;
-      color: var(--sh-text-muted);
-      font-size: 12px;
-    }
-
-    .sh-biome-editor__detailsBody {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-  }
-
-  // Small helper button in biome editor
+  // Action buttons in header
   .sh-biome-editor__btn {
     font-size: 12px;
     padding: 6px 10px;
@@ -197,5 +179,131 @@
   .sh-biome-editor__btnDanger {
     background: rgba(90, 26, 26, 0.85);
     border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+// Biome edit window (ApplicationV2)
+.window-app.spaceholder.globalmap-biome-edit,
+.spaceholder.globalmap-biome-edit {
+  .sh-biome-edit {
+    background: rgba(0, 0, 0, 0.85);
+    color: var(--sh-text);
+    padding: 12px;
+    border-radius: var(--sh-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    font-family: 'Signika', sans-serif;
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .sh-biome-edit__top {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sh-biome-edit__input--rank { width: 110px; }
+  .sh-biome-edit__input--xs { width: 90px; }
+
+
+  .sh-biome-edit__preview {
+    width: 140px;
+    height: 140px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--sh-radius-sm);
+    background: #000;
+    flex: 0 0 auto;
+  }
+
+  // Color inputs: keep native swatch, avoid boxed input styling
+  .sh-biome-edit input[type='color'] {
+    width: 46px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  .sh-biome-edit__fields {
+    flex: 1 1 360px;
+    min-width: 320px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sh-biome-edit__row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .sh-biome-edit__field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .sh-biome-edit__label {
+      font-size: 12px;
+      color: var(--sh-text-muted);
+      min-width: 70px;
+    }
+
+    &.wide {
+      flex: 1 1 260px;
+      min-width: 260px;
+
+      input,
+      select {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+    }
+  }
+
+  .sh-biome-edit__code {
+    color: var(--sh-text-dim);
+    font-family: $font-mono;
+    font-size: 12px;
+  }
+
+  .sh-biome-edit__details {
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-lg);
+    padding: 8px;
+
+    summary {
+      cursor: pointer;
+      color: var(--sh-text-muted);
+      font-size: 12px;
+    }
+
+    .sh-biome-edit__detailsBody {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+  }
+
+  .sh-biome-edit__btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .sh-biome-edit__footer {
+    margin-top: auto;
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
   }
 }

@@ -1332,6 +1332,14 @@
 .spaceholder.globalobject .globalobject-actors-panel {
   margin-top: 10px;
 }
+.window-app.spaceholder .globalobject .globalobject-actor-card[draggable=true],
+.spaceholder.globalobject .globalobject-actor-card[draggable=true] {
+  cursor: grab;
+}
+.window-app.spaceholder .globalobject .globalobject-actor-card[draggable=true]:active,
+.spaceholder.globalobject .globalobject-actor-card[draggable=true]:active {
+  cursor: grabbing;
+}
 
 .window-app.spaceholder .actor-buttons,
 .spaceholder .actor-buttons {
@@ -1425,21 +1433,7 @@
 #spaceholder-globalmap-biome-editor .sh-biome-editor__input--rank,
 .window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__input--rank,
 .spaceholder.globalmap-biome-editor .sh-biome-editor__input--rank {
-  width: 110px;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__input--xs,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__input--xs,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__input--xs {
-  width: 90px;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor input[type=color],
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor input[type=color],
-.spaceholder.globalmap-biome-editor .sh-biome-editor input[type=color] {
-  width: 46px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  background: transparent;
+  width: 96px;
 }
 #spaceholder-globalmap-biome-editor .sh-biome-editor__header,
 .window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__header,
@@ -1478,136 +1472,137 @@
   align-items: center;
   flex-wrap: wrap;
 }
-#spaceholder-globalmap-biome-editor .sh-biome-editor__hint,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__hint,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__hint {
-  font-size: 11px;
-  color: var(--sh-text-dim);
-  margin: 0 0 10px 0;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__list,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__list,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__tableWrap,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__tableWrap,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__tableWrap {
   flex: 1 1 auto;
   min-height: 0;
-  padding-right: 6px;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__card,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__card,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__card {
+  overflow: auto;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--sh-radius-lg);
-  padding: 10px;
 }
-#spaceholder-globalmap-biome-editor .sh-biome-editor__cardRow,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__cardRow,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__cardRow {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__table,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__table,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__th,
+#spaceholder-globalmap-biome-editor .sh-biome-editor__cell,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__th,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__cell,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__th,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__cell {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__th,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__th,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--sh-text-muted);
+  font-weight: 600;
+  text-align: left;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__th--preview,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__th--preview,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__th--preview {
+  width: 56px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__th--id,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__th--id,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__th--id {
+  width: 60px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__th--rank,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__th--rank,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__th--rank {
+  width: 110px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__th--actions,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__th--actions,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__th--actions {
+  width: 64px;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__row:hover,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__row:hover,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__row:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 #spaceholder-globalmap-biome-editor .sh-biome-editor__preview,
 .window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__preview,
 .spaceholder.globalmap-biome-editor .sh-biome-editor__preview {
-  width: 64px;
-  height: 64px;
+  width: 32px;
+  height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--sh-radius-sm);
   background: #000;
-  flex: 0 0 auto;
+  display: block;
 }
-#spaceholder-globalmap-biome-editor .sh-biome-editor__fields,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__fields,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__fields {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__row,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__row,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__id,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__id,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__id {
-  min-width: 90px;
-  font-size: 12px;
-  color: var(--sh-text-muted);
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__id b,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__id b,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__id b {
-  color: #fff;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__field,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__field {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__field .sh-biome-editor__label,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field .sh-biome-editor__label,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__field .sh-biome-editor__label {
-  font-size: 12px;
-  color: var(--sh-text-muted);
-  min-width: 70px;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__field.wide,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide {
-  flex: 1 1 240px;
-  min-width: 240px;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__field.wide input,
-#spaceholder-globalmap-biome-editor .sh-biome-editor__field.wide select,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide input,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide select,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide input,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__field.wide select {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-#spaceholder-globalmap-biome-editor .sh-biome-editor__patternCode,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__patternCode,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__patternCode {
-  color: var(--sh-text-dim);
+#spaceholder-globalmap-biome-editor .sh-biome-editor__cell--id code,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__cell--id code,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__cell--id code {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
+  color: var(--sh-text);
 }
-#spaceholder-globalmap-biome-editor .sh-biome-editor__details,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__details,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__details {
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--sh-radius-lg);
-  padding: 8px;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__cell--name input,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__cell--name input,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__cell--name input {
+  width: 100%;
+  min-width: 0;
 }
-#spaceholder-globalmap-biome-editor .sh-biome-editor__details summary,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__details summary,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__details summary {
-  cursor: pointer;
-  color: var(--sh-text-muted);
-  font-size: 12px;
+#spaceholder-globalmap-biome-editor .sh-biome-editor__cell--link,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__cell--link,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__cell--link {
+  overflow: hidden;
 }
-#spaceholder-globalmap-biome-editor .sh-biome-editor__details .sh-biome-editor__detailsBody,
-.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__details .sh-biome-editor__detailsBody,
-.spaceholder.globalmap-biome-editor .sh-biome-editor__details .sh-biome-editor__detailsBody {
+#spaceholder-globalmap-biome-editor .sh-biome-editor__linkWrap,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__linkWrap,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__linkWrap {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__linkWrap .content-link,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__linkWrap .content-link,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__linkWrap .content-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__linkWrap input[type=text],
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__linkWrap input[type=text],
+.spaceholder.globalmap-biome-editor .sh-biome-editor__linkWrap input[type=text] {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+#spaceholder-globalmap-biome-editor .sh-biome-editor__rowActions,
+.window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__rowActions,
+.spaceholder.globalmap-biome-editor .sh-biome-editor__rowActions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+#spaceholder-globalmap-biome-editor .icon-btn.danger,
+.window-app.spaceholder.globalmap-biome-editor .icon-btn.danger,
+.spaceholder.globalmap-biome-editor .icon-btn.danger {
+  color: rgba(255, 145, 145, 0.95);
+}
+#spaceholder-globalmap-biome-editor .icon-btn.danger:hover,
+.window-app.spaceholder.globalmap-biome-editor .icon-btn.danger:hover,
+.spaceholder.globalmap-biome-editor .icon-btn.danger:hover {
+  color: #fff;
+  background: rgba(204, 68, 68, 0.22);
 }
 #spaceholder-globalmap-biome-editor .sh-biome-editor__btn,
 .window-app.spaceholder.globalmap-biome-editor .sh-biome-editor__btn,
@@ -1632,6 +1627,130 @@
 .spaceholder.globalmap-biome-editor .sh-biome-editor__btnDanger {
   background: rgba(90, 26, 26, 0.85);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit,
+.spaceholder.globalmap-biome-edit .sh-biome-edit {
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--sh-text);
+  padding: 12px;
+  border-radius: var(--sh-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: "Signika", sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__top,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__input--rank,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__input--rank {
+  width: 110px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__input--xs,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__input--xs {
+  width: 90px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__preview,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__preview {
+  width: 140px;
+  height: 140px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--sh-radius-sm);
+  background: #000;
+  flex: 0 0 auto;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit input[type=color],
+.spaceholder.globalmap-biome-edit .sh-biome-edit input[type=color] {
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__fields,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__fields {
+  flex: 1 1 360px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__row,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__field,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__field .sh-biome-edit__label,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__field .sh-biome-edit__label {
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  min-width: 70px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__field.wide,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__field.wide {
+  flex: 1 1 260px;
+  min-width: 260px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__field.wide input,
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__field.wide select,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__field.wide input,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__field.wide select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__code,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__code {
+  color: var(--sh-text-dim);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__details,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__details {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-lg);
+  padding: 8px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__details summary,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__details summary {
+  cursor: pointer;
+  color: var(--sh-text-muted);
+  font-size: 12px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__details .sh-biome-edit__detailsBody,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__details .sh-biome-edit__detailsBody {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__btn,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__btn {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.window-app.spaceholder.globalmap-biome-edit .sh-biome-edit__footer,
+.spaceholder.globalmap-biome-edit .sh-biome-edit__footer {
+  margin-top: auto;
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
 #spaceholder-globalmap-edge-ui,

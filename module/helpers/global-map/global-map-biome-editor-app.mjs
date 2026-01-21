@@ -62,6 +62,151 @@ function darkenColorInt(colorInt, factor) {
   return ((nr << 16) | (ng << 8) | nb) & 0xFFFFFF;
 }
 
+function normalizeUuid(raw) {
+  const str = String(raw ?? '').trim();
+  if (!str) return '';
+  const match = str.match(/@UUID\[(.+?)\]/);
+  return String(match?.[1] ?? str).trim();
+}
+
+function extractUuidFromDropEvent(event) {
+  const dt = event?.dataTransfer;
+  if (!dt) return '';
+
+  const rawCandidates = [
+    dt.getData('application/json'),
+    dt.getData('text/plain'),
+  ].filter(Boolean);
+
+  for (const raw of rawCandidates) {
+    // Обычно Foundry кладёт JSON в text/plain
+    try {
+      const data = JSON.parse(raw);
+      const uuid = data?.uuid || data?.data?.uuid;
+      if (uuid) return normalizeUuid(uuid);
+    } catch (e) {
+      // Не JSON — возможно это уже UUID-строка
+      const uuid = normalizeUuid(raw);
+      if (uuid) return uuid;
+    }
+  }
+
+  return '';
+}
+
+async function resolveDocName(rawUuid, cache = null) {
+  const uuid = normalizeUuid(rawUuid);
+  if (!uuid) return '';
+
+  if (cache && cache.has(uuid)) {
+    return cache.get(uuid) || uuid;
+  }
+
+  let doc = null;
+  try {
+    doc = await fromUuid(uuid);
+  } catch (e) {
+    doc = null;
+  }
+
+  const name = String(doc?.name ?? '').trim() || uuid;
+  if (cache) cache.set(uuid, name);
+  return name;
+}
+
+async function openJournalUuid(rawUuid) {
+  const uuid = normalizeUuid(rawUuid);
+  if (!uuid) return false;
+
+  let doc = null;
+  try {
+    doc = await fromUuid(uuid);
+  } catch (e) {
+    doc = null;
+  }
+
+  if (!doc) return false;
+
+  // Best effort: JournalEntryPage opens the parent entry; try to hint pageId if supported.
+  if (doc.documentName === 'JournalEntryPage' && doc.parent?.sheet?.render) {
+    try {
+      doc.parent.sheet.render(true, { pageId: doc.id });
+    } catch (e) {
+      doc.parent.sheet.render(true);
+    }
+    return true;
+  }
+
+  if (doc.sheet?.render) {
+    doc.sheet.render(true);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Confirm wrapper for Foundry v13:
+ * - prefer DialogV2.confirm
+ * - fallback to Dialog.confirm
+ */
+async function confirmDialog({ title, content, yesLabel, yesIcon, noLabel, noIcon }) {
+  const DialogV2 = foundry?.applications?.api?.DialogV2;
+  if (DialogV2?.confirm) {
+    try {
+      return await new Promise((resolve) => {
+        let settled = false;
+        const settle = (v) => {
+          if (settled) return;
+          settled = true;
+          resolve(!!v);
+        };
+
+        const maybePromise = DialogV2.confirm({
+          window: { title, icon: yesIcon || 'fa-solid fa-question' },
+          content,
+          yes: {
+            label: yesLabel ?? 'Да',
+            icon: yesIcon ?? 'fa-solid fa-check',
+            callback: () => {
+              settle(true);
+              return true;
+            },
+          },
+          no: {
+            label: noLabel ?? 'Нет',
+            icon: noIcon ?? 'fa-solid fa-times',
+            callback: () => {
+              settle(false);
+              return false;
+            },
+          },
+        });
+
+        // На случай, если confirm() возвращает Promise<boolean> и закрытие окна тоже резолвит.
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then((r) => settle(r)).catch(() => settle(false));
+        }
+      });
+    } catch (e) {
+      // ignore and fallback
+    }
+  }
+
+  const DialogImpl = globalThis.Dialog;
+  if (typeof DialogImpl?.confirm === 'function') {
+    return await DialogImpl.confirm({
+      title,
+      content,
+      yes: () => true,
+      no: () => false,
+      defaultYes: false,
+    });
+  }
+
+  return globalThis.confirm?.(title) ?? false;
+}
+
 export class GlobalMapBiomeEditorApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 ) {
@@ -84,7 +229,9 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     this.onSaved = typeof onSaved === 'function' ? onSaved : null;
 
     this._loaded = false;
-    this._biomes = []; // editable list
+    this._biomes = []; // editable list (including disabled)
+
+    this._uuidNameCache = new Map();
 
     this._reloadOnNextRender = false;
   }
@@ -105,7 +252,8 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       console.warn('GlobalMapBiomeEditorApp | Failed to reload biome resolver:', e);
     }
 
-    const list = this.biomeResolver.listBiomes();
+    // Include disabled so we don't lose enabled:false state on save.
+    const list = this.biomeResolver.listBiomes({ includeDisabled: true });
 
     this._biomes = list.map((b) => {
       const id = Number(b.id);
@@ -117,8 +265,12 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       const patType = (pat && typeof pat.type === 'string') ? pat.type : '';
       const patColor = pat?.patternColor ? `#${normalizeHexToHex6(pat.patternColor)}` : '';
 
+      const link = normalizeUuid(this.biomeResolver?.getBiomeLink?.(id) ?? '');
+
       return {
         id,
+        enabled: b?.enabled !== false,
+        link,
         name: String(b.name ?? `Biome ${id}`),
         renderRank: Number.isFinite(b.renderRank) ? b.renderRank : 0,
         color,
@@ -155,10 +307,21 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     const path = this.biomeResolver?.getWorldOverridesPath?.() || '';
 
+    const sorted = this._getSortedBiomes();
+    const active = sorted.filter(b => b && b.enabled !== false);
+
+    const biomes = [];
+    for (const b of active) {
+      biomes.push({
+        ...b,
+        link: normalizeUuid(b.link),
+        linkName: b.link ? await resolveDocName(b.link, this._uuidNameCache) : '',
+      });
+    }
+
     return {
       filePath: path,
-      patternTypes: PATTERN_TYPES,
-      biomes: this._getSortedBiomes(),
+      biomes,
     };
   }
 
@@ -173,7 +336,16 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     el.querySelectorAll('[data-action="save"]').forEach(btn => btn.addEventListener('click', this._onSave.bind(this)));
     el.querySelectorAll('[data-action="reload"]').forEach(btn => btn.addEventListener('click', this._onReload.bind(this)));
     el.querySelectorAll('[data-action="reset-overrides"]').forEach(btn => btn.addEventListener('click', this._onResetOverrides.bind(this)));
-    el.querySelectorAll('[data-action="pattern-color-auto"]').forEach(btn => btn.addEventListener('click', this._onPatternColorAuto.bind(this)));
+
+    el.querySelectorAll('[data-action="edit-biome"]').forEach(btn => btn.addEventListener('click', this._onEditBiome.bind(this)));
+    el.querySelectorAll('[data-action="delete-biome"]').forEach(btn => btn.addEventListener('click', this._onDeleteBiome.bind(this)));
+
+    el.querySelectorAll('[data-action="biome-link-open"]').forEach(a => a.addEventListener('click', this._onBiomeLinkOpen.bind(this)));
+    el.querySelectorAll('[data-action="biome-link-clear"]').forEach(btn => btn.addEventListener('click', this._onBiomeLinkClear.bind(this)));
+    el.querySelectorAll('[data-action="biome-link-drop"]').forEach((zone) => {
+      zone.addEventListener('dragover', (ev) => ev.preventDefault());
+      zone.addEventListener('drop', this._onBiomeLinkDrop.bind(this));
+    });
 
     // Inputs (event delegation would also work, но так проще)
     el.querySelectorAll('[data-biome-id] input[data-field], [data-biome-id] select[data-field]').forEach((input) => {
@@ -201,6 +373,120 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       if (!biome) return;
       this._drawBiomePreview(canvas, biome);
     });
+  }
+
+  async _onBiomeLinkOpen(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+
+    const uuid = normalizeUuid(event.currentTarget?.dataset?.uuid);
+    if (!uuid) return;
+
+    const ok = await openJournalUuid(uuid);
+    if (!ok) {
+      ui.notifications?.warn?.('Документ по ссылке не найден');
+    }
+  }
+
+  async _onBiomeLinkClear(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+
+    const id = Number(event.currentTarget?.dataset?.biomeId ?? event.currentTarget?.closest?.('[data-biome-id]')?.dataset?.biomeId);
+    if (!Number.isFinite(id)) return;
+
+    const biome = this._findBiome(id);
+    if (!biome) return;
+
+    biome.link = '';
+    await this.render(true);
+  }
+
+  async _onBiomeLinkDrop(event) {
+    event?.preventDefault?.();
+
+    const id = Number(event.currentTarget?.dataset?.biomeId ?? event.currentTarget?.closest?.('[data-biome-id]')?.dataset?.biomeId);
+    if (!Number.isFinite(id)) return;
+
+    const biome = this._findBiome(id);
+    if (!biome) return;
+
+    const uuid = extractUuidFromDropEvent(event);
+    if (!uuid) {
+      ui.notifications?.warn?.('Не удалось извлечь UUID из перетаскивания');
+      return;
+    }
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc) {
+      ui.notifications?.warn?.('Документ по UUID не найден');
+      return;
+    }
+
+    if (!['JournalEntry', 'JournalEntryPage'].includes(doc.documentName)) {
+      ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+      return;
+    }
+
+    biome.link = uuid;
+    await this.render(true);
+  }
+
+  async _onEditBiome(event) {
+    event?.preventDefault?.();
+
+    const id = Number(event.currentTarget?.dataset?.biomeId ?? event.currentTarget?.closest?.('[data-biome-id]')?.dataset?.biomeId);
+    if (!Number.isFinite(id)) return;
+
+    const biome = this._findBiome(id);
+    if (!biome) return;
+
+    const app = new GlobalMapBiomeEditApp({
+      biome,
+      onApply: async (draft) => {
+        if (!draft || typeof draft !== 'object') return;
+
+        biome.enabled = draft.enabled !== false;
+        biome.name = String(draft.name ?? '').trim();
+        biome.renderRank = Number.isFinite(Number(draft.renderRank)) ? Number(draft.renderRank) : 0;
+        biome.color = String(draft.color || '').trim() || '#000000';
+        biome.pattern = draft.pattern ?? biome.pattern;
+
+        await this.render(true);
+      },
+    });
+
+    app.render(true);
+  }
+
+  async _onDeleteBiome(event) {
+    event?.preventDefault?.();
+
+    const id = Number(event.currentTarget?.dataset?.biomeId ?? event.currentTarget?.closest?.('[data-biome-id]')?.dataset?.biomeId);
+    if (!Number.isFinite(id)) return;
+
+    const biome = this._findBiome(id);
+    if (!biome) return;
+
+    const ok = await confirmDialog({
+      title: 'Удалить биом?',
+      content: `<p>Удалить биом <b>${foundry.utils.escapeHTML(String(biome.name ?? ''))}</b> (ID: <b>${id}</b>)?</p>`,
+      yesLabel: 'Удалить',
+      yesIcon: 'fa-solid fa-trash',
+      noLabel: 'Отмена',
+      noIcon: 'fa-solid fa-times',
+    });
+
+    if (!ok) return;
+
+    biome.enabled = false;
+    await this.render(true);
   }
 
   _drawBiomePreview(canvas, biome) {
@@ -420,6 +706,8 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     this._biomes.push({
       id,
+      enabled: true,
+      link: '',
       name: `Новый биом ${id}`,
       renderRank: maxRank + 10,
       color: '#808080',
@@ -459,6 +747,10 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
       case 'color':
         biome.color = String(value || '').trim() || '#000000';
+        return;
+
+      case 'link':
+        biome.link = normalizeUuid(value);
         return;
 
       default:
@@ -506,6 +798,12 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     // If rank changed, re-render to re-sort list
     if (field === 'renderRank') {
+      this.render(true);
+      return;
+    }
+
+    // Link changes require rerender (input <-> content-link)
+    if (field === 'link') {
       this.render(true);
       return;
     }
@@ -596,8 +894,20 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
   _buildOverridesPayload() {
     const biomes = this._getSortedBiomes().map((b) => {
       const id = Number(b.id);
-      const name = String(b.name || '').trim();
+      const enabled = b?.enabled !== false;
       const rank = Number(b.renderRank);
+
+      // Persist disabled biomes explicitly so they don't re-appear from base registry on next save.
+      if (!enabled) {
+        return {
+          id,
+          enabled: false,
+          ...(Number.isFinite(rank) ? { renderRank: rank } : {}),
+        };
+      }
+
+      const name = String(b.name || '').trim();
+      const link = normalizeUuid(b.link);
 
       const colorHex6 = normalizeHexToHex6(b.color) || '000000';
 
@@ -624,13 +934,14 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       return {
         id,
         ...(name ? { name } : {}),
+        ...(link ? { link } : {}),
         color: colorHex6,
         renderRank: Number.isFinite(rank) ? rank : 0,
         pattern,
       };
     });
 
-    return { version: 1, biomes };
+    return { version: 2, biomes };
   }
 
   async _reloadAllResolvers() {
@@ -702,17 +1013,19 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
   async _onResetOverrides(event) {
     event?.preventDefault?.();
 
-    const ok = await Dialog.confirm({
+    const ok = await confirmDialog({
       title: 'Сбросить biome-overrides.json?',
       content: '<p>Это очистит файл overrides и вернёт стандартные биомы (после перезагрузки списка).</p>',
-      yes: () => true,
-      no: () => false,
+      yesLabel: 'Сбросить',
+      yesIcon: 'fa-solid fa-trash',
+      noLabel: 'Отмена',
+      noIcon: 'fa-solid fa-times',
     });
 
     if (!ok) return;
 
     try {
-      await this.biomeResolver.saveOverridesToWorldFile({ version: 1, biomes: [] });
+      await this.biomeResolver.saveOverridesToWorldFile({ version: 2, biomes: [] });
       ui.notifications?.info?.('Overrides очищены');
 
       await this._reloadAllResolvers();
@@ -723,5 +1036,163 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       console.error('GlobalMapBiomeEditorApp | Reset failed:', e);
       ui.notifications?.error?.(`Не удалось очистить overrides: ${e.message}`);
     }
+  }
+}
+
+class GlobalMapBiomeEditApp extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.api.ApplicationV2
+) {
+  static DEFAULT_OPTIONS = {
+    ...super.DEFAULT_OPTIONS,
+    id: 'spaceholder-globalmap-biome-edit',
+    classes: ['spaceholder', 'globalmap-biome-edit'],
+    tag: 'div',
+    window: { title: 'Биом', resizable: true },
+    position: { width: 760, height: 620 },
+  };
+
+  static PARTS = {
+    main: { root: true, template: 'systems/spaceholder/templates/global-map/biome-edit.hbs' },
+  };
+
+  constructor({ biome, onApply } = {}) {
+    const id = Number(biome?.id);
+    const appOptions = Number.isFinite(id)
+      ? { id: `spaceholder-globalmap-biome-edit-${id}`, window: { title: `Биом ${id}` } }
+      : {};
+
+    super(appOptions);
+
+    this._source = biome;
+    this._draft = foundry.utils.deepClone(biome ?? {});
+    this._onApply = typeof onApply === 'function' ? onApply : null;
+  }
+
+  async _prepareContext(_options) {
+    // Ensure structure exists (defensive)
+    if (!this._draft.pattern) {
+      this._draft.pattern = { type: '', patternColor: '', spacing: 2.0, lineWidth: 0.6, opacity: 0.9, darkenFactor: 0.4 };
+    }
+
+    return {
+      patternTypes: PATTERN_TYPES,
+      biome: this._draft,
+    };
+  }
+
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+
+    const el = this.element;
+    if (!el) return;
+
+    el.querySelectorAll('[data-action="apply"]').forEach(btn => btn.addEventListener('click', this._apply.bind(this)));
+    el.querySelectorAll('[data-action="cancel"]').forEach(btn => btn.addEventListener('click', () => this.close()));
+
+    el.querySelectorAll('[data-action="pattern-color-auto"]').forEach(btn => btn.addEventListener('click', this._onPatternColorAuto.bind(this)));
+
+    el.querySelectorAll('input[data-field], select[data-field]').forEach((input) => {
+      input.addEventListener('change', this._onFieldChange.bind(this));
+      input.addEventListener('input', this._onFieldInput.bind(this));
+    });
+
+    this._renderPreview();
+  }
+
+  _renderPreview() {
+    const root = this.element;
+    const canvas = root?.querySelector('canvas[data-preview="biome"]');
+    if (!canvas) return;
+    GlobalMapBiomeEditorApp.prototype._drawBiomePreview.call(this, canvas, this._draft);
+  }
+
+  _readValueFromInput(input) {
+    const type = String(input.type || '').toLowerCase();
+    if (type === 'number') {
+      const n = Number(input.value);
+      return Number.isFinite(n) ? n : 0;
+    }
+    return input.value;
+  }
+
+  _applyField(field, value) {
+    if (!field) return;
+
+    // Reuse the editor's field logic.
+    GlobalMapBiomeEditorApp.prototype._applyFieldToBiome.call(this, this._draft, field, value);
+  }
+
+  _onFieldChange(event) {
+    const input = event.currentTarget;
+    const field = String(input.dataset.field || '');
+    if (!field) return;
+
+    const value = this._readValueFromInput(input);
+    this._applyField(field, value);
+
+    if (field === 'pattern.patternColor') {
+      this._syncPatternColorUI();
+    }
+
+    this._renderPreview();
+  }
+
+  _onFieldInput(event) {
+    const input = event.currentTarget;
+    const field = String(input.dataset.field || '');
+    if (!field) return;
+
+    // Only handle lightweight fields on input
+    if (field !== 'name' && field !== 'pattern.patternColor') return;
+
+    const value = this._readValueFromInput(input);
+    this._applyField(field, value);
+
+    if (field === 'pattern.patternColor') {
+      this._syncPatternColorUI();
+    }
+
+    this._renderPreview();
+  }
+
+  _syncPatternColorUI() {
+    const root = this.element;
+    if (!root) return;
+
+    const raw = String(this._draft?.pattern?.patternColor || '').trim();
+    const hex6 = normalizeHexToHex6(raw);
+
+    const display = root.querySelector('[data-display="pattern.patternColor"]');
+    if (display) {
+      display.textContent = raw ? raw : '(авто)';
+    }
+
+    const colorInput = root.querySelector('input[type="color"][data-field="pattern.patternColor"]');
+    if (colorInput) {
+      // input[type=color] cannot have empty value.
+      colorInput.value = hex6 ? `#${hex6}` : '#000000';
+    }
+  }
+
+  _onPatternColorAuto(event) {
+    event?.preventDefault?.();
+
+    if (!this._draft.pattern) {
+      this._draft.pattern = { type: '', patternColor: '', spacing: 2.0, lineWidth: 0.6, opacity: 0.9, darkenFactor: 0.4 };
+    }
+
+    this._draft.pattern.patternColor = '';
+    this._syncPatternColorUI();
+    this._renderPreview();
+  }
+
+  async _apply(event) {
+    event?.preventDefault?.();
+
+    if (this._onApply) {
+      await this._onApply(foundry.utils.deepClone(this._draft));
+    }
+
+    this.close();
   }
 }

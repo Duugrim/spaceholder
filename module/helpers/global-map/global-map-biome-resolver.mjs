@@ -9,6 +9,7 @@ export class BiomeResolver {
     this.biomeColors = null;
     this.biomeNames = null;
     this.biomePatterns = null;
+    this.biomeLinks = null;
     this.biomeRegistry = null; // { version, defaultBiomeId, biomes: [{id, renderRank, enabled}], legacyRemap?: object }
     this.biomeRanks = null; // Map<biomeId, renderRank>
     this.enabledBiomeIds = null; // Set<biomeId> of enabled registry biomes
@@ -40,10 +41,12 @@ export class BiomeResolver {
       this.azgaarBiomeMappings = config.azgaarBiomeMappings || {};
       this.settings = config.settings || {};
 
-      // Load biome colors, names, and patterns (MUST stay stable; user wants to preserve current palette)
+      // Load biome colors, names, patterns and links.
+      // Colors/patterns MUST stay stable; user wants to preserve current palette.
       this.biomeColors = new Map();
       this.biomeNames = new Map();
       this.biomePatterns = new Map();
+      this.biomeLinks = new Map();
       for (const biome of config.biomeColors || []) {
         this.biomeColors.set(biome.id, parseInt(biome.color, 16));
         if (biome.name) {
@@ -52,6 +55,7 @@ export class BiomeResolver {
         if (biome.pattern) {
           this.biomePatterns.set(biome.id, biome.pattern);
         }
+        // Links live only in world overrides for now.
       }
 
       // 2) Load biome registry (explicit biome list + renderRank)
@@ -247,26 +251,31 @@ export class BiomeResolver {
   }
 
   /**
-   * List active biomes from registry (enabled = true).
-   * Falls back to all biomes found in biomeColors.
-   * @returns {Array<{id:number, renderRank:number, name:string}>}
+   * List biomes from registry.
+   * By default returns only enabled biomes.
+   * @param {{includeDisabled?: boolean}} [options]
+   * @returns {Array<{id:number, renderRank:number, name:string, enabled:boolean}>}
    */
-  listBiomes() {
+  listBiomes({ includeDisabled = false } = {}) {
     const result = [];
 
     if (this.biomeRegistry?.biomes?.length) {
       for (const entry of this.biomeRegistry.biomes) {
         if (!entry || typeof entry.id !== 'number') continue;
-        if (entry.enabled === false) continue;
+
+        const enabled = entry.enabled !== false;
+        if (!includeDisabled && !enabled) continue;
+
         result.push({
           id: entry.id,
           renderRank: typeof entry.renderRank === 'number' ? entry.renderRank : this.getBiomeRank(entry.id),
           name: this.getBiomeName(entry.id),
+          enabled,
         });
       }
     } else if (this.biomeColors) {
       for (const id of this.biomeColors.keys()) {
-        result.push({ id, renderRank: this.getBiomeRank(id), name: this.getBiomeName(id) });
+        result.push({ id, renderRank: this.getBiomeRank(id), name: this.getBiomeName(id), enabled: true });
       }
     }
 
@@ -319,6 +328,18 @@ export class BiomeResolver {
       return this.biomePatterns.get(biomeId);
     }
     return null;
+  }
+
+  /**
+   * Get biome link UUID by ID (JournalEntry/JournalEntryPage).
+   * @param {number} biomeId
+   * @returns {string}
+   */
+  getBiomeLink(biomeId) {
+    if (this.biomeLinks && this.biomeLinks.has(biomeId)) {
+      return String(this.biomeLinks.get(biomeId) ?? '').trim();
+    }
+    return '';
   }
 
   // ==========================
@@ -500,6 +521,7 @@ export class BiomeResolver {
     if (!this.biomeColors) this.biomeColors = new Map();
     if (!this.biomeNames) this.biomeNames = new Map();
     if (!this.biomePatterns) this.biomePatterns = new Map();
+    if (!this.biomeLinks) this.biomeLinks = new Map();
     if (!this.biomeRanks) this.biomeRanks = new Map();
     if (!this.enabledBiomeIds) this.enabledBiomeIds = new Set();
 
@@ -521,6 +543,28 @@ export class BiomeResolver {
       const id = Number(raw.id);
       if (!Number.isFinite(id) || id < 0 || id > 255) continue;
 
+      const enabled = raw.enabled !== false;
+
+      const rank = Number(raw.renderRank);
+
+      // If explicitly disabled in overrides: keep in registry, but do not apply any visual overrides.
+      if (!enabled) {
+        // Ensure biome is present in registry and disabled.
+        let regEntry = this.biomeRegistry.biomes.find(e => e && typeof e.id === 'number' && e.id === id);
+        if (!regEntry) {
+          regEntry = { id, renderRank: Number.isFinite(rank) ? rank : this.getBiomeRank(id), enabled: false };
+          this.biomeRegistry.biomes.push(regEntry);
+        } else {
+          if (Number.isFinite(rank)) {
+            regEntry.renderRank = rank;
+          }
+          regEntry.enabled = false;
+        }
+
+        // Do not add to enabledBiomeIds.
+        continue;
+      }
+
       const name = (typeof raw.name === 'string') ? raw.name.trim() : '';
       if (name) {
         this.biomeNames.set(id, name);
@@ -529,6 +573,16 @@ export class BiomeResolver {
       const colorInt = this._normalizeHexColorToInt(raw.color);
       if (colorInt !== null) {
         this.biomeColors.set(id, colorInt);
+      }
+
+      const linkRaw = (typeof raw.link === 'string') ? raw.link.trim() : '';
+      if (linkRaw) {
+        // Keep as UUID string.
+        const match = linkRaw.match(/@UUID\[(.+?)\]/);
+        const uuid = String(match?.[1] ?? linkRaw).trim();
+        if (uuid) this.biomeLinks.set(id, uuid);
+      } else {
+        this.biomeLinks.delete(id);
       }
 
       // Pattern: allow explicit null/empty to remove
@@ -545,7 +599,6 @@ export class BiomeResolver {
         }
       }
 
-      const rank = Number(raw.renderRank);
       if (Number.isFinite(rank)) {
         this.biomeRanks.set(id, rank);
       }
