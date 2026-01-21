@@ -5,6 +5,96 @@ const MODULE_NS = 'spaceholder';
 const UI_ID = 'spaceholder-globalmap-edge-ui';
 const TEMPLATE_PATH = 'systems/spaceholder/templates/global-map/edge-panel.hbs';
 
+const CLIENT_SETTING_RIVER_LABEL_ROTATE = 'globalmap.rotateRiverLabels';
+const CLIENT_SETTING_APPEAR_ANIM = 'globalmap.appearanceAnimation';
+const CLIENT_SETTING_APPEAR_ANIM_DURATION = 'globalmap.appearanceAnimationDurationMs';
+
+function _registerGlobalMapClientSettings() {
+  try {
+    const s = game?.settings?.settings;
+    if (
+      s?.has?.(`${MODULE_NS}.${CLIENT_SETTING_RIVER_LABEL_ROTATE}`)
+      && s?.has?.(`${MODULE_NS}.${CLIENT_SETTING_APPEAR_ANIM}`)
+      && s?.has?.(`${MODULE_NS}.${CLIENT_SETTING_APPEAR_ANIM_DURATION}`)
+    ) {
+      return;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  try {
+    game?.settings?.register?.(MODULE_NS, CLIENT_SETTING_RIVER_LABEL_ROTATE, {
+      name: 'Global Map: Rotate river labels',
+      hint: 'Rotate river labels along river direction (client-side)',
+      scope: 'client',
+      config: false,
+      type: Boolean,
+      default: true,
+      onChange: () => {
+        try {
+          const r = game?.spaceholder?.globalMapRenderer;
+          if (r?.currentMetadata && r?.vectorRiversData) {
+            r.renderVectorRivers?.(r.vectorRiversData, r.currentMetadata);
+          }
+        } catch (e) {
+          // ignore
+        }
+      },
+    });
+  } catch (e) {
+    // ignore
+  }
+
+  try {
+    game?.settings?.register?.(MODULE_NS, CLIENT_SETTING_APPEAR_ANIM, {
+      name: 'Global Map: Appearance animations',
+      hint: 'Animate appearance/disappearance of global map overlays (client-side)',
+      scope: 'client',
+      config: false,
+      type: Boolean,
+      default: true,
+      onChange: () => {
+        try {
+          const r = game?.spaceholder?.globalMapRenderer;
+          if (r?.currentMetadata) {
+            if (r?.vectorRegionsData) r.renderVectorRegions?.(r.vectorRegionsData, r.currentMetadata);
+            if (r?.vectorRiversData) r.renderVectorRivers?.(r.vectorRiversData, r.currentMetadata);
+          }
+        } catch (e) {
+          // ignore
+        }
+      },
+    });
+  } catch (e) {
+    // ignore
+  }
+
+  try {
+    game?.settings?.register?.(MODULE_NS, CLIENT_SETTING_APPEAR_ANIM_DURATION, {
+      name: 'Global Map: Appearance animation duration',
+      hint: 'Fade in/out duration in milliseconds (client-side)',
+      scope: 'client',
+      config: false,
+      type: Number,
+      default: 180,
+      onChange: () => {
+        try {
+          const r = game?.spaceholder?.globalMapRenderer;
+          if (r?.currentMetadata) {
+            if (r?.vectorRegionsData) r.renderVectorRegions?.(r.vectorRegionsData, r.currentMetadata);
+            if (r?.vectorRiversData) r.renderVectorRivers?.(r.vectorRiversData, r.currentMetadata);
+          }
+        } catch (e) {
+          // ignore
+        }
+      },
+    });
+  } catch (e) {
+    // ignore
+  }
+}
+
 let _hooksInstalled = false;
 let _uiInstance = null;
 
@@ -94,6 +184,7 @@ class GlobalMapEdgeUI {
       this._syncInspectorUpdatesUi(existing);
       this._syncInspectorUi(existing);
       this._installInspectorDomHandlers(existing);
+      this._installFlyoutDomHandlers(existing);
       this._installInspectorStageHandler();
       await this._syncSelectedTokenInfo(existing);
       this._fitAll(existing);
@@ -119,6 +210,7 @@ class GlobalMapEdgeUI {
     this._syncInspectorUpdatesUi(el);
     this._syncInspectorUi(el);
     this._installInspectorDomHandlers(el);
+    this._installFlyoutDomHandlers(el);
     this._installInspectorStageHandler();
     await this._syncSelectedTokenInfo(el);
     this._fitAll(el);
@@ -275,6 +367,58 @@ class GlobalMapEdgeUI {
     const riversLabelMode = String(renderer?.vectorRiversData?.settings?.labelMode || 'hover');
     const riversLabelBtn = root.querySelector(`button[data-action="select"][data-select="riverLabels"][data-value="${riversLabelMode}"]`);
     if (riversLabelBtn) this._selectOption(riversLabelBtn);
+
+    // ===== Client-only visual toggles =====
+    const rotateEnabled = (() => {
+      try {
+        const v = game?.settings?.get?.(MODULE_NS, CLIENT_SETTING_RIVER_LABEL_ROTATE);
+        return (v === undefined) ? true : !!v;
+      } catch (e) {
+        return true;
+      }
+    })();
+
+    const rotateBtn = root.querySelector(
+      `button[data-action="select"][data-select="riverLabelRotate"][data-value="${rotateEnabled ? 'on' : 'off'}"]`
+    );
+    if (rotateBtn) this._selectOption(rotateBtn);
+
+    const animEnabled = (() => {
+      try {
+        const v = game?.settings?.get?.(MODULE_NS, CLIENT_SETTING_APPEAR_ANIM);
+        return (v === undefined) ? true : !!v;
+      } catch (e) {
+        return true;
+      }
+    })();
+
+    const animBtn = root.querySelector(
+      `button[data-action="select"][data-select="appearAnim"][data-value="${animEnabled ? 'on' : 'off'}"]`
+    );
+    if (animBtn) this._selectOption(animBtn);
+
+    const durRaw = (() => {
+      try {
+        return game?.settings?.get?.(MODULE_NS, CLIENT_SETTING_APPEAR_ANIM_DURATION);
+      } catch (e) {
+        return 180;
+      }
+    })();
+
+    const dur = (() => {
+      const n = Number(durRaw);
+      if (!Number.isFinite(n)) return 180;
+      return Math.max(0, Math.min(2000, Math.round(n)));
+    })();
+
+    const durInput = root.querySelector('input[data-field="appearAnimDurationMs"]');
+    if (durInput) {
+      // Don't clobber while user is typing
+      if (document.activeElement !== durInput) {
+        durInput.value = String(dur);
+      }
+      durInput.disabled = !animEnabled;
+    }
 
     const regionsRenderMode = String(renderer?.vectorRegionsData?.settings?.renderMode || 'full');
     const regionsRenderBtn = root.querySelector(`button[data-action="select"][data-select="regions"][data-value="${regionsRenderMode}"]`);
@@ -467,6 +611,33 @@ class GlobalMapEdgeUI {
     next.settings.labelMode = m;
 
     renderer.setVectorRegionsData(next);
+  }
+
+  async _setClientSettingOnOff(key, value) {
+    const v = String(value || '').trim();
+    if (!['on', 'off'].includes(v)) return;
+
+    const enabled = v === 'on';
+
+    try {
+      await game?.settings?.set?.(MODULE_NS, key, enabled);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  async _setClientSettingNumber(key, value, { min = 0, max = 2000, fallback = 180 } = {}) {
+    let n = Number.parseInt(String(value ?? '').trim(), 10);
+    if (!Number.isFinite(n)) n = Number(fallback);
+    if (!Number.isFinite(n)) n = 0;
+
+    const clamped = Math.max(Number(min) || 0, Math.min(Number(max) || 0, n));
+
+    try {
+      await game?.settings?.set?.(MODULE_NS, key, clamped);
+    } catch (e) {
+      // ignore
+    }
   }
 
   async _setRegionsSmoothIterations(value) {
@@ -810,6 +981,33 @@ class GlobalMapEdgeUI {
           await this._setInspectedRegionJournalUuid(input.value);
         }
       });
+    });
+  }
+
+  _installFlyoutDomHandlers(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    if (el.dataset?.shFlyoutHandlers === 'true') return;
+    el.dataset.shFlyoutHandlers = 'true';
+
+    const input = el.querySelector('input[data-field="appearAnimDurationMs"]');
+    if (!input) return;
+
+    const apply = async () => {
+      await this._setClientSettingNumber(CLIENT_SETTING_APPEAR_ANIM_DURATION, input.value, { min: 0, max: 2000, fallback: 180 });
+      this._syncRenderModeSelectors(el);
+    };
+
+    input.addEventListener('keydown', async (ev) => {
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      await apply();
+      try { input.blur(); } catch (e) { /* ignore */ }
+    });
+
+    input.addEventListener('change', () => {
+      apply().catch(() => {});
     });
   }
 
@@ -1564,6 +1762,14 @@ class GlobalMapEdgeUI {
           await this._setRegionsSmoothIterations(value);
         }
 
+        // Client-only visual toggles
+        if (groupId === 'riverLabelRotate') {
+          await this._setClientSettingOnOff(CLIENT_SETTING_RIVER_LABEL_ROTATE, value);
+        }
+        if (groupId === 'appearAnim') {
+          await this._setClientSettingOnOff(CLIENT_SETTING_APPEAR_ANIM, value);
+        }
+
         // Keep UI in sync with normalized values
         const root = this.element;
         if (root) this._syncRenderModeSelectors(root);
@@ -1624,6 +1830,8 @@ async function _syncForScene(scene) {
 export function installGlobalMapEdgeUiHooks() {
   if (_hooksInstalled) return;
   _hooksInstalled = true;
+
+  _registerGlobalMapClientSettings();
 
   Hooks.on('canvasReady', async () => {
     try {

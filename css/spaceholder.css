@@ -1937,6 +1937,33 @@
   color: #9fe39f;
   box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.2), 0 0 10px rgba(74, 110, 74, 0.14);
 }
+#spaceholder-globalmap-edge-ui .sh-gm-edge__selectorInput,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__selectorInput {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 64px;
+  padding: 5px 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--sh-text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  outline: none;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__selectorInput:disabled,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__selectorInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__selectorSuffix,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__selectorSuffix {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--sh-text-muted);
+  user-select: none;
+  margin-right: 2px;
+}
 #spaceholder-globalmap-edge-ui .sh-gm-edge__iconGroup,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__iconGroup {
   display: inline-flex;

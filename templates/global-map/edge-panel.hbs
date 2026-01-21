@@ -119,6 +119,14 @@
         </div>
 
         <div class="sh-gm-edge__setting">
+          <div class="sh-gm-edge__settingLabel">Пов. назв. рек</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="riverLabelRotate" data-value="on" role="group" aria-label="Поворот названий рек">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabelRotate" data-value="off" aria-pressed="false">Off</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="riverLabelRotate" data-value="on" aria-pressed="true">On</button>
+          </div>
+        </div>
+
+        <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">Регионы</div>
           <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regions" data-value="full" role="group" aria-label="Регионы">
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="name" aria-pressed="false">Назв.</button>
@@ -144,6 +152,28 @@
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="2" aria-pressed="false">2</button>
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="3" aria-pressed="false">3</button>
             <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="smooth" data-value="4" aria-pressed="true">4</button>
+          </div>
+        </div>
+
+        <div class="sh-gm-edge__setting">
+          <div class="sh-gm-edge__settingLabel">Аним. появ.</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="appearAnim" data-value="on" role="group" aria-label="Анимация появления">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="appearAnim" data-value="off" aria-pressed="false">Off</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="appearAnim" data-value="on" aria-pressed="true">On</button>
+
+            <input
+              type="number"
+              class="sh-gm-edge__selectorInput"
+              data-field="appearAnimDurationMs"
+              value="180"
+              min="0"
+              max="2000"
+              step="10"
+              inputmode="numeric"
+              aria-label="Длительность (мс)"
+              data-tooltip="мс"
+            />
+            <span class="sh-gm-edge__selectorSuffix" aria-hidden="true">мс</span>
           </div>
         </div>
       </div>

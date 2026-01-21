@@ -59,8 +59,11 @@ export class GlobalMapRenderer {
     this._riverHoverLabel = null; // PIXI.Text
 
     // Cached per-river render metadata
-    this._riverLabelAnchors = new Map(); // riverId -> {x,y}
+    this._riverLabelAnchors = new Map(); // riverId -> {x,y, angle, width}
     this._riverBounds = new Map(); // riverId -> {minX,minY,maxX,maxY, pad}
+
+    // Client-side fade animations (displayObject -> {cancelled:boolean})
+    this._fadeJobs = new Map();
   }
 
   /**
@@ -2449,6 +2452,271 @@ export class GlobalMapRenderer {
     return (value - min) / (max - min);
   }
 
+  _getClientSetting(key, fallback) {
+    try {
+      const v = game?.settings?.get?.('spaceholder', key);
+      return (v === undefined) ? fallback : v;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  _isGlobalMapRiverLabelRotationEnabled() {
+    return !!this._getClientSetting('globalmap.rotateRiverLabels', true);
+  }
+
+  _isGlobalMapAppearanceAnimationEnabled() {
+    return !!this._getClientSetting('globalmap.appearanceAnimation', true);
+  }
+
+  _getGlobalMapFadeDurationMs() {
+    const raw = Number(this._getClientSetting('globalmap.appearanceAnimationDurationMs', 180));
+    if (!Number.isFinite(raw)) return 180;
+
+    return Math.max(0, Math.min(2000, Math.round(raw)));
+  }
+
+  _cancelFade(displayObject) {
+    if (!displayObject || !this._fadeJobs) return;
+
+    const job = this._fadeJobs.get(displayObject);
+    if (job) {
+      job.cancelled = true;
+      this._fadeJobs.delete(displayObject);
+    }
+  }
+
+  _fadeTo(displayObject, targetAlpha, durationMs = null, { onComplete = null } = {}) {
+    if (!displayObject) return;
+
+    const animate = this._isGlobalMapAppearanceAnimationEnabled();
+
+    // IMPORTANT: treat null/undefined as "use default" (Number(null) === 0 would disable animation)
+    const durRaw = (durationMs === null || durationMs === undefined) ? NaN : Number(durationMs);
+    const duration = Number.isFinite(durRaw) ? Math.max(0, durRaw) : this._getGlobalMapFadeDurationMs();
+
+    const to = Math.max(0, Math.min(1, Number(targetAlpha)));
+
+    // Cancel any previous fade on this object
+    this._cancelFade(displayObject);
+
+    if (!animate || duration <= 0) {
+      try {
+        displayObject.alpha = to;
+      } catch (e) {
+        // ignore
+      }
+      if (typeof onComplete === 'function') {
+        try { onComplete(); } catch (e) { /* ignore */ }
+      }
+      return;
+    }
+
+    const from = Number.isFinite(Number(displayObject.alpha)) ? Number(displayObject.alpha) : 1;
+
+    const job = { cancelled: false, targetAlpha: to };
+    this._fadeJobs.set(displayObject, job);
+
+    const start = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? performance.now()
+      : Date.now();
+
+    const step = (now) => {
+      if (job.cancelled) return;
+
+      const t = Math.max(0, Math.min(1, (now - start) / duration));
+      const a = from + (to - from) * t;
+
+      try {
+        displayObject.alpha = a;
+      } catch (e) {
+        // ignore
+      }
+
+      if (t < 1) {
+        try {
+          requestAnimationFrame(step);
+        } catch (e) {
+          // Fallback
+          setTimeout(() => step(((typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now())), 16);
+        }
+        return;
+      }
+
+      this._fadeJobs.delete(displayObject);
+
+      if (typeof onComplete === 'function') {
+        try { onComplete(); } catch (e) { /* ignore */ }
+      }
+    };
+
+    try {
+      requestAnimationFrame(step);
+    } catch (e) {
+      setTimeout(() => step(((typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now())), 0);
+    }
+  }
+
+  _showDisplayObjectWithFade(displayObject, durationMs = null) {
+    if (!displayObject) return;
+
+    const animate = this._isGlobalMapAppearanceAnimationEnabled();
+
+    if (!animate) {
+      try {
+        displayObject.alpha = 1;
+        displayObject.visible = true;
+      } catch (e) {
+        // ignore
+      }
+      return;
+    }
+
+    const job = this._fadeJobs?.get?.(displayObject) || null;
+
+    if (!displayObject.visible) {
+      try {
+        displayObject.alpha = 0;
+        displayObject.visible = true;
+      } catch (e) {
+        // ignore
+      }
+
+      this._fadeTo(displayObject, 1, durationMs);
+      return;
+    }
+
+    const alpha = Number.isFinite(Number(displayObject.alpha)) ? Number(displayObject.alpha) : 1;
+    if (alpha >= 0.999) return;
+
+    // Don't restart an existing fade-in on every pointermove
+    if (job && job.targetAlpha === 1) return;
+
+    this._fadeTo(displayObject, 1, durationMs);
+  }
+
+  _hideDisplayObjectWithFade(displayObject, { durationMs = null, clearOnComplete = false } = {}) {
+    if (!displayObject) return;
+
+    const animate = this._isGlobalMapAppearanceAnimationEnabled();
+
+    const finalize = () => {
+      try {
+        if (clearOnComplete && typeof displayObject.clear === 'function') {
+          displayObject.clear();
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        displayObject.visible = false;
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    if (!animate) {
+      this._cancelFade(displayObject);
+      try {
+        displayObject.alpha = 1;
+      } catch (e) {
+        // ignore
+      }
+      finalize();
+      return;
+    }
+
+    if (!displayObject.visible) {
+      finalize();
+      return;
+    }
+
+    const job = this._fadeJobs?.get?.(displayObject) || null;
+
+    // Don't restart an existing fade-out on every pointermove
+    if (job && job.targetAlpha === 0) return;
+
+    this._fadeTo(displayObject, 0, durationMs, { onComplete: finalize });
+  }
+
+  _cancelFadeDeep(displayObject) {
+    if (!displayObject) return;
+
+    this._cancelFade(displayObject);
+
+    const kids = displayObject.children;
+    if (!Array.isArray(kids) || kids.length === 0) return;
+
+    for (const ch of kids) {
+      this._cancelFadeDeep(ch);
+    }
+  }
+
+  _crossFadeLayer(layer, newChild, durationMs = null) {
+    if (!layer) return;
+
+    const animate = this._isGlobalMapAppearanceAnimationEnabled();
+
+    // IMPORTANT: treat null/undefined as "use default" (Number(null) === 0 would disable animation)
+    const durRaw = (durationMs === null || durationMs === undefined) ? NaN : Number(durationMs);
+    const duration = Number.isFinite(durRaw) ? Math.max(0, durRaw) : this._getGlobalMapFadeDurationMs();
+
+    // Prevent overlapping fades from previous renders (important when re-rendering rapidly)
+    try {
+      if (Array.isArray(layer.children)) {
+        for (const ch of layer.children) {
+          this._cancelFadeDeep(ch);
+        }
+      }
+      if (newChild) {
+        this._cancelFadeDeep(newChild);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const hasOld = Array.isArray(layer.children) ? layer.children.length > 0 : false;
+
+    let oldWrap = null;
+    if (hasOld) {
+      const oldChildren = layer.removeChildren();
+      oldWrap = new PIXI.Container();
+      oldWrap.name = `${layer.name || 'layer'}OldWrap`;
+      oldWrap.addChild(...oldChildren);
+      layer.addChild(oldWrap);
+    }
+
+    if (newChild) {
+      newChild.alpha = animate ? 0 : 1;
+      layer.addChild(newChild);
+      if (animate) {
+        this._fadeTo(newChild, 1, duration);
+      }
+    }
+
+    if (oldWrap) {
+      const destroyOld = () => {
+        try {
+          oldWrap.parent?.removeChild?.(oldWrap);
+        } catch (e) {
+          // ignore
+        }
+        try {
+          oldWrap.destroy({ children: true });
+        } catch (e) {
+          // ignore
+        }
+      };
+
+      if (animate) {
+        this._fadeTo(oldWrap, 0, duration, { onComplete: destroyOld });
+      } else {
+        destroyOld();
+      }
+    }
+  }
+
   // ==========================
   // Vector Regions (new system)
   // ==========================
@@ -2488,10 +2756,9 @@ export class GlobalMapRenderer {
    */
   clearVectorRegions() {
     try {
-      this.regionsLayer?.removeChildren();
-      this.regionLabelsLayer?.removeChildren();
-      this.regionHoverLayer?.clear?.();
-      if (this.regionHoverLayer) this.regionHoverLayer.visible = false;
+      this._crossFadeLayer(this.regionsLayer, null);
+      this._crossFadeLayer(this.regionLabelsLayer, null);
+      this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
     } catch (e) {
       // ignore
     }
@@ -2636,29 +2903,28 @@ export class GlobalMapRenderer {
   renderVectorRegions(regionsData = this.vectorRegionsData, _metadata = this.currentMetadata) {
     if (!this.regionsLayer || !this.regionLabelsLayer || !this.regionHoverLayer) return;
 
-    // Clear previous regions render
-    try {
-      this.regionsLayer.removeChildren();
-      this.regionLabelsLayer.removeChildren();
-      this.regionHoverLayer.clear();
-      this.regionHoverLayer.visible = false;
-    } catch (e) {
-      // ignore
-    }
+    const animate = this._isGlobalMapAppearanceAnimationEnabled();
 
+    // Reset cached metadata (hit tests should follow current data immediately)
     this._regionLabelAnchors.clear();
     this._regionBounds.clear();
     this._regionRenderPoints.clear();
     this._hoveredRegionId = null;
+
+    // Fade out any active hover overlay/label (they depend on current geometry)
+    this._hideDisplayObjectWithFade(this._regionHoverLabel);
+    this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
     this._regionHoverLabel = null;
 
     const regions = regionsData?.regions || [];
-    if (!Array.isArray(regions) || regions.length === 0) return;
+    if (!Array.isArray(regions) || regions.length === 0) {
+      this._crossFadeLayer(this.regionsLayer, null);
+      this._crossFadeLayer(this.regionLabelsLayer, null);
+      return;
+    }
 
     const modeRaw = String(regionsData?.settings?.labelMode || 'hover');
     const showMode = ['off', 'hover', 'always'].includes(modeRaw) ? modeRaw : 'hover';
-
-    if (showMode === 'off') return;
 
     const renderModeRaw = String(regionsData?.settings?.renderMode || 'full');
     const renderMode = ['name', 'border', 'full'].includes(renderModeRaw) ? renderModeRaw : 'full';
@@ -2670,10 +2936,6 @@ export class GlobalMapRenderer {
     const allowFill = renderMode === 'full';
 
     const drawBaseShapes = showMode === 'always';
-
-    const graphics = new PIXI.Graphics();
-    graphics.name = 'globalMapVectorRegionsGraphics';
-    let didDraw = false;
 
     const flatten = (pts) => {
       const out = [];
@@ -2703,6 +2965,20 @@ export class GlobalMapRenderer {
 
       return { minX, minY, maxX, maxY };
     };
+
+    // ===== Build new visuals (groups) =====
+    let shapesGroup = null;
+    let labelsGroup = null;
+
+    // Labels group exists for both Always and Hover (Hover uses a single hover label)
+    if (showMode !== 'off') {
+      labelsGroup = new PIXI.Container();
+      labelsGroup.name = 'globalMapVectorRegionLabelsGroup';
+    }
+
+    const graphics = new PIXI.Graphics();
+    graphics.name = 'globalMapVectorRegionsGraphics';
+    let didDraw = false;
 
     for (const region of regions) {
       const pts = Array.isArray(region?.points) ? region.points : [];
@@ -2762,24 +3038,31 @@ export class GlobalMapRenderer {
         }
 
         // Labels are part of the region display in Always mode
-        if (anchor && region?.name) {
-          const text = this._createRegionLabelText(String(region.name));
+        if (labelsGroup && anchor && region?.name) {
+          const text = this._createRegionLabelText(String(region.name), region.id);
           text.position.set(anchor.x, anchor.y);
-          this.regionLabelsLayer.addChild(text);
+          labelsGroup.addChild(text);
         }
       }
     }
 
-    if (didDraw) {
-      this.regionsLayer.addChild(graphics);
+    if (drawBaseShapes && didDraw) {
+      shapesGroup = new PIXI.Container();
+      shapesGroup.name = 'globalMapVectorRegionsGroup';
+      shapesGroup.addChild(graphics);
     }
 
     // Hover label (only when showMode === 'hover')
-    if (showMode === 'hover') {
+    if (showMode === 'hover' && labelsGroup) {
       this._regionHoverLabel = this._createRegionLabelText('');
       this._regionHoverLabel.visible = false;
-      this.regionLabelsLayer.addChild(this._regionHoverLabel);
+      this._regionHoverLabel.alpha = animate ? 0 : 1;
+      labelsGroup.addChild(this._regionHoverLabel);
     }
+
+    // ===== Cross-fade (or instant swap) =====
+    this._crossFadeLayer(this.regionsLayer, shapesGroup);
+    this._crossFadeLayer(this.regionLabelsLayer, labelsGroup);
   }
 
   /**
@@ -2934,11 +3217,9 @@ export class GlobalMapRenderer {
   _handleRegionHover(event) {
     const labelMode = this.vectorRegionsData?.settings?.labelMode || 'hover';
     if (labelMode !== 'hover') {
-      if (this._regionHoverLabel) this._regionHoverLabel.visible = false;
-      if (this.regionHoverLayer) {
-        this.regionHoverLayer.clear();
-        this.regionHoverLayer.visible = false;
-      }
+      this._hideDisplayObjectWithFade(this._regionHoverLabel);
+      this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
+      this._hoveredRegionId = null;
       return;
     }
 
@@ -2954,9 +3235,9 @@ export class GlobalMapRenderer {
 
     const regions = this.vectorRegionsData?.regions || [];
     if (!Array.isArray(regions) || regions.length === 0) {
-      this._regionHoverLabel.visible = false;
-      this.regionHoverLayer.clear();
-      this.regionHoverLayer.visible = false;
+      this._hideDisplayObjectWithFade(this._regionHoverLabel);
+      this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
+      this._hoveredRegionId = null;
       return;
     }
 
@@ -2965,9 +3246,8 @@ export class GlobalMapRenderer {
 
     const hit = this._findNearestRegionHit(pos.x, pos.y, regions);
     if (!hit) {
-      this._regionHoverLabel.visible = false;
-      this.regionHoverLayer.clear();
-      this.regionHoverLayer.visible = false;
+      this._hideDisplayObjectWithFade(this._regionHoverLabel);
+      this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
       this._hoveredRegionId = null;
       return;
     }
@@ -2976,24 +3256,27 @@ export class GlobalMapRenderer {
     const anchor = this._regionLabelAnchors.get(hit.regionId);
 
     if (!region?.name || !anchor) {
-      this._regionHoverLabel.visible = false;
-      this.regionHoverLayer.clear();
-      this.regionHoverLayer.visible = false;
+      this._hideDisplayObjectWithFade(this._regionHoverLabel);
+      this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
       this._hoveredRegionId = null;
       return;
     }
 
+    const didRegionChange = this._hoveredRegionId !== hit.regionId;
     this._hoveredRegionId = hit.regionId;
 
     // Label
-    this._regionHoverLabel.text = String(region.name);
-    this._regionHoverLabel.position.set(anchor.x, anchor.y);
-    this._regionHoverLabel.visible = true;
+    if (didRegionChange) {
+      this._regionHoverLabel.text = String(region.name);
+      this._applyRegionLabelStyle(this._regionHoverLabel, hit.regionId);
+    }
 
-    // Hover overlay (shape + label)
+    this._regionHoverLabel.position.set(anchor.x, anchor.y);
+    this._showDisplayObjectWithFade(this._regionHoverLabel);
+
+    // Hover overlay (shape)
     if (!allowStroke && !allowFill) {
-      this.regionHoverLayer.clear();
-      this.regionHoverLayer.visible = false;
+      this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
       return;
     }
 
@@ -3038,25 +3321,143 @@ export class GlobalMapRenderer {
         this.regionHoverLayer.endFill();
       }
 
-      this.regionHoverLayer.visible = true;
+      this._showDisplayObjectWithFade(this.regionHoverLayer);
     } else {
-      this.regionHoverLayer.clear();
-      this.regionHoverLayer.visible = false;
+      this._hideDisplayObjectWithFade(this.regionHoverLayer, { clearOnComplete: true });
     }
   }
 
-  _createRegionLabelText(text) {
-    const style = new PIXI.TextStyle({
+  _getRegionLabelMaxWidth(regionId) {
+    if (!regionId) return null;
+
+    const rb = this._regionBounds.get(regionId);
+    if (!rb) return null;
+
+    const w = Number(rb.maxX) - Number(rb.minX);
+    if (!Number.isFinite(w) || w <= 0) return null;
+
+    const pad = Number.isFinite(Number(rb.pad)) ? Number(rb.pad) : 0;
+    const margin = Math.max(20, Math.min(w * 0.06, 160), pad + 10);
+
+    return Math.max(0, w - margin * 2);
+  }
+
+  _getRegionLabelStyle(regionId, text) {
+    const baseFontSize = 18;
+    const baseStrokeThickness = 4;
+
+    const baseStyle = new PIXI.TextStyle({
       fontFamily: 'Signika',
-      fontSize: 18,
+      fontSize: baseFontSize,
       fill: '#ffffff',
       stroke: '#000000',
-      strokeThickness: 4,
+      strokeThickness: baseStrokeThickness,
     });
+
+    const s = String(text ?? '');
+    const maxWidth = this._getRegionLabelMaxWidth(regionId);
+    if (!s.trim() || !Number.isFinite(maxWidth) || maxWidth <= 0) {
+      return baseStyle;
+    }
+
+    const metrics = (PIXI.TextMetrics && typeof PIXI.TextMetrics.measureText === 'function')
+      ? PIXI.TextMetrics.measureText(s, baseStyle)
+      : null;
+
+    const baseWidth = metrics?.width;
+    if (!Number.isFinite(baseWidth) || baseWidth <= 0) {
+      return baseStyle;
+    }
+
+    const renderer = canvas?.app?.renderer;
+    const maxTexSize = renderer?.texture?.maxSize
+      || (renderer?.gl && typeof renderer.gl.getParameter === 'function'
+        ? renderer.gl.getParameter(renderer.gl.MAX_TEXTURE_SIZE)
+        : null)
+      || 4096;
+
+    // Keep the text texture within renderer max size (rough linear scaling approximation)
+    const safeMaxScaleW = (maxTexSize * 0.9) / baseWidth;
+    const baseHeight = metrics?.height;
+    const safeMaxScaleH = (Number.isFinite(baseHeight) && baseHeight > 0)
+      ? ((maxTexSize * 0.9) / baseHeight)
+      : Infinity;
+
+    const safeMaxFontSize = baseFontSize * Math.min(safeMaxScaleW, safeMaxScaleH);
+    const maxFontSize = Math.min(256, Math.max(4, Math.floor(safeMaxFontSize)));
+    const minFontSize = Math.min(10, maxFontSize);
+
+    // Make region labels smaller overall (relative to available width)
+    const REGION_LABEL_SCALE = 0.5;
+
+    const desiredFontSize = baseFontSize * (maxWidth / baseWidth) * REGION_LABEL_SCALE;
+    const fontSize = Math.max(minFontSize, Math.min(maxFontSize, Math.round(desiredFontSize)));
+    const strokeThickness = Math.max(2, Math.min(18, Math.round(fontSize * (baseStrokeThickness / baseFontSize))));
+
+    return new PIXI.TextStyle({
+      fontFamily: 'Signika',
+      fontSize,
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeThickness,
+    });
+  }
+
+  _applyTextMaxWidth(textObj, maxWidth) {
+    if (!textObj || !Number.isFinite(maxWidth) || maxWidth <= 0) return;
+
+    // Reset scale so measurement is in style pixels
+    if (textObj.scale?.set) textObj.scale.set(1);
+
+    const s = String(textObj.text ?? '');
+
+    // Prefer TextMetrics (does not depend on PIXI.Text internals)
+    let w = null;
+    if (PIXI.TextMetrics && typeof PIXI.TextMetrics.measureText === 'function') {
+      const m = PIXI.TextMetrics.measureText(s, textObj.style);
+      w = m?.width;
+    }
+
+    // Fallback to the object width
+    if (!Number.isFinite(w) || w <= 0) {
+      try {
+        textObj.updateText?.();
+      } catch (e) {
+        // ignore
+      }
+      w = textObj.width;
+    }
+
+    if (!Number.isFinite(w) || w <= 0) return;
+
+    // Only scale down; never scale up (otherwise huge regions produce comically large labels)
+    if (w <= maxWidth) return;
+
+    const scale = maxWidth / w;
+    if (textObj.scale?.set) {
+      textObj.scale.set(scale);
+    } else {
+      textObj.scale.x = scale;
+      textObj.scale.y = scale;
+    }
+  }
+
+  _applyRegionLabelStyle(textObj, regionId) {
+    if (!textObj) return;
+
+    textObj.style = this._getRegionLabelStyle(regionId, textObj.text);
+    this._applyTextMaxWidth(textObj, this._getRegionLabelMaxWidth(regionId));
+  }
+
+  _createRegionLabelText(text, regionId = null) {
+    const style = this._getRegionLabelStyle(regionId, text);
 
     const t = new PIXI.Text(text, style);
     t.name = 'globalMapRegionLabel';
     if (t.anchor?.set) t.anchor.set(0.5);
+
+    this._applyTextMaxWidth(t, this._getRegionLabelMaxWidth(regionId));
+
     return t;
   }
 
@@ -3244,8 +3645,8 @@ export class GlobalMapRenderer {
    */
   clearVectorRivers() {
     try {
-      this.riversLayer?.removeChildren();
-      this.riverLabelsLayer?.removeChildren();
+      this._crossFadeLayer(this.riversLayer, null);
+      this._crossFadeLayer(this.riverLabelsLayer, null);
     } catch (e) {
       // ignore
     }
@@ -3320,19 +3721,26 @@ export class GlobalMapRenderer {
   renderVectorRivers(riversData = this.vectorRiversData, metadata = this.currentMetadata) {
     if (!this.riversLayer || !this.riverLabelsLayer) return;
 
-    // Clear previous rivers render
-    this.riversLayer.removeChildren();
-    this.riverLabelsLayer.removeChildren();
+    const animate = this._isGlobalMapAppearanceAnimationEnabled();
+    const rotateLabels = this._isGlobalMapRiverLabelRotationEnabled();
+
+    // Reset cached metadata (hit tests should follow current data immediately)
     this._riverLabelAnchors.clear();
     this._riverBounds.clear();
     this._hoveredRiverId = null;
     this._riverHoverLabel = null;
 
     const rivers = riversData?.rivers || [];
-    if (!Array.isArray(rivers) || rivers.length === 0) return;
+    if (!Array.isArray(rivers) || rivers.length === 0) {
+      // Fade out previous visuals if any
+      this._crossFadeLayer(this.riversLayer, null);
+      this._crossFadeLayer(this.riverLabelsLayer, null);
+      return;
+    }
 
     const labelMode = riversData?.settings?.labelMode || 'hover';
 
+    // ===== Shapes =====
     const riverGraphics = new PIXI.Graphics();
     riverGraphics.name = 'globalMapVectorRiversGraphics';
 
@@ -3348,28 +3756,48 @@ export class GlobalMapRenderer {
       const pad = maxWidth / 2 + 10;
       this._riverBounds.set(river.id, { ...bounds, pad });
 
-      const anchor = this._computePolylineMidpoint(pts);
+      // Midpoint anchor is still useful for Always labels (and for future features)
+      const anchor = this._computePolylineMidpointWithTangent(pts);
       if (anchor) {
         this._riverLabelAnchors.set(river.id, anchor);
       }
 
       this._drawVectorRiverStamped(riverGraphics, pts, river.color ?? defaultColor);
+    }
 
-      if (labelMode === 'always' && anchor && river?.name) {
-        const text = this._createRiverLabelText(String(river.name));
-        text.position.set(anchor.x, anchor.y);
-        this.riverLabelsLayer.addChild(text);
+    const riversGroup = new PIXI.Container();
+    riversGroup.name = 'globalMapVectorRiversGroup';
+    riversGroup.addChild(riverGraphics);
+
+    // ===== Labels =====
+    let labelsGroup = null;
+    if (labelMode !== 'off') {
+      labelsGroup = new PIXI.Container();
+      labelsGroup.name = 'globalMapVectorRiverLabelsGroup';
+
+      if (labelMode === 'always') {
+        for (const river of rivers) {
+          const anchor = this._riverLabelAnchors.get(river?.id);
+          if (!anchor || !river?.name) continue;
+
+          const text = this._createRiverLabelText(String(river.name), anchor.width);
+          text.position.set(anchor.x, anchor.y);
+          text.rotation = rotateLabels ? anchor.angle : 0;
+          labelsGroup.addChild(text);
+        }
+      }
+
+      if (labelMode === 'hover') {
+        this._riverHoverLabel = this._createRiverLabelText('');
+        this._riverHoverLabel.visible = false;
+        this._riverHoverLabel.alpha = animate ? 0 : 1;
+        labelsGroup.addChild(this._riverHoverLabel);
       }
     }
 
-    this.riversLayer.addChild(riverGraphics);
-
-    // Hover label
-    if (labelMode === 'hover') {
-      this._riverHoverLabel = this._createRiverLabelText('');
-      this._riverHoverLabel.visible = false;
-      this.riverLabelsLayer.addChild(this._riverHoverLabel);
-    }
+    // Cross-fade (or instant swap) for smooth appearance
+    this._crossFadeLayer(this.riversLayer, riversGroup);
+    this._crossFadeLayer(this.riverLabelsLayer, labelsGroup);
   }
 
   /**
@@ -3406,7 +3834,8 @@ export class GlobalMapRenderer {
   _handleRiverHover(event) {
     const labelMode = this.vectorRiversData?.settings?.labelMode || 'hover';
     if (labelMode !== 'hover') {
-      if (this._riverHoverLabel) this._riverHoverLabel.visible = false;
+      this._hideDisplayObjectWithFade(this._riverHoverLabel);
+      this._hoveredRiverId = null;
       return;
     }
 
@@ -3416,7 +3845,8 @@ export class GlobalMapRenderer {
 
     const rivers = this.vectorRiversData?.rivers || [];
     if (!Array.isArray(rivers) || rivers.length === 0) {
-      this._riverHoverLabel.visible = false;
+      this._hideDisplayObjectWithFade(this._riverHoverLabel);
+      this._hoveredRiverId = null;
       return;
     }
 
@@ -3425,38 +3855,68 @@ export class GlobalMapRenderer {
 
     const hit = this._findNearestRiverHit(pos.x, pos.y, rivers);
     if (!hit) {
-      this._riverHoverLabel.visible = false;
+      this._hideDisplayObjectWithFade(this._riverHoverLabel);
       this._hoveredRiverId = null;
       return;
     }
 
     const river = rivers.find(r => r?.id === hit.riverId);
-    const anchor = this._riverLabelAnchors.get(hit.riverId);
-
-    if (!river?.name || !anchor) {
-      this._riverHoverLabel.visible = false;
+    if (!river?.name) {
+      this._hideDisplayObjectWithFade(this._riverHoverLabel);
       this._hoveredRiverId = null;
       return;
     }
 
-    this._hoveredRiverId = hit.riverId;
+    const rotateLabels = this._isGlobalMapRiverLabelRotationEnabled();
+
+    // Update label (width may change along the river)
     this._riverHoverLabel.text = String(river.name);
-    this._riverHoverLabel.position.set(anchor.x, anchor.y);
-    this._riverHoverLabel.visible = true;
+    this._riverHoverLabel.style = this._getRiverLabelStyle(hit.width);
+    this._riverHoverLabel.rotation = rotateLabels ? hit.angle : 0;
+    if (this._riverHoverLabel.scale?.set) this._riverHoverLabel.scale.set(1);
+
+    this._riverHoverLabel.position.set(hit.x, hit.y);
+
+    this._showDisplayObjectWithFade(this._riverHoverLabel);
+
+    this._hoveredRiverId = hit.riverId;
   }
 
   /**
    * Create PIXI.Text for river labels.
    * @private
    */
-  _createRiverLabelText(text) {
-    const style = new PIXI.TextStyle({
+  _getRiverLabelStyle(widthPx) {
+    const baseFontSize = 18;
+    const baseStrokeThickness = 4;
+
+    const w = Number(widthPx);
+    if (!Number.isFinite(w) || w <= 0) {
+      return new PIXI.TextStyle({
+        fontFamily: 'Signika',
+        fontSize: baseFontSize,
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: baseStrokeThickness,
+      });
+    }
+
+    // Default river width is 24px; map 24px -> fontSize 18.
+    const desiredFontSize = w * 0.75;
+    const fontSize = Math.max(10, Math.min(72, Math.round(desiredFontSize)));
+    const strokeThickness = Math.max(2, Math.min(18, Math.round(fontSize * (baseStrokeThickness / baseFontSize))));
+
+    return new PIXI.TextStyle({
       fontFamily: 'Signika',
-      fontSize: 18,
+      fontSize,
       fill: '#ffffff',
       stroke: '#000000',
-      strokeThickness: 4,
+      strokeThickness,
     });
+  }
+
+  _createRiverLabelText(text, widthPx = null) {
+    const style = this._getRiverLabelStyle(widthPx);
 
     const t = new PIXI.Text(text, style);
     t.name = 'globalMapRiverLabel';
@@ -3585,6 +4045,111 @@ export class GlobalMapRenderer {
     return { x: points[points.length - 1].x, y: points[points.length - 1].y };
   }
 
+  _normalizeUprightAngle(angleRad) {
+    let a = Number(angleRad);
+    if (!Number.isFinite(a)) return 0;
+
+    const TAU = Math.PI * 2;
+
+    // Wrap to (-PI, PI]
+    while (a <= -Math.PI) a += TAU;
+    while (a > Math.PI) a -= TAU;
+
+    // Clamp to [-PI/2, PI/2] so text is never upside down
+    if (a > Math.PI / 2) a -= Math.PI;
+    if (a < -Math.PI / 2) a += Math.PI;
+
+    // Guard against floating point drift
+    if (a > Math.PI / 2) a = Math.PI / 2;
+    if (a < -Math.PI / 2) a = -Math.PI / 2;
+
+    return a;
+  }
+
+  _computePolylineMidpointWithTangent(points) {
+    if (!points || points.length < 2) return null;
+
+    // Total length
+    let total = 0;
+    const segLens = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      const dx = points[i + 1].x - points[i].x;
+      const dy = points[i + 1].y - points[i].y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      segLens.push(len);
+      total += len;
+    }
+
+    const defaultWidth = 24;
+
+    if (total < 0.001) {
+      const p0 = points[0];
+      const p1 = points[1];
+      const dx = p1.x - p0.x;
+      const dy = p1.y - p0.y;
+      const w0 = Number.isFinite(p0.width) ? p0.width : defaultWidth;
+
+      return {
+        x: p0.x,
+        y: p0.y,
+        angle: this._normalizeUprightAngle(Math.atan2(dy, dx)),
+        width: w0,
+        segIndex: 0,
+        t: 0,
+      };
+    }
+
+    const target = total / 2;
+    let acc = 0;
+
+    for (let i = 0; i < segLens.length; i++) {
+      const len = segLens[i];
+      if (len < 0.0001) {
+        acc += len;
+        continue;
+      }
+
+      const p0 = points[i];
+      const p1 = points[i + 1];
+
+      if (acc + len >= target) {
+        const t = (target - acc) / len;
+        const x = p0.x + (p1.x - p0.x) * t;
+        const y = p0.y + (p1.y - p0.y) * t;
+
+        const dx = p1.x - p0.x;
+        const dy = p1.y - p0.y;
+        const angle = this._normalizeUprightAngle(Math.atan2(dy, dx));
+
+        const w0 = Number.isFinite(p0.width) ? p0.width : defaultWidth;
+        const w1 = Number.isFinite(p1.width) ? p1.width : w0;
+        const width = w0 * (1 - t) + w1 * t;
+
+        return { x, y, angle, width, segIndex: i, t };
+      }
+
+      acc += len;
+    }
+
+    // Fallback: last segment direction
+    const lastIdx = Math.max(0, points.length - 2);
+    const p0 = points[lastIdx];
+    const p1 = points[lastIdx + 1];
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+
+    const w1 = Number.isFinite(p1.width) ? p1.width : (Number.isFinite(p0.width) ? p0.width : defaultWidth);
+
+    return {
+      x: p1.x,
+      y: p1.y,
+      angle: this._normalizeUprightAngle(Math.atan2(dy, dx)),
+      width: w1,
+      segIndex: lastIdx,
+      t: 1,
+    };
+  }
+
   /**
    * Find nearest river hit for hover label.
    * @private
@@ -3608,7 +4173,9 @@ export class GlobalMapRenderer {
       for (let i = 0; i < pts.length - 1; i++) {
         const p0 = pts[i];
         const p1 = pts[i + 1];
-        const distSq = this._distancePointToSegmentSq(x, y, p0.x, p0.y, p1.x, p1.y);
+
+        const proj = this._projectPointToSegment(x, y, p0.x, p0.y, p1.x, p1.y);
+        const distSq = proj.distSq;
 
         const w0 = Number.isFinite(p0.width) ? p0.width : 24;
         const w1 = Number.isFinite(p1.width) ? p1.width : w0;
@@ -3616,7 +4183,24 @@ export class GlobalMapRenderer {
 
         if (distSq <= threshold * threshold && distSq < bestDistSq) {
           bestDistSq = distSq;
-          best = { riverId: river.id, distSq };
+
+          const dx = p1.x - p0.x;
+          const dy = p1.y - p0.y;
+          const angle = this._normalizeUprightAngle(Math.atan2(dy, dx));
+
+          const t = proj.t;
+          const width = w0 * (1 - t) + w1 * t;
+
+          best = {
+            riverId: river.id,
+            distSq,
+            x: proj.cx,
+            y: proj.cy,
+            angle,
+            width,
+            segIndex: i,
+            t,
+          };
         }
       }
     }
@@ -3628,14 +4212,16 @@ export class GlobalMapRenderer {
    * Distance from point to segment squared.
    * @private
    */
-  _distancePointToSegmentSq(px, py, x1, y1, x2, y2) {
+  _projectPointToSegment(px, py, x1, y1, x2, y2) {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const lenSq = dx * dx + dy * dy;
+
+    // Degenerate segment
     if (lenSq === 0) {
       const ax = px - x1;
       const ay = py - y1;
-      return ax * ax + ay * ay;
+      return { t: 0, cx: x1, cy: y1, distSq: ax * ax + ay * ay };
     }
 
     let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
@@ -3646,7 +4232,18 @@ export class GlobalMapRenderer {
 
     const ex = px - cx;
     const ey = py - cy;
-    return ex * ex + ey * ey;
+    const distSq = ex * ex + ey * ey;
+
+    return { t, cx, cy, distSq };
+  }
+
+  /**
+   * Distance from point to segment squared.
+   * @private
+   */
+  _distancePointToSegmentSq(px, py, x1, y1, x2, y2) {
+    const hit = this._projectPointToSegment(px, py, x1, y1, x2, y2);
+    return hit.distSq;
   }
 
   /**
