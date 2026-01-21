@@ -1009,10 +1009,13 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Всё ниже — только когда лист редактируемый
     if (!this.isEditable) return;
 
-    // Контейнер актёров: drag&drop + убрать
+    // Контейнер актёров: drag&drop + достать + убрать
     el.querySelectorAll('[data-action="gactors-drop"]').forEach((panel) => {
       panel.addEventListener('dragover', (ev) => ev.preventDefault());
       panel.addEventListener('drop', this._onGActorsDrop.bind(this));
+    });
+    el.querySelectorAll('[data-action="gactor-take"]').forEach((btn) => {
+      btn.addEventListener('click', this._onGActorTakeOut.bind(this));
     });
     el.querySelectorAll('[data-action="gactor-remove"]').forEach((btn) => {
       btn.addEventListener('click', this._onGActorRemove.bind(this));
@@ -1205,6 +1208,122 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     }
 
     doc.sheet?.render?.(true);
+  }
+
+  /**
+   * Контейнер актёров: достать актёра на сцену и удалить из system.gActors
+   * @private
+   */
+  async _onGActorTakeOut(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const uuid = this._normalizeUuid(event.currentTarget?.dataset?.uuid);
+    if (!uuid) return;
+
+    // 1) Резолвим актёра
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc) {
+      ui.notifications.warn('Документ по UUID не найден');
+      return;
+    }
+
+    if (doc.documentName !== 'Actor') {
+      ui.notifications.warn('Ожидался Actor');
+      return;
+    }
+
+    const actorToSpawn = doc;
+
+    // 2) Сцена + якорный токен Global Object (чтобы понять, куда ставить)
+    const scene = canvas?.scene;
+    if (!scene) {
+      ui.notifications.warn('Нет активной сцены');
+      return;
+    }
+
+    let anchorTokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+    if (anchorTokenDoc?.parent?.id !== scene.id) anchorTokenDoc = null;
+
+    // Если лист открыт НЕ от токена — попробуем найти токен этого Global Object на активной сцене.
+    if (!anchorTokenDoc) {
+      const candidates = (scene.tokens?.contents || Array.from(scene.tokens || [])).filter((td) => {
+        const a = td?.actor;
+        return (a?.id && a.id === this.actor.id) || (td?.actorId && td.actorId === this.actor.id);
+      });
+
+      if (candidates.length === 1) {
+        anchorTokenDoc = candidates[0];
+      } else if (candidates.length > 1) {
+        ui.notifications.warn('На сцене несколько токенов этого Global Object — открой лист от нужного токена');
+        return;
+      }
+    }
+
+    if (!anchorTokenDoc) {
+      ui.notifications.warn('Не найден токен Global Object на активной сцене');
+      return;
+    }
+
+    // 3) Координаты спавна: рядом с токеном Global Object
+    const gridSize = Number(canvas?.grid?.size ?? 100) || 100;
+    const anchorX = Number(anchorTokenDoc.x ?? 0) || 0;
+    const anchorY = Number(anchorTokenDoc.y ?? 0) || 0;
+    const anchorW = Math.max(1, Number(anchorTokenDoc.width ?? 1) || 1);
+
+    let x = anchorX + (anchorW * gridSize);
+    let y = anchorY;
+
+    if (canvas?.grid?.getSnappedPosition) {
+      const snapped = canvas.grid.getSnappedPosition(x, y, 1);
+      if (snapped && typeof snapped.x === 'number' && typeof snapped.y === 'number') {
+        x = snapped.x;
+        y = snapped.y;
+      }
+    }
+
+    // 4) Подготовим данные токена по дефолту актора
+    let tokenData = null;
+    try {
+      if (typeof actorToSpawn.getTokenDocument === 'function') {
+        const td = await actorToSpawn.getTokenDocument({ x, y });
+        tokenData = td?.toObject?.() ?? td;
+      } else if (typeof actorToSpawn.getTokenData === 'function') {
+        tokenData = foundry.utils.deepClone(actorToSpawn.getTokenData());
+        tokenData.x = x;
+        tokenData.y = y;
+      } else {
+        tokenData = { actorId: actorToSpawn.id, x, y, name: actorToSpawn.name };
+      }
+    } catch (e) {
+      console.error('SpaceHolder | GlobalObject: failed to prepare token data', e);
+      ui.notifications.error('Не удалось подготовить токен');
+      return;
+    }
+
+    // 5) Создаём токен на сцене
+    try {
+      await scene.createEmbeddedDocuments('Token', [tokenData]);
+    } catch (e) {
+      console.error('SpaceHolder | GlobalObject: failed to create token', e);
+      ui.notifications.error('Не удалось создать токен');
+      return;
+    }
+
+    // 6) Убираем UUID из контейнера (только если токен успешно создан)
+    const current = Array.isArray(this.actor.system?.gActors)
+      ? foundry.utils.deepClone(this.actor.system.gActors)
+      : [];
+
+    const next = current.filter((u) => this._normalizeUuid(u) !== uuid);
+    await this.actor.update({ 'system.gActors': next });
+    this.render(false);
   }
 
   /**
