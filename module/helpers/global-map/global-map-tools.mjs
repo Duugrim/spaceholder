@@ -1219,7 +1219,8 @@ export class GlobalMapTools {
         labelMode: 'hover',
         clickAction: 'openJournal',
         clickModifier: 'ctrl',
-        smoothIterations: 1,
+        smoothIterations: 4,
+        renderMode: 'full',
       },
       regions: [],
     };
@@ -1235,13 +1236,13 @@ export class GlobalMapTools {
     if (!this.vectorRegions || typeof this.vectorRegions !== 'object') {
       this.vectorRegions = {
         version: 1,
-        settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 1 },
+        settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' },
         regions: [],
       };
     }
 
     if (!this.vectorRegions.settings || typeof this.vectorRegions.settings !== 'object') {
-      this.vectorRegions.settings = { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 1 };
+      this.vectorRegions.settings = { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' };
     }
 
     if (!['off', 'hover', 'always'].includes(this.vectorRegions.settings.labelMode)) {
@@ -1259,7 +1260,7 @@ export class GlobalMapTools {
     const smoothIterationsRaw = Number.parseInt(this.vectorRegions.settings.smoothIterations, 10);
     this.vectorRegions.settings.smoothIterations = Number.isFinite(smoothIterationsRaw)
       ? Math.max(0, Math.min(4, smoothIterationsRaw))
-      : 1;
+      : 4;
 
     if (!Array.isArray(this.vectorRegions.regions)) {
       this.vectorRegions.regions = [];

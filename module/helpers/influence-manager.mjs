@@ -1,6 +1,10 @@
 // Influence Manager для SpaceHolder - управление сферами влияния
 // Собирает данные с Global Objects и рисует объединённые территории
 
+// Порог, при котором влияние считается «достаточным» для отрисовки зон (Marching Squares).
+// Должен совпадать везде, где UI/рендер проверяют «видимость» влияния.
+const INFLUENCE_RENDER_THRESHOLD = 0.3;
+
 export class InfluenceManager {
   constructor() {
     // Контейнер для графики
@@ -458,6 +462,59 @@ export class InfluenceManager {
     }
     
     return groups;
+  }
+
+  /**
+   * Сэмплировать влияние в точке.
+   * Возвращает список сторон с силой влияния, победителя (если проходит threshold) и сам threshold.
+   * Используется UI-инспектором/отладкой.
+   * @param {number} x
+   * @param {number} y
+   * @param {{threshold?: number}} [opts]
+   * @returns {{entries: Array<{side: string, strength: number}>, winner: {side: string, strength: number} | null, threshold: number}}
+   */
+  sampleInfluenceAtPoint(x, y, { threshold } = {}) {
+    const px = Number(x);
+    const py = Number(y);
+
+    const t0 = Number(threshold);
+    const th = Number.isFinite(t0) ? t0 : INFLUENCE_RENDER_THRESHOLD;
+
+    if (!Number.isFinite(px) || !Number.isFinite(py)) {
+      return { entries: [], winner: null, threshold: th };
+    }
+
+    const objects = this.collectGlobalObjects();
+    if (!objects || objects.length === 0) {
+      return { entries: [], winner: null, threshold: th };
+    }
+
+    const totals = new Map();
+
+    for (const obj of objects) {
+      if (!obj || obj.gRange <= 0) continue;
+
+      const side = String(obj.gFaction ?? '').trim();
+      if (!side) continue;
+
+      const s = this._calculateInfluenceStrength(obj, px, py);
+      if (s <= 0) continue;
+
+      totals.set(side, (totals.get(side) || 0) + s);
+    }
+
+    const entries = [];
+    for (const [side, strength] of totals.entries()) {
+      if (strength > 0) entries.push({ side, strength });
+    }
+
+    entries.sort((a, b) => b.strength - a.strength);
+
+    const top = entries[0] || null;
+    const topClamped = top ? Math.min(Math.max(0, top.strength), 1) : 0;
+    const winner = top && topClamped >= th ? top : null;
+
+    return { entries, winner, threshold: th };
   }
   
   /**
@@ -1146,7 +1203,7 @@ export class InfluenceManager {
       const territoryField = this._extractTerritoryFieldFromDominance(dominanceField, side, rows, cols);
       
       // Используем Marching Squares для построения изоконтуров
-      const threshold = 0.3; // Порог для предотвращения перекрытия зон
+      const threshold = INFLUENCE_RENDER_THRESHOLD; // Порог «видимости» влияния
       const contours = this._marchingSquares(territoryField, rows, cols, bounds, cellSize, threshold);
       
       // Рисуем контуры

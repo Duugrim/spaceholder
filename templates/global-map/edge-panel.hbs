@@ -119,30 +119,31 @@
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Назв. рег.</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regionLabels" data-value="hover" role="group" aria-label="Названия регионов">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionLabels" data-value="off" aria-pressed="false">Выкл</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regionLabels" data-value="hover" aria-pressed="true">Нав.</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionLabels" data-value="always" aria-pressed="false">Всегда</button>
+          <div class="sh-gm-edge__settingLabel">Регионы</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regions" data-value="full" role="group" aria-label="Регионы">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="name" aria-pressed="false">Назв.</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="border" aria-pressed="false">Назв.+гр.</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regions" data-value="full" aria-pressed="true">Целиком</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Регионы</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regions" data-value="on" role="group" aria-label="Регионы">
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regions" data-value="on" aria-pressed="true">Вкл</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="off" aria-pressed="false">Выкл</button>
+          <div class="sh-gm-edge__settingLabel">Когда</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regionsWhen" data-value="hover" role="group" aria-label="Показ регионов">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="off" aria-pressed="false">Выкл</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regionsWhen" data-value="hover" aria-pressed="true">Нав.</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="always" aria-pressed="false">Всегда</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">Сглаж.</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="smooth" data-value="1" role="group" aria-label="Сглаживание">
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="smooth" data-value="4" role="group" aria-label="Сглаживание">
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="0" aria-pressed="false">0</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="smooth" data-value="1" aria-pressed="true">1</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="1" aria-pressed="false">1</button>
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="2" aria-pressed="false">2</button>
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="3" aria-pressed="false">3</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="4" aria-pressed="false">4</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="smooth" data-value="4" aria-pressed="true">4</button>
           </div>
         </div>
       </div>
@@ -151,16 +152,137 @@
 
   <div class="sh-gm-edge__inspector" role="region" aria-label="Инспектор" aria-hidden="false">
     <div class="sh-gm-edge__inspectorBody">
-      <div class="sh-gm-edge__row sh-gm-edge__row--compact">
-        <button type="button" class="sh-gm-edge__btn" data-action="noop">Клетка</button>
-        <button type="button" class="sh-gm-edge__btn" data-action="noop">Регион</button>
-        <button type="button" class="sh-gm-edge__btn" data-action="noop">Река</button>
+      <div class="sh-gm-edge__inspectorHeader">
+        <div class="sh-gm-edge__inspectorTitle">Инспектор</div>
+
+        <div class="sh-gm-edge__inspectorControls" role="group" aria-label="Настройки инспектора">
+          <button
+            type="button"
+            class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__inspectorUpdatesBtn"
+            data-action="toggle-inspector-updates"
+            aria-label="Автообновление"
+            aria-pressed="false"
+            data-tooltip="Автообновление"
+          ><i class="fa-solid fa-lock-open" aria-hidden="true"></i></button>
+        </div>
       </div>
 
-      <div class="sh-gm-edge__selector sh-gm-edge__selector--compact" data-select="inspectMode" data-value="hover" role="group" aria-label="Инспект">
-        <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="inspectMode" data-value="hover" aria-pressed="true">Hover</button>
-        <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="inspectMode" data-value="click" aria-pressed="false">Click</button>
-        <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="inspectMode" data-value="off" aria-pressed="false">Off</button>
+      <div class="sh-gm-edge__inspectGrid" role="group" aria-label="Данные">
+        <div class="sh-gm-edge__inspectCol" data-scope="biome">
+          <div class="sh-gm-edge__inspectLabel">Биом</div>
+          <div class="sh-gm-edge__inspectValue" data-field="inspectBiomeValue">Неизвестно</div>
+
+          <div class="sh-gm-edge__inspectJournal" aria-label="Журнал биома">
+            <div class="sh-gm-edge__journalRow sh-gm-edge__journalRow--linked" data-scope="biomeJournalLinked" hidden>
+              <button
+                type="button"
+                class="sh-gm-edge__journalLink"
+                data-action="open-inspect-biome-journal"
+                aria-label="Открыть журнал биома"
+              ><i class="fa-solid fa-book-open" aria-hidden="true"></i><span data-field="inspectBiomeJournalName"></span></button>
+
+              {{#if isGM}}
+              <button
+                type="button"
+                class="icon-btn sh-gm-edge__journalClear"
+                data-action="clear-inspect-biome-journal"
+                aria-label="Очистить"
+                data-tooltip="Очистить"
+              ><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+              {{/if}}
+            </div>
+
+            {{#if isGM}}
+            <div
+              class="sh-gm-edge__journalRow sh-gm-edge__journalRow--bind"
+              data-scope="biomeJournalBind"
+              data-drop-scope="biome"
+              hidden
+            >
+              <input
+                type="text"
+                class="sh-gm-edge__journalInput"
+                data-field="inspectBiomeJournalUuid"
+                placeholder="Journal UUID"
+                spellcheck="false"
+              />
+              <button
+                type="button"
+                class="icon-btn sh-gm-edge__journalApply"
+                data-action="apply-inspect-biome-journal"
+                aria-label="Привязать"
+                data-tooltip="Привязать"
+              ><i class="fa-solid fa-check" aria-hidden="true"></i></button>
+            </div>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="sh-gm-edge__inspectCol" data-scope="region">
+          <div class="sh-gm-edge__inspectLabel">Регион</div>
+          <div class="sh-gm-edge__inspectValue" data-field="inspectRegionValue"></div>
+
+          <div class="sh-gm-edge__inspectJournal" aria-label="Журнал региона">
+            <div class="sh-gm-edge__journalRow sh-gm-edge__journalRow--linked" data-scope="regionJournalLinked" hidden>
+              <button
+                type="button"
+                class="sh-gm-edge__journalLink"
+                data-action="open-inspect-region-journal"
+                aria-label="Открыть журнал региона"
+              ><i class="fa-solid fa-book-open" aria-hidden="true"></i><span data-field="inspectRegionJournalName"></span></button>
+
+              {{#if isGM}}
+              <button
+                type="button"
+                class="icon-btn sh-gm-edge__journalClear"
+                data-action="clear-inspect-region-journal"
+                aria-label="Очистить"
+                data-tooltip="Очистить"
+              ><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+              {{/if}}
+            </div>
+
+            {{#if isGM}}
+            <div
+              class="sh-gm-edge__journalRow sh-gm-edge__journalRow--bind"
+              data-scope="regionJournalBind"
+              data-drop-scope="region"
+              hidden
+            >
+              <input
+                type="text"
+                class="sh-gm-edge__journalInput"
+                data-field="inspectRegionJournalUuid"
+                placeholder="Journal UUID"
+                spellcheck="false"
+              />
+              <button
+                type="button"
+                class="icon-btn sh-gm-edge__journalApply"
+                data-action="apply-inspect-region-journal"
+                aria-label="Привязать"
+                data-tooltip="Привязать"
+              ><i class="fa-solid fa-check" aria-hidden="true"></i></button>
+            </div>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="sh-gm-edge__inspectCol" data-scope="influence">
+          <div class="sh-gm-edge__inspectLabel">Влияние</div>
+          <div class="sh-gm-edge__inspectValue" data-field="inspectInfluenceValue"></div>
+
+          <div class="sh-gm-edge__inspectJournal" aria-label="Журнал влияния">
+            <div class="sh-gm-edge__journalRow sh-gm-edge__journalRow--linked" data-scope="influenceJournalLinked" hidden>
+              <button
+                type="button"
+                class="sh-gm-edge__journalLink"
+                data-action="open-inspect-influence-journal"
+                aria-label="Открыть журнал влияния"
+              ><i class="fa-solid fa-book-open" aria-hidden="true"></i><span data-field="inspectInfluenceJournalName"></span></button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

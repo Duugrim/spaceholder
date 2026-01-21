@@ -1332,14 +1332,6 @@
 .spaceholder.globalobject .globalobject-actors-panel {
   margin-top: 10px;
 }
-.window-app.spaceholder .globalobject .globalobject-actor-card[draggable=true],
-.spaceholder.globalobject .globalobject-actor-card[draggable=true] {
-  cursor: grab;
-}
-.window-app.spaceholder .globalobject .globalobject-actor-card[draggable=true]:active,
-.spaceholder.globalobject .globalobject-actor-card[draggable=true]:active {
-  cursor: grabbing;
-}
 
 .window-app.spaceholder .actor-buttons,
 .spaceholder .actor-buttons {
@@ -2033,7 +2025,7 @@
 .spaceholder.globalmap-edge-ui .sh-gm-edge__inspector {
   position: relative;
   z-index: 1;
-  width: min(420px, 100vw - 120px);
+  width: min(650px, 100vw - 20px);
   background: rgba(0, 0, 0, 0.78);
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
@@ -2044,6 +2036,12 @@
   transform: translateY(-6px);
   transition: transform 160ms ease, opacity 160ms ease;
 }
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectorBody,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 #spaceholder-globalmap-edge-ui .sh-gm-edge__inspectorHeader,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__inspectorHeader {
   display: flex;
@@ -2052,20 +2050,117 @@
   gap: 10px;
   font-weight: 700;
   font-size: 13px;
-  margin-bottom: 8px;
 }
-#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectorHint,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectorHint {
-  font-weight: 400;
-  font-size: 11px;
-  color: var(--sh-text-dim);
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectorTitle,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectorTitle {
+  flex: 1 1 auto;
+  min-width: 0;
 }
-#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectorBody,
-.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectorBody {
-  display: flex;
-  gap: 8px;
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectorControls,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectorControls {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectGrid,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 520px) {
+  #spaceholder-globalmap-edge-ui .sh-gm-edge__inspectGrid,
+  .spaceholder.globalmap-edge-ui .sh-gm-edge__inspectGrid {
+    grid-template-columns: 1fr;
+  }
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectCol,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectCol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectLabel,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectLabel {
+  font-size: 11px;
+  color: var(--sh-text-muted);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectValue,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectValue {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+  min-height: 1.1em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__inspectJournal,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__inspectJournal {
+  min-height: 0;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__journalRow,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__journalRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__journalRow--bind,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__journalRow--bind {
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: var(--sh-radius-md);
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__journalLink,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__journalLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--sh-text);
+  overflow: hidden;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__journalLink span,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__journalLink span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__journalInput,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__journalInput {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  color: var(--sh-text);
+  font-size: 11px;
+  line-height: 1;
+}
+#spaceholder-globalmap-edge-ui .sh-gm-edge__journalApply,
+#spaceholder-globalmap-edge-ui .sh-gm-edge__journalClear,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__journalApply,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__journalClear {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--sh-radius-sm);
+  flex: 0 0 auto;
 }
 #spaceholder-globalmap-edge-ui.is-inspector-open .sh-gm-edge__inspector,
 .spaceholder.globalmap-edge-ui.is-inspector-open .sh-gm-edge__inspector {

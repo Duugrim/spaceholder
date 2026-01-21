@@ -37,6 +37,30 @@ class GlobalMapEdgeUI {
     this.flyoutRightOpen = false;
     this.inspectorOpen = true;
 
+    // Inspector state (bottom panel)
+    this.inspectorUpdatesEnabled = true;
+    this._lastInspectPos = null; // {x,y} in stage coords
+    this._inspectSyncSeq = 0;
+
+    this._inspectedBiomeId = null;
+    this._inspectedBiomeName = 'Неизвестно';
+    this._inspectedBiomeJournalUuid = '';
+    this._inspectedBiomeJournalName = '';
+
+    this._inspectedRegionId = '';
+    this._inspectedRegionName = '';
+    this._inspectedRegionJournalUuid = '';
+    this._inspectedRegionJournalName = '';
+
+    this._inspectedInfluenceSideUuid = '';
+    this._inspectedInfluenceName = '';
+    this._inspectedInfluenceJournalName = '';
+    this._inspectedInfluenceTooltip = '';
+
+    // Canvas stage listener for inspector clicks
+    this._inspectorStageForListeners = null;
+    this._onInspectorStagePointerDown = null;
+
     // Selected token state (top bar)
     this._selectedTokenDocIds = new Set();
     this._selectedActorIds = new Set();
@@ -67,6 +91,10 @@ class GlobalMapEdgeUI {
     if (existing) {
       this._syncUiState(existing);
       this._syncRenderModeSelectors(existing);
+      this._syncInspectorUpdatesUi(existing);
+      this._syncInspectorUi(existing);
+      this._installInspectorDomHandlers(existing);
+      this._installInspectorStageHandler();
       await this._syncSelectedTokenInfo(existing);
       this._fitAll(existing);
       return;
@@ -88,6 +116,10 @@ class GlobalMapEdgeUI {
     el.addEventListener('click', this._onClick);
     this._syncUiState(el);
     this._syncRenderModeSelectors(el);
+    this._syncInspectorUpdatesUi(el);
+    this._syncInspectorUi(el);
+    this._installInspectorDomHandlers(el);
+    this._installInspectorStageHandler();
     await this._syncSelectedTokenInfo(el);
     this._fitAll(el);
   }
@@ -101,6 +133,23 @@ class GlobalMapEdgeUI {
     } catch (e) {
       // ignore
     }
+
+    // Inspector: detach stage listener and clear cached state
+    this._removeInspectorStageHandler();
+    this._lastInspectPos = null;
+    this._inspectSyncSeq++;
+    this._inspectedBiomeId = null;
+    this._inspectedBiomeName = 'Неизвестно';
+    this._inspectedBiomeJournalUuid = '';
+    this._inspectedBiomeJournalName = '';
+    this._inspectedRegionId = '';
+    this._inspectedRegionName = '';
+    this._inspectedRegionJournalUuid = '';
+    this._inspectedRegionJournalName = '';
+    this._inspectedInfluenceSideUuid = '';
+    this._inspectedInfluenceName = '';
+    this._inspectedInfluenceJournalName = '';
+    this._inspectedInfluenceTooltip = '';
 
     // Reset token state so we don't keep stale ids across scenes
     this._selectedTokenDocIds = new Set();
@@ -212,6 +261,7 @@ class GlobalMapEdgeUI {
     const renderer = game?.spaceholder?.globalMapRenderer;
     if (!renderer) return;
 
+    // ===== Map render modes =====
     const biomesMode = String(renderer.biomesMode || 'fancy');
     const heightsMode = String(renderer.heightsMode || 'contours-bw');
 
@@ -220,6 +270,24 @@ class GlobalMapEdgeUI {
 
     const heightsBtn = root.querySelector(`button[data-action="select"][data-select="heights"][data-value="${heightsMode}"]`);
     if (heightsBtn) this._selectOption(heightsBtn);
+
+    // ===== Rivers / Regions visibility settings =====
+    const riversLabelMode = String(renderer?.vectorRiversData?.settings?.labelMode || 'hover');
+    const riversLabelBtn = root.querySelector(`button[data-action="select"][data-select="riverLabels"][data-value="${riversLabelMode}"]`);
+    if (riversLabelBtn) this._selectOption(riversLabelBtn);
+
+    const regionsRenderMode = String(renderer?.vectorRegionsData?.settings?.renderMode || 'full');
+    const regionsRenderBtn = root.querySelector(`button[data-action="select"][data-select="regions"][data-value="${regionsRenderMode}"]`);
+    if (regionsRenderBtn) this._selectOption(regionsRenderBtn);
+
+    const regionsWhenMode = String(renderer?.vectorRegionsData?.settings?.labelMode || 'hover');
+    const regionsWhenBtn = root.querySelector(`button[data-action="select"][data-select="regionsWhen"][data-value="${regionsWhenMode}"]`);
+    if (regionsWhenBtn) this._selectOption(regionsWhenBtn);
+
+    const smoothIterationsRaw = Number.parseInt(renderer?.vectorRegionsData?.settings?.smoothIterations, 10);
+    const smoothIterations = Number.isFinite(smoothIterationsRaw) ? Math.max(0, Math.min(4, smoothIterationsRaw)) : 4;
+    const smoothBtn = root.querySelector(`button[data-action="select"][data-select="smooth"][data-value="${String(smoothIterations)}"]`);
+    if (smoothBtn) this._selectOption(smoothBtn);
   }
 
   _getControlledTokens() {
@@ -312,6 +380,119 @@ class GlobalMapEdgeUI {
     if (game?.user?.isGM) return true;
     ui.notifications?.warn?.(`Только ГМ может ${action}`);
     return false;
+  }
+
+  _clone(obj) {
+    try {
+      if (foundry?.utils?.duplicate) return foundry.utils.duplicate(obj);
+    } catch (e) {
+      // ignore
+    }
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  async _setRiversLabelMode(mode) {
+    const renderer = game?.spaceholder?.globalMapRenderer;
+    if (!renderer) return;
+
+    const m = String(mode || '').trim();
+    if (!['off', 'hover', 'always'].includes(m)) return;
+
+    if (renderer.vectorRiversData === null || renderer.vectorRiversData === undefined) {
+      try {
+        await renderer.loadVectorRiversFromScene?.(canvas?.scene);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const cur = (renderer.vectorRiversData && typeof renderer.vectorRiversData === 'object')
+      ? renderer.vectorRiversData
+      : { version: 1, settings: { labelMode: 'hover', snapToEndpoints: true }, rivers: [] };
+
+    const next = this._clone(cur);
+    if (!next.settings || typeof next.settings !== 'object') next.settings = {};
+    next.settings.labelMode = m;
+
+    renderer.setVectorRiversData(next);
+  }
+
+  async _setRegionsRenderMode(mode) {
+    const renderer = game?.spaceholder?.globalMapRenderer;
+    if (!renderer) return;
+
+    const m = String(mode || '').trim();
+    if (!['name', 'border', 'full'].includes(m)) return;
+
+    if (renderer.vectorRegionsData === null || renderer.vectorRegionsData === undefined) {
+      try {
+        await renderer.loadVectorRegionsFromScene?.(canvas?.scene);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const cur = (renderer.vectorRegionsData && typeof renderer.vectorRegionsData === 'object')
+      ? renderer.vectorRegionsData
+      : { version: 1, settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' }, regions: [] };
+
+    const next = this._clone(cur);
+    if (!next.settings || typeof next.settings !== 'object') next.settings = {};
+    next.settings.renderMode = m;
+
+    renderer.setVectorRegionsData(next);
+  }
+
+  async _setRegionsWhenMode(mode) {
+    const renderer = game?.spaceholder?.globalMapRenderer;
+    if (!renderer) return;
+
+    const m = String(mode || '').trim();
+    if (!['off', 'hover', 'always'].includes(m)) return;
+
+    if (renderer.vectorRegionsData === null || renderer.vectorRegionsData === undefined) {
+      try {
+        await renderer.loadVectorRegionsFromScene?.(canvas?.scene);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const cur = (renderer.vectorRegionsData && typeof renderer.vectorRegionsData === 'object')
+      ? renderer.vectorRegionsData
+      : { version: 1, settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' }, regions: [] };
+
+    const next = this._clone(cur);
+    if (!next.settings || typeof next.settings !== 'object') next.settings = {};
+    next.settings.labelMode = m;
+
+    renderer.setVectorRegionsData(next);
+  }
+
+  async _setRegionsSmoothIterations(value) {
+    const renderer = game?.spaceholder?.globalMapRenderer;
+    if (!renderer) return;
+
+    const raw = Number.parseInt(String(value || '').trim(), 10);
+    const v = Number.isFinite(raw) ? Math.max(0, Math.min(4, raw)) : 4;
+
+    if (renderer.vectorRegionsData === null || renderer.vectorRegionsData === undefined) {
+      try {
+        await renderer.loadVectorRegionsFromScene?.(canvas?.scene);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const cur = (renderer.vectorRegionsData && typeof renderer.vectorRegionsData === 'object')
+      ? renderer.vectorRegionsData
+      : { version: 1, settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' }, regions: [] };
+
+    const next = this._clone(cur);
+    if (!next.settings || typeof next.settings !== 'object') next.settings = {};
+    next.settings.smoothIterations = v;
+
+    renderer.setVectorRegionsData(next);
   }
 
   async _syncSelectedTokenInfo(root = null) {
@@ -464,12 +645,674 @@ class GlobalMapEdgeUI {
     this._fitAll(el);
   }
 
+  _syncInspectorUpdatesUi(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    const btn = el.querySelector('button[data-action="toggle-inspector-updates"]');
+    if (!btn) return;
+
+    // aria-pressed=true means "updates paused"
+    const paused = !this.inspectorUpdatesEnabled;
+    btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+    btn.classList.toggle('is-active', paused);
+
+    const icon = btn.querySelector('i');
+    if (icon) {
+      icon.classList.remove('fa-lock', 'fa-lock-open');
+      icon.classList.add(paused ? 'fa-lock' : 'fa-lock-open');
+    }
+
+    const tip = paused ? 'Обновление: выкл' : 'Обновление: вкл';
+    btn.setAttribute('data-tooltip', tip);
+    btn.setAttribute('aria-label', tip);
+  }
+
+  _syncInspectorUi(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    // Values
+    const biomeValueEl = el.querySelector('[data-field="inspectBiomeValue"]');
+    if (biomeValueEl) biomeValueEl.textContent = String(this._inspectedBiomeName || 'Неизвестно');
+
+    const regionValueEl = el.querySelector('[data-field="inspectRegionValue"]');
+    if (regionValueEl) regionValueEl.textContent = String(this._inspectedRegionName || '');
+
+    const influenceValueEl = el.querySelector('[data-field="inspectInfluenceValue"]');
+    if (influenceValueEl) influenceValueEl.textContent = String(this._inspectedInfluenceName || '');
+
+    // Influence tooltip (on the whole column so it works even when value is empty)
+    const inflCol = el.querySelector('.sh-gm-edge__inspectCol[data-scope="influence"]');
+    if (inflCol) {
+      const tip = String(this._inspectedInfluenceTooltip || '');
+      if (tip) {
+        inflCol.setAttribute('data-tooltip', tip);
+        inflCol.setAttribute('aria-label', tip);
+      } else {
+        inflCol.removeAttribute('data-tooltip');
+        inflCol.removeAttribute('aria-label');
+      }
+    }
+
+    // Helper
+    const setHidden = (node, hidden) => {
+      if (!node) return;
+      node.hidden = !!hidden;
+    };
+
+    // ===== Biome journal =====
+    const biomeLinkedRow = el.querySelector('[data-scope="biomeJournalLinked"]');
+    const biomeBindRow = el.querySelector('[data-scope="biomeJournalBind"]');
+    const biomeHasContext = Number.isFinite(this._inspectedBiomeId);
+    const biomeUuid = String(this._inspectedBiomeJournalUuid || '').trim();
+
+    if (biomeUuid) {
+      setHidden(biomeLinkedRow, false);
+      setHidden(biomeBindRow, true);
+
+      const nameEl = biomeLinkedRow?.querySelector?.('[data-field="inspectBiomeJournalName"]');
+      if (nameEl) nameEl.textContent = String(this._inspectedBiomeJournalName || biomeUuid);
+
+      const inputEl = biomeBindRow?.querySelector?.('input[data-field="inspectBiomeJournalUuid"]');
+      if (inputEl) inputEl.value = '';
+    } else {
+      setHidden(biomeLinkedRow, true);
+      setHidden(biomeBindRow, !biomeHasContext);
+
+      const inputEl = biomeBindRow?.querySelector?.('input[data-field="inspectBiomeJournalUuid"]');
+      if (inputEl) inputEl.value = '';
+    }
+
+    // ===== Region journal =====
+    const regionLinkedRow = el.querySelector('[data-scope="regionJournalLinked"]');
+    const regionBindRow = el.querySelector('[data-scope="regionJournalBind"]');
+    const regionHasContext = !!String(this._inspectedRegionId || '').trim();
+    const regionUuid = String(this._inspectedRegionJournalUuid || '').trim();
+
+    if (regionUuid) {
+      setHidden(regionLinkedRow, false);
+      setHidden(regionBindRow, true);
+
+      const nameEl = regionLinkedRow?.querySelector?.('[data-field="inspectRegionJournalName"]');
+      if (nameEl) nameEl.textContent = String(this._inspectedRegionJournalName || regionUuid);
+
+      const inputEl = regionBindRow?.querySelector?.('input[data-field="inspectRegionJournalUuid"]');
+      if (inputEl) inputEl.value = '';
+    } else {
+      setHidden(regionLinkedRow, true);
+      setHidden(regionBindRow, !regionHasContext);
+
+      const inputEl = regionBindRow?.querySelector?.('input[data-field="inspectRegionJournalUuid"]');
+      if (inputEl) inputEl.value = '';
+    }
+
+    // ===== Influence journal =====
+    const inflLinkedRow = el.querySelector('[data-scope="influenceJournalLinked"]');
+    const inflUuid = String(this._inspectedInfluenceSideUuid || '').trim();
+    if (inflUuid) {
+      setHidden(inflLinkedRow, false);
+      const nameEl = inflLinkedRow?.querySelector?.('[data-field="inspectInfluenceJournalName"]');
+      if (nameEl) nameEl.textContent = String(this._inspectedInfluenceJournalName || inflUuid);
+    } else {
+      setHidden(inflLinkedRow, true);
+    }
+  }
+
+  _installInspectorDomHandlers(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    if (el.dataset?.shInspectorHandlers === 'true') return;
+    el.dataset.shInspectorHandlers = 'true';
+
+    // Drop zones for binding journals
+    el.querySelectorAll('.sh-gm-edge__journalRow[data-drop-scope]').forEach((zone) => {
+      zone.addEventListener('dragover', (ev) => ev.preventDefault());
+      zone.addEventListener('drop', async (ev) => {
+        ev.preventDefault();
+
+        const scope = String(zone.dataset.dropScope || '').trim();
+        const uuid = this._extractUuidFromDropEvent(ev);
+        if (!uuid) {
+          ui.notifications?.warn?.('Не удалось извлечь UUID из перетаскивания');
+          return;
+        }
+
+        if (scope === 'biome') {
+          const input = zone.querySelector('input[data-field="inspectBiomeJournalUuid"]');
+          if (input) input.value = uuid;
+          await this._setInspectedBiomeJournalUuid(uuid);
+        }
+
+        if (scope === 'region') {
+          const input = zone.querySelector('input[data-field="inspectRegionJournalUuid"]');
+          if (input) input.value = uuid;
+          await this._setInspectedRegionJournalUuid(uuid);
+        }
+      });
+    });
+
+    // Inputs: Enter -> apply
+    el.querySelectorAll('input[data-field="inspectBiomeJournalUuid"], input[data-field="inspectRegionJournalUuid"]').forEach((input) => {
+      input.addEventListener('keydown', async (ev) => {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+
+        const zone = input.closest('.sh-gm-edge__journalRow[data-drop-scope]');
+        const scope = String(zone?.dataset?.dropScope || '').trim();
+
+        if (scope === 'biome') {
+          await this._setInspectedBiomeJournalUuid(input.value);
+        }
+
+        if (scope === 'region') {
+          await this._setInspectedRegionJournalUuid(input.value);
+        }
+      });
+    });
+  }
+
+  _installInspectorStageHandler() {
+    const stage = canvas?.stage;
+    if (!stage) return;
+
+    // Stage can get rebuilt; re-install if changed.
+    if (this._inspectorStageForListeners === stage && this._onInspectorStagePointerDown) return;
+
+    this._removeInspectorStageHandler();
+
+    this._inspectorStageForListeners = stage;
+    this._onInspectorStagePointerDown = (event) => {
+      try {
+        this._handleInspectorStagePointerDown(event);
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    stage.on('pointerdown', this._onInspectorStagePointerDown);
+  }
+
+  _removeInspectorStageHandler() {
+    const stage = this._inspectorStageForListeners;
+    const handler = this._onInspectorStagePointerDown;
+
+    if (stage && handler) {
+      try {
+        stage.off('pointerdown', handler);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    this._inspectorStageForListeners = null;
+    this._onInspectorStagePointerDown = null;
+  }
+
+  _handleInspectorStagePointerDown(event) {
+    if (!this.element) return;
+    if (!this.inspectorUpdatesEnabled) return;
+
+    // Left click only
+    if (event?.data?.button !== 0) return;
+
+    const pos = event?.data?.getLocalPosition?.(canvas.stage);
+    if (!pos) return;
+
+    this._lastInspectPos = { x: pos.x, y: pos.y };
+
+    // Fire and forget (no UI-blocking)
+    this._inspectAtPosition(pos.x, pos.y).catch(() => {});
+  }
+
+  _extractUuidFromDropEvent(event) {
+    const dt = event?.dataTransfer;
+    if (!dt) return '';
+
+    const rawCandidates = [
+      dt.getData('application/json'),
+      dt.getData('text/plain'),
+    ].filter(Boolean);
+
+    for (const raw of rawCandidates) {
+      try {
+        const data = JSON.parse(raw);
+        const uuid = data?.uuid || data?.data?.uuid;
+        if (uuid) return this._normalizeUuid(uuid);
+      } catch (e) {
+        const uuid = this._normalizeUuid(raw);
+        if (uuid) return uuid;
+      }
+    }
+
+    return '';
+  }
+
+  async _resolveDocNameSafe(rawUuid) {
+    const uuid = this._normalizeUuid(rawUuid);
+    if (!uuid) return '';
+    const name = await this._resolveDocName(uuid);
+    return name || uuid;
+  }
+
+  async _validateJournalUuid(rawUuid) {
+    const uuid = this._normalizeUuid(rawUuid);
+    if (!uuid) return '';
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc) {
+      ui.notifications?.warn?.('Документ по UUID не найден');
+      return null;
+    }
+
+    if (!['JournalEntry', 'JournalEntryPage'].includes(doc.documentName)) {
+      ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+      return null;
+    }
+
+    return uuid;
+  }
+
+  async _reloadBiomeResolversAndRerender() {
+    // Keep processing + renderer in sync
+    try {
+      await game?.spaceholder?.globalMapProcessing?.biomeResolver?.reloadConfigWithWorldOverrides?.();
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      await game?.spaceholder?.globalMapRenderer?.biomeResolver?.reloadConfigWithWorldOverrides?.();
+    } catch (e) {
+      // ignore
+    }
+
+    // Re-render map if it is already loaded
+    try {
+      const r = game?.spaceholder?.globalMapRenderer;
+      if (r?.currentGrid && r?.currentMetadata) {
+        await r.render(r.currentGrid, r.currentMetadata);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Refresh tools UI palette if open
+    try {
+      game?.spaceholder?.globalMapTools?.refreshBiomeLists?.();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  async _setInspectedBiomeJournalUuid(rawUuid) {
+    if (!this._requireGM('привязывать журналы')) return false;
+
+    const id = this._inspectedBiomeId;
+    if (!Number.isFinite(id)) return false;
+
+    const uuidNorm = this._normalizeUuid(rawUuid);
+    const uuid = uuidNorm ? (await this._validateJournalUuid(uuidNorm)) : '';
+    if (uuid === null) return false;
+
+    const sh = game?.spaceholder;
+    const resolver = sh?.globalMapProcessing?.biomeResolver || sh?.globalMapRenderer?.biomeResolver;
+
+    if (!resolver?.saveOverridesToWorldFile) {
+      ui.notifications?.error?.('BiomeResolver не поддерживает сохранение overrides');
+      return false;
+    }
+
+    let overrides = null;
+    try {
+      overrides = await resolver.loadOverridesFromWorldFile?.();
+    } catch (e) {
+      overrides = null;
+    }
+
+    if (!overrides || typeof overrides !== 'object') {
+      overrides = { version: 2, biomes: [] };
+    }
+    if (!Array.isArray(overrides.biomes)) {
+      overrides.biomes = [];
+    }
+
+    let entry = overrides.biomes.find(b => Number(b?.id) === id) || null;
+    if (!entry) {
+      entry = { id };
+      overrides.biomes.push(entry);
+    }
+
+    if (uuid) {
+      entry.link = uuid;
+    } else {
+      delete entry.link;
+
+      // If entry is otherwise empty, remove it to avoid clutter
+      const keys = Object.keys(entry || {}).filter(k => k !== 'id');
+      if (keys.length === 0) {
+        const idx = overrides.biomes.indexOf(entry);
+        if (idx >= 0) overrides.biomes.splice(idx, 1);
+      }
+    }
+
+    try {
+      await resolver.saveOverridesToWorldFile(overrides);
+    } catch (e) {
+      console.error('SpaceHolder | Global map edge UI: failed to save biome journal link', e);
+      ui.notifications?.error?.(`Не удалось сохранить журнал биома: ${e.message}`);
+      return false;
+    }
+
+    await this._reloadBiomeResolversAndRerender();
+
+    const pos = this._lastInspectPos;
+    if (pos) {
+      await this._inspectAtPosition(pos.x, pos.y);
+    } else {
+      this._syncInspectorUi();
+    }
+
+    return true;
+  }
+
+  async _setInspectedRegionJournalUuid(rawUuid) {
+    if (!this._requireGM('привязывать журналы')) return false;
+
+    const regionId = String(this._inspectedRegionId || '').trim();
+    if (!regionId) return false;
+
+    const uuidNorm = this._normalizeUuid(rawUuid);
+    const uuid = uuidNorm ? (await this._validateJournalUuid(uuidNorm)) : '';
+    if (uuid === null) return false;
+
+    const scene = canvas?.scene;
+    if (!scene?.setFlag) return false;
+
+    const renderer = game?.spaceholder?.globalMapRenderer;
+    const cur = renderer?.vectorRegionsData;
+    if (!cur || typeof cur !== 'object') return false;
+
+    const next = this._clone(cur);
+    if (!Array.isArray(next.regions)) next.regions = [];
+
+    const region = next.regions.find(r => String(r?.id) === regionId);
+    if (!region) return false;
+
+    region.journalUuid = uuid;
+
+    try {
+      await scene.setFlag(MODULE_NS, 'globalMapRegions', next);
+    } catch (e) {
+      console.error('SpaceHolder | Global map edge UI: failed to save region journal link', e);
+      ui.notifications?.error?.(`Не удалось сохранить журнал региона: ${e.message}`);
+      return false;
+    }
+
+    try {
+      renderer.setVectorRegionsData?.(next, renderer.currentMetadata);
+    } catch (e) {
+      // ignore
+    }
+
+    const pos = this._lastInspectPos;
+    if (pos) {
+      await this._inspectAtPosition(pos.x, pos.y);
+    } else {
+      this._syncInspectorUi();
+    }
+
+    return true;
+  }
+
+  async _inspectAtPosition(x, y) {
+    const seq = ++this._inspectSyncSeq;
+
+    const px = Number(x);
+    const py = Number(y);
+    if (!Number.isFinite(px) || !Number.isFinite(py)) return;
+
+    // Store last click position for "refresh after save"
+    this._lastInspectPos = { x: px, y: py };
+
+    const sh = game?.spaceholder;
+    const renderer = sh?.globalMapRenderer;
+    const processing = sh?.globalMapProcessing;
+    const biomeResolver = processing?.biomeResolver || renderer?.biomeResolver;
+
+    // ===== Biome =====
+    let biomeId = null;
+    let biomeName = 'Неизвестно';
+    let biomeJournalUuid = '';
+
+    const grid = renderer?.currentGrid;
+    const md = renderer?.currentMetadata;
+    if (grid && md && biomeResolver) {
+      try {
+        const { rows, cols, biomes, moisture, temperature } = grid;
+        const { cellSize, bounds } = md;
+
+        const gridCol = Math.floor((px - bounds.minX) / cellSize);
+        const gridRow = Math.floor((py - bounds.minY) / cellSize);
+
+        if (gridRow >= 0 && gridRow < rows && gridCol >= 0 && gridCol < cols) {
+          const idx = gridRow * cols + gridCol;
+
+          const moist = moisture ? moisture[idx] : 0;
+          const temp = temperature ? temperature[idx] : 0;
+
+          biomeId = (biomes && biomes.length === rows * cols)
+            ? biomes[idx]
+            : biomeResolver.getBiomeId(moist ?? 0, temp ?? 0);
+
+          biomeName = biomeResolver.getBiomeName(biomeId);
+          biomeJournalUuid = biomeResolver.getBiomeLink?.(biomeId) || '';
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // ===== Region =====
+    let regionId = '';
+    let regionName = '';
+    let regionJournalUuid = '';
+
+    try {
+      if (renderer?.findRegionAt) {
+        const hit = renderer.findRegionAt(px, py);
+        const region = hit?.region;
+        if (region) {
+          regionId = String(region.id || '');
+          regionName = String(region.name || '');
+          regionJournalUuid = String(region.journalUuid || '').trim();
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // ===== Influence =====
+    const im = sh?.influenceManager;
+    let influenceEntries = [];
+    let influenceWinner = null;
+    let influenceThreshold = 0.3;
+
+    try {
+      if (im?.sampleInfluenceAtPoint) {
+        const sample = im.sampleInfluenceAtPoint(px, py) || {};
+        influenceEntries = Array.isArray(sample.entries) ? sample.entries : [];
+        influenceWinner = sample.winner || null;
+        influenceThreshold = Number.isFinite(Number(sample.threshold)) ? Number(sample.threshold) : 0.3;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const influenceCount = influenceEntries.length;
+    const influenceWinnerSide = String(influenceWinner?.side || '').trim();
+    const influenceWinnerStrengthRaw = Number(influenceWinner?.strength);
+    const influenceWinnerStrength = Number.isFinite(influenceWinnerStrengthRaw) ? influenceWinnerStrengthRaw : 0;
+
+    const influenceWinnerClamped = Math.min(Math.max(0, influenceWinnerStrength), 1);
+    const hasWinner = !!(influenceWinnerSide && influenceWinnerClamped >= influenceThreshold);
+
+    let influenceName = '';
+    let influenceSideUuid = '';
+
+    if (hasWinner) {
+      influenceSideUuid = influenceWinnerSide;
+    } else {
+      influenceSideUuid = '';
+    }
+
+    // Resolve doc names (async)
+    const biomeJournalUuidNorm = this._normalizeUuid(biomeJournalUuid);
+    const regionJournalUuidNorm = this._normalizeUuid(regionJournalUuid);
+    const influenceSideUuidNorm = this._normalizeUuid(influenceSideUuid);
+
+    const biomeJournalNameP = biomeJournalUuidNorm ? this._resolveDocNameSafe(biomeJournalUuidNorm) : Promise.resolve('');
+    const regionJournalNameP = regionJournalUuidNorm ? this._resolveDocNameSafe(regionJournalUuidNorm) : Promise.resolve('');
+    const influenceWinnerNameP = influenceSideUuidNorm ? this._resolveDocNameSafe(influenceSideUuidNorm) : Promise.resolve('');
+
+    const influenceTooltipP = (async () => {
+      if (!influenceCount) return '';
+
+      const pairs = influenceEntries
+        .map((e) => ({
+          side: String(e?.side || '').trim(),
+          strength: Number(e?.strength) || 0,
+        }))
+        .filter((e) => e.side && e.strength > 0);
+
+      if (!pairs.length) return '';
+
+      // Resolve names in parallel
+      const names = await Promise.all(pairs.map((p) => this._resolveDocNameSafe(p.side)));
+
+      const lines = [];
+      for (let i = 0; i < pairs.length; i++) {
+        const name = names[i] || pairs[i].side;
+        const v = pairs[i].strength;
+        lines.push(`${name}: ${v.toFixed(2)}`);
+      }
+      return lines.join('\n');
+    })();
+
+    const [biomeJournalName, regionJournalName, influenceWinnerName, influenceTooltip] = await Promise.all([
+      biomeJournalNameP,
+      regionJournalNameP,
+      influenceWinnerNameP,
+      influenceTooltipP,
+    ]);
+
+    // stale async guard
+    if (seq !== this._inspectSyncSeq) return;
+
+    // Determine influence display text by rules
+    if (hasWinner) {
+      influenceName = influenceWinnerName || influenceSideUuidNorm;
+    } else if (influenceCount >= 2) {
+      influenceName = 'Неизвестно';
+    } else {
+      // 0 influences OR 1 weak influence
+      influenceName = '';
+    }
+
+    // Save state
+    this._inspectedBiomeId = (biomeId === null || biomeId === undefined) ? null : Number(biomeId);
+    this._inspectedBiomeName = String(biomeName || 'Неизвестно');
+    this._inspectedBiomeJournalUuid = biomeJournalUuidNorm;
+    this._inspectedBiomeJournalName = String(biomeJournalName || biomeJournalUuidNorm || '');
+
+    this._inspectedRegionId = regionId;
+    this._inspectedRegionName = String(regionName || '');
+    this._inspectedRegionJournalUuid = regionJournalUuidNorm;
+    this._inspectedRegionJournalName = String(regionJournalName || regionJournalUuidNorm || '');
+
+    this._inspectedInfluenceSideUuid = influenceSideUuidNorm;
+    this._inspectedInfluenceName = influenceName;
+    this._inspectedInfluenceJournalName = String(influenceWinnerName || influenceSideUuidNorm || '');
+    this._inspectedInfluenceTooltip = String(influenceTooltip || '');
+
+    // Apply to DOM
+    this._syncInspectorUi();
+
+    // Refit after content changes
+    const root = this.element;
+    if (root) this._fitAll(root);
+  }
+
   async _onClick(event) {
     const btn = event.target?.closest?.('button[data-action]');
     if (!btn) return;
 
     const action = btn.dataset.action;
 
+    // ===== Inspector (bottom panel) =====
+    if (action === 'toggle-inspector-updates') {
+      event.preventDefault();
+      this.inspectorUpdatesEnabled = !this.inspectorUpdatesEnabled;
+      this._syncInspectorUpdatesUi();
+      return;
+    }
+
+    if (action === 'open-inspect-biome-journal') {
+      event.preventDefault();
+      await this._openJournalUuid(this._inspectedBiomeJournalUuid);
+      return;
+    }
+
+    if (action === 'clear-inspect-biome-journal') {
+      event.preventDefault();
+      await this._setInspectedBiomeJournalUuid('');
+      return;
+    }
+
+    if (action === 'apply-inspect-biome-journal') {
+      event.preventDefault();
+      const root = this.element;
+      const input = root?.querySelector?.('input[data-field="inspectBiomeJournalUuid"]');
+      const raw = String(input?.value || '').trim();
+      await this._setInspectedBiomeJournalUuid(raw);
+      return;
+    }
+
+    if (action === 'open-inspect-region-journal') {
+      event.preventDefault();
+      await this._openJournalUuid(this._inspectedRegionJournalUuid);
+      return;
+    }
+
+    if (action === 'clear-inspect-region-journal') {
+      event.preventDefault();
+      await this._setInspectedRegionJournalUuid('');
+      return;
+    }
+
+    if (action === 'apply-inspect-region-journal') {
+      event.preventDefault();
+      const root = this.element;
+      const input = root?.querySelector?.('input[data-field="inspectRegionJournalUuid"]');
+      const raw = String(input?.value || '').trim();
+      await this._setInspectedRegionJournalUuid(raw);
+      return;
+    }
+
+    if (action === 'open-inspect-influence-journal') {
+      event.preventDefault();
+      await this._openJournalUuid(this._inspectedInfluenceSideUuid);
+      return;
+    }
+
+    // ===== Existing controls =====
     if (action === 'load-map') {
       event.preventDefault();
       await this._loadMapFromFile();
@@ -697,15 +1540,33 @@ class GlobalMapEdgeUI {
       const groupId = String(btn.dataset.select || '').trim();
       const value = String(btn.dataset.value || '').trim();
 
-      // Only wire render modes for now.
       const renderer = game?.spaceholder?.globalMapRenderer;
       if (renderer) {
+        // Map render modes
         if (groupId === 'biomes' && typeof renderer.setBiomesMode === 'function') {
           renderer.setBiomesMode(value);
         }
         if (groupId === 'heights' && typeof renderer.setHeightsMode === 'function') {
           renderer.setHeightsMode(value);
         }
+
+        // Rivers / Regions settings (global for this client)
+        if (groupId === 'riverLabels') {
+          await this._setRiversLabelMode(value);
+        }
+        if (groupId === 'regions') {
+          await this._setRegionsRenderMode(value);
+        }
+        if (groupId === 'regionsWhen') {
+          await this._setRegionsWhenMode(value);
+        }
+        if (groupId === 'smooth') {
+          await this._setRegionsSmoothIterations(value);
+        }
+
+        // Keep UI in sync with normalized values
+        const root = this.element;
+        if (root) this._syncRenderModeSelectors(root);
       }
 
       return;

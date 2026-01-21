@@ -2514,7 +2514,8 @@ export class GlobalMapRenderer {
         labelMode: 'hover',
         clickAction: 'openJournal',
         clickModifier: 'ctrl',
-        smoothIterations: 1,
+        smoothIterations: 4,
+        renderMode: 'full',
       },
       regions: [],
     };
@@ -2533,8 +2534,11 @@ export class GlobalMapRenderer {
     const clickAction = ['none', 'openJournal'].includes(settingsRaw.clickAction) ? settingsRaw.clickAction : 'openJournal';
     const clickModifier = ['none', 'ctrl', 'alt', 'shift'].includes(settingsRaw.clickModifier) ? settingsRaw.clickModifier : 'ctrl';
 
+    const renderModeRaw = String(settingsRaw.renderMode ?? '').trim();
+    const renderMode = ['name', 'border', 'full'].includes(renderModeRaw) ? renderModeRaw : 'full';
+
     let smoothIterations = Number.parseInt(settingsRaw.smoothIterations, 10);
-    if (!Number.isFinite(smoothIterations)) smoothIterations = 1;
+    if (!Number.isFinite(smoothIterations)) smoothIterations = 4;
     smoothIterations = Math.max(0, Math.min(4, smoothIterations));
 
     const regionsRaw = Array.isArray(data.regions) ? data.regions : [];
@@ -2621,7 +2625,7 @@ export class GlobalMapRenderer {
 
     return {
       version: Number(data.version) || 1,
-      settings: { labelMode, clickAction, clickModifier, smoothIterations },
+      settings: { labelMode, clickAction, clickModifier, smoothIterations, renderMode },
       regions,
     };
   }
@@ -2651,12 +2655,25 @@ export class GlobalMapRenderer {
     const regions = regionsData?.regions || [];
     if (!Array.isArray(regions) || regions.length === 0) return;
 
-    const labelMode = regionsData?.settings?.labelMode || 'hover';
+    const modeRaw = String(regionsData?.settings?.labelMode || 'hover');
+    const showMode = ['off', 'hover', 'always'].includes(modeRaw) ? modeRaw : 'hover';
+
+    if (showMode === 'off') return;
+
+    const renderModeRaw = String(regionsData?.settings?.renderMode || 'full');
+    const renderMode = ['name', 'border', 'full'].includes(renderModeRaw) ? renderModeRaw : 'full';
+
     const smoothIterationsRaw = Number.parseInt(regionsData?.settings?.smoothIterations, 10);
-    const smoothIterations = Number.isFinite(smoothIterationsRaw) ? Math.max(0, Math.min(4, smoothIterationsRaw)) : 0;
+    const smoothIterations = Number.isFinite(smoothIterationsRaw) ? Math.max(0, Math.min(4, smoothIterationsRaw)) : 4;
+
+    const allowStroke = renderMode === 'full' || renderMode === 'border';
+    const allowFill = renderMode === 'full';
+
+    const drawBaseShapes = showMode === 'always';
 
     const graphics = new PIXI.Graphics();
     graphics.name = 'globalMapVectorRegionsGraphics';
+    let didDraw = false;
 
     const flatten = (pts) => {
       const out = [];
@@ -2718,34 +2735,47 @@ export class GlobalMapRenderer {
         this._regionLabelAnchors.set(region.id, anchor);
       }
 
-      if (region.closed && renderPts.length >= 3) {
-        // Ensure fill does not leak between shapes
-        graphics.lineStyle(strokeWidth > 0 && strokeAlpha > 0 ? strokeWidth : 0, strokeColor, strokeAlpha);
-        graphics.beginFill(fillColor, fillAlpha);
-        graphics.drawPolygon(flatten(renderPts));
-        graphics.endFill();
-      } else {
-        // Preview polyline (not closed)
-        if (strokeWidth > 0 && strokeAlpha > 0 && renderPts.length >= 2) {
-          graphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
-          graphics.moveTo(renderPts[0].x, renderPts[0].y);
-          for (let i = 1; i < renderPts.length; i++) {
-            graphics.lineTo(renderPts[i].x, renderPts[i].y);
+      // Base render: only when showMode === 'always'
+      if (drawBaseShapes) {
+        if (region.closed && renderPts.length >= 3) {
+          const useStroke = allowStroke && strokeWidth > 0 && strokeAlpha > 0;
+          const useFill = allowFill && fillAlpha > 0;
+
+          if (useStroke || useFill) {
+            // Ensure fill does not leak between shapes
+            graphics.lineStyle(useStroke ? strokeWidth : 0, strokeColor, useStroke ? strokeAlpha : 0);
+            if (useFill) graphics.beginFill(fillColor, fillAlpha);
+            graphics.drawPolygon(flatten(renderPts));
+            if (useFill) graphics.endFill();
+            didDraw = true;
+          }
+        } else {
+          // Preview polyline (not closed)
+          if (allowStroke && strokeWidth > 0 && strokeAlpha > 0 && renderPts.length >= 2) {
+            graphics.lineStyle(strokeWidth, strokeColor, strokeAlpha);
+            graphics.moveTo(renderPts[0].x, renderPts[0].y);
+            for (let i = 1; i < renderPts.length; i++) {
+              graphics.lineTo(renderPts[i].x, renderPts[i].y);
+            }
+            didDraw = true;
           }
         }
-      }
 
-      if (labelMode === 'always' && anchor && region?.name) {
-        const text = this._createRegionLabelText(String(region.name));
-        text.position.set(anchor.x, anchor.y);
-        this.regionLabelsLayer.addChild(text);
+        // Labels are part of the region display in Always mode
+        if (anchor && region?.name) {
+          const text = this._createRegionLabelText(String(region.name));
+          text.position.set(anchor.x, anchor.y);
+          this.regionLabelsLayer.addChild(text);
+        }
       }
     }
 
-    this.regionsLayer.addChild(graphics);
+    if (didDraw) {
+      this.regionsLayer.addChild(graphics);
+    }
 
-    // Hover label
-    if (labelMode === 'hover') {
+    // Hover label (only when showMode === 'hover')
+    if (showMode === 'hover') {
       this._regionHoverLabel = this._createRegionLabelText('');
       this._regionHoverLabel.visible = false;
       this.regionLabelsLayer.addChild(this._regionHoverLabel);
@@ -2807,6 +2837,9 @@ export class GlobalMapRenderer {
 
     const regionsData = this.vectorRegionsData;
     const settings = regionsData?.settings || {};
+
+    const showMode = String(settings.labelMode || 'hover');
+    if (showMode === 'off') return;
 
     if (settings.clickAction !== 'openJournal') return;
 
@@ -2909,6 +2942,12 @@ export class GlobalMapRenderer {
       return;
     }
 
+    const renderModeRaw = String(this.vectorRegionsData?.settings?.renderMode || 'full');
+    const renderMode = ['name', 'border', 'full'].includes(renderModeRaw) ? renderModeRaw : 'full';
+
+    const allowStroke = renderMode === 'full' || renderMode === 'border';
+    const allowFill = renderMode === 'full';
+
     if (!this.isVisible || !this._regionHoverLabel || !this.regionHoverLayer) {
       return;
     }
@@ -2951,7 +2990,13 @@ export class GlobalMapRenderer {
     this._regionHoverLabel.position.set(anchor.x, anchor.y);
     this._regionHoverLabel.visible = true;
 
-    // Hover outline
+    // Hover overlay (shape + label)
+    if (!allowStroke && !allowFill) {
+      this.regionHoverLayer.clear();
+      this.regionHoverLayer.visible = false;
+      return;
+    }
+
     const ptsRaw = Array.isArray(region?.points) ? region.points : [];
     const pts = this._regionRenderPoints.get(hit.regionId) || ptsRaw;
     if (pts.length >= 2) {
@@ -2959,21 +3004,38 @@ export class GlobalMapRenderer {
       const strokeColor = Number(region.strokeColor) || 0xFFFFFF;
       const strokeAlpha = Number.isFinite(Number(region.strokeAlpha)) ? Math.max(0, Math.min(1, Number(region.strokeAlpha))) : 1;
 
-      const w = Math.max(1, strokeWidth + 2);
-      const a = Math.min(1, strokeAlpha + 0.2);
+      const fillColor = Number(region.fillColor) || strokeColor;
+      const fillAlpha = Number.isFinite(Number(region.fillAlpha)) ? Math.max(0, Math.min(1, Number(region.fillAlpha))) : 0;
+
+      const w = allowStroke ? Math.max(1, strokeWidth + 2) : 0;
+      const a = allowStroke ? Math.min(1, strokeAlpha + 0.2) : 0;
 
       this.regionHoverLayer.clear();
-      this.regionHoverLayer.lineStyle(w, strokeColor, a);
+
+      const canFill = allowFill && region.closed && pts.length >= 3 && fillAlpha > 0;
+      if (canFill) {
+        this.regionHoverLayer.beginFill(fillColor, fillAlpha);
+      }
+
+      if (allowStroke && w > 0 && a > 0) {
+        this.regionHoverLayer.lineStyle(w, strokeColor, a);
+      }
 
       if (region.closed && pts.length >= 3) {
         const poly = [];
         for (const p of pts) poly.push(p.x, p.y);
         this.regionHoverLayer.drawPolygon(poly);
       } else {
-        this.regionHoverLayer.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) {
-          this.regionHoverLayer.lineTo(pts[i].x, pts[i].y);
+        if (allowStroke && w > 0 && a > 0) {
+          this.regionHoverLayer.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) {
+            this.regionHoverLayer.lineTo(pts[i].x, pts[i].y);
+          }
         }
+      }
+
+      if (canFill) {
+        this.regionHoverLayer.endFill();
       }
 
       this.regionHoverLayer.visible = true;
@@ -3042,6 +3104,30 @@ export class GlobalMapRenderer {
       if (intersect) inside = !inside;
     }
     return inside;
+  }
+
+  /**
+   * Найти регион в точке (для UI-инспектора и других подсистем).
+   * Возвращает hit по тем же правилам, что и hover/click (внутри полигона, иначе near-border).
+   * @param {number} x
+   * @param {number} y
+   * @returns {{region: object, hit: {regionId: string, distSq: number}} | null}
+   */
+  findRegionAt(x, y) {
+    const px = Number(x);
+    const py = Number(y);
+    if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
+
+    const regions = this.vectorRegionsData?.regions || [];
+    if (!Array.isArray(regions) || regions.length === 0) return null;
+
+    const hit = this._findNearestRegionHit(px, py, regions);
+    if (!hit) return null;
+
+    const region = regions.find(r => r?.id === hit.regionId) || null;
+    if (!region) return null;
+
+    return { region, hit };
   }
 
   _findNearestRegionHit(x, y, regions) {
