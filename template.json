@@ -42,7 +42,6 @@
     "globalobject": {
       "gRange": 0,
       "gPower": 0,
-      "gSide": "neutral",
       "gLink": "",
       "gFaction": "",
       "gActors": [],

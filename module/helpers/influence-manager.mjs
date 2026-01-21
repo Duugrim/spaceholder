@@ -172,13 +172,13 @@ export class InfluenceManager {
     // Вложенная форма: {system: {gRange: ...}}
     const sys = change.system;
     if (sys && typeof sys === 'object') {
-      if ('gRange' in sys || 'gPower' in sys || 'gSide' in sys || 'gFaction' in sys) return true;
+      if ('gRange' in sys || 'gPower' in sys || 'gFaction' in sys) return true;
     }
 
     // Dotted форма: {"system.gRange": ...}
     for (const k of Object.keys(change)) {
-      if (k === 'system.gRange' || k === 'system.gPower' || k === 'system.gSide' || k === 'system.gFaction') return true;
-      if (k.startsWith('system.gRange') || k.startsWith('system.gPower') || k.startsWith('system.gSide') || k.startsWith('system.gFaction')) return true;
+      if (k === 'system.gRange' || k === 'system.gPower' || k === 'system.gFaction') return true;
+      if (k.startsWith('system.gRange') || k.startsWith('system.gPower') || k.startsWith('system.gFaction')) return true;
     }
 
     return false;
@@ -397,10 +397,10 @@ export class InfluenceManager {
       const rangeInCells = Number(system.gRange ?? 0) || 0;
       const rangeInPixels = rangeInCells * gridSize;
 
-      // Фракция: по умолчанию — UUID связанного Journal (system.gFaction).
-      // Для обратной совместимости: если UUID не задан, используем legacy system.gSide.
-      const factionUuid = this._normalizeUuid(system.gFaction);
-      const factionKey = factionUuid || system.gSide || 'neutral';
+      // Фракция: UUID связанного Journal (system.gFaction).
+      // Если не задана — это НЕ источник влияния.
+      const factionKey = this._normalizeUuid(system.gFaction);
+      if (!factionKey) continue;
 
       const gPower = Number(system.gPower ?? 1) || 1;
       const gRange = Number(rangeInPixels) || 0;
@@ -452,15 +452,17 @@ export class InfluenceManager {
    */
   groupByFaction(objects) {
     const groups = {};
-    
+
     for (const obj of objects) {
-      const key = obj.gFaction || 'neutral';
+      const key = String(obj?.gFaction ?? '').trim();
+      if (!key) continue;
+
       if (!groups[key]) {
         groups[key] = [];
       }
       groups[key].push(obj);
     }
-    
+
     return groups;
   }
 

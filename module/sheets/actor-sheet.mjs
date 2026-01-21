@@ -1082,9 +1082,7 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
    * @private
    */
   _getFactionColorCss(system) {
-    const gFaction = String(system?.gFaction ?? '').trim();
-    const gSide = String(system?.gSide ?? '').trim();
-    const key = gFaction || (gSide && gSide !== 'neutral' ? gSide : '');
+    const key = String(system?.gFaction ?? '').trim();
     if (!key) return '';
 
     const im = game?.spaceholder?.influenceManager;

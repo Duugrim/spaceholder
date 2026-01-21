@@ -3100,7 +3100,11 @@ export class GlobalMapRenderer {
       const xj = points[j].x;
       const yj = points[j].y;
 
-      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / Math.max(1e-9, (yj - yi)) + xi);
+      const denom = (yj - yi);
+      const safeDenom = Math.abs(denom) < 1e-9 ? (denom < 0 ? -1e-9 : 1e-9) : denom;
+      const xInt = (xj - xi) * (y - yi) / safeDenom + xi;
+
+      const intersect = ((yi > y) !== (yj > y)) && (x < xInt);
       if (intersect) inside = !inside;
     }
     return inside;

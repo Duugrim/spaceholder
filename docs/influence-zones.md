@@ -17,7 +17,7 @@
 **Параметры:**
 - `gRange` (number) — радиус сферы влияния в **клетках** (по умолчанию: 0). Может быть дробным.
 - `gPower` (number) — сила влияния, определяет приоритет при столкновениях (по умолчанию: 0)
-- `gSide` (string) — сторона/фракция, объекты одной стороны объединяются (по умолчанию: "neutral")
+- `gFaction` (string) — UUID Journal (JournalEntry/JournalEntryPage) фракции; объекты одной фракции объединяются
 
 > Примечание: в старых версиях `gRange` хранился в формате “клетки×100”. Сейчас `gRange` — это напрямую клетки.
 > Если у тебя есть старые Global Object'ы, приведи значение вручную (раздели на 100).
@@ -31,13 +31,13 @@
 3. Настройте параметры:
    - **Range** — радиус влияния (в клетках)
    - **Power** — сила (для будущих механик столкновений)
-   - **Side** — название стороны (например: "ally", "enemy", "faction1")
+   - **Faction** — UUID Journal фракции (JournalEntry/JournalEntryPage)
 
 ### Размещение на сцене
 
 1. Перетащите Global Object на сцену как обычный токен
 2. Разместите несколько объектов с разными параметрами
-3. Объекты с одинаковым `gSide` будут визуально объединяться
+3. Объекты с одинаковым `gFaction` будут визуально объединяться
 
 ### Визуализация зон влияния
 
@@ -58,16 +58,10 @@ game.spaceholder.influenceManager.drawInfluenceZones()
 game.spaceholder.influenceManager.clearAll()
 ```
 
-## Цвета по умолчанию
+## Цвета
 
-- `neutral` — серый (0x808080)
-- `ally` — зелёный (0x00AA00)
-- `enemy` — красный (0xAA0000)
-- `faction1` — синий (0x0088FF)
-- `faction2` — оранжевый (0xFF8800)
-- `faction3` — пурпурный (0xFF00FF)
-
-Для других названий сторон используется серый цвет.
+- Цвет берётся из папки Journal фракции (если задан цвет папки)
+- Иначе используется детерминированный fallback-цвет
 
 ## Визуальное поведение
 
@@ -100,7 +94,7 @@ Global Objects на сцене собираются в массив:
   token: Token,
   gRange: number, // радиус в пикселях (system.gRange * grid.size)
   gPower: number,
-  gSide: string,
+  gFaction: string,
   position: {x: number, y: number}
 }
 ```
@@ -126,16 +120,16 @@ Global Objects на сцене собираются в массив:
 
 ### Пример 1: Две враждующие фракции
 ```js
-// Создайте 3-4 Global Objects с gSide="ally" и gRange=5
-// Создайте 3-4 Global Objects с gSide="enemy" и gRange=5
+// Создайте 3-4 Global Objects с gFaction=<UUID Journal фракции> и gRange=5
+// Создайте 3-4 Global Objects с gFaction=<UUID другой фракции> и gRange=5
 // Разместите их на карте группами
 game.spaceholder.showInfluence()
 // Вы увидите две цветные территории
 ```
 
-### Пример 2: Три нейтральные зоны
+### Пример 2: Три фракции
 ```js
-// Создайте Global Objects с разными gSide: "faction1", "faction2", "faction3"
+// Создайте Global Objects с разными gFaction: <UUID 1>, <UUID 2>, <UUID 3>
 // Каждая получит свой цвет
 game.spaceholder.showInfluence()
 ```
@@ -148,8 +142,8 @@ game.spaceholder.showInfluence()
 - Проверьте консоль на наличие ошибок
 
 **Цвет не тот, что ожидался:**
-- Проверьте точное написание `gSide` (регистр важен)
-- Используйте предопределённые названия или настройте `influenceManager.defaultColors`
+- Проверьте корректность UUID в `gFaction`
+- Проверьте цвет папки Journal фракции
 
 **Производительность:**
 - Текущая версия рисует отдельные круги для каждого объекта
