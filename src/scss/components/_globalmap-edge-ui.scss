@@ -349,6 +349,9 @@
     border-radius: var(--sh-radius-lg);
     padding: 8px;
 
+    outline: var(--sh-gm-edge-influence-outline-width, 0px) solid var(--sh-gm-edge-influence-outline-color, transparent);
+    outline-offset: 0;
+
     // "slides out" feel
     margin-top: -2px;
 
@@ -359,10 +362,23 @@
     transition: transform 160ms ease, opacity 160ms ease;
   }
 
+  .sh-gm-edge__inspectorOverlay {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .sh-gm-edge__inspectorBody {
     display: flex;
     flex-direction: column;
     gap: 8px;
+
+    padding-right: 36px;
   }
 
   .sh-gm-edge__inspectorHeader {
@@ -406,6 +422,18 @@
     min-width: 0;
   }
 
+  .sh-gm-edge__biomeSwatch {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--sh-radius-sm);
+
+    display: block;
+    flex: 0 0 auto;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
   .sh-gm-edge__inspectLabel {
     font-size: 11px;
     color: var(--sh-text-muted);
@@ -419,6 +447,23 @@
     line-height: 1.1;
 
     min-height: 1.1em;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-gm-edge__inspectValue--biome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    min-width: 0;
+  }
+
+  .sh-gm-edge__inspectBiomeText {
+    flex: 1 1 auto;
+    min-width: 0;
 
     overflow: hidden;
     text-overflow: ellipsis;

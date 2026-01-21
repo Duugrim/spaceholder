@@ -474,6 +474,324 @@ class GlobalMapEdgeUI {
     return `#${n.toString(16).padStart(6, '0')}`;
   }
 
+  _toCssHex(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '';
+    return `#${(v & 0xFFFFFF).toString(16).padStart(6, '0')}`;
+  }
+
+  _darkenColorInt(color, factor = 0.4) {
+    const c = Number(color);
+    const fRaw = Number(factor);
+    const f = Number.isFinite(fRaw) ? Math.max(0, Math.min(1, fRaw)) : 0;
+
+    if (!Number.isFinite(c)) return 0;
+
+    const r = (c >> 16) & 0xFF;
+    const g = (c >> 8) & 0xFF;
+    const b = c & 0xFF;
+
+    const newR = Math.floor(r * (1 - f));
+    const newG = Math.floor(g * (1 - f));
+    const newB = Math.floor(b * (1 - f));
+
+    return (newR << 16) | (newG << 8) | newB;
+  }
+
+  _getInfluenceColorCss(rawSideUuid) {
+    const key = this._normalizeUuid(rawSideUuid);
+    if (!key) return '';
+
+    const im = game?.spaceholder?.influenceManager;
+    const n = im?.getColorForSide?.(key);
+    if (typeof n !== 'number') return '';
+    return this._toCssHex(n);
+  }
+
+  _syncInspectorInfluenceOutlineUi(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    const inspectorEl = el.querySelector('.sh-gm-edge__inspector');
+    if (!inspectorEl) return;
+
+    const color = this._getInfluenceColorCss(this._inspectedInfluenceSideUuid);
+    if (color) {
+      inspectorEl.style.setProperty('--sh-gm-edge-influence-outline-color', color);
+      inspectorEl.style.setProperty('--sh-gm-edge-influence-outline-width', '4px');
+    } else {
+      inspectorEl.style.removeProperty('--sh-gm-edge-influence-outline-color');
+      inspectorEl.style.removeProperty('--sh-gm-edge-influence-outline-width');
+    }
+  }
+
+  _clearCanvas(canvasEl) {
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext?.('2d');
+    if (!ctx) return;
+
+    const w = Number(canvasEl.width) || 0;
+    const h = Number(canvasEl.height) || 0;
+
+    if (!w || !h) return;
+    ctx.clearRect(0, 0, w, h);
+  }
+
+  _syncInspectorBiomeSwatchUi(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    const canvasEl = el.querySelector('canvas[data-field="inspectBiomeSwatch"]');
+    if (!canvasEl) return;
+
+    const biomeId = this._inspectedBiomeId;
+    if (!Number.isFinite(biomeId)) {
+      this._clearCanvas(canvasEl);
+      return;
+    }
+
+    const sh = game?.spaceholder;
+    const resolver = sh?.globalMapProcessing?.biomeResolver || sh?.globalMapRenderer?.biomeResolver;
+
+    let baseColor = 0x000000;
+    let patternConfig = null;
+
+    try {
+      baseColor = resolver?.getBiomeColor?.(biomeId);
+    } catch (e) {
+      baseColor = 0x000000;
+    }
+
+    try {
+      patternConfig = resolver?.getBiomePattern?.(biomeId);
+    } catch (e) {
+      patternConfig = null;
+    }
+
+    this._drawBiomeSwatch(canvasEl, baseColor, patternConfig, biomeId);
+  }
+
+  _drawBiomeSwatch(canvasEl, baseColor, patternConfig, seed = 0) {
+    const ctx = canvasEl?.getContext?.('2d');
+    if (!ctx) return;
+
+    const w = Math.max(1, Number(canvasEl.width) || 24);
+    const h = Math.max(1, Number(canvasEl.height) || 24);
+
+    // Base fill
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = this._toCssHex(baseColor) || '#000000';
+    ctx.fillRect(0, 0, w, h);
+
+    if (!patternConfig || typeof patternConfig !== 'object') return;
+
+    const type = String(patternConfig.type || '').trim();
+    if (!type) return;
+
+    const spacingMultRaw = Number(patternConfig.spacing);
+    const lineWidthMultRaw = Number(patternConfig.lineWidth);
+    const opacityRaw = Number(patternConfig.opacity);
+    const darkenRaw = Number(patternConfig.darkenFactor);
+
+    const spacingMult = Number.isFinite(spacingMultRaw) ? spacingMultRaw : 2.0;
+    const lineWidthMult = Number.isFinite(lineWidthMultRaw) ? lineWidthMultRaw : 0.6;
+    const opacity = Number.isFinite(opacityRaw) ? Math.max(0, Math.min(1, opacityRaw)) : 0.9;
+    const darkenFactor = Number.isFinite(darkenRaw) ? Math.max(0, Math.min(1, darkenRaw)) : 0.4;
+
+    let patternColorInt = null;
+    if (patternConfig.patternColor) {
+      const n = parseInt(String(patternConfig.patternColor).trim(), 16);
+      if (Number.isFinite(n)) patternColorInt = n & 0xFFFFFF;
+    }
+    if (patternColorInt === null) {
+      patternColorInt = this._darkenColorInt(baseColor, darkenFactor);
+    }
+
+    const patternColorCss = this._toCssHex(patternColorInt) || '#000000';
+
+    const size = Math.min(w, h);
+    const cellSize = Math.max(1, size / 8);
+
+    const spacing = Math.max(1, cellSize * spacingMult);
+    const lineWidth = Math.max(1, cellSize * lineWidthMult);
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const drawLine = (x1, y1, x2, y2) => {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    };
+
+    const drawCircle = (cx, cy, r) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+
+    const drawFilledCircle = (cx, cy, r) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    const drawHexagon = (cx, cy, r) => {
+      const angles = [0, 60, 120, 180, 240, 300].map((a) => a * Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(cx + r * Math.cos(angles[0]), cy + r * Math.sin(angles[0]));
+      for (let i = 1; i < angles.length; i++) {
+        ctx.lineTo(cx + r * Math.cos(angles[i]), cy + r * Math.sin(angles[i]));
+      }
+      ctx.closePath();
+      ctx.stroke();
+    };
+
+    if (type === 'dots' || type === 'spots') {
+      ctx.fillStyle = patternColorCss;
+      ctx.globalAlpha = opacity;
+    } else {
+      ctx.strokeStyle = patternColorCss;
+      ctx.lineWidth = lineWidth;
+      ctx.globalAlpha = opacity;
+    }
+
+    const diagonal = Math.sqrt(w ** 2 + h ** 2);
+
+    switch (type) {
+      case 'diagonal': {
+        for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
+          drawLine(0, offset, diagonal, offset - diagonal);
+        }
+        break;
+      }
+      case 'crosshatch': {
+        for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
+          drawLine(0, offset, diagonal, offset - diagonal);
+        }
+        for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
+          drawLine(0, h - offset, diagonal, h - offset + diagonal);
+        }
+        break;
+      }
+      case 'vertical': {
+        for (let x = 0; x <= w; x += spacing) {
+          drawLine(x, 0, x, h);
+        }
+        break;
+      }
+      case 'horizontal': {
+        for (let y = 0; y <= h; y += spacing) {
+          drawLine(0, y, w, y);
+        }
+        break;
+      }
+      case 'circles': {
+        const cx = w / 2;
+        const cy = h / 2;
+        const maxR = Math.sqrt(cx ** 2 + cy ** 2);
+        for (let r = spacing; r <= maxR + spacing; r += spacing) {
+          drawCircle(cx, cy, r);
+        }
+        break;
+      }
+      case 'dots': {
+        const r = Math.max(1, lineWidth);
+        const start = spacing / 2;
+        for (let y = start; y <= h; y += spacing) {
+          for (let x = start; x <= w; x += spacing) {
+            drawFilledCircle(x, y, r);
+          }
+        }
+        break;
+      }
+      case 'waves': {
+        ctx.strokeStyle = patternColorCss;
+        ctx.lineWidth = lineWidth;
+        ctx.globalAlpha = opacity;
+
+        const waveHeight = cellSize * spacingMult * 0.25;
+        const waveLength = cellSize * 4;
+        const step = Math.max(1, cellSize * 0.5);
+
+        for (let y = spacing / 2; y <= h; y += spacing) {
+          let first = true;
+          ctx.beginPath();
+
+          for (let x = 0; x <= w + step; x += step) {
+            const phase = (x / waveLength) * Math.PI * 2;
+            const yy = y + Math.sin(phase) * waveHeight;
+            if (first) {
+              ctx.moveTo(x, yy);
+              first = false;
+            } else {
+              ctx.lineTo(x, yy);
+            }
+          }
+
+          ctx.stroke();
+        }
+
+        break;
+      }
+      case 'hexagons': {
+        ctx.strokeStyle = patternColorCss;
+        ctx.lineWidth = Math.max(1, lineWidth * 0.8);
+        ctx.globalAlpha = opacity;
+
+        const hexSize = cellSize * spacingMult;
+        const hexWidth = hexSize * 2;
+        const hexHeight = Math.sqrt(3) * hexSize;
+
+        for (let row = 0; row * hexHeight <= h + hexHeight; row++) {
+          for (let col = 0; col * hexWidth * 0.75 <= w + hexWidth; col++) {
+            const x = col * hexWidth * 0.75;
+            const y = row * hexHeight + (col % 2) * (hexHeight / 2);
+            drawHexagon(x, y, hexSize);
+          }
+        }
+
+        break;
+      }
+      case 'spots': {
+        const spacingLocal = spacing;
+        const minRadius = Math.max(1, lineWidth * 0.5);
+        const maxRadius = Math.max(2, lineWidth * 1.5);
+
+        let random = Number(seed) + 12345;
+        const seededRandom = () => {
+          random = (random * 9301 + 49297) % 233280;
+          return random / 233280;
+        };
+
+        const start = spacingLocal / 2;
+        for (let y = start; y <= h; y += spacingLocal) {
+          for (let x = start; x <= w; x += spacingLocal) {
+            const offsetX = (seededRandom() - 0.5) * spacingLocal * 0.8;
+            const offsetY = (seededRandom() - 0.5) * spacingLocal * 0.8;
+            const r = minRadius + seededRandom() * (maxRadius - minRadius);
+
+            if (seededRandom() > 0.3) {
+              drawFilledCircle(x + offsetX, y + offsetY, r);
+            }
+          }
+        }
+
+        break;
+      }
+      default: {
+        for (let offset = -diagonal; offset < diagonal * 2; offset += spacing) {
+          drawLine(0, offset, diagonal, offset - diagonal);
+        }
+        break;
+      }
+    }
+
+    ctx.restore();
+  }
+
   async _resolveDocName(rawUuid) {
     const uuid = this._normalizeUuid(rawUuid);
     if (!uuid) return '';
@@ -842,6 +1160,9 @@ class GlobalMapEdgeUI {
   _syncInspectorUi(root = null) {
     const el = root || this.element;
     if (!el) return;
+
+    this._syncInspectorInfluenceOutlineUi(el);
+    this._syncInspectorBiomeSwatchUi(el);
 
     // Values
     const biomeValueEl = el.querySelector('[data-field="inspectBiomeValue"]');

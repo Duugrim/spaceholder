@@ -181,26 +181,31 @@
   </div>
 
   <div class="sh-gm-edge__inspector" role="region" aria-label="Инспектор" aria-hidden="false">
+    <div class="sh-gm-edge__inspectorOverlay" role="group" aria-label="Настройки инспектора">
+      <button
+        type="button"
+        class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__inspectorUpdatesBtn"
+        data-action="toggle-inspector-updates"
+        aria-label="Автообновление"
+        aria-pressed="false"
+        data-tooltip="Автообновление"
+      ><i class="fa-solid fa-lock-open" aria-hidden="true"></i></button>
+    </div>
+
     <div class="sh-gm-edge__inspectorBody">
-      <div class="sh-gm-edge__inspectorHeader">
-        <div class="sh-gm-edge__inspectorTitle"></div>
-
-        <div class="sh-gm-edge__inspectorControls" role="group" aria-label="Настройки инспектора">
-          <button
-            type="button"
-            class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__inspectorUpdatesBtn"
-            data-action="toggle-inspector-updates"
-            aria-label="Автообновление"
-            aria-pressed="false"
-            data-tooltip="Автообновление"
-          ><i class="fa-solid fa-lock-open" aria-hidden="true"></i></button>
-        </div>
-      </div>
-
       <div class="sh-gm-edge__inspectGrid" role="group" aria-label="Данные">
         <div class="sh-gm-edge__inspectCol" data-scope="biome">
           <div class="sh-gm-edge__inspectLabel">Биом</div>
-          <div class="sh-gm-edge__inspectValue" data-field="inspectBiomeValue">Неизвестно</div>
+          <div class="sh-gm-edge__inspectValue sh-gm-edge__inspectValue--biome">
+            <canvas
+              class="sh-gm-edge__biomeSwatch"
+              data-field="inspectBiomeSwatch"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            ></canvas>
+            <span class="sh-gm-edge__inspectBiomeText" data-field="inspectBiomeValue">Неизвестно</span>
+          </div>
 
           <div class="sh-gm-edge__inspectJournal" aria-label="Журнал биома">
             <div class="sh-gm-edge__journalRow sh-gm-edge__journalRow--linked" data-scope="biomeJournalLinked" hidden>
