@@ -119,6 +119,12 @@ export class GlobalMapTools {
     this._canvasHookInstalled = false;
     this._onCanvasReadyHook = null;
 
+    // ===== Brush interaction shield =====
+    // When brush is active, we must prevent TokenLayer interactions (drag/select) to avoid accidental token moves.
+    // Edge-UI can enable edit mode without switching scene controls, so we do it here.
+    this._controlsBeforeBrush = null; // {control:string|null, tool:string|null}
+    this._tokenLayerStateBeforeBrush = null; // {eventMode?:any, interactiveChildren?:any, interactive?:any}
+
     // Install canvas hooks once
     this._installCanvasHooks();
   }
@@ -221,6 +227,127 @@ export class GlobalMapTools {
     console.log('GlobalMapTools | ✓ Deactivated');
   }
 
+  // ==========================
+  // Brush interaction shield
+  // ==========================
+
+  _getSceneControlsState() {
+    try {
+      const sc = ui?.controls;
+      if (!sc) return null;
+
+      const controlName = sc?.control?.name ?? sc?.activeControl ?? sc?._control ?? sc?._activeControl ?? null;
+      const toolName = sc?.control?.activeTool ?? sc?.activeTool ?? sc?.tool ?? sc?._tool ?? null;
+
+      return {
+        control: controlName ? String(controlName) : null,
+        tool: toolName ? String(toolName) : null,
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _activateSceneControls(control, tool = null) {
+    const sc = ui?.controls;
+    if (!sc || typeof sc.activate !== 'function') return false;
+
+    try {
+      sc.activate({ control, tool });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _enterBrushInteractionShield() {
+    // Remember current scene controls so we can restore them after brush mode.
+    if (!this._controlsBeforeBrush) {
+      this._controlsBeforeBrush = this._getSceneControlsState() || { control: 'tokens', tool: 'select' };
+    }
+
+    // Try to activate our "stub" tool (so Tokens layer won't capture pointer actions).
+    // If it fails, we still fall back to explicit TokenLayer shielding below.
+    this._activateSceneControls('globalmap', 'inspect-map');
+
+    // Explicitly disable TokenLayer interactions while brush is active.
+    const tokenLayer = canvas?.tokens;
+    if (!tokenLayer) return;
+
+    if (!this._tokenLayerStateBeforeBrush) {
+      const snap = {};
+      try {
+        if ('eventMode' in tokenLayer) snap.eventMode = tokenLayer.eventMode;
+      } catch (e) {
+        // ignore
+      }
+      try {
+        if ('interactiveChildren' in tokenLayer) snap.interactiveChildren = tokenLayer.interactiveChildren;
+      } catch (e) {
+        // ignore
+      }
+      try {
+        if ('interactive' in tokenLayer) snap.interactive = tokenLayer.interactive;
+      } catch (e) {
+        // ignore
+      }
+
+      this._tokenLayerStateBeforeBrush = snap;
+    }
+
+    try {
+      if ('interactiveChildren' in tokenLayer) tokenLayer.interactiveChildren = false;
+    } catch (e) {
+      // ignore
+    }
+    try {
+      if ('interactive' in tokenLayer) tokenLayer.interactive = false;
+    } catch (e) {
+      // ignore
+    }
+    try {
+      if ('eventMode' in tokenLayer) tokenLayer.eventMode = 'none';
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  _exitBrushInteractionShield() {
+    // Restore previous controls first (may reactivate TokenLayer).
+    const prev = this._controlsBeforeBrush;
+    this._controlsBeforeBrush = null;
+
+    if (prev?.control) {
+      const ok = this._activateSceneControls(prev.control, prev.tool ?? null);
+      if (!ok && (prev.control === 'tokens' || prev.control === 'token')) {
+        this._activateSceneControls('tokens', 'select');
+      }
+    }
+
+    // Restore TokenLayer interactivity.
+    const snap = this._tokenLayerStateBeforeBrush;
+    this._tokenLayerStateBeforeBrush = null;
+
+    const tokenLayer = canvas?.tokens;
+    if (!tokenLayer || !snap || typeof snap !== 'object') return;
+
+    try {
+      if ('interactiveChildren' in snap && 'interactiveChildren' in tokenLayer) tokenLayer.interactiveChildren = snap.interactiveChildren;
+    } catch (e) {
+      // ignore
+    }
+    try {
+      if ('interactive' in snap && 'interactive' in tokenLayer) tokenLayer.interactive = snap.interactive;
+    } catch (e) {
+      // ignore
+    }
+    try {
+      if ('eventMode' in snap && 'eventMode' in tokenLayer) tokenLayer.eventMode = snap.eventMode;
+    } catch (e) {
+      // ignore
+    }
+  }
+
   /**
    * Activate brush for painting
    */
@@ -274,6 +401,10 @@ export class GlobalMapTools {
     }
     
     this.isBrushActive = true;
+
+    // While brush is active, prevent TokenLayer interactions (drag/select) and switch to stub tool.
+    this._enterBrushInteractionShield();
+
     this.updateBrushUI();
     console.log(`GlobalMapTools | Brush activated: ${this.currentTool} (singleCell: ${this.singleCellMode})`);
   }
@@ -294,6 +425,9 @@ export class GlobalMapTools {
     this.isBrushActive = false;
     this._riverDrag = null;
     this._regionDrag = null;
+
+    // Restore scene controls + TokenLayer interactivity after brush mode.
+    this._exitBrushInteractionShield();
 
     this.clearOverlayPreview();
     this.clearCellHighlight();
@@ -2124,6 +2258,12 @@ export class GlobalMapTools {
     }
 
     this.updateBrushCursorGraphics();
+
+    // Canvas refresh can recreate TokenLayer and re-enable interactions; re-apply shield if brush is still active.
+    if (this.isBrushActive) {
+      this._enterBrushInteractionShield();
+    }
+
     this.updateBrushUI();
     this._updateUndoRedoUI();
   }
