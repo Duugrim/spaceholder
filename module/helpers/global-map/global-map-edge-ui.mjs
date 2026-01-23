@@ -838,6 +838,25 @@ class GlobalMapEdgeUI {
     return false;
   }
 
+  async _openFactionLinkByUuid(rawFactionUuid) {
+    const factionUuid = this._normalizeUuid(rawFactionUuid);
+    if (!factionUuid) return false;
+
+    let doc = null;
+    try {
+      doc = await fromUuid(factionUuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc || doc.documentName !== 'Actor' || doc.type !== 'faction') return false;
+
+    const linkUuid = this._normalizeUuid(doc.system?.fLink);
+    if (!linkUuid) return false;
+
+    return this._openJournalUuid(linkUuid);
+  }
+
   _requireGM(action = 'выполнить это действие') {
     if (game?.user?.isGM) return true;
     ui.notifications?.warn?.(`Только ГМ может ${action}`);
@@ -1827,7 +1846,7 @@ class GlobalMapEdgeUI {
 
     if (action === 'open-inspect-influence-journal') {
       event.preventDefault();
-      await this._openJournalUuid(this._inspectedInfluenceSideUuid);
+      await this._openFactionLinkByUuid(this._inspectedInfluenceSideUuid);
       return;
     }
 
@@ -1846,7 +1865,7 @@ class GlobalMapEdgeUI {
 
     if (action === 'open-token-faction') {
       event.preventDefault();
-      await this._openJournalUuid(this._selectedFactionUuid);
+      await this._openFactionLinkByUuid(this._selectedFactionUuid);
       return;
     }
 

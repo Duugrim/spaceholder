@@ -1,6 +1,6 @@
 {
   "Actor": {
-    "types": ["character", "npc", "globalobject"],
+    "types": ["character", "npc", "globalobject", "faction"],
     "templates": {
       "base": {
         "anatomy": {
@@ -45,6 +45,11 @@
       "gLink": "",
       "gFaction": "",
       "gActors": [],
+      "biography": ""
+    },
+    "faction": {
+      "fLink": "",
+      "fColor": "#666666",
       "biography": ""
     }
   },

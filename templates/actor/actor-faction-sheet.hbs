@@ -1,0 +1,48 @@
+<form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off" {{#if system.fColor}}style="--faction-color: {{system.fColor}};"{{/if}}>
+
+  {{!-- Sheet Header --}}
+  <header class="sheet-header">
+    <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
+    <div class="header-fields">
+      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Name"/></h1>
+
+      {{!-- Цвет фракции --}}
+      <div class="form-group faction-color">
+        <label for="system.fColor">Цвет</label>
+        <div class="form-fields">
+          <input type="color" name="system.fColor" value="{{system.fColor}}" />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  {{!-- Sheet Body (no tabs) --}}
+  <section class="sheet-body">
+
+    {{!-- Ссылка --}}
+    <div class="form-group">
+      <label for="system.fLink">Ссылка</label>
+      <div class="form-fields">
+        {{#if system.fLink}}
+          <input type="hidden" name="system.fLink" value="{{system.fLink}}"/>
+          <a class="content-link" data-action="uuid-open" data-uuid="{{system.fLink}}">
+            <i class="fa-solid fa-book-open"></i> {{fLinkName}}
+          </a>
+          <button type="button" class="icon-btn" data-action="uuid-clear" data-field="system.fLink">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        {{else}}
+          <input
+            type="text"
+            name="system.fLink"
+            value="{{system.fLink}}"
+            placeholder="UUID журнала"
+            data-action="uuid-drop"
+            data-field="system.fLink"
+          />
+        {{/if}}
+      </div>
+    </div>
+
+  </section>
+</form>

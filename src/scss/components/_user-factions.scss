@@ -1,0 +1,54 @@
+// UserConfig: factions picker injected panel
+// Note: This UI is injected into core UserConfig (not a SpaceHolder window),
+// so we intentionally scope by the unique panel class, not by .spaceholder.
+
+.spaceholder-user-factions {
+  // Remove label column to free horizontal space
+  > label {
+    display: none;
+  }
+
+  // Keep controls compact
+  button.icon-btn {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    padding: 0;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 4px;
+  }
+
+  // Foundry's .flexrow sets children to flex: 1; override so icon buttons don't stretch
+  .flexrow > button.icon-btn {
+    flex: 0 0 24px;
+  }
+
+  .spaceholder-user-faction-row > button.icon-btn {
+    flex: 0 0 24px;
+  }
+
+  // Selected factions list
+  .spaceholder-user-faction-row {
+    border: 1px solid var(--faction-color, rgba(255, 255, 255, 0.18));
+    border-radius: 6px;
+    padding: 2px 4px;
+  }
+
+  // Ensure swatch is always visible (UserConfig doesn't inherit SpaceHolder sheet styles)
+  .faction-color-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    min-height: 12px;
+    border-radius: 3px;
+    background: var(--faction-color, #666);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+    vertical-align: middle;
+  }
+}

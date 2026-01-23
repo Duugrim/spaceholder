@@ -522,7 +522,7 @@ export class InfluenceManager {
   /**
    * Получить цвет для фракции.
    * Правило:
-   * - Если UUID указывает на JournalEntry и он лежит в Folder с заданным цветом — используем цвет папки.
+   * - Если UUID указывает на Actor типа "faction" и у него задан system.fColor — используем его.
    * - Иначе: детерминированный fallback-цвет по хэшу строки.
    * @param {string} side
    * @returns {number} PIXI color
@@ -531,39 +531,39 @@ export class InfluenceManager {
     const raw = String(side ?? '').trim();
     const key = this._normalizeUuid(raw) || raw || 'neutral';
 
-    const folderColorHex = this._getFactionFolderColorHex(key);
-    if (typeof folderColorHex === 'number') return folderColorHex;
+    const actorColorHex = this._getFactionActorColorHex(key);
+    if (typeof actorColorHex === 'number') return actorColorHex;
 
     const hue = this._hashStringToHue(key);
     return this._hslToHex(hue, 65, 50);
   }
 
   /**
-   * Получить цвет (0xRRGGBB) папки журнала фракции, если доступно.
+   * Получить цвет (0xRRGGBB) фракции из Actor(faction).system.fColor, если доступно.
    * @private
    */
-  _getFactionFolderColorHex(factionKey) {
-    const entry = this._resolveJournalEntryForUuid(factionKey);
-    const color = entry?.folder?.color;
-    const hex = this._cssColorToHex(color);
+  _getFactionActorColorHex(factionKey) {
+    const actor = this._resolveFactionActorForUuid(factionKey);
+    if (!actor || actor.type !== 'faction') return null;
+
+    const hex = this._cssColorToHex(actor.system?.fColor);
     return typeof hex === 'number' ? hex : null;
   }
 
   /**
-   * Попытаться синхронно резолвнуть JournalEntry по UUID.
-   * Поддерживает world UUID (JournalEntry.<id>[.JournalEntryPage.<id>]) и, если доступно, fromUuidSync.
+   * Попытаться синхронно резолвнуть Actor фракции по UUID.
+   * Поддерживает world UUID (Actor.<id>) и, если доступно, fromUuidSync.
    * @private
    */
-  _resolveJournalEntryForUuid(rawUuid) {
+  _resolveFactionActorForUuid(rawUuid) {
     const uuid = this._normalizeUuid(rawUuid);
     if (!uuid) return null;
 
-    // 1) Если доступен fromUuidSync — используем (может вернуть JournalEntryPage)
+    // 1) Если доступен fromUuidSync — используем
     if (typeof fromUuidSync === 'function') {
       try {
-        let doc = fromUuidSync(uuid);
-        if (doc?.documentName === 'JournalEntryPage' && doc.parent) doc = doc.parent;
-        if (doc?.documentName === 'JournalEntry') return doc;
+        const doc = fromUuidSync(uuid);
+        if (doc?.documentName === 'Actor') return doc;
       } catch (e) {
         // ignore
       }
@@ -571,8 +571,8 @@ export class InfluenceManager {
 
     // 2) Быстрый путь для world UUID
     const parts = uuid.split('.');
-    if (parts[0] === 'JournalEntry' && parts[1]) {
-      return game?.journal?.get?.(parts[1]) || null;
+    if (parts[0] === 'Actor' && parts[1]) {
+      return game?.actors?.get?.(parts[1]) || null;
     }
 
     return null;

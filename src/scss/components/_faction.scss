@@ -1,0 +1,64 @@
+// Faction sheet
+
+// ApplicationV2: actor.type class ("faction") is on the sheet <form>.
+// Keep selector loose enough to survive Foundry/core class changes.
+.window-app.spaceholder .faction,
+.spaceholder.faction {
+  .sheet-header {
+    margin-bottom: 6px;
+
+    // Make faction color feel present in the header as well
+    .profile-img {
+      border-width: 2px;
+      border-color: var(--faction-color, var(--sh-border));
+    }
+
+    h1.charname input {
+      height: 42px;
+    }
+  }
+
+  // Make linked journal look like a control
+  a.content-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-height: $sh-control-height;
+    padding: 0 10px;
+    border-radius: var(--sh-radius-sm);
+
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--sh-border);
+    border-left: 4px solid var(--faction-color, #666);
+
+    color: var(--sh-text);
+    text-decoration: none;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--sh-border-strong);
+      color: #fff;
+    }
+  }
+
+  .faction-color {
+    margin: 0;
+
+    label {
+      font-size: 12px;
+      color: var(--sh-text-muted);
+      margin: 0 0 4px 0;
+    }
+
+    input[type="color"] {
+      width: 44px;
+      height: $sh-control-height;
+      padding: 0;
+
+      border: 1px solid var(--sh-border);
+      border-radius: var(--sh-radius-sm);
+      background: transparent;
+    }
+  }
+}

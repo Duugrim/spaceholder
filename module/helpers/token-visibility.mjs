@@ -161,6 +161,8 @@ function _computeInfluenceSources() {
     const faction = normalizeUuid(actor.system?.gFaction);
 
     // Для fullHidden нужно знать, какие пользователи «владельцы» этой зоны.
+    // TODO(spaceholder): позже источник членства во фракции будет переопределён настройками игрока.
+    // Сейчас используется сопоставление user -> factions через flags.spaceholder.factions (см. helpers/user-factions.mjs).
     const userIds = new Set();
     try {
       const users = getUsersForToken(tokenDoc);
@@ -269,6 +271,7 @@ function _shouldUserSeeToken({ token, actor, user, mode }) {
     if (!userId) return false;
 
     // Видим, если пользователь принадлежит хотя бы одной зоне, в которой стоит токен.
+    // TODO(spaceholder): заменить источник членства во фракции на настройки игрока (вместо flags.spaceholder.factions).
     for (const s of sources) {
       if (!_pointInSource(center, s)) continue;
       if (s.userIds?.has(userId)) return true;

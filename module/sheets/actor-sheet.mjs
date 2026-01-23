@@ -1135,6 +1135,7 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
       case 'character': return 'Персонаж';
       case 'npc': return 'NPC';
       case 'globalobject': return 'Глоб. объект';
+      case 'faction': return 'Фракция';
       default: return t || '—';
     }
   }
@@ -1452,6 +1453,226 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
       return;
     }
 
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc) {
+      ui.notifications.warn('Документ по UUID не найден');
+      return;
+    }
+
+    // system.gFaction: ожидаем Actor типа "faction"
+    if (field === 'system.gFaction') {
+      if (doc.documentName !== 'Actor') {
+        ui.notifications.warn('Ожидался Actor (Faction)');
+        return;
+      }
+
+      if (doc.type !== 'faction') {
+        ui.notifications.warn('Ожидался Actor типа "faction"');
+        return;
+      }
+
+      const uuidToStore = doc.uuid ?? uuid;
+      await this.actor.update({ [field]: uuidToStore });
+      input.value = uuidToStore;
+      this.render(false);
+      return;
+    }
+
+    // Остальные поля: ожидаем JournalEntry/JournalEntryPage
+    const docName = doc.documentName;
+    if (!['JournalEntry', 'JournalEntryPage'].includes(docName)) {
+      ui.notifications.warn('Ожидался Journal (JournalEntry/JournalEntryPage)');
+      return;
+    }
+
+    // Для JournalEntryPage стараемся хранить UUID родительского JournalEntry
+    let uuidToStore = uuid;
+    if (docName === 'JournalEntryPage' && doc.parent?.uuid) {
+      uuidToStore = doc.parent.uuid;
+    }
+
+    await this.actor.update({ [field]: uuidToStore });
+    input.value = uuidToStore;
+    this.render(false);
+  }
+
+  /**
+   * Открыть документ по UUID
+   * @private
+   */
+  async _onUuidOpen(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const uuid = this._normalizeUuid(event.currentTarget?.dataset?.uuid);
+    if (!uuid) return;
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    if (!doc) {
+      ui.notifications.warn('Документ по UUID не найден');
+      return;
+    }
+
+    // Для JournalEntryPage обычно открываем родительский JournalEntry
+    if (doc.documentName === 'JournalEntryPage' && doc.parent?.sheet?.render) {
+      doc.parent.sheet.render(true);
+      return;
+    }
+
+    if (doc.sheet?.render) {
+      doc.sheet.render(true);
+      return;
+    }
+
+    ui.notifications.warn('Не удалось открыть документ: нет sheet');
+  }
+}
+
+// Faction sheet (Application V2)
+export class SpaceHolderFactionSheet extends SpaceHolderBaseActorSheet {
+  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+    position: { width: 520, height: 'auto' },
+  }, { inplace: false });
+
+  static PARTS = {
+    body: { root: true, template: 'systems/spaceholder/templates/actor/actor-faction-sheet.hbs' },
+  };
+
+  /** @inheritDoc */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+
+    // Убедимся, что поля существуют (на случай старых актёров)
+    context.system = context.system || {};
+    context.system.fLink ??= '';
+    context.system.fColor ??= '#666666';
+
+    // Имя для отображения (как content-link)
+    context.fLinkName = await this._resolveDocName(context.system.fLink);
+
+    return context;
+  }
+
+  /** @inheritDoc */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+
+    const el = this.element;
+    if (!el) return;
+
+    // Открытие документа по UUID (доступно и в read-only)
+    el.querySelectorAll('[data-action="uuid-open"]').forEach((a) => {
+      a.addEventListener('click', this._onUuidOpen.bind(this));
+    });
+
+    // Всё ниже — только когда лист редактируемый
+    if (!this.isEditable) return;
+
+    // Перетаскивание UUID в текстовые поля
+    el.querySelectorAll('[data-action="uuid-drop"]').forEach((input) => {
+      input.addEventListener('dragover', (ev) => ev.preventDefault());
+      input.addEventListener('drop', this._onUuidDrop.bind(this));
+    });
+
+    // Очистка UUID поля
+    el.querySelectorAll('[data-action="uuid-clear"]').forEach((btn) => {
+      btn.addEventListener('click', this._onUuidClear.bind(this));
+    });
+  }
+
+  /** @private */
+  _normalizeUuid(raw) {
+    const str = String(raw ?? '').trim();
+    if (!str) return '';
+    const match = str.match(/@UUID\[(.+?)\]/);
+    return (match?.[1] ?? str).trim();
+  }
+
+  /**
+   * Попытаться извлечь UUID из drag&drop данных
+   * @private
+   */
+  _extractUuidFromDropEvent(event) {
+    const dt = event?.dataTransfer;
+    if (!dt) return '';
+
+    const rawCandidates = [
+      dt.getData('application/json'),
+      dt.getData('text/plain'),
+    ].filter(Boolean);
+
+    for (const raw of rawCandidates) {
+      try {
+        const data = JSON.parse(raw);
+        const uuid = data?.uuid || data?.data?.uuid;
+        if (uuid) return this._normalizeUuid(uuid);
+      } catch (e) {
+        const uuid = this._normalizeUuid(raw);
+        if (uuid) return uuid;
+      }
+    }
+
+    return '';
+  }
+
+  /** @private */
+  async _resolveDocName(rawUuid) {
+    const uuid = this._normalizeUuid(rawUuid);
+    if (!uuid) return '';
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (e) {
+      doc = null;
+    }
+
+    return doc?.name || uuid;
+  }
+
+  /**
+   * Очистить UUID поле
+   * @private
+   */
+  async _onUuidClear(event) {
+    event.preventDefault();
+
+    const field = event.currentTarget?.dataset?.field;
+    if (!field) return;
+
+    await this.actor.update({ [field]: '' });
+    this.render(false);
+  }
+
+  /**
+   * Handle drop: сохранить UUID в указанное поле (data-field="system.xxx")
+   * @private
+   */
+  async _onUuidDrop(event) {
+    event.preventDefault();
+
+    const input = event.currentTarget;
+    const field = input?.dataset?.field;
+    if (!field) return;
+
+    const uuid = this._extractUuidFromDropEvent(event);
+    if (!uuid) {
+      ui.notifications.warn('Не удалось извлечь UUID из перетаскивания');
+      return;
+    }
+
     // Валидация: ожидаем JournalEntry/JournalEntryPage
     let doc = null;
     try {
@@ -1471,9 +1692,9 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
       return;
     }
 
-    // Для фракции стараемся хранить именно JournalEntry UUID (стабильное сравнение фракций)
+    // Для JournalEntryPage стараемся хранить UUID родительского JournalEntry
     let uuidToStore = uuid;
-    if (field === 'system.gFaction' && docName === 'JournalEntryPage' && doc.parent?.uuid) {
+    if (docName === 'JournalEntryPage' && doc.parent?.uuid) {
       uuidToStore = doc.parent.uuid;
     }
 

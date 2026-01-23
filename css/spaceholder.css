@@ -1408,6 +1408,59 @@
   opacity: 0.75;
 }
 
+.window-app.spaceholder .faction .sheet-header,
+.spaceholder.faction .sheet-header {
+  margin-bottom: 6px;
+}
+.window-app.spaceholder .faction .sheet-header .profile-img,
+.spaceholder.faction .sheet-header .profile-img {
+  border-width: 2px;
+  border-color: var(--faction-color, var(--sh-border));
+}
+.window-app.spaceholder .faction .sheet-header h1.charname input,
+.spaceholder.faction .sheet-header h1.charname input {
+  height: 42px;
+}
+.window-app.spaceholder .faction a.content-link,
+.spaceholder.faction a.content-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sh-border);
+  border-left: 4px solid var(--faction-color, #666);
+  color: var(--sh-text);
+  text-decoration: none;
+}
+.window-app.spaceholder .faction a.content-link:hover,
+.spaceholder.faction a.content-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--sh-border-strong);
+  color: #fff;
+}
+.window-app.spaceholder .faction .faction-color,
+.spaceholder.faction .faction-color {
+  margin: 0;
+}
+.window-app.spaceholder .faction .faction-color label,
+.spaceholder.faction .faction-color label {
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  margin: 0 0 4px 0;
+}
+.window-app.spaceholder .faction .faction-color input[type=color],
+.spaceholder.faction .faction-color input[type=color] {
+  width: 44px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: transparent;
+}
+
 #spaceholder-globalmap-biome-editor .sh-biome-editor,
 .window-app.spaceholder.globalmap-biome-editor .sh-biome-editor,
 .spaceholder.globalmap-biome-editor .sh-biome-editor {
@@ -2291,4 +2344,41 @@
   margin: 0 6px;
   font-size: 12px;
   opacity: 0.9;
+}
+
+.spaceholder-user-factions > label {
+  display: none;
+}
+.spaceholder-user-factions button.icon-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+.spaceholder-user-factions .flexrow > button.icon-btn {
+  flex: 0 0 24px;
+}
+.spaceholder-user-factions .spaceholder-user-faction-row > button.icon-btn {
+  flex: 0 0 24px;
+}
+.spaceholder-user-factions .spaceholder-user-faction-row {
+  border: 1px solid var(--faction-color, rgba(255, 255, 255, 0.18));
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+.spaceholder-user-factions .faction-color-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  border-radius: 3px;
+  background: var(--faction-color, #666);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  vertical-align: middle;
 }

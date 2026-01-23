@@ -2,7 +2,7 @@
 import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
 // Import sheet classes (Application V2)
-import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderGlobalObjectSheet } from './sheets/actor-sheet.mjs';
+import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderGlobalObjectSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
 import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
@@ -13,7 +13,7 @@ import { anatomyManager } from './anatomy-manager.mjs';
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
-// User -> Factions (Journal UUID) mapping
+// User -> Factions mapping (used by token visibility/fullHidden)
 import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
 // Journal Directory helpers
 import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
@@ -142,7 +142,7 @@ Hooks.once('init', function () {
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks
   installTokenRotator();
-  // Install User -> Factions hooks (UserConfig injection)
+  // Install User -> Factions hooks (UserConfig UI)
   installUserFactionsHooks();
   // Install Journal Directory hooks (Clear Journals button)
   installJournalDirectoryHooks();
@@ -196,6 +196,11 @@ Hooks.once('init', function () {
     types: ['globalobject'],
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.GlobalObject',
+  });
+  foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderFactionSheet, {
+    types: ['faction'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Faction',
   });
 
   // Register Item sheets by type (fallback generic)
