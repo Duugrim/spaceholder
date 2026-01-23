@@ -1917,16 +1917,73 @@ class GlobalMapEdgeUI {
       const sh = game?.spaceholder;
       const processing = sh?.globalMapProcessing;
       const renderer = sh?.globalMapRenderer;
+      const tools = sh?.globalMapTools;
+      const scene = canvas?.scene;
+
+      if (!scene || !processing || !renderer) return;
 
       if (!renderer?.currentGrid) {
         ui.notifications?.warn?.('Нет карты для сохранения');
         return;
       }
 
-      const ok = await processing?.saveGridToFile?.(canvas?.scene);
-      if (!ok) {
-        ui.notifications?.error?.('Не удалось сохранить карту');
+      // Ensure vector overlays are loaded/normalized before saving.
+      try {
+        if (renderer.vectorRiversData === null || renderer.vectorRiversData === undefined) {
+          await renderer.loadVectorRiversFromScene?.(scene);
+        }
+      } catch (e) {
+        // ignore
       }
+      try {
+        if (renderer.vectorRegionsData === null || renderer.vectorRegionsData === undefined) {
+          await renderer.loadVectorRegionsFromScene?.(scene);
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      const errors = [];
+
+      // Save grid (biomes/heights)
+      const okGrid = await processing?.saveGridToFile?.(scene);
+      if (!okGrid) errors.push('карта');
+
+      // Save vector rivers/regions (stored in scene flags)
+      const saveFlagSafe = async (key, value) => {
+        if (!scene?.setFlag) return false;
+        if (!value || typeof value !== 'object') return false;
+        try {
+          await scene.setFlag(MODULE_NS, key, value);
+          return true;
+        } catch (e) {
+          console.error(`SpaceHolder | Global map edge UI: failed to save ${key}`, e);
+          return false;
+        }
+      };
+
+      const okRivers = await saveFlagSafe('globalMapRivers', renderer.vectorRiversData);
+      const okRegions = await saveFlagSafe('globalMapRegions', renderer.vectorRegionsData);
+
+      if (!okRivers) errors.push('реки');
+      if (!okRegions) errors.push('регионы');
+
+      // Keep tools UI indicators in sync (if open)
+      try {
+        if (tools) {
+          if (okRivers) tools.vectorRiversDirty = false;
+          if (okRegions) tools.vectorRegionsDirty = false;
+          tools._refreshRiversUI?.();
+          tools._refreshRegionsUI?.();
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      if (errors.length) {
+        ui.notifications?.error?.(`Не удалось сохранить: ${errors.join(', ')}`);
+      }
+
       return;
     }
 
@@ -2143,11 +2200,33 @@ class GlobalMapEdgeUI {
     }
 
     try {
+      // Rivers + Regions are stored separately in scene flags; reload them as part of refresh.
+      try {
+        await renderer.loadVectorRegionsFromScene?.(scene);
+      } catch (e) {
+        // ignore
+      }
+      try {
+        await renderer.loadVectorRiversFromScene?.(scene);
+      } catch (e) {
+        // ignore
+      }
+
       const loaded = await processing.loadGridFromFile(scene);
       if (loaded && loaded.gridData) {
         await renderer.render(loaded.gridData, loaded.metadata, { mode: 'heights' });
         ui.notifications?.info?.('Карта обновлена');
       } else {
+        // Grid file missing; still try to re-render reloaded vector overlays on top of current map.
+        try {
+          if (renderer?.currentMetadata) {
+            if (renderer.vectorRegionsData) renderer.renderVectorRegions?.(renderer.vectorRegionsData, renderer.currentMetadata);
+            if (renderer.vectorRiversData) renderer.renderVectorRivers?.(renderer.vectorRiversData, renderer.currentMetadata);
+          }
+        } catch (e) {
+          // ignore
+        }
+
         ui.notifications?.warn?.('Файл карты не найден');
       }
     } catch (e) {
