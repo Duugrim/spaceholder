@@ -19,6 +19,8 @@ import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction
 import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
 // Journal Check (workflow statuses)
 import { registerJournalCheckSettings, installJournalCheckHooks } from './helpers/journal-check.mjs';
+// Journal Update Log window
+import { openJournalUpdateLogApp } from './helpers/journal-update-log-app.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -81,6 +83,7 @@ Hooks.once('init', function () {
     SpaceHolderItem,
     rollItemMacro,
     anatomyManager,
+    openJournalUpdateLogApp,
     // Helper functions for influence zones
     showInfluence: (debug = false) => game.spaceholder.influenceManager?.enable({ debug }),
     hideInfluence: () => game.spaceholder.influenceManager?.disable(),

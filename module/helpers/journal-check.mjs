@@ -7,6 +7,10 @@ const FLAG_ROOT = 'journalCheck';
 const SETTING_SHOW_ICONS = 'journalcheck.showIcons';
 const SETTING_GM_SKIP = 'journalcheck.gmSkipProposed';
 
+// Approval history (world)
+const SETTING_APPROVAL_HISTORY = 'journalcheck.approvalHistory';
+const APPROVAL_HISTORY_LIMIT = 200;
+
 const STATUS = {
   DRAFT: 'draft',
   PROPOSED: 'proposed',
@@ -84,6 +88,317 @@ function _getSetting(key, fallback) {
   }
 }
 
+function _randomId() {
+  try {
+    return foundry.utils.randomID?.();
+  } catch (_) {
+    // ignore
+  }
+  try {
+    return globalThis.randomID?.();
+  } catch (_) {
+    // ignore
+  }
+  try {
+    return globalThis.crypto?.randomUUID?.();
+  } catch (_) {
+    // ignore
+  }
+  return String(Date.now());
+}
+
+function _escapeHtml(raw) {
+  const s = String(raw ?? '');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function _getApprovalHistoryRaw() {
+  const raw = _getSetting(SETTING_APPROVAL_HISTORY, []);
+  return Array.isArray(raw) ? raw : [];
+}
+
+export function getApprovalHistory({ limit = APPROVAL_HISTORY_LIMIT } = {}) {
+  const raw = _getApprovalHistoryRaw();
+  const lim = Math.max(0, Number(limit) || 0);
+  if (!lim) return raw;
+  return raw.slice(0, lim);
+}
+
+async function _appendApprovalHistoryBatch(batch) {
+  const raw = _getApprovalHistoryRaw();
+  const next = [batch, ...raw].slice(0, APPROVAL_HISTORY_LIMIT);
+  await game.settings.set(MODULE_NS, SETTING_APPROVAL_HISTORY, next);
+}
+
+function _getAllPlayersOwnershipLevel(doc) {
+  try {
+    const own = doc?.ownership ?? doc?.data?.ownership ?? null;
+    const v = (own && typeof own === 'object') ? (own.default ?? own['default']) : null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function _canAllPlayersObserve(doc) {
+  const lvl = _getAllPlayersOwnershipLevel(doc);
+  try {
+    return lvl >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
+  } catch (_) {
+    return lvl >= 2;
+  }
+}
+
+function _buildApprovalTreeForAllPlayers(items) {
+  const entries = new Map();
+  const hiddenEntryIds = new Set();
+
+  const ensureEntry = (entry) => {
+    if (!entry?.id) return null;
+    if (!entries.has(entry.id)) {
+      entries.set(entry.id, { entry, pages: [], hasLeafEntry: false });
+    }
+    return entries.get(entry.id);
+  };
+
+  for (const it of (Array.isArray(items) ? items : [])) {
+    const type = String(it?.type ?? '');
+    const entryId = String(it?.entryId ?? '').trim();
+    if (!entryId) continue;
+
+    const entry = game.journal?.get?.(entryId) ?? null;
+    if (!entry) continue;
+
+    if (!_canAllPlayersObserve(entry)) {
+      hiddenEntryIds.add(entryId);
+      continue;
+    }
+
+    const bucket = ensureEntry(entry);
+    if (!bucket) continue;
+
+    if (type === 'entry') {
+      bucket.hasLeafEntry = true;
+      continue;
+    }
+
+    if (type === 'page') {
+      const pageId = String(it?.pageId ?? '').trim();
+      if (!pageId) continue;
+
+      const page = entry.pages?.get?.(pageId) ?? null;
+      const canSeePage = page ? _canAllPlayersObserve(page) : false;
+
+      const rawName = String(page?.name ?? '').trim();
+      const name = canSeePage ? (rawName || '(без названия)') : 'Неизвестно';
+
+      bucket.pages.push({
+        pageId,
+        name,
+      });
+    }
+  }
+
+  const out = [];
+  for (const v of entries.values()) {
+    if (!v) continue;
+    if (!v.hasLeafEntry && (!v.pages || !v.pages.length)) continue;
+
+    out.push({
+      entry: v.entry,
+      name: String(v.entry?.name ?? '').trim(),
+      pages: v.pages ?? [],
+      hasLeafEntry: !!v.hasLeafEntry,
+    });
+  }
+
+  return { tree: out, unknownEntriesCount: hiddenEntryIds.size };
+}
+
+function _renderApprovalChatHtml(tree, { title = 'Подтверждены журналы:', unknownEntriesCount = 0 } = {}) {
+  const hasTree = Array.isArray(tree) && tree.length;
+  const unknown = Math.max(0, Number(unknownEntriesCount) || 0);
+
+  if (!hasTree && !unknown) return '';
+
+  const lines = [];
+  lines.push(`<div class="spaceholder-journal-update-chat">`);
+  lines.push(`<div class="sh-jul-chat__title">${_escapeHtml(title)}</div>`);
+
+  if (hasTree) {
+    lines.push(`<ul class="sh-jul-chat__list">`);
+
+    for (const node of tree) {
+      const entryName = _escapeHtml(node?.name ?? '');
+      lines.push(`<li class="sh-jul-chat__entry">${entryName}`);
+
+      const pages = Array.isArray(node?.pages) ? node.pages : [];
+      if (pages.length) {
+        lines.push('<ul class="sh-jul-chat__pages">');
+        for (const p of pages) {
+          lines.push(`<li class="sh-jul-chat__page">${_escapeHtml(p?.name ?? '')}</li>`);
+        }
+        lines.push('</ul>');
+      }
+
+      lines.push('</li>');
+    }
+
+    lines.push('</ul>');
+  }
+
+  if (unknown) {
+    lines.push(`<div class="sh-jul-chat__unknown">И ещё ${unknown} неизвестных журналов</div>`);
+  }
+
+  lines.push('</div>');
+
+  return lines.join('');
+}
+
+async function _sendApprovalChatMessages(items) {
+  const speaker = (() => {
+    try { return ChatMessage.getSpeaker({ alias: 'Журналы' }); } catch (_) {}
+    try { return ChatMessage.getSpeaker(); } catch (_) {}
+    return {};
+  })();
+
+  const { tree, unknownEntriesCount } = _buildApprovalTreeForAllPlayers(items);
+  const content = _renderApprovalChatHtml(tree, { unknownEntriesCount });
+  if (!content) return;
+
+  try {
+    await ChatMessage.create({ content, speaker });
+  } catch (e) {
+    console.error('SpaceHolder | JournalCheck: failed to create approval chat message', e);
+  }
+}
+
+export async function approveJournalItems(
+  { entryIds = [], pageRefs = [] } = {},
+  { source = 'bulk' } = {}
+) {
+  if (!game?.user?.isGM) return false;
+
+  const now = Date.now();
+  const gmId = game.user.id ?? null;
+
+  const uniqueEntryIds = [...new Set((Array.isArray(entryIds) ? entryIds : []).map((x) => String(x ?? '').trim()).filter(Boolean))];
+  const uniquePageRefs = [];
+  {
+    const seen = new Set();
+    for (const r of (Array.isArray(pageRefs) ? pageRefs : [])) {
+      const entryId = String(r?.entryId ?? '').trim();
+      const pageId = String(r?.pageId ?? '').trim();
+      if (!entryId || !pageId) continue;
+      const k = `${entryId}:${pageId}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      uniquePageRefs.push({ entryId, pageId });
+    }
+  }
+
+  const fullEntryApprovals = []; // JournalEntry (approve all pages)
+  const leafEntryApprovals = []; // JournalEntry (single-page)
+  const pagesToApprove = new Map(); // key -> JournalEntryPage
+
+  const coveredEntries = new Set();
+
+  // Resolve entries
+  for (const entryId of uniqueEntryIds) {
+    const entry = game.journal?.get?.(entryId) ?? null;
+    if (!entry) continue;
+    if (!_canUserUpdate(entry)) continue;
+
+    const pages = entry?.pages?.contents ?? [];
+    if (pages.length > 1) {
+      coveredEntries.add(entryId);
+      fullEntryApprovals.push(entry);
+    } else {
+      leafEntryApprovals.push(entry);
+    }
+  }
+
+  // Resolve pages (ignore those covered by full-entry approvals)
+  for (const ref of uniquePageRefs) {
+    if (coveredEntries.has(ref.entryId)) continue;
+
+    const entry = game.journal?.get?.(ref.entryId) ?? null;
+    if (!entry) continue;
+
+    const page = entry.pages?.get?.(ref.pageId) ?? null;
+    if (!page) continue;
+    if (!_canUserUpdate(page)) continue;
+
+    pagesToApprove.set(`${entry.id}:${page.id}`, page);
+  }
+
+  // Build log items (only those that will end up approved and are meaningful to log)
+  const loggedItems = [];
+
+  // Full entries -> log pages
+  for (const entry of fullEntryApprovals) {
+    const pages = entry?.pages?.contents ?? [];
+    for (const p of pages) {
+      if (getStatus(p) === STATUS.APPROVED) continue;
+      loggedItems.push({ type: 'page', entryId: entry.id, pageId: p.id });
+    }
+  }
+
+  // Leaf entries -> log entry
+  for (const entry of leafEntryApprovals) {
+    if (computeEntryStatusFromPages(entry) === STATUS.APPROVED) continue;
+    loggedItems.push({ type: 'entry', entryId: entry.id });
+  }
+
+  // Individual pages -> log page
+  for (const page of pagesToApprove.values()) {
+    if (getStatus(page) === STATUS.APPROVED) continue;
+    loggedItems.push({ type: 'page', entryId: page.parent?.id ?? '', pageId: page.id });
+  }
+
+  if (!loggedItems.length) return false;
+
+  // Apply updates
+  for (const entry of fullEntryApprovals) {
+    await setEntryStatus(entry, STATUS.APPROVED, { reason: `approve-${source}`, applyToPages: true });
+  }
+
+  for (const entry of leafEntryApprovals) {
+    await setEntryStatus(entry, STATUS.APPROVED, { reason: `approve-${source}`, applyToPages: true });
+  }
+
+  for (const page of pagesToApprove.values()) {
+    await setPageStatus(page, STATUS.APPROVED, { reason: `approve-${source}`, syncParent: true });
+  }
+
+  // Persist history (newest first)
+  const batch = {
+    id: _randomId(),
+    at: now,
+    gmId,
+    source: String(source ?? 'bulk'),
+    items: loggedItems,
+  };
+
+  try {
+    await _appendApprovalHistoryBatch(batch);
+  } catch (e) {
+    console.error('SpaceHolder | JournalCheck: failed to append approval history', e);
+  }
+
+  // Chat notifications
+  await _sendApprovalChatMessages(loggedItems);
+
+  return true;
+}
+
 function _rerenderJournalUI() {
   try { ui.journal?.render(true); } catch (_) {}
 
@@ -118,6 +433,20 @@ export function registerJournalCheckSettings() {
     default: false,
     type: Boolean,
     onChange: () => _rerenderJournalUI(),
+  });
+
+  // World approval history (for Update Log)
+  game.settings.register(MODULE_NS, SETTING_APPROVAL_HISTORY, {
+    name: 'Journal Check: Approval history',
+    hint: 'Stores last approval actions for the Update Log window',
+    scope: 'world',
+    config: false,
+    restricted: true,
+    default: [],
+    type: Array,
+    onChange: () => {
+      try { Hooks.callAll('spaceholderJournalApprovalHistoryUpdated'); } catch (_) {}
+    },
   });
 }
 
@@ -351,6 +680,15 @@ function _injectHeaderButtons(root) {
     actions.appendChild(btn);
   }
 
+  // Open Update Log window
+  if (!actions.querySelector('.spaceholder-journalcheck-open-update-log')) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.classList.add('spaceholder-journalcheck-open-update-log');
+    btn.title = 'Лог обновлений';
+    actions.appendChild(btn);
+  }
+
   // Refresh button contents + handlers
   const showBtn = actions.querySelector('.spaceholder-journalcheck-toggle-icons');
   if (showBtn) {
@@ -382,6 +720,21 @@ function _injectHeaderButtons(root) {
       await game.settings.set(MODULE_NS, SETTING_GM_SKIP, !cur);
     };
   }
+
+  const logBtn = actions.querySelector('.spaceholder-journalcheck-open-update-log');
+  if (logBtn) {
+    logBtn.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i>';
+    logBtn.onclick = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        const tab = game.user?.isGM ? 'proposed' : 'approved';
+        game.spaceholder?.openJournalUpdateLogApp?.({ tab });
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
 }
 
 function _createEntryStatusIcon(entry) {
@@ -411,6 +764,11 @@ function _createEntryStatusIcon(entry) {
       if (current === STATUS.APPROVED && next === STATUS.DRAFT) return;
       // Without skip, do not allow draft -> approved directly.
       if (current === STATUS.DRAFT && next === STATUS.APPROVED) return;
+    }
+
+    if (next === STATUS.APPROVED) {
+      await approveJournalItems({ entryIds: [entry.id] }, { source: 'icon' });
+      return;
     }
 
     await setEntryStatus(entry, next, { reason: 'icon', applyToPages: true });
@@ -564,7 +922,7 @@ function _addEntryContextOptions(app, options) {
         callback: (li) => {
           const entry = getEntry(li);
           if (!entry) return;
-          return setEntryStatus(entry, STATUS.APPROVED, { reason: 'ctx', applyToPages: true });
+          return approveJournalItems({ entryIds: [entry.id] }, { source: 'ctx' });
         },
       }),
       make({
@@ -651,7 +1009,7 @@ function _addPageContextOptions(app, options) {
         callback: (li) => {
           const page = getPage(li);
           if (!page) return;
-          return setPageStatus(page, STATUS.APPROVED, { reason: 'ctx', syncParent: true });
+          return approveJournalItems({ pageRefs: [{ entryId: entry.id, pageId: page.id }] }, { source: 'ctx' });
         },
       }),
       make({
@@ -678,7 +1036,7 @@ function _addPageContextOptions(app, options) {
           if (!isGM) return false;
           return _canUserUpdate(entry);
         },
-        callback: () => setEntryStatus(entry, STATUS.APPROVED, { reason: 'ctx-bulk', applyToPages: true }),
+        callback: () => approveJournalItems({ entryIds: [entry.id] }, { source: 'ctx-bulk' }),
       }),
       make({
         name: 'Журнал: Предложить весь журнал',

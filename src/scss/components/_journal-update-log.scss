@@ -1,0 +1,215 @@
+// Journal Update Log (ApplicationV2)
+
+#spaceholder-journal-update-log,
+.window-app.spaceholder.journal-update-log,
+.spaceholder.journal-update-log {
+  .sh-jul {
+    background: rgba(0, 0, 0, 0.85);
+    color: var(--sh-text);
+    padding: 12px;
+    border-radius: var(--sh-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .sh-jul__header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .sh-jul__tabs {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+
+    .item {
+      padding: 6px 10px;
+      border-radius: var(--sh-radius-sm);
+      color: var(--sh-text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+
+      &.active {
+        color: var(--sh-text);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+
+      &:hover {
+        color: #fff;
+      }
+    }
+  }
+
+  .sh-jul__approveBtn {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 6px 10px;
+    background: rgba(29, 78, 216, 0.85);
+    border-color: rgba(255, 255, 255, 0.12);
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+  }
+
+  .sh-jul__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .sh-jul__tab {
+    display: none;
+
+    &.active {
+      display: block;
+    }
+  }
+
+  .sh-jul__empty {
+    color: var(--sh-text-dim);
+    font-size: 12px;
+    padding: 8px 0;
+  }
+
+  .sh-jul__entry {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .sh-jul__entryHeader {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .sh-jul__check {
+    flex: 0 0 auto;
+
+    input[type='checkbox'] {
+      margin: 0;
+    }
+  }
+
+  .sh-jul__open {
+    background: transparent;
+    border: none;
+    padding: 0;
+
+    color: var(--sh-text);
+    text-align: left;
+    cursor: pointer;
+
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover,
+    &:focus {
+      color: #fff;
+      text-decoration: underline;
+    }
+  }
+
+  .sh-jul__meta {
+    margin-left: auto;
+    color: var(--sh-text-dim);
+    font-size: 11px;
+    flex: 0 0 auto;
+  }
+
+  .sh-jul__pages {
+    margin: 6px 0 0 22px;
+    padding: 0;
+    list-style: none;
+
+    .sh-jul__page {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 2px 0;
+    }
+  }
+
+  .sh-jul__unknown {
+    color: var(--sh-text-dim);
+    font-size: 12px;
+  }
+
+  // History batches
+  .sh-jul__batch {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-md);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px 10px;
+    margin-bottom: 8px;
+
+    summary {
+      cursor: pointer;
+      color: var(--sh-text);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+
+      &::marker { color: var(--sh-text-muted); }
+    }
+  }
+
+  .sh-jul__batchTime {
+    color: var(--sh-text-muted);
+    font-size: 11px;
+  }
+
+  .sh-jul__batchBy {
+    color: var(--sh-text);
+    font-size: 11px;
+  }
+
+  .sh-jul__entryLine {
+    margin: 6px 0;
+  }
+}
+
+// Chat message styling (not inside .spaceholder app)
+.spaceholder-journal-update-chat {
+  .sh-jul-chat__title {
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .sh-jul-chat__list,
+  .sh-jul-chat__pages {
+    margin: 0;
+    padding-left: 18px;
+  }
+
+  .sh-jul-chat__entry {
+    margin: 2px 0;
+  }
+
+  .sh-jul-chat__page {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .sh-jul-chat__unknown {
+    margin-top: 6px;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 12px;
+  }
+}

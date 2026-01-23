@@ -1,0 +1,118 @@
+<div class="sh-jul">
+  <header class="sh-jul__header">
+    <nav class="sh-jul__tabs tabs" data-group="sh-jul">
+      {{#if isGM}}
+        <a class="item {{#if (eq activeTab 'proposed')}}active{{/if}}" data-action="tab" data-tab="proposed">Предложено</a>
+      {{/if}}
+      <a class="item {{#if (eq activeTab 'approved')}}active{{/if}}" data-action="tab" data-tab="approved">Подтверждено</a>
+    </nav>
+
+    {{#if isGM}}
+      {{#if (eq activeTab 'proposed')}}
+        <button type="button" class="sh-jul__approveBtn" data-action="approve-selected" {{#unless hasSelection}}disabled{{/unless}}>
+          <i class="fa-solid fa-check"></i>
+          Подтвердить
+        </button>
+      {{/if}}
+    {{/if}}
+  </header>
+
+  <section class="sh-jul__body">
+    {{#if isGM}}
+      <div class="tab sh-jul__tab sh-jul__tab--proposed {{#if (eq activeTab 'proposed')}}active{{/if}}" data-tab="proposed">
+        {{#if proposed.length}}
+          <div class="sh-jul__list">
+            {{#each proposed as |entry|}}
+              <div class="sh-jul__entry" data-entry-id="{{entry.entryId}}">
+                <div class="sh-jul__entryHeader">
+                  {{#if entry.pages.length}}
+                    <label class="sh-jul__check sh-jul__check--group" title="Выбрать всё">
+                      <input type="checkbox" data-group-entry-id="{{entry.entryId}}" />
+                    </label>
+                  {{else}}
+                    <label class="sh-jul__check" title="Выбрать">
+                      <input type="checkbox" data-key="{{entry.key}}" {{#if (lookup @root.selected entry.key)}}checked{{/if}} />
+                    </label>
+                  {{/if}}
+
+                  <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{entry.uuid}}" title="Открыть">
+                    {{entry.name}}
+                  </button>
+
+                  {{#if entry.meta}}
+                    <span class="sh-jul__meta">{{entry.meta}}</span>
+                  {{/if}}
+                </div>
+
+                {{#if entry.pages.length}}
+                  <ul class="sh-jul__pages">
+                    {{#each entry.pages as |page|}}
+                      <li class="sh-jul__page">
+                        <label class="sh-jul__check" title="Выбрать">
+                          <input type="checkbox" data-key="{{page.key}}" {{#if (lookup @root.selected page.key)}}checked{{/if}} />
+                        </label>
+
+                        <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{page.uuid}}" title="Открыть">
+                          {{page.name}}
+                        </button>
+
+                        {{#if page.meta}}
+                          <span class="sh-jul__meta">{{page.meta}}</span>
+                        {{/if}}
+                      </li>
+                    {{/each}}
+                  </ul>
+                {{/if}}
+              </div>
+            {{/each}}
+          </div>
+        {{else}}
+          <div class="sh-jul__empty">Нет предложенных записей.</div>
+        {{/if}}
+      </div>
+    {{/if}}
+
+    <div class="tab sh-jul__tab sh-jul__tab--approved {{#if (eq activeTab 'approved')}}active{{/if}}" data-tab="approved">
+      {{#if approvedBatches.length}}
+        <div class="sh-jul__history">
+          {{#each approvedBatches as |batch|}}
+            <details class="sh-jul__batch" {{#if @first}}open{{/if}}>
+              <summary class="sh-jul__batchSummary">
+                <span class="sh-jul__batchTime">{{batch.atText}}</span>
+                <span class="sh-jul__batchBy">{{batch.gmName}}</span>
+              </summary>
+
+              <div class="sh-jul__batchBody">
+                <ul class="sh-jul__list">
+                  {{#each batch.entries as |entry|}}
+                    <li class="sh-jul__entryLine">
+                      <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{entry.uuid}}" title="Открыть">
+                        {{entry.name}}
+                      </button>
+
+                      {{#if entry.pages.length}}
+                        <ul class="sh-jul__pages">
+                          {{#each entry.pages as |page|}}
+                            <li class="sh-jul__page">
+                              {{#if page.uuid}}
+                                <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{page.uuid}}" title="Открыть">{{page.name}}</button>
+                              {{else}}
+                                <span class="sh-jul__unknown">{{page.name}}</span>
+                              {{/if}}
+                            </li>
+                          {{/each}}
+                        </ul>
+                      {{/if}}
+                    </li>
+                  {{/each}}
+                </ul>
+              </div>
+            </details>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="sh-jul__empty">Пока нет подтверждений.</div>
+      {{/if}}
+    </div>
+  </section>
+</div>

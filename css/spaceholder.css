@@ -1920,6 +1920,11 @@
   line-height: 1;
   white-space: nowrap;
 }
+#spaceholder-globalmap-edge-ui .sh-gm-edge__btn:disabled,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 #spaceholder-globalmap-edge-ui .sh-gm-edge__flyoutGrid,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__flyoutGrid {
   display: grid;
@@ -2289,8 +2294,10 @@
 
 #sidebar #journal .spaceholder-journalcheck-toggle-icons,
 #sidebar #journal .spaceholder-journalcheck-toggle-gm-skip,
+#sidebar #journal .spaceholder-journalcheck-open-update-log,
 .sidebar-tab[data-tab=journal] .spaceholder-journalcheck-toggle-icons,
-.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-toggle-gm-skip {
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-toggle-gm-skip,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-open-update-log {
   flex: 0 0 auto;
   min-width: 30px;
   padding: 0 8px;
@@ -2344,6 +2351,238 @@
   margin: 0 6px;
   font-size: 12px;
   opacity: 0.9;
+}
+
+#spaceholder-journal-update-log .sh-jul,
+.window-app.spaceholder.journal-update-log .sh-jul,
+.spaceholder.journal-update-log .sh-jul {
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--sh-text);
+  padding: 12px;
+  border-radius: var(--sh-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+}
+#spaceholder-journal-update-log .sh-jul__header,
+.window-app.spaceholder.journal-update-log .sh-jul__header,
+.spaceholder.journal-update-log .sh-jul__header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+#spaceholder-journal-update-log .sh-jul__tabs,
+.window-app.spaceholder.journal-update-log .sh-jul__tabs,
+.spaceholder.journal-update-log .sh-jul__tabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#spaceholder-journal-update-log .sh-jul__tabs .item,
+.window-app.spaceholder.journal-update-log .sh-jul__tabs .item,
+.spaceholder.journal-update-log .sh-jul__tabs .item {
+  padding: 6px 10px;
+  border-radius: var(--sh-radius-sm);
+  color: var(--sh-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+#spaceholder-journal-update-log .sh-jul__tabs .item.active,
+.window-app.spaceholder.journal-update-log .sh-jul__tabs .item.active,
+.spaceholder.journal-update-log .sh-jul__tabs .item.active {
+  color: var(--sh-text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+#spaceholder-journal-update-log .sh-jul__tabs .item:hover,
+.window-app.spaceholder.journal-update-log .sh-jul__tabs .item:hover,
+.spaceholder.journal-update-log .sh-jul__tabs .item:hover {
+  color: #fff;
+}
+#spaceholder-journal-update-log .sh-jul__approveBtn,
+.window-app.spaceholder.journal-update-log .sh-jul__approveBtn,
+.spaceholder.journal-update-log .sh-jul__approveBtn {
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 6px 10px;
+  background: rgba(29, 78, 216, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+#spaceholder-journal-update-log .sh-jul__approveBtn:disabled,
+.window-app.spaceholder.journal-update-log .sh-jul__approveBtn:disabled,
+.spaceholder.journal-update-log .sh-jul__approveBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+#spaceholder-journal-update-log .sh-jul__body,
+.window-app.spaceholder.journal-update-log .sh-jul__body,
+.spaceholder.journal-update-log .sh-jul__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+#spaceholder-journal-update-log .sh-jul__tab,
+.window-app.spaceholder.journal-update-log .sh-jul__tab,
+.spaceholder.journal-update-log .sh-jul__tab {
+  display: none;
+}
+#spaceholder-journal-update-log .sh-jul__tab.active,
+.window-app.spaceholder.journal-update-log .sh-jul__tab.active,
+.spaceholder.journal-update-log .sh-jul__tab.active {
+  display: block;
+}
+#spaceholder-journal-update-log .sh-jul__empty,
+.window-app.spaceholder.journal-update-log .sh-jul__empty,
+.spaceholder.journal-update-log .sh-jul__empty {
+  color: var(--sh-text-dim);
+  font-size: 12px;
+  padding: 8px 0;
+}
+#spaceholder-journal-update-log .sh-jul__entry,
+.window-app.spaceholder.journal-update-log .sh-jul__entry,
+.spaceholder.journal-update-log .sh-jul__entry {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+#spaceholder-journal-update-log .sh-jul__entry:last-child,
+.window-app.spaceholder.journal-update-log .sh-jul__entry:last-child,
+.spaceholder.journal-update-log .sh-jul__entry:last-child {
+  border-bottom: none;
+}
+#spaceholder-journal-update-log .sh-jul__entryHeader,
+.window-app.spaceholder.journal-update-log .sh-jul__entryHeader,
+.spaceholder.journal-update-log .sh-jul__entryHeader {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+#spaceholder-journal-update-log .sh-jul__check,
+.window-app.spaceholder.journal-update-log .sh-jul__check,
+.spaceholder.journal-update-log .sh-jul__check {
+  flex: 0 0 auto;
+}
+#spaceholder-journal-update-log .sh-jul__check input[type=checkbox],
+.window-app.spaceholder.journal-update-log .sh-jul__check input[type=checkbox],
+.spaceholder.journal-update-log .sh-jul__check input[type=checkbox] {
+  margin: 0;
+}
+#spaceholder-journal-update-log .sh-jul__open,
+.window-app.spaceholder.journal-update-log .sh-jul__open,
+.spaceholder.journal-update-log .sh-jul__open {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--sh-text);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#spaceholder-journal-update-log .sh-jul__open:hover, #spaceholder-journal-update-log .sh-jul__open:focus,
+.window-app.spaceholder.journal-update-log .sh-jul__open:hover,
+.window-app.spaceholder.journal-update-log .sh-jul__open:focus,
+.spaceholder.journal-update-log .sh-jul__open:hover,
+.spaceholder.journal-update-log .sh-jul__open:focus {
+  color: #fff;
+  text-decoration: underline;
+}
+#spaceholder-journal-update-log .sh-jul__meta,
+.window-app.spaceholder.journal-update-log .sh-jul__meta,
+.spaceholder.journal-update-log .sh-jul__meta {
+  margin-left: auto;
+  color: var(--sh-text-dim);
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+#spaceholder-journal-update-log .sh-jul__pages,
+.window-app.spaceholder.journal-update-log .sh-jul__pages,
+.spaceholder.journal-update-log .sh-jul__pages {
+  margin: 6px 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+#spaceholder-journal-update-log .sh-jul__pages .sh-jul__page,
+.window-app.spaceholder.journal-update-log .sh-jul__pages .sh-jul__page,
+.spaceholder.journal-update-log .sh-jul__pages .sh-jul__page {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 0;
+}
+#spaceholder-journal-update-log .sh-jul__unknown,
+.window-app.spaceholder.journal-update-log .sh-jul__unknown,
+.spaceholder.journal-update-log .sh-jul__unknown {
+  color: var(--sh-text-dim);
+  font-size: 12px;
+}
+#spaceholder-journal-update-log .sh-jul__batch,
+.window-app.spaceholder.journal-update-log .sh-jul__batch,
+.spaceholder.journal-update-log .sh-jul__batch {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+#spaceholder-journal-update-log .sh-jul__batch summary,
+.window-app.spaceholder.journal-update-log .sh-jul__batch summary,
+.spaceholder.journal-update-log .sh-jul__batch summary {
+  cursor: pointer;
+  color: var(--sh-text);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+#spaceholder-journal-update-log .sh-jul__batch summary::marker,
+.window-app.spaceholder.journal-update-log .sh-jul__batch summary::marker,
+.spaceholder.journal-update-log .sh-jul__batch summary::marker {
+  color: var(--sh-text-muted);
+}
+#spaceholder-journal-update-log .sh-jul__batchTime,
+.window-app.spaceholder.journal-update-log .sh-jul__batchTime,
+.spaceholder.journal-update-log .sh-jul__batchTime {
+  color: var(--sh-text-muted);
+  font-size: 11px;
+}
+#spaceholder-journal-update-log .sh-jul__batchBy,
+.window-app.spaceholder.journal-update-log .sh-jul__batchBy,
+.spaceholder.journal-update-log .sh-jul__batchBy {
+  color: var(--sh-text);
+  font-size: 11px;
+}
+#spaceholder-journal-update-log .sh-jul__entryLine,
+.window-app.spaceholder.journal-update-log .sh-jul__entryLine,
+.spaceholder.journal-update-log .sh-jul__entryLine {
+  margin: 6px 0;
+}
+
+.spaceholder-journal-update-chat .sh-jul-chat__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.spaceholder-journal-update-chat .sh-jul-chat__list,
+.spaceholder-journal-update-chat .sh-jul-chat__pages {
+  margin: 0;
+  padding-left: 18px;
+}
+.spaceholder-journal-update-chat .sh-jul-chat__entry {
+  margin: 2px 0;
+}
+.spaceholder-journal-update-chat .sh-jul-chat__page {
+  color: rgba(255, 255, 255, 0.85);
+}
+.spaceholder-journal-update-chat .sh-jul-chat__unknown {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
 }
 
 .spaceholder-user-factions > label {
