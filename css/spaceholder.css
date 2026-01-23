@@ -2233,3 +2233,62 @@
   pointer-events: auto;
   transform: translateY(0);
 }
+
+#sidebar #journal .spaceholder-journalcheck-toggle-icons,
+#sidebar #journal .spaceholder-journalcheck-toggle-gm-skip,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-toggle-icons,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-toggle-gm-skip {
+  flex: 0 0 auto;
+  min-width: 30px;
+  padding: 0 8px;
+  line-height: 1;
+}
+#sidebar #journal .spaceholder-journalcheck-toggle-gm-skip.is-active,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-toggle-gm-skip.is-active {
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.45);
+}
+#sidebar #journal .spaceholder-journalcheck-status,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  margin-right: 6px;
+  opacity: 0.9;
+}
+#sidebar #journal .spaceholder-journalcheck-status.is-interactive,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status.is-interactive {
+  cursor: pointer;
+}
+#sidebar #journal .spaceholder-journalcheck-status.is-interactive:hover,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status.is-interactive:hover {
+  opacity: 1;
+}
+#sidebar #journal .spaceholder-journalcheck-status.is-interactive:focus,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status.is-interactive:focus {
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
+}
+#sidebar #journal .sh-jc-status--draft,
+.sidebar-tab[data-tab=journal] .sh-jc-status--draft {
+  color: #3b82f6;
+}
+#sidebar #journal .sh-jc-status--proposed,
+.sidebar-tab[data-tab=journal] .sh-jc-status--proposed {
+  color: #fbbf24;
+}
+#sidebar #journal .sh-jc-status--approved,
+.sidebar-tab[data-tab=journal] .sh-jc-status--approved {
+  color: #22c55e;
+}
+
+.journal-entry .journal-sidebar .toc .page-heading {
+  display: flex;
+  align-items: center;
+}
+.journal-entry .journal-sidebar .toc .spaceholder-journalcheck-status {
+  flex: 0 0 auto;
+  margin: 0 6px;
+  font-size: 12px;
+  opacity: 0.9;
+}

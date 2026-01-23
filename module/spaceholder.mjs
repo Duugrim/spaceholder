@@ -17,6 +17,8 @@ import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
 import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
 // Journal Directory helpers
 import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
+// Journal Check (workflow statuses)
+import { registerJournalCheckSettings, installJournalCheckHooks } from './helpers/journal-check.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -65,6 +67,7 @@ Hooks.once('init', function () {
   // registerAimingSystemSettings(); // OLD SYSTEM DISABLED
   registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
+  registerJournalCheckSettings();
   installTokenPointerTabs();
   
   // DEPRECATED: Old height map scene configuration - disabled
@@ -143,6 +146,8 @@ Hooks.once('init', function () {
   installUserFactionsHooks();
   // Install Journal Directory hooks (Clear Journals button)
   installJournalDirectoryHooks();
+  // Install Journal Check hooks (statuses + UI)
+  installJournalCheckHooks();
   // Install Token visibility hooks
   installTokenVisibilityHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED

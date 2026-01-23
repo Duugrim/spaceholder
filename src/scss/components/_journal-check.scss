@@ -1,0 +1,54 @@
+// Journal Check (Journal statuses) — sidebar + journal sheet TOC
+
+// Sidebar (Journal Directory)
+#sidebar #journal,
+.sidebar-tab[data-tab="journal"] {
+  .spaceholder-journalcheck-toggle-icons,
+  .spaceholder-journalcheck-toggle-gm-skip {
+    flex: 0 0 auto;
+    min-width: 30px;
+    padding: 0 8px;
+    line-height: 1;
+  }
+
+  .spaceholder-journalcheck-toggle-gm-skip.is-active {
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.45);
+  }
+
+  .spaceholder-journalcheck-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 1.1em;
+    margin-right: 6px;
+
+    opacity: 0.9;
+
+    &.is-interactive {
+      cursor: pointer;
+
+      &:hover { opacity: 1; }
+      &:focus { outline: 1px solid rgba(255, 255, 255, 0.35); outline-offset: 2px; }
+    }
+  }
+
+  .sh-jc-status--draft { color: #3b82f6; }
+  .sh-jc-status--proposed { color: #fbbf24; }
+  .sh-jc-status--approved { color: #22c55e; }
+}
+
+// JournalEntrySheet sidebar TOC (multi-page)
+.journal-entry .journal-sidebar .toc {
+  .page-heading {
+    display: flex;
+    align-items: center;
+  }
+
+  .spaceholder-journalcheck-status {
+    flex: 0 0 auto;
+    margin: 0 6px;
+    font-size: 12px;
+    opacity: 0.9;
+  }
+}
