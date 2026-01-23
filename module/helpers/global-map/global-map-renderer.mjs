@@ -131,9 +131,9 @@ export class GlobalMapRenderer {
       await this.loadVectorRiversFromScene();
     }
 
-    // Hover labels / click handlers (work outside of editing tools)
+    // Hover labels (work outside of editing tools)
     this._installRegionHoverHandler();
-    this._installRegionClickHandler();
+    this._removeRegionClickHandler();
     this._installRiverHoverHandler();
 
     // If we already have a rendered grid (same scene refresh), re-render it into the new container.
@@ -2779,8 +2779,8 @@ export class GlobalMapRenderer {
       version: 1,
       settings: {
         labelMode: 'hover',
-        clickAction: 'openJournal',
-        clickModifier: 'ctrl',
+        clickAction: 'none',
+        clickModifier: 'none',
         smoothIterations: 4,
         renderMode: 'full',
       },
@@ -2798,8 +2798,10 @@ export class GlobalMapRenderer {
     const settingsRaw = (data.settings && typeof data.settings === 'object') ? data.settings : {};
 
     const labelMode = ['off', 'hover', 'always'].includes(settingsRaw.labelMode) ? settingsRaw.labelMode : 'hover';
-    const clickAction = ['none', 'openJournal'].includes(settingsRaw.clickAction) ? settingsRaw.clickAction : 'openJournal';
-    const clickModifier = ['none', 'ctrl', 'alt', 'shift'].includes(settingsRaw.clickModifier) ? settingsRaw.clickModifier : 'ctrl';
+
+    // clickAction/clickModifier are deprecated (opening journals by click is removed)
+    const clickAction = 'none';
+    const clickModifier = 'none';
 
     const renderModeRaw = String(settingsRaw.renderMode ?? '').trim();
     const renderMode = ['name', 'border', 'full'].includes(renderModeRaw) ? renderModeRaw : 'full';
@@ -3093,125 +3095,27 @@ export class GlobalMapRenderer {
   }
 
   /**
-   * Install click handler for opening region journals.
+   * Region click handler (opening region journals) was removed.
    * @private
    */
-  _installRegionClickHandler() {
-    if (!canvas?.stage) return;
-
-    // Remove previous handler
-    if (this._regionClickHandler) {
-      try {
-        canvas.stage.off('pointerdown', this._regionClickHandler);
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    this._regionClickHandler = (event) => {
-      this._handleRegionClick(event).catch(() => {});
-    };
-
-    canvas.stage.on('pointerdown', this._regionClickHandler);
-  }
-
-  async _handleRegionClick(event) {
-    if (!this.isVisible) return;
-
-    const regionsData = this.vectorRegionsData;
-    const settings = regionsData?.settings || {};
-
-    const showMode = String(settings.labelMode || 'hover');
-    if (showMode === 'off') return;
-
-    if (settings.clickAction !== 'openJournal') return;
-
-    // Left click only
-    if (event?.data?.button !== 0) return;
-
-    // Don't open journals while the editor is active (otherwise ctrl/alt clicks conflict with editing gestures)
-    const tools = game?.spaceholder?.globalMapTools;
-    if (tools?.isActive && tools?.isBrushActive) return;
-
-    // Avoid interfering with clicks on tokens/drawings/etc.
-    const target = event?.target;
-    const isInLayer = (layer) => {
-      if (!layer || !target) return false;
-      let p = target;
-      while (p) {
-        if (p === layer) return true;
-        p = p.parent;
-      }
-      return false;
-    };
-
-    if (
-      isInLayer(canvas?.tokens) ||
-      isInLayer(canvas?.drawings) ||
-      isInLayer(canvas?.notes) ||
-      isInLayer(canvas?.templates) ||
-      isInLayer(canvas?.controls)
-    ) {
+  _removeRegionClickHandler() {
+    if (!this._regionClickHandler || !canvas?.stage) {
+      this._regionClickHandler = null;
       return;
     }
 
-    const oe = event?.data?.originalEvent || {};
-    const want = String(settings.clickModifier || 'ctrl');
-    const hasCtrl = !!oe.ctrlKey || !!oe.metaKey;
-    const hasAlt = !!oe.altKey;
-    const hasShift = !!oe.shiftKey;
-
-    const modifierOk = (() => {
-      if (want === 'none') return true;
-      if (want === 'ctrl') return hasCtrl;
-      if (want === 'alt') return hasAlt;
-      if (want === 'shift') return hasShift;
-      return hasCtrl;
-    })();
-
-    if (!modifierOk) return;
-
-    const regions = regionsData?.regions || [];
-    if (!Array.isArray(regions) || regions.length === 0) return;
-
-    const pos = event?.data?.getLocalPosition?.(canvas.stage);
-    if (!pos) return;
-
-    const hit = this._findNearestRegionHit(pos.x, pos.y, regions);
-    if (!hit) return;
-
-    const region = regions.find(r => r?.id === hit.regionId);
-    const uuid = region?.journalUuid ? String(region.journalUuid).trim() : '';
-    if (!uuid) return;
-
-    // Prevent side-effects (like token multi-select) once we decide to handle a region click
     try {
-      event.stopPropagation?.();
-      event.stopImmediatePropagation?.();
+      canvas.stage.off('pointerdown', this._regionClickHandler);
     } catch (e) {
       // ignore
     }
 
-    let doc = null;
-    try {
-      doc = await fromUuid(uuid);
-    } catch (e) {
-      console.warn('GlobalMapRenderer | Failed to resolve region journal uuid', { uuid, error: e });
-      doc = null;
-    }
+    this._regionClickHandler = null;
+  }
 
-    if (!doc) return;
-    const name = doc.documentName;
-    if (!['JournalEntry', 'JournalEntryPage'].includes(name)) return;
-
-    if (name === 'JournalEntryPage' && doc.parent?.sheet?.render) {
-      doc.parent.sheet.render(true);
-      return;
-    }
-
-    if (doc.sheet?.render) {
-      doc.sheet.render(true);
-    }
+  async _handleRegionClick(_event) {
+    // Disabled: opening region journals by click was unreliable and is removed.
+    return;
   }
 
   _handleRegionHover(event) {

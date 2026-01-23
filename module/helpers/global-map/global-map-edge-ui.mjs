@@ -187,6 +187,7 @@ class GlobalMapEdgeUI {
       this._installFlyoutDomHandlers(existing);
       this._installInspectorStageHandler();
       await this._syncSelectedTokenInfo(existing);
+      this._syncUndoRedoButtons(existing);
       this._fitAll(existing);
       return;
     }
@@ -213,6 +214,7 @@ class GlobalMapEdgeUI {
     this._installFlyoutDomHandlers(el);
     this._installInspectorStageHandler();
     await this._syncSelectedTokenInfo(el);
+    this._syncUndoRedoButtons(el);
     this._fitAll(el);
   }
 
@@ -432,6 +434,21 @@ class GlobalMapEdgeUI {
     const smoothIterations = Number.isFinite(smoothIterationsRaw) ? Math.max(0, Math.min(4, smoothIterationsRaw)) : 4;
     const smoothBtn = root.querySelector(`button[data-action="select"][data-select="smooth"][data-value="${String(smoothIterations)}"]`);
     if (smoothBtn) this._selectOption(smoothBtn);
+  }
+
+  _syncUndoRedoButtons(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    const tools = game?.spaceholder?.globalMapTools;
+    const canUndo = !!tools && typeof tools._canUndo === 'function' ? tools._canUndo() : false;
+    const canRedo = !!tools && typeof tools._canRedo === 'function' ? tools._canRedo() : false;
+
+    const undoBtn = el.querySelector('button[data-action="global-map-undo"]');
+    const redoBtn = el.querySelector('button[data-action="global-map-redo"]');
+
+    if (undoBtn) undoBtn.disabled = !canUndo;
+    if (redoBtn) redoBtn.disabled = !canRedo;
   }
 
   _getControlledTokens() {
@@ -915,7 +932,7 @@ class GlobalMapEdgeUI {
 
     const cur = (renderer.vectorRegionsData && typeof renderer.vectorRegionsData === 'object')
       ? renderer.vectorRegionsData
-      : { version: 1, settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' }, regions: [] };
+: { version: 1, settings: { labelMode: 'hover', clickAction: 'none', clickModifier: 'none', smoothIterations: 4, renderMode: 'full' }, regions: [] };
 
     const next = this._clone(cur);
     if (!next.settings || typeof next.settings !== 'object') next.settings = {};
@@ -941,7 +958,7 @@ class GlobalMapEdgeUI {
 
     const cur = (renderer.vectorRegionsData && typeof renderer.vectorRegionsData === 'object')
       ? renderer.vectorRegionsData
-      : { version: 1, settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' }, regions: [] };
+: { version: 1, settings: { labelMode: 'hover', clickAction: 'none', clickModifier: 'none', smoothIterations: 4, renderMode: 'full' }, regions: [] };
 
     const next = this._clone(cur);
     if (!next.settings || typeof next.settings !== 'object') next.settings = {};
@@ -994,7 +1011,7 @@ class GlobalMapEdgeUI {
 
     const cur = (renderer.vectorRegionsData && typeof renderer.vectorRegionsData === 'object')
       ? renderer.vectorRegionsData
-      : { version: 1, settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' }, regions: [] };
+: { version: 1, settings: { labelMode: 'hover', clickAction: 'none', clickModifier: 'none', smoothIterations: 4, renderMode: 'full' }, regions: [] };
 
     const next = this._clone(cur);
     if (!next.settings || typeof next.settings !== 'object') next.settings = {};
@@ -2060,6 +2077,25 @@ class GlobalMapEdgeUI {
         console.error('SpaceHolder | Global map edge UI: edit-map failed', e);
       }
 
+      // По умолчанию кнопки disabled в шаблоне; дополнительно синхронизируем, если вдруг история уже есть
+      this._syncUndoRedoButtons();
+
+      return;
+    }
+
+    if (action === 'global-map-undo') {
+      event.preventDefault();
+      const tools = game?.spaceholder?.globalMapTools;
+      tools?.undo?.();
+      this._syncUndoRedoButtons();
+      return;
+    }
+
+    if (action === 'global-map-redo') {
+      event.preventDefault();
+      const tools = game?.spaceholder?.globalMapTools;
+      tools?.redo?.();
+      this._syncUndoRedoButtons();
       return;
     }
 

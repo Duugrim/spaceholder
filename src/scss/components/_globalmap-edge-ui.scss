@@ -134,6 +134,11 @@
     white-space: nowrap;
   }
 
+  .sh-gm-edge__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .sh-gm-edge__flyoutGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

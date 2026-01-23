@@ -454,6 +454,11 @@ export function installTokenPointerTabs() {
 }
 
 export function installTokenPointerHooks() {
+  // Keybindings (без прямого перехвата клавиш через document.addEventListener)
+  Hooks.once('setup', () => {
+    _registerTokenPointerKeybindings();
+  });
+
   // Canvas lifecycle
   Hooks.on('canvasInit', () => {
     const inst = game.spaceholder?.tokenpointer;
@@ -464,9 +469,6 @@ export function installTokenPointerHooks() {
     const inst = game.spaceholder?.tokenpointer;
     if (!inst) return;
     canvas.scene?.tokens?.forEach((td) => td.object && inst.drawForToken(td.object));
-    
-    // Установка обработчиков клавиш для Shift+WASD
-    _setupPointerKeyHandlers();
   });
 
   // Combat changes
@@ -777,11 +779,6 @@ export function installTokenPointerHooks() {
   });
 }
 
-// Переменные для обработки Shift+WASD
-let pointerRotationActive = false;
-let pointerRotationDirection = null;
-const POINTER_ROTATION_SPEED = 15; // градусы за шаг
-
 // Система сохранения состояния указателя для undo
 const pointerStateHistory = new Map(); // tokenId -> Array of {position: {x, y}, direction: number, timestamp: number}
 const MAX_HISTORY_SIZE = 50; // максимальное количество сохраненных состояний для каждого токена
@@ -905,72 +902,79 @@ function _markUndoOperationEnd() {
 }
 
 /**
- * Установка обработчиков клавиш для поворота указателя
+ * Keybindings (Foundry) вместо постоянного перехвата Shift+WASD через document listeners.
  */
-function _setupPointerKeyHandlers() {
-  // Обработчик нажатий клавиш
-  document.addEventListener('keydown', (event) => {
-    // Проверяем что нажат Shift
-    if (!event.shiftKey) return;
-    
-    // Получаем выбранные токены
-    const controlled = canvas.tokens?.controlled;
-    if (!controlled || controlled.length === 0) return;
-    
-    let direction = null;
-    switch (event.code) {
-      case 'KeyW': // Вверх
-        direction = -90; // Вверх в мировых координатах
-        break;
-      case 'KeyS': // Вниз  
-        direction = 90;
-        break;
-      case 'KeyA': // Влево
-        direction = 180;
-        break;
-      case 'KeyD': // Вправо
-        direction = 0;
-        break;
-      default:
-        return; // Не наша клавиша
-    }
-    
-    // Предотвращаем стандартную обработку клавиши
-    event.preventDefault();
-    event.stopPropagation();
-    
-    console.log(`TokenPointer | Shift+${event.code} pressed, rotating pointer to ${direction}°`);
-    
-    // Поворачиваем указатель для каждого выбранного токена
-    const updates = [];
-    for (const token of controlled) {
-      const currentDirection = token.document.getFlag('spaceholder', 'tokenpointerDirection') ?? 90;
-      let newDirection;
-      
-      if (event.ctrlKey) {
-        // Ctrl+Shift+WASD - плавный поворот на POINTER_ROTATION_SPEED градусов
-        newDirection = currentDirection + (direction === 0 ? POINTER_ROTATION_SPEED : 
-                                        direction === 90 ? POINTER_ROTATION_SPEED :
-                                        direction === 180 ? -POINTER_ROTATION_SPEED : 
-                                        -POINTER_ROTATION_SPEED);
-      } else {
-        // Просто Shift+WASD - мгновенный поворот в направление
-        newDirection = direction;
-      }
-      
-      // Нормализуем угол [-180, 180]
-      newDirection = ((newDirection % 360) + 360) % 360;
-      if (newDirection > 180) newDirection -= 360;
-      
-      updates.push({
-        _id: token.id,
-        'flags.spaceholder.tokenpointerDirection': newDirection
-      });
-    }
-    
-    // Применяем обновления
-    if (updates.length > 0) {
-      canvas.scene.updateEmbeddedDocuments('Token', updates, { animate: false });
-    }
-  }, true); // Используем capture фазу для перехвата событий раньше Foundry
+function _registerTokenPointerKeybindings() {
+  try {
+    if (!game?.keybindings?.register) return;
+
+    const MODULE_NS = 'spaceholder';
+    const PREF = 'tokenpointer';
+    const { SHIFT } = foundry.helpers.interaction.KeyboardManager.MODIFIER_KEYS;
+
+    game.keybindings.register(MODULE_NS, `${PREF}.faceUp`, {
+      name: 'Token Pointer: Face Up',
+      hint: 'Rotate token pointer up for controlled tokens',
+      editable: [{ key: 'KeyW', modifiers: [SHIFT] }],
+      onDown: (event) => _onTokenPointerFaceKey(event, -90),
+    });
+
+    game.keybindings.register(MODULE_NS, `${PREF}.faceDown`, {
+      name: 'Token Pointer: Face Down',
+      hint: 'Rotate token pointer down for controlled tokens',
+      editable: [{ key: 'KeyS', modifiers: [SHIFT] }],
+      onDown: (event) => _onTokenPointerFaceKey(event, 90),
+    });
+
+    game.keybindings.register(MODULE_NS, `${PREF}.faceLeft`, {
+      name: 'Token Pointer: Face Left',
+      hint: 'Rotate token pointer left for controlled tokens',
+      editable: [{ key: 'KeyA', modifiers: [SHIFT] }],
+      onDown: (event) => _onTokenPointerFaceKey(event, 180),
+    });
+
+    game.keybindings.register(MODULE_NS, `${PREF}.faceRight`, {
+      name: 'Token Pointer: Face Right',
+      hint: 'Rotate token pointer right for controlled tokens',
+      editable: [{ key: 'KeyD', modifiers: [SHIFT] }],
+      onDown: (event) => _onTokenPointerFaceKey(event, 0),
+    });
+  } catch (e) {
+    console.error('TokenPointer | Failed to register keybindings', e);
+  }
+}
+
+function _isTypingTarget(event) {
+  const t = event?.target ?? document.activeElement;
+  const tag = String(t?.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'iframe' || !!t?.isContentEditable;
+}
+
+function _normalizeDirection(direction) {
+  let d = ((Number(direction) % 360) + 360) % 360;
+  if (d > 180) d -= 360;
+  return d;
+}
+
+function _onTokenPointerFaceKey(event, direction) {
+  // Если в фокусе текстовый ввод — не вмешиваемся
+  if (_isTypingTarget(event)) return false;
+
+  const controlled = canvas?.tokens?.controlled;
+  if (!controlled || controlled.length === 0) return false;
+
+  const scene = canvas?.scene;
+  if (!scene) return false;
+
+  const d = _normalizeDirection(direction);
+  const updates = controlled.map((token) => ({
+    _id: token.id,
+    'flags.spaceholder.tokenpointerDirection': d,
+  }));
+
+  if (updates.length > 0) {
+    scene.updateEmbeddedDocuments('Token', updates, { animate: false });
+  }
+
+  return true;
 }

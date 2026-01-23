@@ -109,11 +109,6 @@ export class GlobalMapTools {
     this._undoMax = 20;
     this._strokeHasChanges = false;
 
-    // Keyboard shortcuts (Ctrl/Cmd+Z / Ctrl+Y / Ctrl+Shift+Z)
-    this._keyListenersActive = false;
-    this._onDocKeyDown = null;
-    this._keyDocNamespace = '.globalMapToolsKeys';
-
     // Scene/canvas lifecycle
     this._activeSceneId = null;
     this._canvasHookInstalled = false;
@@ -152,7 +147,6 @@ export class GlobalMapTools {
 
     // Set up event listeners
     this.setupEventListeners();
-    this._installKeyListeners();
 
     // Create UI elements
     this.createBrushCursor();
@@ -175,7 +169,6 @@ export class GlobalMapTools {
 
     // IMPORTANT: Remove stage listeners to avoid handler accumulation across activate/deactivate cycles
     this._removeStageEventListeners();
-    this._removeKeyListeners();
 
     // Stop brush and cancel any in-progress stroke (discard by default)
     if (this.isBrushActive) {
@@ -1351,8 +1344,8 @@ export class GlobalMapTools {
       version: 1,
       settings: {
         labelMode: 'hover',
-        clickAction: 'openJournal',
-        clickModifier: 'ctrl',
+        clickAction: 'none',
+        clickModifier: 'none',
         smoothIterations: 4,
         renderMode: 'full',
       },
@@ -1370,25 +1363,26 @@ export class GlobalMapTools {
     if (!this.vectorRegions || typeof this.vectorRegions !== 'object') {
       this.vectorRegions = {
         version: 1,
-        settings: { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' },
+        settings: { labelMode: 'hover', clickAction: 'none', clickModifier: 'none', smoothIterations: 4, renderMode: 'full' },
         regions: [],
       };
     }
 
     if (!this.vectorRegions.settings || typeof this.vectorRegions.settings !== 'object') {
-      this.vectorRegions.settings = { labelMode: 'hover', clickAction: 'openJournal', clickModifier: 'ctrl', smoothIterations: 4, renderMode: 'full' };
+      this.vectorRegions.settings = { labelMode: 'hover', clickAction: 'none', clickModifier: 'none', smoothIterations: 4, renderMode: 'full' };
     }
 
     if (!['off', 'hover', 'always'].includes(this.vectorRegions.settings.labelMode)) {
       this.vectorRegions.settings.labelMode = 'hover';
     }
 
-    if (!['none', 'openJournal'].includes(this.vectorRegions.settings.clickAction)) {
-      this.vectorRegions.settings.clickAction = 'openJournal';
+    // clickAction/clickModifier (open journal by click) is deprecated/disabled.
+    if (this.vectorRegions.settings.clickAction !== 'none') {
+      this.vectorRegions.settings.clickAction = 'none';
     }
 
     if (!['none', 'ctrl', 'alt', 'shift'].includes(this.vectorRegions.settings.clickModifier)) {
-      this.vectorRegions.settings.clickModifier = 'ctrl';
+      this.vectorRegions.settings.clickModifier = 'none';
     }
 
     const smoothIterationsRaw = Number.parseInt(this.vectorRegions.settings.smoothIterations, 10);
@@ -2272,75 +2266,6 @@ export class GlobalMapTools {
   // Undo / Redo (grid edits)
   // ==========================
 
-  _installKeyListeners() {
-    if (this._keyListenersActive) return;
-
-    const ns = this._keyDocNamespace || '.globalMapToolsKeys';
-
-    // Defensive: remove any previous stale handler for this namespace
-    try {
-      $(document).off(`keydown${ns}`);
-    } catch (e) {
-      // ignore
-    }
-
-    this._onDocKeyDown = (e) => {
-      try {
-        if (!this.isActive) return;
-        if (!e) return;
-
-        // Don't steal shortcuts while typing in inputs
-        const t = e.target;
-        const tag = String(t?.tagName || '').toLowerCase();
-        const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || !!t?.isContentEditable;
-        if (isTyping) return;
-
-        // Ignore while painting/dragging a stroke
-        if (this.isMouseDown) return;
-
-        const ctrlOrMeta = !!e.ctrlKey || !!e.metaKey;
-        if (!ctrlOrMeta) return;
-
-        const key = String(e.key || '').toLowerCase();
-
-        // Ctrl+Z / Cmd+Z => undo
-        // Ctrl+Shift+Z / Cmd+Shift+Z => redo
-        // Ctrl+Y => redo
-        if (key === 'z') {
-          e.preventDefault();
-          e.stopPropagation();
-          if (e.shiftKey) {
-            this.redo();
-          } else {
-            this.undo();
-          }
-        } else if (key === 'y') {
-          e.preventDefault();
-          e.stopPropagation();
-          this.redo();
-        }
-      } catch (err) {
-        // ignore
-      }
-    };
-
-    $(document).on(`keydown${ns}`, this._onDocKeyDown);
-    this._keyListenersActive = true;
-  }
-
-  _removeKeyListeners() {
-    const ns = this._keyDocNamespace || '.globalMapToolsKeys';
-
-    try {
-      $(document).off(`keydown${ns}`);
-    } catch (e) {
-      // ignore
-    }
-
-    this._onDocKeyDown = null;
-    this._keyListenersActive = false;
-  }
-
   _captureGridSnapshot() {
     const grid = this.renderer?.currentGrid;
     if (!grid?.heights?.length) return null;
@@ -2411,21 +2336,40 @@ export class GlobalMapTools {
   }
 
   _updateUndoRedoUI() {
-    if (!$('#global-map-tools-ui').length) return;
-
-    const undoBtn = $('#global-map-undo');
-    const redoBtn = $('#global-map-redo');
-
     const canUndo = this._canUndo();
     const canRedo = this._canRedo();
 
-    if (undoBtn.length) {
-      undoBtn.prop('disabled', !canUndo);
-      undoBtn.css('opacity', canUndo ? '1' : '0.5');
+    // Floating tools UI
+    if ($('#global-map-tools-ui').length) {
+      const undoBtn = $('#global-map-undo');
+      const redoBtn = $('#global-map-redo');
+
+      if (undoBtn.length) {
+        undoBtn.prop('disabled', !canUndo);
+        undoBtn.css('opacity', canUndo ? '1' : '0.5');
+      }
+      if (redoBtn.length) {
+        redoBtn.prop('disabled', !canRedo);
+        redoBtn.css('opacity', canRedo ? '1' : '0.5');
+      }
     }
-    if (redoBtn.length) {
-      redoBtn.prop('disabled', !canRedo);
-      redoBtn.css('opacity', canRedo ? '1' : '0.5');
+
+    // Edge UI (left flyout)
+    try {
+      const edgeRoot = document.getElementById('spaceholder-globalmap-edge-ui');
+      if (edgeRoot) {
+        const undoBtn = edgeRoot.querySelector('button[data-action="global-map-undo"]');
+        const redoBtn = edgeRoot.querySelector('button[data-action="global-map-redo"]');
+
+        if (undoBtn) {
+          undoBtn.disabled = !canUndo;
+        }
+        if (redoBtn) {
+          redoBtn.disabled = !canRedo;
+        }
+      }
+    } catch (e) {
+      // ignore
     }
   }
 
@@ -3616,7 +3560,6 @@ export class GlobalMapTools {
               <button id="region-journal-open" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Open</button>
               <button id="region-journal-clear" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Clear</button>
             </div>
-            <div style="font-size: 10px; color: #aaa; margin-top: 4px;">Tip: Ctrl+Click on a region opens its Journal (outside editor).</div>
           </div>
 
           <div style="display: flex; gap: 5px; margin-bottom: 10px;">
