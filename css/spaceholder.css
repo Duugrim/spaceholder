@@ -2585,6 +2585,232 @@
   font-size: 12px;
 }
 
+#spaceholder-timeline .sh-tl,
+.window-app.spaceholder.timeline .sh-tl,
+.spaceholder.timeline .sh-tl {
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--sh-text);
+  padding: 12px;
+  border-radius: var(--sh-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+}
+#spaceholder-timeline .sh-tl__header,
+.window-app.spaceholder.timeline .sh-tl__header,
+.spaceholder.timeline .sh-tl__header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+#spaceholder-timeline .sh-tl__views,
+.window-app.spaceholder.timeline .sh-tl__views,
+.spaceholder.timeline .sh-tl__views {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#spaceholder-timeline .sh-tl__views .item,
+.window-app.spaceholder.timeline .sh-tl__views .item,
+.spaceholder.timeline .sh-tl__views .item {
+  padding: 6px 10px;
+  border-radius: var(--sh-radius-sm);
+  color: var(--sh-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+#spaceholder-timeline .sh-tl__views .item.active,
+.window-app.spaceholder.timeline .sh-tl__views .item.active,
+.spaceholder.timeline .sh-tl__views .item.active {
+  color: var(--sh-text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+#spaceholder-timeline .sh-tl__views .item:hover,
+.window-app.spaceholder.timeline .sh-tl__views .item:hover,
+.spaceholder.timeline .sh-tl__views .item:hover {
+  color: #fff;
+}
+#spaceholder-timeline .sh-tl__controls,
+.window-app.spaceholder.timeline .sh-tl__controls,
+.spaceholder.timeline .sh-tl__controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+#spaceholder-timeline .sh-tl__select,
+.window-app.spaceholder.timeline .sh-tl__select,
+.spaceholder.timeline .sh-tl__select {
+  max-width: 320px;
+}
+#spaceholder-timeline .sh-tl__iconBtn.is-active,
+.window-app.spaceholder.timeline .sh-tl__iconBtn.is-active,
+.spaceholder.timeline .sh-tl__iconBtn.is-active {
+  background: rgba(255, 255, 255, 0.1);
+}
+#spaceholder-timeline .sh-tl__iconBtn.danger,
+.window-app.spaceholder.timeline .sh-tl__iconBtn.danger,
+.spaceholder.timeline .sh-tl__iconBtn.danger {
+  color: rgb(255, 110, 110);
+}
+#spaceholder-timeline .sh-tl__iconBtn.danger:hover,
+.window-app.spaceholder.timeline .sh-tl__iconBtn.danger:hover,
+.spaceholder.timeline .sh-tl__iconBtn.danger:hover {
+  background: rgba(204, 68, 68, 0.22);
+}
+#spaceholder-timeline .sh-tl__body,
+.window-app.spaceholder.timeline .sh-tl__body,
+.spaceholder.timeline .sh-tl__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+#spaceholder-timeline .sh-tl__empty,
+.window-app.spaceholder.timeline .sh-tl__empty,
+.spaceholder.timeline .sh-tl__empty {
+  color: var(--sh-text-dim);
+  font-size: 12px;
+  padding: 8px 0;
+}
+#spaceholder-timeline .sh-tl__list,
+.window-app.spaceholder.timeline .sh-tl__list,
+.spaceholder.timeline .sh-tl__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#spaceholder-timeline .sh-tl__entry,
+.window-app.spaceholder.timeline .sh-tl__entry,
+.spaceholder.timeline .sh-tl__entry {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 10px;
+}
+#spaceholder-timeline .sh-tl__entry.is-hidden,
+.window-app.spaceholder.timeline .sh-tl__entry.is-hidden,
+.spaceholder.timeline .sh-tl__entry.is-hidden {
+  opacity: 0.72;
+}
+#spaceholder-timeline .sh-tl__entryHeader,
+.window-app.spaceholder.timeline .sh-tl__entryHeader,
+.spaceholder.timeline .sh-tl__entryHeader {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+#spaceholder-timeline .sh-tl__year,
+.window-app.spaceholder.timeline .sh-tl__year,
+.spaceholder.timeline .sh-tl__year {
+  flex: 0 0 auto;
+  width: 56px;
+  color: var(--sh-text-muted);
+  font-weight: 700;
+  font-size: 12px;
+}
+#spaceholder-timeline .sh-tl__title,
+.window-app.spaceholder.timeline .sh-tl__title,
+.spaceholder.timeline .sh-tl__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+#spaceholder-timeline .sh-tl__actions,
+.window-app.spaceholder.timeline .sh-tl__actions,
+.spaceholder.timeline .sh-tl__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+#spaceholder-timeline .sh-tl__content,
+.window-app.spaceholder.timeline .sh-tl__content,
+.spaceholder.timeline .sh-tl__content {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  line-height: 1.35;
+}
+#spaceholder-timeline .sh-tl__content p,
+.window-app.spaceholder.timeline .sh-tl__content p,
+.spaceholder.timeline .sh-tl__content p {
+  margin: 0 0 0.6em 0;
+}
+#spaceholder-timeline .sh-tl__content p:last-child,
+.window-app.spaceholder.timeline .sh-tl__content p:last-child,
+.spaceholder.timeline .sh-tl__content p:last-child {
+  margin-bottom: 0;
+}
+
+#spaceholder-timeline-entry-editor .sh-tle,
+.window-app.spaceholder.timeline-entry-editor .sh-tle,
+.spaceholder.timeline-entry-editor .sh-tle {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--sh-text);
+  padding: 12px;
+  border-radius: var(--sh-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+#spaceholder-timeline-entry-editor .sh-tle__row,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__row,
+.spaceholder.timeline-entry-editor .sh-tle__row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+#spaceholder-timeline-entry-editor .sh-tle__row .form-group,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__row .form-group,
+.spaceholder.timeline-entry-editor .sh-tle__row .form-group {
+  flex: 1 1 260px;
+  margin: 0;
+}
+#spaceholder-timeline-entry-editor .sh-tle__checkbox,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__checkbox,
+.spaceholder.timeline-entry-editor .sh-tle__checkbox {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+#spaceholder-timeline-entry-editor .sh-tle__body,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__body,
+.spaceholder.timeline-entry-editor .sh-tle__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+#spaceholder-timeline-entry-editor .sh-tle__footer,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__footer,
+.spaceholder.timeline-entry-editor .sh-tle__footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+#spaceholder-timeline-entry-editor .sh-tle__save,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__save,
+.spaceholder.timeline-entry-editor .sh-tle__save {
+  background: var(--sh-accent-blue);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 .spaceholder-user-factions > label {
   display: none;
 }

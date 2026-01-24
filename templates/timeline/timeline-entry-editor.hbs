@@ -1,0 +1,90 @@
+<header class="sh-tle__header">
+    <div class="sh-tle__row">
+      <div class="form-group">
+        <label>Год</label>
+        <div class="form-fields">
+          <input
+            type="number"
+            name="year"
+            value="{{year}}"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            data-field="timelineYear"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Название</label>
+        <div class="form-fields">
+          <input
+            type="text"
+            name="title"
+            value="{{title}}"
+            required
+            spellcheck="true"
+            placeholder=""
+          />
+        </div>
+      </div>
+    </div>
+
+    {{#if showOriginSelect}}
+      <div class="form-group">
+        <label>От имени</label>
+        <div class="form-fields">
+          <select name="origin" data-action="origin-change">
+            <option value="faction" {{#if (eq origin 'faction')}}selected{{/if}}>Фракции</option>
+            <option value="world" {{#if (eq origin 'world')}}selected{{/if}}>Мира</option>
+          </select>
+        </div>
+      </div>
+    {{/if}}
+
+    {{#if showFactionSelect}}
+      <div class="form-group">
+        <label>Фракция</label>
+        <div class="form-fields">
+          <select name="factionUuid">
+            {{#each factions as |f|}}
+              <option value="{{f.uuid}}" {{#if (eq f.uuid @root.factionUuid)}}selected{{/if}}>{{f.name}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+    {{/if}}
+
+    {{#if showGlobalToggle}}
+      <div class="form-group">
+        <label></label>
+        <div class="form-fields">
+          <label class="checkbox sh-tle__checkbox">
+            <input type="checkbox" name="isGlobal" {{#if isGlobal}}checked{{/if}} />
+            <span>Глобально</span>
+          </label>
+        </div>
+      </div>
+    {{/if}}
+  </header>
+
+  <section class="sh-tle__body">
+    {{editor
+      enrichedContent
+      target='content'
+      engine='prosemirror'
+      button=true
+      editable=true
+    }}
+  </section>
+
+  <footer class="sh-tle__footer">
+    <button type="submit" class="sh-tle__save">
+      <i class="fa-solid fa-check" aria-hidden="true"></i>
+      Сохранить
+    </button>
+    <button type="button" class="sh-tle__cancel" data-action="cancel">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      Отмена
+    </button>
+  </footer>

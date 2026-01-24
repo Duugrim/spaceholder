@@ -3,6 +3,26 @@
 
 const MODULE_NS = 'spaceholder';
 const FLAG_ROOT = 'journalCheck';
+const TIMELINE_FLAG_ROOT = 'timeline';
+
+function _getTimelineFlagObj(doc) {
+  try {
+    return doc?.getFlag?.(MODULE_NS, TIMELINE_FLAG_ROOT) ?? doc?.flags?.[MODULE_NS]?.[TIMELINE_FLAG_ROOT] ?? {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function _isTimelineContainer(entry) {
+  const f = _getTimelineFlagObj(entry);
+  return !!f?.isContainer;
+}
+
+function _isTimelinePage(page) {
+  const f = _getTimelineFlagObj(page);
+  if (f?.isEntry) return true;
+  return _isTimelineContainer(page?.parent);
+}
 
 const SETTING_SHOW_ICONS = 'journalcheck.showIcons';
 const SETTING_GM_SKIP = 'journalcheck.gmSkipProposed';
@@ -788,6 +808,7 @@ function _refreshEntryIconInDirectory(entry) {
   const show = !!_getSetting(SETTING_SHOW_ICONS, true);
   const entryId = entry?.id;
   if (!entryId) return;
+  if (_isTimelineContainer(entry)) return;
 
   const roots = new Set();
   const uiRoot = ui?.journal?.element;
@@ -820,6 +841,7 @@ function _renderDirectoryEntryIcons(root) {
     const entryId = li.dataset.entryId;
     const entry = game.journal?.get?.(entryId) ?? null;
     if (!entry) continue;
+    if (_isTimelineContainer(entry)) continue;
 
     const anchor = li.querySelector('a.entry-name');
     if (!anchor) continue;
@@ -838,6 +860,8 @@ function _renderJournalSheetPageIcons(app, root) {
   if (!show) return;
 
   const entry = app?.entry;
+  if (!entry || _isTimelineContainer(entry)) return;
+
   const pages = entry?.pages?.contents ?? [];
   if (pages.length <= 1) return;
 
@@ -870,7 +894,10 @@ function _addEntryContextOptions(app, options) {
 
     const getEntry = (li) => {
       const id = li?.closest?.('[data-entry-id]')?.dataset?.entryId;
-      return id ? (game.journal?.get?.(id) ?? null) : null;
+      const entry = id ? (game.journal?.get?.(id) ?? null) : null;
+      if (!entry) return null;
+      if (_isTimelineContainer(entry)) return null;
+      return entry;
     };
 
     const isGM = !!game.user?.isGM;
@@ -954,10 +981,14 @@ function _addPageContextOptions(app, options) {
 
     const entry = app.entry;
     if (!entry) return;
+    if (_isTimelineContainer(entry)) return;
 
     const getPage = (li) => {
       const id = li?.dataset?.pageId;
-      return id ? (entry.pages?.get?.(id) ?? null) : null;
+      const page = id ? (entry.pages?.get?.(id) ?? null) : null;
+      if (!page) return null;
+      if (_isTimelinePage(page)) return null;
+      return page;
     };
 
     const isGM = !!game.user?.isGM;
@@ -1113,6 +1144,7 @@ export function installJournalCheckHooks() {
   // Keep Journal Directory icons in sync even when the directory does not re-render on flag updates.
   Hooks.on('updateJournalEntry', (entry /*, changed, options, userId */) => {
     try {
+      if (_isTimelineContainer(entry)) return;
       _refreshEntryIconInDirectory(entry);
     } catch (e) {
       console.error('SpaceHolder | JournalCheck: failed to refresh directory icon on update', e);
@@ -1122,6 +1154,7 @@ export function installJournalCheckHooks() {
   // Auto-dirty on updates (only act on the originating client)
   Hooks.on('updateJournalEntry', async (entry, changed, options, userId) => {
     try {
+      if (_isTimelineContainer(entry)) return;
       if (_isOurUpdate(options)) return;
       if (!_currentUserIsActor(userId)) return;
       if (_isUserGM(userId)) return;
@@ -1137,6 +1170,7 @@ export function installJournalCheckHooks() {
 
   Hooks.on('updateJournalEntryPage', async (page, changed, options, userId) => {
     try {
+      if (_isTimelinePage(page)) return;
       if (_isOurUpdate(options)) return;
       if (!_currentUserIsActor(userId)) return;
       if (_isUserGM(userId)) return;
@@ -1163,6 +1197,7 @@ export function installJournalCheckHooks() {
 
   Hooks.on('createJournalEntryPage', async (page, ...args) => {
     try {
+      if (_isTimelinePage(page)) return;
       const { options, userId } = parseCreateDeleteArgs(args);
       if (_isOurUpdate(options)) return;
       if (!_currentUserIsActor(userId)) return;
@@ -1177,6 +1212,7 @@ export function installJournalCheckHooks() {
 
   Hooks.on('deleteJournalEntryPage', async (page, ...args) => {
     try {
+      if (_isTimelinePage(page)) return;
       const { options, userId } = parseCreateDeleteArgs(args);
       if (_isOurUpdate(options)) return;
       if (!_currentUserIsActor(userId)) return;

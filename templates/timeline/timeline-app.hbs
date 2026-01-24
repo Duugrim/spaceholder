@@ -1,0 +1,120 @@
+<div class="sh-tl">
+  <header class="sh-tl__header">
+    <nav class="sh-tl__views tabs" data-group="sh-tl">
+      {{#each views as |v|}}
+        <a class="item {{#if v.active}}active{{/if}}" data-action="set-view" data-view="{{v.id}}">{{v.label}}</a>
+      {{/each}}
+    </nav>
+
+    <div class="sh-tl__controls">
+      {{#if showFactionSelect}}
+        <select class="sh-tl__select" data-action="select-faction" aria-label="Фракция">
+          {{#each factions as |f|}}
+            <option value="{{f.uuid}}" {{#if (eq f.uuid @root.activeFactionUuid)}}selected{{/if}}>
+              {{f.name}}
+            </option>
+          {{/each}}
+        </select>
+      {{/if}}
+
+      {{#if showHiddenToggle}}
+        <button
+          type="button"
+          class="icon-btn sh-tl__iconBtn {{#if showHidden}}is-active{{/if}}"
+          data-action="toggle-show-hidden"
+          aria-label="Скрытые"
+          data-tooltip="Скрытые"
+        >
+          {{#if showHidden}}
+            <i class="fa-solid fa-eye" aria-hidden="true"></i>
+          {{else}}
+            <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+          {{/if}}
+        </button>
+      {{/if}}
+
+      {{#if canCreate}}
+        <button
+          type="button"
+          class="icon-btn sh-tl__iconBtn"
+          data-action="create-entry"
+          aria-label="Добавить"
+          data-tooltip="Добавить"
+        ><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+      {{/if}}
+    </div>
+  </header>
+
+  <section class="sh-tl__body">
+    {{#if loading}}
+      <div class="sh-tl__empty">Загрузка…</div>
+    {{else}}
+      {{#if entries.length}}
+        <div class="sh-tl__list">
+          {{#each entries as |e|}}
+            <article class="sh-tl__entry {{#if e.isHidden}}is-hidden{{/if}}" data-uuid="{{e.uuid}}">
+              <div class="sh-tl__entryHeader">
+                <div class="sh-tl__year">{{e.year}}</div>
+                <div class="sh-tl__title" title="{{e.title}}">{{e.title}}</div>
+
+                <div class="sh-tl__actions" role="group" aria-label="Действия">
+                  <button
+                    type="button"
+                    class="icon-btn sh-tl__iconBtn"
+                    data-action="toggle-expand"
+                    data-uuid="{{e.uuid}}"
+                    aria-label="Содержание"
+                    data-tooltip="Содержание"
+                  >
+                    {{#if e.isExpanded}}
+                      <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                    {{else}}
+                      <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                    {{/if}}
+                  </button>
+
+                  {{#if e.canEdit}}
+                    <button type="button" class="icon-btn sh-tl__iconBtn" data-action="edit-entry" data-uuid="{{e.uuid}}" aria-label="Редактировать" data-tooltip="Редактировать">
+                      <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                    </button>
+
+                    {{#if e.canReorder}}
+                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-up" data-uuid="{{e.uuid}}" aria-label="Вверх" data-tooltip="Вверх">
+                        <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                      </button>
+                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-down" data-uuid="{{e.uuid}}" aria-label="Вниз" data-tooltip="Вниз">
+                        <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                      </button>
+                    {{/if}}
+
+                    {{#if e.canToggleGlobal}}
+                      <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isGlobal}}is-active{{/if}}" data-action="toggle-global" data-uuid="{{e.uuid}}" aria-label="Глобально" data-tooltip="Глобально">
+                        <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                      </button>
+                    {{/if}}
+
+                    {{#if e.canToggleHidden}}
+                      <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="Скрыть" data-tooltip="Скрыть">
+                        <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+                      </button>
+                    {{/if}}
+
+                    <button type="button" class="icon-btn sh-tl__iconBtn danger" data-action="delete-entry" data-uuid="{{e.uuid}}" aria-label="Удалить" data-tooltip="Удалить">
+                      <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                    </button>
+                  {{/if}}
+                </div>
+              </div>
+
+              {{#if e.isExpanded}}
+                <div class="sh-tl__content">{{{e.enrichedContent}}}</div>
+              {{/if}}
+            </article>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="sh-tl__empty">Пока нет записей.</div>
+      {{/if}}
+    {{/if}}
+  </section>
+</div>

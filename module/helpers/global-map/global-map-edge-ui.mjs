@@ -183,6 +183,7 @@ class GlobalMapEdgeUI {
       this._syncRenderModeSelectors(existing);
       this._syncInspectorUpdatesUi(existing);
       this._syncInspectorUi(existing);
+      this._syncTimelineButtonVisibility(existing);
       this._installInspectorDomHandlers(existing);
       this._installFlyoutDomHandlers(existing);
       this._installInspectorStageHandler();
@@ -195,6 +196,7 @@ class GlobalMapEdgeUI {
     const html = await foundry.applications.handlebars.renderTemplate(TEMPLATE_PATH, {
       sceneName: scene?.name ?? '',
       isGM: !!game?.user?.isGM,
+      showTimeline: this._canShowTimelineButton(),
       tokenName: '',
       tokenFaction: '',
     });
@@ -210,6 +212,7 @@ class GlobalMapEdgeUI {
     this._syncRenderModeSelectors(el);
     this._syncInspectorUpdatesUi(el);
     this._syncInspectorUi(el);
+    this._syncTimelineButtonVisibility(el);
     this._installInspectorDomHandlers(el);
     this._installFlyoutDomHandlers(el);
     this._installInspectorStageHandler();
@@ -1170,6 +1173,26 @@ class GlobalMapEdgeUI {
     this._fitAll(el);
   }
 
+  _canShowTimelineButton() {
+    if (game?.user?.isGM) return true;
+    try {
+      const uuids = game?.spaceholder?.getUserFactionUuids?.(game.user) ?? [];
+      return Array.isArray(uuids) && uuids.length > 0;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _syncTimelineButtonVisibility(root = null) {
+    const el = root || this.element;
+    if (!el) return;
+
+    const btn = el.querySelector('button[data-action="open-timeline"]');
+    if (!btn) return;
+
+    btn.hidden = !this._canShowTimelineButton();
+  }
+
   _syncInspectorUpdatesUi(root = null) {
     const el = root || this.element;
     if (!el) return;
@@ -1810,6 +1833,20 @@ class GlobalMapEdgeUI {
     if (!btn) return;
 
     const action = btn.dataset.action;
+
+    // ===== Timeline =====
+    if (action === 'open-timeline') {
+      event.preventDefault();
+      if (!this._canShowTimelineButton()) return;
+
+      try {
+        game?.spaceholder?.openTimelineApp?.();
+      } catch (e) {
+        console.error('SpaceHolder | Global map edge UI: failed to open timeline', e);
+        ui.notifications?.error?.('Не удалось открыть таймлайн');
+      }
+      return;
+    }
 
     // ===== Inspector (bottom panel) =====
     if (action === 'toggle-inspector-updates') {

@@ -9,16 +9,47 @@ let _hooksInstalled = false;
 /**
  * Установить хуки для Journal Directory.
  */
+function _isTimelineContainer(entry) {
+  try {
+    const f = entry?.getFlag?.('spaceholder', 'timeline') ?? entry?.flags?.spaceholder?.timeline ?? {};
+    return !!f?.isContainer;
+  } catch (_) {
+    return false;
+  }
+}
+
+function _hideTimelineContainersFromDirectory(root) {
+  if (!root) return;
+
+  // Foundry directory items for journal entries use data-entry-id.
+  const items = root.querySelectorAll('.directory-item[data-entry-id]');
+  for (const li of items) {
+    const entryId = li?.dataset?.entryId;
+    if (!entryId) continue;
+
+    const entry = game?.journal?.get?.(entryId) ?? null;
+    if (!entry) continue;
+
+    if (_isTimelineContainer(entry)) {
+      li.remove();
+    }
+  }
+}
+
 export function installJournalDirectoryHooks() {
   if (_hooksInstalled) return;
   _hooksInstalled = true;
 
-  Hooks.on('renderJournalDirectory', (app, html /*, data */) => {
+Hooks.on('renderJournalDirectory', (app, html /*, data */) => {
     try {
-      if (!game?.user?.isGM) return;
-
       const root = html instanceof HTMLElement ? html : html?.[0];
       if (!root) return;
+
+      // Hide timeline containers from non-GM even if they have edit rights.
+      if (!game?.user?.isGM) {
+        _hideTimelineContainersFromDirectory(root);
+        return;
+      }
 
       // Найдём контейнер, где лежат core-кнопки Create Entry / Create Folder.
       const header = root.querySelector('.directory-header') || root.querySelector('header') || root;

@@ -21,6 +21,9 @@ import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
 import { registerJournalCheckSettings, installJournalCheckHooks } from './helpers/journal-check.mjs';
 // Journal Update Log window
 import { openJournalUpdateLogApp } from './helpers/journal-update-log-app.mjs';
+// Timeline
+import { registerTimelineSettings, installTimelineSocketHandlers, installTimelineHooks } from './helpers/timeline.mjs';
+import { openTimelineApp } from './helpers/timeline-app.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -70,6 +73,7 @@ Hooks.once('init', function () {
   registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
   registerJournalCheckSettings();
+  registerTimelineSettings();
   installTokenPointerTabs();
   
   // DEPRECATED: Old height map scene configuration - disabled
@@ -84,6 +88,7 @@ Hooks.once('init', function () {
     rollItemMacro,
     anatomyManager,
     openJournalUpdateLogApp,
+    openTimelineApp,
     // Helper functions for influence zones
     showInfluence: (debug = false) => game.spaceholder.influenceManager?.enable({ debug }),
     hideInfluence: () => game.spaceholder.influenceManager?.disable(),
@@ -151,6 +156,9 @@ Hooks.once('init', function () {
   installJournalDirectoryHooks();
   // Install Journal Check hooks (statuses + UI)
   installJournalCheckHooks();
+  // Timeline: socket + hooks
+  installTimelineSocketHandlers();
+  installTimelineHooks();
   // Install Token visibility hooks
   installTokenVisibilityHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
