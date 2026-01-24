@@ -1,55 +1,55 @@
 <form>
-  <h2>Token Pointer Settings</h2>
+  <h2>{{localize "SPACEHOLDER.TokenPointer.Settings.Title"}}</h2>
   <div class="form-group">
-    <label>Color</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.Color"}}</label>
     <input type="color" name="tokenpointer.color" value="{{color}}" />
   </div>
   <div class="form-group">
-    <label>Distance</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.Distance"}}</label>
     <input type="number" name="tokenpointer.distance" value="{{distance}}" step="0.05" />
   </div>
   <div class="form-group">
-    <label>Scale</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.Scale"}}</label>
     <input type="number" name="tokenpointer.scale" value="{{scale}}" step="0.05" />
   </div>
   <div class="form-group">
-    <label>Mode</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.Mode"}}</label>
     <select name="tokenpointer.mode">
-      <option value="0" {{#if (eq mode 0)}}selected{{/if}}>Off</option>
-      <option value="1" {{#if (eq mode 1)}}selected{{/if}}>Hover</option>
-      <option value="2" {{#if (eq mode 2)}}selected{{/if}}>Always</option>
+      <option value="0" {{#if (eq mode 0)}}selected{{/if}}>{{localize "SPACEHOLDER.TokenPointer.Mode.Off"}}</option>
+      <option value="1" {{#if (eq mode 1)}}selected{{/if}}>{{localize "SPACEHOLDER.TokenPointer.Mode.Hover"}}</option>
+      <option value="2" {{#if (eq mode 2)}}selected{{/if}}>{{localize "SPACEHOLDER.TokenPointer.Mode.Always"}}</option>
     </select>
   </div>
   <div class="form-group">
-    <label>Only in Combat</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.CombatOnly"}}</label>
     <input type="checkbox" name="tokenpointer.combatOnly" {{#if combatOnly}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Hide on Defeated</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.HideOnDead"}}</label>
     <input type="checkbox" name="tokenpointer.hideOnDead" {{#if hideOnDead}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Lock to Grid Facings</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.LockToGrid"}}</label>
     <input type="checkbox" name="tokenpointer.lockToGrid" {{#if lockToGrid}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Flip Token Horizontally</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.FlipHorizontal"}}</label>
     <input type="checkbox" name="tokenpointer.flipHorizontal" {{#if flipHorizontal}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Render Under Token</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.UnderToken"}}</label>
     <input type="checkbox" name="tokenpointer.underToken" {{#if underToken}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Pointer Type</label>
+    <label>{{localize "SPACEHOLDER.TokenPointer.Settings.PointerType"}}</label>
     <select name="tokenpointer.pointerType">
-      <option value="arrow" {{#if (eq pointerType 'arrow')}}selected{{/if}}>Arrow</option>
-      <option value="line" {{#if (eq pointerType 'line')}}selected{{/if}}>Line</option>
-      <option value="marker" {{#if (eq pointerType 'marker')}}selected{{/if}}>Marker</option>
-      <option value="markerV2" {{#if (eq pointerType 'markerV2')}}selected{{/if}}>Marker V2</option>
+      <option value="arrow" {{#if (eq pointerType 'arrow')}}selected{{/if}}>{{localize "SPACEHOLDER.TokenPointer.PointerType.Arrow"}}</option>
+      <option value="line" {{#if (eq pointerType 'line')}}selected{{/if}}>{{localize "SPACEHOLDER.TokenPointer.PointerType.Line"}}</option>
+      <option value="marker" {{#if (eq pointerType 'marker')}}selected{{/if}}>{{localize "SPACEHOLDER.TokenPointer.PointerType.Marker"}}</option>
+      <option value="markerV2" {{#if (eq pointerType 'markerV2')}}selected{{/if}}>{{localize "SPACEHOLDER.TokenPointer.PointerType.MarkerV2"}}</option>
     </select>
   </div>
   <footer class="sheet-footer flexrow">
-    <button type="submit" class="button">Save</button>
+    <button type="submit" class="button">{{localize "SPACEHOLDER.Actions.Save"}}</button>
   </footer>
 </form>

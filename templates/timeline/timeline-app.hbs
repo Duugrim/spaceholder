@@ -8,7 +8,7 @@
 
     <div class="sh-tl__controls">
       {{#if showFactionSelect}}
-        <select class="sh-tl__select" data-action="select-faction" aria-label="Фракция">
+        <select class="sh-tl__select" data-action="select-faction" aria-label="{{localize 'SPACEHOLDER.Timeline.Fields.Faction'}}">
           {{#each factions as |f|}}
             <option value="{{f.uuid}}" {{#if (eq f.uuid @root.activeFactionUuid)}}selected{{/if}}>
               {{f.name}}
@@ -22,8 +22,8 @@
           type="button"
           class="icon-btn sh-tl__iconBtn {{#if showHidden}}is-active{{/if}}"
           data-action="toggle-show-hidden"
-          aria-label="Скрытые"
-          data-tooltip="Скрытые"
+          aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleHidden'}}"
+          data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleHidden'}}"
         >
           {{#if showHidden}}
             <i class="fa-solid fa-eye" aria-hidden="true"></i>
@@ -38,8 +38,8 @@
           type="button"
           class="icon-btn sh-tl__iconBtn"
           data-action="create-entry"
-          aria-label="Добавить"
-          data-tooltip="Добавить"
+          aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.Add'}}"
+          data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.Add'}}"
         ><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
       {{/if}}
     </div>
@@ -47,7 +47,7 @@
 
   <section class="sh-tl__body">
     {{#if loading}}
-      <div class="sh-tl__empty">Загрузка…</div>
+      <div class="sh-tl__empty">{{localize 'SPACEHOLDER.Timeline.App.Loading'}}</div>
     {{else}}
       {{#if entries.length}}
         <div class="sh-tl__list">
@@ -61,33 +61,33 @@
                 <div class="sh-tl__year">{{e.year}}</div>
                 <div class="sh-tl__title" title="{{e.title}}">{{e.title}}</div>
 
-                <div class="sh-tl__actions" role="group" aria-label="Действия">
+                <div class="sh-tl__actions" role="group" aria-label="{{localize 'SPACEHOLDER.Timeline.Groups.Actions'}}">
                   {{#if e.canReorder}}
-                    <div class="sh-tl__actionGroup" role="group" aria-label="Порядок">
-                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-up" data-uuid="{{e.uuid}}" aria-label="Вверх" data-tooltip="Вверх">
+                    <div class="sh-tl__actionGroup" role="group" aria-label="{{localize 'SPACEHOLDER.Timeline.Groups.Order'}}">
+                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-up" data-uuid="{{e.uuid}}" aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.MoveUp'}}" data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.MoveUp'}}">
                         <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
                       </button>
-                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-down" data-uuid="{{e.uuid}}" aria-label="Вниз" data-tooltip="Вниз">
+                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-down" data-uuid="{{e.uuid}}" aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.MoveDown'}}" data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.MoveDown'}}">
                         <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
                       </button>
                     </div>
                   {{/if}}
 
                   {{#if e.canToggleGlobal}}
-                    <div class="sh-tl__actionGroup" role="group" aria-label="Видимость">
-                      <button type="button" class="icon-btn sh-tl__iconBtn {{e.globalUiClass}}" data-action="toggle-global" data-uuid="{{e.uuid}}" aria-label="Глобально" data-tooltip="Глобально">
+                    <div class="sh-tl__actionGroup" role="group" aria-label="{{localize 'SPACEHOLDER.Timeline.Groups.Visibility'}}">
+                      <button type="button" class="icon-btn sh-tl__iconBtn {{e.globalUiClass}}" data-action="toggle-global" data-uuid="{{e.uuid}}" aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleGlobal'}}" data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleGlobal'}}">
                         <i class="fa-solid fa-globe" aria-hidden="true"></i>
                       </button>
                       {{#if e.canToggleHidden}}
-                        <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="Скрыть" data-tooltip="Скрыть">
+                        <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleHidden'}}" data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleHidden'}}">
                           <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
                         </button>
                       {{/if}}
                     </div>
                   {{else}}
                     {{#if e.canToggleHidden}}
-                      <div class="sh-tl__actionGroup" role="group" aria-label="Видимость">
-                        <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="Скрыть" data-tooltip="Скрыть">
+                      <div class="sh-tl__actionGroup" role="group" aria-label="{{localize 'SPACEHOLDER.Timeline.Groups.Visibility'}}">
+                        <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleHidden'}}" data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.ToggleHidden'}}">
                           <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
                         </button>
                       </div>
@@ -95,24 +95,24 @@
                   {{/if}}
 
                   {{#if e.canEdit}}
-                    <div class="sh-tl__actionGroup" role="group" aria-label="Редактирование">
-                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="edit-entry" data-uuid="{{e.uuid}}" aria-label="Редактировать" data-tooltip="Редактировать">
+                    <div class="sh-tl__actionGroup" role="group" aria-label="{{localize 'SPACEHOLDER.Timeline.Groups.Editing'}}">
+                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="edit-entry" data-uuid="{{e.uuid}}" aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.Edit'}}" data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.Edit'}}">
                         <i class="fa-solid fa-pen" aria-hidden="true"></i>
                       </button>
-                      <button type="button" class="icon-btn sh-tl__iconBtn danger" data-action="delete-entry" data-uuid="{{e.uuid}}" aria-label="Удалить" data-tooltip="Удалить">
+                      <button type="button" class="icon-btn sh-tl__iconBtn danger" data-action="delete-entry" data-uuid="{{e.uuid}}" aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.Delete'}}" data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.Delete'}}">
                         <i class="fa-solid fa-trash" aria-hidden="true"></i>
                       </button>
                     </div>
                   {{/if}}
 
-                  <div class="sh-tl__actionGroup" role="group" aria-label="Содержание">
+                  <div class="sh-tl__actionGroup" role="group" aria-label="{{localize 'SPACEHOLDER.Timeline.Groups.Content'}}">
                     <button
                       type="button"
                       class="icon-btn sh-tl__iconBtn"
                       data-action="toggle-expand"
                       data-uuid="{{e.uuid}}"
-                      aria-label="Содержание"
-                      data-tooltip="Содержание"
+                      aria-label="{{localize 'SPACEHOLDER.Timeline.Buttons.Expand'}}"
+                      data-tooltip="{{localize 'SPACEHOLDER.Timeline.Buttons.Expand'}}"
                     >
                       {{#if e.isExpanded}}
                         <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
@@ -131,7 +131,7 @@
           {{/each}}
         </div>
       {{else}}
-        <div class="sh-tl__empty">Пока нет записей.</div>
+        <div class="sh-tl__empty">{{localize 'SPACEHOLDER.Timeline.App.EmptyState'}}</div>
       {{/if}}
     {{/if}}
   </section>

@@ -108,6 +108,163 @@
       "StartAiming": "Start aiming",
       "Cancel": "Cancel"
     },
+    "TokenPointer": {
+      "Settings": {
+        "Title": "Token Pointer Settings",
+        "Color": "Color",
+        "Distance": "Distance",
+        "Scale": "Scale",
+        "Mode": "Mode",
+        "CombatOnly": "Only in Combat",
+        "HideOnDead": "Hide on Defeated",
+        "LockToGrid": "Lock to Grid Facings",
+        "FlipHorizontal": "Flip Token Horizontally",
+        "UnderToken": "Render Under Token",
+        "PointerType": "Pointer Type",
+        "DisableATR": "Disable ATR"
+      },
+      "Mode": {
+        "Off": "Off",
+        "Hover": "Hover",
+        "Always": "Always"
+      },
+      "PointerType": {
+        "Arrow": "Arrow",
+        "Line": "Line",
+        "Marker": "Marker",
+        "MarkerV2": "Marker V2"
+      },
+      "Tab": {
+        "Label": "Pointer"
+      },
+      "Disabled": {
+        "ATR": "Disable Automatic Token Rotation: Prevents the core token from rotating automatically during movement. The pointer will still rotate."
+      }
+    },
+    "TokenRotator": {
+      "Settings": {
+        "Title": "Token Rotator Settings",
+        "SnapByDefault": "Snap by Default",
+        "SmoothRotation": "Smooth Rotation",
+        "FastPreview": "Fast Preview",
+        "UpdateFrequency": "Update Frequency (Hz)"
+      }
+    },
+    "TokenControls": {
+      "AimingTool": {
+        "Title": "Aiming Setup"
+      },
+      "InfluenceTool": {
+        "Title": "Show Influence"
+      },
+      "Messages": {
+        "SelectToken": "Select a token for aiming setup",
+        "SelectOneToken": "Select only one token for aiming",
+        "InfluenceShown": "Influence displayed",
+        "InfluenceHidden": "Influence hidden",
+        "LoadError": "Failed to load aiming module",
+        "Unavailable": "Influence manager unavailable"
+      }
+    },
+    "AimingManager": {
+      "Dialog": {
+        "Title": "Aiming Setup",
+        "SelectPayload": "Select payload:",
+        "AimingType": "Aiming type:",
+        "AutoRender": "Auto-render"
+      },
+      "AimingType": {
+        "Simple": "Simple"
+      },
+      "Buttons": {
+        "Start": "Start",
+        "Cancel": "Cancel"
+      },
+      "Messages": {
+        "TokenNotSelected": "Token not selected",
+        "AimingActivated": "Aiming mode activated. LMB - shoot, RMB/ESC - cancel"
+      },
+      "Errors": {
+        "PayloadManifestLoad": "Error loading payloads manifest:",
+        "PayloadLoad": "Error loading payload"
+      }
+    },
+    "Timeline": {
+      "App": {
+        "Title": "Timeline",
+        "Loading": "Loading…",
+        "EmptyState": "No entries yet."
+      },
+      "Fields": {
+        "Faction": "Faction",
+        "Origin": "On behalf of",
+        "Year": "Year",
+        "Title": "Title",
+        "Global": "Globally",
+        "Content": "Content"
+      },
+      "Origin": {
+        "Faction": "Factions",
+        "World": "World"
+      },
+      "Buttons": {
+        "Add": "Add",
+        "Edit": "Edit",
+        "Delete": "Delete",
+        "MoveUp": "Up",
+        "MoveDown": "Down",
+        "ToggleGlobal": "Global",
+        "ToggleHidden": "Hidden",
+        "Expand": "Content",
+        "Save": "Save",
+        "Cancel": "Cancel",
+        "Yes": "Yes",
+        "No": "No"
+      },
+      "Groups": {
+        "Actions": "Actions",
+        "Order": "Order",
+        "Visibility": "Visibility",
+        "Editing": "Editing",
+        "Content": "Content"
+      }
+    },
+    "Journal": {
+      "UpdateLog": {
+        "Title": "Update Log",
+        "TabProposed": "Proposed",
+        "TabApproved": "Approved",
+        "EmptyProposed": "No proposed entries.",
+        "EmptyApproved": "No approvals yet.",
+        "ApproveButton": "Approve",
+        "Tooltips": {
+          "Open": "Open",
+          "SelectAll": "Select all",
+          "Select": "Select"
+        }
+      },
+      "Placeholders": {
+        "Untitled": "(untitled)",
+        "Deleted": "(deleted)",
+        "Unknown": "Unknown"
+      },
+      "Defaults": {
+        "GMName": "GM"
+      }
+    },
+    "UserFactions": {
+      "Config": {
+        "Label": ""
+      },
+      "Buttons": {
+        "Add": "Add",
+        "Clear": "Clear",
+        "Remove": "Remove"
+      },
+      "Messages": {
+        "InvalidType": "Expected an Actor of type \"faction\""
+      }
+    },
     "Token": {
       "VisionEnabled": "Vision Enabled",
       "VisionRange": "Vision Range"

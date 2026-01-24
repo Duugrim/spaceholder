@@ -60,7 +60,7 @@ function addCustomButtons(tokenControls) {
 
   const addedAiming = upsertTool(tokenControls, {
     name: 'aiming-tool',
-    title: 'Настройка прицеливания',
+    title: game.i18n.localize('SPACEHOLDER.TokenControls.AimingTool.Title'),
     icon: 'fas fa-bullseye',
     onChange: (isActive) => handleAimingToolChange(isActive),
     button: true,
@@ -69,7 +69,7 @@ function addCustomButtons(tokenControls) {
 
   const addedInfluence = upsertTool(tokenControls, {
     name: 'toggle-influence',
-    title: 'Показать влияние',
+    title: game.i18n.localize('SPACEHOLDER.TokenControls.InfluenceTool.Title'),
     icon: 'fas fa-flag',
     onChange: (isActive) => {
       // На кнопках Foundry/окружения могут вызывать onChange и при «снятии» — не переключаемся обратно.
@@ -119,12 +119,12 @@ function upsertTool(tokenControls, tool) {
 function handleInfluenceToggle() {
   const manager = game.spaceholder?.influenceManager;
   if (!manager) {
-    ui.notifications.warn('Менеджер влияния недоступен');
+    ui.notifications.warn(game.i18n.localize('SPACEHOLDER.TokenControls.Messages.Unavailable'));
     return;
   }
 
   const enabled = manager.toggle({ debug: false });
-  ui.notifications.info(enabled ? 'Влияние отображено' : 'Влияние скрыто');
+  ui.notifications.info(enabled ? game.i18n.localize('SPACEHOLDER.TokenControls.Messages.InfluenceShown') : game.i18n.localize('SPACEHOLDER.TokenControls.Messages.InfluenceHidden'));
 }
 
 /**
@@ -147,13 +147,13 @@ function showAimingDialog() {
   const controlled = canvas.tokens.controlled;
 
   if (controlled.length === 0) {
-    ui.notifications.warn('Выберите токен для настройки прицеливания');
+    ui.notifications.warn(game.i18n.localize('SPACEHOLDER.TokenControls.Messages.SelectToken'));
     deactivateAimingTool();
     return;
   }
 
   if (controlled.length > 1) {
-    ui.notifications.warn('Выберите только один токен для прицеливания');
+    ui.notifications.warn(game.i18n.localize('SPACEHOLDER.TokenControls.Messages.SelectOneToken'));
     deactivateAimingTool();
     return;
   }
@@ -171,7 +171,7 @@ function showAimingDialog() {
     })
     .catch((err) => {
       console.error('SpaceHolder | Failed to load AimingManager:', err);
-      ui.notifications.error('Не удалось загрузить модуль прицеливания');
+      ui.notifications.error(game.i18n.localize('SPACEHOLDER.TokenControls.Messages.LoadError'));
       deactivateAimingTool();
     });
 }

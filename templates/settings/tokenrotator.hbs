@@ -1,22 +1,22 @@
 <form>
-  <h2>Token Rotator Settings</h2>
+  <h2>{{localize "SPACEHOLDER.TokenRotator.Settings.Title"}}</h2>
   <div class="form-group">
-    <label>Snap by Default</label>
+    <label>{{localize "SPACEHOLDER.TokenRotator.Settings.SnapByDefault"}}</label>
     <input type="checkbox" name="tokenrotator.altSnapByDefault" {{#if altSnapByDefault}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Smooth Rotation</label>
+    <label>{{localize "SPACEHOLDER.TokenRotator.Settings.SmoothRotation"}}</label>
     <input type="checkbox" name="tokenrotator.smoothRotation" {{#if smoothRotation}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Fast Preview</label>
+    <label>{{localize "SPACEHOLDER.TokenRotator.Settings.FastPreview"}}</label>
     <input type="checkbox" name="tokenrotator.fastPreview" {{#if fastPreview}}checked{{/if}} />
   </div>
   <div class="form-group">
-    <label>Update Frequency (Hz)</label>
+    <label>{{localize "SPACEHOLDER.TokenRotator.Settings.UpdateFrequency"}}</label>
     <input type="number" name="tokenrotator.rotationUpdateFrequency" value="{{rotationUpdateFrequency}}" step="1" min="1" max="120" />
   </div>
   <footer class="sheet-footer flexrow">
-    <button type="submit" class="button">Save</button>
+    <button type="submit" class="button">{{localize "SPACEHOLDER.Actions.Save"}}</button>
   </footer>
 </form>

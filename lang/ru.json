@@ -564,6 +564,163 @@
           "OpenInfluenceJournal": "Открыть журнал влияния"
         }
       }
+    },
+    "TokenPointer": {
+      "Settings": {
+        "Title": "Настройки указателя токена",
+        "Color": "Цвет",
+        "Distance": "Расстояние",
+        "Scale": "Масштаб",
+        "Mode": "Режим",
+        "CombatOnly": "Только в боевом раунде",
+        "HideOnDead": "Скрыть для повержённых",
+        "LockToGrid": "Привязать к сетке",
+        "FlipHorizontal": "Отражать горизонтально",
+        "UnderToken": "Рендерить под токеном",
+        "PointerType": "Тип указателя",
+        "DisableATR": "Отключить ATR"
+      },
+      "Mode": {
+        "Off": "Выключено",
+        "Hover": "При наведении",
+        "Always": "Всегда"
+      },
+      "PointerType": {
+        "Arrow": "Стрелка",
+        "Line": "Линия",
+        "Marker": "Маркер",
+        "MarkerV2": "Маркер V2"
+      },
+      "Tab": {
+        "Label": "Указатель"
+      },
+      "Disabled": {
+        "ATR": "Отключить автоматический поворот токена: предотвращает автоматический поворот ядра токена во время движения. Указатель всё ещё будет вращаться."
+      }
+    },
+    "TokenRotator": {
+      "Settings": {
+        "Title": "Настройки поворотника токена",
+        "SnapByDefault": "Прилипание по умолчанию",
+        "SmoothRotation": "Плавный поворот",
+        "FastPreview": "Быстрый предпросмотр",
+        "UpdateFrequency": "Частота обновления (Гц)"
+      }
+    },
+    "TokenControls": {
+      "AimingTool": {
+        "Title": "Настройка прицеливания"
+      },
+      "InfluenceTool": {
+        "Title": "Показать влияние"
+      },
+      "Messages": {
+        "SelectToken": "Выберите токен для настройки прицеливания",
+        "SelectOneToken": "Выберите только один токен для прицеливания",
+        "InfluenceShown": "Влияние отображено",
+        "InfluenceHidden": "Влияние скрыто",
+        "LoadError": "Не удалось загрузить модуль прицеливания",
+        "Unavailable": "Менеджер влияния недоступен"
+      }
+    },
+    "AimingManager": {
+      "Dialog": {
+        "Title": "Настройка прицеливания",
+        "SelectPayload": "Выберите боеприпас:",
+        "AimingType": "Тип прицеливания:",
+        "AutoRender": "Сразу отрисовать"
+      },
+      "AimingType": {
+        "Simple": "Простое"
+      },
+      "Buttons": {
+        "Start": "Начать",
+        "Cancel": "Отмена"
+      },
+      "Messages": {
+        "TokenNotSelected": "Токен не выбран",
+        "AimingActivated": "Режим прицеливания активирован. ЛКМ - выстрел, ПКМ/ESC - отмена"
+      },
+      "Errors": {
+        "PayloadManifestLoad": "Ошибка загрузки манифеста боеприпасов:",
+        "PayloadLoad": "Ошибка загрузки боеприпаса"
+      }
+    },
+    "Timeline": {
+      "App": {
+        "Title": "Таймлайн",
+        "Loading": "Загрузка…",
+        "EmptyState": "Пока нет записей."
+      },
+      "Fields": {
+        "Faction": "Фракция",
+        "Origin": "От имени",
+        "Year": "Год",
+        "Title": "Название",
+        "Global": "Глобально",
+        "Content": "Содержание"
+      },
+      "Origin": {
+        "Faction": "Фракции",
+        "World": "Мира"
+      },
+      "Buttons": {
+        "Add": "Добавить",
+        "Edit": "Редактировать",
+        "Delete": "Удалить",
+        "MoveUp": "Вверх",
+        "MoveDown": "Вниз",
+        "ToggleGlobal": "Глобально",
+        "ToggleHidden": "Скрыть",
+        "Expand": "Содержание",
+        "Save": "Сохранить",
+        "Cancel": "Отмена",
+        "Yes": "Да",
+        "No": "Нет"
+      },
+      "Groups": {
+        "Actions": "Действия",
+        "Order": "Порядок",
+        "Visibility": "Видимость",
+        "Editing": "Редактирование",
+        "Content": "Содержание"
+      }
+    },
+    "Journal": {
+      "UpdateLog": {
+        "Title": "Лог обновлений",
+        "TabProposed": "Предложено",
+        "TabApproved": "Подтверждено",
+        "EmptyProposed": "Нет предложенных записей.",
+        "EmptyApproved": "Пока нет подтверждений.",
+        "ApproveButton": "Подтвердить",
+        "Tooltips": {
+          "Open": "Открыть",
+          "SelectAll": "Выбрать всё",
+          "Select": "Выбрать"
+        }
+      },
+      "Placeholders": {
+        "Untitled": "(без названия)",
+        "Deleted": "(удалено)",
+        "Unknown": "Неизвестно"
+      },
+      "Defaults": {
+        "GMName": "GM"
+      }
+    },
+    "UserFactions": {
+      "Config": {
+        "Label": ""
+      },
+      "Buttons": {
+        "Add": "Добавить",
+        "Clear": "Очистить",
+        "Remove": "Удалить"
+      },
+      "Messages": {
+        "InvalidType": "Ожидался Actor типа \"faction\""
+      }
     }
   },
   "TYPES": {

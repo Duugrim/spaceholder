@@ -24,7 +24,7 @@
                       "thumbnail":  "systems/spaceholder/assets/anvil-impact.png"
                   }
               ],
-    "version":  "0.132",
+    "version":  "0.133",
     "compatibility":  {
                           "minimum":  13,
                           "verified":  "13"

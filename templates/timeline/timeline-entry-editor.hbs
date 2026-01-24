@@ -2,7 +2,7 @@
   <header class="sh-tle__header">
     <div class="sh-tle__row sh-tle__row--main">
       <div class="form-group sh-tle__fg sh-tle__fg--year">
-        <label>Год</label>
+        <label>{{localize "SPACEHOLDER.Timeline.Fields.Year"}}</label>
         <div class="form-fields">
           <input
             type="number"
@@ -17,7 +17,7 @@
       </div>
 
       <div class="form-group sh-tle__fg sh-tle__fg--title">
-        <label>Название</label>
+        <label>{{localize "SPACEHOLDER.Timeline.Fields.Title"}}</label>
         <div class="form-fields">
           <input
             type="text"
@@ -34,11 +34,11 @@
     <div class="sh-tle__row sh-tle__row--meta">
       {{#if showOriginSelect}}
         <div class="form-group sh-tle__fg sh-tle__fg--origin">
-          <label>От имени</label>
+          <label>{{localize "SPACEHOLDER.Timeline.Fields.Origin"}}</label>
           <div class="form-fields">
             <select name="origin" data-action="origin-change">
-              <option value="faction" {{#if (eq origin 'faction')}}selected{{/if}}>Фракции</option>
-              <option value="world" {{#if (eq origin 'world')}}selected{{/if}}>Мира</option>
+              <option value="faction" {{#if (eq origin 'faction')}}selected{{/if}}>{{localize "SPACEHOLDER.Timeline.Origin.Faction"}}</option>
+              <option value="world" {{#if (eq origin 'world')}}selected{{/if}}>{{localize "SPACEHOLDER.Timeline.Origin.World"}}</option>
             </select>
           </div>
         </div>
@@ -46,7 +46,7 @@
 
       {{#if showFactionSelect}}
         <div class="form-group sh-tle__fg sh-tle__fg--faction">
-          <label>Фракция</label>
+          <label>{{localize "SPACEHOLDER.Timeline.Fields.Faction"}}</label>
           <div class="form-fields">
             <select name="factionUuid">
               {{#each factions as |f|}}
@@ -63,7 +63,7 @@
           <div class="form-fields">
             <label class="checkbox sh-tle__checkbox">
               <input type="checkbox" name="isGlobal" {{#if isGlobal}}checked{{/if}} />
-              <span>Глобально</span>
+              <span>{{localize "SPACEHOLDER.Timeline.Fields.Global"}}</span>
             </label>
           </div>
         </div>
@@ -86,11 +86,11 @@
   <footer class="sh-tle__footer">
     <button type="submit" class="primary sh-tle__save">
       <i class="fa-solid fa-check" aria-hidden="true"></i>
-      Сохранить
+      {{localize "SPACEHOLDER.Timeline.Buttons.Save"}}
     </button>
     <button type="button" class="sh-tle__cancel" data-action="cancel">
       <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-      Отмена
+      {{localize "SPACEHOLDER.Timeline.Buttons.Cancel"}}
     </button>
   </footer>
 </div>

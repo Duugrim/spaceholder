@@ -2,16 +2,16 @@
   <header class="sh-jul__header">
     <nav class="sh-jul__tabs tabs" data-group="sh-jul">
       {{#if isGM}}
-        <a class="item {{#if (eq activeTab 'proposed')}}active{{/if}}" data-action="tab" data-tab="proposed">Предложено</a>
+        <a class="item {{#if (eq activeTab 'proposed')}}active{{/if}}" data-action="tab" data-tab="proposed">{{localize 'SPACEHOLDER.Journal.UpdateLog.TabProposed'}}</a>
       {{/if}}
-      <a class="item {{#if (eq activeTab 'approved')}}active{{/if}}" data-action="tab" data-tab="approved">Подтверждено</a>
+      <a class="item {{#if (eq activeTab 'approved')}}active{{/if}}" data-action="tab" data-tab="approved">{{localize 'SPACEHOLDER.Journal.UpdateLog.TabApproved'}}</a>
     </nav>
 
     {{#if isGM}}
       {{#if (eq activeTab 'proposed')}}
         <button type="button" class="sh-jul__approveBtn" data-action="approve-selected" {{#unless hasSelection}}disabled{{/unless}}>
           <i class="fa-solid fa-check"></i>
-          Подтвердить
+          {{localize 'SPACEHOLDER.Journal.UpdateLog.ApproveButton'}}
         </button>
       {{/if}}
     {{/if}}
@@ -24,18 +24,18 @@
           <div class="sh-jul__list">
             {{#each proposed as |entry|}}
               <div class="sh-jul__entry" data-entry-id="{{entry.entryId}}">
-                <div class="sh-jul__entryHeader">
+              <div class="sh-jul__entryHeader">
                   {{#if entry.pages.length}}
-                    <label class="sh-jul__check sh-jul__check--group" title="Выбрать всё">
+                    <label class="sh-jul__check sh-jul__check--group" title="{{localize 'SPACEHOLDER.Journal.UpdateLog.Tooltips.SelectAll'}}">
                       <input type="checkbox" data-group-entry-id="{{entry.entryId}}" />
                     </label>
                   {{else}}
-                    <label class="sh-jul__check" title="Выбрать">
+                    <label class="sh-jul__check" title="{{localize 'SPACEHOLDER.Journal.UpdateLog.Tooltips.Select'}}">
                       <input type="checkbox" data-key="{{entry.key}}" {{#if (lookup @root.selected entry.key)}}checked{{/if}} />
                     </label>
                   {{/if}}
 
-                  <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{entry.uuid}}" title="Открыть">
+                  <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{entry.uuid}}" title="{{localize 'SPACEHOLDER.Journal.UpdateLog.Tooltips.Open'}}">
                     {{entry.name}}
                   </button>
 
@@ -48,11 +48,11 @@
                   <ul class="sh-jul__pages">
                     {{#each entry.pages as |page|}}
                       <li class="sh-jul__page">
-                        <label class="sh-jul__check" title="Выбрать">
+                        <label class="sh-jul__check" title="{{localize 'SPACEHOLDER.Journal.UpdateLog.Tooltips.Select'}}">
                           <input type="checkbox" data-key="{{page.key}}" {{#if (lookup @root.selected page.key)}}checked{{/if}} />
                         </label>
 
-                        <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{page.uuid}}" title="Открыть">
+                        <button type="button" class="sh-jul__open" data-action="open" data-uuid="{{page.uuid}}" title="{{localize 'SPACEHOLDER.Journal.UpdateLog.Tooltips.Open'}}">
                           {{page.name}}
                         </button>
 
@@ -67,7 +67,7 @@
             {{/each}}
           </div>
         {{else}}
-          <div class="sh-jul__empty">Нет предложенных записей.</div>
+          <div class="sh-jul__empty">{{localize 'SPACEHOLDER.Journal.UpdateLog.EmptyProposed'}}</div>
         {{/if}}
       </div>
     {{/if}}
@@ -111,7 +111,7 @@
           {{/each}}
         </div>
       {{else}}
-        <div class="sh-jul__empty">Пока нет подтверждений.</div>
+        <div class="sh-jul__empty">{{localize 'SPACEHOLDER.Journal.UpdateLog.EmptyApproved'}}</div>
       {{/if}}
     </div>
   </section>
