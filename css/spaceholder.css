@@ -1189,10 +1189,6 @@ body.game .app {
   vertical-align: middle;
 }
 
-.window-app.spaceholder .globalobject .globalobject-faction,
-.spaceholder.globalobject .globalobject-faction {
-  margin: 0;
-}
 .window-app.spaceholder .globalobject .globalobject-faction label,
 .spaceholder.globalobject .globalobject-faction label {
   font-size: 12px;
@@ -1356,6 +1352,52 @@ body.game .app {
 .window-app.spaceholder .actor-buttons .actorlink-btn.is-active:disabled,
 .spaceholder .actor-buttons .actorlink-btn.is-active:disabled {
   opacity: 0.75;
+}
+.window-app.spaceholder .actor-buttons .token-tools,
+.spaceholder .actor-buttons .token-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  padding: 4px 6px;
+}
+.window-app.spaceholder .actor-buttons .token-setname-btn,
+.spaceholder .actor-buttons .token-setname-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.window-app.spaceholder .actor-buttons .token-setname-btn i,
+.spaceholder .actor-buttons .token-setname-btn i {
+  pointer-events: none;
+  font-size: 12px;
+}
+.window-app.spaceholder .actor-buttons .token-vision-toggle,
+.spaceholder .actor-buttons .token-vision-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  white-space: nowrap;
+}
+.window-app.spaceholder .actor-buttons .token-vision-toggle input,
+.spaceholder .actor-buttons .token-vision-toggle input {
+  margin: 0;
+}
+.window-app.spaceholder .actor-buttons .token-vision-range-input,
+.spaceholder .actor-buttons .token-vision-range-input {
+  width: 90px;
+  max-width: 90px;
+  text-align: center;
+  margin: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .window-app.spaceholder .faction .sheet-header,

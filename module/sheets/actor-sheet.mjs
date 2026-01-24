@@ -990,6 +990,40 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     context.tokenActorLink = Boolean((tokenDoc?.actorLink) ?? protoToken?.actorLink);
     context.canToggleActorLink = Boolean(this.isEditable) && !isTokenContext;
 
+    // Token: quick controls (name + sight)
+    const sightSource = tokenDoc?.sight ?? protoToken?.sight ?? {};
+    const sightRange = Number(sightSource?.range ?? 0);
+    const sightEnabled = (sightSource?.enabled !== undefined && sightSource?.enabled !== null)
+      ? Boolean(sightSource.enabled)
+      : (Number.isFinite(sightRange) ? sightRange > 0 : false);
+
+    context.tokenSightEnabled = Boolean(sightEnabled);
+    context.tokenSightRange = Number.isFinite(sightRange) ? sightRange : 0;
+
+    // Actor-context: how many linked tokens on the active scene would be synced
+    let linkedTokensOnCanvasCount = 0;
+    if (!isTokenContext) {
+      try {
+        const scene = canvas?.scene;
+        const tokens = (scene?.tokens?.contents || Array.from(scene?.tokens || []));
+        linkedTokensOnCanvasCount = tokens.filter((td) => {
+          if (!td?.actorLink) return false;
+          const a = td?.actor;
+          return (a?.id && a.id === this.actor.id) || (td?.actorId && td.actorId === this.actor.id);
+        }).length;
+      } catch (e) {
+        linkedTokensOnCanvasCount = 0;
+      }
+    }
+
+    context.linkedTokensOnCanvasCount = linkedTokensOnCanvasCount;
+    context.canEditTokenControls = Boolean(this.isEditable) && (!isTokenContext || Boolean(tokenDoc));
+    context.tokenTargetHint = isTokenContext
+      ? 'Меняет токен на сцене'
+      : (linkedTokensOnCanvasCount > 0
+        ? `Меняет prototypeToken и linked-токены на активной сцене (${linkedTokensOnCanvasCount})`
+        : 'Меняет prototypeToken');
+
     return context;
   }
 
@@ -1007,6 +1041,17 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
 
     // Всё ниже — только когда лист редактируемый
     if (!this.isEditable) return;
+
+    // Token: quick controls
+    el.querySelectorAll('[data-action="token-set-name"]').forEach((btn) => {
+      btn.addEventListener('click', this._onTokenSetName.bind(this));
+    });
+    el.querySelectorAll('[data-action="token-sight-enabled"]').forEach((input) => {
+      input.addEventListener('change', this._onTokenSightEnabledChange.bind(this));
+    });
+    el.querySelectorAll('[data-action="token-sight-range"]').forEach((input) => {
+      input.addEventListener('change', this._onTokenSightRangeChange.bind(this));
+    });
 
     // Контейнер актёров: drag&drop + достать + убрать
     el.querySelectorAll('[data-action="gactors-drop"]').forEach((panel) => {
@@ -1040,6 +1085,159 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     el.querySelectorAll('[data-action="uuid-clear"]').forEach((btn) => {
       btn.addEventListener('click', this._onUuidClear.bind(this));
     });
+  }
+
+  /**
+   * Token: получить linked TokenDocuments этого актора на активной сцене.
+   * Синхронизируем ТОЛЬКО linked-токены (actorLink === true), unlinked не трогаем.
+   * @private
+   */
+  _getLinkedTokenDocsOnActiveScene() {
+    const scene = canvas?.scene;
+    if (!scene) return [];
+
+    const tokens = (scene.tokens?.contents || Array.from(scene.tokens || []));
+    return tokens.filter((td) => {
+      if (!td?.actorLink) return false;
+      const a = td?.actor;
+      return (a?.id && a.id === this.actor.id) || (td?.actorId && td.actorId === this.actor.id);
+    });
+  }
+
+  /** @private */
+  async _syncLinkedTokensOnActiveScene(updateData) {
+    const scene = canvas?.scene;
+    if (!scene) return;
+
+    const tokens = this._getLinkedTokenDocsOnActiveScene();
+    if (!tokens.length) return;
+
+    const updates = tokens.map((td) => ({ _id: td.id, ...updateData }));
+    try {
+      await scene.updateEmbeddedDocuments('Token', updates);
+    } catch (e) {
+      console.error('SpaceHolder | GlobalObject: failed to sync linked tokens', e);
+      ui.notifications.warn('Не удалось синхронизировать linked-токены на активной сцене');
+    }
+  }
+
+  /**
+   * Token: задать имя токену = текущему имени актора.
+   * - token-context: меняем TokenDocument.
+   * - actor-context: меняем prototypeToken + синхронизируем linked-токены на активной сцене.
+   * @private
+   */
+  async _onTokenSetName(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const actorName = String(this.actor?.name ?? '').trim();
+    if (!actorName) return;
+
+    const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+    const idStr = String(this.id ?? '');
+    const isTokenContext = Boolean(tokenDoc) || idStr.includes('-Token-');
+
+    if (isTokenContext) {
+      if (!tokenDoc) {
+        ui.notifications.warn('Не удалось определить токен из контекста листа');
+        return;
+      }
+      try {
+        await tokenDoc.update({ name: actorName });
+      } catch (e) {
+        console.error('SpaceHolder | GlobalObject: failed to update token name', e);
+        ui.notifications.error('Не удалось обновить имя токена');
+      }
+      return;
+    }
+
+    // actor-context
+    try {
+      await this.actor.update({ 'prototypeToken.name': actorName });
+    } catch (e) {
+      console.error('SpaceHolder | GlobalObject: failed to update prototype token name', e);
+      ui.notifications.error('Не удалось обновить prototype token');
+      return;
+    }
+
+    await this._syncLinkedTokensOnActiveScene({ name: actorName });
+  }
+
+  /** @private */
+  async _onTokenSightEnabledChange(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const enabled = Boolean(event.currentTarget?.checked);
+
+    const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+    const idStr = String(this.id ?? '');
+    const isTokenContext = Boolean(tokenDoc) || idStr.includes('-Token-');
+
+    if (isTokenContext) {
+      if (!tokenDoc) {
+        ui.notifications.warn('Не удалось определить токен из контекста листа');
+        return;
+      }
+      try {
+        await tokenDoc.update({ 'sight.enabled': enabled });
+      } catch (e) {
+        console.error('SpaceHolder | GlobalObject: failed to update token sight.enabled', e);
+        ui.notifications.error('Не удалось обновить зрение токена');
+      }
+      return;
+    }
+
+    // actor-context
+    try {
+      await this.actor.update({ 'prototypeToken.sight.enabled': enabled });
+    } catch (e) {
+      console.error('SpaceHolder | GlobalObject: failed to update prototype sight.enabled', e);
+      ui.notifications.error('Не удалось обновить prototype token');
+      return;
+    }
+
+    await this._syncLinkedTokensOnActiveScene({ 'sight.enabled': enabled });
+  }
+
+  /** @private */
+  async _onTokenSightRangeChange(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const raw = String(event.currentTarget?.value ?? '').trim();
+    const parsed = Number.parseFloat(raw.replace(',', '.'));
+    const range = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+
+    const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+    const idStr = String(this.id ?? '');
+    const isTokenContext = Boolean(tokenDoc) || idStr.includes('-Token-');
+
+    if (isTokenContext) {
+      if (!tokenDoc) {
+        ui.notifications.warn('Не удалось определить токен из контекста листа');
+        return;
+      }
+      try {
+        await tokenDoc.update({ 'sight.range': range });
+      } catch (e) {
+        console.error('SpaceHolder | GlobalObject: failed to update token sight.range', e);
+        ui.notifications.error('Не удалось обновить зрение токена');
+      }
+      return;
+    }
+
+    // actor-context
+    try {
+      await this.actor.update({ 'prototypeToken.sight.range': range });
+    } catch (e) {
+      console.error('SpaceHolder | GlobalObject: failed to update prototype sight.range', e);
+      ui.notifications.error('Не удалось обновить prototype token');
+      return;
+    }
+
+    await this._syncLinkedTokensOnActiveScene({ 'sight.range': range });
   }
 
   /**

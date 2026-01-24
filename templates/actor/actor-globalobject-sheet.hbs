@@ -6,37 +6,6 @@
     <div class="header-fields">
       <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Name"/></h1>
 
-      {{!-- Фракция под именем актёра (вернули в хедер) --}}
-      <div class="form-group globalobject-faction">
-        <label for="system.gFaction">Фракция</label>
-        <div class="form-fields">
-          {{#if system.gFaction}}
-            <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
-            <a class="content-link" data-action="uuid-open" data-uuid="{{system.gFaction}}">
-              <span
-                class="faction-color-swatch"
-                title="{{factionColor}}"
-                aria-hidden="true"
-                {{#if factionColor}}style="--faction-color: {{factionColor}};"{{/if}}
-              ></span>
-              {{gFactionName}}
-            </a>
-            <button type="button" class="icon-btn" data-action="uuid-clear" data-field="system.gFaction">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          {{else}}
-            <input
-              type="text"
-              name="system.gFaction"
-              value="{{system.gFaction}}"
-              placeholder="UUID фракции"
-              data-action="uuid-drop"
-              data-field="system.gFaction"
-            />
-          {{/if}}
-        </div>
-      </div>
-
       {{!-- Кнопки актора/токена (в хедере) --}}
       <div class="actor-buttons">
         {{!-- Привязка данных актёра (actorLink) --}}
@@ -51,12 +20,68 @@
           ><i class="fa-solid {{#if tokenActorLink}}fa-link{{else}}fa-link-slash{{/if}}"></i></button>
         </div>
 
+        {{!-- Token: имя + зрение --}}
+        <div class="token-tools" role="group" aria-label="Токен" data-tooltip="{{tokenTargetHint}}">
+          <button type="button" class="token-setname-btn" data-action="token-set-name" {{#unless canEditTokenControls}}disabled{{/unless}}>
+            <i class="fa-solid fa-tag"></i>
+            <span class="btn-text">Задать имя токену</span>
+          </button>
+
+          <label class="token-vision-toggle" data-tooltip="Vision Enabled">
+            <input type="checkbox" data-action="token-sight-enabled" {{#if tokenSightEnabled}}checked{{/if}} {{#unless canEditTokenControls}}disabled{{/unless}}/>
+            <span>Зрение</span>
+          </label>
+
+          <div class="token-vision-range" data-tooltip="Vision Range">
+            <input
+              class="token-vision-range-input"
+              type="number"
+              value="{{tokenSightRange}}"
+              min="0"
+              step="0.01"
+              data-action="token-sight-range"
+              {{#unless canEditTokenControls}}disabled{{/unless}}
+            />
+          </div>
+        </div>
+
       </div>
     </div>
   </header>
 
   {{!-- Sheet Body (no tabs) --}}
   <section class="sheet-body">
+
+    {{!-- Фракция --}}
+    <div class="form-group globalobject-faction">
+      <label for="system.gFaction">Фракция</label>
+      <div class="form-fields">
+        {{#if system.gFaction}}
+          <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
+          <a class="content-link" data-action="uuid-open" data-uuid="{{system.gFaction}}">
+            <span
+              class="faction-color-swatch"
+              title="{{factionColor}}"
+              aria-hidden="true"
+              {{#if factionColor}}style="--faction-color: {{factionColor}};"{{/if}}
+            ></span>
+            {{gFactionName}}
+          </a>
+          <button type="button" class="icon-btn" data-action="uuid-clear" data-field="system.gFaction">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        {{else}}
+          <input
+            type="text"
+            name="system.gFaction"
+            value="{{system.gFaction}}"
+            placeholder="UUID фракции"
+            data-action="uuid-drop"
+            data-field="system.gFaction"
+          />
+        {{/if}}
+      </div>
+    </div>
 
     {{!-- Ссылка --}}
     <div class="form-group">
