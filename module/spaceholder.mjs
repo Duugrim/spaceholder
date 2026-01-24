@@ -13,7 +13,7 @@ import { anatomyManager } from './anatomy-manager.mjs';
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
-// User -> Factions mapping (used by token visibility/fullHidden)
+// User -> Factions mapping (used by timeline and other faction-aware features)
 import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
 // Journal Directory helpers
 import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
@@ -58,8 +58,6 @@ import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edg
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
-// Token visibility (advanced)
-import { installTokenVisibilityHooks } from './helpers/token-visibility.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -159,8 +157,6 @@ Hooks.once('init', function () {
   // Timeline: socket + hooks
   installTimelineSocketHandlers();
   installTimelineHooks();
-  // Install Token visibility hooks
-  installTokenVisibilityHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
   // installAimingSystemHooks();
   // Install Token Controls hooks

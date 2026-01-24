@@ -121,42 +121,6 @@
     opacity: 0.75;
   }
 
-  // Token visibility button group
-  .token-visibility-buttons {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: nowrap;
-    flex: 0 0 auto;
-
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-md);
-    padding: 4px;
-
-    .visibility-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: var(--sh-radius-sm);
-    }
-
-    .visibility-btn.is-active {
-      background: rgba(74, 110, 74, 0.35);
-      border: 1px solid rgba(74, 110, 74, 0.90);
-      color: #9fe39f;
-      box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
-    }
-
-    .visibility-btn:disabled {
-      opacity: 0.55;
-      cursor: default;
-    }
-
-    .visibility-btn.is-active:disabled {
-      opacity: 0.75;
-    }
-  }
-
   // Influence compact row
   .globalobject-influence {
     .influence-fields {
@@ -248,38 +212,4 @@
     opacity: 0.75;
   }
 
-  .actor-buttons .token-visibility-buttons {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: nowrap;
-    flex: 0 0 auto;
-
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-md);
-    padding: 4px;
-
-    .visibility-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: var(--sh-radius-sm);
-    }
-
-    .visibility-btn.is-active {
-      background: rgba(74, 110, 74, 0.35);
-      border: 1px solid rgba(74, 110, 74, 0.90);
-      color: #9fe39f;
-      box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.25), 0 0 10px rgba(74, 110, 74, 0.25);
-    }
-
-    .visibility-btn:disabled {
-      opacity: 0.55;
-      cursor: default;
-    }
-
-    .visibility-btn.is-active:disabled {
-      opacity: 0.75;
-    }
-  }
 }

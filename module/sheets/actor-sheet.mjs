@@ -938,7 +938,6 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Flags (на случай старых актёров)
     context.flags = context.flags || {};
     context.flags.spaceholder = context.flags.spaceholder || {};
-    context.flags.spaceholder.tokenVisibility ??= 'public';
 
     // Имена для отображения (как content-link в тексте Foundry)
     context.gLinkName = await this._resolveJournalName(context.system.gLink);
@@ -1030,11 +1029,6 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Открытие Journal по UUID
     el.querySelectorAll('[data-action="uuid-open"]').forEach((a) => {
       a.addEventListener('click', this._onUuidOpen.bind(this));
-    });
-
-    // Видимость токена: кнопки режимов
-    el.querySelectorAll('[data-action="token-visibility-set"]').forEach((btn) => {
-      btn.addEventListener('click', this._onTokenVisibilitySet.bind(this));
     });
 
     // Привязка данных актёра (actorLink)
@@ -1341,29 +1335,6 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
 
     const next = current.filter((u) => String(u) !== uuid);
     await this.actor.update({ 'system.gActors': next });
-    this.render(false);
-  }
-
-  /**
-   * Видимость токена: установить режим (через скрытое поле формы)
-   * @private
-   */
-  async _onTokenVisibilitySet(event) {
-    event.preventDefault();
-
-    const value = event.currentTarget?.dataset?.value;
-    if (!value) return;
-
-    // Важно: делаем прямое сохранение флага.
-    // Вариант с hidden input + submitOnChange в некоторых случаях не даёт стабильного результата,
-    // из‑за чего подсветка активной кнопки «мигает» и откатывается.
-    await this.actor.setFlag('spaceholder', 'tokenVisibility', value);
-
-    // Обновим скрытое поле, если оно есть (на случай если render отложен)
-    const root = this.element;
-    const input = root?.querySelector('input[name="flags.spaceholder.tokenVisibility"]');
-    if (input) input.value = value;
-
     this.render(false);
   }
 

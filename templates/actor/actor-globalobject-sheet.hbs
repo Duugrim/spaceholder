@@ -51,50 +51,6 @@
           ><i class="fa-solid {{#if tokenActorLink}}fa-link{{else}}fa-link-slash{{/if}}"></i></button>
         </div>
 
-        {{!-- Видимость --}}
-        <div class="token-visibility-buttons" role="group" aria-label="Видимость">
-          <input type="hidden" name="flags.spaceholder.tokenVisibility" value="{{flags.spaceholder.tokenVisibility}}" />
-
-          <button
-            type="button"
-            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "public")}}is-active{{/if}}"
-            data-action="token-visibility-set"
-            data-value="public"
-            data-tooltip="Публичный (обычный)"
-            aria-label="Публичный (обычный)"
-            {{#unless editable}}disabled{{/unless}}
-          ><i class="fa-solid fa-user"></i></button>
-
-          <button
-            type="button"
-            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "halfHidden")}}is-active{{/if}}"
-            data-action="token-visibility-set"
-            data-value="halfHidden"
-            data-tooltip="HalfHidden (виден всем в чужой зоне)"
-            aria-label="HalfHidden (виден всем в чужой зоне)"
-            {{#unless editable}}disabled{{/unless}}
-          ><i class="fa-solid fa-user-magnifying-glass"></i></button>
-
-          <button
-            type="button"
-            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "fullHidden")}}is-active{{/if}}"
-            data-action="token-visibility-set"
-            data-value="fullHidden"
-            data-tooltip="FullHidden (виден владельцу зоны)"
-            aria-label="FullHidden (виден владельцу зоны)"
-            {{#unless editable}}disabled{{/unless}}
-          ><i class="fa-solid fa-user-lock"></i></button>
-
-          <button
-            type="button"
-            class="icon-btn visibility-btn {{#if (eq flags.spaceholder.tokenVisibility "secret")}}is-active{{/if}}"
-            data-action="token-visibility-set"
-            data-value="secret"
-            data-tooltip="Секретный"
-            aria-label="Секретный"
-            {{#unless editable}}disabled{{/unless}}
-          ><i class="fa-solid fa-user-secret"></i></button>
-        </div>
       </div>
     </div>
   </header>

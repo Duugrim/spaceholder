@@ -475,14 +475,6 @@ class GlobalMapEdgeUI {
     return (match?.[1] ?? str).trim();
   }
 
-  _normalizeVisibilityMode(raw) {
-    const mode = String(raw ?? '').trim();
-    if (!mode) return 'public';
-    if (mode === 'hidden') return 'halfHidden'; // legacy fallback
-    if (mode === 'public' || mode === 'halfHidden' || mode === 'fullHidden' || mode === 'secret') return mode;
-    return 'public';
-  }
-
   _getFactionColorCss(system) {
     const gFaction = String(system?.gFaction ?? '').trim();
     const key = this._normalizeUuid(gFaction);
@@ -1048,9 +1040,6 @@ class GlobalMapEdgeUI {
     let selectedFactionUuid = '';
     let selectedLinkUuid = '';
 
-    // Visibility icon state (single token only)
-    let visibilityMode = null;
-
     if (tokens.length === 1) {
       const token = tokens[0];
       const tokenDoc = token?.document ?? null;
@@ -1064,12 +1053,6 @@ class GlobalMapEdgeUI {
       selectedLinkUuid = isGlobalObject ? this._normalizeUuid(sys?.gLink) : '';
 
       tokenFactionText = selectedFactionUuid ? await this._resolveDocName(selectedFactionUuid) : '';
-
-      // Visibility icon (globalobject only)
-      if (isGlobalObject) {
-        const rawMode = actor?.getFlag?.(MODULE_NS, 'tokenVisibility') ?? actor?.flags?.[MODULE_NS]?.tokenVisibility;
-        visibilityMode = this._normalizeVisibilityMode(rawMode);
-      }
     } else if (tokens.length > 1) {
       tokenName = 'Несколько токенов';
 
@@ -1102,9 +1085,8 @@ class GlobalMapEdgeUI {
         tokenFactionText = 'Несколько фракций';
       }
 
-      // For multiple selection we do not expose per-token link/visibility.
+      // For multiple selection we do not expose per-token link.
       selectedLinkUuid = '';
-      visibilityMode = null;
     }
 
     // stale async guard
@@ -1136,38 +1118,6 @@ class GlobalMapEdgeUI {
 
     const linkBtn = el.querySelector('button[data-action="open-token-link"]');
     if (linkBtn) linkBtn.hidden = !selectedLinkUuid;
-
-    // Visibility icon (only when exactly one token selected and it is a globalobject)
-    const visWrap = el.querySelector('.sh-gm-edge__visIcon');
-    if (visWrap) {
-      if (!visibilityMode) {
-        visWrap.hidden = true;
-      } else {
-        const icon = visWrap.querySelector('i');
-        const tooltipMap = {
-          public: 'Публичный',
-          halfHidden: 'HalfHidden',
-          fullHidden: 'FullHidden',
-          secret: 'Секретный',
-        };
-        const iconMap = {
-          public: 'fa-user',
-          halfHidden: 'fa-user-magnifying-glass',
-          fullHidden: 'fa-user-lock',
-          secret: 'fa-user-secret',
-        };
-
-        if (icon) {
-          icon.classList.remove('fa-user', 'fa-user-magnifying-glass', 'fa-user-lock', 'fa-user-secret');
-          icon.classList.add(iconMap[visibilityMode] || 'fa-user');
-        }
-
-        const tip = tooltipMap[visibilityMode] || 'Видимость';
-        visWrap.setAttribute('data-tooltip', tip);
-        visWrap.setAttribute('aria-label', tip);
-        visWrap.hidden = false;
-      }
-    }
 
     // Refit after content changes
     this._fitAll(el);
