@@ -30,6 +30,50 @@ function _isGM() {
   return !!game?.user?.isGM;
 }
 
+function _colorToRgbTriplet(color) {
+  const raw = String(color || '').trim();
+  if (!raw) return '';
+
+  const clamp = (n) => {
+    const v = Math.round(Number(n) || 0);
+    return Math.min(255, Math.max(0, v));
+  };
+
+  // Hex: #rgb / #rrggbb
+  try {
+    const hex = raw.startsWith('#') ? raw.slice(1) : raw;
+    if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+      const r = parseInt(hex[0] + hex[0], 16);
+      const g = parseInt(hex[1] + hex[1], 16);
+      const b = parseInt(hex[2] + hex[2], 16);
+      return `${clamp(r)}, ${clamp(g)}, ${clamp(b)}`;
+    }
+    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `${clamp(r)}, ${clamp(g)}, ${clamp(b)}`;
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  // rgb()/rgba()
+  try {
+    const m = raw.match(/rgba?\(\s*([0-9.]+)\s*[\,\s]+\s*([0-9.]+)\s*[\,\s]+\s*([0-9.]+)(?:\s*[\,\s]+\s*([0-9.]+))?\s*\)/i);
+    if (m) {
+      const r = clamp(m[1]);
+      const g = clamp(m[2]);
+      const b = clamp(m[3]);
+      return `${r}, ${g}, ${b}`;
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  return '';
+}
+
 async function _confirmDialog({ title, content, yesLabel, yesIcon, noLabel, noIcon }) {
   const DialogV2 = foundry?.applications?.api?.DialogV2;
   if (DialogV2?.confirm) {
@@ -397,21 +441,32 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
         }
       }
 
-      // Accent color for faction-origin entries
+      // Accent color for ALL entries (resolve by factionUuid)
       let accentColor = '';
-      if (t.origin === TIMELINE_ORIGIN.FACTION) {
-        try {
-          const fu = String(t.factionUuid || '').trim();
+      let accentColorRgb = '';
+      try {
+        const fu = String(t.factionUuid || '').trim();
+        if (fu) {
           const parts = fu.split('.');
           const actor = (parts[0] === 'Actor' && parts[1] && parts.length === 2)
             ? (game?.actors?.get?.(parts[1]) ?? null)
             : null;
           const c = String(actor?.system?.fColor ?? '').trim();
-          if (c) accentColor = c;
-        } catch (_) {
-          accentColor = '';
+          if (c) {
+            accentColor = c;
+            accentColorRgb = _colorToRgbTriplet(c);
+          }
         }
+      } catch (_) {
+        accentColor = '';
+        accentColorRgb = '';
       }
+
+      const originUiClass = (t.origin === TIMELINE_ORIGIN.FACTION)
+        ? 'is-origin-faction'
+        : (t.origin === TIMELINE_ORIGIN.WORLD)
+          ? 'is-origin-world'
+          : 'is-origin-unknown';
 
       const globalUiClass = isGlobal ? (t.isHidden ? 'is-muted' : 'is-active') : '';
 
@@ -424,8 +479,10 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
         id: t.id,
         title: String(page.name ?? '').trim() || '(без названия)',
         origin: t.origin,
+        originUiClass,
         factionUuid: t.factionUuid,
         accentColor,
+        accentColorRgb,
         isGlobal,
         globalUiClass,
         isHidden: !!t.isHidden,

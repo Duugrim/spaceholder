@@ -1,7 +1,7 @@
 <div class="sh-tle">
   <header class="sh-tle__header">
-    <div class="sh-tle__row">
-      <div class="form-group">
+    <div class="sh-tle__row sh-tle__row--main">
+      <div class="form-group sh-tle__fg sh-tle__fg--year">
         <label>Год</label>
         <div class="form-fields">
           <input
@@ -16,7 +16,7 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group sh-tle__fg sh-tle__fg--title">
         <label>Название</label>
         <div class="form-fields">
           <input
@@ -31,46 +31,49 @@
       </div>
     </div>
 
-    {{#if showOriginSelect}}
-      <div class="form-group">
-        <label>От имени</label>
-        <div class="form-fields">
-          <select name="origin" data-action="origin-change">
-            <option value="faction" {{#if (eq origin 'faction')}}selected{{/if}}>Фракции</option>
-            <option value="world" {{#if (eq origin 'world')}}selected{{/if}}>Мира</option>
-          </select>
+    <div class="sh-tle__row sh-tle__row--meta">
+      {{#if showOriginSelect}}
+        <div class="form-group sh-tle__fg sh-tle__fg--origin">
+          <label>От имени</label>
+          <div class="form-fields">
+            <select name="origin" data-action="origin-change">
+              <option value="faction" {{#if (eq origin 'faction')}}selected{{/if}}>Фракции</option>
+              <option value="world" {{#if (eq origin 'world')}}selected{{/if}}>Мира</option>
+            </select>
+          </div>
         </div>
-      </div>
-    {{/if}}
+      {{/if}}
 
-    {{#if showFactionSelect}}
-      <div class="form-group">
-        <label>Фракция</label>
-        <div class="form-fields">
-          <select name="factionUuid">
-            {{#each factions as |f|}}
-              <option value="{{f.uuid}}" {{#if (eq f.uuid @root.factionUuid)}}selected{{/if}}>{{f.name}}</option>
-            {{/each}}
-          </select>
+      {{#if showFactionSelect}}
+        <div class="form-group sh-tle__fg sh-tle__fg--faction">
+          <label>Фракция</label>
+          <div class="form-fields">
+            <select name="factionUuid">
+              {{#each factions as |f|}}
+                <option value="{{f.uuid}}" {{#if (eq f.uuid @root.factionUuid)}}selected{{/if}}>{{f.name}}</option>
+              {{/each}}
+            </select>
+          </div>
         </div>
-      </div>
-    {{/if}}
+      {{/if}}
 
-    {{#if showGlobalToggle}}
-      <div class="form-group">
-        <label></label>
-        <div class="form-fields">
-          <label class="checkbox sh-tle__checkbox">
-            <input type="checkbox" name="isGlobal" {{#if isGlobal}}checked{{/if}} />
-            <span>Глобально</span>
-          </label>
+      {{#if showGlobalToggle}}
+        <div class="form-group sh-tle__fg sh-tle__fg--global">
+          <label></label>
+          <div class="form-fields">
+            <label class="checkbox sh-tle__checkbox">
+              <input type="checkbox" name="isGlobal" {{#if isGlobal}}checked{{/if}} />
+              <span>Глобально</span>
+            </label>
+          </div>
         </div>
-      </div>
-    {{/if}}
+      {{/if}}
+    </div>
   </header>
 
   <section class="sh-tle__body">
     <prose-mirror
+      class="sh-tle__pm"
       name="content"
       value="{{content}}"
       toggled
@@ -81,7 +84,7 @@
   </section>
 
   <footer class="sh-tle__footer">
-    <button type="submit" class="sh-tle__save">
+    <button type="submit" class="primary sh-tle__save">
       <i class="fa-solid fa-check" aria-hidden="true"></i>
       Сохранить
     </button>

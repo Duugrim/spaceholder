@@ -53,60 +53,74 @@
         <div class="sh-tl__list">
           {{#each entries as |e|}}
             <article
-              class="sh-tl__entry {{#if e.isHidden}}is-hidden{{/if}} {{#if e.accentColor}}has-accent{{/if}}"
+              class="sh-tl__entry {{e.originUiClass}} {{#if e.isHidden}}is-hidden{{/if}} {{#if e.accentColor}}has-accent{{/if}}"
               data-uuid="{{e.uuid}}"
-              {{#if e.accentColor}}style="--sh-tl-accent: {{e.accentColor}};"{{/if}}
+              {{#if e.accentColor}}style="--sh-tl-accent: {{e.accentColor}};{{#if e.accentColorRgb}} --sh-tl-accent-rgb: {{e.accentColorRgb}};{{/if}}"{{/if}}
             >
-              <div class="sh-tl__entryHeader">
+              <div class="sh-tl__entryHeader" data-action="toggle-expand" data-uuid="{{e.uuid}}">
                 <div class="sh-tl__year">{{e.year}}</div>
                 <div class="sh-tl__title" title="{{e.title}}">{{e.title}}</div>
 
                 <div class="sh-tl__actions" role="group" aria-label="Действия">
-                  <button
-                    type="button"
-                    class="icon-btn sh-tl__iconBtn"
-                    data-action="toggle-expand"
-                    data-uuid="{{e.uuid}}"
-                    aria-label="Содержание"
-                    data-tooltip="Содержание"
-                  >
-                    {{#if e.isExpanded}}
-                      <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
-                    {{else}}
-                      <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
-                    {{/if}}
-                  </button>
-
-                  {{#if e.canEdit}}
-                    <button type="button" class="icon-btn sh-tl__iconBtn" data-action="edit-entry" data-uuid="{{e.uuid}}" aria-label="Редактировать" data-tooltip="Редактировать">
-                      <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                    </button>
-
-                    {{#if e.canReorder}}
+                  {{#if e.canReorder}}
+                    <div class="sh-tl__actionGroup" role="group" aria-label="Порядок">
                       <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-up" data-uuid="{{e.uuid}}" aria-label="Вверх" data-tooltip="Вверх">
                         <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
                       </button>
                       <button type="button" class="icon-btn sh-tl__iconBtn" data-action="move-down" data-uuid="{{e.uuid}}" aria-label="Вниз" data-tooltip="Вниз">
                         <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
                       </button>
-                    {{/if}}
+                    </div>
+                  {{/if}}
 
-                    {{#if e.canToggleGlobal}}
+                  {{#if e.canToggleGlobal}}
+                    <div class="sh-tl__actionGroup" role="group" aria-label="Видимость">
                       <button type="button" class="icon-btn sh-tl__iconBtn {{e.globalUiClass}}" data-action="toggle-global" data-uuid="{{e.uuid}}" aria-label="Глобально" data-tooltip="Глобально">
                         <i class="fa-solid fa-globe" aria-hidden="true"></i>
                       </button>
-                    {{/if}}
-
+                      {{#if e.canToggleHidden}}
+                        <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="Скрыть" data-tooltip="Скрыть">
+                          <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+                        </button>
+                      {{/if}}
+                    </div>
+                  {{else}}
                     {{#if e.canToggleHidden}}
-                      <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="Скрыть" data-tooltip="Скрыть">
-                        <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
-                      </button>
+                      <div class="sh-tl__actionGroup" role="group" aria-label="Видимость">
+                        <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isHidden}}is-active{{/if}}" data-action="toggle-hidden" data-uuid="{{e.uuid}}" aria-label="Скрыть" data-tooltip="Скрыть">
+                          <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+                        </button>
+                      </div>
                     {{/if}}
-
-                    <button type="button" class="icon-btn sh-tl__iconBtn danger" data-action="delete-entry" data-uuid="{{e.uuid}}" aria-label="Удалить" data-tooltip="Удалить">
-                      <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                    </button>
                   {{/if}}
+
+                  {{#if e.canEdit}}
+                    <div class="sh-tl__actionGroup" role="group" aria-label="Редактирование">
+                      <button type="button" class="icon-btn sh-tl__iconBtn" data-action="edit-entry" data-uuid="{{e.uuid}}" aria-label="Редактировать" data-tooltip="Редактировать">
+                        <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                      </button>
+                      <button type="button" class="icon-btn sh-tl__iconBtn danger" data-action="delete-entry" data-uuid="{{e.uuid}}" aria-label="Удалить" data-tooltip="Удалить">
+                        <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  {{/if}}
+
+                  <div class="sh-tl__actionGroup" role="group" aria-label="Содержание">
+                    <button
+                      type="button"
+                      class="icon-btn sh-tl__iconBtn"
+                      data-action="toggle-expand"
+                      data-uuid="{{e.uuid}}"
+                      aria-label="Содержание"
+                      data-tooltip="Содержание"
+                    >
+                      {{#if e.isExpanded}}
+                        <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                      {{else}}
+                        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                      {{/if}}
+                    </button>
+                  </div>
                 </div>
               </div>
 

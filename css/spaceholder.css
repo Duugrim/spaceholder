@@ -2621,9 +2621,13 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
 #spaceholder-timeline .sh-tl__views,
 .window-app.spaceholder.timeline .sh-tl__views,
 .spaceholder.timeline .sh-tl__views {
-  display: flex;
-  gap: 6px;
+  display: inline-flex;
+  gap: 4px;
   align-items: center;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--sh-radius-md);
 }
 #spaceholder-timeline .sh-tl__views .item,
 .window-app.spaceholder.timeline .sh-tl__views .item,
@@ -2631,33 +2635,47 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
   padding: 6px 10px;
   border-radius: var(--sh-radius-sm);
   color: var(--sh-text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  border: 1px solid transparent;
 }
 #spaceholder-timeline .sh-tl__views .item.active,
 .window-app.spaceholder.timeline .sh-tl__views .item.active,
 .spaceholder.timeline .sh-tl__views .item.active {
-  color: var(--sh-text);
-  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.12);
 }
 #spaceholder-timeline .sh-tl__views .item:hover,
 .window-app.spaceholder.timeline .sh-tl__views .item:hover,
 .spaceholder.timeline .sh-tl__views .item:hover {
   color: #fff;
+  background: rgba(255, 255, 255, 0.06);
 }
 #spaceholder-timeline .sh-tl__controls,
 .window-app.spaceholder.timeline .sh-tl__controls,
 .spaceholder.timeline .sh-tl__controls {
-  display: flex;
+  display: inline-flex;
   gap: 6px;
   align-items: center;
   flex: 0 0 auto;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--sh-radius-md);
 }
 #spaceholder-timeline .sh-tl__select,
 .window-app.spaceholder.timeline .sh-tl__select,
 .spaceholder.timeline .sh-tl__select {
   max-width: 320px;
+  min-width: 200px;
+}
+#spaceholder-timeline .sh-tl__iconBtn,
+.window-app.spaceholder.timeline .sh-tl__iconBtn,
+.spaceholder.timeline .sh-tl__iconBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sh-radius-sm);
+  transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
 }
 #spaceholder-timeline .sh-tl__iconBtn.is-active,
 .window-app.spaceholder.timeline .sh-tl__iconBtn.is-active,
@@ -2692,7 +2710,8 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
 .spaceholder.timeline .sh-tl__empty {
   color: var(--sh-text-dim);
   font-size: 12px;
-  padding: 8px 0;
+  padding: 28px 0;
+  text-align: center;
 }
 #spaceholder-timeline .sh-tl__list,
 .window-app.spaceholder.timeline .sh-tl__list,
@@ -2708,11 +2727,48 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
   border-radius: var(--sh-radius-md);
   background: rgba(255, 255, 255, 0.03);
   padding: 8px 10px;
+  position: relative;
+  transition: background 120ms ease, border-color 120ms ease;
 }
-#spaceholder-timeline .sh-tl__entry.has-accent,
-.window-app.spaceholder.timeline .sh-tl__entry.has-accent,
-.spaceholder.timeline .sh-tl__entry.has-accent {
-  box-shadow: inset 3px 0 0 var(--sh-tl-accent, transparent);
+#spaceholder-timeline .sh-tl__entry.has-accent::before,
+.window-app.spaceholder.timeline .sh-tl__entry.has-accent::before,
+.spaceholder.timeline .sh-tl__entry.has-accent::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--sh-tl-accent, transparent);
+  border-radius: var(--sh-radius-md) 0 0 var(--sh-radius-md);
+  opacity: 0.95;
+  pointer-events: none;
+}
+#spaceholder-timeline .sh-tl__entry.is-origin-faction.has-accent,
+.window-app.spaceholder.timeline .sh-tl__entry.is-origin-faction.has-accent,
+.spaceholder.timeline .sh-tl__entry.is-origin-faction.has-accent {
+  background: linear-gradient(0deg, rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.08), rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.08)), rgba(255, 255, 255, 0.03);
+}
+#spaceholder-timeline .sh-tl__entry:hover,
+.window-app.spaceholder.timeline .sh-tl__entry:hover,
+.spaceholder.timeline .sh-tl__entry:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+#spaceholder-timeline .sh-tl__entry:not(.is-origin-faction.has-accent):hover,
+.window-app.spaceholder.timeline .sh-tl__entry:not(.is-origin-faction.has-accent):hover,
+.spaceholder.timeline .sh-tl__entry:not(.is-origin-faction.has-accent):hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+#spaceholder-timeline .sh-tl__entry.is-origin-faction.has-accent:hover,
+.window-app.spaceholder.timeline .sh-tl__entry.is-origin-faction.has-accent:hover,
+.spaceholder.timeline .sh-tl__entry.is-origin-faction.has-accent:hover {
+  background: linear-gradient(0deg, rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.1), rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.1)), rgba(255, 255, 255, 0.035);
+}
+#spaceholder-timeline .sh-tl__entry:focus-within,
+.window-app.spaceholder.timeline .sh-tl__entry:focus-within,
+.spaceholder.timeline .sh-tl__entry:focus-within {
+  border-color: var(--sh-border-focus);
+  box-shadow: 0 0 0 2px var(--sh-focus-ring);
 }
 #spaceholder-timeline .sh-tl__entry.is-hidden,
 .window-app.spaceholder.timeline .sh-tl__entry.is-hidden,
@@ -2722,19 +2778,23 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
 #spaceholder-timeline .sh-tl__entryHeader,
 .window-app.spaceholder.timeline .sh-tl__entryHeader,
 .spaceholder.timeline .sh-tl__entryHeader {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  gap: 10px;
   align-items: center;
   min-width: 0;
+  cursor: pointer;
 }
 #spaceholder-timeline .sh-tl__year,
 .window-app.spaceholder.timeline .sh-tl__year,
 .spaceholder.timeline .sh-tl__year {
-  flex: 0 0 auto;
-  width: 56px;
+  width: 92px;
   color: var(--sh-text-muted);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
 }
 #spaceholder-timeline .sh-tl__title,
 .window-app.spaceholder.timeline .sh-tl__title,
@@ -2750,16 +2810,42 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
 .window-app.spaceholder.timeline .sh-tl__actions,
 .spaceholder.timeline .sh-tl__actions {
   display: flex;
-  gap: 4px;
   align-items: center;
   flex: 0 0 auto;
+  gap: 0;
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+}
+#spaceholder-timeline .sh-tl__entry:hover .sh-tl__actions,
+#spaceholder-timeline .sh-tl__entry:focus-within .sh-tl__actions,
+.window-app.spaceholder.timeline .sh-tl__entry:hover .sh-tl__actions,
+.window-app.spaceholder.timeline .sh-tl__entry:focus-within .sh-tl__actions,
+.spaceholder.timeline .sh-tl__entry:hover .sh-tl__actions,
+.spaceholder.timeline .sh-tl__entry:focus-within .sh-tl__actions {
+  opacity: 1;
+}
+#spaceholder-timeline .sh-tl__actionGroup,
+.window-app.spaceholder.timeline .sh-tl__actionGroup,
+.spaceholder.timeline .sh-tl__actionGroup {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+#spaceholder-timeline .sh-tl__actionGroup + .sh-tl__actionGroup,
+.window-app.spaceholder.timeline .sh-tl__actionGroup + .sh-tl__actionGroup,
+.spaceholder.timeline .sh-tl__actionGroup + .sh-tl__actionGroup {
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 #spaceholder-timeline .sh-tl__content,
 .window-app.spaceholder.timeline .sh-tl__content,
 .spaceholder.timeline .sh-tl__content {
   margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--sh-radius-md);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -2788,6 +2874,12 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
   border-radius: var(--sh-radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+#spaceholder-timeline-entry-editor .sh-tle__header,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__header,
+.spaceholder.timeline-entry-editor .sh-tle__header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
 #spaceholder-timeline-entry-editor .sh-tle__row,
 .window-app.spaceholder.timeline-entry-editor .sh-tle__row,
 .spaceholder.timeline-entry-editor .sh-tle__row {
@@ -2796,11 +2888,63 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
   align-items: flex-end;
   flex-wrap: wrap;
 }
-#spaceholder-timeline-entry-editor .sh-tle__row .form-group,
-.window-app.spaceholder.timeline-entry-editor .sh-tle__row .form-group,
-.spaceholder.timeline-entry-editor .sh-tle__row .form-group {
+#spaceholder-timeline-entry-editor .sh-tle__row + #spaceholder-timeline-entry-editor .sh-tle__row,
+#spaceholder-timeline-entry-editor .sh-tle__row + .window-app.spaceholder.timeline-entry-editor .sh-tle__row,
+#spaceholder-timeline-entry-editor .sh-tle__row + .spaceholder.timeline-entry-editor .sh-tle__row,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__row + #spaceholder-timeline-entry-editor .sh-tle__row,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__row + .window-app.spaceholder.timeline-entry-editor .sh-tle__row,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__row + .spaceholder.timeline-entry-editor .sh-tle__row,
+.spaceholder.timeline-entry-editor .sh-tle__row + #spaceholder-timeline-entry-editor .sh-tle__row,
+.spaceholder.timeline-entry-editor .sh-tle__row + .window-app.spaceholder.timeline-entry-editor .sh-tle__row,
+.spaceholder.timeline-entry-editor .sh-tle__row + .spaceholder.timeline-entry-editor .sh-tle__row {
+  margin-top: 8px;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg,
+.spaceholder.timeline-entry-editor .sh-tle__fg {
   flex: 1 1 260px;
   margin: 0;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg--year,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--year,
+.spaceholder.timeline-entry-editor .sh-tle__fg--year {
+  flex: 0 0 120px;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg--year input[type=number],
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--year input[type=number],
+.spaceholder.timeline-entry-editor .sh-tle__fg--year input[type=number] {
+  width: 100%;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg--title,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--title,
+.spaceholder.timeline-entry-editor .sh-tle__fg--title {
+  flex: 1 1 420px;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg--title input[type=text],
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--title input[type=text],
+.spaceholder.timeline-entry-editor .sh-tle__fg--title input[type=text] {
+  width: 100%;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg--origin,
+#spaceholder-timeline-entry-editor .sh-tle__fg--faction,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--origin,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--faction,
+.spaceholder.timeline-entry-editor .sh-tle__fg--origin,
+.spaceholder.timeline-entry-editor .sh-tle__fg--faction {
+  flex: 1 1 240px;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg--origin select,
+#spaceholder-timeline-entry-editor .sh-tle__fg--faction select,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--origin select,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--faction select,
+.spaceholder.timeline-entry-editor .sh-tle__fg--origin select,
+.spaceholder.timeline-entry-editor .sh-tle__fg--faction select {
+  width: 100%;
+}
+#spaceholder-timeline-entry-editor .sh-tle__fg--global,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__fg--global,
+.spaceholder.timeline-entry-editor .sh-tle__fg--global {
+  flex: 0 0 auto;
 }
 #spaceholder-timeline-entry-editor .sh-tle__checkbox,
 .window-app.spaceholder.timeline-entry-editor .sh-tle__checkbox,
@@ -2815,7 +2959,56 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
 .spaceholder.timeline-entry-editor .sh-tle__body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#spaceholder-timeline-entry-editor .sh-tle__pm,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__pm,
+.spaceholder.timeline-entry-editor .sh-tle__pm {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 320px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-md);
+  overflow: hidden;
+}
+#spaceholder-timeline-entry-editor .sh-tle__pm .editor,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__pm .editor,
+.spaceholder.timeline-entry-editor .sh-tle__pm .editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#spaceholder-timeline-entry-editor .sh-tle__pm .editor-container,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__pm .editor-container,
+.spaceholder.timeline-entry-editor .sh-tle__pm .editor-container {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#spaceholder-timeline-entry-editor .sh-tle__pm .editor-content,
+.window-app.spaceholder.timeline-entry-editor .sh-tle__pm .editor-content,
+.spaceholder.timeline-entry-editor .sh-tle__pm .editor-content {
+  min-height: 0;
+  padding: 10px 12px;
+}
+#spaceholder-timeline-entry-editor .sh-tle__pm :where(a.editor-edit, button.editor-edit, .editor-edit),
+.window-app.spaceholder.timeline-entry-editor .sh-tle__pm :where(a.editor-edit, button.editor-edit, .editor-edit),
+.spaceholder.timeline-entry-editor .sh-tle__pm :where(a.editor-edit, button.editor-edit, .editor-edit) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+#spaceholder-timeline-entry-editor .sh-tle__pm :where(a.editor-edit i, button.editor-edit i, .editor-edit i),
+.window-app.spaceholder.timeline-entry-editor .sh-tle__pm :where(a.editor-edit i, button.editor-edit i, .editor-edit i),
+.spaceholder.timeline-entry-editor .sh-tle__pm :where(a.editor-edit i, button.editor-edit i, .editor-edit i) {
+  margin: 0;
+  line-height: 1;
 }
 #spaceholder-timeline-entry-editor .sh-tle__footer,
 .window-app.spaceholder.timeline-entry-editor .sh-tle__footer,

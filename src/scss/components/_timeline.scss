@@ -26,41 +26,59 @@
   }
 
   .sh-tl__views {
-    display: flex;
-    gap: 6px;
+    display: inline-flex;
+    gap: 4px;
     align-items: center;
+    padding: 4px;
+
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--sh-radius-md);
 
     .item {
       padding: 6px 10px;
       border-radius: var(--sh-radius-sm);
       color: var(--sh-text-muted);
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: transparent;
+      border: 1px solid transparent;
 
       &.active {
-        color: var(--sh-text);
-        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        background: rgba(255, 255, 255, 0.10);
         border-color: rgba(255, 255, 255, 0.12);
       }
 
       &:hover {
         color: #fff;
+        background: rgba(255, 255, 255, 0.06);
       }
     }
   }
 
   .sh-tl__controls {
-    display: flex;
+    display: inline-flex;
     gap: 6px;
     align-items: center;
     flex: 0 0 auto;
+
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--sh-radius-md);
   }
 
   .sh-tl__select {
     max-width: 320px;
+    min-width: 200px;
   }
 
   .sh-tl__iconBtn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--sh-radius-sm);
+
+    transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+
     &.is-active {
       background: rgba(255, 255, 255, 0.10);
     }
@@ -88,7 +106,8 @@
   .sh-tl__empty {
     color: var(--sh-text-dim);
     font-size: 12px;
-    padding: 8px 0;
+    padding: 28px 0;
+    text-align: center;
   }
 
   .sh-tl__list {
@@ -103,8 +122,46 @@
     background: rgba(255, 255, 255, 0.03);
     padding: 8px 10px;
 
-    &.has-accent {
-      box-shadow: inset 3px 0 0 var(--sh-tl-accent, transparent);
+    position: relative;
+    transition: background 120ms ease, border-color 120ms ease;
+
+    &.has-accent::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--sh-tl-accent, transparent);
+      border-radius: var(--sh-radius-md) 0 0 var(--sh-radius-md);
+      opacity: 0.95;
+      pointer-events: none;
+    }
+
+    // Faction-origin entries: add a very soft tint of the faction color
+    &.is-origin-faction.has-accent {
+      background:
+        linear-gradient(0deg, rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.08), rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.08)),
+        rgba(255, 255, 255, 0.03);
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    &:not(.is-origin-faction.has-accent):hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    &.is-origin-faction.has-accent:hover {
+      background:
+        linear-gradient(0deg, rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.10), rgba(var(--sh-tl-accent-rgb, 0, 0, 0), 0.10)),
+        rgba(255, 255, 255, 0.035);
+    }
+
+    &:focus-within {
+      border-color: var(--sh-border-focus);
+      box-shadow: 0 0 0 2px var(--sh-focus-ring);
     }
 
     &.is-hidden {
@@ -113,18 +170,23 @@
   }
 
   .sh-tl__entryHeader {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: 92px 1fr auto;
+    gap: 10px;
     align-items: center;
     min-width: 0;
+
+    cursor: pointer;
   }
 
   .sh-tl__year {
-    flex: 0 0 auto;
-    width: 56px;
+    width: 92px;
     color: var(--sh-text-muted);
     font-weight: 700;
-    font-size: 12px;
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+    line-height: 1;
   }
 
   .sh-tl__title {
@@ -138,15 +200,38 @@
 
   .sh-tl__actions {
     display: flex;
-    gap: 4px;
     align-items: center;
     flex: 0 0 auto;
+    gap: 0;
+
+    opacity: 0.55;
+    transition: opacity 120ms ease;
+  }
+
+  .sh-tl__entry:hover .sh-tl__actions,
+  .sh-tl__entry:focus-within .sh-tl__actions {
+    opacity: 1;
+  }
+
+  .sh-tl__actionGroup {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .sh-tl__actionGroup + .sh-tl__actionGroup {
+    margin-left: 8px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .sh-tl__content {
     margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 10px;
+
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--sh-radius-md);
 
     // Foundry enriched content defaults
     font-size: 12px;
@@ -179,16 +264,54 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
+  .sh-tle__header {
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
   .sh-tle__row {
     display: flex;
     gap: 10px;
     align-items: flex-end;
     flex-wrap: wrap;
 
-    .form-group {
-      flex: 1 1 260px;
-      margin: 0;
+    & + & {
+      margin-top: 8px;
     }
+  }
+
+  .sh-tle__fg {
+    flex: 1 1 260px;
+    margin: 0;
+  }
+
+  .sh-tle__fg--year {
+    flex: 0 0 120px;
+
+    input[type='number'] {
+      width: 100%;
+    }
+  }
+
+  .sh-tle__fg--title {
+    flex: 1 1 420px;
+
+    input[type='text'] {
+      width: 100%;
+    }
+  }
+
+  .sh-tle__fg--origin,
+  .sh-tle__fg--faction {
+    flex: 1 1 240px;
+
+    select {
+      width: 100%;
+    }
+  }
+
+  .sh-tle__fg--global {
+    flex: 0 0 auto;
   }
 
   .sh-tle__checkbox {
@@ -201,7 +324,57 @@
   .sh-tle__body {
     flex: 1 1 auto;
     min-height: 0;
-    overflow: auto;
+
+    // Make the editor area fill the remaining vertical space reliably.
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sh-tle__pm {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 320px;
+
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-md);
+
+    overflow: hidden;
+  }
+
+  // Foundry's ProseMirror internals: ensure the editable area gets height.
+  .sh-tle__pm .editor {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .sh-tle__pm .editor-container {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  // Ensure content doesn't stick to the edges.
+  .sh-tle__pm .editor-content {
+    min-height: 0;
+    padding: 10px 12px;
+  }
+
+  // Center the edit toggle button icon ("pencil" in the top-right corner).
+  .sh-tle__pm :where(a.editor-edit, button.editor-edit, .editor-edit) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .sh-tle__pm :where(a.editor-edit i, button.editor-edit i, .editor-edit i) {
+    margin: 0;
+    line-height: 1;
   }
 
   .sh-tle__footer {
