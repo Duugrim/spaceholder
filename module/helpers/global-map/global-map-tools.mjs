@@ -3233,7 +3233,7 @@ export class GlobalMapTools {
         border-radius: 5px;
         min-width: 250px;
         z-index: 1000;
-        font-family: 'Signika', sans-serif;
+        font-family: var(--font-sans);
         cursor: move;
       ">
         <div id="global-map-tools-titlebar" style="

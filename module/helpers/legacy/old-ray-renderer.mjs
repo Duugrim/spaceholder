@@ -1027,7 +1027,7 @@ export const AIMING_STYLES = `
   padding: 15px;
   border-radius: 8px;
   border: 2px solid #ff4444;
-  font-family: 'Roboto', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   z-index: 10000;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);

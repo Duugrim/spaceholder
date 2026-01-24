@@ -1,5 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
-/* Global styles (scoped inside partials) */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap");
+/* Global styles */
+body.game {
+  --font-sans: IBM Plex Sans, Roboto, Noto Sans, Segoe UI, system-ui, sans-serif;
+  --font-serif: IBM Plex Sans, Roboto, Noto Sans, Segoe UI, system-ui, sans-serif;
+  --font-body: var(--font-sans);
+  --font-blockquote: var(--font-sans);
+  --font-h1: var(--font-sans);
+  --font-h2: var(--font-sans);
+  --font-h3: var(--font-sans);
+  --font-h4: var(--font-sans);
+  --font-h5: var(--font-sans);
+  --font-h6: var(--font-sans);
+  --font-primary: var(--font-sans);
+}
+
+body.game .app {
+  --font-primary: var(--font-sans);
+}
+
 .window-app.spaceholder,
 .spaceholder {
   --sh-bg: #0b0b0b;
@@ -22,7 +40,7 @@
   --sh-focus-ring: rgba(143, 185, 143, 0.35);
   --sh-border-focus: rgba(143, 185, 143, 0.65);
   color-scheme: dark;
-  font-family: "Roboto", sans-serif;
+  font-family: "IBM Plex Sans", "Roboto", "Noto Sans", "Segoe UI", system-ui, sans-serif;
   background: var(--sh-bg);
   color: var(--sh-text);
 }
@@ -1401,7 +1419,6 @@
   padding: 12px;
   border-radius: var(--sh-radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: "Signika", sans-serif;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1613,7 +1630,6 @@
   padding: 12px;
   border-radius: var(--sh-radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: "Signika", sans-serif;
   display: flex;
   flex-direction: column;
   height: 100%;

@@ -1,5 +1,5 @@
 // Add custom fonts by visiting and search https://fonts.google.com
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 
 // Import utilities.
 @import 'utils/typography';
@@ -7,7 +7,8 @@
 @import 'utils/mixins';
 @import 'utils/variables';
 
-/* Global styles (scoped inside partials) */
+/* Global styles */
+@import 'global/foundry-fonts';
 @import 'global/window';
 @import 'global/grid';
 @import 'global/flex';

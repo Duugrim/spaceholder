@@ -580,7 +580,7 @@ export class HeightMapEditor {
         border-radius: 5px;
         min-width: 200px;
         z-index: 1000;
-        font-family: 'Signika', sans-serif;
+        font-family: var(--font-sans);
       ">
         <h3 style="margin-top: 0; margin-bottom: 10px;">Height Map Editor</h3>
         
@@ -845,7 +845,7 @@ export class HeightMapEditor {
     
     // Create PIXI text with background
     const style = new PIXI.TextStyle({
-      fontFamily: 'Signika',
+      fontFamily: 'IBM Plex Sans',
       fontSize: 16,
       fill: '#ffffff',
       stroke: '#000000',

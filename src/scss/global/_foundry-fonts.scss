@@ -1,0 +1,28 @@
+// Foundry core typography override (in-world only)
+// Goal: replace Signika/Palatino fallback with a Cyrillic-friendly UI font.
+// Scope: body.game (world UI), so Setup screen is unaffected.
+
+body.game {
+  // Core variables (Foundry v13)
+  --font-sans: #{$font-primary};
+  --font-serif: #{$font-primary};
+
+  --font-body: var(--font-sans);
+  --font-blockquote: var(--font-sans);
+
+  // Headings (avoid non-cyrillic decorative fonts in Russian UI)
+  --font-h1: var(--font-sans);
+  --font-h2: var(--font-sans);
+  --font-h3: var(--font-sans);
+  --font-h4: var(--font-sans);
+  --font-h5: var(--font-sans);
+  --font-h6: var(--font-sans);
+
+  // Legacy variable still used in some parts of the UI
+  --font-primary: var(--font-sans);
+}
+
+// Some legacy rules set --font-primary on .app; override there as well.
+body.game .app {
+  --font-primary: var(--font-sans);
+}

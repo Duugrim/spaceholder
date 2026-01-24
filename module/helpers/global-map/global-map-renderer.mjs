@@ -3251,7 +3251,7 @@ export class GlobalMapRenderer {
     const baseStrokeThickness = 4;
 
     const baseStyle = new PIXI.TextStyle({
-      fontFamily: 'Signika',
+      fontFamily: 'IBM Plex Sans',
       fontSize: baseFontSize,
       fill: '#ffffff',
       stroke: '#000000',
@@ -3299,7 +3299,7 @@ export class GlobalMapRenderer {
     const strokeThickness = Math.max(2, Math.min(18, Math.round(fontSize * (baseStrokeThickness / baseFontSize))));
 
     return new PIXI.TextStyle({
-      fontFamily: 'Signika',
+      fontFamily: 'IBM Plex Sans',
       fontSize,
       fill: '#ffffff',
       stroke: '#000000',
@@ -3797,7 +3797,7 @@ export class GlobalMapRenderer {
     const w = Number(widthPx);
     if (!Number.isFinite(w) || w <= 0) {
       return new PIXI.TextStyle({
-        fontFamily: 'Signika',
+        fontFamily: 'IBM Plex Sans',
         fontSize: baseFontSize,
         fill: '#ffffff',
         stroke: '#000000',
@@ -3811,7 +3811,7 @@ export class GlobalMapRenderer {
     const strokeThickness = Math.max(2, Math.min(18, Math.round(fontSize * (baseStrokeThickness / baseFontSize))));
 
     return new PIXI.TextStyle({
-      fontFamily: 'Signika',
+      fontFamily: 'IBM Plex Sans',
       fontSize,
       fill: '#ffffff',
       stroke: '#000000',
