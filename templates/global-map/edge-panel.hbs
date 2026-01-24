@@ -4,20 +4,20 @@
   data-flyout-left="false"
   data-flyout-right="false"
   data-inspector="true"
-  aria-label="Глобальная карта"
+  aria-label="{{localize "SPACEHOLDER.GlobalMap.Title"}}"
 >
   <div class="sh-gm-edge__topWrap">
-    <div class="sh-gm-edge__top" role="region" aria-label="Меню">
-      <div class="sh-gm-edge__leftCluster" role="group" aria-label="Инструменты">
+    <div class="sh-gm-edge__top" role="region" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Menu"}}">
+      <div class="sh-gm-edge__leftCluster" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Tools"}}">
         {{#if isGM}}
         <button
           type="button"
           class="icon-btn sh-gm-edge__edgeBtn sh-gm-edge__edgeBtn--left"
           data-action="toggle-flyout"
           data-side="left"
-          aria-label="Инструменты"
+          aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Tools"}}"
           aria-expanded="false"
-          data-tooltip="Инструменты"
+          data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Tools"}}"
         ><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
         {{/if}}
 
@@ -25,8 +25,8 @@
           type="button"
           class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__factionBtn"
           data-action="open-token-faction"
-          aria-label="Фракция"
-          data-tooltip="Фракция"
+          aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Faction"}}"
+          data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Faction"}}"
           hidden
         ><i class="fa-solid fa-book-open" aria-hidden="true"></i></button>
 
@@ -34,26 +34,26 @@
           type="button"
           class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__linkBtn"
           data-action="open-token-link"
-          aria-label="Ссылка"
-          data-tooltip="Ссылка"
+          aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Link"}}"
+          data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Link"}}"
           hidden
         ><i class="fa-solid fa-link" aria-hidden="true"></i></button>
 
       </div>
 
-      <div class="sh-gm-edge__identity" aria-label="Токен">
+      <div class="sh-gm-edge__identity" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Token"}}">
         <div class="sh-gm-edge__name" data-autofit data-fit-max="20" data-fit-min="13" data-field="tokenName">{{tokenName}}</div>
         <div class="sh-gm-edge__faction" data-autofit data-fit-max="16" data-fit-min="11" data-field="tokenFaction">{{tokenFaction}}</div>
       </div>
 
-      <div class="sh-gm-edge__rightCluster" role="group" aria-label="Видимость">
+      <div class="sh-gm-edge__rightCluster" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Visibility"}}">
         {{#if showTimeline}}
           <button
             type="button"
             class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__timelineBtn"
             data-action="open-timeline"
-            aria-label="Таймлайн"
-            data-tooltip="Таймлайн"
+            aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Timeline"}}"
+            data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Timeline"}}"
           ><i class="fa-solid fa-timeline" aria-hidden="true"></i></button>
         {{/if}}
 
@@ -61,8 +61,8 @@
           type="button"
           class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__refreshBtn"
           data-action="load-map"
-          aria-label="Обновить карту"
-          data-tooltip="Обновить карту"
+          aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.RefreshMap"}}"
+          data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.RefreshMap"}}"
         ><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
 
         <button
@@ -70,89 +70,89 @@
           class="icon-btn sh-gm-edge__edgeBtn sh-gm-edge__edgeBtn--right"
           data-action="toggle-flyout"
           data-side="right"
-          aria-label="Видимость"
+          aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Visibility"}}"
           aria-expanded="false"
-          data-tooltip="Видимость"
+          data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Visibility"}}"
         ><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
       </div>
     </div>
 
     <aside class="sh-gm-edge__flyout sh-gm-edge__flyout--left" aria-hidden="true">
       <div class="sh-gm-edge__flyoutBody">
-        <div class="sh-gm-edge__flyoutGrid" role="group" aria-label="Инструменты">
-          <button type="button" class="sh-gm-edge__btn" data-action="import-map">Импорт…</button>
-          <button type="button" class="sh-gm-edge__btn" data-action="save-map">Сохранить…</button>
-          <button type="button" class="sh-gm-edge__btn" data-action="bake-map-background">Запечь…</button>
-          <button type="button" class="sh-gm-edge__btn" data-action="create-test-grid">Тестовая сетка</button>
-          <button type="button" class="sh-gm-edge__btn" data-action="edit-map">Редактировать…</button>
-          <button type="button" class="sh-gm-edge__btn" data-action="global-map-undo" disabled>Отменить</button>
-          <button type="button" class="sh-gm-edge__btn" data-action="global-map-redo" disabled>Повторить</button>
-          <button type="button" class="sh-gm-edge__btn" data-action="open-biome-editor">Список биомов…</button>
-          <button type="button" class="sh-gm-edge__btn danger" data-action="clear-map">Очистить…</button>
+        <div class="sh-gm-edge__flyoutGrid" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Tools"}}">
+          <button type="button" class="sh-gm-edge__btn" data-action="import-map">{{localize "SPACEHOLDER.GlobalMap.Edge.Flyout.Import"}}</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="save-map">{{localize "SPACEHOLDER.GlobalMap.Edge.Flyout.Save"}}</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="bake-map-background">{{localize "SPACEHOLDER.GlobalMap.Edge.Flyout.Bake"}}</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="create-test-grid">{{localize "SPACEHOLDER.GlobalMap.Edge.Flyout.TestGrid"}}</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="edit-map">{{localize "SPACEHOLDER.GlobalMap.Edge.Flyout.Edit"}}</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="global-map-undo" disabled>{{localize "SPACEHOLDER.Actions.Undo"}}</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="global-map-redo" disabled>{{localize "SPACEHOLDER.Actions.Redo"}}</button>
+          <button type="button" class="sh-gm-edge__btn" data-action="open-biome-editor">{{localize "SPACEHOLDER.GlobalMap.Edge.Flyout.BiomeList"}}</button>
+          <button type="button" class="sh-gm-edge__btn danger" data-action="clear-map">{{localize "SPACEHOLDER.GlobalMap.Edge.Flyout.Clear"}}</button>
         </div>
       </div>
     </aside>
 
     <aside class="sh-gm-edge__flyout sh-gm-edge__flyout--right" aria-hidden="true">
-      <div class="sh-gm-edge__flyoutBody" role="group" aria-label="Видимость">
+      <div class="sh-gm-edge__flyoutBody" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Visibility"}}">
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Биомы</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="biomes" data-value="fancy" role="group" aria-label="Биомы">
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="biomes" data-value="fancy" aria-pressed="true">Fancy</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="fancyDebug" aria-pressed="false">Debug</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="cells" aria-pressed="false">Cells</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="off" aria-pressed="false">Off</button>
+          <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Biomes"}}</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="biomes" data-value="fancy" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Biomes"}}">
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="biomes" data-value="fancy" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Fancy"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="fancyDebug" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Debug"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="cells" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Cells"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Высоты</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="heights" data-value="contours-bw" role="group" aria-label="Высоты">
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="heights" data-value="contours-bw" aria-pressed="true">BW</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="contours" aria-pressed="false">Contours</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="cells" aria-pressed="false">Cells</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="off" aria-pressed="false">Off</button>
+          <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Heights"}}</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="heights" data-value="contours-bw" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Heights"}}">
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="heights" data-value="contours-bw" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.BW"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="contours" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Contours"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="cells" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Cells"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Назв. рек</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="riverLabels" data-value="hover" role="group" aria-label="Названия рек">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabels" data-value="off" aria-pressed="false">Выкл</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="riverLabels" data-value="hover" aria-pressed="true">Нав.</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabels" data-value="always" aria-pressed="false">Всегда</button>
+          <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelsShort"}}</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="riverLabels" data-value="hover" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabels"}}">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabels" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="riverLabels" data-value="hover" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabels" data-value="always" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Пов. назв. рек</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="riverLabelRotate" data-value="on" role="group" aria-label="Поворот названий рек">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabelRotate" data-value="off" aria-pressed="false">Off</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="riverLabelRotate" data-value="on" aria-pressed="true">On</button>
+          <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelRotate"}}</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="riverLabelRotate" data-value="on" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelRotate"}}">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabelRotate" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="riverLabelRotate" data-value="on" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Регионы</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regions" data-value="full" role="group" aria-label="Регионы">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="name" aria-pressed="false">Назв.</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="border" aria-pressed="false">Назв.+гр.</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regions" data-value="full" aria-pressed="true">Целиком</button>
+          <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Regions"}}</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regions" data-value="full" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Regions"}}">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="name" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameShort"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="border" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameBorder"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regions" data-value="full" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.Full"}}</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel"></div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regionsWhen" data-value="hover" role="group" aria-label="Показ регионов">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="off" aria-pressed="false">Выкл</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regionsWhen" data-value="hover" aria-pressed="true">Нав.</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="always" aria-pressed="false">Всегда</button>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regionsWhen" data-value="hover" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RegionsWhen"}}">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regionsWhen" data-value="hover" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="always" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}</button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Сглаж.</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="smooth" data-value="4" role="group" aria-label="Сглаживание">
+          <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Smooth"}}</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="smooth" data-value="4" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Smooth"}}">
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="0" aria-pressed="false">0</button>
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="1" aria-pressed="false">1</button>
             <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="smooth" data-value="2" aria-pressed="false">2</button>
@@ -162,10 +162,10 @@
         </div>
 
         <div class="sh-gm-edge__setting">
-          <div class="sh-gm-edge__settingLabel">Аним. появ.</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="appearAnim" data-value="on" role="group" aria-label="Анимация появления">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="appearAnim" data-value="off" aria-pressed="false">Off</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="appearAnim" data-value="on" aria-pressed="true">On</button>
+          <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.AppearanceAnim"}}</div>
+          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="appearAnim" data-value="on" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.AppearanceAnim"}}">
+            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="appearAnim" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
+            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="appearAnim" data-value="on" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}</button>
 
             <input
               type="number"
@@ -176,32 +176,32 @@
               max="2000"
               step="10"
               inputmode="numeric"
-              aria-label="Длительность (мс)"
-              data-tooltip="мс"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.DurationMs"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Ms"}}"
             />
-            <span class="sh-gm-edge__selectorSuffix" aria-hidden="true">мс</span>
+            <span class="sh-gm-edge__selectorSuffix" aria-hidden="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Ms"}}</span>
           </div>
         </div>
       </div>
     </aside>
   </div>
 
-  <div class="sh-gm-edge__inspector" role="region" aria-label="Инспектор" aria-hidden="false">
-    <div class="sh-gm-edge__inspectorOverlay" role="group" aria-label="Настройки инспектора">
+  <div class="sh-gm-edge__inspector" role="region" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.Title"}}" aria-hidden="false">
+    <div class="sh-gm-edge__inspectorOverlay" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.Settings"}}">
       <button
         type="button"
         class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__inspectorUpdatesBtn"
         data-action="toggle-inspector-updates"
-        aria-label="Автообновление"
+        aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.AutoUpdate"}}"
         aria-pressed="false"
-        data-tooltip="Автообновление"
+        data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.AutoUpdate"}}"
       ><i class="fa-solid fa-lock-open" aria-hidden="true"></i></button>
     </div>
 
     <div class="sh-gm-edge__inspectorBody">
-      <div class="sh-gm-edge__inspectGrid" role="group" aria-label="Данные">
+      <div class="sh-gm-edge__inspectGrid" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.Data"}}">
         <div class="sh-gm-edge__inspectCol" data-scope="biome">
-          <div class="sh-gm-edge__inspectLabel">Биом</div>
+          <div class="sh-gm-edge__inspectLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.Biome"}}</div>
           <div class="sh-gm-edge__inspectValue sh-gm-edge__inspectValue--biome">
             <canvas
               class="sh-gm-edge__biomeSwatch"
@@ -210,16 +210,16 @@
               height="20"
               aria-hidden="true"
             ></canvas>
-            <span class="sh-gm-edge__inspectBiomeText" data-field="inspectBiomeValue">Неизвестно</span>
+            <span class="sh-gm-edge__inspectBiomeText" data-field="inspectBiomeValue">{{localize "SPACEHOLDER.GlobalMap.Common.Unknown"}}</span>
           </div>
 
-          <div class="sh-gm-edge__inspectJournal" aria-label="Журнал биома">
+          <div class="sh-gm-edge__inspectJournal" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.BiomeJournal"}}">
             <div class="sh-gm-edge__journalRow sh-gm-edge__journalRow--linked" data-scope="biomeJournalLinked" hidden>
               <button
                 type="button"
                 class="sh-gm-edge__journalLink"
                 data-action="open-inspect-biome-journal"
-                aria-label="Открыть журнал биома"
+                aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.OpenBiomeJournal"}}"
               ><i class="fa-solid fa-book-open" aria-hidden="true"></i><span data-field="inspectBiomeJournalName"></span></button>
 
               {{#if isGM}}
@@ -227,8 +227,8 @@
                 type="button"
                 class="icon-btn sh-gm-edge__journalClear"
                 data-action="clear-inspect-biome-journal"
-                aria-label="Очистить"
-                data-tooltip="Очистить"
+                aria-label="{{localize "SPACEHOLDER.Actions.Clear"}}"
+                data-tooltip="{{localize "SPACEHOLDER.Actions.Clear"}}"
               ><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
               {{/if}}
             </div>
@@ -244,15 +244,15 @@
                 type="text"
                 class="sh-gm-edge__journalInput"
                 data-field="inspectBiomeJournalUuid"
-                placeholder="Journal UUID"
+                placeholder="{{localize "SPACEHOLDER.GlobalMap.Common.JournalUuid"}}"
                 spellcheck="false"
               />
               <button
                 type="button"
                 class="icon-btn sh-gm-edge__journalApply"
                 data-action="apply-inspect-biome-journal"
-                aria-label="Привязать"
-                data-tooltip="Привязать"
+                aria-label="{{localize "SPACEHOLDER.Actions.Apply"}}"
+                data-tooltip="{{localize "SPACEHOLDER.Actions.Apply"}}"
               ><i class="fa-solid fa-check" aria-hidden="true"></i></button>
             </div>
             {{/if}}
@@ -260,16 +260,16 @@
         </div>
 
         <div class="sh-gm-edge__inspectCol" data-scope="region">
-          <div class="sh-gm-edge__inspectLabel">Регион</div>
+          <div class="sh-gm-edge__inspectLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.Region"}}</div>
           <div class="sh-gm-edge__inspectValue" data-field="inspectRegionValue"></div>
 
-          <div class="sh-gm-edge__inspectJournal" aria-label="Журнал региона">
+          <div class="sh-gm-edge__inspectJournal" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.RegionJournal"}}">
             <div class="sh-gm-edge__journalRow sh-gm-edge__journalRow--linked" data-scope="regionJournalLinked" hidden>
               <button
                 type="button"
                 class="sh-gm-edge__journalLink"
                 data-action="open-inspect-region-journal"
-                aria-label="Открыть журнал региона"
+                aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.OpenRegionJournal"}}"
               ><i class="fa-solid fa-book-open" aria-hidden="true"></i><span data-field="inspectRegionJournalName"></span></button>
 
               {{#if isGM}}
@@ -277,8 +277,8 @@
                 type="button"
                 class="icon-btn sh-gm-edge__journalClear"
                 data-action="clear-inspect-region-journal"
-                aria-label="Очистить"
-                data-tooltip="Очистить"
+                aria-label="{{localize "SPACEHOLDER.Actions.Clear"}}"
+                data-tooltip="{{localize "SPACEHOLDER.Actions.Clear"}}"
               ><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
               {{/if}}
             </div>
@@ -294,15 +294,15 @@
                 type="text"
                 class="sh-gm-edge__journalInput"
                 data-field="inspectRegionJournalUuid"
-                placeholder="Journal UUID"
+                placeholder="{{localize "SPACEHOLDER.GlobalMap.Common.JournalUuid"}}"
                 spellcheck="false"
               />
               <button
                 type="button"
                 class="icon-btn sh-gm-edge__journalApply"
                 data-action="apply-inspect-region-journal"
-                aria-label="Привязать"
-                data-tooltip="Привязать"
+                aria-label="{{localize "SPACEHOLDER.Actions.Apply"}}"
+                data-tooltip="{{localize "SPACEHOLDER.Actions.Apply"}}"
               ><i class="fa-solid fa-check" aria-hidden="true"></i></button>
             </div>
             {{/if}}
@@ -310,16 +310,16 @@
         </div>
 
         <div class="sh-gm-edge__inspectCol" data-scope="influence">
-          <div class="sh-gm-edge__inspectLabel">Влияние</div>
+          <div class="sh-gm-edge__inspectLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.Influence"}}</div>
           <div class="sh-gm-edge__inspectValue" data-field="inspectInfluenceValue"></div>
 
-          <div class="sh-gm-edge__inspectJournal" aria-label="Журнал влияния">
+          <div class="sh-gm-edge__inspectJournal" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.InfluenceJournal"}}">
             <div class="sh-gm-edge__journalRow sh-gm-edge__journalRow--linked" data-scope="influenceJournalLinked" hidden>
               <button
                 type="button"
                 class="sh-gm-edge__journalLink"
                 data-action="open-inspect-influence-journal"
-                aria-label="Открыть журнал влияния"
+                aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Inspector.OpenInfluenceJournal"}}"
               ><i class="fa-solid fa-book-open" aria-hidden="true"></i><span data-field="inspectInfluenceJournalName"></span></button>
             </div>
           </div>

@@ -2,6 +2,14 @@
  * Global Map Biome Resolver
  * Determines biome ID based on moisture, temperature, and optionally height
  */
+function _t(key) {
+  return game?.i18n?.localize ? game.i18n.localize(key) : String(key);
+}
+
+function _f(key, data) {
+  return game?.i18n?.format ? game.i18n.format(key, data) : String(key);
+}
+
 export class BiomeResolver {
   constructor() {
     this.biomeMatrix = null;
@@ -153,13 +161,13 @@ export class BiomeResolver {
   getParametersFromBiomeId(biomeId) {
     if (!this.biomeParameters) {
       console.warn('BiomeResolver | Biome parameters not loaded');
-      return { moisture: 3, temperature: 3, name: 'Unknown' };
+      return { moisture: 3, temperature: 3, name: _t('SPACEHOLDER.GlobalMap.Common.Unknown') };
     }
 
     const params = this.biomeParameters[biomeId.toString()];
     if (!params) {
       console.warn(`BiomeResolver | No parameters found for biomeId ${biomeId}`);
-      return { moisture: 3, temperature: 3, name: 'Unknown' };
+      return { moisture: 3, temperature: 3, name: _t('SPACEHOLDER.GlobalMap.Common.Unknown') };
     }
 
     return params;
@@ -300,7 +308,7 @@ export class BiomeResolver {
     const params = this.biomeParameters?.[biomeId?.toString?.()];
     if (params?.name) return params.name;
 
-    return `Biome ${biomeId}`;
+    return _f('SPACEHOLDER.GlobalMap.Biomes.DefaultNameFallback', { id: biomeId });
   }
 
   /**

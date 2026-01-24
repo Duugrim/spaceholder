@@ -1,19 +1,19 @@
 <div id="global-map-biome-editor" class="sh-biome-editor">
   <div class="sh-biome-editor__header">
     <div>
-      <div class="sh-biome-editor__title">Редактор биомов (Global Map)</div>
+      <div class="sh-biome-editor__title">{{localize "SPACEHOLDER.GlobalMap.Biomes.EditorTitle"}}</div>
       {{#if filePath}}
         <div class="sh-biome-editor__meta">
-          Файл overrides: <code>{{filePath}}</code>
+          {{localize "SPACEHOLDER.GlobalMap.Biomes.OverridesFileLabel"}} <code>{{filePath}}</code>
         </div>
       {{/if}}
     </div>
 
     <div class="sh-biome-editor__actions">
-      <button type="button" data-action="add-biome" class="sh-biome-editor__btn sh-biome-editor__btnAdd">Новый биом</button>
-      <button type="button" data-action="reload" class="sh-biome-editor__btn">Перезагрузить</button>
-      <button type="button" data-action="reset-overrides" class="sh-biome-editor__btn sh-biome-editor__btnDanger">Сбросить overrides</button>
-      <button type="button" data-action="save" class="sh-biome-editor__btn sh-biome-editor__btnSave">Сохранить</button>
+      <button type="button" data-action="add-biome" class="sh-biome-editor__btn sh-biome-editor__btnAdd">{{localize "SPACEHOLDER.GlobalMap.Biomes.Actions.New"}}</button>
+      <button type="button" data-action="reload" class="sh-biome-editor__btn">{{localize "SPACEHOLDER.Actions.Refresh"}}</button>
+      <button type="button" data-action="reset-overrides" class="sh-biome-editor__btn sh-biome-editor__btnDanger">{{localize "SPACEHOLDER.GlobalMap.Biomes.Actions.ResetOverrides"}}</button>
+      <button type="button" data-action="save" class="sh-biome-editor__btn sh-biome-editor__btnSave">{{localize "SPACEHOLDER.Actions.Save"}}</button>
     </div>
   </div>
 
@@ -21,12 +21,12 @@
     <table class="sh-biome-editor__table">
       <thead>
         <tr>
-          <th class="sh-biome-editor__th sh-biome-editor__th--preview">Предпросмотр</th>
-          <th class="sh-biome-editor__th sh-biome-editor__th--id">ID</th>
-          <th class="sh-biome-editor__th sh-biome-editor__th--rank">Ранг</th>
-          <th class="sh-biome-editor__th sh-biome-editor__th--name">Название</th>
-          <th class="sh-biome-editor__th sh-biome-editor__th--link">Ссылка</th>
-          <th class="sh-biome-editor__th sh-biome-editor__th--actions" aria-label="Действия"></th>
+          <th class="sh-biome-editor__th sh-biome-editor__th--preview">{{localize "SPACEHOLDER.GlobalMap.Biomes.Columns.Preview"}}</th>
+          <th class="sh-biome-editor__th sh-biome-editor__th--id">{{localize "SPACEHOLDER.GlobalMap.Biomes.Columns.Id"}}</th>
+          <th class="sh-biome-editor__th sh-biome-editor__th--rank">{{localize "SPACEHOLDER.GlobalMap.Biomes.Columns.Rank"}}</th>
+          <th class="sh-biome-editor__th sh-biome-editor__th--name">{{localize "SPACEHOLDER.GlobalMap.Biomes.Columns.Name"}}</th>
+          <th class="sh-biome-editor__th sh-biome-editor__th--link">{{localize "SPACEHOLDER.GlobalMap.Biomes.Columns.Link"}}</th>
+          <th class="sh-biome-editor__th sh-biome-editor__th--actions" aria-label="{{localize "SPACEHOLDER.GlobalMap.Biomes.Columns.Actions"}}"></th>
         </tr>
       </thead>
 
@@ -72,15 +72,15 @@
                     class="icon-btn"
                     data-action="biome-link-clear"
                     data-biome-id="{{b.id}}"
-                    data-tooltip="Очистить"
-                    aria-label="Очистить"
+                    data-tooltip="{{localize "SPACEHOLDER.Actions.Clear"}}"
+                    aria-label="{{localize "SPACEHOLDER.Actions.Clear"}}"
                   ><i class="fa-solid fa-xmark"></i></button>
                 {{else}}
                   <input
                     type="text"
                     data-field="link"
                     value=""
-                    placeholder="Journal UUID"
+                    placeholder="{{localize "SPACEHOLDER.GlobalMap.Common.JournalUuid"}}"
                   />
                 {{/if}}
               </div>
@@ -93,8 +93,8 @@
                   class="icon-btn"
                   data-action="edit-biome"
                   data-biome-id="{{b.id}}"
-                  data-tooltip="Редактировать"
-                  aria-label="Редактировать"
+                  data-tooltip="{{localize "SPACEHOLDER.Actions.Edit"}}"
+                  aria-label="{{localize "SPACEHOLDER.Actions.Edit"}}"
                 ><i class="fa-solid fa-pen-to-square"></i></button>
 
                 <button
@@ -102,8 +102,8 @@
                   class="icon-btn danger"
                   data-action="delete-biome"
                   data-biome-id="{{b.id}}"
-                  data-tooltip="Удалить"
-                  aria-label="Удалить"
+                  data-tooltip="{{localize "SPACEHOLDER.Actions.Delete"}}"
+                  aria-label="{{localize "SPACEHOLDER.Actions.Delete"}}"
                 ><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>

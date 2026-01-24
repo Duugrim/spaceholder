@@ -3,6 +3,14 @@
  * Registers scene controls and dialogs for global map system
  */
 
+function _t(key) {
+  return game?.i18n?.localize ? game.i18n.localize(key) : String(key);
+}
+
+function _f(key, data) {
+  return game?.i18n?.format ? game.i18n.format(key, data) : String(key);
+}
+
 /**
  * Show dialog for importing map or creating flat map
  * TODO: перевести на DialogV2, когда решим проблемы с FilePicker в DialogV2.
@@ -11,15 +19,15 @@ export async function showGlobalMapImportDialog(processing, renderer) {
   const content = `
     <form>
       <div class="form-group">
-        <label>Карта высот (JSON из Azgaar's FMG)</label>
+        <label>${_t('SPACEHOLDER.GlobalMap.ImportDialog.Label')}</label>
         <div class="form-fields" style="display: flex; gap: 5px;">
-          <button type="button" class="file-picker" data-type="json" title="Выбрать файл" style="flex-shrink: 0;">
+          <button type="button" class="file-picker" data-type="json" title="${_t('SPACEHOLDER.GlobalMap.ImportDialog.ChooseFile')}" style="flex-shrink: 0;">
             <i class="fas fa-file-import fa-fw"></i>
           </button>
-          <input class="map-file-path" type="text" name="filePath" placeholder="Путь к JSON файлу" value="" style="flex-grow: 1;">
+          <input class="map-file-path" type="text" name="filePath" placeholder="${_t('SPACEHOLDER.GlobalMap.ImportDialog.FilePathPlaceholder')}" value="" style="flex-grow: 1;">
         </div>
         <p class="notes" style="margin-top: 5px; font-size: 12px;">
-          Выберите JSON файл из Azgaar's Fantasy Map Generator или оставьте пустым для создания плоской карты (высота = 20).
+          ${_t('SPACEHOLDER.GlobalMap.ImportDialog.Note')}
         </p>
       </div>
     </form>
@@ -28,17 +36,17 @@ export async function showGlobalMapImportDialog(processing, renderer) {
   return new Promise((resolve) => {
     const dialog = new Dialog(
       {
-        title: 'Импорт глобальной карты',
+        title: _t('SPACEHOLDER.GlobalMap.ImportDialog.Title'),
         content: content,
         buttons: {
           import: {
             icon: '<i class="fas fa-check"></i>',
-            label: 'Создать',
+            label: _t('SPACEHOLDER.Actions.Create'),
             callback: async (html) => {
               const filePath = html.find('input[name="filePath"]').val()?.trim() || '';
 
               try {
-                ui.notifications.info('Обработка карты...');
+                ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.ProcessingMap'));
 
                 let result;
                 if (filePath && filePath.length > 0) {
@@ -46,7 +54,7 @@ export async function showGlobalMapImportDialog(processing, renderer) {
                   console.log('GlobalMapUI | Importing from:', filePath);
                   const response = await fetch(filePath);
                   if (!response.ok) {
-                    throw new Error(`Failed to fetch: ${response.statusText}`);
+                    throw new Error(_f('SPACEHOLDER.GlobalMap.Errors.FetchFailed', { statusText: response.statusText }));
                   }
                   const rawData = await response.json();
                   result = await processing.processPackCellsToGrid(rawData, canvas.scene);
@@ -59,18 +67,18 @@ export async function showGlobalMapImportDialog(processing, renderer) {
                 // Render the grid
                 await renderer.render(result.gridData, result.metadata, { mode: 'heights' });
 
-                ui.notifications.info('Карта создана успешно');
+                ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.MapCreated'));
                 resolve(true);
               } catch (error) {
                 console.error('GlobalMapUI | Error:', error);
-                ui.notifications.error(`Ошибка: ${error.message}`);
+                ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.ErrorWithMessage', { message: error.message }));
                 resolve(false);
               }
             },
           },
           cancel: {
             icon: '<i class="fas fa-times"></i>',
-            label: 'Отмена',
+            label: _t('SPACEHOLDER.Actions.Cancel'),
             callback: () => resolve(false),
           },
         },
@@ -141,48 +149,50 @@ export async function showGlobalMapBakeDialog() {
 
   const scaleOptionsHtml = scaleOptions.map((v) => {
     const isMax = maxSafeScaleRounded && Math.abs(v - maxSafeScaleRounded) < 0.01;
-    const label = isMax ? `Максимум (${v}×)` : `${v}×`;
+    const label = isMax
+      ? _f('SPACEHOLDER.GlobalMap.BakeDialog.Scale.OptionMax', { scale: v })
+      : _f('SPACEHOLDER.GlobalMap.BakeDialog.Scale.Option', { scale: v });
     const selected = Math.abs(v - defaultScale) < 0.01 ? 'selected' : '';
     return `<option value="${v}" ${selected}>${label}</option>`;
   }).join('');
 
   const maxInfo = (maxSize && maxSafeScaleRounded)
-    ? `<p class="notes">Максимум на этой видеокарте: <b>${maxSafeScaleRounded}×</b> (лимит текстуры: ${maxSize}px).</p>`
+    ? `<p class="notes">${_f('SPACEHOLDER.GlobalMap.BakeDialog.MaxInfo', { scale: maxSafeScaleRounded, maxSize })}</p>`
     : '';
 
   const content = `
     <form>
       <div class="form-group">
-        <label>Разрешение (множитель)</label>
+        <label>${_t('SPACEHOLDER.GlobalMap.BakeDialog.Fields.Scale')}</label>
         <div class="form-fields">
           <select name="scale">
             ${scaleOptionsHtml}
           </select>
         </div>
         <p class="notes">
-          При множителе &gt; 1 фон будет автоматически уменьшен (scale) так, чтобы совпасть с размерами сцены.
+          ${_t('SPACEHOLDER.GlobalMap.BakeDialog.Notes.ScaleDown')}
         </p>
         ${maxInfo}
       </div>
 
       <div class="form-group">
-        <label>Формат</label>
+        <label>${_t('SPACEHOLDER.GlobalMap.BakeDialog.Fields.Format')}</label>
         <div class="form-fields">
           <select name="mimeType">
-            <option value="image/webp" selected>WebP (меньше размер)</option>
-            <option value="image/png">PNG (без потерь, но больше размер)</option>
+            <option value="image/webp" selected>${_t('SPACEHOLDER.GlobalMap.BakeDialog.Format.Webp')}</option>
+            <option value="image/png">${_t('SPACEHOLDER.GlobalMap.BakeDialog.Format.Png')}</option>
           </select>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Качество WebP</label>
+        <label>${_t('SPACEHOLDER.GlobalMap.BakeDialog.Fields.Quality')}</label>
         <div class="form-fields">
           <input type="range" name="quality" min="0.70" max="1.00" step="0.01" value="0.92" style="flex: 1;">
           <span class="global-map-webp-quality" style="min-width: 3em; text-align: right;">0.92</span>
         </div>
         <p class="notes">
-          PNG игнорирует этот параметр.
+          ${_t('SPACEHOLDER.GlobalMap.BakeDialog.Notes.PngIgnoresQuality')}
         </p>
       </div>
     </form>
@@ -191,12 +201,12 @@ export async function showGlobalMapBakeDialog() {
   return new Promise((resolve) => {
     const dialog = new Dialog(
       {
-        title: 'Запечь карту в фон сцены',
+        title: _t('SPACEHOLDER.GlobalMap.BakeDialog.Title'),
         content,
         buttons: {
           bake: {
             icon: '<i class="fas fa-check"></i>',
-            label: 'Запечь',
+            label: _t('SPACEHOLDER.Actions.Bake'),
             callback: (html) => {
               const scaleRaw = html.find('select[name="scale"]').val();
               const mimeTypeRaw = html.find('select[name="mimeType"]').val();
@@ -211,7 +221,7 @@ export async function showGlobalMapBakeDialog() {
           },
           cancel: {
             icon: '<i class="fas fa-times"></i>',
-            label: 'Отмена',
+            label: _t('SPACEHOLDER.Actions.Cancel'),
             callback: () => resolve(null),
           },
         },
@@ -253,12 +263,12 @@ export async function showGlobalMapBakeDialog() {
  */
 export async function bakeGlobalMapToSceneBackground(globalMapRenderer, scene) {
   if (!scene) {
-    ui.notifications?.warn?.('Нет активной сцены');
+    ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoActiveScene'));
     return false;
   }
 
   if (!globalMapRenderer?.currentGrid) {
-    ui.notifications?.warn?.('Нет загруженной карты');
+    ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
     return false;
   }
 
@@ -268,7 +278,7 @@ export async function bakeGlobalMapToSceneBackground(globalMapRenderer, scene) {
   }
 
   try {
-    ui.notifications?.info?.('Экспорт карты в изображение...');
+    ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.ExportingMap'));
 
     const requestedScale = bakeOptions.scale;
     const { blob, width, height, scale: actualScale, maxSize } = await globalMapRenderer.exportToBlob({
@@ -279,8 +289,8 @@ export async function bakeGlobalMapToSceneBackground(globalMapRenderer, scene) {
     });
 
     if (Math.abs(actualScale - requestedScale) > 0.01) {
-      const maxInfo = maxSize ? ` (лимит текстуры: ${maxSize}px)` : '';
-      ui.notifications?.warn?.(`Масштаб ограничен до ${actualScale.toFixed(2)}×${maxInfo}`);
+      const maxInfo = maxSize ? _f('SPACEHOLDER.GlobalMap.Warnings.TextureLimit', { maxSize }) : '';
+      ui.notifications?.warn?.(_f('SPACEHOLDER.GlobalMap.Warnings.ScaleLimited', { scale: actualScale.toFixed(2), maxInfo }));
     }
 
     const sceneSlug = scene.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -306,7 +316,7 @@ export async function bakeGlobalMapToSceneBackground(globalMapRenderer, scene) {
     );
 
     if (!response?.path) {
-      throw new Error('Upload failed');
+      throw new Error(_t('SPACEHOLDER.GlobalMap.Errors.UploadFailed'));
     }
 
     // If the export is higher resolution, scale background down to keep scene size consistent.
@@ -348,11 +358,11 @@ export async function bakeGlobalMapToSceneBackground(globalMapRenderer, scene) {
       }
     }
 
-    ui.notifications?.info?.('Фон сцены обновлён');
+    ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.SceneBackgroundUpdated'));
     return true;
   } catch (error) {
     console.error('GlobalMapUI | Bake failed:', error);
-    ui.notifications?.error?.(`Не удалось запечь фон: ${error.message}`);
+    ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.BakeFailed', { message: error.message }));
     return false;
   }
 }
@@ -397,16 +407,17 @@ export function registerGlobalMapUI(controls, spaceholder) {
     return false;
   })();
 
-  const requireGMOrAssistant = (action = 'использовать этот инструмент') => {
+  const requireGMOrAssistant = (actionKey = 'SPACEHOLDER.GlobalMap.Permissions.Actions.UseTool') => {
     if (canManageGlobalMap) return true;
-    ui.notifications?.warn?.(`Только ГМ или ассистент ГМа может ${action}`);
+    const action = _t(actionKey);
+    ui.notifications?.warn?.(_f('SPACEHOLDER.GlobalMap.Permissions.GMOrAssistantOnly', { action }));
     return false;
   };
 
   // Create Global Map control group
   controls.globalmap = {
     name: 'globalmap',
-    title: 'Global Map',
+    title: _t('SPACEHOLDER.GlobalMap.Title'),
     icon: 'fas fa-globe',
     layer: 'globalmap',
     visible: true,
@@ -415,7 +426,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
     tools: {
       'inspect-map': {
         name: 'inspect-map',
-        title: 'Просмотр карты',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.InspectMap'),
         icon: 'fas fa-eye',
         onChange: (isActive) => {
           if (isActive && spaceholder.globalMapRenderer?.currentGrid) {
@@ -428,7 +439,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'inspect-cell': {
         name: 'inspect-cell',
-        title: 'Инспектировать клетку',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.InspectCell'),
         icon: 'fas fa-search',
         onChange: (isActive) => {
           if (isActive) {
@@ -443,10 +454,10 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'import-map': {
         name: 'import-map',
-        title: 'Импортировать карту',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.ImportMap'),
         icon: 'fas fa-download',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('импортировать карту')) return;
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.ImportMap')) return;
 
           await showGlobalMapImportDialog(
             spaceholder.globalMapProcessing,
@@ -459,19 +470,19 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'create-test-grid': {
         name: 'create-test-grid',
-        title: 'Создать тестовую сетку биомов',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.CreateTestGrid'),
         icon: 'fas fa-th',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('создавать тестовую сетку')) return;
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.CreateTestGrid')) return;
 
           try {
-            ui.notifications.info('Создание тестовой карты биомов...');
+            ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.CreatingBiomeTestGrid'));
             const result = spaceholder.globalMapProcessing.createBiomeTestGrid(canvas.scene);
             await spaceholder.globalMapRenderer.render(result.gridData, result.metadata, { mode: 'heights' });
-            ui.notifications.info('Тестовая карта создана (биомы из реестра)');
+            ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.TestGridCreated'));
           } catch (error) {
             console.error('GlobalMapUI | Error creating test grid:', error);
-            ui.notifications.error(`Ошибка: ${error.message}`);
+            ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.ErrorWithMessage', { message: error.message }));
           }
         },
         button: true,
@@ -480,7 +491,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'toggle-map': {
         name: 'toggle-map',
-        title: 'Переключить видимость',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.ToggleVisibility'),
         icon: 'fas fa-eye-slash',
         onChange: (isActive) => {
           spaceholder.globalMapRenderer?.toggle();
@@ -491,10 +502,10 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'save-map': {
         name: 'save-map',
-        title: 'Сохранить в файл',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.SaveToFile'),
         icon: 'fas fa-save',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('сохранять карту')) return;
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.SaveMap')) return;
 
           const scene = canvas?.scene;
           const renderer = spaceholder.globalMapRenderer;
@@ -504,7 +515,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           if (!scene || !renderer || !processing) return;
 
           if (!renderer.currentGrid) {
-            ui.notifications.warn('Нет карты для сохранения');
+            ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoMapToSave'));
             return;
           }
 
@@ -527,7 +538,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           const errors = [];
 
           const okGrid = await processing.saveGridToFile(scene);
-          if (!okGrid) errors.push('карта');
+          if (!okGrid) errors.push(_t('SPACEHOLDER.GlobalMap.Save.Parts.Map'));
 
           const saveFlagSafe = async (key, value) => {
             if (!scene?.setFlag) return false;
@@ -544,8 +555,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
           const okRivers = await saveFlagSafe('globalMapRivers', renderer.vectorRiversData);
           const okRegions = await saveFlagSafe('globalMapRegions', renderer.vectorRegionsData);
 
-          if (!okRivers) errors.push('реки');
-          if (!okRegions) errors.push('регионы');
+          if (!okRivers) errors.push(_t('SPACEHOLDER.GlobalMap.Save.Parts.Rivers'));
+          if (!okRegions) errors.push(_t('SPACEHOLDER.GlobalMap.Save.Parts.Regions'));
 
           // Keep tools UI indicators in sync (if open)
           try {
@@ -560,7 +571,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           }
 
           if (errors.length) {
-            ui.notifications?.error?.(`Не удалось сохранить: ${errors.join(', ')}`);
+            ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.FailedToSave', { what: errors.join(', ') }));
           }
         },
         button: true,
@@ -569,7 +580,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'load-map': {
         name: 'load-map',
-        title: 'Загрузить из файла',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.LoadFromFile'),
         icon: 'fas fa-upload',
         onChange: async (isActive) => {
           const scene = canvas?.scene;
@@ -605,7 +616,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           const loaded = await processing.loadGridFromFile(scene);
           if (loaded && loaded.gridData) {
             await renderer.render(loaded.gridData, loaded.metadata, { mode: 'heights' });
-            ui.notifications.info('Карта загружена из файла');
+            ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.MapLoadedFromFile'));
           } else {
             // Grid file missing; still try to re-render reloaded vector overlays on top of current map.
             try {
@@ -617,7 +628,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
               // ignore
             }
 
-            ui.notifications.warn('Файл карты не найден');
+            ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Warnings.MapFileNotFound'));
           }
         },
         button: true,
@@ -626,113 +637,11 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'bake-map-background': {
         name: 'bake-map-background',
-        title: 'Запечь в фон сцены',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.BakeToBackground'),
         icon: 'fas fa-file-image',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('менять фон сцены')) return;
-
-          const scene = canvas.scene;
-          if (!scene) {
-            ui.notifications.warn('Нет активной сцены');
-            return;
-          }
-
-          if (!spaceholder.globalMapRenderer?.currentGrid) {
-            ui.notifications.warn('Нет загруженной карты');
-            return;
-          }
-
-          const bakeOptions = await showGlobalMapBakeDialog();
-          if (!bakeOptions) {
-            return;
-          }
-
-          try {
-            ui.notifications.info('Экспорт карты в изображение...');
-
-            const requestedScale = bakeOptions.scale;
-            const { blob, width, height, scale: actualScale, maxSize } = await spaceholder.globalMapRenderer.exportToBlob({
-              mimeType: bakeOptions.mimeType,
-              quality: bakeOptions.quality,
-              scale: requestedScale,
-              allowDownscale: true,
-            });
-
-            if (Math.abs(actualScale - requestedScale) > 0.01) {
-              const maxInfo = maxSize ? ` (лимит текстуры: ${maxSize}px)` : '';
-              ui.notifications.warn(`Масштаб ограничен до ${actualScale.toFixed(2)}×${maxInfo}`);
-            }
-
-            const sceneSlug = scene.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const ext = bakeOptions.mimeType === 'image/png' ? 'png' : 'webp';
-            const fileName = `${sceneSlug}_${scene.id}_globalmap_${timestamp}_${actualScale.toFixed(2)}x.${ext}`;
-
-            const directory = `worlds/${game.world.id}/global-maps/renders`;
-
-            // Create directory if needed
-            try {
-              await foundry.applications.apps.FilePicker.implementation.createDirectory('data', directory, {});
-            } catch (err) {
-              // Directory might already exist
-            }
-
-            const file = new File([blob], fileName, { type: blob.type });
-            const response = await foundry.applications.apps.FilePicker.implementation.upload(
-              'data',
-              directory,
-              file,
-              {}
-            );
-
-            if (!response?.path) {
-              throw new Error('Upload failed');
-            }
-
-            // If the export is higher resolution, scale background down to keep scene size consistent.
-            const backgroundScale = 1 / Math.max(0.1, Number(actualScale) || 1);
-
-            // Store for reference
-            await scene.setFlag('spaceholder', 'globalMapBackground', {
-              src: response.path,
-              width,
-              height,
-              mimeType: blob.type,
-              exportScaleRequested: bakeOptions.scale,
-              exportScaleUsed: actualScale,
-              backgroundScale,
-              updatedAt: new Date().toISOString(),
-            });
-
-            // Apply as scene background (Foundry v11+)
-            try {
-              await scene.update({
-                'background.src': response.path,
-                'background.scaleX': backgroundScale,
-                'background.scaleY': backgroundScale,
-              });
-            } catch (e1) {
-              // Some Foundry versions prefer nested object updates
-              try {
-                console.warn('GlobalMapUI | Failed to set background.* paths, trying background object update:', e1);
-                await scene.update({
-                  background: {
-                    src: response.path,
-                    scaleX: backgroundScale,
-                    scaleY: backgroundScale,
-                  },
-                });
-              } catch (e2) {
-                console.warn('GlobalMapUI | Failed to set background via background object, falling back to img:', e2);
-                await scene.update({ img: response.path });
-              }
-            }
-
-            ui.notifications.info('Фон сцены обновлён');
-          } catch (error) {
-            console.error('GlobalMapUI | Bake failed:', error);
-            ui.notifications.error(`Не удалось запечь фон: ${error.message}`);
-          }
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.BakeBackground')) return;
+          await bakeGlobalMapToSceneBackground(spaceholder.globalMapRenderer, canvas?.scene);
         },
         button: true,
         visible: canManageGlobalMap,
@@ -740,13 +649,13 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'edit-map': {
         name: 'edit-map',
-        title: 'Редактировать карту',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.EditMap'),
         icon: 'fas fa-pencil',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('редактировать карту')) return;
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.EditMap')) return;
 
           if (!spaceholder.globalMapRenderer?.currentGrid) {
-            ui.notifications.warn('Сначала импортируйте карту');
+            ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Warnings.ImportMapFirst'));
             return;
           }
 
@@ -762,19 +671,19 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'clear-map': {
         name: 'clear-map',
-        title: 'Очистить карту',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.ClearMap'),
         icon: 'fas fa-trash',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('очищать карту')) return;
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.ClearMap')) return;
 
           if (!spaceholder.globalMapRenderer?.currentGrid) {
-            ui.notifications.warn('Нет загруженной карты');
+            ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
             return;
           }
 
           const confirmed = await Dialog.confirm({
-            title: 'Очистить карту?',
-            content: '<p>Это удалит загруженную карту. Продолжить?</p>',
+            title: _t('SPACEHOLDER.GlobalMap.Confirm.ClearMap.Title'),
+            content: `<p>${_t('SPACEHOLDER.GlobalMap.Confirm.ClearMap.Content')}</p>`,
             yes: () => true,
             no: () => false,
           });
@@ -782,7 +691,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
           if (confirmed) {
             spaceholder.globalMapProcessing.clear();
             spaceholder.globalMapRenderer.clear();
-            ui.notifications.info('Карта очищена');
+            ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.MapCleared'));
           }
         },
         button: true,
@@ -791,30 +700,32 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'toggle-biomes-mode': {
         name: 'toggle-biomes-mode',
-        title: 'Режим биомов',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.ToggleBiomesMode'),
         icon: 'fas fa-seedling',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('переключать режим биомов')) return;
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.ToggleBiomesMode')) return;
 
           if (!spaceholder.globalMapRenderer?.currentGrid) {
-            ui.notifications.warn('Нет загруженной карты');
+            ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
             return;
           }
 
           const modes = ['fancy', 'fancyDebug', 'cells', 'off'];
-          const modeNames = {
-            'fancy': 'Красивые',
-            'fancyDebug': 'Красивые + отладка',
-            'cells': 'Сетка',
-            'off': 'Выключено'
+          const modeNameKeys = {
+            fancy: 'SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Fancy',
+            fancyDebug: 'SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Debug',
+            cells: 'SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Cells',
+            off: 'SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off',
           };
-          
+
           const currentMode = spaceholder.globalMapRenderer.biomesMode;
           const currentIndex = modes.indexOf(currentMode);
           const newMode = modes[(currentIndex + 1) % modes.length];
-          
+
           spaceholder.globalMapRenderer.setBiomesMode(newMode);
-          ui.notifications.info(`Биомы: ${modeNames[newMode]}`);
+
+          const modeLabel = modeNameKeys[newMode] ? _t(modeNameKeys[newMode]) : String(newMode);
+          ui.notifications?.info?.(_f('SPACEHOLDER.GlobalMap.Notifications.BiomesModeSet', { mode: modeLabel }));
         },
         button: true,
         visible: canManageGlobalMap,
@@ -822,30 +733,32 @@ export function registerGlobalMapUI(controls, spaceholder) {
 
       'toggle-heights-mode': {
         name: 'toggle-heights-mode',
-        title: 'Режим высот',
+        title: _t('SPACEHOLDER.GlobalMap.Controls.ToggleHeightsMode'),
         icon: 'fas fa-mountain',
         onChange: async (isActive) => {
-          if (!requireGMOrAssistant('переключать режим высот')) return;
+          if (!requireGMOrAssistant('SPACEHOLDER.GlobalMap.Permissions.Actions.ToggleHeightsMode')) return;
 
           if (!spaceholder.globalMapRenderer?.currentGrid) {
-            ui.notifications.warn('Нет загруженной карты');
+            ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
             return;
           }
 
           const modes = ['contours-bw', 'contours', 'cells', 'off'];
-          const modeNames = {
-            'contours-bw': 'Чёрные контуры',
-            'contours': 'Цветные контуры',
-            'cells': 'Цветная сетка',
-            'off': 'Выключено'
+          const modeNameKeys = {
+            'contours-bw': 'SPACEHOLDER.GlobalMap.Edge.Modes.Heights.BW',
+            contours: 'SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Contours',
+            cells: 'SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Cells',
+            off: 'SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off',
           };
-          
+
           const currentMode = spaceholder.globalMapRenderer.heightsMode;
           const currentIndex = modes.indexOf(currentMode);
           const newMode = modes[(currentIndex + 1) % modes.length];
-          
+
           spaceholder.globalMapRenderer.setHeightsMode(newMode);
-          ui.notifications.info(`Высоты: ${modeNames[newMode]}`);
+
+          const modeLabel = modeNameKeys[newMode] ? _t(modeNameKeys[newMode]) : String(newMode);
+          ui.notifications?.info?.(_f('SPACEHOLDER.GlobalMap.Notifications.HeightsModeSet', { mode: modeLabel }));
         },
         button: true,
         visible: canManageGlobalMap,

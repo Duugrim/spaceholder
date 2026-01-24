@@ -1,18 +1,18 @@
 <div class="inventory-panel">
   <div class="rimworld-header">
     <i class="fas fa-backpack"></i>
-    Инвентарь
+    {{localize 'SPACEHOLDER.Tabs.Inventory'}}
   </div>
 
   <div class="inventory-stats">
     <div class="inventory-stat">
       <i class="fas fa-weight-hanging"></i>
-      <span class="stat-label">Общий вес:</span>
-      <span class="stat-value">{{totalWeight}} кг</span>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalWeight'}}</span>
+      <span class="stat-value">{{totalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
     </div>
     <div class="inventory-stat">
       <i class="fas fa-boxes"></i>
-      <span class="stat-label">Предметов:</span>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalItems'}}</span>
       <span class="stat-value">{{totalItems}}</span>
     </div>
   </div>
@@ -21,11 +21,11 @@
     <button
       type="button"
       class="item-create-btn"
-      title="Создать предмет"
+      title="{{localize 'SPACEHOLDER.Inventory.CreateItem'}}"
       data-type="item"
     >
       <i class="fas fa-plus"></i>
-      <span class="btn-text">Новый предмет</span>
+      <span class="btn-text">{{localize 'SPACEHOLDER.Inventory.NewItem'}}</span>
     </button>
   </div>
 
@@ -50,10 +50,10 @@
             {{/if}}
             <div class='item-details'>
               {{#if item.system.quantity}}
-                <span class='item-quantity'>Кол-во: {{item.system.quantity}}</span>
+                <span class='item-quantity'>{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{item.system.quantity}}</span>
               {{/if}}
               {{#if item.system.weight}}
-                <span class='item-weight'>Общий вес: {{numberFormat (multiply item.system.weight item.system.quantity) decimals=2}} кг</span>
+                <span class='item-weight'>{{localize 'SPACEHOLDER.Inventory.ItemTotalWeight'}} {{numberFormat (multiply item.system.weight item.system.quantity) decimals=2}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
               {{/if}}
             </div>
           </div>
@@ -62,7 +62,7 @@
           <button
             type="button"
             class='icon-btn item-edit'
-            title='Редактировать предмет'
+            title='{{localize "SPACEHOLDER.Inventory.EditItem"}}'
             data-item-id='{{item._id}}'
           >
             <i class='fas fa-edit'></i>
@@ -70,7 +70,7 @@
           <button
             type="button"
             class='icon-btn item-delete'
-            title='Удалить предмет'
+            title='{{localize "SPACEHOLDER.Inventory.DeleteItem"}}'
             data-item-id='{{item._id}}'
           >
             <i class='fas fa-trash'></i>
@@ -81,7 +81,7 @@
     {{#unless gear.length}}
       <div class='empty-inventory'>
         <i class='fas fa-box-open'></i>
-        <p><em>Инвентарь пуст. Добавьте новый предмет, нажав кнопку "Новый предмет" выше.</em></p>
+        <p><em>{{localize 'SPACEHOLDER.Inventory.Empty'}}</em></p>
       </div>
     {{/unless}}
   </div>

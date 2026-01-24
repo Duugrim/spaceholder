@@ -4,7 +4,7 @@
   <header class="sheet-header">
     <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
     <div class="header-fields">
-      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Name"/></h1>
+      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
 
       {{!-- Кнопки актора/токена (в хедере) --}}
       <div class="actor-buttons">
@@ -27,12 +27,12 @@
             <span class="btn-text">Задать имя токену</span>
           </button>
 
-          <label class="token-vision-toggle" data-tooltip="Vision Enabled">
+          <label class="token-vision-toggle" data-tooltip="{{localize 'SPACEHOLDER.Token.VisionEnabled'}}">
             <input type="checkbox" data-action="token-sight-enabled" {{#if tokenSightEnabled}}checked{{/if}} {{#unless canEditTokenControls}}disabled{{/unless}}/>
             <span>Зрение</span>
           </label>
 
-          <div class="token-vision-range" data-tooltip="Vision Range">
+          <div class="token-vision-range" data-tooltip="{{localize 'SPACEHOLDER.Token.VisionRange'}}">
             <input
               class="token-vision-range-input"
               type="number"

@@ -2,17 +2,25 @@
 // Stores overrides as JSON in: worlds/<worldId>/global-maps/biome-overrides.json
 
 const PATTERN_TYPES = [
-  { value: '', label: '(без паттерна)' },
-  { value: 'diagonal', label: 'Диагональные линии' },
-  { value: 'crosshatch', label: 'Штриховка (крест-накрест)' },
-  { value: 'vertical', label: 'Вертикальные линии' },
-  { value: 'horizontal', label: 'Горизонтальные линии' },
-  { value: 'dots', label: 'Точки' },
-  { value: 'circles', label: 'Круги' },
-  { value: 'waves', label: 'Волны' },
-  { value: 'hexagons', label: 'Шестиугольники' },
-  { value: 'spots', label: 'Пятна' },
+  { value: '', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.None' },
+  { value: 'diagonal', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Diagonal' },
+  { value: 'crosshatch', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Crosshatch' },
+  { value: 'vertical', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Vertical' },
+  { value: 'horizontal', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Horizontal' },
+  { value: 'dots', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Dots' },
+  { value: 'circles', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Circles' },
+  { value: 'waves', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Waves' },
+  { value: 'hexagons', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Hexagons' },
+  { value: 'spots', labelKey: 'SPACEHOLDER.GlobalMap.Biomes.PatternTypes.Spots' },
 ];
+
+function _t(key) {
+  return game?.i18n?.localize ? game.i18n.localize(key) : String(key);
+}
+
+function _f(key, data) {
+  return game?.i18n?.format ? game.i18n.format(key, data) : String(key);
+}
 
 function clamp01(n, fallback = 0) {
   const v = Number(n);
@@ -166,7 +174,7 @@ async function confirmDialog({ title, content, yesLabel, yesIcon, noLabel, noIco
           window: { title, icon: yesIcon || 'fa-solid fa-question' },
           content,
           yes: {
-            label: yesLabel ?? 'Да',
+            label: yesLabel ?? _t('DIALOG.Yes'),
             icon: yesIcon ?? 'fa-solid fa-check',
             callback: () => {
               settle(true);
@@ -174,7 +182,7 @@ async function confirmDialog({ title, content, yesLabel, yesIcon, noLabel, noIco
             },
           },
           no: {
-            label: noLabel ?? 'Нет',
+            label: noLabel ?? _t('DIALOG.No'),
             icon: noIcon ?? 'fa-solid fa-times',
             callback: () => {
               settle(false);
@@ -215,7 +223,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     id: 'spaceholder-globalmap-biome-editor',
     classes: ['spaceholder', 'globalmap-biome-editor'],
     tag: 'div',
-    window: { title: 'Биомы (Global Map)', resizable: true },
+    window: { title: _t('SPACEHOLDER.GlobalMap.Biomes.WindowTitle'), resizable: true },
     position: { width: 860, height: 720 },
   };
 
@@ -225,6 +233,11 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
   constructor({ biomeResolver, onSaved } = {}) {
     super();
+    try {
+      this.options.window.title = _t('SPACEHOLDER.GlobalMap.Biomes.WindowTitle');
+    } catch (e) {
+      // ignore
+    }
     this.biomeResolver = biomeResolver;
     this.onSaved = typeof onSaved === 'function' ? onSaved : null;
 
@@ -271,7 +284,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
         id,
         enabled: b?.enabled !== false,
         link,
-        name: String(b.name ?? `Biome ${id}`),
+        name: String(b.name ?? _f('SPACEHOLDER.GlobalMap.Biomes.DefaultNameFallback', { id })),
         renderRank: Number.isFinite(b.renderRank) ? b.renderRank : 0,
         color,
         pattern: {
@@ -384,7 +397,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     const ok = await openJournalUuid(uuid);
     if (!ok) {
-      ui.notifications?.warn?.('Документ по ссылке не найден');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DocNotFoundByUuid'));
     }
   }
 
@@ -413,7 +426,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     const uuid = extractUuidFromDropEvent(event);
     if (!uuid) {
-      ui.notifications?.warn?.('Не удалось извлечь UUID из перетаскивания');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DropUuidNotFound'));
       return;
     }
 
@@ -425,12 +438,12 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     }
 
     if (!doc) {
-      ui.notifications?.warn?.('Документ по UUID не найден');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DocNotFoundByUuid'));
       return;
     }
 
     if (!['JournalEntry', 'JournalEntryPage'].includes(doc.documentName)) {
-      ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.ExpectedJournalDoc'));
       return;
     }
 
@@ -475,11 +488,14 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     if (!biome) return;
 
     const ok = await confirmDialog({
-      title: 'Удалить биом?',
-      content: `<p>Удалить биом <b>${foundry.utils.escapeHTML(String(biome.name ?? ''))}</b> (ID: <b>${id}</b>)?</p>`,
-      yesLabel: 'Удалить',
+      title: _t('SPACEHOLDER.GlobalMap.Biomes.Confirm.DeleteTitle'),
+      content: _f('SPACEHOLDER.GlobalMap.Biomes.Confirm.DeleteContent', {
+        name: foundry.utils.escapeHTML(String(biome.name ?? '')),
+        id,
+      }),
+      yesLabel: _t('SPACEHOLDER.Actions.Delete'),
       yesIcon: 'fa-solid fa-trash',
-      noLabel: 'Отмена',
+      noLabel: _t('SPACEHOLDER.Actions.Cancel'),
       noIcon: 'fa-solid fa-times',
     });
 
@@ -697,7 +713,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     const id = this._getNextFreeIdLocal();
     if (id === null) {
-      ui.notifications?.warn?.('Достигнут лимит: больше нет свободных ID (0..255)');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Biomes.Errors.IdLimitReached'));
       return;
     }
 
@@ -708,7 +724,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       id,
       enabled: true,
       link: '',
-      name: `Новый биом ${id}`,
+      name: _f('SPACEHOLDER.GlobalMap.Biomes.DefaultNewName', { id }),
       renderRank: maxRank + 10,
       color: '#808080',
       pattern: {
@@ -856,7 +872,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     const display = row.querySelector('[data-display="pattern.patternColor"]');
     if (display) {
-      display.textContent = raw ? raw : '(авто)';
+      display.textContent = raw ? raw : _t('SPACEHOLDER.GlobalMap.Biomes.Auto');
     }
 
     const colorInput = row.querySelector('input[type="color"][data-field="pattern.patternColor"]');
@@ -979,7 +995,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     event?.preventDefault?.();
 
     if (!this.biomeResolver?.saveOverridesToWorldFile) {
-      ui.notifications?.error?.('BiomeResolver не поддерживает сохранение overrides');
+      ui.notifications?.error?.(_t('SPACEHOLDER.GlobalMap.Errors.BiomeResolverOverridesNotSupported'));
       return;
     }
 
@@ -987,7 +1003,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       const payload = this._buildOverridesPayload();
       await this.biomeResolver.saveOverridesToWorldFile(payload);
 
-      ui.notifications?.info?.('Биомы сохранены (biome-overrides.json)');
+      ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Biomes.Notifications.Saved'));
 
       await this._reloadAllResolvers();
 
@@ -1000,7 +1016,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       await this.render(true);
     } catch (e) {
       console.error('GlobalMapBiomeEditorApp | Save failed:', e);
-      ui.notifications?.error?.(`Не удалось сохранить биомы: ${e.message}`);
+      ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Biomes.Errors.SaveFailed', { message: e.message }));
     }
   }
 
@@ -1014,11 +1030,11 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     event?.preventDefault?.();
 
     const ok = await confirmDialog({
-      title: 'Сбросить biome-overrides.json?',
-      content: '<p>Это очистит файл overrides и вернёт стандартные биомы (после перезагрузки списка).</p>',
-      yesLabel: 'Сбросить',
+      title: _t('SPACEHOLDER.GlobalMap.Biomes.Confirm.ResetOverridesTitle'),
+      content: _t('SPACEHOLDER.GlobalMap.Biomes.Confirm.ResetOverridesContent'),
+      yesLabel: _t('SPACEHOLDER.GlobalMap.Biomes.Actions.ResetOverrides'),
       yesIcon: 'fa-solid fa-trash',
-      noLabel: 'Отмена',
+      noLabel: _t('SPACEHOLDER.Actions.Cancel'),
       noIcon: 'fa-solid fa-times',
     });
 
@@ -1026,7 +1042,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
 
     try {
       await this.biomeResolver.saveOverridesToWorldFile({ version: 2, biomes: [] });
-      ui.notifications?.info?.('Overrides очищены');
+      ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Biomes.Notifications.OverridesCleared'));
 
       await this._reloadAllResolvers();
 
@@ -1034,7 +1050,7 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
       await this.render(true);
     } catch (e) {
       console.error('GlobalMapBiomeEditorApp | Reset failed:', e);
-      ui.notifications?.error?.(`Не удалось очистить overrides: ${e.message}`);
+      ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Biomes.Errors.ResetOverridesFailed', { message: e.message }));
     }
   }
 }
@@ -1047,7 +1063,7 @@ class GlobalMapBiomeEditApp extends foundry.applications.api.HandlebarsApplicati
     id: 'spaceholder-globalmap-biome-edit',
     classes: ['spaceholder', 'globalmap-biome-edit'],
     tag: 'div',
-    window: { title: 'Биом', resizable: true },
+    window: { title: _t('SPACEHOLDER.GlobalMap.Biomes.EditWindowTitle'), resizable: true },
     position: { width: 760, height: 620 },
   };
 
@@ -1058,10 +1074,18 @@ class GlobalMapBiomeEditApp extends foundry.applications.api.HandlebarsApplicati
   constructor({ biome, onApply } = {}) {
     const id = Number(biome?.id);
     const appOptions = Number.isFinite(id)
-      ? { id: `spaceholder-globalmap-biome-edit-${id}`, window: { title: `Биом ${id}` } }
+      ? { id: `spaceholder-globalmap-biome-edit-${id}` }
       : {};
 
     super(appOptions);
+
+    try {
+      this.options.window.title = Number.isFinite(id)
+        ? _f('SPACEHOLDER.GlobalMap.Biomes.EditWindowTitleWithId', { id })
+        : _t('SPACEHOLDER.GlobalMap.Biomes.EditWindowTitle');
+    } catch (e) {
+      // ignore
+    }
 
     this._source = biome;
     this._draft = foundry.utils.deepClone(biome ?? {});
@@ -1075,7 +1099,7 @@ class GlobalMapBiomeEditApp extends foundry.applications.api.HandlebarsApplicati
     }
 
     return {
-      patternTypes: PATTERN_TYPES,
+      patternTypes: PATTERN_TYPES.map((pt) => ({ value: pt.value, label: _t(pt.labelKey) })),
       biome: this._draft,
     };
   }
@@ -1164,7 +1188,7 @@ class GlobalMapBiomeEditApp extends foundry.applications.api.HandlebarsApplicati
 
     const display = root.querySelector('[data-display="pattern.patternColor"]');
     if (display) {
-      display.textContent = raw ? raw : '(авто)';
+      display.textContent = raw ? raw : _t('SPACEHOLDER.GlobalMap.Biomes.Auto');
     }
 
     const colorInput = root.querySelector('input[type="color"][data-field="pattern.patternColor"]');

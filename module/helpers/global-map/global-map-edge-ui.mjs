@@ -9,6 +9,14 @@ const CLIENT_SETTING_RIVER_LABEL_ROTATE = 'globalmap.rotateRiverLabels';
 const CLIENT_SETTING_APPEAR_ANIM = 'globalmap.appearanceAnimation';
 const CLIENT_SETTING_APPEAR_ANIM_DURATION = 'globalmap.appearanceAnimationDurationMs';
 
+function _t(key) {
+  return game?.i18n?.localize ? game.i18n.localize(key) : String(key);
+}
+
+function _f(key, data) {
+  return game?.i18n?.format ? game.i18n.format(key, data) : String(key);
+}
+
 function _registerGlobalMapClientSettings() {
   try {
     const s = game?.settings?.settings;
@@ -25,8 +33,8 @@ function _registerGlobalMapClientSettings() {
 
   try {
     game?.settings?.register?.(MODULE_NS, CLIENT_SETTING_RIVER_LABEL_ROTATE, {
-      name: 'Global Map: Rotate river labels',
-      hint: 'Rotate river labels along river direction (client-side)',
+      name: _t('SPACEHOLDER.GlobalMap.ClientSettings.RotateRiverLabels.Name'),
+      hint: _t('SPACEHOLDER.GlobalMap.ClientSettings.RotateRiverLabels.Hint'),
       scope: 'client',
       config: false,
       type: Boolean,
@@ -48,8 +56,8 @@ function _registerGlobalMapClientSettings() {
 
   try {
     game?.settings?.register?.(MODULE_NS, CLIENT_SETTING_APPEAR_ANIM, {
-      name: 'Global Map: Appearance animations',
-      hint: 'Animate appearance/disappearance of global map overlays (client-side)',
+      name: _t('SPACEHOLDER.GlobalMap.ClientSettings.AppearanceAnimations.Name'),
+      hint: _t('SPACEHOLDER.GlobalMap.ClientSettings.AppearanceAnimations.Hint'),
       scope: 'client',
       config: false,
       type: Boolean,
@@ -72,8 +80,8 @@ function _registerGlobalMapClientSettings() {
 
   try {
     game?.settings?.register?.(MODULE_NS, CLIENT_SETTING_APPEAR_ANIM_DURATION, {
-      name: 'Global Map: Appearance animation duration',
-      hint: 'Fade in/out duration in milliseconds (client-side)',
+      name: _t('SPACEHOLDER.GlobalMap.ClientSettings.AppearanceAnimationDuration.Name'),
+      hint: _t('SPACEHOLDER.GlobalMap.ClientSettings.AppearanceAnimationDuration.Hint'),
       scope: 'client',
       config: false,
       type: Number,
@@ -133,7 +141,7 @@ class GlobalMapEdgeUI {
     this._inspectSyncSeq = 0;
 
     this._inspectedBiomeId = null;
-    this._inspectedBiomeName = 'Неизвестно';
+    this._inspectedBiomeName = _t('SPACEHOLDER.GlobalMap.Common.Unknown');
     this._inspectedBiomeJournalUuid = '';
     this._inspectedBiomeJournalName = '';
 
@@ -236,7 +244,7 @@ class GlobalMapEdgeUI {
     this._lastInspectPos = null;
     this._inspectSyncSeq++;
     this._inspectedBiomeId = null;
-    this._inspectedBiomeName = 'Неизвестно';
+    this._inspectedBiomeName = _t('SPACEHOLDER.GlobalMap.Common.Unknown');
     this._inspectedBiomeJournalUuid = '';
     this._inspectedBiomeJournalName = '';
     this._inspectedRegionId = '';
@@ -869,9 +877,10 @@ class GlobalMapEdgeUI {
     return this._openJournalUuid(linkUuid);
   }
 
-  _requireGM(action = 'выполнить это действие') {
+  _requireGM(actionKey = 'SPACEHOLDER.GlobalMap.Permissions.Actions.UseTool') {
     if (game?.user?.isGM) return true;
-    ui.notifications?.warn?.(`Только ГМ может ${action}`);
+    const action = _t(actionKey);
+    ui.notifications?.warn?.(_f('SPACEHOLDER.GlobalMap.Permissions.GMOnly', { action }));
     return false;
   }
 
@@ -1054,7 +1063,7 @@ class GlobalMapEdgeUI {
 
       tokenFactionText = selectedFactionUuid ? await this._resolveDocName(selectedFactionUuid) : '';
     } else if (tokens.length > 1) {
-      tokenName = 'Несколько токенов';
+      tokenName = _t('SPACEHOLDER.GlobalMap.Edge.Selection.MultipleTokens');
 
       // Determine if ALL selected tokens share the same (non-empty) faction uuid
       let allSameFaction = true;
@@ -1082,7 +1091,7 @@ class GlobalMapEdgeUI {
         selectedFactionUuid = firstFaction;
         tokenFactionText = await this._resolveDocName(firstFaction);
       } else {
-        tokenFactionText = 'Несколько фракций';
+        tokenFactionText = _t('SPACEHOLDER.GlobalMap.Edge.Selection.MultipleFactions');
       }
 
       // For multiple selection we do not expose per-token link.
@@ -1161,7 +1170,9 @@ class GlobalMapEdgeUI {
       icon.classList.add(paused ? 'fa-lock' : 'fa-lock-open');
     }
 
-    const tip = paused ? 'Обновление: выкл' : 'Обновление: вкл';
+    const tip = paused
+      ? _t('SPACEHOLDER.GlobalMap.Edge.InspectorUpdates.Off')
+      : _t('SPACEHOLDER.GlobalMap.Edge.InspectorUpdates.On');
     btn.setAttribute('data-tooltip', tip);
     btn.setAttribute('aria-label', tip);
   }
@@ -1175,7 +1186,7 @@ class GlobalMapEdgeUI {
 
     // Values
     const biomeValueEl = el.querySelector('[data-field="inspectBiomeValue"]');
-    if (biomeValueEl) biomeValueEl.textContent = String(this._inspectedBiomeName || 'Неизвестно');
+    if (biomeValueEl) biomeValueEl.textContent = String(this._inspectedBiomeName || _t('SPACEHOLDER.GlobalMap.Common.Unknown'));
 
     const regionValueEl = el.querySelector('[data-field="inspectRegionValue"]');
     if (regionValueEl) regionValueEl.textContent = String(this._inspectedRegionName || '');
@@ -1276,7 +1287,7 @@ class GlobalMapEdgeUI {
         const scope = String(zone.dataset.dropScope || '').trim();
         const uuid = this._extractUuidFromDropEvent(ev);
         if (!uuid) {
-          ui.notifications?.warn?.('Не удалось извлечь UUID из перетаскивания');
+          ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DropUuidNotFound'));
           return;
         }
 
@@ -1451,12 +1462,12 @@ class GlobalMapEdgeUI {
     }
 
     if (!doc) {
-      ui.notifications?.warn?.('Документ по UUID не найден');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DocNotFoundByUuid'));
       return null;
     }
 
     if (!['JournalEntry', 'JournalEntryPage'].includes(doc.documentName)) {
-      ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.ExpectedJournalDoc'));
       return null;
     }
 
@@ -1496,7 +1507,7 @@ class GlobalMapEdgeUI {
   }
 
   async _setInspectedBiomeJournalUuid(rawUuid) {
-    if (!this._requireGM('привязывать журналы')) return false;
+    if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.BindJournals')) return false;
 
     const id = this._inspectedBiomeId;
     if (!Number.isFinite(id)) return false;
@@ -1509,7 +1520,7 @@ class GlobalMapEdgeUI {
     const resolver = sh?.globalMapProcessing?.biomeResolver || sh?.globalMapRenderer?.biomeResolver;
 
     if (!resolver?.saveOverridesToWorldFile) {
-      ui.notifications?.error?.('BiomeResolver не поддерживает сохранение overrides');
+      ui.notifications?.error?.(_t('SPACEHOLDER.GlobalMap.Errors.BiomeResolverOverridesNotSupported'));
       return false;
     }
 
@@ -1550,7 +1561,7 @@ class GlobalMapEdgeUI {
       await resolver.saveOverridesToWorldFile(overrides);
     } catch (e) {
       console.error('SpaceHolder | Global map edge UI: failed to save biome journal link', e);
-      ui.notifications?.error?.(`Не удалось сохранить журнал биома: ${e.message}`);
+      ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.SaveBiomeJournalFailed', { message: e.message }));
       return false;
     }
 
@@ -1567,7 +1578,7 @@ class GlobalMapEdgeUI {
   }
 
   async _setInspectedRegionJournalUuid(rawUuid) {
-    if (!this._requireGM('привязывать журналы')) return false;
+    if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.BindJournals')) return false;
 
     const regionId = String(this._inspectedRegionId || '').trim();
     if (!regionId) return false;
@@ -1595,7 +1606,7 @@ class GlobalMapEdgeUI {
       await scene.setFlag(MODULE_NS, 'globalMapRegions', next);
     } catch (e) {
       console.error('SpaceHolder | Global map edge UI: failed to save region journal link', e);
-      ui.notifications?.error?.(`Не удалось сохранить журнал региона: ${e.message}`);
+      ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.SaveRegionJournalFailed', { message: e.message }));
       return false;
     }
 
@@ -1632,7 +1643,7 @@ class GlobalMapEdgeUI {
 
     // ===== Biome =====
     let biomeId = null;
-    let biomeName = 'Неизвестно';
+    let biomeName = _t('SPACEHOLDER.GlobalMap.Common.Unknown');
     let biomeJournalUuid = '';
 
     const grid = renderer?.currentGrid;
@@ -1763,7 +1774,7 @@ class GlobalMapEdgeUI {
     if (hasWinner) {
       influenceName = influenceWinnerName || influenceSideUuidNorm;
     } else if (influenceCount >= 2) {
-      influenceName = 'Неизвестно';
+      influenceName = _t('SPACEHOLDER.GlobalMap.Common.Unknown');
     } else {
       // 0 influences OR 1 weak influence
       influenceName = '';
@@ -1771,7 +1782,7 @@ class GlobalMapEdgeUI {
 
     // Save state
     this._inspectedBiomeId = (biomeId === null || biomeId === undefined) ? null : Number(biomeId);
-    this._inspectedBiomeName = String(biomeName || 'Неизвестно');
+    this._inspectedBiomeName = String(biomeName || _t('SPACEHOLDER.GlobalMap.Common.Unknown'));
     this._inspectedBiomeJournalUuid = biomeJournalUuidNorm;
     this._inspectedBiomeJournalName = String(biomeJournalName || biomeJournalUuidNorm || '');
 
@@ -1808,7 +1819,7 @@ class GlobalMapEdgeUI {
         game?.spaceholder?.openTimelineApp?.();
       } catch (e) {
         console.error('SpaceHolder | Global map edge UI: failed to open timeline', e);
-        ui.notifications?.error?.('Не удалось открыть таймлайн');
+        ui.notifications?.error?.(_t('SPACEHOLDER.GlobalMap.Errors.OpenTimelineFailed'));
       }
       return;
     }
@@ -1890,7 +1901,7 @@ class GlobalMapEdgeUI {
 
     if (action === 'open-biome-editor') {
       event.preventDefault();
-      if (!this._requireGM('открывать список биомов')) return;
+      if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.OpenBiomeEditor')) return;
 
       try {
         const sh = game?.spaceholder;
@@ -1899,14 +1910,14 @@ class GlobalMapEdgeUI {
         app.render(true);
       } catch (e) {
         console.error('SpaceHolder | Global map edge UI: failed to open biome editor', e);
-        ui.notifications?.error?.('Не удалось открыть список биомов');
+        ui.notifications?.error?.(_t('SPACEHOLDER.GlobalMap.Errors.OpenBiomeEditorFailed'));
       }
       return;
     }
 
     if (action === 'import-map') {
       event.preventDefault();
-      if (!this._requireGM('импортировать карту')) return;
+      if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.ImportMap')) return;
 
       const sh = game?.spaceholder;
       const processing = sh?.globalMapProcessing;
@@ -1931,7 +1942,7 @@ class GlobalMapEdgeUI {
 
     if (action === 'save-map') {
       event.preventDefault();
-      if (!this._requireGM('сохранять карту')) return;
+      if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.SaveMap')) return;
 
       const sh = game?.spaceholder;
       const processing = sh?.globalMapProcessing;
@@ -1942,7 +1953,7 @@ class GlobalMapEdgeUI {
       if (!scene || !processing || !renderer) return;
 
       if (!renderer?.currentGrid) {
-        ui.notifications?.warn?.('Нет карты для сохранения');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoMapToSave'));
         return;
       }
 
@@ -1966,7 +1977,7 @@ class GlobalMapEdgeUI {
 
       // Save grid (biomes/heights)
       const okGrid = await processing?.saveGridToFile?.(scene);
-      if (!okGrid) errors.push('карта');
+      if (!okGrid) errors.push(_t('SPACEHOLDER.GlobalMap.Save.Parts.Map'));
 
       // Save vector rivers/regions (stored in scene flags)
       const saveFlagSafe = async (key, value) => {
@@ -1984,8 +1995,8 @@ class GlobalMapEdgeUI {
       const okRivers = await saveFlagSafe('globalMapRivers', renderer.vectorRiversData);
       const okRegions = await saveFlagSafe('globalMapRegions', renderer.vectorRegionsData);
 
-      if (!okRivers) errors.push('реки');
-      if (!okRegions) errors.push('регионы');
+      if (!okRivers) errors.push(_t('SPACEHOLDER.GlobalMap.Save.Parts.Rivers'));
+      if (!okRegions) errors.push(_t('SPACEHOLDER.GlobalMap.Save.Parts.Regions'));
 
       // Keep tools UI indicators in sync (if open)
       try {
@@ -2000,7 +2011,7 @@ class GlobalMapEdgeUI {
       }
 
       if (errors.length) {
-        ui.notifications?.error?.(`Не удалось сохранить: ${errors.join(', ')}`);
+        ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.FailedToSave', { what: errors.join(', ') }));
       }
 
       return;
@@ -2008,7 +2019,7 @@ class GlobalMapEdgeUI {
 
     if (action === 'bake-map-background') {
       event.preventDefault();
-      if (!this._requireGM('запекать фон сцены')) return;
+      if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.BakeBackground')) return;
 
       try {
         const sh = game?.spaceholder;
@@ -2024,7 +2035,7 @@ class GlobalMapEdgeUI {
 
     if (action === 'create-test-grid') {
       event.preventDefault();
-      if (!this._requireGM('создавать тестовую сетку')) return;
+      if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.CreateTestGrid')) return;
 
       const sh = game?.spaceholder;
       const processing = sh?.globalMapProcessing;
@@ -2046,24 +2057,24 @@ class GlobalMapEdgeUI {
       try {
         const result = processing.createBiomeTestGrid(canvas.scene);
         await renderer.render(result.gridData, result.metadata);
-        ui.notifications?.info?.('Тестовая карта создана (биомы из реестра)');
+        ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.TestGridCreated'));
       } catch (e) {
         console.error('SpaceHolder | Global map edge UI: create-test-grid failed', e);
-        ui.notifications?.error?.('Не удалось создать тестовую сетку');
+        ui.notifications?.error?.(_t('SPACEHOLDER.GlobalMap.Errors.CreateTestGridFailed'));
       }
       return;
     }
 
     if (action === 'edit-map') {
       event.preventDefault();
-      if (!this._requireGM('редактировать карту')) return;
+      if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.EditMap')) return;
 
       const sh = game?.spaceholder;
       const renderer = sh?.globalMapRenderer;
       const tools = sh?.globalMapTools;
 
       if (!renderer?.currentGrid) {
-        ui.notifications?.warn?.('Сначала импортируйте карту');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Warnings.ImportMapFirst'));
         return;
       }
 
@@ -2103,20 +2114,20 @@ class GlobalMapEdgeUI {
 
     if (action === 'clear-map') {
       event.preventDefault();
-      if (!this._requireGM('очищать карту')) return;
+      if (!this._requireGM('SPACEHOLDER.GlobalMap.Permissions.Actions.ClearMap')) return;
 
       const sh = game?.spaceholder;
       const processing = sh?.globalMapProcessing;
       const renderer = sh?.globalMapRenderer;
 
       if (!renderer?.currentGrid) {
-        ui.notifications?.warn?.('Нет загруженной карты');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
         return;
       }
 
       const confirmed = await Dialog.confirm({
-        title: 'Очистить карту?',
-        content: '<p>Это удалит загруженную карту. Продолжить?</p>',
+        title: _t('SPACEHOLDER.GlobalMap.Confirm.ClearMap.Title'),
+        content: `<p>${_t('SPACEHOLDER.GlobalMap.Confirm.ClearMap.Content')}</p>`,
         yes: () => true,
         no: () => false,
       });
@@ -2126,7 +2137,7 @@ class GlobalMapEdgeUI {
       try {
         processing?.clear?.();
         renderer?.clear?.();
-        ui.notifications?.info?.('Карта очищена');
+        ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.MapCleared'));
       } catch (e) {
         console.error('SpaceHolder | Global map edge UI: clear-map failed', e);
       }
@@ -2253,7 +2264,7 @@ class GlobalMapEdgeUI {
       const loaded = await processing.loadGridFromFile(scene);
       if (loaded && loaded.gridData) {
         await renderer.render(loaded.gridData, loaded.metadata, { mode: 'heights' });
-        ui.notifications?.info?.('Карта обновлена');
+        ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.MapRefreshed'));
       } else {
         // Grid file missing; still try to re-render reloaded vector overlays on top of current map.
         try {
@@ -2265,11 +2276,11 @@ class GlobalMapEdgeUI {
           // ignore
         }
 
-        ui.notifications?.warn?.('Файл карты не найден');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Warnings.MapFileNotFound'));
       }
     } catch (e) {
       console.error('SpaceHolder | Global map edge UI: load-map failed', e);
-      ui.notifications?.error?.('Не удалось обновить карту');
+      ui.notifications?.error?.(_t('SPACEHOLDER.GlobalMap.Errors.RefreshMapFailed'));
     }
   }
 }

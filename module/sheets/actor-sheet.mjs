@@ -386,14 +386,17 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Update DOM elements
     const weightEl = this.element.querySelector('.stat-value');
     const itemsEl = this.element.querySelector('.inventory-stat .stat-value');
-    
+
+    const kg = game?.i18n?.localize?.('SPACEHOLDER.Units.Kg') ?? 'kg';
+    const itemTotalWeightLabel = game?.i18n?.localize?.('SPACEHOLDER.Inventory.ItemTotalWeight') ?? 'Total weight:';
+
     if (weightEl && weightEl.closest('.inventory-stat').querySelector('i.fa-weight-hanging')) {
-      weightEl.textContent = `${totalWeight} кг`;
+      weightEl.textContent = `${totalWeight} ${kg}`;
     }
     if (itemsEl && itemsEl.closest('.inventory-stat').querySelector('i.fa-boxes')) {
       itemsEl.textContent = totalItems;
     }
-    
+
     // Update total weight displays in individual rows
     this.element.querySelectorAll('.inventory-item-card').forEach(row => {
       const itemId = row.dataset.itemId;
@@ -402,7 +405,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         const weightSpan = row.querySelector('.item-weight');
         if (weightSpan && item.system.weight) {
           const totalItemWeight = (item.system.weight * item.system.quantity) || 0;
-          weightSpan.textContent = `Общий вес: ${Math.round(totalItemWeight * 100) / 100} кг`;
+          weightSpan.textContent = `${itemTotalWeightLabel} ${Math.round(totalItemWeight * 100) / 100} ${kg}`;
         }
       }
     });
@@ -552,25 +555,35 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     event.preventDefault();
 
     const bodyParts = this.actor.system.health?.bodyParts || {};
+
+    const L = (key) => game.i18n.localize(key);
+    const title = L('SPACEHOLDER.Injuries.Add');
+    const labelPart = L('SPACEHOLDER.Injuries.Fields.Part');
+    const labelDamage = L('SPACEHOLDER.Injuries.Fields.Damage');
+    const labelType = L('SPACEHOLDER.Injuries.Fields.Type');
+    const labelStatus = L('SPACEHOLDER.Injuries.Fields.Status');
+    const labelSource = L('SPACEHOLDER.Injuries.Fields.Source');
+    const optional = L('SPACEHOLDER.Common.Optional');
+
     const optionsHTML = Object.entries(bodyParts).map(([id, p]) => `<option value="${id}">${p.name}</option>`).join('');
     const content = `
       <div class="injury-create-dialog">
-        <div class="form-group"><label>Часть</label>
+        <div class="form-group"><label>${labelPart}</label>
           <select id="inj-part" style="width:100%; height:32px;">${optionsHTML}</select>
         </div>
-        <div class="form-group"><label>Урон</label><input id="inj-amount" type="number" step="0.01" min="0" placeholder="0.00"/></div>
-        <div class="form-group"><label>Тип</label><input id="inj-type" type="text" placeholder="(опционально)"/></div>
-        <div class="form-group"><label>Статус</label><input id="inj-status" type="text" placeholder="(опционально)"/></div>
-        <div class="form-group"><label>Источник</label><input id="inj-source" type="text" placeholder="(опционально)"/></div>
+        <div class="form-group"><label>${labelDamage}</label><input id="inj-amount" type="number" step="0.01" min="0" placeholder="0.00"/></div>
+        <div class="form-group"><label>${labelType}</label><input id="inj-type" type="text" placeholder="${optional}"/></div>
+        <div class="form-group"><label>${labelStatus}</label><input id="inj-status" type="text" placeholder="${optional}"/></div>
+        <div class="form-group"><label>${labelSource}</label><input id="inj-source" type="text" placeholder="${optional}"/></div>
       </div>`;
 
     await foundry.applications.api.DialogV2.wait({
-      window: { title: 'Добавить травму', icon: 'fa-solid fa-plus' },
+      window: { title, icon: 'fa-solid fa-plus' },
       position: { width: 420 },
       content,
       buttons: [
         {
-          action: 'create', label: 'Добавить', icon: 'fa-solid fa-check', default: true,
+          action: 'create', label: L('SPACEHOLDER.Actions.Add'), icon: 'fa-solid fa-check', default: true,
           callback: async (dlgEvent) => {
             const root = dlgEvent.currentTarget;
             const partId = root.querySelector('#inj-part')?.value;
@@ -580,7 +593,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
             const source = root.querySelector('#inj-source')?.value ?? '';
             const parsed = Number.parseFloat(String(amountStr).replace(',', '.'));
             if (!partId || Number.isNaN(parsed)) {
-              ui.notifications.warn('Укажите часть тела и корректный урон');
+              ui.notifications.warn(L('SPACEHOLDER.Injuries.Errors.InvalidInput'));
               return;
             }
             const amount = Math.max(0, Math.floor(parsed * 100));
@@ -588,7 +601,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
             this.render(false);
           }
         },
-        { action: 'cancel', label: 'Отмена', icon: 'fa-solid fa-times' }
+        { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
       ]
     });
   }
@@ -615,24 +628,32 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     const partName = this.actor.system.health?.bodyParts?.[existing.partId]?.name || existing.partId;
 
+    const L = (key) => game.i18n.localize(key);
+    const title = L('SPACEHOLDER.Injuries.EditTitle');
+    const heading = game.i18n.format('SPACEHOLDER.Injuries.EditTitleWithPart', { part: partName });
+    const labelDamage = L('SPACEHOLDER.Injuries.Fields.Damage');
+    const labelType = L('SPACEHOLDER.Injuries.Fields.Type');
+    const labelStatus = L('SPACEHOLDER.Injuries.Fields.Status');
+    const labelSource = L('SPACEHOLDER.Injuries.Fields.Source');
+
     const content = `
       <div class="injury-edit-dialog">
-        <p><strong>Редактирование травмы (${partName})</strong></p>
-        <div class="form-group"><label>Урон</label><input id="inj-amount" type="number" step="0.01" value="${(existing.amount||0)/100}"/></div>
-        <div class="form-group"><label>Тип</label><input id="inj-type" type="text" value="${existing.type||''}"/></div>
-        <div class="form-group"><label>Статус</label><input id="inj-status" type="text" value="${existing.status||''}"/></div>
-        <div class="form-group"><label>Источник</label><input id="inj-source" type="text" value="${existing.source||''}"/></div>
+        <p><strong>${heading}</strong></p>
+        <div class="form-group"><label>${labelDamage}</label><input id="inj-amount" type="number" step="0.01" value="${(existing.amount||0)/100}"/></div>
+        <div class="form-group"><label>${labelType}</label><input id="inj-type" type="text" value="${existing.type||''}"/></div>
+        <div class="form-group"><label>${labelStatus}</label><input id="inj-status" type="text" value="${existing.status||''}"/></div>
+        <div class="form-group"><label>${labelSource}</label><input id="inj-source" type="text" value="${existing.source||''}"/></div>
       </div>
     `;
 
     await foundry.applications.api.DialogV2.wait({
-      window: { title: 'Редактирование травмы', icon: 'fa-solid fa-bandage' },
+      window: { title, icon: 'fa-solid fa-bandage' },
       position: { width: 400 },
       content,
       buttons: [
         {
           action: 'save',
-          label: 'Сохранить',
+          label: L('SPACEHOLDER.Actions.Save'),
           icon: 'fa-solid fa-check',
           default: true,
           callback: async (dlgEvent) => {
@@ -649,7 +670,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
             }
           }
         },
-        { action: 'cancel', label: 'Отмена', icon: 'fa-solid fa-times' }
+        { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
       ]
     });
   }

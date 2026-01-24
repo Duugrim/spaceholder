@@ -10,19 +10,19 @@
     <div class="sh-biome-edit__fields">
       <div class="sh-biome-edit__row">
         <div class="sh-biome-edit__field">
-          <span class="sh-biome-edit__label">ID</span>
+          <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Fields.Id"}}</span>
           <code class="sh-biome-edit__code">{{biome.id}}</code>
         </div>
       </div>
 
       <div class="sh-biome-edit__row">
         <label class="sh-biome-edit__field wide">
-          <span class="sh-biome-edit__label">Название</span>
+          <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Fields.Name"}}</span>
           <input type="text" data-field="name" value="{{biome.name}}" />
         </label>
 
         <label class="sh-biome-edit__field">
-          <span class="sh-biome-edit__label">Ранг</span>
+          <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Fields.Rank"}}</span>
           <input
             type="number"
             data-field="renderRank"
@@ -35,7 +35,7 @@
 
       <div class="sh-biome-edit__row">
         <label class="sh-biome-edit__field">
-          <span class="sh-biome-edit__label">Цвет</span>
+          <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Fields.Color"}}</span>
           <input type="color" data-field="color" value="{{biome.color}}" />
           <code class="sh-biome-edit__code">{{biome.color}}</code>
         </label>
@@ -45,7 +45,7 @@
 
   <div class="sh-biome-edit__row">
     <label class="sh-biome-edit__field wide">
-      <span class="sh-biome-edit__label">Паттерн</span>
+      <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Fields.Pattern"}}</span>
       <select data-field="pattern.type">
         {{#each patternTypes as |pt|}}
           <option value="{{pt.value}}" {{#if (eq pt.value biome.pattern.type)}}selected{{/if}}>{{pt.label}}</option>
@@ -54,40 +54,40 @@
     </label>
 
     <label class="sh-biome-edit__field wide">
-      <span class="sh-biome-edit__label">Цвет паттерна</span>
+      <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Fields.PatternColor"}}</span>
       <input type="color" data-field="pattern.patternColor" value="{{#if biome.pattern.patternColor}}{{biome.pattern.patternColor}}{{else}}#000000{{/if}}" />
-      <button type="button" data-action="pattern-color-auto" class="sh-biome-edit__btn">Авто</button>
-      <code data-display="pattern.patternColor" class="sh-biome-edit__code">{{#if biome.pattern.patternColor}}{{biome.pattern.patternColor}}{{else}}(авто){{/if}}</code>
+      <button type="button" data-action="pattern-color-auto" class="sh-biome-edit__btn">{{localize "SPACEHOLDER.GlobalMap.Biomes.Actions.Auto"}}</button>
+      <code data-display="pattern.patternColor" class="sh-biome-edit__code">{{#if biome.pattern.patternColor}}{{biome.pattern.patternColor}}{{else}}{{localize "SPACEHOLDER.GlobalMap.Biomes.Auto"}}{{/if}}</code>
     </label>
   </div>
 
   <details class="sh-biome-edit__details">
-    <summary>Доп. параметры паттерна</summary>
+    <summary>{{localize "SPACEHOLDER.GlobalMap.Biomes.Pattern.Advanced"}}</summary>
     <div class="sh-biome-edit__detailsBody">
       <label class="sh-biome-edit__field">
-        <span class="sh-biome-edit__label">Spacing</span>
+        <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Pattern.Spacing"}}</span>
         <input type="number" data-field="pattern.spacing" value="{{biome.pattern.spacing}}" step="0.1" min="0.1" class="sh-biome-edit__input--xs" />
       </label>
 
       <label class="sh-biome-edit__field">
-        <span class="sh-biome-edit__label">LineWidth</span>
+        <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Pattern.LineWidth"}}</span>
         <input type="number" data-field="pattern.lineWidth" value="{{biome.pattern.lineWidth}}" step="0.05" min="0.01" class="sh-biome-edit__input--xs" />
       </label>
 
       <label class="sh-biome-edit__field">
-        <span class="sh-biome-edit__label">Opacity</span>
+        <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Pattern.Opacity"}}</span>
         <input type="number" data-field="pattern.opacity" value="{{biome.pattern.opacity}}" step="0.05" min="0" max="1" class="sh-biome-edit__input--xs" />
       </label>
 
       <label class="sh-biome-edit__field">
-        <span class="sh-biome-edit__label">Darken</span>
+        <span class="sh-biome-edit__label">{{localize "SPACEHOLDER.GlobalMap.Biomes.Pattern.Darken"}}</span>
         <input type="number" data-field="pattern.darkenFactor" value="{{biome.pattern.darkenFactor}}" step="0.05" min="0" max="1" class="sh-biome-edit__input--xs" />
       </label>
     </div>
   </details>
 
   <div class="sh-biome-edit__footer">
-    <button type="button" data-action="cancel" class="sh-biome-edit__btn">Отмена</button>
-    <button type="button" data-action="apply" class="sh-biome-edit__btn primary">Применить</button>
+    <button type="button" data-action="cancel" class="sh-biome-edit__btn">{{localize "SPACEHOLDER.Actions.Cancel"}}</button>
+    <button type="button" data-action="apply" class="sh-biome-edit__btn primary">{{localize "SPACEHOLDER.Actions.Apply"}}</button>
   </div>
 </div>

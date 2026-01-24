@@ -1,5 +1,13 @@
 import { BiomeResolver } from './global-map-biome-resolver.mjs';
 
+function _t(key) {
+  return game?.i18n?.localize ? game.i18n.localize(key) : String(key);
+}
+
+function _f(key, data) {
+  return game?.i18n?.format ? game.i18n.format(key, data) : String(key);
+}
+
 /**
  * Global Map Renderer
  * Pure visualization layer - renders unified grid to canvas
@@ -2859,7 +2867,9 @@ export class GlobalMapRenderer {
       .filter(r => r && typeof r === 'object')
       .map((r, i) => {
         const id = (typeof r.id === 'string' && r.id.trim().length) ? r.id.trim() : `region_${i}_${Math.random().toString(36).slice(2, 8)}`;
-        const name = (typeof r.name === 'string' && r.name.trim().length) ? r.name.trim() : `Region ${i + 1}`;
+        const name = (typeof r.name === 'string' && r.name.trim().length)
+          ? r.name.trim()
+          : _f('SPACEHOLDER.GlobalMap.Tools.Regions.DefaultName', { n: i + 1 });
 
         const pointsRaw = Array.isArray(r.points) ? r.points : [];
         const points = pointsRaw.map(normalizePoint).filter(Boolean);
@@ -3604,7 +3614,9 @@ export class GlobalMapRenderer {
       .filter(r => r && typeof r === 'object')
       .map((r, i) => {
         const id = (typeof r.id === 'string' && r.id.trim().length) ? r.id.trim() : `river_${i}_${Math.random().toString(36).slice(2, 8)}`;
-        const name = (typeof r.name === 'string' && r.name.trim().length) ? r.name.trim() : `River ${i + 1}`;
+        const name = (typeof r.name === 'string' && r.name.trim().length)
+          ? r.name.trim()
+          : _f('SPACEHOLDER.GlobalMap.Tools.Rivers.DefaultName', { n: i + 1 });
         const pointsRaw = Array.isArray(r.points) ? r.points : [];
         const points = pointsRaw.map(normalizePoint).filter(Boolean);
 

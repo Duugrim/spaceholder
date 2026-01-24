@@ -2,15 +2,15 @@
   <header class="sheet-header">
     <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
     <div class="header-fields">
-      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Name"/></h1>
+      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
     </div>
   </header>
 
   <nav class="sheet-tabs tabs" data-group="primary">
-<a class="item" data-action="tab" data-group="primary" data-tab="stats">Характеристики</a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="health">Здоровье</a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="injuries">Травмы</a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="inventory">Инвентарь</a>
+<a class="item" data-action="tab" data-group="primary" data-tab="stats">{{localize 'SPACEHOLDER.Tabs.Stats'}}</a>
+    <a class="item" data-action="tab" data-group="primary" data-tab="health">{{localize 'SPACEHOLDER.Tabs.Health'}}</a>
+    <a class="item" data-action="tab" data-group="primary" data-tab="injuries">{{localize 'SPACEHOLDER.Tabs.Injuries'}}</a>
+    <a class="item" data-action="tab" data-group="primary" data-tab="inventory">{{localize 'SPACEHOLDER.Tabs.Inventory'}}</a>
   </nav>
 
   <section class="sheet-body">
@@ -18,7 +18,7 @@
       <div class="rimworld-health-section">
         <div class="rimworld-header">
           <i class="fas fa-dumbbell"></i>
-          Характеристики
+          {{localize 'SPACEHOLDER.Tabs.Stats'}}
         </div>
         <div class="capacities-list">
           {{#each system.abilities as |ability key|}}

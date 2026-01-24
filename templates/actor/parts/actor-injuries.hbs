@@ -3,7 +3,7 @@
   <div class="injuries-panel">
     <div class="injuries-actions">
       <button type="button" class="injury-create-open-btn" data-action="injury-open-create">
-        <i class="fas fa-plus"></i> <span class="btn-text">Добавить травму</span>
+        <i class="fas fa-plus"></i> <span class="btn-text">{{localize 'SPACEHOLDER.Injuries.Add'}}</span>
       </button>
     </div>
 
@@ -20,13 +20,13 @@
               {{/if}}
             </div>
             <div class="injury-actions">
-              <button type="button" class="icon-btn injury-edit-btn" data-action="injury-edit" data-injury-id="{{inj.id}}" title="Редактировать"><i class="fas fa-pen"></i></button>
-              <button type="button" class="icon-btn injury-delete-btn" data-action="injury-delete" data-injury-id="{{inj.id}}" title="Удалить"><i class="fas fa-trash"></i></button>
+              <button type="button" class="icon-btn injury-edit-btn" data-action="injury-edit" data-injury-id="{{inj.id}}" title="{{localize 'SPACEHOLDER.Actions.Edit'}}"><i class="fas fa-pen"></i></button>
+              <button type="button" class="icon-btn injury-delete-btn" data-action="injury-delete" data-injury-id="{{inj.id}}" title="{{localize 'SPACEHOLDER.Actions.Delete'}}"><i class="fas fa-trash"></i></button>
             </div>
           </div>
         {{/each}}
       {{else}}
-        <p><em>Пока нет травм</em></p>
+        <p><em>{{localize 'SPACEHOLDER.Injuries.Empty'}}</em></p>
       {{/if}}
     </div>
   </div>

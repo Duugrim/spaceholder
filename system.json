@@ -24,7 +24,7 @@
                       "thumbnail":  "systems/spaceholder/assets/anvil-impact.png"
                   }
               ],
-    "version":  "0.131",
+    "version":  "0.132",
     "compatibility":  {
                           "minimum":  13,
                           "verified":  "13"
@@ -40,6 +40,11 @@
                           "lang":  "en",
                           "name":  "English",
                           "path":  "lang/en.json"
+                      },
+                      {
+                          "lang":  "ru",
+                          "name":  "Р СѓСЃСЃРєРёР№",
+                          "path":  "lang/ru.json"
                       }
                   ],
     "packs":  [

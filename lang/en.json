@@ -1,13 +1,13 @@
 {
   "SPACEHOLDER": {
     "Ability": {
-      "End": { "long": "Выносливость", "abbr": "END" },
-      "Str": { "long": "Сила",          "abbr": "STR" },
-      "Dex": { "long": "Подвижность",    "abbr": "DEX" },
-      "Cor": { "long": "Координация",    "abbr": "COR" },
-      "Per": { "long": "Восприятие",     "abbr": "PER" },
-      "Int": { "long": "Интеллект",      "abbr": "INT" },
-      "Luc": { "long": "Удача",          "abbr": "LUC" }
+      "End": { "long": "Endurance", "abbr": "END" },
+      "Str": { "long": "Strength", "abbr": "STR" },
+      "Dex": { "long": "Dexterity", "abbr": "DEX" },
+      "Cor": { "long": "Coordination", "abbr": "COR" },
+      "Per": { "long": "Perception", "abbr": "PER" },
+      "Int": { "long": "Intellect", "abbr": "INT" },
+      "Luc": { "long": "Luck", "abbr": "LUC" }
     },
     "SheetLabels": {
       "Actor": "SpaceHolder Actor Sheet",
@@ -16,7 +16,79 @@
       "Item": "SpaceHolder Item Sheet"
     },
     "Tabs": {
-      "Inventory": "Инвентарь"
+      "Stats": "Stats",
+      "Health": "Health",
+      "Injuries": "Injuries",
+      "Inventory": "Inventory",
+      "Description": "Description",
+      "Items": "Items",
+      "Effects": "Effects",
+      "Attributes": "Attributes"
+    },
+    "Placeholder": {
+      "Name": "Name"
+    },
+    "Units": {
+      "Kg": "kg"
+    },
+    "Actions": {
+      "Add": "Add",
+      "Create": "Create",
+      "New": "New",
+      "Edit": "Edit",
+      "Delete": "Delete",
+      "Save": "Save",
+      "Cancel": "Cancel",
+      "Apply": "Apply",
+      "Clear": "Clear",
+      "Refresh": "Refresh",
+      "Undo": "Undo",
+      "Redo": "Redo",
+      "Bake": "Bake"
+    },
+    "Common": {
+      "Optional": "(optional)"
+    },
+    "Inventory": {
+      "TotalWeight": "Total weight:",
+      "TotalItems": "Items:",
+      "CreateItem": "Create item",
+      "NewItem": "New item",
+      "Quantity": "Qty:",
+      "ItemTotalWeight": "Total weight:",
+      "EditItem": "Edit item",
+      "DeleteItem": "Delete item",
+      "Empty": "Inventory is empty. Add a new item by clicking the \"New item\" button above."
+    },
+    "Injuries": {
+      "Add": "Add injury",
+      "Empty": "No injuries yet",
+      "EditTitle": "Edit injury",
+      "EditTitleWithPart": "Edit injury ({part})",
+      "Fields": {
+        "Part": "Body part",
+        "Damage": "Damage",
+        "Type": "Type",
+        "Status": "Status",
+        "Source": "Source"
+      },
+      "Errors": {
+        "InvalidInput": "Select a body part and enter valid damage."
+      }
+    },
+    "Resources": {
+      "Health": "Health",
+      "Power": "Power",
+      "CRXP": "CR / XP",
+      "Quantity": "Quantity",
+      "Weight": "Weight",
+      "SpellLevel": "Spell Level"
+    },
+    "ItemSheet": {
+      "RollFormula": "Roll Formula",
+      "NumberOfDice": "Number of Dice",
+      "DieSize": "Die Size",
+      "RollModifier": "Roll Modifier"
     },
     "Item": {
       "Spell": {
@@ -32,12 +104,468 @@
       "Inactive": "Inactive Effects"
     },
     "AimingDialog": {
-      "Title": "Настройка прицеливания",
-      "StartAiming": "Начать прицеливание",
-      "Cancel": "Отмена"
+      "Title": "Aiming Setup",
+      "StartAiming": "Start aiming",
+      "Cancel": "Cancel"
+    },
+    "Token": {
+      "VisionEnabled": "Vision Enabled",
+      "VisionRange": "Vision Range"
+    },
+    "GlobalMap": {
+      "Title": "Global Map",
+      "Controls": {
+        "InspectMap": "Inspect map",
+        "InspectCell": "Inspect cell",
+        "ImportMap": "Import map",
+        "CreateTestGrid": "Create test grid",
+        "ToggleVisibility": "Toggle visibility",
+        "SaveToFile": "Save to file",
+        "LoadFromFile": "Load from file",
+        "BakeToBackground": "Bake to scene background",
+        "EditMap": "Edit map",
+        "ClearMap": "Clear map",
+        "ToggleBiomesMode": "Toggle biomes mode",
+        "ToggleHeightsMode": "Toggle heights mode"
+      },
+      "Common": {
+        "Unknown": "Unknown",
+        "JournalUuid": "Journal UUID"
+      },
+      "ClientSettings": {
+        "RotateRiverLabels": {
+          "Name": "Global Map: Rotate river labels",
+          "Hint": "Rotate river labels along river direction (client-side)"
+        },
+        "AppearanceAnimations": {
+          "Name": "Global Map: Appearance animations",
+          "Hint": "Animate appearance/disappearance of global map overlays (client-side)"
+        },
+        "AppearanceAnimationDuration": {
+          "Name": "Global Map: Appearance animation duration",
+          "Hint": "Fade in/out duration in milliseconds (client-side)"
+        }
+      },
+      "Permissions": {
+        "GMOrAssistantOnly": "Only a GM or Assistant GM can {action}.",
+        "GMOnly": "Only a GM can {action}.",
+        "Actions": {
+          "UseTool": "use this tool",
+          "ImportMap": "import a map",
+          "CreateTestGrid": "create a test grid",
+          "SaveMap": "save the map",
+          "BakeBackground": "bake the map into the scene background",
+          "EditMap": "edit the map",
+          "ClearMap": "clear the map",
+          "ToggleBiomesMode": "toggle biomes mode",
+          "ToggleHeightsMode": "toggle heights mode",
+          "BindJournals": "bind journals",
+          "OpenBiomeEditor": "open biome list"
+        }
+      },
+      "ImportDialog": {
+        "Title": "Import global map",
+        "Label": "Map file",
+        "ChooseFile": "Choose file",
+        "FilePathPlaceholder": "Path to map file (optional)",
+        "Note": "Leave empty to create a flat 20×20 map."
+      },
+      "BakeDialog": {
+        "Title": "Bake map to background",
+        "Fields": {
+          "Scale": "Scale",
+          "Format": "Format",
+          "Quality": "Quality"
+        },
+        "Scale": {
+          "Option": "{scale}×",
+          "OptionMax": "{scale}× (max)"
+        },
+        "MaxInfo": "Max safe scale: {scale}× (texture limit: {maxSize}px)",
+        "Format": {
+          "Webp": "WebP (recommended)",
+          "Png": "PNG"
+        },
+        "Notes": {
+          "ScaleDown": "If you hit texture size limits, the export will be downscaled automatically.",
+          "PngIgnoresQuality": "PNG ignores quality."
+        }
+      },
+      "Confirm": {
+        "ClearMap": {
+          "Title": "Clear map?",
+          "Content": "This will remove the loaded map. Continue?"
+        }
+      },
+      "Save": {
+        "Parts": {
+          "Map": "map",
+          "Rivers": "rivers",
+          "Regions": "regions"
+        }
+      },
+      "Notifications": {
+        "ProcessingMap": "Processing map...",
+        "MapCreated": "Map created",
+        "MapSaved": "Global map saved",
+        "MapLoadedFromFile": "Map loaded from file",
+        "MapRefreshed": "Map refreshed",
+        "MapCleared": "Map cleared",
+        "BiomesModeSet": "Biomes: {mode}",
+        "HeightsModeSet": "Heights: {mode}",
+        "ExportingMap": "Exporting map...",
+        "SceneBackgroundUpdated": "Scene background updated",
+        "CreatingBiomeTestGrid": "Creating biome test grid...",
+        "TestGridCreated": "Test grid created"
+      },
+      "Warnings": {
+        "TextureLimit": " (texture limit: {maxSize}px)",
+        "ScaleLimited": "Scale limited to {scale}×{maxInfo}",
+        "MapFileNotFound": "Map file not found",
+        "ImportMapFirst": "Import a map first"
+      },
+      "Errors": {
+        "FetchFailed": "Failed to fetch file: {statusText}",
+        "ErrorWithMessage": "Error: {message}",
+        "NoActiveScene": "No active scene",
+        "NoLoadedMap": "No loaded map",
+        "UploadFailed": "Upload failed",
+        "BakeFailed": "Failed to bake background: {message}",
+        "NoMapToSave": "No map to save",
+        "FailedToSave": "Failed to save: {what}",
+        "SaveGridFailed": "Failed to save grid: {message}",
+        "NoGridDataToSave": "No grid data to save",
+        "NoBiomesAvailable": "No biomes available (registry not loaded?)",
+        "InvalidPackCellsData": "Invalid PackCells data: {error}",
+        "DropUuidNotFound": "Failed to extract UUID from drag-and-drop",
+        "DocNotFoundByUuid": "Document not found by UUID",
+        "ExpectedJournalDoc": "Expected a Journal (JournalEntry/JournalEntryPage)",
+        "BiomeResolverOverridesNotSupported": "BiomeResolver does not support saving overrides",
+        "SaveBiomeJournalFailed": "Failed to save biome journal: {message}",
+        "SaveRegionJournalFailed": "Failed to save region journal: {message}",
+        "OpenTimelineFailed": "Failed to open timeline",
+        "OpenBiomeEditorFailed": "Failed to open biome list",
+        "CreateTestGridFailed": "Failed to create test grid",
+        "RefreshMapFailed": "Failed to refresh map",
+        "PackCells": {
+          "MissingInfoAndCells": "Missing required structure: info and cells",
+          "CellsArrayMissingOrEmpty": "Cells array is missing or empty",
+          "CellsMissingPosition": "Cells missing position (p) data",
+          "CellsMissingHeightOrBiome": "Cells must have height (h/height/elevation) or biome data"
+        }
+      },
+      "Biomes": {
+        "EditorTitle": "Biomes",
+        "OverridesFileLabel": "Overrides file:",
+        "Columns": {
+          "Preview": "Preview",
+          "Id": "ID",
+          "Rank": "Rank",
+          "Name": "Name",
+          "Link": "Link",
+          "Actions": "Actions"
+        },
+        "Fields": {
+          "Id": "ID",
+          "Name": "Name",
+          "Rank": "Rank",
+          "Color": "Color",
+          "Pattern": "Pattern",
+          "PatternColor": "Pattern color"
+        },
+        "Actions": {
+          "New": "New biome",
+          "ResetOverrides": "Reset overrides",
+          "Auto": "Auto"
+        },
+        "Auto": "(auto)",
+        "Pattern": {
+          "Advanced": "Pattern (advanced)",
+          "Spacing": "Spacing",
+          "LineWidth": "Line width",
+          "Opacity": "Opacity",
+          "Darken": "Darken"
+        },
+        "PatternTypes": {
+          "None": "(none)",
+          "Diagonal": "Diagonal lines",
+          "Crosshatch": "Crosshatch",
+          "Vertical": "Vertical lines",
+          "Horizontal": "Horizontal lines",
+          "Dots": "Dots",
+          "Circles": "Circles",
+          "Waves": "Waves",
+          "Hexagons": "Hexagons",
+          "Spots": "Spots"
+        },
+        "WindowTitle": "Biomes (Global Map)",
+        "EditWindowTitle": "Biome",
+        "EditWindowTitleWithId": "Biome {id}",
+        "DefaultNameFallback": "Biome {id}",
+        "DefaultNewName": "New biome {id}",
+        "Notifications": {
+          "Saved": "Biomes saved (biome-overrides.json)",
+          "OverridesCleared": "Overrides cleared"
+        },
+        "Errors": {
+          "IdLimitReached": "Limit reached: no free IDs left (0..255)",
+          "SaveFailed": "Failed to save biomes: {message}",
+          "ResetOverridesFailed": "Failed to clear overrides: {message}"
+        },
+        "Confirm": {
+          "DeleteTitle": "Delete biome?",
+          "DeleteContent": "<p>Delete biome <b>{name}</b> (ID: <b>{id}</b>)?</p>",
+          "ResetOverridesTitle": "Reset biome-overrides.json?",
+          "ResetOverridesContent": "<p>This will clear the overrides file and restore default biomes (after reloading the list).</p>"
+        }
+      },
+      "Tools": {
+        "Title": "Global Map Tools",
+        "Tabs": {
+          "Global": "Global"
+        },
+        "Common": {
+          "ToolLabel": "Tool",
+          "ModeLabel": "Mode",
+          "Radius": "Radius",
+          "Strength": "Strength",
+          "Min": "Min",
+          "Max": "Max",
+          "Range": "Range",
+          "Labels": "Labels",
+          "Rename": "Rename",
+          "Finish": "Finish",
+          "Open": "Open",
+          "Alpha": "Alpha",
+          "Width": "Width",
+          "Exit": "Exit"
+        },
+        "Brush": {
+          "Activate": "Activate",
+          "Deactivate": "Deactivate",
+          "SingleCellMode": "Single cell mode"
+        },
+        "Filters": {
+          "FilterByHeight": "Filter by height",
+          "FilterByBiome": "Filter by biome"
+        },
+        "Heights": {
+          "RaiseTerrain": "Raise terrain",
+          "LowerTerrain": "Lower terrain",
+          "Smooth": "Smooth",
+          "Roughen": "Roughen",
+          "Flatten": "Flatten",
+          "ContourOpacity": "Contour opacity",
+          "ContourOpacityHint": "Adjust contour overlay transparency",
+          "TargetHeight": "Target height",
+          "FlattenPipetteHint": "Alt+Click a cell to pick its height",
+          "BiomeFilterHint": "Only affect selected biomes"
+        },
+        "Biomes": {
+          "SetBiome": "Set biome",
+          "PaletteLabel": "Palette",
+          "PaletteHint": "Click a biome to select it",
+          "BiomeFilterExcludeHint": "Click biomes to exclude (red = excluded)",
+          "OpenEditor": "Biome list",
+          "OverridesFileNote": "Overrides file:",
+          "SelectOption": "{name} (ID: {id})",
+          "CellTitle": "{name} (ID: {id}, rank: {rank})"
+        },
+        "Rivers": {
+          "RiverLabel": "River",
+          "None": "(none)",
+          "Save": "Save",
+          "DefaultName": "River {n}",
+          "DefaultPointWidth": "Default point width",
+          "SelectedPointWidth": "Selected point width",
+          "SnapToEndpoints": "Snap to endpoints",
+          "Modes": {
+            "DrawPoints": "Draw points"
+          },
+          "Help": {
+            "Draw": "Draw: Click to add points.",
+            "Edit": "Edit: Drag points. Ctrl+Click deletes. Alt+Click inserts."
+          },
+          "Confirm": {
+            "DeleteTitle": "Delete river?",
+            "DeleteContent": "<p>Delete river <b>{name}</b>?</p>"
+          },
+          "Prompt": {
+            "RenameTitle": "Rename river"
+          }
+        },
+        "Regions": {
+          "RegionLabel": "Region",
+          "None": "(none)",
+          "Save": "Save",
+          "DefaultName": "Region {n}",
+          "JournalUuidPlaceholder": "UUID of JournalEntry or JournalEntryPage",
+          "Modes": {
+            "DrawPoints": "Draw points"
+          },
+          "Help": {
+            "Draw": "Draw: Click to add points. Finish closes the region.",
+            "Edit": "Edit: Drag points. Ctrl+Click deletes. Alt+Click inserts."
+          },
+          "Smoothing": {
+            "Label": "Smoothing",
+            "Note": "Applied when rendering region outlines.",
+            "Options": {
+              "OffExact": "Off (exact)",
+              "Low": "Low",
+              "Medium": "Medium",
+              "High": "High",
+              "VeryHigh": "Very high"
+            }
+          },
+          "Style": {
+            "Fill": "Fill",
+            "Stroke": "Stroke"
+          },
+          "Confirm": {
+            "DeleteTitle": "Delete region?",
+            "DeleteContent": "<p>Delete region <b>{name}</b>?</p>"
+          },
+          "Prompt": {
+            "RenameTitle": "Rename region"
+          }
+        },
+        "Global": {
+          "Smoothing": "Smoothing",
+          "Smooth1": "Smooth (1 pass)",
+          "Smooth3": "Smooth (3 passes)"
+        },
+        "Replace": {
+          "Title": "Replace",
+          "Filters": {
+            "Title": "Filters",
+            "HeightRange": "Height range",
+            "SourceBiome": "Source biome"
+          },
+          "Actions": {
+            "Title": "Actions",
+            "SetHeight": "Set height",
+            "SetBiome": "Set biome"
+          },
+          "Preview": {
+            "Matches": "Matches",
+            "Cells": "cells"
+          },
+          "Replace": "Replace",
+          "FlattenAll": "Flatten all",
+          "Confirm": {
+            "FlattenAllTitle": "Flatten entire map?",
+            "FlattenAllContent": "<p>This will set all cells to height <b>{height}%</b>. Continue?</p>"
+          },
+          "Errors": {
+            "SelectAtLeastOneFilter": "Select at least one filter",
+            "SelectAtLeastOneAction": "Select at least one action",
+            "SelectTargetBiome": "Select target biome",
+            "NoBiomesArrayAvailable": "No biomes array available (legacy map?)"
+          },
+          "Notifications": {
+            "ReplacedByHeight": "Replaced {count} cells (height {min}–{max} → {to})",
+            "ReplacedByBiome": "Replaced {count} cells by biome",
+            "ReplacedByCombined": "Replaced {count} cells",
+            "MapFlattened": "Flattened {count} cells to height {height}%"
+          }
+        },
+        "Notifications": {
+          "RiversSaved": "Rivers saved",
+          "RegionsSaved": "Regions saved",
+          "GlobalSmoothed": "Global smooth applied ({passes} pass(es), strength {strength})"
+        },
+        "Warnings": {
+          "EditorDisabledSceneChanged": "Scene changed while editing: tools disabled"
+        },
+        "Errors": {
+          "SaveRiversFailed": "Failed to save rivers: {message}",
+          "SaveRegionsFailed": "Failed to save regions: {message}",
+          "RegionNeedsAtLeast3Points": "Region needs at least 3 points",
+          "RegionAlreadyClosed": "Region is already closed",
+          "OpenBiomeEditorFailed": "Failed to open biome editor: {message}"
+        }
+      },
+      "Edge": {
+        "Menu": "Menu",
+        "Tools": "Tools",
+        "Faction": "Faction",
+        "Link": "Link",
+        "Token": "Token",
+        "Visibility": "Visibility",
+        "Timeline": "Timeline",
+        "RefreshMap": "Refresh map",
+        "Selection": {
+          "MultipleTokens": "Multiple tokens",
+          "MultipleFactions": "Multiple factions"
+        },
+        "InspectorUpdates": {
+          "On": "Updates: on",
+          "Off": "Updates: off"
+        },
+        "Flyout": {
+          "Import": "Import map",
+          "Save": "Save map",
+          "Bake": "Bake background",
+          "TestGrid": "Test grid",
+          "Edit": "Edit map",
+          "BiomeList": "Biome list",
+          "Clear": "Clear map"
+        },
+        "Settings": {
+          "Biomes": "Biomes",
+          "Heights": "Heights",
+          "RiverLabelsShort": "Rivers",
+          "RiverLabels": "River labels",
+          "RiverLabelRotate": "Rotate labels",
+          "Regions": "Regions",
+          "RegionsWhen": "Regions",
+          "Smooth": "Smoothing",
+          "AppearanceAnim": "Appearance animation",
+          "DurationMs": "Duration (ms)",
+          "Ms": "ms"
+        },
+        "Modes": {
+          "Common": {
+            "Off": "Off",
+            "On": "On",
+            "HoverShort": "Hover",
+            "Always": "Always"
+          },
+          "Biomes": {
+            "Fancy": "Fancy",
+            "Debug": "Fancy + debug",
+            "Cells": "Cells"
+          },
+          "Heights": {
+            "BW": "B/W contours",
+            "Contours": "Contours",
+            "Cells": "Cell grid"
+          },
+          "Regions": {
+            "NameShort": "Name",
+            "NameBorder": "Name + border",
+            "Full": "Full"
+          }
+        },
+        "Inspector": {
+          "Title": "Inspector",
+          "Settings": "Inspector settings",
+          "AutoUpdate": "Auto update",
+          "Data": "Data",
+          "Biome": "Biome",
+          "BiomeJournal": "Biome journal",
+          "OpenBiomeJournal": "Open biome journal",
+          "Region": "Region",
+          "RegionJournal": "Region journal",
+          "OpenRegionJournal": "Open region journal",
+          "Influence": "Influence",
+          "InfluenceJournal": "Influence journal",
+          "OpenInfluenceJournal": "Open influence journal"
+        }
+      }
     }
   },
-
   "TYPES": {
     "Actor": {
       "character": "Character",

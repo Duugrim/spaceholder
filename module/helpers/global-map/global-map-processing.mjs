@@ -1,5 +1,13 @@
 import { BiomeResolver } from './global-map-biome-resolver.mjs';
 
+function _t(key) {
+  return game?.i18n?.localize ? game.i18n.localize(key) : String(key);
+}
+
+function _f(key, data) {
+  return game?.i18n?.format ? game.i18n.format(key, data) : String(key);
+}
+
 /**
  * Global Map Processing
  * Converts raw PackCells Voronoi data into a unified rectangular height grid
@@ -33,17 +41,17 @@ export class GlobalMapProcessing {
    */
   validatePackCellsData(data) {
     if (!data.info || !data.cells) {
-      return { valid: false, error: 'Missing required structure: info and cells' };
+      return { valid: false, error: _t('SPACEHOLDER.GlobalMap.Errors.PackCells.MissingInfoAndCells') };
     }
 
     const cells = data.cells?.cells || data.cells;
     if (!Array.isArray(cells) || cells.length === 0) {
-      return { valid: false, error: 'Cells array is missing or empty' };
+      return { valid: false, error: _t('SPACEHOLDER.GlobalMap.Errors.PackCells.CellsArrayMissingOrEmpty') };
     }
 
     const sampleCell = cells[0];
     if (!sampleCell.hasOwnProperty('p')) {
-      return { valid: false, error: 'Cells missing position (p) data' };
+      return { valid: false, error: _t('SPACEHOLDER.GlobalMap.Errors.PackCells.CellsMissingPosition') };
     }
 
     // At minimum we need heights OR biomes
@@ -57,7 +65,7 @@ export class GlobalMapProcessing {
     const hasBiome = ('biome' in sampleCell);
 
     if (!hasHeight && !hasBiome) {
-      return { valid: false, error: 'Cells must have height (h/height/elevation) or biome data' };
+      return { valid: false, error: _t('SPACEHOLDER.GlobalMap.Errors.PackCells.CellsMissingHeightOrBiome') };
     }
 
     return { valid: true };
@@ -76,7 +84,7 @@ export class GlobalMapProcessing {
 
     const validation = this.validatePackCellsData(rawData);
     if (!validation.valid) {
-      throw new Error(`Invalid PackCells data: ${validation.error}`);
+      throw new Error(_f('SPACEHOLDER.GlobalMap.Errors.InvalidPackCellsData', { error: validation.error }));
     }
 
     const cells = rawData.cells?.cells || rawData.cells;
@@ -258,7 +266,7 @@ export class GlobalMapProcessing {
 
     const targetScene = scene || canvas.scene;
     if (!targetScene) {
-      throw new Error('No scene available');
+      throw new Error(_t('SPACEHOLDER.GlobalMap.Errors.NoActiveScene'));
     }
 
     const sceneDims = targetScene.dimensions;
@@ -329,7 +337,7 @@ export class GlobalMapProcessing {
 
     const targetScene = scene || canvas.scene;
     if (!targetScene) {
-      throw new Error('No scene available');
+      throw new Error(_t('SPACEHOLDER.GlobalMap.Errors.NoActiveScene'));
     }
 
     const sceneDims = targetScene.dimensions;
@@ -337,7 +345,7 @@ export class GlobalMapProcessing {
 
     const biomes = this.biomeResolver.listBiomes();
     if (!biomes.length) {
-      throw new Error('No biomes available (registry not loaded?)');
+      throw new Error(_t('SPACEHOLDER.GlobalMap.Errors.NoBiomesAvailable'));
     }
 
     // Layout blocks in a near-square grid
@@ -478,7 +486,7 @@ export class GlobalMapProcessing {
   async saveGridToFile(scene) {
     try {
       if (!this.unifiedGrid || !this.gridMetadata) {
-        throw new Error('No grid data to save');
+        throw new Error(_t('SPACEHOLDER.GlobalMap.Errors.NoGridDataToSave'));
       }
 
       const filePath = this._getGridFilePath(scene);
@@ -526,14 +534,14 @@ export class GlobalMapProcessing {
         // Save path to scene flag for later loading
         await scene.setFlag('spaceholder', 'globalMapGridPath', response.path);
         console.log(`GlobalMapProcessing | ✓ Grid saved to ${response.path}`);
-        ui.notifications.info('Global map saved successfully');
+        ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.MapSaved'));
         return true;
       }
 
       return false;
     } catch (error) {
       console.error('GlobalMapProcessing | Failed to save grid:', error);
-      ui.notifications.error(`Failed to save grid: ${error.message}`);
+      ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Errors.SaveGridFailed', { message: error.message }));
       return false;
     }
   }

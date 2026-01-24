@@ -1,0 +1,582 @@
+{
+  "SPACEHOLDER": {
+    "Ability": {
+      "End": { "long": "Выносливость", "abbr": "END" },
+      "Str": { "long": "Сила", "abbr": "STR" },
+      "Dex": { "long": "Подвижность", "abbr": "DEX" },
+      "Cor": { "long": "Координация", "abbr": "COR" },
+      "Per": { "long": "Восприятие", "abbr": "PER" },
+      "Int": { "long": "Интеллект", "abbr": "INT" },
+      "Luc": { "long": "Удача", "abbr": "LUC" }
+    },
+    "SheetLabels": {
+      "Actor": "Лист актора SpaceHolder",
+      "GlobalObject": "Лист глобального объекта SpaceHolder",
+      "Faction": "Лист фракции SpaceHolder",
+      "Item": "Лист предмета SpaceHolder"
+    },
+    "Tabs": {
+      "Stats": "Характеристики",
+      "Health": "Здоровье",
+      "Injuries": "Травмы",
+      "Inventory": "Инвентарь",
+      "Description": "Описание",
+      "Items": "Предметы",
+      "Effects": "Эффекты",
+      "Attributes": "Атрибуты"
+    },
+    "Placeholder": {
+      "Name": "Имя"
+    },
+    "Units": {
+      "Kg": "кг"
+    },
+    "Actions": {
+      "Add": "Добавить",
+      "Create": "Создать",
+      "New": "Новый",
+      "Edit": "Редактировать",
+      "Delete": "Удалить",
+      "Save": "Сохранить",
+      "Cancel": "Отмена",
+      "Apply": "Применить",
+      "Clear": "Очистить",
+      "Refresh": "Обновить",
+      "Undo": "Отменить",
+      "Redo": "Повторить",
+      "Bake": "Запечь"
+    },
+    "Common": {
+      "Optional": "(опционально)"
+    },
+    "Inventory": {
+      "TotalWeight": "Общий вес:",
+      "TotalItems": "Предметов:",
+      "CreateItem": "Создать предмет",
+      "NewItem": "Новый предмет",
+      "Quantity": "Кол-во:",
+      "ItemTotalWeight": "Общий вес:",
+      "EditItem": "Редактировать предмет",
+      "DeleteItem": "Удалить предмет",
+      "Empty": "Инвентарь пуст. Добавьте новый предмет, нажав кнопку \"Новый предмет\" выше."
+    },
+    "Injuries": {
+      "Add": "Добавить травму",
+      "Empty": "Пока нет травм",
+      "EditTitle": "Редактировать травму",
+      "EditTitleWithPart": "Редактировать травму ({part})",
+      "Fields": {
+        "Part": "Часть",
+        "Damage": "Урон",
+        "Type": "Тип",
+        "Status": "Статус",
+        "Source": "Источник"
+      },
+      "Errors": {
+        "InvalidInput": "Укажите часть тела и корректный урон."
+      }
+    },
+    "Resources": {
+      "Health": "Здоровье",
+      "Power": "Энергия",
+      "CRXP": "CR / XP",
+      "Quantity": "Количество",
+      "Weight": "Вес",
+      "SpellLevel": "Уровень заклинания"
+    },
+    "ItemSheet": {
+      "RollFormula": "Формула броска",
+      "NumberOfDice": "Количество кубов",
+      "DieSize": "Грань куба",
+      "RollModifier": "Модификатор"
+    },
+    "Item": {
+      "Spell": {
+        "SpellLVL": "Заклинания {level} уровня",
+        "AddLVL": "Добавить уровень {level}"
+      }
+    },
+    "Effect": {
+      "Source": "Источник",
+      "Toggle": "Переключить эффект",
+      "Temporary": "Временные эффекты",
+      "Passive": "Пассивные эффекты",
+      "Inactive": "Неактивные эффекты"
+    },
+    "AimingDialog": {
+      "Title": "Настройка прицеливания",
+      "StartAiming": "Начать прицеливание",
+      "Cancel": "Отмена"
+    },
+    "Token": {
+      "VisionEnabled": "Зрение включено",
+      "VisionRange": "Дальность зрения"
+    },
+    "GlobalMap": {
+      "Title": "Глобальная карта",
+      "Controls": {
+        "InspectMap": "Просмотр карты",
+        "InspectCell": "Просмотр клетки",
+        "ImportMap": "Импорт карты",
+        "CreateTestGrid": "Создать тестовую сетку",
+        "ToggleVisibility": "Показать/скрыть",
+        "SaveToFile": "Сохранить в файл",
+        "LoadFromFile": "Загрузить из файла",
+        "BakeToBackground": "Запечь в фон сцены",
+        "EditMap": "Редактировать карту",
+        "ClearMap": "Очистить карту",
+        "ToggleBiomesMode": "Переключить режим биомов",
+        "ToggleHeightsMode": "Переключить режим высот"
+      },
+      "Common": {
+        "Unknown": "Неизвестно",
+        "JournalUuid": "UUID журнала"
+      },
+      "ClientSettings": {
+        "RotateRiverLabels": {
+          "Name": "Глобальная карта: Поворот подписей рек",
+          "Hint": "Поворачивать подписи рек по направлению реки (на стороне клиента)"
+        },
+        "AppearanceAnimations": {
+          "Name": "Глобальная карта: Анимации появления",
+          "Hint": "Анимировать появление/исчезновение оверлеев глобальной карты (на стороне клиента)"
+        },
+        "AppearanceAnimationDuration": {
+          "Name": "Глобальная карта: Длительность анимации появления",
+          "Hint": "Длительность затухания в миллисекундах (на стороне клиента)"
+        }
+      },
+      "Permissions": {
+        "GMOrAssistantOnly": "Только ГМ или ассистент ГМа может {action}.",
+        "GMOnly": "Только ГМ может {action}.",
+        "Actions": {
+          "UseTool": "использовать этот инструмент",
+          "ImportMap": "импортировать карту",
+          "CreateTestGrid": "создавать тестовую сетку",
+          "SaveMap": "сохранять карту",
+          "BakeBackground": "запекать карту в фон сцены",
+          "EditMap": "редактировать карту",
+          "ClearMap": "очищать карту",
+          "ToggleBiomesMode": "переключать режим биомов",
+          "ToggleHeightsMode": "переключать режим высот",
+          "BindJournals": "привязывать журналы",
+          "OpenBiomeEditor": "открывать список биомов"
+        }
+      },
+      "ImportDialog": {
+        "Title": "Импорт глобальной карты",
+        "Label": "Файл карты",
+        "ChooseFile": "Выбрать файл",
+        "FilePathPlaceholder": "Путь к файлу карты (опционально)",
+        "Note": "Оставьте пустым, чтобы создать ровную карту 20×20."
+      },
+      "BakeDialog": {
+        "Title": "Запечь карту в фон",
+        "Fields": {
+          "Scale": "Масштаб",
+          "Format": "Формат",
+          "Quality": "Качество"
+        },
+        "Scale": {
+          "Option": "{scale}×",
+          "OptionMax": "{scale}× (макс.)"
+        },
+        "MaxInfo": "Макс. безопасный масштаб: {scale}× (лимит текстуры: {maxSize}px)",
+        "Format": {
+          "Webp": "WebP (рекомендуется)",
+          "Png": "PNG"
+        },
+        "Notes": {
+          "ScaleDown": "Если вы упёрлись в лимит текстуры, экспорт будет автоматически уменьшен.",
+          "PngIgnoresQuality": "Для PNG качество не применяется."
+        }
+      },
+      "Confirm": {
+        "ClearMap": {
+          "Title": "Очистить карту?",
+          "Content": "Это удалит загруженную карту. Продолжить?"
+        }
+      },
+      "Save": {
+        "Parts": {
+          "Map": "карта",
+          "Rivers": "реки",
+          "Regions": "регионы"
+        }
+      },
+      "Notifications": {
+        "ProcessingMap": "Обработка карты...",
+        "MapCreated": "Карта создана",
+        "MapSaved": "Глобальная карта сохранена",
+        "MapLoadedFromFile": "Карта загружена из файла",
+        "MapRefreshed": "Карта обновлена",
+        "MapCleared": "Карта очищена",
+        "BiomesModeSet": "Биомы: {mode}",
+        "HeightsModeSet": "Высоты: {mode}",
+        "ExportingMap": "Экспорт карты в изображение...",
+        "SceneBackgroundUpdated": "Фон сцены обновлён",
+        "CreatingBiomeTestGrid": "Создание тестовой сетки биомов...",
+        "TestGridCreated": "Тестовая сетка создана"
+      },
+      "Warnings": {
+        "TextureLimit": " (лимит текстуры: {maxSize}px)",
+        "ScaleLimited": "Масштаб ограничен до {scale}×{maxInfo}",
+        "MapFileNotFound": "Файл карты не найден",
+        "ImportMapFirst": "Сначала импортируйте карту"
+      },
+      "Errors": {
+        "FetchFailed": "Не удалось загрузить файл: {statusText}",
+        "ErrorWithMessage": "Ошибка: {message}",
+        "NoActiveScene": "Нет активной сцены",
+        "NoLoadedMap": "Нет загруженной карты",
+        "UploadFailed": "Не удалось загрузить файл",
+        "BakeFailed": "Не удалось запечь фон: {message}",
+        "NoMapToSave": "Нет карты для сохранения",
+        "FailedToSave": "Не удалось сохранить: {what}",
+        "SaveGridFailed": "Не удалось сохранить карту: {message}",
+        "NoGridDataToSave": "Нет данных карты для сохранения",
+        "NoBiomesAvailable": "Нет доступных биомов (реестр не загружен?)",
+        "InvalidPackCellsData": "Некорректные данные PackCells: {error}",
+        "DropUuidNotFound": "Не удалось извлечь UUID из перетаскивания",
+        "DocNotFoundByUuid": "Документ по UUID не найден",
+        "ExpectedJournalDoc": "Ожидался Journal (JournalEntry/JournalEntryPage)",
+        "BiomeResolverOverridesNotSupported": "BiomeResolver не поддерживает сохранение overrides",
+        "SaveBiomeJournalFailed": "Не удалось сохранить журнал биома: {message}",
+        "SaveRegionJournalFailed": "Не удалось сохранить журнал региона: {message}",
+        "OpenTimelineFailed": "Не удалось открыть таймлайн",
+        "OpenBiomeEditorFailed": "Не удалось открыть список биомов",
+        "CreateTestGridFailed": "Не удалось создать тестовую сетку",
+        "RefreshMapFailed": "Не удалось обновить карту",
+        "PackCells": {
+          "MissingInfoAndCells": "Отсутствует обязательная структура: info и cells",
+          "CellsArrayMissingOrEmpty": "Массив cells отсутствует или пуст",
+          "CellsMissingPosition": "У клеток отсутствуют координаты (p)",
+          "CellsMissingHeightOrBiome": "У клеток должна быть высота (h/height/elevation) или данные биома"
+        }
+      },
+      "Biomes": {
+        "EditorTitle": "Биомы",
+        "OverridesFileLabel": "Файл переопределений:",
+        "Columns": {
+          "Preview": "Превью",
+          "Id": "ID",
+          "Rank": "Порядок",
+          "Name": "Название",
+          "Link": "Ссылка",
+          "Actions": "Действия"
+        },
+        "Fields": {
+          "Id": "ID",
+          "Name": "Название",
+          "Rank": "Порядок",
+          "Color": "Цвет",
+          "Pattern": "Штриховка",
+          "PatternColor": "Цвет штриховки"
+        },
+        "Actions": {
+          "New": "Новый биом",
+          "ResetOverrides": "Сбросить переопределения",
+          "Auto": "Авто"
+        },
+        "Auto": "(авто)",
+        "Pattern": {
+          "Advanced": "Штриховка (доп.)",
+          "Spacing": "Шаг",
+          "LineWidth": "Толщина линии",
+          "Opacity": "Прозрачность",
+          "Darken": "Затемнение"
+        },
+        "PatternTypes": {
+          "None": "(без паттерна)",
+          "Diagonal": "Диагональные линии",
+          "Crosshatch": "Штриховка (крест-накрест)",
+          "Vertical": "Вертикальные линии",
+          "Horizontal": "Горизонтальные линии",
+          "Dots": "Точки",
+          "Circles": "Круги",
+          "Waves": "Волны",
+          "Hexagons": "Шестиугольники",
+          "Spots": "Пятна"
+        },
+        "WindowTitle": "Биомы (Global Map)",
+        "EditWindowTitle": "Биом",
+        "EditWindowTitleWithId": "Биом {id}",
+        "DefaultNameFallback": "Биом {id}",
+        "DefaultNewName": "Новый биом {id}",
+        "Notifications": {
+          "Saved": "Биомы сохранены (biome-overrides.json)",
+          "OverridesCleared": "Overrides очищены"
+        },
+        "Errors": {
+          "IdLimitReached": "Достигнут лимит: больше нет свободных ID (0..255)",
+          "SaveFailed": "Не удалось сохранить биомы: {message}",
+          "ResetOverridesFailed": "Не удалось очистить overrides: {message}"
+        },
+        "Confirm": {
+          "DeleteTitle": "Удалить биом?",
+          "DeleteContent": "<p>Удалить биом <b>{name}</b> (ID: <b>{id}</b>)?</p>",
+          "ResetOverridesTitle": "Сбросить biome-overrides.json?",
+          "ResetOverridesContent": "<p>Это очистит файл overrides и вернёт стандартные биомы (после перезагрузки списка).</p>"
+        }
+      },
+      "Tools": {
+        "Title": "Инструменты глобальной карты",
+        "Tabs": {
+          "Global": "Общее"
+        },
+        "Common": {
+          "ToolLabel": "Инструмент",
+          "ModeLabel": "Режим",
+          "Radius": "Радиус",
+          "Strength": "Сила",
+          "Min": "Мин",
+          "Max": "Макс",
+          "Range": "Диапазон",
+          "Labels": "Подписи",
+          "Rename": "Переименовать",
+          "Finish": "Завершить",
+          "Open": "Открыть",
+          "Alpha": "Прозрачность",
+          "Width": "Толщина",
+          "Exit": "Выйти"
+        },
+        "Brush": {
+          "Activate": "Включить",
+          "Deactivate": "Выключить",
+          "SingleCellMode": "Режим одной клетки"
+        },
+        "Filters": {
+          "FilterByHeight": "Фильтр по высоте",
+          "FilterByBiome": "Фильтр по биому"
+        },
+        "Heights": {
+          "RaiseTerrain": "Поднять рельеф",
+          "LowerTerrain": "Опустить рельеф",
+          "Smooth": "Сгладить",
+          "Roughen": "Зашумить",
+          "Flatten": "Выровнять",
+          "ContourOpacity": "Прозрачность контуров",
+          "ContourOpacityHint": "Настройка прозрачности контуров",
+          "TargetHeight": "Целевая высота",
+          "FlattenPipetteHint": "Alt+клик по клетке — взять её высоту",
+          "BiomeFilterHint": "Влияние только на выбранные биомы"
+        },
+        "Biomes": {
+          "SetBiome": "Установить биом",
+          "PaletteLabel": "Палитра",
+          "PaletteHint": "Кликните по биому, чтобы выбрать",
+          "BiomeFilterExcludeHint": "Кликните по биомам, чтобы исключить (красный = исключён)",
+          "OpenEditor": "Список биомов",
+          "OverridesFileNote": "Файл переопределений:",
+          "SelectOption": "{name} (ID: {id})",
+          "CellTitle": "{name} (ID: {id}, порядок: {rank})"
+        },
+        "Rivers": {
+          "RiverLabel": "Река",
+          "None": "(нет)",
+          "Save": "Сохранить",
+          "DefaultName": "Река {n}",
+          "DefaultPointWidth": "Ширина точки по умолчанию",
+          "SelectedPointWidth": "Ширина выбранной точки",
+          "SnapToEndpoints": "Привязывать к концам",
+          "Modes": {
+            "DrawPoints": "Рисовать точки"
+          },
+          "Help": {
+            "Draw": "Рисование: клик — добавить точку.",
+            "Edit": "Правка: перетаскивайте точки. Ctrl+клик — удалить. Alt+клик — вставить."
+          },
+          "Confirm": {
+            "DeleteTitle": "Удалить реку?",
+            "DeleteContent": "<p>Удалить реку <b>{name}</b>?</p>"
+          },
+          "Prompt": {
+            "RenameTitle": "Переименовать реку"
+          }
+        },
+        "Regions": {
+          "RegionLabel": "Регион",
+          "None": "(нет)",
+          "Save": "Сохранить",
+          "DefaultName": "Регион {n}",
+          "JournalUuidPlaceholder": "UUID JournalEntry или JournalEntryPage",
+          "Modes": {
+            "DrawPoints": "Рисовать точки"
+          },
+          "Help": {
+            "Draw": "Рисование: клик — добавить точку. «Завершить» закрывает регион.",
+            "Edit": "Правка: перетаскивайте точки. Ctrl+клик — удалить. Alt+клик — вставить."
+          },
+          "Smoothing": {
+            "Label": "Сглаживание",
+            "Note": "Применяется при отображении границ региона.",
+            "Options": {
+              "OffExact": "Выкл. (точно)",
+              "Low": "Низкое",
+              "Medium": "Среднее",
+              "High": "Высокое",
+              "VeryHigh": "Очень высокое"
+            }
+          },
+          "Style": {
+            "Fill": "Заливка",
+            "Stroke": "Обводка"
+          },
+          "Confirm": {
+            "DeleteTitle": "Удалить регион?",
+            "DeleteContent": "<p>Удалить регион <b>{name}</b>?</p>"
+          },
+          "Prompt": {
+            "RenameTitle": "Переименовать регион"
+          }
+        },
+        "Global": {
+          "Smoothing": "Сглаживание",
+          "Smooth1": "Сгладить (1 проход)",
+          "Smooth3": "Сгладить (3 прохода)"
+        },
+        "Replace": {
+          "Title": "Замена",
+          "Filters": {
+            "Title": "Фильтры",
+            "HeightRange": "Диапазон высот",
+            "SourceBiome": "Исходный биом"
+          },
+          "Actions": {
+            "Title": "Действия",
+            "SetHeight": "Установить высоту",
+            "SetBiome": "Установить биом"
+          },
+          "Preview": {
+            "Matches": "Найдено",
+            "Cells": "клеток"
+          },
+          "Replace": "Заменить",
+          "FlattenAll": "Выровнять всё",
+          "Confirm": {
+            "FlattenAllTitle": "Выровнять всю карту?",
+            "FlattenAllContent": "<p>Это установит высоту <b>{height}%</b> для всех клеток. Продолжить?</p>"
+          },
+          "Errors": {
+            "SelectAtLeastOneFilter": "Выберите хотя бы один фильтр",
+            "SelectAtLeastOneAction": "Выберите хотя бы одно действие",
+            "SelectTargetBiome": "Выберите целевой биом",
+            "NoBiomesArrayAvailable": "Нет массива биомов (старая карта?)"
+          },
+          "Notifications": {
+            "ReplacedByHeight": "Заменено {count} клеток (высота {min}–{max} → {to})",
+            "ReplacedByBiome": "Заменено {count} клеток по биому",
+            "ReplacedByCombined": "Заменено {count} клеток",
+            "MapFlattened": "Выровнено {count} клеток до высоты {height}%"
+          }
+        },
+        "Notifications": {
+          "RiversSaved": "Реки сохранены",
+          "RegionsSaved": "Регионы сохранены",
+          "GlobalSmoothed": "Глобальное сглаживание применено (проходов: {passes}, сила: {strength})"
+        },
+        "Warnings": {
+          "EditorDisabledSceneChanged": "Сцена изменилась во время редактирования: инструменты отключены"
+        },
+        "Errors": {
+          "SaveRiversFailed": "Не удалось сохранить реки: {message}",
+          "SaveRegionsFailed": "Не удалось сохранить регионы: {message}",
+          "RegionNeedsAtLeast3Points": "Региону нужно минимум 3 точки",
+          "RegionAlreadyClosed": "Регион уже закрыт",
+          "OpenBiomeEditorFailed": "Не удалось открыть список биомов: {message}"
+        }
+      },
+      "Edge": {
+        "Menu": "Меню",
+        "Tools": "Инструменты",
+        "Faction": "Фракция",
+        "Link": "Ссылка",
+        "Token": "Токен",
+        "Visibility": "Отображение",
+        "Timeline": "Хронология",
+        "RefreshMap": "Обновить карту",
+        "Selection": {
+          "MultipleTokens": "Несколько токенов",
+          "MultipleFactions": "Несколько фракций"
+        },
+        "InspectorUpdates": {
+          "On": "Обновление: вкл",
+          "Off": "Обновление: выкл"
+        },
+        "Flyout": {
+          "Import": "Импорт карты",
+          "Save": "Сохранить карту",
+          "Bake": "Запечь фон",
+          "TestGrid": "Тестовая сетка",
+          "Edit": "Редактировать карту",
+          "BiomeList": "Список биомов",
+          "Clear": "Очистить карту"
+        },
+        "Settings": {
+          "Biomes": "Биомы",
+          "Heights": "Высоты",
+          "RiverLabelsShort": "Реки",
+          "RiverLabels": "Подписи рек",
+          "RiverLabelRotate": "Поворот подписи",
+          "Regions": "Регионы",
+          "RegionsWhen": "Показывать регионы",
+          "Smooth": "Сглаживание",
+          "AppearanceAnim": "Анимация появления",
+          "DurationMs": "Длительность (мс)",
+          "Ms": "мс"
+        },
+        "Modes": {
+          "Common": {
+            "Off": "Выкл.",
+            "On": "Вкл.",
+            "HoverShort": "Наведение",
+            "Always": "Всегда"
+          },
+          "Biomes": {
+            "Fancy": "Красиво",
+            "Debug": "Красиво + отладка",
+            "Cells": "Сетка"
+          },
+          "Heights": {
+            "BW": "Чёрные контуры",
+            "Contours": "Цветные контуры",
+            "Cells": "Цветная сетка"
+          },
+          "Regions": {
+            "NameShort": "Название",
+            "NameBorder": "Название + граница",
+            "Full": "Полностью"
+          }
+        },
+        "Inspector": {
+          "Title": "Инспектор",
+          "Settings": "Настройки инспектора",
+          "AutoUpdate": "Автообновление",
+          "Data": "Данные",
+          "Biome": "Биом",
+          "BiomeJournal": "Журнал биома",
+          "OpenBiomeJournal": "Открыть журнал биома",
+          "Region": "Регион",
+          "RegionJournal": "Журнал региона",
+          "OpenRegionJournal": "Открыть журнал региона",
+          "Influence": "Влияние",
+          "InfluenceJournal": "Журнал влияния",
+          "OpenInfluenceJournal": "Открыть журнал влияния"
+        }
+      }
+    }
+  },
+  "TYPES": {
+    "Actor": {
+      "character": "Персонаж",
+      "npc": "НПС",
+      "globalobject": "Глобальный объект",
+      "faction": "Фракция"
+    },
+    "Item": {
+      "item": "Предмет",
+      "feature": "Особенность",
+      "spell": "Заклинание"
+    }
+  }
+}

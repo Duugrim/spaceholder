@@ -1,5 +1,21 @@
 import { GlobalMapBiomeEditorApp } from './global-map-biome-editor-app.mjs';
 
+const _t = (key) => {
+  try {
+    return game?.i18n?.localize?.(key) ?? key;
+  } catch (e) {
+    return key;
+  }
+};
+
+const _f = (key, data = {}) => {
+  try {
+    return game?.i18n?.format?.(key, data) ?? key;
+  } catch (e) {
+    return key;
+  }
+};
+
 /**
  * Global Map Tools
  * Editing and manipulation tools for unified grid
@@ -572,7 +588,7 @@ export class GlobalMapTools {
     }
 
     if (!doc) {
-      ui.notifications?.warn?.('Документ по UUID не найден');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DocNotFoundByUuid'));
       return false;
     }
 
@@ -586,60 +602,164 @@ export class GlobalMapTools {
       return true;
     }
 
-    ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+    ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.ExpectedJournalDoc'));
     return false;
   }
 
-  async _confirmDialog(title, htmlContent) {
-    try {
-      if (globalThis.Dialog) {
+  /**
+   * Confirm wrapper for Foundry v13:
+   * - prefer DialogV2.confirm
+   * - fallback to Dialog.confirm
+   * @private
+   */
+  async _confirmDialog({ title, content, yesLabel, yesIcon, noLabel, noIcon } = {}) {
+    const safeTitle = String(title ?? '');
+    const safeContent = String(content ?? '');
+
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (DialogV2?.confirm) {
+      try {
         return await new Promise((resolve) => {
-          new Dialog({
-            title,
-            content: htmlContent,
-            buttons: {
-              yes: {
-                label: 'Yes',
-                callback: () => resolve(true),
-              },
-              no: {
-                label: 'No',
-                callback: () => resolve(false),
+          let settled = false;
+          const settle = (v) => {
+            if (settled) return;
+            settled = true;
+            resolve(!!v);
+          };
+
+          const maybePromise = DialogV2.confirm({
+            window: { title: safeTitle, icon: yesIcon || 'fa-solid fa-question' },
+            content: safeContent,
+            yes: {
+              label: yesLabel ?? _t('DIALOG.Yes'),
+              icon: yesIcon ?? 'fa-solid fa-check',
+              callback: () => {
+                settle(true);
+                return true;
               },
             },
-            default: 'no',
-            close: () => resolve(false),
-          }).render(true);
+            no: {
+              label: noLabel ?? _t('DIALOG.No'),
+              icon: noIcon ?? 'fa-solid fa-times',
+              callback: () => {
+                settle(false);
+                return false;
+              },
+            },
+          });
+
+          // On some versions confirm() may also resolve a Promise<boolean>
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.then((r) => settle(r)).catch(() => settle(false));
+          }
         });
+      } catch (e) {
+        // ignore and fallback
       }
-    } catch (e) {
-      // fall back
     }
 
-    return window.confirm(title);
+    const DialogImpl = globalThis.Dialog;
+    if (typeof DialogImpl?.confirm === 'function') {
+      try {
+        return await DialogImpl.confirm({
+          title: safeTitle,
+          content: safeContent,
+          yes: () => true,
+          no: () => false,
+          defaultYes: false,
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // Last resort: native confirm (no HTML content)
+    return globalThis.confirm?.(safeTitle) ?? false;
   }
 
-  async _promptDialog(title, label, initialValue = '') {
+  /**
+   * Prompt wrapper for Foundry v13:
+   * - prefer DialogV2.wait
+   * - fallback to Dialog
+   * @private
+   */
+  async _promptDialog({ title, label, initialValue = '', okLabel, okIcon, cancelLabel, cancelIcon } = {}) {
     const safeTitle = String(title ?? '');
     const safeLabel = String(label ?? '');
-    const safeValue = this._escapeHtml(initialValue);
+    const safeValueRaw = String(initialValue ?? '');
+    const safeValue = this._escapeHtml(safeValueRaw);
 
-    try {
-      if (globalThis.Dialog) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (DialogV2?.wait) {
+      try {
         return await new Promise((resolve) => {
-          new Dialog({
+          let settled = false;
+          const settle = (v) => {
+            if (settled) return;
+            settled = true;
+            resolve(typeof v === 'string' ? v : null);
+          };
+
+          const inputId = 'spaceholder-globalmap-tools-prompt-input';
+          const content = `<form><div class="form-group"><label>${this._escapeHtml(safeLabel)}</label><input type="text" id="${inputId}" name="value" value="${safeValue}"/></div></form>`;
+
+          const maybePromise = DialogV2.wait({
+            window: { title: safeTitle, icon: okIcon || 'fa-solid fa-pen-to-square' },
+            position: { width: 420 },
+            content,
+            buttons: [
+              {
+                action: 'ok',
+                label: okLabel ?? _t('SPACEHOLDER.Actions.Apply'),
+                icon: okIcon ?? 'fa-solid fa-check',
+                default: true,
+                callback: (event) => {
+                  try {
+                    const root = event?.currentTarget;
+                    const input = root?.querySelector?.(`#${inputId}`) ?? document.getElementById(inputId);
+                    const v = input?.value;
+                    settle(typeof v === 'string' ? v : '');
+                  } catch (e) {
+                    settle(safeValueRaw);
+                  }
+                },
+              },
+              {
+                action: 'cancel',
+                label: cancelLabel ?? _t('SPACEHOLDER.Actions.Cancel'),
+                icon: cancelIcon ?? 'fa-solid fa-times',
+                callback: () => settle(null),
+              },
+            ],
+          });
+
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.then(() => { if (!settled) settle(null); }).catch(() => { if (!settled) settle(null); });
+          }
+        });
+      } catch (e) {
+        // ignore and fallback
+      }
+    }
+
+    // Fallback: Dialog (v1)
+    try {
+      const DialogImpl = globalThis.Dialog;
+      if (DialogImpl) {
+        return await new Promise((resolve) => {
+          new DialogImpl({
             title: safeTitle,
             content: `<form><div class="form-group"><label>${this._escapeHtml(safeLabel)}</label><input type="text" name="value" value="${safeValue}"/></div></form>`,
             buttons: {
               ok: {
-                label: 'OK',
+                label: okLabel ?? _t('SPACEHOLDER.Actions.Apply'),
                 callback: (html) => {
                   const v = html.find('input[name="value"]').val();
                   resolve(typeof v === 'string' ? v : String(v ?? ''));
                 },
               },
               cancel: {
-                label: 'Cancel',
+                label: cancelLabel ?? _t('SPACEHOLDER.Actions.Cancel'),
                 callback: () => resolve(null),
               },
             },
@@ -649,10 +769,10 @@ export class GlobalMapTools {
         });
       }
     } catch (e) {
-      // fall back
+      // ignore
     }
 
-    const v = window.prompt(safeTitle, String(initialValue ?? ''));
+    const v = globalThis.prompt?.(safeTitle, safeValueRaw);
     return typeof v === 'string' ? v : null;
   }
 
@@ -832,7 +952,7 @@ export class GlobalMapTools {
     select.empty();
 
     if (rivers.length === 0) {
-      select.append($('<option></option>').attr('value', '').text('(no rivers)'));
+      select.append($('<option></option>').attr('value', '').text(_t('SPACEHOLDER.GlobalMap.Tools.Rivers.None')));
       this.selectedRiverId = null;
     } else {
       for (const r of rivers) {
@@ -875,7 +995,10 @@ export class GlobalMapTools {
     $('#river-rename').prop('disabled', !hasRiver);
 
     // Save indicator
-    $('#river-save').text(this.vectorRiversDirty ? 'Save rivers*' : 'Save rivers');
+    {
+      const saveLabel = _t('SPACEHOLDER.GlobalMap.Tools.Rivers.Save');
+      $('#river-save').text(this.vectorRiversDirty ? `${saveLabel}*` : saveLabel);
+    }
   }
 
   _onRiversTabShown() {
@@ -908,7 +1031,7 @@ export class GlobalMapTools {
 
     const id = this._makeRiverId();
     const n = (this.vectorRivers.rivers?.length || 0) + 1;
-    const river = { id, name: `River ${n}`, points: [] };
+    const river = { id, name: _f('SPACEHOLDER.GlobalMap.Tools.Rivers.DefaultName', { n }), points: [] };
 
     this.vectorRivers.rivers.push(river);
     this.selectedRiverId = id;
@@ -922,7 +1045,16 @@ export class GlobalMapTools {
     const river = this._getSelectedRiver();
     if (!river) return;
 
-    const ok = await this._confirmDialog('Delete River', `<p>Delete river <b>${this._escapeHtml(river.name)}</b>?</p>`);
+    const ok = await this._confirmDialog({
+      title: _t('SPACEHOLDER.GlobalMap.Tools.Rivers.Confirm.DeleteTitle'),
+      content: _f('SPACEHOLDER.GlobalMap.Tools.Rivers.Confirm.DeleteContent', {
+        name: this._escapeHtml(river.name),
+      }),
+      yesLabel: _t('SPACEHOLDER.Actions.Delete'),
+      yesIcon: 'fa-solid fa-trash',
+      noLabel: _t('SPACEHOLDER.Actions.Cancel'),
+      noIcon: 'fa-solid fa-times',
+    });
     if (!ok) return;
 
     this._ensureVectorRiversInitialized();
@@ -951,7 +1083,11 @@ export class GlobalMapTools {
     if (!river) return;
 
     const currentName = String(river.name || '');
-    const newNameRaw = await this._promptDialog('Rename River', 'Name', currentName);
+    const newNameRaw = await this._promptDialog({
+      title: _t('SPACEHOLDER.GlobalMap.Tools.Rivers.Prompt.RenameTitle'),
+      label: _t('SPACEHOLDER.Placeholder.Name'),
+      initialValue: currentName,
+    });
 
     if (typeof newNameRaw !== 'string') return;
     const newName = newNameRaw.trim();
@@ -971,11 +1107,11 @@ export class GlobalMapTools {
     try {
       await scene.setFlag('spaceholder', 'globalMapRivers', this.vectorRivers);
       this.vectorRiversDirty = false;
-      ui.notifications?.info?.('Rivers saved');
+      ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Tools.Notifications.RiversSaved'));
       console.log('GlobalMapTools | ✓ Rivers saved to scene');
     } catch (error) {
       console.error('GlobalMapTools | Failed to save rivers:', error);
-      ui.notifications?.error?.(`Failed to save rivers: ${error.message}`);
+      ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Tools.Errors.SaveRiversFailed', { message: error.message }));
     }
   }
 
@@ -1171,7 +1307,7 @@ export class GlobalMapTools {
         // Create one automatically for convenience
         const id = this._makeRiverId();
         const n = (this.vectorRivers.rivers?.length || 0) + 1;
-        this.vectorRivers.rivers.push({ id, name: `River ${n}`, points: [] });
+        this.vectorRivers.rivers.push({ id, name: _f('SPACEHOLDER.GlobalMap.Tools.Rivers.DefaultName', { n }), points: [] });
         this.selectedRiverId = id;
       }
 
@@ -1506,7 +1642,7 @@ export class GlobalMapTools {
     select.empty();
 
     if (regions.length === 0) {
-      select.append($('<option></option>').attr('value', '').text('(no regions)'));
+      select.append($('<option></option>').attr('value', '').text(_t('SPACEHOLDER.GlobalMap.Tools.Regions.None')));
       this.selectedRegionId = null;
     } else {
       for (const r of regions) {
@@ -1585,7 +1721,10 @@ export class GlobalMapTools {
     }
 
     // Save indicator
-    $('#region-save').text(this.vectorRegionsDirty ? 'Save regions*' : 'Save regions');
+    {
+      const saveLabel = _t('SPACEHOLDER.GlobalMap.Tools.Regions.Save');
+      $('#region-save').text(this.vectorRegionsDirty ? `${saveLabel}*` : saveLabel);
+    }
   }
 
   _onRegionsTabShown() {
@@ -1633,7 +1772,7 @@ export class GlobalMapTools {
 
     const region = {
       id,
-      name: `Region ${n}`,
+      name: _f('SPACEHOLDER.GlobalMap.Tools.Regions.DefaultName', { n }),
       points: [],
       closed: false,
       ...style,
@@ -1652,7 +1791,16 @@ export class GlobalMapTools {
     const region = this._getSelectedRegion();
     if (!region) return;
 
-    const ok = await this._confirmDialog('Delete Region', `<p>Delete region <b>${this._escapeHtml(region.name)}</b>?</p>`);
+    const ok = await this._confirmDialog({
+      title: _t('SPACEHOLDER.GlobalMap.Tools.Regions.Confirm.DeleteTitle'),
+      content: _f('SPACEHOLDER.GlobalMap.Tools.Regions.Confirm.DeleteContent', {
+        name: this._escapeHtml(region.name),
+      }),
+      yesLabel: _t('SPACEHOLDER.Actions.Delete'),
+      yesIcon: 'fa-solid fa-trash',
+      noLabel: _t('SPACEHOLDER.Actions.Cancel'),
+      noIcon: 'fa-solid fa-times',
+    });
     if (!ok) return;
 
     this._ensureVectorRegionsInitialized();
@@ -1681,7 +1829,11 @@ export class GlobalMapTools {
     if (!region) return;
 
     const currentName = String(region.name || '');
-    const newNameRaw = await this._promptDialog('Rename Region', 'Name', currentName);
+    const newNameRaw = await this._promptDialog({
+      title: _t('SPACEHOLDER.GlobalMap.Tools.Regions.Prompt.RenameTitle'),
+      label: _t('SPACEHOLDER.Placeholder.Name'),
+      initialValue: currentName,
+    });
 
     if (typeof newNameRaw !== 'string') return;
     const newName = newNameRaw.trim();
@@ -1698,7 +1850,7 @@ export class GlobalMapTools {
 
     const pts = Array.isArray(region.points) ? region.points : [];
     if (pts.length < 3) {
-      ui.notifications?.warn?.('Region needs at least 3 points to close');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Errors.RegionNeedsAtLeast3Points'));
       return;
     }
 
@@ -1722,11 +1874,11 @@ export class GlobalMapTools {
     try {
       await scene.setFlag('spaceholder', 'globalMapRegions', this.vectorRegions);
       this.vectorRegionsDirty = false;
-      ui.notifications?.info?.('Regions saved');
+      ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Tools.Notifications.RegionsSaved'));
       console.log('GlobalMapTools | ✓ Regions saved to scene');
     } catch (error) {
       console.error('GlobalMapTools | Failed to save regions:', error);
-      ui.notifications?.error?.(`Failed to save regions: ${error.message}`);
+      ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Tools.Errors.SaveRegionsFailed', { message: error.message }));
     }
   }
 
@@ -1857,7 +2009,7 @@ export class GlobalMapTools {
         const style = this._createRegionDefaultStyle();
         this.vectorRegions.regions.push({
           id,
-          name: `Region ${n}`,
+          name: _f('SPACEHOLDER.GlobalMap.Tools.Regions.DefaultName', { n }),
           points: [],
           closed: false,
           ...style,
@@ -1870,7 +2022,7 @@ export class GlobalMapTools {
       if (!region) return;
 
       if (region.closed) {
-        ui.notifications?.warn?.('Region is already closed. Create a new one or switch to Edit.');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Errors.RegionAlreadyClosed'));
         return;
       }
 
@@ -2219,7 +2371,7 @@ export class GlobalMapTools {
     // If the scene changed while tools were active, exit edit mode to avoid editing the wrong scene.
     if (this._activeSceneId !== newSceneId) {
       try {
-        ui.notifications?.warn?.('Редактор глобальной карты выключен из-за смены сцены');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Warnings.EditorDisabledSceneChanged'));
       } catch (e) {
         // ignore
       }
@@ -2917,10 +3069,10 @@ export class GlobalMapTools {
 
       await scene.setFlag('spaceholder', 'globalMapGrid', gridSnapshot);
       console.log('GlobalMapTools | ✓ Grid saved to scene');
-      ui.notifications.info('Global map saved');
+      ui.notifications.info(_t('SPACEHOLDER.GlobalMap.Notifications.MapSaved'));
     } catch (error) {
       console.error('GlobalMapTools | Failed to save:', error);
-      ui.notifications.error(`Failed to save: ${error.message}`);
+      ui.notifications.error(_f('SPACEHOLDER.GlobalMap.Errors.SaveGridFailed', { message: error.message }));
     }
   }
 
@@ -3121,7 +3273,9 @@ export class GlobalMapTools {
     const isActive = this.isBrushActive;
     
     // Update button text and style
-    const buttonText = isActive ? 'Deactivate Brush' : 'Activate Brush';
+    const buttonText = isActive
+      ? _t('SPACEHOLDER.GlobalMap.Tools.Brush.Deactivate')
+      : _t('SPACEHOLDER.GlobalMap.Tools.Brush.Activate');
     const buttonColor = isActive ? '#cc0000' : '#00aa00';
     $('#brush-toggle').text(buttonText).css('background', buttonColor);
     $('#biome-brush-toggle').text(buttonText).css('background', buttonColor);
@@ -3222,6 +3376,9 @@ export class GlobalMapTools {
     // Remove existing UI
     this.hideToolsUI();
 
+    const t = (key) => _t(key);
+    const f = (key, data) => _f(key, data);
+
     const html = `
       <div id="global-map-tools-ui" style="
         position: fixed;
@@ -3245,86 +3402,86 @@ export class GlobalMapTools {
           border-bottom: 1px solid #444;
           border-radius: 5px 5px 0 0;
         ">
-          <h3 style="margin: 0; display: inline-block; flex: 1;">Global Map Tools</h3>
+          <h3 style="margin: 0; display: inline-block; flex: 1;">${t('SPACEHOLDER.GlobalMap.Tools.Title')}</h3>
         </div>
 
         <div style="display: flex; gap: 5px; margin-bottom: 10px;">
           <button id="tab-brush" data-tab="brush" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Heights
+            ${t('SPACEHOLDER.GlobalMap.Edge.Settings.Heights')}
           </button>
           <button id="tab-biomes" data-tab="biomes" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
-            Biomes
+            ${t('SPACEHOLDER.GlobalMap.Edge.Settings.Biomes')}
           </button>
           <button id="tab-rivers" data-tab="rivers" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
-            Rivers
+            ${t('SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelsShort')}
           </button>
           <button id="tab-regions" data-tab="regions" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
-            Regions
+            ${t('SPACEHOLDER.GlobalMap.Edge.Settings.Regions')}
           </button>
           <button id="tab-global" data-tab="global" style="flex: 1; padding: 8px; background: #333; border: none; color: white; border-radius: 3px; cursor: pointer;">
-            Global
+            ${t('SPACEHOLDER.GlobalMap.Tools.Tabs.Global')}
           </button>
         </div>
 
         <div id="brush-tab" style="display: block;">
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Tool:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.ToolLabel')}:</label>
             <div id="global-map-height-tool-buttons" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;">
-              <button type="button" data-tool="raise" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Raise Terrain</button>
-              <button type="button" data-tool="lower" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Lower Terrain</button>
-              <button type="button" data-tool="smooth" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Smooth</button>
-              <button type="button" data-tool="roughen" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Roughen</button>
-              <button type="button" data-tool="flatten" style="grid-column: 1 / -1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Flatten</button>
+              <button type="button" data-tool="raise" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.RaiseTerrain')}</button>
+              <button type="button" data-tool="lower" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.LowerTerrain')}</button>
+              <button type="button" data-tool="smooth" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.Smooth')}</button>
+              <button type="button" data-tool="roughen" style="padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.Roughen')}</button>
+              <button type="button" data-tool="flatten" style="grid-column: 1 / -1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.Flatten')}</button>
             </div>
           </div>
 
           <div style="margin-bottom: 10px;">
             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
               <input type="checkbox" id="single-cell-mode" style="margin: 0;">
-              <span>Single Cell Mode</span>
+              <span>${t('SPACEHOLDER.GlobalMap.Tools.Brush.SingleCellMode')}</span>
             </label>
             <div id="radius-container">
-              <label style="display: block; margin-bottom: 5px;">Radius: <span id="radius-value">${this.brushRadius}</span>px</label>
+              <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Radius')}: <span id="radius-value">${this.brushRadius}</span>px</label>
               <input type="range" id="global-map-radius" min="25" max="500" step="5" value="${this.brushRadius}" style="width: 100%;">
             </div>
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Strength: <span id="strength-value">${this.brushStrength.toFixed(1)}</span></label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Strength')}: <span id="strength-value">${this.brushStrength.toFixed(1)}</span></label>
             <input type="range" id="global-map-strength" min="0.1" max="1.0" step="0.1" value="${this.brushStrength}" style="width: 100%;">
           </div>
 
           <!-- Height contour opacity (test) -->
           <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">Contour opacity: <span id="height-contour-alpha-value">${(Number.isFinite(this.renderer?.heightContourAlpha) ? this.renderer.heightContourAlpha : 0.8).toFixed(2)}</span></label>
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.ContourOpacity')}: <span id="height-contour-alpha-value">${(Number.isFinite(this.renderer?.heightContourAlpha) ? this.renderer.heightContourAlpha : 0.8).toFixed(2)}</span></label>
             <input type="range" id="height-contour-alpha" min="0" max="1" step="0.05" value="${Number.isFinite(this.renderer?.heightContourAlpha) ? this.renderer.heightContourAlpha : 0.8}" style="width: 100%;">
-            <div style="font-size: 10px; color: #aaa; text-align: center;">Affects height contour lines (debug)</div>
+            <div style="font-size: 10px; color: #aaa; text-align: center;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.ContourOpacityHint')}</div>
           </div>
 
           <!-- Flatten target height (only for Flatten tool) -->
           <div id="flatten-target-container" style="margin-bottom: 10px; display: none; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">Target height: <span id="flatten-target-value">${Math.round(this.targetHeight)}</span>%</label>
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.TargetHeight')}: <span id="flatten-target-value">${Math.round(this.targetHeight)}</span>%</label>
             <input type="range" id="flatten-target-height" min="0" max="100" step="1" value="${Math.round(this.targetHeight)}" style="width: 100%;">
-            <div style="font-size: 10px; color: #aaa; text-align: center; margin-top: 4px;">Alt+Click = pick from map</div>
+            <div style="font-size: 10px; color: #aaa; text-align: center; margin-top: 4px;">${t('SPACEHOLDER.GlobalMap.Tools.Heights.FlattenPipetteHint')}</div>
           </div>
           
           <!-- Height Filter -->
           <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 150, 100, 0.15); border-radius: 3px;">
             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
               <input type="checkbox" id="height-filter-enabled" style="margin: 0;">
-              <span style="font-weight: bold; font-size: 12px;">Filter by Height</span>
+              <span style="font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Filters.FilterByHeight')}</span>
             </label>
             <div style="display: none;" id="height-filter-controls">
               <div style="margin-bottom: 6px;">
-                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Min: <span id="height-filter-min-value">0</span>%</label>
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Min')}: <span id="height-filter-min-value">0</span>%</label>
                 <input type="range" id="height-filter-min" min="0" max="100" step="1" value="0" style="width: 100%;" disabled>
               </div>
               <div style="margin-bottom: 6px;">
-                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Max: <span id="height-filter-max-value">100</span>%</label>
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Max')}: <span id="height-filter-max-value">100</span>%</label>
                 <input type="range" id="height-filter-max" min="0" max="100" step="1" value="100" style="width: 100%;" disabled>
               </div>
               <div style="font-size: 10px; color: #aaa; text-align: center;">
-                Range: <span id="height-filter-display">0-100</span>%
+                ${t('SPACEHOLDER.GlobalMap.Tools.Common.Range')}: <span id="height-filter-display">0-100</span>%
               </div>
             </div>
           </div>
@@ -3333,36 +3490,36 @@ export class GlobalMapTools {
           <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 150, 100, 0.15); border-radius: 3px;">
             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
               <input type="checkbox" id="height-tool-biome-filter-enabled" style="margin: 0;">
-              <span style="font-weight: bold; font-size: 12px;">Filter by Biome</span>
+              <span style="font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Filters.FilterByBiome')}</span>
             </label>
             <div style="display: none;" id="height-tool-biome-filter-controls">
               <div id="height-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
               <div style="font-size: 9px; color: #aaa; text-align: center;">
-                Click to select biomes to affect
+                ${t('SPACEHOLDER.GlobalMap.Tools.Heights.BiomeFilterHint')}
               </div>
             </div>
           </div>
           
           <button id="brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Activate Brush
+            ${t('SPACEHOLDER.GlobalMap.Tools.Brush.Activate')}
           </button>
         </div>
 
         <div id="biomes-tab" style="display: none;">
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Tool:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.ToolLabel')}:</label>
             <div id="global-map-biome-tool-buttons" style="display: flex; gap: 4px;">
-              <button type="button" data-tool="set-biome" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Set Biome</button>
+              <button type="button" data-tool="set-biome" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Biomes.SetBiome')}</button>
             </div>
           </div>
 
           <div style="margin-bottom: 10px;">
             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
               <input type="checkbox" id="biome-single-cell-mode" style="margin: 0;">
-              <span>Single Cell Mode</span>
+              <span>${t('SPACEHOLDER.GlobalMap.Tools.Brush.SingleCellMode')}</span>
             </label>
             <div id="biome-radius-container">
-              <label style="display: block; margin-bottom: 5px;">Radius: <span id="biome-radius-value">${this.brushRadius}</span>px</label>
+              <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Radius')}: <span id="biome-radius-value">${this.brushRadius}</span>px</label>
               <input type="range" id="global-map-biome-radius" min="25" max="500" step="5" value="${this.brushRadius}" style="width: 100%;">
             </div>
           </div>
@@ -3370,16 +3527,16 @@ export class GlobalMapTools {
           <!-- Set Biome Controls -->
           <div id="set-biome-controls" style="margin-bottom: 10px;">
             <div style="margin-bottom: 8px;">
-              <label style="display: block; margin-bottom: 5px;">Biome:</label>
+              <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Edge.Inspector.Biome')}:</label>
               <select id="set-biome-select" style="width: 100%; padding: 5px;"></select>
             </div>
             
             <!-- Biome Palette -->
             <div style="margin-top: 10px;">
-              <label style="display: block; margin-bottom: 5px; font-size: 11px;">Biome Palette:</label>
+              <label style="display: block; margin-bottom: 5px; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Biomes.PaletteLabel')}:</label>
               <div id="biome-preset-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
               <div style="font-size: 9px; color: #aaa; text-align: center;">
-                Click a biome swatch to select
+                ${t('SPACEHOLDER.GlobalMap.Tools.Biomes.PaletteHint')}
               </div>
             </div>
           </div>
@@ -3388,19 +3545,19 @@ export class GlobalMapTools {
           <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
               <input type="checkbox" id="biome-tool-height-filter-enabled" style="margin: 0;">
-              <span style="font-weight: bold; font-size: 12px;">Filter by Height</span>
+              <span style="font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Filters.FilterByHeight')}</span>
             </label>
             <div style="display: none;" id="biome-tool-height-filter-controls">
               <div style="margin-bottom: 6px;">
-                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Min: <span id="biome-tool-height-min-value">0</span>%</label>
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Min')}: <span id="biome-tool-height-min-value">0</span>%</label>
                 <input type="range" id="biome-tool-height-min" min="0" max="100" step="1" value="0" style="width: 100%;" disabled>
               </div>
               <div style="margin-bottom: 6px;">
-                <label style="display: block; margin-bottom: 2px; font-size: 10px;">Max: <span id="biome-tool-height-max-value">100</span>%</label>
+                <label style="display: block; margin-bottom: 2px; font-size: 10px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Max')}: <span id="biome-tool-height-max-value">100</span>%</label>
                 <input type="range" id="biome-tool-height-max" min="0" max="100" step="1" value="100" style="width: 100%;" disabled>
               </div>
               <div style="font-size: 10px; color: #aaa; text-align: center;">
-                Range: <span id="biome-tool-height-display">0-100</span>%
+                ${t('SPACEHOLDER.GlobalMap.Tools.Common.Range')}: <span id="biome-tool-height-display">0-100</span>%
               </div>
             </div>
           </div>
@@ -3409,208 +3566,208 @@ export class GlobalMapTools {
           <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
               <input type="checkbox" id="biome-tool-biome-filter-enabled" style="margin: 0;">
-              <span style="font-weight: bold; font-size: 12px;">Filter by Biome</span>
+              <span style="font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Filters.FilterByBiome')}</span>
             </label>
             <div style="display: none;" id="biome-tool-biome-filter-controls">
               <div id="biome-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
               <div style="font-size: 9px; color: #aaa; text-align: center;">
-                Click to exclude biomes from editing
+                ${t('SPACEHOLDER.GlobalMap.Tools.Biomes.BiomeFilterExcludeHint')}
               </div>
             </div>
           </div>
 
           <button id="open-biome-editor" style="width: 100%; padding: 10px; margin-top: 8px; background: #4466cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Редактировать список биомов…
+            ${t('SPACEHOLDER.GlobalMap.Tools.Biomes.OpenEditor')}
           </button>
           <div style="font-size: 10px; color: #aaa; text-align: center; margin-top: 4px;">
-            Сохраняется в <b>worlds/.../global-maps/biome-overrides.json</b>
+            ${t('SPACEHOLDER.GlobalMap.Tools.Biomes.OverridesFileNote')} <b>worlds/.../global-maps/biome-overrides.json</b>
           </div>
           
           <button id="biome-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Activate Brush
+            ${t('SPACEHOLDER.GlobalMap.Tools.Brush.Activate')}
           </button>
         </div>
 
         <div id="rivers-tab" style="display: none;">
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">River:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Rivers.RiverLabel')}:</label>
             <select id="global-map-river-select" style="width: 100%; padding: 5px;"></select>
           </div>
 
           <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-            <button id="river-new" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">New</button>
-            <button id="river-rename" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Rename</button>
-            <button id="river-delete" style="flex: 1; padding: 8px; background: #883333; border: none; color: white; border-radius: 3px; cursor: pointer;">Delete</button>
+            <button id="river-new" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">${t('SPACEHOLDER.Actions.New')}</button>
+            <button id="river-rename" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Rename')}</button>
+            <button id="river-delete" style="flex: 1; padding: 8px; background: #883333; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.Actions.Delete')}</button>
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Mode:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.ModeLabel')}:</label>
             <div id="global-map-river-mode-buttons" style="display: flex; gap: 4px;">
-              <button type="button" data-tool="river-draw" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Draw (points)</button>
-              <button type="button" data-tool="river-edit" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Edit</button>
+              <button type="button" data-tool="river-draw" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Rivers.Modes.DrawPoints')}</button>
+              <button type="button" data-tool="river-edit" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.Actions.Edit')}</button>
             </div>
           </div>
 
           <div style="margin-bottom: 10px;">
             <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
               <input type="checkbox" id="river-snap-endpoints" style="margin: 0;" checked>
-              <span>Snap to endpoints</span>
+              <span>${t('SPACEHOLDER.GlobalMap.Tools.Rivers.SnapToEndpoints')}</span>
             </label>
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Default point width: <span id="river-default-width-value">${this.riverDefaultPointWidth}</span>px</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Rivers.DefaultPointWidth')}: <span id="river-default-width-value">${this.riverDefaultPointWidth}</span>px</label>
             <input type="range" id="river-default-width" min="1" max="200" step="1" value="${this.riverDefaultPointWidth}" style="width: 100%;">
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Selected point width: <span id="river-point-width-value">-</span>px</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Rivers.SelectedPointWidth')}: <span id="river-point-width-value">-</span>px</label>
             <input type="range" id="river-point-width" min="1" max="200" step="1" value="${this.riverDefaultPointWidth}" style="width: 100%;" disabled>
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Labels:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Labels')}:</label>
             <select id="river-label-mode" style="width: 100%; padding: 5px;">
-              <option value="hover" selected>Hover</option>
-              <option value="always">Always</option>
-              <option value="off">Off</option>
+              <option value="hover" selected>${t('SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort')}</option>
+              <option value="always">${t('SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always')}</option>
+              <option value="off">${t('SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off')}</option>
             </select>
           </div>
 
           <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-            <button id="river-finish" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Finish</button>
-            <button id="river-save" style="flex: 1; padding: 8px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Save rivers</button>
+            <button id="river-finish" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Finish')}</button>
+            <button id="river-save" style="flex: 1; padding: 8px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">${t('SPACEHOLDER.GlobalMap.Tools.Rivers.Save')}</button>
           </div>
 
           <div style="font-size: 10px; color: #aaa; line-height: 1.3; margin-bottom: 10px;">
-            <div><b>Draw:</b> click to add points.</div>
-            <div><b>Edit:</b> drag point to move; <b>Alt+click</b> on segment to insert; <b>Ctrl+click</b> on point to delete.</div>
+            <div>${t('SPACEHOLDER.GlobalMap.Tools.Rivers.Help.Draw')}</div>
+            <div>${t('SPACEHOLDER.GlobalMap.Tools.Rivers.Help.Edit')}</div>
           </div>
 
           <button id="river-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Activate River Editor
+            ${t('SPACEHOLDER.GlobalMap.Tools.Brush.Activate')}
           </button>
         </div>
 
         <div id="regions-tab" style="display: none;">
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Region:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Regions.RegionLabel')}:</label>
             <select id="global-map-region-select" style="width: 100%; padding: 5px;"></select>
           </div>
 
           <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-            <button id="region-new" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">New</button>
-            <button id="region-rename" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Rename</button>
-            <button id="region-delete" style="flex: 1; padding: 8px; background: #883333; border: none; color: white; border-radius: 3px; cursor: pointer;">Delete</button>
+            <button id="region-new" style="flex: 1; padding: 8px; background: #0066cc; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">${t('SPACEHOLDER.Actions.New')}</button>
+            <button id="region-rename" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Rename')}</button>
+            <button id="region-delete" style="flex: 1; padding: 8px; background: #883333; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.Actions.Delete')}</button>
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Mode:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.ModeLabel')}:</label>
             <div id="global-map-region-mode-buttons" style="display: flex; gap: 4px;">
-              <button type="button" data-tool="region-draw" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Draw (points)</button>
-              <button type="button" data-tool="region-edit" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">Edit</button>
+              <button type="button" data-tool="region-draw" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Modes.DrawPoints')}</button>
+              <button type="button" data-tool="region-edit" style="flex: 1; padding: 6px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">${t('SPACEHOLDER.Actions.Edit')}</button>
             </div>
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Labels:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Labels')}:</label>
             <select id="region-label-mode" style="width: 100%; padding: 5px;">
-              <option value="hover" selected>Hover</option>
-              <option value="always">Always</option>
-              <option value="off">Off</option>
+              <option value="hover" selected>${t('SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort')}</option>
+              <option value="always">${t('SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always')}</option>
+              <option value="off">${t('SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off')}</option>
             </select>
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Smoothing:</label>
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Smoothing.Label')}:</label>
             <select id="region-smooth-iterations" style="width: 100%; padding: 5px;">
-              <option value="0">Off (exact)</option>
-              <option value="1" selected>Low</option>
-              <option value="2">Medium</option>
-              <option value="3">High</option>
-              <option value="4">Very High</option>
+              <option value="0">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Smoothing.Options.OffExact')}</option>
+              <option value="1" selected>${t('SPACEHOLDER.GlobalMap.Tools.Regions.Smoothing.Options.Low')}</option>
+              <option value="2">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Smoothing.Options.Medium')}</option>
+              <option value="3">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Smoothing.Options.High')}</option>
+              <option value="4">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Smoothing.Options.VeryHigh')}</option>
             </select>
-            <div style="font-size: 10px; color: #aaa; margin-top: 4px;">Сглаживание влияет только на отображение/клик; точки не меняются.</div>
+            <div style="font-size: 10px; color: #aaa; margin-top: 4px;">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Smoothing.Note')}</div>
           </div>
 
           <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px;">Fill</label>
+            <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Style.Fill')}</label>
             <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
               <input type="color" id="region-fill-color" value="#2e7dff" style="width: 44px; height: 28px; padding: 0; border: none; background: transparent;">
-              <div style="flex: 1; font-size: 10px; color: #aaa;">Alpha: <span id="region-fill-alpha-value">${this.regionDefaultFillAlpha.toFixed(2)}</span></div>
+              <div style="flex: 1; font-size: 10px; color: #aaa;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Alpha')}: <span id="region-fill-alpha-value">${this.regionDefaultFillAlpha.toFixed(2)}</span></div>
             </div>
             <input type="range" id="region-fill-alpha" min="0" max="1" step="0.05" value="${this.regionDefaultFillAlpha}" style="width: 100%;">
           </div>
 
           <div style="margin-bottom: 10px; padding: 8px; background: rgba(100, 100, 150, 0.15); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px;">Stroke</label>
+            <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Style.Stroke')}</label>
             <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
               <input type="color" id="region-stroke-color" value="#2e7dff" style="width: 44px; height: 28px; padding: 0; border: none; background: transparent;">
-              <div style="flex: 1; font-size: 10px; color: #aaa;">Alpha: <span id="region-stroke-alpha-value">${this.regionDefaultStrokeAlpha.toFixed(2)}</span></div>
+              <div style="flex: 1; font-size: 10px; color: #aaa;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Alpha')}: <span id="region-stroke-alpha-value">${this.regionDefaultStrokeAlpha.toFixed(2)}</span></div>
             </div>
             <input type="range" id="region-stroke-alpha" min="0" max="1" step="0.05" value="${this.regionDefaultStrokeAlpha}" style="width: 100%; margin-bottom: 8px;">
-            <div style="font-size: 10px; color: #aaa; margin-bottom: 4px;">Width: <span id="region-stroke-width-value">${Math.round(this.regionDefaultStrokeWidth)}</span>px</div>
+            <div style="font-size: 10px; color: #aaa; margin-bottom: 4px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Width')}: <span id="region-stroke-width-value">${Math.round(this.regionDefaultStrokeWidth)}</span>px</div>
             <input type="range" id="region-stroke-width" min="1" max="40" step="1" value="${Math.round(this.regionDefaultStrokeWidth)}" style="width: 100%;">
           </div>
 
           <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Journal UUID (optional):</label>
-            <input type="text" id="region-journal-uuid" placeholder="Drag&drop Journal сюда или вставьте UUID" style="width: 100%; padding: 5px;">
+            <label style="display: block; margin-bottom: 5px;">${t('SPACEHOLDER.GlobalMap.Common.JournalUuid')} ${t('SPACEHOLDER.Common.Optional')}:</label>
+            <input type="text" id="region-journal-uuid" placeholder="${t('SPACEHOLDER.GlobalMap.Tools.Regions.JournalUuidPlaceholder')}" style="width: 100%; padding: 5px;">
             <div style="display: flex; gap: 5px; margin-top: 6px;">
-              <button id="region-journal-open" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Open</button>
-              <button id="region-journal-clear" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Clear</button>
+              <button id="region-journal-open" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Open')}</button>
+              <button id="region-journal-clear" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.Actions.Clear')}</button>
             </div>
           </div>
 
           <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-            <button id="region-finish" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">Finish</button>
-            <button id="region-save" style="flex: 1; padding: 8px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Save regions</button>
+            <button id="region-finish" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Finish')}</button>
+            <button id="region-save" style="flex: 1; padding: 8px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">${t('SPACEHOLDER.GlobalMap.Tools.Regions.Save')}</button>
           </div>
 
           <div style="font-size: 10px; color: #aaa; line-height: 1.3; margin-bottom: 10px;">
-            <div><b>Draw:</b> click to add points.</div>
-            <div><b>Edit:</b> drag point to move; <b>Alt+click</b> on segment to insert; <b>Ctrl+click</b> on point to delete.</div>
+            <div>${t('SPACEHOLDER.GlobalMap.Tools.Regions.Help.Draw')}</div>
+            <div>${t('SPACEHOLDER.GlobalMap.Tools.Regions.Help.Edit')}</div>
           </div>
 
           <button id="region-brush-toggle" style="width: 100%; padding: 10px; margin-top: 10px; background: #00aa00; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-            Activate Region Editor
+            ${t('SPACEHOLDER.GlobalMap.Tools.Brush.Activate')}
           </button>
         </div>
 
         <div id="global-tab" style="display: none;">
           <!-- Smooth Operations -->
           <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #555;">
-            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ffff00;">Smoothing:</label>
+            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ffff00;">${t('SPACEHOLDER.GlobalMap.Tools.Global.Smoothing')}:</label>
             <div style="margin-bottom: 10px;">
-              <label style="display: block; margin-bottom: 5px; font-size: 12px;">Strength: <span id="global-smooth-strength-value">${this.globalSmoothStrength.toFixed(1)}</span></label>
+              <label style="display: block; margin-bottom: 5px; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Strength')}: <span id="global-smooth-strength-value">${this.globalSmoothStrength.toFixed(1)}</span></label>
               <input type="range" id="global-smooth-strength" min="0.1" max="1.0" step="0.1" value="${this.globalSmoothStrength}" style="width: 100%;">
             </div>
             <button id="global-smooth-btn" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #ffff00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;">
-              Smooth (1 pass)
+              ${t('SPACEHOLDER.GlobalMap.Tools.Global.Smooth1')}
             </button>
             <button id="global-smooth-3-btn" style="width: 100%; padding: 8px; background: #ffdd00; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;">
-              Smooth (3 passes)
+              ${t('SPACEHOLDER.GlobalMap.Tools.Global.Smooth3')}
             </button>
           </div>
 
           <!-- Unified Replace Tool -->
           <div style="margin-bottom: 15px; padding: 10px; background: rgba(150, 150, 100, 0.1); border-radius: 3px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #ffff99; font-size: 13px;">Replace Cells:</label>
+            <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #ffff99; font-size: 13px;">${t('SPACEHOLDER.GlobalMap.Tools.Replace.Title')}:</label>
             
             <!-- Filters Section -->
             <div style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 3px;">
-              <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #ccccff; font-size: 11px;">Filters (at least one):</label>
+              <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #ccccff; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Replace.Filters.Title')}:</label>
               
               <!-- Height Filter -->
               <div style="margin-bottom: 8px;">
                 <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
                   <input type="checkbox" id="replace-use-height" style="margin: 0;">
-                  <span>Height Range:</span>
+                  <span>${t('SPACEHOLDER.GlobalMap.Tools.Replace.Filters.HeightRange')}:</span>
                 </label>
                 <div style="margin-left: 20px; margin-top: 4px;">
-                  <label style="display: block; margin-bottom: 2px; font-size: 9px;">Min: <span id="replace-height-min-value">0</span>%</label>
+                  <label style="display: block; margin-bottom: 2px; font-size: 9px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Min')}: <span id="replace-height-min-value">0</span>%</label>
                   <input type="range" id="replace-height-min" min="0" max="100" step="1" value="0" style="width: 100%; margin-bottom: 4px;" disabled>
-                  <label style="display: block; margin-bottom: 2px; font-size: 9px;">Max: <span id="replace-height-max-value">100</span>%</label>
+                  <label style="display: block; margin-bottom: 2px; font-size: 9px;">${t('SPACEHOLDER.GlobalMap.Tools.Common.Max')}: <span id="replace-height-max-value">100</span>%</label>
                   <input type="range" id="replace-height-max" min="0" max="100" step="1" value="100" style="width: 100%;" disabled>
                 </div>
               </div>
@@ -3619,7 +3776,7 @@ export class GlobalMapTools {
               <div style="margin-bottom: 8px;">
                 <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
                   <input type="checkbox" id="replace-use-biome" style="margin: 0;">
-                  <span>Source Biome:</span>
+                  <span>${t('SPACEHOLDER.GlobalMap.Tools.Replace.Filters.SourceBiome')}:</span>
                 </label>
                 <div id="replace-source-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
               </div>
@@ -3627,13 +3784,13 @@ export class GlobalMapTools {
             
             <!-- Actions Section -->
             <div style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 3px;">
-              <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #ccffcc; font-size: 11px;">Actions (at least one):</label>
+              <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #ccffcc; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Replace.Actions.Title')}:</label>
               
               <!-- Set Height Action -->
               <div style="margin-bottom: 8px;">
                 <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
                   <input type="checkbox" id="replace-set-height" style="margin: 0;">
-                  <span>Set Height:</span>
+                  <span>${t('SPACEHOLDER.GlobalMap.Tools.Replace.Actions.SetHeight')}:</span>
                   <input type="range" id="replace-set-height-val" min="0" max="100" step="1" value="50" style="flex: 1;" disabled>
                   <span id="replace-set-height-display" style="font-size: 9px; color: #aaa; min-width: 25px;">50</span>
                 </label>
@@ -3643,7 +3800,7 @@ export class GlobalMapTools {
               <div style="margin-bottom: 0;">
                 <label style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
                   <input type="checkbox" id="replace-set-biome" style="margin: 0;">
-                  <span>Set Biome:</span>
+                  <span>${t('SPACEHOLDER.GlobalMap.Tools.Replace.Actions.SetBiome')}:</span>
                 </label>
                 <div id="replace-target-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
               </div>
@@ -3651,25 +3808,25 @@ export class GlobalMapTools {
             
             <!-- Preview and Action -->
             <div style="margin-bottom: 8px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; font-size: 10px; color: #aaa;">
-              Matches: <span id="replace-preview-count">0</span> cells
+              ${t('SPACEHOLDER.GlobalMap.Tools.Replace.Preview.Matches')}: <span id="replace-preview-count">0</span> ${t('SPACEHOLDER.GlobalMap.Tools.Replace.Preview.Cells')}
             </div>
             
             <button id="replace-apply-btn" style="width: 100%; padding: 6px; margin-bottom: 4px; background: #88dd88; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
-              Replace
+              ${t('SPACEHOLDER.GlobalMap.Tools.Replace.Replace')}
             </button>
             <button id="replace-flatten-btn" style="width: 100%; padding: 6px; background: #ffaa44; color: black; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px;">
-              Flatten All
+              ${t('SPACEHOLDER.GlobalMap.Tools.Replace.FlattenAll')}
             </button>
           </div>
         </div>
 
         <div style="display: flex; gap: 5px; margin-top: 5px;">
-          <button id="global-map-undo" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Undo</button>
-          <button id="global-map-redo" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Redo</button>
+          <button id="global-map-undo" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">${t('SPACEHOLDER.Actions.Undo')}</button>
+          <button id="global-map-redo" style="flex: 1; padding: 8px; background: #444; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">${t('SPACEHOLDER.Actions.Redo')}</button>
         </div>
 
         <button id="global-map-exit" style="width: 100%; padding: 8px; margin-top: 5px; background: #888; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">
-          Exit
+          ${t('SPACEHOLDER.GlobalMap.Tools.Common.Exit')}
         </button>
       </div>
     `;
@@ -3729,7 +3886,7 @@ export class GlobalMapTools {
         select.append(
           $('<option></option>')
             .attr('value', b.id)
-            .text(`${b.name} (ID:${b.id})`)
+            .text(f('SPACEHOLDER.GlobalMap.Tools.Biomes.SelectOption', { name: b.name, id: b.id }))
         );
       }
 
@@ -3775,7 +3932,7 @@ export class GlobalMapTools {
 
         const cell = $('<div></div>').css(cellStyles).attr({
           'data-biome-id': biomeId,
-          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+          'title': f('SPACEHOLDER.GlobalMap.Tools.Biomes.CellTitle', { name: b.name, id: biomeId, rank: b.renderRank })
         });
 
         cell.on('click', () => {
@@ -3838,7 +3995,7 @@ export class GlobalMapTools {
 
         const cell = $('<div></div>').css(cellStyles).attr({
           'data-biome-id': biomeId,
-          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+          'title': f('SPACEHOLDER.GlobalMap.Tools.Biomes.CellTitle', { name: b.name, id: biomeId, rank: b.renderRank })
         });
 
         cell.on('click', () => {
@@ -3899,7 +4056,7 @@ export class GlobalMapTools {
 
         const cell = $('<div></div>').css(cellStyles).attr({
           'data-biome-id': biomeId,
-          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+          'title': f('SPACEHOLDER.GlobalMap.Tools.Biomes.CellTitle', { name: b.name, id: biomeId, rank: b.renderRank })
         });
 
         // Add small X overlay when excluded
@@ -3968,7 +4125,7 @@ export class GlobalMapTools {
 
         const cell = $('<div></div>').css(cellStyles).attr({
           'data-biome-id': biomeId,
-          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+          'title': f('SPACEHOLDER.GlobalMap.Tools.Biomes.CellTitle', { name: b.name, id: biomeId, rank: b.renderRank })
         });
 
         cell.on('click', () => {
@@ -4029,7 +4186,7 @@ export class GlobalMapTools {
 
         const cell = $('<div></div>').css(cellStyles).attr({
           'data-biome-id': biomeId,
-          'title': `${b.name} (ID:${biomeId}, rank:${b.renderRank})`
+          'title': f('SPACEHOLDER.GlobalMap.Tools.Biomes.CellTitle', { name: b.name, id: biomeId, rank: b.renderRank })
         });
 
         cell.on('click', () => {
@@ -4262,7 +4419,7 @@ export class GlobalMapTools {
         app.render(true);
       } catch (e) {
         console.error('GlobalMapTools | Failed to open biome editor:', e);
-        ui.notifications?.error?.(`Не удалось открыть редактор биомов: ${e.message}`);
+        ui.notifications?.error?.(_f('SPACEHOLDER.GlobalMap.Tools.Errors.OpenBiomeEditorFailed', { message: e.message }));
       }
     });
 
@@ -4640,7 +4797,7 @@ export class GlobalMapTools {
 
       const uuid = this._extractUuidFromDropEvent(ev.originalEvent);
       if (!uuid) {
-        ui.notifications?.warn?.('Не удалось извлечь UUID из перетаскивания');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DropUuidNotFound'));
         return;
       }
 
@@ -4653,12 +4810,12 @@ export class GlobalMapTools {
       }
 
       if (!doc) {
-        ui.notifications?.warn?.('Документ по UUID не найден');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.DocNotFoundByUuid'));
         return;
       }
 
       if (!['JournalEntry', 'JournalEntryPage'].includes(doc.documentName)) {
-        ui.notifications?.warn?.('Ожидался Journal (JournalEntry/JournalEntryPage)');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.ExpectedJournalDoc'));
         return;
       }
 
@@ -4816,12 +4973,12 @@ export class GlobalMapTools {
       const setBiome = $('#replace-set-biome').prop('checked');
       
       if (!useBiome && !useHeight) {
-        ui.notifications.warn('Select at least one filter');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Replace.Errors.SelectAtLeastOneFilter'));
         return;
       }
       
       if (!setHeight && !setBiome) {
-        ui.notifications.warn('Select at least one action');
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Replace.Errors.SelectAtLeastOneAction'));
         return;
       }
       
@@ -4834,7 +4991,7 @@ export class GlobalMapTools {
       
       if (setBiome) {
         if (!this.replaceTargetBiomeId) {
-          ui.notifications.warn('Select target biome');
+          ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Replace.Errors.SelectTargetBiome'));
           return;
         }
         criteria.targetBiomeId = this.replaceTargetBiomeId;
@@ -4844,12 +5001,21 @@ export class GlobalMapTools {
     });
     
     // Flatten All button
-    $('#replace-flatten-btn').on('click', () => {
-      const targetHeight = parseInt($('#replace-set-height-val').val());
-      const confirmed = confirm(`Flatten entire map to height ${targetHeight}%?`);
-      if (confirmed) {
-        this.applyFlattenMap(targetHeight);
-      }
+    $('#replace-flatten-btn').on('click', async () => {
+      const targetHeightRaw = parseInt($('#replace-set-height-val').val());
+      const targetHeight = Number.isFinite(targetHeightRaw) ? targetHeightRaw : 0;
+
+      const ok = await this._confirmDialog({
+        title: _t('SPACEHOLDER.GlobalMap.Tools.Replace.Confirm.FlattenAllTitle'),
+        content: _f('SPACEHOLDER.GlobalMap.Tools.Replace.Confirm.FlattenAllContent', { height: targetHeight }),
+        yesLabel: _t('SPACEHOLDER.GlobalMap.Tools.Replace.FlattenAll'),
+        yesIcon: 'fa-solid fa-arrows-to-circle',
+        noLabel: _t('SPACEHOLDER.Actions.Cancel'),
+        noIcon: 'fa-solid fa-times',
+      });
+
+      if (!ok) return;
+      this.applyFlattenMap(targetHeight);
     });
 
     // Undo / Redo
@@ -5101,7 +5267,7 @@ export class GlobalMapTools {
    */
   applyReplaceByHeight(heightMin, heightMax, replacementHeight) {
     if (!this.renderer.currentGrid) {
-      ui.notifications.warn('No grid loaded');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
       return 0;
     }
 
@@ -5125,7 +5291,12 @@ export class GlobalMapTools {
     );
 
     console.log(`GlobalMapTools | ✓ Replaced ${count} cells by height`);
-    ui.notifications.info(`Replaced ${count} cells (height ${heightMin.toFixed(1)}-${heightMax.toFixed(1)} → ${replacementHeight.toFixed(1)})`);
+    ui.notifications?.info?.(_f('SPACEHOLDER.GlobalMap.Tools.Replace.Notifications.ReplacedByHeight', {
+      count,
+      min: Number(heightMin).toFixed(1),
+      max: Number(heightMax).toFixed(1),
+      to: Number(replacementHeight).toFixed(1),
+    }));
     return count;
   }
 
@@ -5137,13 +5308,13 @@ export class GlobalMapTools {
    */
   applyReplaceByBiome(sourceBiomeId, targetBiomeId) {
     if (!this.renderer.currentGrid) {
-      ui.notifications.warn('No grid loaded');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
       return 0;
     }
 
-    const { biomes, moisture, temperature, heights } = this.renderer.currentGrid;
+    const { biomes, moisture, temperature } = this.renderer.currentGrid;
     if (!biomes) {
-      ui.notifications.warn('No biomes array available');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Replace.Errors.NoBiomesArrayAvailable'));
       return 0;
     }
 
@@ -5167,7 +5338,7 @@ export class GlobalMapTools {
     );
 
     console.log(`GlobalMapTools | ✓ Replaced ${count} cells by biome`);
-    ui.notifications.info(`Replaced ${count} cells: biome changed`);
+    ui.notifications?.info?.(_f('SPACEHOLDER.GlobalMap.Tools.Replace.Notifications.ReplacedByBiome', { count }));
     return count;
   }
 
@@ -5178,7 +5349,7 @@ export class GlobalMapTools {
    */
   applyReplaceByCombinedFilter(criteria) {
     if (!this.renderer.currentGrid) {
-      ui.notifications.warn('No grid loaded');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
       return 0;
     }
 
@@ -5231,7 +5402,7 @@ export class GlobalMapTools {
     );
 
     console.log(`GlobalMapTools | ✓ Applied combined filter replacement to ${count} cells`);
-    ui.notifications.info(`Replaced ${count} cells with combined criteria`);
+    ui.notifications?.info?.(_f('SPACEHOLDER.GlobalMap.Tools.Replace.Notifications.ReplacedByCombined', { count }));
     return count;
   }
 
@@ -5242,7 +5413,7 @@ export class GlobalMapTools {
    */
   applyFlattenMap(targetHeight) {
     if (!this.renderer.currentGrid) {
-      ui.notifications.warn('No grid loaded');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
       return 0;
     }
 
@@ -5263,7 +5434,10 @@ export class GlobalMapTools {
     );
 
     console.log(`GlobalMapTools | ✓ Flattened entire map to height ${targetHeight}`);
-    ui.notifications.info(`Map flattened: all ${count} cells set to height ${targetHeight.toFixed(1)}`);
+    ui.notifications?.info?.(_f('SPACEHOLDER.GlobalMap.Tools.Replace.Notifications.MapFlattened', {
+      count,
+      height: Number(targetHeight).toFixed(1),
+    }));
     return count;
   }
 
@@ -5273,7 +5447,7 @@ export class GlobalMapTools {
    */
   globalSmooth(iterations = 1) {
     if (!this.renderer.currentGrid) {
-      ui.notifications.warn('No grid loaded');
+      ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Errors.NoLoadedMap'));
       return;
     }
 
@@ -5323,7 +5497,10 @@ export class GlobalMapTools {
     );
 
     console.log(`GlobalMapTools | ✓ Global smooth applied (${iterations} iterations, strength: ${this.globalSmoothStrength})`);
-    ui.notifications.info(`Global map smoothed (${iterations} ${iterations === 1 ? 'pass' : 'passes'}, strength: ${this.globalSmoothStrength.toFixed(1)})`);
+    ui.notifications?.info?.(_f('SPACEHOLDER.GlobalMap.Tools.Notifications.GlobalSmoothed', {
+      passes: Number(iterations),
+      strength: Number(this.globalSmoothStrength).toFixed(1),
+    }));
   }
 
   /**
@@ -5414,7 +5591,9 @@ export class GlobalMapTools {
       ? biomes[idx]
       : (resolver ? resolver.getBiomeId(moist ?? 0, temp ?? 0) : 0);
 
-    const biomeName = resolver ? resolver.getBiomeName(biomeId) : `Biome ${biomeId}`;
+    const biomeName = resolver
+      ? resolver.getBiomeName(biomeId)
+      : _f('SPACEHOLDER.GlobalMap.Biomes.DefaultNameFallback', { id: biomeId });
     const biomeColor = resolver ? resolver.getBiomeColor(biomeId) : 0x888888;
     const biomeRank = resolver ? resolver.getBiomeRank(biomeId) : 0;
 
