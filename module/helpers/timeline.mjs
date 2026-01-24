@@ -3,14 +3,19 @@
 // - World (Public)
 // - Faction (Private)
 // - Faction (Public)
-// Ordering: year ASC, id ASC (id is globally allocated per year by GM).
+// Ordering: year ASC, id ASC (id is an integer sort key per year; values are sparse to allow insert-between reordering).
 
 import { getUserFactionUuids, getUsersForFaction, normalizeUuid as normalizeUuidUserFactions } from './user-factions.mjs';
 
 const MODULE_NS = 'spaceholder';
 const FLAG_ROOT = 'timeline';
 
+// Sparse integer step for ordering inside a year.
+export const TIMELINE_ORDER_STEP = 1000;
+
 const SETTING_NEXT_ID_BY_YEAR = 'timeline.nextIdByYear';
+const SETTING_ORDERING_VERSION = 'timeline.orderingVersion';
+const ORDERING_VERSION = 2;
 
 const SOCKET_TYPE = `${MODULE_NS}.timeline`;
 
@@ -417,6 +422,26 @@ async function _setNextIdMapSafe(map) {
   }
 }
 
+function _getOrderingVersionSafe() {
+  try {
+    const raw = game.settings.get(MODULE_NS, SETTING_ORDERING_VERSION);
+    const v = Number.parseInt(raw, 10);
+    return Number.isFinite(v) ? v : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+async function _setOrderingVersionSafe(version) {
+  try {
+    await game.settings.set(MODULE_NS, SETTING_ORDERING_VERSION, Number(version) || 0);
+    return true;
+  } catch (e) {
+    console.error('SpaceHolder | Timeline: failed to persist orderingVersion setting', e);
+    return false;
+  }
+}
+
 async function _gmAllocateNextId(year) {
   if (!game?.user?.isGM) return null;
 
@@ -438,7 +463,7 @@ async function _gmAllocateNextId(year) {
       last = await _gmComputeMaxIdForYear(y);
     }
 
-    const nextId = Math.max(0, Number(last) || 0) + 1;
+    const nextId = Math.max(0, Number(last) || 0) + TIMELINE_ORDER_STEP;
     map[key] = nextId;
 
     await _setNextIdMapSafe(map);
@@ -529,6 +554,19 @@ async function _handleSocketRequestAsGM(msg) {
       const factionUuids = Array.isArray(msg?.payload?.factionUuids) ? msg.payload.factionUuids : [];
       // Always ensure world container
       await gmEnsureTimelineContainers({ factionUuids });
+
+      // Best-effort migrations (cheap when already applied).
+      try {
+        await _gmMigrateTimelinePagesToNewRules();
+      } catch (_) {
+        // ignore
+      }
+      try {
+        await _gmMigrateTimelineOrderingToSparseIds();
+      } catch (_) {
+        // ignore
+      }
+
       reply(true, { ok: true });
       return;
     }
@@ -559,23 +597,33 @@ function _handleSocketResponse(msg) {
 }
 
 export function registerTimelineSettings() {
-  try {
-    const s = game?.settings?.settings;
-    if (s?.has?.(`${MODULE_NS}.${SETTING_NEXT_ID_BY_YEAR}`)) return;
-  } catch (_) {
-    // ignore
-  }
+  const settings = game?.settings;
+  const registry = settings?.settings;
 
   try {
-    game.settings.register(MODULE_NS, SETTING_NEXT_ID_BY_YEAR, {
-      name: 'Timeline: Next ID By Year',
-      hint: 'Internal counter for timeline ordering',
-      scope: 'world',
-      config: false,
-      type: Object,
-      default: {},
-      restricted: true,
-    });
+    if (registry?.has?.(`${MODULE_NS}.${SETTING_NEXT_ID_BY_YEAR}`) !== true) {
+      settings.register(MODULE_NS, SETTING_NEXT_ID_BY_YEAR, {
+        name: 'Timeline: Next ID By Year',
+        hint: 'Internal counter for timeline ordering',
+        scope: 'world',
+        config: false,
+        type: Object,
+        default: {},
+        restricted: true,
+      });
+    }
+
+    if (registry?.has?.(`${MODULE_NS}.${SETTING_ORDERING_VERSION}`) !== true) {
+      settings.register(MODULE_NS, SETTING_ORDERING_VERSION, {
+        name: 'Timeline: Ordering Version',
+        hint: 'Internal migration version for timeline ordering',
+        scope: 'world',
+        config: false,
+        type: Number,
+        default: 0,
+        restricted: true,
+      });
+    }
   } catch (e) {
     console.error('SpaceHolder | Timeline: failed to register settings', e);
   }
@@ -660,6 +708,13 @@ export async function ensureTimelineInfrastructureForCurrentUser() {
       console.warn('SpaceHolder | Timeline: migration failed', e);
     }
 
+    // Ordering migration: convert legacy small sequential ids to sparse values.
+    try {
+      await _gmMigrateTimelineOrderingToSparseIds();
+    } catch (e) {
+      console.warn('SpaceHolder | Timeline: ordering migration failed', e);
+    }
+
     return true;
   }
 
@@ -680,12 +735,12 @@ export async function requestNextTimelineId(year) {
 
   if (game.user?.isGM) {
     const id = await _gmAllocateNextId(y);
-    return Number(id) || 1;
+    return Number(id) || TIMELINE_ORDER_STEP;
   }
 
   const payload = await _requestViaSocket('nextId', { year: y });
   const idRaw = Number.parseInt(payload?.id, 10);
-  return Number.isFinite(idRaw) && idRaw > 0 ? idRaw : 1;
+  return Number.isFinite(idRaw) && idRaw > 0 ? idRaw : TIMELINE_ORDER_STEP;
 }
 
 export function getTimelineContainer({ kind, factionUuid = '' }) {
@@ -768,6 +823,60 @@ async function _gmMigrateTimelinePagesToNewRules() {
       }
     }
   }
+
+  return true;
+}
+
+async function _gmMigrateTimelineOrderingToSparseIds() {
+  if (!game?.user?.isGM) return false;
+
+  const currentVersion = _getOrderingVersionSafe();
+  if (currentVersion >= ORDERING_VERSION) return false;
+
+  const containers = listTimelineContainers();
+  const byYear = new Map();
+
+  for (const entry of containers) {
+    if (!entry?.id) continue;
+
+    const pages = listTimelinePagesInContainer(entry);
+    for (const page of pages) {
+      if (!page?.id) continue;
+      const t = getTimelineEntryData(page);
+      const y = Number(t.year) || 1;
+      if (!byYear.has(y)) byYear.set(y, []);
+      byYear.get(y).push(page);
+    }
+  }
+
+  const nextMap = { ..._getNextIdMapSafe() };
+
+  for (const [year, pages] of byYear.entries()) {
+    pages.sort((a, b) => {
+      const ta = getTimelineEntryData(a);
+      const tb = getTimelineEntryData(b);
+
+      if (ta.year !== tb.year) return ta.year - tb.year;
+      if (ta.id !== tb.id) return ta.id - tb.id;
+
+      return String(a.uuid).localeCompare(String(b.uuid));
+    });
+
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const flags = { ..._getFlagObj(page) };
+      flags.id = (i + 1) * TIMELINE_ORDER_STEP;
+
+      await page.update({
+        [`flags.${MODULE_NS}.${FLAG_ROOT}`]: flags,
+      }, { diff: false, spaceholderJournalCheck: true });
+    }
+
+    nextMap[String(year)] = pages.length * TIMELINE_ORDER_STEP;
+  }
+
+  await _setNextIdMapSafe(nextMap);
+  await _setOrderingVersionSafe(ORDERING_VERSION);
 
   return true;
 }
@@ -928,6 +1037,125 @@ export async function setTimelineEntryGlobal(page, isGlobal) {
   }, { diff: false, spaceholderJournalCheck: true });
 
   return page;
+}
+
+export async function setTimelineEntryOrder(page, order) {
+  if (!page) return false;
+
+  const n = Number.parseInt(order, 10);
+  if (!Number.isFinite(n) || n <= 0) return false;
+
+  const flags = { ..._getFlagObj(page) };
+  flags.id = n;
+
+  await page.update({ [`flags.${MODULE_NS}.${FLAG_ROOT}`]: flags }, { diff: false, spaceholderJournalCheck: true });
+  return true;
+}
+
+export async function renormalizeTimelineEntryOrders(pages, { year = null, orderStep = TIMELINE_ORDER_STEP } = {}) {
+  const list = Array.isArray(pages) ? pages.filter((p) => p?.id) : [];
+  if (!list.length) return false;
+
+  const y = (year === null || year === undefined) ? null : (Number(year) || 1);
+
+  const sameYear = y
+    ? list.filter((p) => getTimelineEntryData(p).year === y)
+    : list;
+
+  sameYear.sort((a, b) => {
+    const ta = getTimelineEntryData(a);
+    const tb = getTimelineEntryData(b);
+
+    if (ta.year !== tb.year) return ta.year - tb.year;
+    if (ta.id !== tb.id) return ta.id - tb.id;
+
+    return String(a.uuid).localeCompare(String(b.uuid));
+  });
+
+  for (let i = 0; i < sameYear.length; i++) {
+    const page = sameYear[i];
+    const flags = { ..._getFlagObj(page) };
+    flags.id = (i + 1) * (Number(orderStep) || TIMELINE_ORDER_STEP);
+
+    await page.update({
+      [`flags.${MODULE_NS}.${FLAG_ROOT}`]: flags,
+    }, { diff: false, spaceholderJournalCheck: true });
+  }
+
+  return true;
+}
+
+export async function moveTimelineEntryOrderInList(page, { pages, dir, orderStep = TIMELINE_ORDER_STEP } = {}) {
+  if (!page) return false;
+
+  const direction = Number(dir) < 0 ? -1 : 1;
+  const cur = getTimelineEntryData(page);
+  const year = cur.year;
+
+  const list = (Array.isArray(pages) ? pages : [])
+    .filter((p) => p?.uuid && p?.id)
+    .filter((p) => getTimelineEntryData(p).year === year)
+    .sort((a, b) => {
+      const ta = getTimelineEntryData(a);
+      const tb = getTimelineEntryData(b);
+
+      if (ta.id !== tb.id) return ta.id - tb.id;
+      return String(a.uuid).localeCompare(String(b.uuid));
+    });
+
+  const idx = list.findIndex((p) => p.uuid === page.uuid);
+  if (idx < 0) return false;
+
+  const targetIndex = idx + direction;
+  if (targetIndex < 0 || targetIndex >= list.length) return false;
+
+  const step = Math.max(1, Number(orderStep) || TIMELINE_ORDER_STEP);
+
+  const computeNewOrder = () => {
+    if (direction < 0) {
+      const next = list[targetIndex]; // neighbor above
+      const prev = (targetIndex - 1) >= 0 ? list[targetIndex - 1] : null;
+
+      const nextOrder = getTimelineEntryData(next).id;
+      const prevOrder = prev ? getTimelineEntryData(prev).id : null;
+
+      if (!prevOrder) {
+        // Insert before the first visible item: use half of nextOrder.
+        const candidate = Math.floor(nextOrder / 2);
+        return candidate;
+      }
+
+      if ((nextOrder - prevOrder) <= 1) return 0;
+      return Math.floor((prevOrder + nextOrder) / 2);
+    }
+
+    // direction > 0
+    const prev = list[targetIndex]; // neighbor below
+    const next = (targetIndex + 1) < list.length ? list[targetIndex + 1] : null;
+
+    const prevOrder = getTimelineEntryData(prev).id;
+
+    if (!next) {
+      // Append after the last visible item.
+      return prevOrder + step;
+    }
+
+    const nextOrder = getTimelineEntryData(next).id;
+    if ((nextOrder - prevOrder) <= 1) return 0;
+    return Math.floor((prevOrder + nextOrder) / 2);
+  };
+
+  let newOrder = computeNewOrder();
+
+  // Not enough space or invalid candidate => renormalize, then retry once.
+  if (!Number.isFinite(newOrder) || newOrder <= 0) {
+    await renormalizeTimelineEntryOrders(list, { year, orderStep: step });
+    newOrder = computeNewOrder();
+  }
+
+  if (!Number.isFinite(newOrder) || newOrder <= 0) return false;
+
+  return await setTimelineEntryOrder(page, newOrder);
 }
 
 export async function swapTimelineEntryIds(pageA, pageB) {

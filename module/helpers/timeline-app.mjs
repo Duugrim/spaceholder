@@ -13,10 +13,10 @@ import {
   isTimelineEntryPage,
   listTimelineContainers,
   listTimelinePagesInContainer,
+  moveTimelineEntryOrderInList,
   resolveTimelinePage,
   setTimelineEntryGlobal,
   setTimelineEntryHidden,
-  swapTimelineEntryIds,
   updateTimelineEntryPage,
 } from './timeline.mjs';
 
@@ -880,28 +880,18 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
         ...(pub ? listTimelinePagesInContainer(pub) : []),
       ].filter((p) => {
         const tp = getTimelineEntryData(p);
-        return tp.year === t.year;
+        if (tp.year !== t.year) return false;
+        if (!this._showHidden && tp.isHidden) return false;
+        return true;
       });
 
-      pages.sort((a, b) => {
-        const ia = getTimelineEntryData(a).id;
-        const ib = getTimelineEntryData(b).id;
-        return ia - ib;
-      });
-
-      const idx = pages.findIndex((p) => p.uuid === page.uuid);
-      if (idx < 0) return;
-
-      const neighbor = pages[idx + dir];
-      if (!neighbor) return;
-
-      await swapTimelineEntryIds(page, neighbor);
+      await moveTimelineEntryOrderInList(page, { pages, dir });
       this.render(false);
       return;
     }
 
     // GM: reorder within the current view (nearest visible in the same year)
-    const list = this._collectEntryDocsForView()
+    const pages = this._collectEntryDocsForView()
       .map(({ entry: e, page: p }) => ({
         entry: e,
         page: p,
@@ -922,13 +912,7 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
       })
       .map((it) => it.page);
 
-    const idx = list.findIndex((p) => p.uuid === page.uuid);
-    if (idx < 0) return;
-
-    const neighbor = list[idx + dir];
-    if (!neighbor) return;
-
-    await swapTimelineEntryIds(page, neighbor);
+    await moveTimelineEntryOrderInList(page, { pages, dir });
     this.render(false);
   }
 
