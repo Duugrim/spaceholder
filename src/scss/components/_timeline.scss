@@ -65,6 +65,11 @@
       background: rgba(255, 255, 255, 0.10);
     }
 
+    &.is-muted {
+      background: rgba(255, 255, 255, 0.06);
+      opacity: 0.85;
+    }
+
     &.danger {
       color: rgba(255, 110, 110, 1);
 
@@ -97,6 +102,10 @@
     border-radius: var(--sh-radius-md);
     background: rgba(255, 255, 255, 0.03);
     padding: 8px 10px;
+
+    &.has-accent {
+      box-shadow: inset 3px 0 0 var(--sh-tl-accent, transparent);
+    }
 
     &.is-hidden {
       opacity: 0.72;

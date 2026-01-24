@@ -1,4 +1,5 @@
-<header class="sh-tle__header">
+<div class="sh-tle">
+  <header class="sh-tle__header">
     <div class="sh-tle__row">
       <div class="form-group">
         <label>Год</label>
@@ -69,13 +70,14 @@
   </header>
 
   <section class="sh-tle__body">
-    {{editor
-      enrichedContent
-      target='content'
-      engine='prosemirror'
-      button=true
-      editable=true
-    }}
+    <prose-mirror
+      name="content"
+      value="{{content}}"
+      toggled
+      {{#if documentUuid}}data-document-uuid="{{documentUuid}}"{{/if}}
+    >
+      {{{enrichedContent}}}
+    </prose-mirror>
   </section>
 
   <footer class="sh-tle__footer">
@@ -88,3 +90,4 @@
       Отмена
     </button>
   </footer>
+</div>

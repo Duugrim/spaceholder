@@ -52,7 +52,11 @@
       {{#if entries.length}}
         <div class="sh-tl__list">
           {{#each entries as |e|}}
-            <article class="sh-tl__entry {{#if e.isHidden}}is-hidden{{/if}}" data-uuid="{{e.uuid}}">
+            <article
+              class="sh-tl__entry {{#if e.isHidden}}is-hidden{{/if}} {{#if e.accentColor}}has-accent{{/if}}"
+              data-uuid="{{e.uuid}}"
+              {{#if e.accentColor}}style="--sh-tl-accent: {{e.accentColor}};"{{/if}}
+            >
               <div class="sh-tl__entryHeader">
                 <div class="sh-tl__year">{{e.year}}</div>
                 <div class="sh-tl__title" title="{{e.title}}">{{e.title}}</div>
@@ -88,7 +92,7 @@
                     {{/if}}
 
                     {{#if e.canToggleGlobal}}
-                      <button type="button" class="icon-btn sh-tl__iconBtn {{#if e.isGlobal}}is-active{{/if}}" data-action="toggle-global" data-uuid="{{e.uuid}}" aria-label="Глобально" data-tooltip="Глобально">
+                      <button type="button" class="icon-btn sh-tl__iconBtn {{e.globalUiClass}}" data-action="toggle-global" data-uuid="{{e.uuid}}" aria-label="Глобально" data-tooltip="Глобально">
                         <i class="fa-solid fa-globe" aria-hidden="true"></i>
                       </button>
                     {{/if}}

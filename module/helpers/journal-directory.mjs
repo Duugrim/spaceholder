@@ -18,6 +18,32 @@ function _isTimelineContainer(entry) {
   }
 }
 
+function _isTimelineFolder(folder) {
+  try {
+    const f = folder?.getFlag?.('spaceholder', 'timeline') ?? folder?.flags?.spaceholder?.timeline ?? {};
+    return !!f?.isFolder;
+  } catch (_) {
+    return false;
+  }
+}
+
+function _hideTimelineFoldersFromDirectory(root) {
+  if (!root) return;
+
+  const items = root.querySelectorAll('.directory-item.folder[data-folder-id]');
+  for (const li of items) {
+    const folderId = li?.dataset?.folderId;
+    if (!folderId) continue;
+
+    const folder = game?.folders?.get?.(folderId) ?? null;
+    if (!folder) continue;
+
+    if (_isTimelineFolder(folder)) {
+      li.remove();
+    }
+  }
+}
+
 function _hideTimelineContainersFromDirectory(root) {
   if (!root) return;
 
@@ -45,8 +71,9 @@ Hooks.on('renderJournalDirectory', (app, html /*, data */) => {
       const root = html instanceof HTMLElement ? html : html?.[0];
       if (!root) return;
 
-      // Hide timeline containers from non-GM even if they have edit rights.
+      // Hide timeline containers and their folder from non-GM even if they have edit rights.
       if (!game?.user?.isGM) {
+        _hideTimelineFoldersFromDirectory(root);
         _hideTimelineContainersFromDirectory(root);
         return;
       }

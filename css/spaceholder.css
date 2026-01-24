@@ -2654,6 +2654,12 @@
 .spaceholder.timeline .sh-tl__iconBtn.is-active {
   background: rgba(255, 255, 255, 0.1);
 }
+#spaceholder-timeline .sh-tl__iconBtn.is-muted,
+.window-app.spaceholder.timeline .sh-tl__iconBtn.is-muted,
+.spaceholder.timeline .sh-tl__iconBtn.is-muted {
+  background: rgba(255, 255, 255, 0.06);
+  opacity: 0.85;
+}
 #spaceholder-timeline .sh-tl__iconBtn.danger,
 .window-app.spaceholder.timeline .sh-tl__iconBtn.danger,
 .spaceholder.timeline .sh-tl__iconBtn.danger {
@@ -2692,6 +2698,11 @@
   border-radius: var(--sh-radius-md);
   background: rgba(255, 255, 255, 0.03);
   padding: 8px 10px;
+}
+#spaceholder-timeline .sh-tl__entry.has-accent,
+.window-app.spaceholder.timeline .sh-tl__entry.has-accent,
+.spaceholder.timeline .sh-tl__entry.has-accent {
+  box-shadow: inset 3px 0 0 var(--sh-tl-accent, transparent);
 }
 #spaceholder-timeline .sh-tl__entry.is-hidden,
 .window-app.spaceholder.timeline .sh-tl__entry.is-hidden,

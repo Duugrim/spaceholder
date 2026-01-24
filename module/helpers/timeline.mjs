@@ -38,6 +38,10 @@ const _allocQueueByYear = new Map(); // year -> Promise
 // Cache containers by key
 const _containerCache = new Map(); // key -> JournalEntry
 
+// Dedicated folder for timeline containers (no migration of existing documents)
+const TIMELINE_FOLDER_NAME = 'SpaceHolder Timeline';
+let _timelineFolderId = null;
+
 function _socketName() {
   try {
     return `system.${game.system.id}`;
@@ -57,6 +61,61 @@ function _getFlagObj(doc) {
   } catch (_) {
     return {};
   }
+}
+
+function _isTimelineFolder(folder) {
+  const f = _getFlagObj(folder);
+  return !!f?.isFolder;
+}
+
+function _findTimelineFolderInWorld() {
+  if (_timelineFolderId) {
+    const cached = game?.folders?.get?.(_timelineFolderId) ?? null;
+    if (cached && _isTimelineFolder(cached)) return cached;
+    _timelineFolderId = null;
+  }
+
+  const folders = Array.isArray(game?.folders?.contents) ? game.folders.contents : [];
+  for (const folder of folders) {
+    if (!folder?.id) continue;
+    if (folder.type !== 'JournalEntry') continue;
+    if (!_isTimelineFolder(folder)) continue;
+    _timelineFolderId = folder.id;
+    return folder;
+  }
+
+  return null;
+}
+
+async function _gmEnsureTimelineFolder() {
+  if (!game?.user?.isGM) return null;
+
+  const existing = _findTimelineFolderInWorld();
+  if (existing) return existing;
+
+  const flags = {
+    [MODULE_NS]: {
+      [FLAG_ROOT]: {
+        isFolder: true,
+      },
+    },
+  };
+
+  const data = {
+    name: TIMELINE_FOLDER_NAME,
+    type: 'JournalEntry',
+    flags,
+  };
+
+  const FolderClass = globalThis.Folder ?? game?.folders?.documentClass;
+  if (!FolderClass?.create) {
+    console.error('SpaceHolder | Timeline: Folder class unavailable');
+    return null;
+  }
+
+  const created = await FolderClass.create(data, { render: false, spaceholderJournalCheck: true });
+  _timelineFolderId = created?.id ?? null;
+  return created;
 }
 
 export function isTimelineContainer(entry) {
@@ -162,6 +221,41 @@ function _ownershipObj({ defaultLevel, ownerIds = [] }) {
   return out;
 }
 
+function _worldPageOwnership({ factionUuid = '', isGlobal = false } = {}) {
+  const fu = normalizeUuid(factionUuid);
+
+  const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+  const OBS = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2;
+  const NONE = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.NONE ?? 0;
+
+  // Global: everyone can observe, but only GM can edit.
+  if (isGlobal) {
+    return _ownershipObj({ defaultLevel: OBS, ownerIds: [] });
+  }
+
+  // Private: only faction owners can observe; only GM can edit.
+  const ownerUsers = fu ? getUsersForFaction(fu) : [];
+  const observerIds = ownerUsers.map((u) => u?.id).filter(Boolean);
+
+  const out = { default: NONE };
+
+  // GMs always own
+  const users = Array.from(game?.users?.values?.() ?? game?.users?.contents ?? []);
+  for (const u of users) {
+    if (!u?.id) continue;
+    if (u.isGM) out[u.id] = OWN;
+  }
+
+  for (const id of observerIds) {
+    const k = String(id ?? '').trim();
+    if (!k) continue;
+    // Ensure observers cannot edit.
+    out[k] = OBS;
+  }
+
+  return out;
+}
+
 async function _gmUpsertContainer({ kind, factionUuid = '' }) {
   if (!game?.user?.isGM) return null;
 
@@ -207,8 +301,17 @@ async function _gmUpsertContainer({ kind, factionUuid = '' }) {
       },
     };
 
+    // Place newly created containers into the dedicated folder.
+    // Existing containers are not migrated.
+    let folder = _findTimelineFolderInWorld();
+    if (!folder) {
+      await _gmEnsureTimelineFolder();
+      folder = _findTimelineFolderInWorld();
+    }
+
     const data = {
       name,
+      folder: folder?.id ?? null,
       ownership: desiredOwnership,
       flags,
     };
@@ -254,6 +357,9 @@ async function _gmUpsertContainer({ kind, factionUuid = '' }) {
 
 export async function gmEnsureTimelineContainers({ factionUuids = [] } = {}) {
   if (!game?.user?.isGM) return false;
+
+  // Create (or find) a dedicated folder for timeline containers.
+  await _gmEnsureTimelineFolder();
 
   await _gmUpsertContainer({ kind: TIMELINE_CONTAINER_KIND.WORLD_PUBLIC });
 
@@ -631,10 +737,19 @@ export async function createTimelineEntry({
   const yRaw = Number.parseInt(year, 10);
   const y = Number.isFinite(yRaw) && yRaw > 0 ? yRaw : 1;
 
+  // Faction/world entries must be tied to a faction.
+  if ((o === TIMELINE_ORIGIN.FACTION || o === TIMELINE_ORIGIN.WORLD) && !fu) {
+    throw new Error('Faction is required for timeline entry');
+  }
+
   const id = await requestNextTimelineId(y);
 
   const containerKind = (() => {
-    if (o === TIMELINE_ORIGIN.WORLD) return TIMELINE_CONTAINER_KIND.WORLD_PUBLIC;
+    // World-origin entries behave like faction entries, but have different origin label.
+    if (o === TIMELINE_ORIGIN.WORLD) {
+      return isGlobal ? TIMELINE_CONTAINER_KIND.FACTION_PUBLIC : TIMELINE_CONTAINER_KIND.FACTION_PRIVATE;
+    }
+
     // faction
     return isGlobal ? TIMELINE_CONTAINER_KIND.FACTION_PUBLIC : TIMELINE_CONTAINER_KIND.FACTION_PRIVATE;
   })();
@@ -644,6 +759,8 @@ export async function createTimelineEntry({
     throw new Error('Timeline container not found (ask GM to initialize timeline)');
   }
 
+  const finalIsGlobal = (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
+
   const flags = {
     [MODULE_NS]: {
       [FLAG_ROOT]: {
@@ -652,7 +769,7 @@ export async function createTimelineEntry({
         id,
         origin: o,
         factionUuid: fu,
-        isGlobal: o === TIMELINE_ORIGIN.WORLD ? true : !!isGlobal,
+        isGlobal: finalIsGlobal,
         isHidden: !!isHidden,
       },
     },
@@ -663,6 +780,7 @@ export async function createTimelineEntry({
     type: 'text',
     text: { content: String(content || '') },
     flags,
+    ...(o === TIMELINE_ORIGIN.WORLD ? { ownership: _worldPageOwnership({ factionUuid: fu, isGlobal: finalIsGlobal }) } : {}),
   };
 
   const created = await container.createEmbeddedDocuments('JournalEntryPage', [pageData], { spaceholderJournalCheck: true });
@@ -758,6 +876,7 @@ function _clonePageToData(page, { override = {} } = {}) {
     type: data.type,
     text: { ...(data.text || {}) },
     flags: foundry.utils.deepClone(data.flags || {}),
+    ...(data.ownership ? { ownership: foundry.utils.deepClone(data.ownership) } : {}),
   };
 
   // force timeline flag root to merge
@@ -799,6 +918,11 @@ export async function moveTimelineEntryBetweenContainers(page, { toKind, faction
       },
     },
   });
+
+  // Ensure world-origin pages keep GM-only edit permissions, and update visibility when moving.
+  if (entryData.origin === TIMELINE_ORIGIN.WORLD) {
+    clone.ownership = _worldPageOwnership({ factionUuid: entryData.factionUuid, isGlobal: desiredIsGlobal });
+  }
 
   const created = await target.createEmbeddedDocuments('JournalEntryPage', [clone], { spaceholderJournalCheck: true });
   const newPage = created?.[0] ?? null;
