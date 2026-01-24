@@ -441,7 +441,7 @@ export function installTokenPointerTabs() {
   try {
     const cls1 = foundry.applications.sheets.TokenConfig;
     const cls2 = foundry.applications.sheets.PrototypeTokenConfig;
-    const tabDef = { id: 'spaceholderPointer', label: 'Token Pointer', icon: 'fas fa-location-arrow fa-fw' };
+    const tabDef = { id: 'spaceholderPointer', label: 'Pointer', icon: 'fas fa-location-arrow fa-fw' };
     if (cls1?.TABS?.sheet?.tabs && !cls1.TABS.sheet.tabs.find(t => t.id === 'spaceholderPointer')) {
       cls1.TABS.sheet.tabs.push(tabDef);
     }

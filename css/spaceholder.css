@@ -18,6 +18,26 @@ body.game .app {
   --font-primary: var(--font-sans);
 }
 
+body.game .app.token-config nav.sheet-tabs [data-tab],
+body.game .app.prototype-token-config nav.sheet-tabs [data-tab] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+body.game .app.token-config nav.sheet-tabs [data-tab] > i,
+body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > i {
+  flex: 0 0 auto;
+}
+body.game .app.token-config nav.sheet-tabs [data-tab] > span,
+body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .window-app.spaceholder,
 .spaceholder {
   --sh-bg: #0b0b0b;

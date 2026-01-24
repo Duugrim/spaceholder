@@ -26,3 +26,29 @@ body.game {
 body.game .app {
   --font-primary: var(--font-sans);
 }
+
+// Token Config (v13): prevent icon/label wrapping inside tab buttons after font changes.
+// Scope narrowly to token config apps to avoid impacting other sheets.
+body.game .app.token-config,
+body.game .app.prototype-token-config {
+  nav.sheet-tabs {
+    [data-tab] {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap;
+      min-width: 0;
+    }
+
+    [data-tab] > i {
+      flex: 0 0 auto;
+    }
+
+    [data-tab] > span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
