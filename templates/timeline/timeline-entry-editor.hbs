@@ -49,6 +49,9 @@
           <label>{{localize "SPACEHOLDER.Timeline.Fields.Faction"}}</label>
           <div class="form-fields">
             <select name="factionUuid">
+              {{#if allowNoFaction}}
+                <option value="" {{#if (eq @root.factionUuid '')}}selected{{/if}}>(без фракции)</option>
+              {{/if}}
               {{#each factions as |f|}}
                 <option value="{{f.uuid}}" {{#if (eq f.uuid @root.factionUuid)}}selected{{/if}}>{{f.name}}</option>
               {{/each}}

@@ -13,8 +13,8 @@ import {
   isTimelineEntryPage,
   listTimelineContainers,
   listTimelinePagesInContainer,
-  moveTimelineEntryBetweenContainers,
   resolveTimelinePage,
+  setTimelineEntryGlobal,
   setTimelineEntryHidden,
   swapTimelineEntryIds,
   updateTimelineEntryPage,
@@ -28,6 +28,29 @@ let _hooksInstalled = false;
 
 function _isGM() {
   return !!game?.user?.isGM;
+}
+
+function _getTimelineFlagRoot(doc) {
+  try {
+    return doc?.getFlag?.('spaceholder', 'timeline') ?? doc?.flags?.spaceholder?.timeline ?? {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function _isGlobalForPage({ containerKind, page, t }) {
+  if (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC) return true;
+  if (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PRIVATE) return false;
+
+  // World container can now contain both global and private entries.
+  if (containerKind === TIMELINE_CONTAINER_KIND.WORLD_PUBLIC) {
+    const raw = _getTimelineFlagRoot(page)?.isGlobal;
+    // Backward compatibility: if flag is missing, treat world entries as global.
+    if (raw === undefined) return true;
+    return !!raw;
+  }
+
+  return !!t?.isGlobal;
 }
 
 function _colorToRgbTriplet(color) {
@@ -317,41 +340,72 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
   _collectContainersForView() {
     const view = String(this._view || 'public');
+    const isGM = _isGM();
 
     const containers = [];
 
-    const world = getTimelineContainer({ kind: TIMELINE_CONTAINER_KIND.WORLD_PUBLIC });
-
-    const allFactionPublic = listTimelineContainers({ kind: TIMELINE_CONTAINER_KIND.FACTION_PUBLIC });
-
-    if (view === 'gm') {
-      // All containers
+    // По новому ТЗ: ГМ в публичном и ГМ-виде видит все сообщения.
+    if (isGM && (view === 'gm' || view === 'public')) {
       const all = listTimelineContainers();
       for (const e of all) containers.push(e);
       return containers;
     }
 
+    const world = getTimelineContainer({ kind: TIMELINE_CONTAINER_KIND.WORLD_PUBLIC });
+    const fu = String(this._activeFactionUuid || '').trim();
+
     if (view === 'faction') {
-      const fu = String(this._activeFactionUuid || '').trim();
       const priv = fu ? getTimelineContainer({ kind: TIMELINE_CONTAINER_KIND.FACTION_PRIVATE, factionUuid: fu }) : null;
+      const pub = fu ? getTimelineContainer({ kind: TIMELINE_CONTAINER_KIND.FACTION_PUBLIC, factionUuid: fu }) : null;
+
       if (priv) containers.push(priv);
+      if (pub) containers.push(pub);
       if (world) containers.push(world);
-      for (const e of allFactionPublic) containers.push(e);
+
       return containers;
     }
 
-    // public
+    // public (player):
+    // - все глобальные сообщения (все FACTION_PUBLIC + World)
+    // - все сообщения выбранной фракции (FACTION_PRIVATE этой фракции)
     if (world) containers.push(world);
+
+    const allFactionPublic = listTimelineContainers({ kind: TIMELINE_CONTAINER_KIND.FACTION_PUBLIC });
     for (const e of allFactionPublic) containers.push(e);
 
-    // Include private entries of my factions
-    const my = getUserFactionUuidsSafe(game.user);
-    for (const fu of my) {
-      const priv = getTimelineContainer({ kind: TIMELINE_CONTAINER_KIND.FACTION_PRIVATE, factionUuid: fu });
-      if (priv) containers.push(priv);
-    }
+    const priv = fu ? getTimelineContainer({ kind: TIMELINE_CONTAINER_KIND.FACTION_PRIVATE, factionUuid: fu }) : null;
+    if (priv) containers.push(priv);
 
     return containers;
+  }
+
+  _isEntryVisibleInCurrentView({ t, isGlobal }) {
+    const view = String(this._view || 'public');
+    const isGM = _isGM();
+
+    // Hidden mode: entry is still "in" the timeline, but not visible until toggled.
+    if (!this._showHidden && t.isHidden) return false;
+
+    // GM sees everything in gm/public (per new rules).
+    if (isGM && (view === 'gm' || view === 'public')) return true;
+
+    const activeFactionUuid = String(this._activeFactionUuid || '').trim();
+
+    if (view === 'public') {
+      // Player public: моя фракция (всё) + все глобальные.
+      if (activeFactionUuid && t.factionUuid === activeFactionUuid) return true;
+      return !!isGlobal;
+    }
+
+    if (view === 'faction') {
+      // Faction: моя фракция (всё) + глобальные без factionUuid.
+      if (activeFactionUuid && t.factionUuid === activeFactionUuid) return true;
+      if (!t.factionUuid && isGlobal) return true;
+      return false;
+    }
+
+    // Fallback
+    return true;
   }
 
   _collectEntryDocsForView() {
@@ -382,7 +436,8 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
     const factions = this._getFactionChoicesForUi();
 
     // Ensure active faction is valid when needed
-    if (this._view === 'faction') {
+    const needsActiveFaction = (this._view === 'faction') || (!isGM && this._view === 'public');
+    if (needsActiveFaction && factions.length > 0) {
       const exists = factions.some((f) => f.uuid === this._activeFactionUuid);
       if (!exists) {
         this._activeFactionUuid = factions?.[0]?.uuid ?? '';
@@ -394,8 +449,14 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
     views.push({ id: 'public', label: 'Публичный', active: this._view === 'public' });
     views.push({ id: 'faction', label: 'Фракция', active: this._view === 'faction' });
 
-    const showFactionSelect = this._view === 'faction' && factions.length > 0;
-    const showHiddenToggle = (this._view === 'public' || this._view === 'gm');
+    const showFactionSelect = (() => {
+      if (!factions.length) return false;
+      if (isGM) return this._view === 'faction';
+      if (this._view !== 'faction' && this._view !== 'public') return false;
+      return factions.length > 1;
+    })();
+
+    const showHiddenToggle = true;
 
     const canCreate = isGM || getUserFactionUuidsSafe(game.user).length > 0;
 
@@ -411,21 +472,20 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
       if (!containerKind) continue;
 
       const t = getTimelineEntryData(page);
+      const isGlobal = _isGlobalForPage({ containerKind, page, t });
 
-      // Filter hidden only for aggregated views
-      if ((this._view === 'public' || this._view === 'gm') && !this._showHidden) {
-        if (t.isHidden) continue;
-      }
+      if (!this._isEntryVisibleInCurrentView({ t, isGlobal })) continue;
 
       const isExpanded = this._expanded.has(page.uuid);
 
-      const canEdit = isGM || ((t.origin === TIMELINE_ORIGIN.FACTION) && canUserOwnContainer(entry, game.user));
-      const isGlobal = (containerKind === TIMELINE_CONTAINER_KIND.WORLD_PUBLIC) || (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
+      const canEdit = isGM || canUserOwnContainer(entry, game.user);
 
-      const canToggleGlobal = ((t.origin === TIMELINE_ORIGIN.FACTION) && canEdit) || ((t.origin === TIMELINE_ORIGIN.WORLD) && isGM);
+      // Global flag can be toggled:
+      // - faction-bound entries: by anyone who can edit that faction container
+      // - world-only entries: only by GM
+      const canToggleGlobal = t.factionUuid ? canEdit : isGM;
       const canToggleHidden = canEdit;
-
-      const canReorder = canEdit && (isGM || (t.origin === TIMELINE_ORIGIN.FACTION));
+      const canReorder = canEdit;
 
       let enrichedContent = '';
       if (isExpanded) {
@@ -441,7 +501,7 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
         }
       }
 
-      // Accent color for ALL entries (resolve by factionUuid)
+      // Accent color for entries with a real faction (resolve by factionUuid)
       let accentColor = '';
       let accentColorRgb = '';
       try {
@@ -461,6 +521,8 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
         accentColor = '';
         accentColorRgb = '';
       }
+
+      const showAccent = !!t.factionUuid && !!accentColor;
 
       const originUiClass = (t.origin === TIMELINE_ORIGIN.FACTION)
         ? 'is-origin-faction'
@@ -483,6 +545,7 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
         factionUuid: t.factionUuid,
         accentColor,
         accentColorRgb,
+        showAccent,
         isGlobal,
         globalUiClass,
         isHidden: !!t.isHidden,
@@ -675,8 +738,16 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
         : TIMELINE_ORIGIN.WORLD;
     }
 
-    let factionUuid = String(this._activeFactionUuid || '').trim();
-    if (!factionUuid) factionUuid = factions?.[0]?.uuid ?? '';
+    let factionUuid = '';
+    if (isGM) {
+      // GM: в агрегированных видах по умолчанию создаём запись "от мира" без фракции.
+      factionUuid = (this._view === 'faction') ? String(this._activeFactionUuid || '').trim() : '';
+      if (this._view === 'faction' && !factionUuid) factionUuid = factions?.[0]?.uuid ?? '';
+    } else {
+      // Player: запись всегда привязана к выбранной фракции.
+      factionUuid = String(this._activeFactionUuid || '').trim();
+      if (!factionUuid) factionUuid = factions?.[0]?.uuid ?? '';
+    }
 
     const suggestedYear = this._suggestYearFromCurrentView();
 
@@ -690,7 +761,7 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
       isGlobal: defaultGlobal,
       year: suggestedYear,
       factions,
-      allowOriginSelect: isGM,
+      allowOriginSelect: true,
     });
 
     app.render(true);
@@ -706,14 +777,14 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
     const entry = page.parent;
     const t = getTimelineEntryData(page);
 
-    const canEdit = _isGM() || ((t.origin === TIMELINE_ORIGIN.FACTION) && canUserOwnContainer(entry, game.user));
+    const canEdit = _isGM() || canUserOwnContainer(entry, game.user);
     if (!canEdit) {
       ui.notifications?.warn?.('Нет прав на редактирование');
       return;
     }
 
     const containerKind = getTimelineContainerKind(entry);
-    const isGlobal = (containerKind === TIMELINE_CONTAINER_KIND.WORLD_PUBLIC) || (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
+    const isGlobal = _isGlobalForPage({ containerKind, page, t });
 
     const factions = this._getFactionChoicesForUi();
 
@@ -741,7 +812,6 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
     const t = getTimelineEntryData(page);
 
     if (!_isGM()) {
-      if (t.origin !== TIMELINE_ORIGIN.FACTION) return;
       if (!canUserOwnContainer(entry, game.user)) {
         ui.notifications?.warn?.('Нет прав');
         return;
@@ -760,30 +830,27 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
     const t = getTimelineEntryData(page);
 
-    // Players can only toggle global on faction-origin entries they own.
     if (!_isGM()) {
-      if (t.origin !== TIMELINE_ORIGIN.FACTION) return;
+      // Player can toggle global only for entries in their faction containers.
+      if (!t.factionUuid) return;
       if (!canUserOwnContainer(entry, game.user)) {
         ui.notifications?.warn?.('Нет прав');
         return;
       }
     }
 
-    const kind = getTimelineContainerKind(entry);
-
-    const toKind = (kind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC)
-      ? TIMELINE_CONTAINER_KIND.FACTION_PRIVATE
-      : TIMELINE_CONTAINER_KIND.FACTION_PUBLIC;
+    const containerKind = getTimelineContainerKind(entry);
+    const curGlobal = _isGlobalForPage({ containerKind, page, t });
 
     const wasExpanded = this._expanded.has(page.uuid);
 
     try {
-      const newPage = await moveTimelineEntryBetweenContainers(page, { toKind, factionUuid: t.factionUuid });
+      const newPage = await setTimelineEntryGlobal(page, !curGlobal);
       this._expanded.delete(page.uuid);
       if (wasExpanded && newPage?.uuid) this._expanded.add(newPage.uuid);
     } catch (e) {
       console.error('SpaceHolder | Timeline: failed to toggle global', e);
-      ui.notifications?.error?.('Не удалось перенести запись');
+      ui.notifications?.error?.('Не удалось обновить глобальность');
     }
 
     this.render(false);
@@ -803,7 +870,6 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
     // For players: reorder within the same faction only.
     if (!_isGM()) {
-      if (t.origin !== TIMELINE_ORIGIN.FACTION) return;
       if (!t.factionUuid) return;
 
       const priv = getTimelineContainer({ kind: TIMELINE_CONTAINER_KIND.FACTION_PRIVATE, factionUuid: t.factionUuid });
@@ -836,21 +902,25 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
     // GM: reorder within the current view (nearest visible in the same year)
     const list = this._collectEntryDocsForView()
-      .map(({ page: p }) => p)
-      .filter((p) => {
-        const tp = getTimelineEntryData(p);
-        if (tp.year !== t.year) return false;
-        if ((this._view === 'public' || this._view === 'gm') && !this._showHidden) {
-          if (tp.isHidden) return false;
-        }
-        return true;
+      .map(({ entry: e, page: p }) => ({
+        entry: e,
+        page: p,
+        t: getTimelineEntryData(p),
+        containerKind: getTimelineContainerKind(e),
+      }))
+      .filter((it) => {
+        if (!it?.page?.uuid) return false;
+        if (!it.containerKind) return false;
+        if (it.t.year !== t.year) return false;
+
+        const isGlobal = _isGlobalForPage({ containerKind: it.containerKind, page: it.page, t: it.t });
+        return this._isEntryVisibleInCurrentView({ t: it.t, isGlobal });
       })
       .sort((a, b) => {
-        const ta = getTimelineEntryData(a);
-        const tb = getTimelineEntryData(b);
-        if (ta.year !== tb.year) return ta.year - tb.year;
-        return ta.id - tb.id;
-      });
+        if (a.t.year !== b.t.year) return a.t.year - b.t.year;
+        return a.t.id - b.t.id;
+      })
+      .map((it) => it.page);
 
     const idx = list.findIndex((p) => p.uuid === page.uuid);
     if (idx < 0) return;
@@ -870,7 +940,6 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
     const t = getTimelineEntryData(page);
 
     if (!_isGM()) {
-      if (t.origin !== TIMELINE_ORIGIN.FACTION) return;
       if (!canUserOwnContainer(entry, game.user)) {
         ui.notifications?.warn?.('Нет прав');
         return;
@@ -967,14 +1036,22 @@ class TimelineEntryEditorApp extends foundry.applications.api.HandlebarsApplicat
 
     const origin = this._origin; // fixed for edit
 
-    const showOriginSelect = isCreate && isGM && this._allowOriginSelect;
+    const showOriginSelect = isCreate && this._allowOriginSelect;
+
+    const allowNoFaction = isCreate && isGM && origin === TIMELINE_ORIGIN.WORLD;
 
     const showFactionSelect = (() => {
       // For create: show selection when there are multiple factions (or when current value is missing).
       if (!isCreate) return false;
       const isFactionLike = (origin === TIMELINE_ORIGIN.FACTION) || (origin === TIMELINE_ORIGIN.WORLD);
       if (!isFactionLike) return false;
-      if ((this._factions?.length ?? 0) > 1) return true;
+
+      const cnt = (this._factions?.length ?? 0);
+
+      // GM can create "world" entries without factionUuid.
+      if (allowNoFaction) return cnt > 0;
+
+      if (cnt > 1) return true;
       return !String(this._factionUuid || '').trim();
     })();
 
@@ -989,6 +1066,7 @@ class TimelineEntryEditorApp extends foundry.applications.api.HandlebarsApplicat
       factions: this._factions,
       showOriginSelect,
       showFactionSelect,
+      allowNoFaction,
       showGlobalToggle,
       // For <prose-mirror>: raw value + enriched preview content.
       documentUuid: this._pageUuid,
@@ -1058,6 +1136,12 @@ class TimelineEntryEditorApp extends foundry.applications.api.HandlebarsApplicat
     if (sel) {
       const v = String(sel.value || '').trim();
       this._origin = (v === TIMELINE_ORIGIN.WORLD) ? TIMELINE_ORIGIN.WORLD : TIMELINE_ORIGIN.FACTION;
+
+      // If switched to faction-origin, ensure faction is selected.
+      if (this._origin === TIMELINE_ORIGIN.FACTION && !String(this._factionUuid || '').trim()) {
+        this._factionUuid = this._factions?.[0]?.uuid ?? '';
+      }
+
       this.render(false);
       return;
     }
@@ -1099,7 +1183,7 @@ class TimelineEntryEditorApp extends foundry.applications.api.HandlebarsApplicat
     let isGlobal = this._isGlobal;
 
     if (this._mode === 'create') {
-      if (isGM && this._allowOriginSelect) {
+      if (this._allowOriginSelect) {
         const o = String(data.origin || '').trim();
         origin = (o === TIMELINE_ORIGIN.WORLD) ? TIMELINE_ORIGIN.WORLD : TIMELINE_ORIGIN.FACTION;
       } else {
@@ -1107,17 +1191,18 @@ class TimelineEntryEditorApp extends foundry.applications.api.HandlebarsApplicat
       }
 
       // pick faction + global from form
-      factionUuid = String(data.factionUuid || factionUuid || '').trim();
+      factionUuid = String(data.factionUuid ?? factionUuid ?? '').trim();
       isGlobal = !!data.isGlobal;
 
-      if ((origin === TIMELINE_ORIGIN.FACTION || origin === TIMELINE_ORIGIN.WORLD) && !factionUuid) {
+      // Faction-origin всегда требует фракцию.
+      if (origin === TIMELINE_ORIGIN.FACTION && !factionUuid) {
         ui.notifications?.warn?.('Не выбрана фракция');
         return;
       }
 
-      // World-origin entries can only be created by GM
-      if (origin === TIMELINE_ORIGIN.WORLD && !isGM) {
-        ui.notifications?.warn?.('Только ГМ может писать от имени мира');
+      // Игрок не может создавать world-only записи (без factionUuid).
+      if (!isGM && !factionUuid) {
+        ui.notifications?.warn?.('Не выбрана фракция');
         return;
       }
 
@@ -1169,21 +1254,13 @@ class TimelineEntryEditorApp extends foundry.applications.api.HandlebarsApplicat
 
     // Handle global toggle for faction/world entries
     if (origin === TIMELINE_ORIGIN.FACTION || origin === TIMELINE_ORIGIN.WORLD) {
-      if (origin === TIMELINE_ORIGIN.WORLD && !isGM) return;
-
       const desiredGlobal = !!data.isGlobal;
-      const kind = getTimelineContainerKind(page.parent);
-      const curGlobal = (kind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
-
-      if (desiredGlobal !== curGlobal) {
-        const toKind = desiredGlobal ? TIMELINE_CONTAINER_KIND.FACTION_PUBLIC : TIMELINE_CONTAINER_KIND.FACTION_PRIVATE;
-        try {
-          await moveTimelineEntryBetweenContainers(page, { toKind, factionUuid });
-        } catch (e) {
-          console.error('SpaceHolder | Timeline: move failed', e);
-          ui.notifications?.error?.('Не удалось перенести запись');
-          return;
-        }
+      try {
+        await setTimelineEntryGlobal(page, desiredGlobal);
+      } catch (e) {
+        console.error('SpaceHolder | Timeline: global toggle failed', e);
+        ui.notifications?.error?.('Не удалось обновить глобальность');
+        return;
       }
     }
 

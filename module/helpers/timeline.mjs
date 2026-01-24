@@ -221,36 +221,18 @@ function _ownershipObj({ defaultLevel, ownerIds = [] }) {
   return out;
 }
 
-function _worldPageOwnership({ factionUuid = '', isGlobal = false } = {}) {
-  const fu = normalizeUuid(factionUuid);
-
+function _worldOnlyPageOwnership({ isGlobal = false } = {}) {
   const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
   const OBS = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2;
   const NONE = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.NONE ?? 0;
 
-  // Global: everyone can observe, but only GM can edit.
-  if (isGlobal) {
-    return _ownershipObj({ defaultLevel: OBS, ownerIds: [] });
-  }
-
-  // Private: only faction owners can observe; only GM can edit.
-  const ownerUsers = fu ? getUsersForFaction(fu) : [];
-  const observerIds = ownerUsers.map((u) => u?.id).filter(Boolean);
-
-  const out = { default: NONE };
+  const out = { default: isGlobal ? OBS : NONE };
 
   // GMs always own
   const users = Array.from(game?.users?.values?.() ?? game?.users?.contents ?? []);
   for (const u of users) {
     if (!u?.id) continue;
     if (u.isGM) out[u.id] = OWN;
-  }
-
-  for (const id of observerIds) {
-    const k = String(id ?? '').trim();
-    if (!k) continue;
-    // Ensure observers cannot edit.
-    out[k] = OBS;
   }
 
   return out;
@@ -669,6 +651,15 @@ export async function ensureTimelineInfrastructureForCurrentUser() {
   // GM: we can ensure all factions opportunistically.
   if (game.user?.isGM) {
     await gmSyncTimelineOwnershipForAllFactions();
+
+    // Migration (best-effort): faction-bound "world" entries should inherit container permissions,
+    // and world-only entries in World container should have consistent isGlobal/ownership.
+    try {
+      await _gmMigrateTimelinePagesToNewRules();
+    } catch (e) {
+      console.warn('SpaceHolder | Timeline: migration failed', e);
+    }
+
     return true;
   }
 
@@ -722,6 +713,65 @@ export function listTimelinePagesInContainer(entry) {
   return pages.filter((p) => p?.id && isTimelineEntryPage(p));
 }
 
+async function _gmMigrateTimelinePagesToNewRules() {
+  if (!game?.user?.isGM) return false;
+
+  const containers = listTimelineContainers();
+
+  for (const entry of containers) {
+    if (!entry?.id) continue;
+    const kind = getTimelineContainerKind(entry);
+    if (!kind) continue;
+
+    const pages = listTimelinePagesInContainer(entry);
+    for (const page of pages) {
+      if (!page?.id) continue;
+
+      const t = getTimelineEntryData(page);
+      const flags = { ..._getFlagObj(page) };
+
+      const patch = {};
+      let flagsChanged = false;
+
+      // World container: older entries might miss isGlobal (assume true for backward compatibility).
+      if (kind === TIMELINE_CONTAINER_KIND.WORLD_PUBLIC) {
+        if (flags.isGlobal === undefined) {
+          flags.isGlobal = true;
+          flagsChanged = true;
+        }
+
+        // Private world-only entries must not be visible to players.
+        if (flags.isGlobal === false) {
+          patch.ownership = _worldOnlyPageOwnership({ isGlobal: false });
+        }
+      }
+
+      // Faction containers: old "world" entries used GM-only ownership. They should inherit container ownership now.
+      if (kind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC || kind === TIMELINE_CONTAINER_KIND.FACTION_PRIVATE) {
+        const desiredGlobal = (kind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
+        if (flags.isGlobal !== desiredGlobal) {
+          flags.isGlobal = desiredGlobal;
+          flagsChanged = true;
+        }
+
+        if (t.origin === TIMELINE_ORIGIN.WORLD && t.factionUuid) {
+          patch.ownership = foundry.utils.deepClone(entry.ownership);
+        }
+      }
+
+      if (flagsChanged) {
+        patch[`flags.${MODULE_NS}.${FLAG_ROOT}`] = flags;
+      }
+
+      if (Object.keys(patch).length) {
+        await page.update(patch, { diff: false, spaceholderJournalCheck: true });
+      }
+    }
+  }
+
+  return true;
+}
+
 export async function createTimelineEntry({
   origin,
   factionUuid = '',
@@ -731,35 +781,51 @@ export async function createTimelineEntry({
   title,
   content = '',
 }) {
-  const o = String(origin || '').trim();
+  const oRaw = String(origin || '').trim();
+  const o = (oRaw === TIMELINE_ORIGIN.WORLD) ? TIMELINE_ORIGIN.WORLD : TIMELINE_ORIGIN.FACTION;
+
   const fu = normalizeUuid(factionUuid);
 
   const yRaw = Number.parseInt(year, 10);
   const y = Number.isFinite(yRaw) && yRaw > 0 ? yRaw : 1;
 
-  // Faction/world entries must be tied to a faction.
-  if ((o === TIMELINE_ORIGIN.FACTION || o === TIMELINE_ORIGIN.WORLD) && !fu) {
+  // World-only entries (no factionUuid) can only be created by GM and must be origin=world.
+  if (!fu) {
+    if (!game.user?.isGM) {
+      throw new Error('Faction is required for timeline entry');
+    }
+    if (o !== TIMELINE_ORIGIN.WORLD) {
+      throw new Error('World-only timeline entry must be origin=world');
+    }
+  }
+
+  // Faction-origin entries must always be tied to a faction.
+  if (o === TIMELINE_ORIGIN.FACTION && !fu) {
     throw new Error('Faction is required for timeline entry');
   }
 
   const id = await requestNextTimelineId(y);
 
   const containerKind = (() => {
-    // World-origin entries behave like faction entries, but have different origin label.
-    if (o === TIMELINE_ORIGIN.WORLD) {
-      return isGlobal ? TIMELINE_CONTAINER_KIND.FACTION_PUBLIC : TIMELINE_CONTAINER_KIND.FACTION_PRIVATE;
-    }
+    // World-only (no faction): stored in World container.
+    if (!fu) return TIMELINE_CONTAINER_KIND.WORLD_PUBLIC;
 
-    // faction
+    // Faction-bound (private/public) regardless of origin label.
     return isGlobal ? TIMELINE_CONTAINER_KIND.FACTION_PUBLIC : TIMELINE_CONTAINER_KIND.FACTION_PRIVATE;
   })();
 
-  const container = getTimelineContainer({ kind: containerKind, factionUuid: fu });
+  const containerFactionUuid = fu || '';
+
+  const container = getTimelineContainer({ kind: containerKind, factionUuid: containerFactionUuid });
   if (!container) {
     throw new Error('Timeline container not found (ask GM to initialize timeline)');
   }
 
-  const finalIsGlobal = (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
+  const finalIsGlobal = (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC)
+    ? true
+    : (containerKind === TIMELINE_CONTAINER_KIND.FACTION_PRIVATE)
+      ? false
+      : !!isGlobal;
 
   const flags = {
     [MODULE_NS]: {
@@ -780,7 +846,7 @@ export async function createTimelineEntry({
     type: 'text',
     text: { content: String(content || '') },
     flags,
-    ...(o === TIMELINE_ORIGIN.WORLD ? { ownership: _worldPageOwnership({ factionUuid: fu, isGlobal: finalIsGlobal }) } : {}),
+    ...(!fu ? { ownership: _worldOnlyPageOwnership({ isGlobal: finalIsGlobal }) } : {}),
   };
 
   const created = await container.createEmbeddedDocuments('JournalEntryPage', [pageData], { spaceholderJournalCheck: true });
@@ -833,6 +899,35 @@ export async function setTimelineEntryHidden(page, hidden) {
 
   await page.update({ [`flags.${MODULE_NS}.${FLAG_ROOT}`]: flags }, { diff: false, spaceholderJournalCheck: true });
   return true;
+}
+
+export async function setTimelineEntryGlobal(page, isGlobal) {
+  if (!page) return null;
+
+  const desired = !!isGlobal;
+  const entryData = getTimelineEntryData(page);
+
+  // Faction-bound entries: move between Private/Public containers.
+  if (entryData.factionUuid) {
+    const kind = getTimelineContainerKind(page.parent);
+    const curGlobal = (kind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
+
+    if (desired === curGlobal) return page;
+
+    const toKind = desired ? TIMELINE_CONTAINER_KIND.FACTION_PUBLIC : TIMELINE_CONTAINER_KIND.FACTION_PRIVATE;
+    return await moveTimelineEntryBetweenContainers(page, { toKind, factionUuid: entryData.factionUuid });
+  }
+
+  // World-only entries: stay in World container, update flag + ownership.
+  const flags = { ..._getFlagObj(page) };
+  flags.isGlobal = desired;
+
+  await page.update({
+    [`flags.${MODULE_NS}.${FLAG_ROOT}`]: flags,
+    ownership: _worldOnlyPageOwnership({ isGlobal: desired }),
+  }, { diff: false, spaceholderJournalCheck: true });
+
+  return page;
 }
 
 export async function swapTimelineEntryIds(pageA, pageB) {
@@ -907,7 +1002,11 @@ export async function moveTimelineEntryBetweenContainers(page, { toKind, faction
   // Clone data while preserving year/id/etc.
   const entryData = getTimelineEntryData(page);
 
-  const desiredIsGlobal = (targetKind === TIMELINE_CONTAINER_KIND.WORLD_PUBLIC) || (targetKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC);
+  const desiredIsGlobal = (targetKind === TIMELINE_CONTAINER_KIND.FACTION_PUBLIC)
+    ? true
+    : (targetKind === TIMELINE_CONTAINER_KIND.FACTION_PRIVATE)
+      ? false
+      : !!entryData.isGlobal;
 
   const clone = _clonePageToData(page, {
     override: {
@@ -919,9 +1018,12 @@ export async function moveTimelineEntryBetweenContainers(page, { toKind, faction
     },
   });
 
-  // Ensure world-origin pages keep GM-only edit permissions, and update visibility when moving.
-  if (entryData.origin === TIMELINE_ORIGIN.WORLD) {
-    clone.ownership = _worldPageOwnership({ factionUuid: entryData.factionUuid, isGlobal: desiredIsGlobal });
+  // Faction-bound entries must inherit container ownership (players can edit their faction entries).
+  if (entryData.factionUuid) {
+    delete clone.ownership;
+  } else {
+    // World-only entries: enforce ownership based on global flag.
+    clone.ownership = _worldOnlyPageOwnership({ isGlobal: desiredIsGlobal });
   }
 
   const created = await target.createEmbeddedDocuments('JournalEntryPage', [clone], { spaceholderJournalCheck: true });

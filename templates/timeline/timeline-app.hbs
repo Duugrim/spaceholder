@@ -53,9 +53,9 @@
         <div class="sh-tl__list">
           {{#each entries as |e|}}
             <article
-              class="sh-tl__entry {{e.originUiClass}} {{#if e.isHidden}}is-hidden{{/if}} {{#if e.accentColor}}has-accent{{/if}}"
+              class="sh-tl__entry {{e.originUiClass}} {{#if e.isHidden}}is-hidden{{/if}} {{#if e.showAccent}}has-accent{{/if}}"
               data-uuid="{{e.uuid}}"
-              {{#if e.accentColor}}style="--sh-tl-accent: {{e.accentColor}};{{#if e.accentColorRgb}} --sh-tl-accent-rgb: {{e.accentColorRgb}};{{/if}}"{{/if}}
+              {{#if e.showAccent}}style="--sh-tl-accent: {{e.accentColor}};{{#if e.accentColorRgb}} --sh-tl-accent-rgb: {{e.accentColorRgb}};{{/if}}"{{/if}}
             >
               <div class="sh-tl__entryHeader" data-action="toggle-expand" data-uuid="{{e.uuid}}">
                 <div class="sh-tl__year">{{e.year}}</div>
