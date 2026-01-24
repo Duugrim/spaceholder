@@ -1345,21 +1345,36 @@ class GlobalMapEdgeUI {
     const stage = canvas?.stage;
     if (!stage) return;
 
-    // Stage can get rebuilt; re-install if changed.
-    if (this._inspectorStageForListeners === stage && this._onInspectorStagePointerDown) return;
+    // Stage can get rebuilt and, in some cases, its listeners can be cleared on soft reloads.
+    // Always (re)bind to ensure inspector keeps working.
+    const stageChanged = this._inspectorStageForListeners !== stage;
+    if (stageChanged) {
+      this._removeInspectorStageHandler();
+      this._inspectorStageForListeners = stage;
+    }
 
-    this._removeInspectorStageHandler();
+    if (!this._onInspectorStagePointerDown) {
+      this._onInspectorStagePointerDown = (event) => {
+        try {
+          this._handleInspectorStagePointerDown(event);
+        } catch (e) {
+          // ignore
+        }
+      };
+    }
 
-    this._inspectorStageForListeners = stage;
-    this._onInspectorStagePointerDown = (event) => {
-      try {
-        this._handleInspectorStagePointerDown(event);
-      } catch (e) {
-        // ignore
-      }
-    };
+    // Ensure single binding (no duplicates) and restore after any internal stage resets.
+    try {
+      stage.off('pointerdown', this._onInspectorStagePointerDown);
+    } catch (e) {
+      // ignore
+    }
 
-    stage.on('pointerdown', this._onInspectorStagePointerDown);
+    try {
+      stage.on('pointerdown', this._onInspectorStagePointerDown);
+    } catch (e) {
+      // ignore
+    }
   }
 
   _removeInspectorStageHandler() {
@@ -2281,6 +2296,17 @@ export function installGlobalMapEdgeUiHooks() {
       await _uiInstance?._syncSelectedTokenInfo?.();
     } catch (e) {
       console.error('SpaceHolder | Global map edge UI: failed to sync on canvasReady', e);
+    }
+  });
+
+  // Some UI/settings changes can trigger partial UI/canvas refreshes.
+  // Re-bind inspector stage handler when scene controls re-render.
+  Hooks.on('renderSceneControls', () => {
+    try {
+      if (!_uiInstance?.element) return;
+      _uiInstance._installInspectorStageHandler();
+    } catch (e) {
+      // ignore
     }
   });
 
