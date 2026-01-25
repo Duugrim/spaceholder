@@ -3,6 +3,7 @@ import {
   prepareActiveEffectCategories,
 } from '../helpers/effects.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
+import { promptPickAndApplyIconToActorOrToken } from '../helpers/icon-picker/icon-apply.mjs';
 
 // Base V2 Actor Sheet with Handlebars rendering
 export class SpaceHolderBaseActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -447,6 +448,12 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       img.addEventListener('click', profileHandler);
     });
 
+    // Icon picker button (curated SVG library)
+    const iconPickHandler = this._onIconPickClickBound ??= this._onIconPickClick.bind(this);
+    el?.querySelectorAll('[data-action="sh-icon-pick"]').forEach((btn) => {
+      btn.addEventListener('click', iconPickHandler);
+    });
+
     // Re-apply active tab on every render to ensure section classes are correct
     const hasAnyParts = !!(this.actor.system?.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
     const desiredTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? (hasAnyParts ? 'stats' : 'health');
@@ -819,6 +826,30 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       },
       no: { label: 'Отмена', icon: 'fa-solid fa-times' }
     });
+  }
+
+  /**
+   * Открыть выбор иконки из библиотеки и применить к actor/token/both.
+   * @private
+   */
+  async _onIconPickClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.isEditable) return;
+
+    const actor = this.document;
+    const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+
+    const picked = await promptPickAndApplyIconToActorOrToken({
+      actor,
+      tokenDoc,
+      defaultColor: '#ffffff',
+    });
+
+    if (picked) {
+      try { this.render(false); } catch (_) { /* ignore */ }
+    }
   }
 
   /**

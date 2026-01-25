@@ -13,6 +13,10 @@ import { anatomyManager } from './anatomy-manager.mjs';
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
+// Icon library + picker
+import { registerIconLibrarySettings, getIconIndexCacheInfo as getIconLibraryCacheInfo, getIconIndex as getIconLibraryIndex } from './helpers/icon-library/icon-library.mjs';
+import { pickIcon } from './helpers/icon-picker/icon-picker.mjs';
+import { applyIconPathToActorOrToken, pickAndApplyIconToActorOrToken, promptPickAndApplyIconToActorOrToken } from './helpers/icon-picker/icon-apply.mjs';
 // User -> Factions mapping (used by timeline and other faction-aware features)
 import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
 // Journal Directory helpers
@@ -65,6 +69,7 @@ import { registerTokenControlButtons, installTokenControlsHooks } from './helper
 
 Hooks.once('init', function () {
   // Register SpaceHolder settings and menus early
+  registerIconLibrarySettings();
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
   // registerAimingSystemSettings(); // OLD SYSTEM DISABLED
@@ -87,6 +92,13 @@ Hooks.once('init', function () {
     anatomyManager,
     openJournalUpdateLogApp,
     openTimelineApp,
+    // Icon library / picker
+    pickIcon,
+    applyIconPathToActorOrToken,
+    pickAndApplyIconToActorOrToken,
+    promptPickAndApplyIconToActorOrToken,
+    getIconLibraryIndex: (opts = {}) => getIconLibraryIndex(opts),
+    getIconLibraryCacheInfo: () => getIconLibraryCacheInfo(),
     // Helper functions for influence zones
     showInfluence: (debug = false) => game.spaceholder.influenceManager?.enable({ debug }),
     hideInfluence: () => game.spaceholder.influenceManager?.disable(),

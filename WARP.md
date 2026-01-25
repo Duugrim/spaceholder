@@ -63,6 +63,44 @@ npm run watch
 - Хелперы
   - templates.mjs: прелоад набора partials актёра и предмета
   - effects.mjs: управление ActiveEffect (create/edit/delete/toggle), категоризация на temporary/passive/inactive
+  - icon-library/** и icon-picker/**: кураторская библиотека SVG + окно выбора иконки (перекраска и bake в generated/)
+
+Икон-библиотека + Icon Picker (SVG)
+
+Куда складывать иконки
+- Иконки лежат в папке мира (Data): `<root>/source/**.svg`.
+- Перекрашенные/"запечённые" версии автоматически сохраняются в `<root>/generated/`.
+- По умолчанию `<root>` = `worlds/<worldId>/spaceholder/icon-library`.
+  - Можно переопределить через world setting `spaceholder.iconLibrary.root` (setting скрыт из UI; менять через консоль).
+- Подпапки внутри `source/` считаются категориями (category = относительный путь).
+
+Публичный API (доступен как `game.spaceholder.*`)
+- `await game.spaceholder.pickIcon({ root?, defaultColor?, title? })` → `string | null`
+  - Открывает окно выбора, перекрашивает SVG, сохраняет в `generated/` и возвращает путь к файлу.
+- `await game.spaceholder.applyIconPathToActorOrToken({ path, actor, tokenDoc?, applyTo: 'actor'|'token'|'both' })` → `boolean`
+- `await game.spaceholder.pickAndApplyIconToActorOrToken({ actor, tokenDoc?, applyTo, root?, defaultColor?, title? })` → `string | null`
+- `await game.spaceholder.promptPickAndApplyIconToActorOrToken({ actor, tokenDoc?, root?, defaultColor?, title? })` → `string | null`
+- `await game.spaceholder.getIconLibraryIndex({ root?, force?, extensions? })` → `icon[]`
+  - `icon` meta: `{ id, path, previewUrl, name, category, ext, tags }`
+- `game.spaceholder.getIconLibraryCacheInfo()` → `{ root, hasIcons, count, at }`
+
+Типичный сценарий использования (в любом новом месте)
+1) Получить путь к готовой иконке
+```js path=null start=null
+const iconPath = await game.spaceholder.pickIcon({
+  defaultColor: '#ffffff',
+  title: 'Choose icon',
+});
+if (!iconPath) return;
+```
+2) Применить куда нужно (пример: любой документ с img)
+```js path=null start=null
+await someDoc.update({ img: iconPath });
+```
+
+Ограничения/примечания
+- Сейчас поддерживается только `.svg`.
+- При превью и при bake пытаемся убрать "фон-квадрат" (rect/path на весь viewBox) и затем перекрашиваем `fill`/`stroke`.
 
 - Анатомии существ
   - AnatomyManager (module/anatomy-manager.mjs)

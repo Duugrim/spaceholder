@@ -1,0 +1,174 @@
+// Icon picker UI + portrait overlay button
+
+.window-app.spaceholder,
+.spaceholder {
+  // ===== Portrait overlay (actor sheets) =====
+  .sh-portrait {
+    flex: 0 0 100px;
+    width: 100px;
+    height: 100px;
+    position: relative;
+
+    .profile-img {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .sh-portrait__pick {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+
+    width: 24px;
+    height: 24px;
+
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.65);
+      border-color: var(--sh-border-strong);
+    }
+  }
+
+  // ===== Icon picker app =====
+  .sh-icon-picker {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    // Default color for mask previews (can be overridden by inline style)
+    --sh-icon-color: #ffffff;
+  }
+
+  .sh-icon-picker__toolbar {
+    padding: 10px;
+    border-bottom: 1px solid var(--sh-border);
+    background: var(--sh-surface-2);
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sh-icon-picker__filters {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .sh-icon-picker__search {
+    flex: 1 1 220px;
+    min-width: 180px;
+  }
+
+  .sh-icon-picker__category {
+    flex: 0 0 auto;
+    min-width: 160px;
+  }
+
+  .sh-icon-picker__color {
+    width: 42px;
+    height: 32px;
+    padding: 0;
+    border-radius: var(--sh-radius-sm);
+    border: 1px solid var(--sh-border);
+    background: var(--sh-surface-1);
+  }
+
+  .sh-icon-picker__actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .sh-icon-picker__btn {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .sh-icon-picker__grid {
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    grid-auto-rows: 76px;
+    gap: 8px;
+    overflow: auto;
+    align-content: start;
+  }
+
+  .sh-icon-picker__item {
+    height: 100%;
+
+    background: var(--sh-surface-2);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    padding: 8px 6px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+
+    cursor: pointer;
+
+    &:hover {
+      background: var(--sh-surface-3);
+      border-color: var(--sh-border-strong);
+    }
+
+    &.is-selected {
+      border-color: var(--sh-accent-strong);
+      box-shadow: 0 0 0 1px var(--sh-accent-strong) inset;
+    }
+
+    &.is-hidden {
+      display: none;
+    }
+  }
+
+  .sh-icon-picker__thumb {
+    display: block;
+    flex: 0 0 auto;
+
+    width: 52px;
+    height: 52px;
+
+    background: var(--sh-icon-color);
+
+    -webkit-mask-image: var(--sh-icon-url);
+    mask-image: var(--sh-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+
+    opacity: 0.95;
+  }
+
+  // We rely on tooltips for names; keep the grid compact.
+  .sh-icon-picker__label {
+    display: none;
+  }
+
+  .sh-icon-picker__empty {
+    padding: 12px;
+    color: var(--sh-text-dim);
+    text-align: center;
+
+    &.is-hidden {
+      display: none;
+    }
+  }
+}

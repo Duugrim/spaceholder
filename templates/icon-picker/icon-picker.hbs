@@ -1,0 +1,76 @@
+<div class="sh-icon-picker" style="--sh-icon-color: {{color}};">
+  <header class="sh-icon-picker__toolbar">
+    <div class="sh-icon-picker__filters">
+      <input
+        class="sh-icon-picker__search"
+        type="text"
+        value="{{query}}"
+        placeholder="{{localize 'SPACEHOLDER.IconPicker.SearchPlaceholder'}}"
+        data-action="search"
+      />
+
+      {{#if categories.length}}
+        <select class="sh-icon-picker__category" data-action="category" aria-label="{{localize 'SPACEHOLDER.IconPicker.Category'}}">
+          <option value="">{{localize 'SPACEHOLDER.IconPicker.CategoryAll'}}</option>
+          {{#each categories as |c|}}
+            <option value="{{c}}" {{#if (eq c @root.category)}}selected{{/if}}>{{c}}</option>
+          {{/each}}
+        </select>
+      {{/if}}
+
+      <input
+        class="sh-icon-picker__color"
+        type="color"
+        value="{{color}}"
+        data-action="color"
+        aria-label="{{localize 'SPACEHOLDER.IconPicker.Color'}}"
+        data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Color'}}"
+      />
+
+      {{#if canRefresh}}
+        <button
+          type="button"
+          class="icon-btn sh-icon-picker__iconBtn"
+          data-action="refresh"
+          aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Refresh'}}"
+          data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Refresh'}}"
+        ><i class="fa-solid fa-rotate" aria-hidden="true"></i></button>
+      {{/if}}
+    </div>
+
+    <div class="sh-icon-picker__actions">
+      <button
+        type="button"
+        class="sh-icon-picker__btn primary"
+        data-action="confirm"
+        {{#unless hasSelection}}disabled{{/unless}}
+      ><i class="fa-solid fa-check" aria-hidden="true"></i> {{localize 'SPACEHOLDER.IconPicker.Buttons.Select'}}</button>
+
+      <button type="button" class="sh-icon-picker__btn" data-action="cancel">
+        <i class="fa-solid fa-times" aria-hidden="true"></i> {{localize 'SPACEHOLDER.Actions.Cancel'}}
+      </button>
+    </div>
+  </header>
+
+  <section class="sh-icon-picker__grid" data-role="grid">
+    {{#each icons as |icon|}}
+      <button
+        type="button"
+        class="sh-icon-picker__item {{#if (lookup @root.selected icon.id)}}is-selected{{/if}}"
+        data-action="select-icon"
+        data-id="{{icon.id}}"
+        data-category="{{icon.category}}"
+        data-search="{{icon.searchKey}}"
+        data-src="{{icon.previewUrl}}"
+        data-tooltip="{{icon.name}}"
+        aria-label="{{icon.name}}"
+      >
+        <span class="sh-icon-picker__thumb" style="--sh-icon-url: url('{{icon.previewUrl}}');" aria-hidden="true"></span>
+      </button>
+    {{/each}}
+  </section>
+
+  <div class="sh-icon-picker__empty {{#if icons.length}}is-hidden{{/if}}" data-role="empty">
+    {{localize 'SPACEHOLDER.IconPicker.Empty'}}
+  </div>
+</div>

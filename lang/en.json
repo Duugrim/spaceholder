@@ -46,6 +46,35 @@
       "Redo": "Redo",
       "Bake": "Bake"
     },
+    "IconPicker": {
+      "Title": "Icon Picker",
+      "SearchPlaceholder": "Search…",
+      "Category": "Category",
+      "CategoryAll": "All",
+      "Color": "Color",
+      "Empty": "No icons found.",
+      "Buttons": {
+        "Select": "Select"
+      },
+      "Tooltips": {
+        "Open": "Choose icon",
+        "Color": "Pick color",
+        "Refresh": "Refresh list"
+      },
+      "ApplyDialog": {
+        "Title": "Apply icon",
+        "Hint": "Update:",
+        "Actor": "Actor image",
+        "Token": "Token image",
+        "Both": "Both"
+      },
+      "Errors": {
+        "LoadFailed": "Failed to load icons list",
+        "RefreshFailed": "Failed to refresh icons list",
+        "BakeFailed": "Failed to create icon",
+        "ApplyFailed": "Failed to apply icon"
+      }
+    },
     "Common": {
       "Optional": "(optional)"
     },

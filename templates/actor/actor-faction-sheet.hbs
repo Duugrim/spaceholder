@@ -2,7 +2,18 @@
 
   {{!-- Sheet Header --}}
   <header class="sheet-header">
-    <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
+    <div class="sh-portrait">
+      <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
+      {{#if editable}}
+        <button
+          type="button"
+          class="icon-btn sh-portrait__pick"
+          data-action="sh-icon-pick"
+          data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+          aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+        ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
+      {{/if}}
+    </div>
     <div class="header-fields">
       <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
 
