@@ -283,7 +283,9 @@
         "Edit": "Edit",
         "Delete": "Delete",
         "Close": "Close",
-        "Drag": "Drag"
+        "Drag": "Drag",
+        "ZoomIn": "Zoom in",
+        "ZoomOut": "Zoom out"
       },
       "Groups": {
         "ActiveFactions": "My factions",

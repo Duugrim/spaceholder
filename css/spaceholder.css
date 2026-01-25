@@ -3245,7 +3245,8 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   min-width: 0;
   height: 100%;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   overflow-anchor: none;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--sh-radius-md);
@@ -3419,27 +3420,40 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  --sh-event-offset: 44px;
+  --sh-event-offsetSigned: -44px;
 }
-#spaceholder-timeline-v2 .sh-tl2__event::before,
-.window-app.spaceholder.timeline-v2 .sh-tl2__event::before,
-.spaceholder.timeline-v2 .sh-tl2__event::before {
+#spaceholder-timeline-v2 .sh-tl2__wire,
+.window-app.spaceholder.timeline-v2 .sh-tl2__wire,
+.spaceholder.timeline-v2 .sh-tl2__wire {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 2px;
+  width: var(--sh-wire-length, 0px);
+  background: rgba(255, 255, 255, 0.12);
+  transform-origin: 0 0;
+  transform: translateY(var(--sh-wire-startY, 0px)) rotate(var(--sh-wire-angle, 0deg));
+  pointer-events: none;
+  overflow: visible;
+  z-index: 0;
+}
+#spaceholder-timeline-v2 .sh-tl2__wire::before,
+.window-app.spaceholder.timeline-v2 .sh-tl2__wire::before,
+.spaceholder.timeline-v2 .sh-tl2__wire::before {
   content: "";
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.14);
-}
-#spaceholder-timeline-v2 .sh-tl2__event.is-right::before,
-.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-right::before,
-.spaceholder.timeline-v2 .sh-tl2__event.is-right::before {
   left: 0;
-}
-#spaceholder-timeline-v2 .sh-tl2__event.is-left::before,
-.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-left::before,
-.spaceholder.timeline-v2 .sh-tl2__event.is-left::before {
-  left: -44px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sh-event-color, rgba(255, 255, 255, 0.22));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 #spaceholder-timeline-v2 .sh-tl2__pill,
 .window-app.spaceholder.timeline-v2 .sh-tl2__pill,
@@ -3459,14 +3473,16 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 #spaceholder-timeline-v2 .sh-tl2__event.is-right .sh-tl2__pill,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-right .sh-tl2__pill,
 .spaceholder.timeline-v2 .sh-tl2__event.is-right .sh-tl2__pill {
-  left: 44px;
+  left: var(--sh-event-offset, 44px);
+  z-index: 1;
 }
 #spaceholder-timeline-v2 .sh-tl2__event.is-left .sh-tl2__pill,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-left .sh-tl2__pill,
 .spaceholder.timeline-v2 .sh-tl2__event.is-left .sh-tl2__pill {
-  left: -44px;
+  left: var(--sh-event-offsetSigned, -44px);
   transform: translateY(-50%) translateX(-100%);
   flex-direction: row-reverse;
+  z-index: 1;
 }
 #spaceholder-timeline-v2 .sh-tl2__eventIcon,
 .window-app.spaceholder.timeline-v2 .sh-tl2__eventIcon,

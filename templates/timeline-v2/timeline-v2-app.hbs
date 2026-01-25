@@ -61,6 +61,24 @@
         {{/if}}
       </button>
 
+      <button
+        type="button"
+        class="icon-btn sh-tl2__iconBtn"
+        data-action="zoom-out"
+        aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ZoomOut'}}"
+        data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ZoomOut'}}"
+        {{#unless canZoomOut}}disabled{{/unless}}
+      ><i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i></button>
+
+      <button
+        type="button"
+        class="icon-btn sh-tl2__iconBtn"
+        data-action="zoom-in"
+        aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ZoomIn'}}"
+        data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ZoomIn'}}"
+        {{#unless canZoomIn}}disabled{{/unless}}
+      ><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button>
+
       {{#if canCreate}}
         <button
           type="button"
@@ -99,10 +117,13 @@
                 style="top: {{e.topPx}}px; {{#if e.color}}--sh-event-color: {{e.color}};{{/if}}"
                 data-action="select-event"
                 data-uuid="{{e.uuid}}"
+                data-anchor-top="{{e.topPx}}"
+                data-anchor-serial="{{e.serial}}"
                 {{#if e.isUnknown}}
                   {{#if e.tooltip}}data-tooltip="{{e.tooltip}}"{{/if}}
                 {{/if}}
               >
+                <div class="sh-tl2__wire" aria-hidden="true"></div>
                 <div class="sh-tl2__pill">
                   <div class="sh-tl2__eventIcon" aria-hidden="true">
                     {{#if e.isUnknown}}

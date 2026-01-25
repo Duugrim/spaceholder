@@ -7,6 +7,7 @@ import {
   getTimelineV2HideUnknown,
   getTimelineV2PageData,
   getTimelineV2Zoom,
+  setTimelineV2Zoom,
   installTimelineV2Hooks,
   isTimelineV2Page,
   listTimelineV2IndexPages,
@@ -26,6 +27,12 @@ const DAYS_PER_YEAR = 12 * DAYS_PER_MONTH; // 360
 
 const CANVAS_PAD_PX = 40;
 const BASE_PX_PER_YEAR = 84;
+
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+
+// Marker/pill layout (pixels)
+const EVENT_OFFSET_PX = 44;
+const EVENT_MIN_DY_PX = 32;
 
 function _dateToSerial({ year, month, day }) {
   const y = Number(year) || 0;
@@ -519,6 +526,10 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     this._restoreScrollTop = null;
     this._restoreScrollClearT = null;
 
+    // Serial-based scroll restore (used for zoom to keep same date in view)
+    this._restoreSerial = null;
+    this._restoreSerialRel = 0.5;
+
     // Stage 3/4 UI state
     this._selectedEventUuid = '';
     this._drawerOpen = false;
@@ -533,11 +544,14 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     this._serialMeta = null;
     this._drag = null;
 
+    this._layoutRaf = null;
+
     this._onRootClick = this._onRootClick.bind(this);
     this._onRootChange = this._onRootChange.bind(this);
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerMove = this._onPointerMove.bind(this);
     this._onPointerUp = this._onPointerUp.bind(this);
+    this._onViewportScroll = this._onViewportScroll.bind(this);
   }
 
   async close(options = {}) {
@@ -646,6 +660,27 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     }
   }
 
+  _captureViewportAnchorSerial(rel = 0.5) {
+    try {
+      const vp = this.element?.querySelector?.('[data-field="timelineViewport"]');
+      const meta = this._serialMeta;
+      if (!vp || !meta) return null;
+
+      if (!Number.isFinite(meta.pxPerDay) || !Number.isFinite(meta.maxBoundSerial) || !Number.isFinite(meta.padPx)) {
+        return null;
+      }
+
+      const r = Number(rel);
+      const safeRel = Number.isFinite(r) ? Math.min(1, Math.max(0, r)) : 0.5;
+
+      const anchorPx = Number(vp.scrollTop) + (vp.clientHeight * safeRel);
+      const serial = Math.round(meta.maxBoundSerial - ((anchorPx - meta.padPx) / meta.pxPerDay));
+      return Number.isFinite(serial) ? serial : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   _renderPreserveScroll() {
     // Preserve the first known-good scrollTop until it gets applied in _onRender.
     // This prevents cases where rerenders triggered by document updates capture an already-reset scrollTop.
@@ -655,6 +690,139 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     this.render(false);
+  }
+
+  _scheduleFloatingLayout() {
+    if (this._layoutRaf) return;
+
+    this._layoutRaf = requestAnimationFrame(() => {
+      this._layoutRaf = null;
+      this._layoutFloatingEvents();
+    });
+  }
+
+  _onViewportScroll() {
+    // Avoid fighting with drag positioning.
+    if (this._drag) return;
+    this._scheduleFloatingLayout();
+  }
+
+  _layoutFloatingEvents() {
+    // Avoid fighting with drag positioning.
+    if (this._drag) return;
+
+    const root = this.element;
+    if (!root) return;
+
+    const viewport = root.querySelector('[data-field="timelineViewport"]');
+    const canvas = root.querySelector('[data-field="timelineCanvas"]');
+    if (!viewport || !canvas) return;
+
+    const vpTop = Number(viewport.scrollTop) || 0;
+    const vpBottom = vpTop + (Number(viewport.clientHeight) || 0);
+
+    // If viewport isn't measurable yet, skip.
+    if (!(vpBottom > vpTop)) return;
+
+    const minDy = EVENT_MIN_DY_PX;
+
+    // Keep floating pills inside viewport as much as possible.
+    const pad = Math.round(minDy * 0.5);
+    const minY = vpTop + pad;
+    const maxY = vpBottom - pad;
+
+    const nodes = Array.from(canvas.querySelectorAll('.sh-tl2__event'));
+
+    const sides = {
+      left: [],
+      right: [],
+    };
+
+    for (const el of nodes) {
+      const anchorTop = Number.parseFloat(String(el.dataset.anchorTop || ''));
+      if (!Number.isFinite(anchorTop)) continue;
+
+      // Only render if the exact date point is currently visible.
+      const visible = anchorTop >= vpTop && anchorTop <= vpBottom;
+      if (!visible) {
+        el.style.display = 'none';
+        continue;
+      }
+
+      el.style.display = '';
+
+      const side = el.classList.contains('is-left') ? 'left' : 'right';
+      sides[side].push({ el, anchorTop });
+    }
+
+    const layoutSide = (items) => {
+      if (!items.length) return;
+
+      items.sort((a, b) => {
+        if (a.anchorTop !== b.anchorTop) return a.anchorTop - b.anchorTop;
+        return String(a.el.dataset.uuid || '').localeCompare(String(b.el.dataset.uuid || ''));
+      });
+
+      const anchors = items.map((it) => it.anchorTop);
+      const y = anchors.slice();
+
+      // Forward pass: prevent overlaps.
+      for (let i = 1; i < y.length; i += 1) {
+        const minNext = y[i - 1] + minDy;
+        if (y[i] < minNext) y[i] = minNext;
+      }
+
+      // Backward pass: pull back up where possible to stay closer to anchors.
+      for (let i = y.length - 2; i >= 0; i -= 1) {
+        const maxPrev = y[i + 1] - minDy;
+        if (y[i] > maxPrev) y[i] = maxPrev;
+      }
+
+      // Shift block into viewport if possible.
+      if (Number.isFinite(minY) && Number.isFinite(maxY) && maxY > minY) {
+        const lowerShift = minY - y[0];
+        const upperShift = maxY - y[y.length - 1];
+
+        let shift = 0;
+        if (lowerShift <= upperShift) {
+          // Keep shift at 0 if possible.
+          shift = Math.min(upperShift, Math.max(lowerShift, 0));
+        } else {
+          // Cannot fit: center the block.
+          shift = ((minY + maxY) * 0.5) - ((y[0] + y[y.length - 1]) * 0.5);
+        }
+
+        if (Number.isFinite(shift) && shift !== 0) {
+          for (let i = 0; i < y.length; i += 1) y[i] += shift;
+        }
+      }
+
+      for (let i = 0; i < items.length; i += 1) {
+        const { el, anchorTop } = items[i];
+        const floatTop = y[i];
+
+        // Move event anchor to the floating position.
+        el.style.top = `${Math.round(floatTop)}px`;
+
+        // Wire from icon edge to the exact date point.
+        const dy = anchorTop - floatTop;
+        const side = el.classList.contains('is-left') ? 'left' : 'right';
+        const dx = (side === 'left') ? -EVENT_OFFSET_PX : EVENT_OFFSET_PX;
+
+        const vx = dx;
+        const vy = -dy;
+
+        const len = Math.sqrt((vx * vx) + (vy * vy));
+        const angle = Math.atan2(vy, vx) * (180 / Math.PI);
+
+        el.style.setProperty('--sh-wire-startY', `${Math.round(dy)}px`);
+        el.style.setProperty('--sh-wire-length', `${Math.round(len)}px`);
+        el.style.setProperty('--sh-wire-angle', `${angle}deg`);
+      }
+    };
+
+    layoutSide(sides.left);
+    layoutSide(sides.right);
   }
 
   async _openDetailsDrawer(indexUuid) {
@@ -727,6 +895,12 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     const hideUnknown = getTimelineV2HideUnknown();
     const zoom = getTimelineV2Zoom();
+
+    const minZoom = ZOOM_STEPS[0] ?? 1;
+    const maxZoom = ZOOM_STEPS[ZOOM_STEPS.length - 1] ?? 1;
+
+    const canZoomIn = zoom < (maxZoom - 1e-6);
+    const canZoomOut = zoom > (minZoom + 1e-6);
 
     const factions = this._getFactionChoicesForUi();
 
@@ -900,6 +1074,9 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       isGM,
       loading,
       hideUnknown,
+      zoom,
+      canZoomIn,
+      canZoomOut,
       showFactionMenu,
       factionMenuOpen: !!this._factionMenuOpen,
       activeMode: activeCfg.mode,
@@ -953,47 +1130,74 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       // ignore
     }
 
-    // Preserve scroll on rerender.
     const viewport = el.querySelector('[data-field="timelineViewport"]');
-    if (viewport && Number.isFinite(this._restoreScrollTop)) {
-      const v = this._restoreScrollTop;
 
-      try {
-        viewport.scrollTop = v;
-      } catch (_) {
-        // ignore
+    // Floating layout depends on viewport scroll; install scroll handler once per viewport instance.
+    if (viewport && viewport.dataset?.shTl2ViewportHandlers !== 'true') {
+      viewport.dataset.shTl2ViewportHandlers = 'true';
+      viewport.addEventListener('scroll', this._onViewportScroll, { passive: true });
+    }
+
+    // Preserve scroll on rerender.
+    if (viewport && (Number.isFinite(this._restoreSerial) || Number.isFinite(this._restoreScrollTop))) {
+      let v = null;
+
+      if (Number.isFinite(this._restoreSerial)) {
+        const meta = this._serialMeta;
+        if (meta && Number.isFinite(meta.pxPerDay) && Number.isFinite(meta.maxBoundSerial) && Number.isFinite(meta.padPx)) {
+          const r = Number(this._restoreSerialRel);
+          const safeRel = Number.isFinite(r) ? Math.min(1, Math.max(0, r)) : 0.5;
+
+          const topPx = Math.round(((meta.maxBoundSerial - this._restoreSerial) * meta.pxPerDay) + meta.padPx);
+          const anchorPx = viewport.clientHeight * safeRel;
+
+          v = Math.max(0, Math.round(topPx - anchorPx));
+        }
       }
 
-      // Some internal behaviors (focus restoration, layout, etc.) may adjust scroll after render.
-      // Re-apply on the next frame as well.
-      requestAnimationFrame(() => {
+      if (!Number.isFinite(v) && Number.isFinite(this._restoreScrollTop)) {
+        v = this._restoreScrollTop;
+      }
+
+      if (Number.isFinite(v)) {
         try {
           viewport.scrollTop = v;
         } catch (_) {
           // ignore
         }
-      });
 
-      // Also re-apply shortly after, because multiple Journal updates can trigger multiple renders,
-      // and early renders sometimes happen before scrollHeight settles.
-      setTimeout(() => {
-        try {
-          viewport.scrollTop = v;
-        } catch (_) {
-          // ignore
-        }
-      }, 0);
+        // Some internal behaviors (focus restoration, layout, etc.) may adjust scroll after render.
+        // Re-apply on the next frame as well.
+        requestAnimationFrame(() => {
+          try {
+            viewport.scrollTop = v;
+          } catch (_) {
+            // ignore
+          }
+        });
 
-      // We've now established a user scroll position; don't auto-scroll to year 0 later.
-      this._didInitialScroll = true;
+        // Also re-apply shortly after, because multiple Journal updates can trigger multiple renders,
+        // and early renders sometimes happen before scrollHeight settles.
+        setTimeout(() => {
+          try {
+            viewport.scrollTop = v;
+          } catch (_) {
+            // ignore
+          }
+        }, 0);
 
-      // IMPORTANT: do NOT clear immediately. Multiple successive rerenders may happen, and we don't want
-      // later rerenders to capture scrollTop=0.
-      if (this._restoreScrollClearT) clearTimeout(this._restoreScrollClearT);
-      this._restoreScrollClearT = setTimeout(() => {
-        this._restoreScrollTop = null;
-        this._restoreScrollClearT = null;
-      }, 300);
+        // We've now established a user scroll position; don't auto-scroll to year 0 later.
+        this._didInitialScroll = true;
+
+        // IMPORTANT: do NOT clear immediately. Multiple successive rerenders may happen, and we don't want
+        // later rerenders to capture scrollTop=0.
+        if (this._restoreScrollClearT) clearTimeout(this._restoreScrollClearT);
+        this._restoreScrollClearT = setTimeout(() => {
+          this._restoreScrollTop = null;
+          this._restoreSerial = null;
+          this._restoreScrollClearT = null;
+        }, 300);
+      }
     }
 
     // Initial scroll towards year 0 (once, after loading)
@@ -1011,6 +1215,8 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
         }
       }
     }
+
+    this._scheduleFloatingLayout();
   }
 
   async _onRootChange(event) {
@@ -1047,6 +1253,38 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       event.preventDefault();
       await setTimelineV2HideUnknown(!getTimelineV2HideUnknown());
       this._renderPreserveScroll();
+      return;
+    }
+
+    if (action === 'zoom-in' || action === 'zoom-out') {
+      event.preventDefault();
+
+      // Keep the same date around the viewport center when changing zoom.
+      const anchorRel = 0.5;
+      const serial = this._captureViewportAnchorSerial(anchorRel);
+      if (Number.isFinite(serial)) {
+        this._restoreSerial = serial;
+        this._restoreSerialRel = anchorRel;
+      }
+
+      const cur = getTimelineV2Zoom();
+
+      let next = cur;
+      if (action === 'zoom-in') {
+        next = ZOOM_STEPS.find((s) => s > (cur + 1e-6)) ?? (ZOOM_STEPS[ZOOM_STEPS.length - 1] ?? cur);
+      } else {
+        for (let i = ZOOM_STEPS.length - 1; i >= 0; i -= 1) {
+          const s = ZOOM_STEPS[i];
+          if (s < (cur - 1e-6)) {
+            next = s;
+            break;
+          }
+          next = ZOOM_STEPS[0] ?? cur;
+        }
+      }
+
+      await setTimelineV2Zoom(next);
+      this.render(false);
       return;
     }
 
@@ -1180,8 +1418,27 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     event.preventDefault();
     event.stopPropagation();
 
-    const topPx = Number.parseFloat(String(eventEl.style.top || '0').replace('px', ''));
-    const startTopPx = Number.isFinite(topPx) ? topPx : 0;
+    // When floating layout is enabled, markers are not at the exact date position.
+    // For dragging, snap to the real (anchor) position first.
+    const anchorTopPx = Number.parseFloat(String(eventEl.dataset.anchorTop || ''));
+    const fallbackTopPx = Number.parseFloat(String(eventEl.style.top || '0').replace('px', ''));
+    const startTopPx = Number.isFinite(anchorTopPx)
+      ? anchorTopPx
+      : (Number.isFinite(fallbackTopPx) ? fallbackTopPx : 0);
+
+    try {
+      eventEl.style.top = `${startTopPx}px`;
+
+      const side = eventEl.classList.contains('is-left') ? 'left' : 'right';
+      const dx = (side === 'left') ? -EVENT_OFFSET_PX : EVENT_OFFSET_PX;
+      const angle = (dx < 0) ? 180 : 0;
+
+      eventEl.style.setProperty('--sh-wire-startY', '0px');
+      eventEl.style.setProperty('--sh-wire-length', `${Math.abs(dx)}px`);
+      eventEl.style.setProperty('--sh-wire-angle', `${angle}deg`);
+    } catch (_) {
+      // ignore
+    }
 
     this._drag = {
       pointerId: event.pointerId,
@@ -1249,7 +1506,10 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
       // Cleanup drag state shortly after.
       setTimeout(() => {
-        if (this._drag === drag) this._drag = null;
+        if (this._drag === drag) {
+          this._drag = null;
+          this._scheduleFloatingLayout();
+        }
       }, 250);
 
       return;
@@ -1276,7 +1536,10 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     // Cleanup drag state shortly after updates/rerenders settle.
     setTimeout(() => {
-      if (this._drag === drag) this._drag = null;
+      if (this._drag === drag) {
+        this._drag = null;
+        this._scheduleFloatingLayout();
+      }
     }, 250);
   }
 }
