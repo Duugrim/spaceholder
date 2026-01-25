@@ -3794,7 +3794,7 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__dateFields,
 .spaceholder.timeline-v2-event-editor .sh-tl2e__dateFields {
   display: grid;
-  grid-template-columns: 110px 1fr 1fr;
+  grid-template-columns: 110px 92px 92px 34px;
   gap: 6px;
 }
 #spaceholder-timeline-v2-event-editor .sh-tl2e__year,
@@ -3808,7 +3808,28 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__day,
 .spaceholder.timeline-v2-event-editor .sh-tl2e__month,
 .spaceholder.timeline-v2-event-editor .sh-tl2e__day {
-  min-width: 86px;
+  width: 92px;
+  min-width: 92px;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__datePickBtn,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__datePickBtn,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__datePickBtn {
+  width: 34px;
+  min-width: 34px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.88);
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__datePickBtn:hover,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__datePickBtn:hover,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__datePickBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 #spaceholder-timeline-v2-event-editor .sh-tl2e__checkbox,
 .window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__checkbox,
@@ -3844,6 +3865,59 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .spaceholder.timeline-v2-event-editor .sh-tl2e__save {
   background: var(--sh-accent-blue);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+.sh-tl2dp {
+  --sh-tl2dp-angle: 0deg;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.sh-tl2dp .sh-tl2dp__wheel {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.35) 70%, rgba(0, 0, 0, 0.25) 100%), repeating-conic-gradient(from -90deg, rgba(255, 255, 255, 0.18) 0 1deg, transparent 1deg 30deg);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+.sh-tl2dp .sh-tl2dp__wheel:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.sh-tl2dp .sh-tl2dp__pointer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 110px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 2px;
+  transform-origin: 50% 100%;
+  transform: translate(-50%, -100%) rotate(var(--sh-tl2dp-angle));
+}
+.sh-tl2dp .sh-tl2dp__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45);
+}
+.sh-tl2dp .sh-tl2dp__readout {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.88);
+  letter-spacing: 0.2px;
+}
+.sh-tl2dp .sh-tl2dp__year input[type=number] {
+  width: 120px;
 }
 
 .spaceholder-user-factions > label {

@@ -742,7 +742,8 @@
         "Close": "Закрыть",
         "Drag": "Перетащить",
         "ZoomIn": "Приблизить",
-        "ZoomOut": "Отдалить"
+        "ZoomOut": "Отдалить",
+        "PickDate": "Выбрать дату"
       },
       "Groups": {
         "ActiveFactions": "Свои фракции",

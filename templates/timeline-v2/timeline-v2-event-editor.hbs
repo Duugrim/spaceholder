@@ -5,16 +5,15 @@
         <label>{{localize "SPACEHOLDER.TimelineV2.Fields.Date"}}</label>
         <div class="form-fields sh-tl2e__dateFields">
           <input type="number" name="year" value="{{year}}" step="1" inputmode="numeric" class="sh-tl2e__year" />
-          <select name="month" class="sh-tl2e__month">
-            {{#each monthChoices as |m|}}
-              <option value="{{m}}" {{#if (eq m @root.month)}}selected{{/if}}>{{m}}</option>
-            {{/each}}
-          </select>
-          <select name="day" class="sh-tl2e__day">
-            {{#each dayChoices as |d|}}
-              <option value="{{d}}" {{#if (eq d @root.day)}}selected{{/if}}>{{d}}</option>
-            {{/each}}
-          </select>
+          <input type="number" name="month" value="{{month}}" min="1" max="12" step="1" inputmode="numeric" class="sh-tl2e__month" />
+          <input type="number" name="day" value="{{day}}" min="1" max="30" step="1" inputmode="numeric" class="sh-tl2e__day" />
+          <button
+            type="button"
+            class="sh-tl2e__datePickBtn"
+            data-action="pick-date"
+            aria-label="{{localize "SPACEHOLDER.TimelineV2.Buttons.PickDate"}}"
+            data-tooltip="{{localize "SPACEHOLDER.TimelineV2.Buttons.PickDate"}}"
+          ><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></button>
         </div>
       </div>
 

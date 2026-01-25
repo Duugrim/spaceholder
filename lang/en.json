@@ -285,7 +285,8 @@
         "Close": "Close",
         "Drag": "Drag",
         "ZoomIn": "Zoom in",
-        "ZoomOut": "Zoom out"
+        "ZoomOut": "Zoom out",
+        "PickDate": "Pick date"
       },
       "Groups": {
         "ActiveFactions": "My factions",

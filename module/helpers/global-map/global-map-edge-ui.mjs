@@ -1816,7 +1816,7 @@ class GlobalMapEdgeUI {
       if (!this._canShowTimelineButton()) return;
 
       try {
-        game?.spaceholder?.openTimelineApp?.();
+        game?.spaceholder?.openTimelineV2App?.();
       } catch (e) {
         console.error('SpaceHolder | Global map edge UI: failed to open timeline', e);
         ui.notifications?.error?.(_t('SPACEHOLDER.GlobalMap.Errors.OpenTimelineFailed'));

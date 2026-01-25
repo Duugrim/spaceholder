@@ -124,6 +124,307 @@ async function _confirmDialog({ title, content, yesLabel, yesIcon, noLabel, noIc
   return globalThis.confirm?.(title) ?? false;
 }
 
+function _parseYear(raw, fallback = 0) {
+  const n = Number.parseInt(String(raw ?? '').trim(), 10);
+  return Number.isFinite(n) ? n : (Number(fallback) || 0);
+}
+
+function _clampInt(raw, min, max, fallback) {
+  const n = Number.parseInt(String(raw ?? '').trim(), 10);
+  if (!Number.isFinite(n)) return Number(fallback);
+  return Math.min(max, Math.max(min, n));
+}
+
+async function _pickTimelineV2Date({ year, month, day } = {}) {
+  const y0 = _parseYear(year, 0);
+  const m0 = _clampInt(month, 1, 12, 1);
+  const d0 = _clampInt(day, 1, 30, 1);
+
+  const title = game?.i18n?.localize?.('SPACEHOLDER.TimelineV2.Buttons.PickDate') || 'Pick date';
+  const applyLabel = game?.i18n?.localize?.('SPACEHOLDER.Actions.Apply') || 'Apply';
+  const cancelLabel = game?.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') || 'Cancel';
+
+  const uid = Math.random().toString(36).slice(2, 10);
+  const rootId = `spaceholder-tl2-date-picker-${uid}`;
+
+  const dayOfYear0 = ((m0 - 1) * DAYS_PER_MONTH) + (d0 - 1);
+
+  const content = `
+    <div id="${rootId}" class="sh-tl2dp" autocomplete="off">
+      <div class="sh-tl2dp__wheel" data-field="wheel">
+        <div class="sh-tl2dp__pointer" data-field="pointer"></div>
+        <div class="sh-tl2dp__center"></div>
+      </div>
+      <div class="sh-tl2dp__readout" data-field="readout"></div>
+      <div class="sh-tl2dp__year">
+        <input type="number" name="year" value="${y0}" step="1" inputmode="numeric" />
+      </div>
+      <input type="hidden" name="dayOfYear" value="${dayOfYear0}" />
+    </div>
+  `;
+
+  const installInteractions = (rootEl) => {
+    const wheelEl = rootEl?.querySelector?.('[data-field="wheel"]');
+    const readoutEl = rootEl?.querySelector?.('[data-field="readout"]');
+    const yearInput = rootEl?.querySelector?.('input[name="year"]');
+    const dayOfYearInput = rootEl?.querySelector?.('input[name="dayOfYear"]');
+
+    if (!wheelEl || !readoutEl || !yearInput || !dayOfYearInput) return null;
+
+    const pad2 = (v) => String(Number(v) || 0).padStart(2, '0');
+
+    const state = {
+      dragging: false,
+      dayOfYear: _clampInt(dayOfYearInput.value, 0, DAYS_PER_YEAR - 1, dayOfYear0),
+    };
+
+    const syncReadout = () => {
+      const y = _parseYear(yearInput.value, y0);
+      const m = Math.floor(state.dayOfYear / DAYS_PER_MONTH) + 1;
+      const d = (state.dayOfYear % DAYS_PER_MONTH) + 1;
+      readoutEl.textContent = `${y}.${pad2(m)}.${pad2(d)}`;
+    };
+
+    const setDayOfYear = (next) => {
+      const raw = Number(next);
+      const mod = ((raw % DAYS_PER_YEAR) + DAYS_PER_YEAR) % DAYS_PER_YEAR;
+      state.dayOfYear = Number.isFinite(mod) ? mod : 0;
+
+      dayOfYearInput.value = String(state.dayOfYear);
+      rootEl.style.setProperty('--sh-tl2dp-angle', `${state.dayOfYear}deg`);
+      syncReadout();
+    };
+
+    const dayOfYearFromEvent = (ev) => {
+      const rect = wheelEl.getBoundingClientRect();
+      const cx = rect.left + (rect.width / 2);
+      const cy = rect.top + (rect.height / 2);
+
+      const dx = Number(ev.clientX) - cx;
+      const dy = Number(ev.clientY) - cy;
+
+      const r2 = (dx * dx) + (dy * dy);
+      if (!(r2 > 16)) return null;
+
+      const angleRad = Math.atan2(dy, dx); // 0 at right
+      const degFromRight = ((angleRad * 180 / Math.PI) + 360) % 360;
+      const degFromTop = (degFromRight + 90) % 360; // 0 at top, clockwise
+
+      const doy = Math.floor(degFromTop + 0.5) % DAYS_PER_YEAR;
+      return Number.isFinite(doy) ? doy : null;
+    };
+
+    const onPointerDown = (ev) => {
+      if (ev.button !== 0) return;
+      ev.preventDefault();
+
+      state.dragging = true;
+      try { wheelEl.setPointerCapture?.(ev.pointerId); } catch (_) { /* ignore */ }
+
+      const doy = dayOfYearFromEvent(ev);
+      if (doy !== null) setDayOfYear(doy);
+    };
+
+    const onPointerMove = (ev) => {
+      if (!state.dragging) return;
+      const doy = dayOfYearFromEvent(ev);
+      if (doy !== null) setDayOfYear(doy);
+    };
+
+    const onPointerUp = (ev) => {
+      if (!state.dragging) return;
+      state.dragging = false;
+      try { wheelEl.releasePointerCapture?.(ev.pointerId); } catch (_) { /* ignore */ }
+    };
+
+    const onWheel = (ev) => {
+      ev.preventDefault();
+
+      const dy = Number(ev.deltaY) || 0;
+      if (!dy) return;
+
+      const dir = dy > 0 ? 1 : -1;
+      setDayOfYear(state.dayOfYear + dir);
+    };
+
+    const onYearChange = () => syncReadout();
+
+    wheelEl.addEventListener('pointerdown', onPointerDown);
+    wheelEl.addEventListener('pointermove', onPointerMove);
+    wheelEl.addEventListener('pointerup', onPointerUp);
+    wheelEl.addEventListener('pointercancel', onPointerUp);
+    wheelEl.addEventListener('wheel', onWheel, { passive: false });
+    yearInput.addEventListener('change', onYearChange);
+    yearInput.addEventListener('input', onYearChange);
+
+    // Initial sync
+    setDayOfYear(state.dayOfYear);
+
+    return () => {
+      try {
+        wheelEl.removeEventListener('pointerdown', onPointerDown);
+        wheelEl.removeEventListener('pointermove', onPointerMove);
+        wheelEl.removeEventListener('pointerup', onPointerUp);
+        wheelEl.removeEventListener('pointercancel', onPointerUp);
+        wheelEl.removeEventListener('wheel', onWheel);
+        yearInput.removeEventListener('change', onYearChange);
+        yearInput.removeEventListener('input', onYearChange);
+      } catch (_) {
+        // ignore
+      }
+    };
+  };
+
+  const ensureInstalled = (settleFn) => {
+    let tries = 0;
+    let cleanup = null;
+
+    const tick = () => {
+      tries++;
+      const rootEl = document.getElementById(rootId);
+      if (rootEl) {
+        cleanup = installInteractions(rootEl) || null;
+        return;
+      }
+      if (tries < 30) requestAnimationFrame(tick);
+    };
+
+    requestAnimationFrame(tick);
+
+    return () => {
+      try {
+        if (cleanup) cleanup();
+      } catch (_) {
+        // ignore
+      }
+    };
+  };
+
+  const DialogV2 = foundry?.applications?.api?.DialogV2;
+  if (DialogV2?.wait) {
+    try {
+      return await new Promise((resolve) => {
+        let settled = false;
+        let cleanup = null;
+
+        const settle = (v) => {
+          if (settled) return;
+          settled = true;
+          try { cleanup?.(); } catch (_) { /* ignore */ }
+          resolve(v);
+        };
+
+        cleanup = ensureInstalled(settle);
+
+        const maybePromise = DialogV2.wait({
+          window: { title, icon: 'fa-solid fa-calendar-days' },
+          position: { width: 380 },
+          content,
+          buttons: [
+            {
+              action: 'apply',
+              label: applyLabel,
+              icon: 'fa-solid fa-check',
+              default: true,
+              callback: () => {
+                try {
+                  const root = document.getElementById(rootId);
+                  const yRaw = root?.querySelector?.('input[name="year"]')?.value;
+                  const doyRaw = root?.querySelector?.('input[name="dayOfYear"]')?.value;
+
+                  const y = _parseYear(yRaw, y0);
+                  const dayOfYear = _clampInt(doyRaw, 0, DAYS_PER_YEAR - 1, dayOfYear0);
+
+                  const m = Math.floor(dayOfYear / DAYS_PER_MONTH) + 1;
+                  const d = (dayOfYear % DAYS_PER_MONTH) + 1;
+
+                  settle({ year: y, month: m, day: d });
+                } catch (_) {
+                  settle({ year: y0, month: m0, day: d0 });
+                }
+                return true;
+              },
+            },
+            {
+              action: 'cancel',
+              label: cancelLabel,
+              icon: 'fa-solid fa-times',
+              callback: () => {
+                settle(null);
+                return true;
+              },
+            },
+          ],
+        });
+
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(() => settle(null)).catch(() => settle(null));
+        }
+      });
+    } catch (_) {
+      // ignore and fallback
+    }
+  }
+
+  // Fallback: Dialog (v1)
+  try {
+    const DialogImpl = globalThis.Dialog;
+    if (DialogImpl) {
+      return await new Promise((resolve) => {
+        let settled = false;
+        let cleanup = null;
+
+        const settle = (v) => {
+          if (settled) return;
+          settled = true;
+          try { cleanup?.(); } catch (_) { /* ignore */ }
+          resolve(v);
+        };
+
+        const dialog = new DialogImpl({
+          title,
+          content,
+          buttons: {
+            apply: {
+              label: applyLabel,
+              callback: () => {
+                try {
+                  const root = document.getElementById(rootId);
+                  const yRaw = root?.querySelector?.('input[name="year"]')?.value;
+                  const doyRaw = root?.querySelector?.('input[name="dayOfYear"]')?.value;
+
+                  const y = _parseYear(yRaw, y0);
+                  const dayOfYear = _clampInt(doyRaw, 0, DAYS_PER_YEAR - 1, dayOfYear0);
+
+                  const m = Math.floor(dayOfYear / DAYS_PER_MONTH) + 1;
+                  const d = (dayOfYear % DAYS_PER_MONTH) + 1;
+
+                  settle({ year: y, month: m, day: d });
+                } catch (_) {
+                  settle({ year: y0, month: m0, day: d0 });
+                }
+              },
+            },
+            cancel: {
+              label: cancelLabel,
+              callback: () => settle(null),
+            },
+          },
+          default: 'apply',
+          close: () => settle(null),
+        });
+
+        cleanup = ensureInstalled(settle);
+        dialog.render(true);
+      });
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  return null;
+}
+
 class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 ) {
@@ -229,6 +530,53 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     }
   }
 
+  _syncDraftFromForm() {
+    const root = this.element;
+    if (!root) return;
+
+    const year = Number.parseInt(String(root.querySelector('input[name="year"]')?.value ?? '').trim(), 10);
+    if (Number.isFinite(year)) this._year = year;
+
+    const month = Number.parseInt(String(root.querySelector('input[name="month"]')?.value ?? '').trim(), 10);
+    if (Number.isFinite(month)) this._month = Math.min(12, Math.max(1, month));
+
+    const day = Number.parseInt(String(root.querySelector('input[name="day"]')?.value ?? '').trim(), 10);
+    if (Number.isFinite(day)) this._day = Math.min(30, Math.max(1, day));
+
+    const titleEl = root.querySelector('input[name="title"]');
+    if (typeof titleEl?.value === 'string') this._title = titleEl.value;
+
+    const contentEl = root.querySelector('textarea[name="content"]');
+    if (typeof contentEl?.value === 'string') this._content = contentEl.value;
+
+    const globalCb = root.querySelector('input[type="checkbox"][name="isGlobal"]');
+    if (globalCb) this._isGlobal = !!globalCb.checked;
+  }
+
+  async _openDatePicker() {
+    const root = this.element;
+    if (!root) return;
+
+    const yearInput = root.querySelector('input[name="year"]');
+    const monthInput = root.querySelector('input[name="month"]');
+    const dayInput = root.querySelector('input[name="day"]');
+
+    const year = _parseYear(yearInput?.value, this._year);
+    const month = _clampInt(monthInput?.value, 1, 12, this._month);
+    const day = _clampInt(dayInput?.value, 1, 30, this._day);
+
+    const picked = await _pickTimelineV2Date({ year, month, day });
+    if (!picked) return;
+
+    if (yearInput) yearInput.value = String(picked.year);
+    if (monthInput) monthInput.value = String(picked.month);
+    if (dayInput) dayInput.value = String(picked.day);
+
+    this._year = picked.year;
+    this._month = picked.month;
+    this._day = picked.day;
+  }
+
   async _onClick(ev) {
     const btn = ev.target?.closest?.('button[data-action]');
     if (!btn) return;
@@ -237,12 +585,20 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     if (action === 'cancel') {
       ev.preventDefault();
       await this.close();
+      return;
+    }
+
+    if (action === 'pick-date') {
+      ev.preventDefault();
+      await this._openDatePicker();
+      return;
     }
   }
 
   async _onChange(ev) {
     const factionSel = ev.target?.closest?.('select[name="factionUuid"][data-action="faction-change"]');
     if (factionSel) {
+      this._syncDraftFromForm();
       this._factionUuid = String(factionSel.value || '').trim();
       if (!this._factionUuid && this._allowNoFaction) this._isGlobal = true;
       this.render(false);
@@ -265,9 +621,9 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       return;
     }
 
-    const year = Number.parseInt(String(data.year ?? '').trim(), 10);
-    const month = Number.parseInt(String(data.month ?? '').trim(), 10);
-    const day = Number.parseInt(String(data.day ?? '').trim(), 10);
+    const year = _parseYear(data.year, this._year);
+    const month = _clampInt(data.month, 1, 12, this._month);
+    const day = _clampInt(data.day, 1, 30, this._day);
 
     const content = String(data.content ?? '');
 
@@ -316,9 +672,9 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
           text: { content },
         }, { diff: false, spaceholderJournalCheck: true });
 
-        const y = Number.isFinite(year) ? year : t.year;
-        const m = Number.isFinite(month) ? month : t.month;
-        const d = Number.isFinite(day) ? day : t.day;
+        const y = year;
+        const m = month;
+        const d = day;
 
         if (t.year !== y || t.month !== m || t.day !== d) {
           await updateTimelineV2EventDate({
