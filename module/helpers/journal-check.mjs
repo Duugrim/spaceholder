@@ -155,12 +155,37 @@ async function _appendApprovalHistoryBatch(batch) {
   await game.settings.set(MODULE_NS, SETTING_APPROVAL_HISTORY, next);
 }
 
-function _getAllPlayersOwnershipLevel(doc) {
+function _getAllPlayersOwnershipLevel(doc, { _depth = 0, _seen = null } = {}) {
   try {
+    if (!doc) return 0;
+
+    const depth = Number(_depth) || 0;
+    if (depth > 10) return 0;
+
+    const seen = _seen instanceof Set ? _seen : new Set();
+    if (seen.has(doc)) return 0;
+    seen.add(doc);
+
     const own = doc?.ownership ?? doc?.data?.ownership ?? null;
     const v = (own && typeof own === 'object') ? (own.default ?? own['default']) : null;
     const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
+    if (!Number.isFinite(n)) return 0;
+
+    const INHERIT = (() => {
+      try {
+        return CONST.DOCUMENT_OWNERSHIP_LEVELS.INHERIT;
+      } catch (_) {
+        return -1;
+      }
+    })();
+
+    // JournalEntryPage defaults to INHERIT, meaning it inherits permissions from its parent JournalEntry.
+    if (n === INHERIT) {
+      if (doc.parent) return _getAllPlayersOwnershipLevel(doc.parent, { _depth: depth + 1, _seen: seen });
+      return 0;
+    }
+
+    return n;
   } catch (_) {
     return 0;
   }
