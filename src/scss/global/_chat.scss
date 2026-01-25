@@ -1,0 +1,128 @@
+// Chat overrides (Foundry v13)
+// Goal: force a dark chat experience to match SpaceHolder's dark-first UI.
+// Scope: body.game only, so Setup screen is unaffected.
+
+body.game {
+  // Chat input (textarea at the bottom)
+  #chat-message {
+    --text-color: #{$sh-text};
+    --placeholder-color: #{$sh-text-dim};
+    --background-color: #{rgba($sh-surface-2, 0.85)};
+    --border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  // The chat log is explicitly rendered with theme-light in core templates.
+  // Override a few key variables so embedded content links/inline rolls are readable on dark backgrounds.
+  #chat .chat-log,
+  #chat-notifications .chat-log,
+  #chat-popout .chat-log {
+    --color-text-emphatic: #{$sh-text};
+    --color-text-primary: #{$sh-text};
+    --color-text-secondary: #{$sh-text-muted};
+    --color-text-subtle: #{$sh-text-dim};
+    --color-text-accent: #{$sh-accent-strong};
+
+    --content-link-background: rgba(255, 255, 255, 0.08);
+    --content-link-border-color: rgba(255, 255, 255, 0.16);
+    --content-link-icon-color: #{$sh-text-muted};
+    --content-link-text-color: #{$sh-text};
+  }
+
+  // Chat message cards
+  #chat .chat-message,
+  #chat-notifications .chat-message,
+  #chat-popout .chat-message {
+    // Core uses these variables for the default message card.
+    --chat-message-background: #{rgba($sh-surface-2, 0.92)};
+    --chat-message-border-color: rgba(255, 255, 255, 0.14);
+
+    // Core uses these for special message types.
+    --color-whisper-background: #{rgba($sh-surface-3, 0.92)};
+    --color-whisper-border: rgba(255, 255, 255, 0.18);
+
+    --color-emote-background: #{rgba($sh-surface-2, 0.92)};
+    --color-emote-border: #{rgba($sh-accent-strong, 0.35)};
+
+    --color-blind-background: #{rgba($sh-surface-2, 0.92)};
+    --color-blind-border: #{rgba($sh-danger, 0.35)};
+
+    // Keep embedded links/inline rolls consistent even under theme-light.
+    --content-link-background: rgba(255, 255, 255, 0.08);
+    --content-link-border-color: rgba(255, 255, 255, 0.16);
+    --content-link-icon-color: #{$sh-text-muted};
+    --content-link-text-color: #{$sh-text};
+
+    color: #{$sh-text};
+
+    .message-header {
+      color: #{$sh-text-dim};
+    }
+
+    .message-header .message-sender {
+      color: #{$sh-text};
+    }
+
+    .message-header .message-metadata,
+    .message-header .message-timestamp,
+    .message-header .message-delete,
+    .message-header .message-dismiss {
+      color: #{$sh-text-muted};
+    }
+
+    .message-header .message-delete:hover,
+    .message-header .message-dismiss:hover {
+      color: #fff;
+    }
+
+    .message-header .flavor-text,
+    .message-header .whisper-to {
+      color: #{$sh-text-dim};
+    }
+
+    a {
+      color: #{$sh-accent-strong};
+      text-decoration-color: rgba(255, 255, 255, 0.35);
+
+      &:hover,
+      &:focus {
+        color: #fff;
+      }
+    }
+
+    // Dice rolls inside chat messages
+    .dice-roll {
+      .dice-formula,
+      .dice-total {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.16);
+        box-shadow: none;
+      }
+
+      .dice-total.success { color: #5bd65b; }
+      .dice-total.failure { color: #ff6b6b; }
+    }
+
+    .dice-tooltip .part-header .part-flavor {
+      color: #{$sh-text-dim};
+    }
+
+    // Inline roll tooltip
+    .inline-roll .dice-tooltip {
+      background: #{rgba($sh-surface-2, 0.95)};
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.75);
+    }
+
+    // Roll table results
+    .table-draw {
+      .table-description {
+        border-top-color: rgba(255, 255, 255, 0.12);
+        color: #{$sh-text-dim};
+      }
+
+      ul.table-results li {
+        border-bottom-color: rgba(255, 255, 255, 0.12);
+      }
+    }
+  }
+}

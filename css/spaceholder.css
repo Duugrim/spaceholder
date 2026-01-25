@@ -38,6 +38,139 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
   white-space: nowrap;
 }
 
+body.game #chat-message {
+  --text-color: #e8e8e8;
+  --placeholder-color: #9a9a9a;
+  --background-color: rgba(26, 26, 26, 0.85);
+  --border-color: rgba(255, 255, 255, 0.14);
+}
+body.game #chat .chat-log,
+body.game #chat-notifications .chat-log,
+body.game #chat-popout .chat-log {
+  --color-text-emphatic: #e8e8e8;
+  --color-text-primary: #e8e8e8;
+  --color-text-secondary: #c8c8c8;
+  --color-text-subtle: #9a9a9a;
+  --color-text-accent: #8fb98f;
+  --content-link-background: rgba(255, 255, 255, 0.08);
+  --content-link-border-color: rgba(255, 255, 255, 0.16);
+  --content-link-icon-color: #c8c8c8;
+  --content-link-text-color: #e8e8e8;
+}
+body.game #chat .chat-message,
+body.game #chat-notifications .chat-message,
+body.game #chat-popout .chat-message {
+  --chat-message-background: rgba(26, 26, 26, 0.92);
+  --chat-message-border-color: rgba(255, 255, 255, 0.14);
+  --color-whisper-background: rgba(36, 36, 36, 0.92);
+  --color-whisper-border: rgba(255, 255, 255, 0.18);
+  --color-emote-background: rgba(26, 26, 26, 0.92);
+  --color-emote-border: rgba(143, 185, 143, 0.35);
+  --color-blind-background: rgba(26, 26, 26, 0.92);
+  --color-blind-border: rgba(204, 68, 68, 0.35);
+  --content-link-background: rgba(255, 255, 255, 0.08);
+  --content-link-border-color: rgba(255, 255, 255, 0.16);
+  --content-link-icon-color: #c8c8c8;
+  --content-link-text-color: #e8e8e8;
+  color: #e8e8e8;
+}
+body.game #chat .chat-message .message-header,
+body.game #chat-notifications .chat-message .message-header,
+body.game #chat-popout .chat-message .message-header {
+  color: #9a9a9a;
+}
+body.game #chat .chat-message .message-header .message-sender,
+body.game #chat-notifications .chat-message .message-header .message-sender,
+body.game #chat-popout .chat-message .message-header .message-sender {
+  color: #e8e8e8;
+}
+body.game #chat .chat-message .message-header .message-metadata,
+body.game #chat .chat-message .message-header .message-timestamp,
+body.game #chat .chat-message .message-header .message-delete,
+body.game #chat .chat-message .message-header .message-dismiss,
+body.game #chat-notifications .chat-message .message-header .message-metadata,
+body.game #chat-notifications .chat-message .message-header .message-timestamp,
+body.game #chat-notifications .chat-message .message-header .message-delete,
+body.game #chat-notifications .chat-message .message-header .message-dismiss,
+body.game #chat-popout .chat-message .message-header .message-metadata,
+body.game #chat-popout .chat-message .message-header .message-timestamp,
+body.game #chat-popout .chat-message .message-header .message-delete,
+body.game #chat-popout .chat-message .message-header .message-dismiss {
+  color: #c8c8c8;
+}
+body.game #chat .chat-message .message-header .message-delete:hover,
+body.game #chat .chat-message .message-header .message-dismiss:hover,
+body.game #chat-notifications .chat-message .message-header .message-delete:hover,
+body.game #chat-notifications .chat-message .message-header .message-dismiss:hover,
+body.game #chat-popout .chat-message .message-header .message-delete:hover,
+body.game #chat-popout .chat-message .message-header .message-dismiss:hover {
+  color: #fff;
+}
+body.game #chat .chat-message .message-header .flavor-text,
+body.game #chat .chat-message .message-header .whisper-to,
+body.game #chat-notifications .chat-message .message-header .flavor-text,
+body.game #chat-notifications .chat-message .message-header .whisper-to,
+body.game #chat-popout .chat-message .message-header .flavor-text,
+body.game #chat-popout .chat-message .message-header .whisper-to {
+  color: #9a9a9a;
+}
+body.game #chat .chat-message a,
+body.game #chat-notifications .chat-message a,
+body.game #chat-popout .chat-message a {
+  color: #8fb98f;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+}
+body.game #chat .chat-message a:hover, body.game #chat .chat-message a:focus,
+body.game #chat-notifications .chat-message a:hover,
+body.game #chat-notifications .chat-message a:focus,
+body.game #chat-popout .chat-message a:hover,
+body.game #chat-popout .chat-message a:focus {
+  color: #fff;
+}
+body.game #chat .chat-message .dice-roll .dice-formula,
+body.game #chat .chat-message .dice-roll .dice-total,
+body.game #chat-notifications .chat-message .dice-roll .dice-formula,
+body.game #chat-notifications .chat-message .dice-roll .dice-total,
+body.game #chat-popout .chat-message .dice-roll .dice-formula,
+body.game #chat-popout .chat-message .dice-roll .dice-total {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+body.game #chat .chat-message .dice-roll .dice-total.success,
+body.game #chat-notifications .chat-message .dice-roll .dice-total.success,
+body.game #chat-popout .chat-message .dice-roll .dice-total.success {
+  color: #5bd65b;
+}
+body.game #chat .chat-message .dice-roll .dice-total.failure,
+body.game #chat-notifications .chat-message .dice-roll .dice-total.failure,
+body.game #chat-popout .chat-message .dice-roll .dice-total.failure {
+  color: #ff6b6b;
+}
+body.game #chat .chat-message .dice-tooltip .part-header .part-flavor,
+body.game #chat-notifications .chat-message .dice-tooltip .part-header .part-flavor,
+body.game #chat-popout .chat-message .dice-tooltip .part-header .part-flavor {
+  color: #9a9a9a;
+}
+body.game #chat .chat-message .inline-roll .dice-tooltip,
+body.game #chat-notifications .chat-message .inline-roll .dice-tooltip,
+body.game #chat-popout .chat-message .inline-roll .dice-tooltip {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.75);
+}
+body.game #chat .chat-message .table-draw .table-description,
+body.game #chat-notifications .chat-message .table-draw .table-description,
+body.game #chat-popout .chat-message .table-draw .table-description {
+  border-top-color: rgba(255, 255, 255, 0.12);
+  color: #9a9a9a;
+}
+body.game #chat .chat-message .table-draw ul.table-results li,
+body.game #chat-notifications .chat-message .table-draw ul.table-results li,
+body.game #chat-popout .chat-message .table-draw ul.table-results li {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
 .window-app.spaceholder,
 .spaceholder {
   --sh-bg: #0b0b0b;
@@ -2594,11 +2727,13 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
   margin: 2px 0;
 }
 .spaceholder-journal-update-chat .sh-jul-chat__page {
-  color: rgba(255, 255, 255, 0.85);
+  color: inherit;
+  opacity: 0.92;
 }
 .spaceholder-journal-update-chat .sh-jul-chat__unknown {
   margin-top: 6px;
-  color: rgba(255, 255, 255, 0.65);
+  color: inherit;
+  opacity: 0.7;
   font-size: 12px;
 }
 
