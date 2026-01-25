@@ -10,6 +10,12 @@ let _cacheRoot = null;
 let _cacheIcons = null;
 let _cacheAt = 0;
 
+function _getFilePickerImpl() {
+  // Foundry v13+ (ApplicationV2) namespacing.
+  // Fallback to global for older versions.
+  return foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
+}
+
 function _defaultRoot() {
   const wid = String(game?.world?.id ?? '').trim();
   // Foundry data paths are served from the Data folder.
@@ -67,12 +73,15 @@ async function _ensureDirTree(path, { source = 'data' } = {}) {
   const parts = clean.split('/').filter(Boolean);
   if (!parts.length) return false;
 
+  const FP = _getFilePickerImpl();
+  if (!FP?.createDirectory) return false;
+
   let acc = parts[0];
   for (let i = 1; i < parts.length; i++) {
     acc = `${acc}/${parts[i]}`;
     try {
       // createDirectory is idempotent enough for our use; ignore errors.
-      await FilePicker.createDirectory(source, acc, {});
+      await FP.createDirectory(source, acc, {});
     } catch (_) {
       // ignore
     }
@@ -115,9 +124,12 @@ async function _browseRecursive(dir, { source = 'data', allowedExts, outFiles, s
   if (seenDirs.has(d)) return;
   seenDirs.add(d);
 
+  const FP = _getFilePickerImpl();
+  if (!FP?.browse) return;
+
   let res = null;
   try {
-    res = await FilePicker.browse(source, d);
+    res = await FP.browse(source, d);
   } catch (e) {
     // Missing directory or no permissions.
     return;

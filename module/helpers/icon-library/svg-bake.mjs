@@ -397,8 +397,13 @@ export async function bakeSvgToGenerated({ srcPath, color = '#ffffff', root = nu
   // Upload (overwrite to keep deterministic file stable even if algo changes)
   const file = new File([baked], fileName, { type: 'image/svg+xml' });
 
+  const FP = foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
+  if (!FP?.upload) {
+    throw new Error('FilePicker.upload is not available');
+  }
+
   try {
-    const result = await FilePicker.upload('data', _trimSlash(generated), file, { overwrite: true });
+    const result = await FP.upload('data', _trimSlash(generated), file, { overwrite: true });
     const destPath = String(result?.path ?? '').trim();
     return destPath || `${_trimSlash(generated)}/${fileName}`;
   } catch (e) {
