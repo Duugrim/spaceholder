@@ -1964,7 +1964,9 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
   min-width: 86px;
   font-size: 12px;
   color: var(--sh-text-muted);
-  white-space: nowrap;
+  line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__selector,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__selector {
@@ -2047,6 +2049,11 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
 .spaceholder.globalmap-edge-ui .sh-gm-edge__iconGroup--compact {
   padding: 4px;
 }
+#spaceholder-globalmap-edge-ui .sh-gm-edge__iconGroup--mini,
+.spaceholder.globalmap-edge-ui .sh-gm-edge__iconGroup--mini {
+  padding: 3px;
+  gap: 4px;
+}
 #spaceholder-globalmap-edge-ui .sh-gm-edge__iconBtn,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__iconBtn {
   width: 30px;
@@ -2095,8 +2102,8 @@ body.game .app.prototype-token-config nav.sheet-tabs [data-tab] > span {
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__flyout--right,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__flyout--right {
-  left: calc(100% + 12px);
-  width: 340px;
+  left: calc(100% + 8px);
+  width: 300px;
 }
 #spaceholder-globalmap-edge-ui .sh-gm-edge__flyoutBody,
 .spaceholder.globalmap-edge-ui .sh-gm-edge__flyoutBody {

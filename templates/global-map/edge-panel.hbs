@@ -97,56 +97,227 @@
       <div class="sh-gm-edge__flyoutBody" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Visibility"}}">
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Biomes"}}</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="biomes" data-value="fancy" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Biomes"}}">
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="biomes" data-value="fancy" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Fancy"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="fancyDebug" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Debug"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="cells" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Cells"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="biomes" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
+          <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--mini" data-select="biomes" data-value="fancy" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Biomes"}}">
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn is-active"
+              data-action="select"
+              data-select="biomes"
+              data-value="fancy"
+              aria-pressed="true"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Fancy"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Fancy"}}"
+            ><i class="fa-solid fa-leaf" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="biomes"
+              data-value="fancyDebug"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Debug"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Debug"}}"
+            ><i class="fa-solid fa-bug" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="biomes"
+              data-value="cells"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Cells"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Biomes.Cells"}}"
+            ><i class="fa-solid fa-th" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="biomes"
+              data-value="off"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+            ><i class="fa-solid fa-eye-slash" aria-hidden="true"></i></button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Heights"}}</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="heights" data-value="contours-bw" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Heights"}}">
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="heights" data-value="contours-bw" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.BW"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="contours" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Contours"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="cells" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Cells"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="heights" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
+          <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--mini" data-select="heights" data-value="contours-bw" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Heights"}}">
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn is-active"
+              data-action="select"
+              data-select="heights"
+              data-value="contours-bw"
+              aria-pressed="true"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.BW"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.BW"}}"
+            ><i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="heights"
+              data-value="contours"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Contours"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Contours"}}"
+            ><i class="fa-solid fa-mountain" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="heights"
+              data-value="cells"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Cells"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Heights.Cells"}}"
+            ><i class="fa-solid fa-th" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="heights"
+              data-value="off"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+            ><i class="fa-solid fa-eye-slash" aria-hidden="true"></i></button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelsShort"}}</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="riverLabels" data-value="hover" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabels"}}">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabels" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="riverLabels" data-value="hover" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabels" data-value="always" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}</button>
+          <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--mini" data-select="riverLabels" data-value="hover" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabels"}}">
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="riverLabels"
+              data-value="off"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+            ><i class="fa-solid fa-eye-slash" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn is-active"
+              data-action="select"
+              data-select="riverLabels"
+              data-value="hover"
+              aria-pressed="true"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}"
+            ><i class="fa-solid fa-hand-pointer" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="riverLabels"
+              data-value="always"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}"
+            ><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelRotate"}}</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="riverLabelRotate" data-value="on" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelRotate"}}">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="riverLabelRotate" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="riverLabelRotate" data-value="on" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}</button>
+          <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--mini" data-select="riverLabelRotate" data-value="on" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RiverLabelRotate"}}">
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="riverLabelRotate"
+              data-value="off"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+            ><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn is-active"
+              data-action="select"
+              data-select="riverLabelRotate"
+              data-value="on"
+              aria-pressed="true"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}"
+            ><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Regions"}}</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regions" data-value="full" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Regions"}}">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="name" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameShort"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regions" data-value="border" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameBorder"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regions" data-value="full" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.Full"}}</button>
+          <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--mini" data-select="regions" data-value="full" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.Regions"}}">
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="regions"
+              data-value="name"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameShort"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameShort"}}"
+            ><i class="fa-solid fa-tag" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="regions"
+              data-value="border"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameBorder"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.NameBorder"}}"
+            ><i class="fa-solid fa-draw-polygon" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn is-active"
+              data-action="select"
+              data-select="regions"
+              data-value="full"
+              aria-pressed="true"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.Full"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Regions.Full"}}"
+            ><i class="fa-solid fa-fill-drip" aria-hidden="true"></i></button>
           </div>
         </div>
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel"></div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="regionsWhen" data-value="hover" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RegionsWhen"}}">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="regionsWhen" data-value="hover" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="regionsWhen" data-value="always" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}</button>
+          <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--mini" data-select="regionsWhen" data-value="hover" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.RegionsWhen"}}">
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="regionsWhen"
+              data-value="off"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+            ><i class="fa-solid fa-eye-slash" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn is-active"
+              data-action="select"
+              data-select="regionsWhen"
+              data-value="hover"
+              aria-pressed="true"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.HoverShort"}}"
+            ><i class="fa-solid fa-hand-pointer" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="regionsWhen"
+              data-value="always"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Always"}}"
+            ><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
           </div>
         </div>
 
@@ -163,9 +334,27 @@
 
         <div class="sh-gm-edge__setting">
           <div class="sh-gm-edge__settingLabel">{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.AppearanceAnim"}}</div>
-          <div class="sh-gm-edge__selector sh-gm-edge__selector--mini" data-select="appearAnim" data-value="on" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.AppearanceAnim"}}">
-            <button type="button" class="sh-gm-edge__selectorBtn" data-action="select" data-select="appearAnim" data-value="off" aria-pressed="false">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}</button>
-            <button type="button" class="sh-gm-edge__selectorBtn is-active" data-action="select" data-select="appearAnim" data-value="on" aria-pressed="true">{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}</button>
+          <div class="sh-gm-edge__iconGroup sh-gm-edge__iconGroup--mini" data-select="appearAnim" data-value="on" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Settings.AppearanceAnim"}}">
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn"
+              data-action="select"
+              data-select="appearAnim"
+              data-value="off"
+              aria-pressed="false"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.Off"}}"
+            ><i class="fa-solid fa-stop" aria-hidden="true"></i></button>
+            <button
+              type="button"
+              class="icon-btn sh-gm-edge__iconBtn is-active"
+              data-action="select"
+              data-select="appearAnim"
+              data-value="on"
+              aria-pressed="true"
+              aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}"
+              data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.Modes.Common.On"}}"
+            ><i class="fa-solid fa-play" aria-hidden="true"></i></button>
 
             <input
               type="number"

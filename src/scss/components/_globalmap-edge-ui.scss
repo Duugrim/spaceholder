@@ -164,7 +164,9 @@
 
     font-size: 12px;
     color: var(--sh-text-muted);
-    white-space: nowrap;
+    line-height: 1.1;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   // ===== Selector (segmented) =====
@@ -259,6 +261,11 @@
     padding: 4px;
   }
 
+  .sh-gm-edge__iconGroup--mini {
+    padding: 3px;
+    gap: 4px;
+  }
+
   .sh-gm-edge__iconBtn {
     width: 30px;
     height: 30px;
@@ -316,8 +323,8 @@
   }
 
   .sh-gm-edge__flyout--right {
-    left: calc(100% + 12px);
-    width: 340px;
+    left: calc(100% + 8px);
+    width: 300px;
   }
 
   .sh-gm-edge__flyoutBody {
