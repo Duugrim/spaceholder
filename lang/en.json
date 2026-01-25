@@ -258,6 +258,38 @@
         "Content": "Content"
       }
     },
+    "TimelineV2": {
+      "App": {
+        "Title": "Timeline",
+        "Loading": "Loading…",
+        "EmptyState": "No entries yet."
+      },
+      "Fields": {
+        "Date": "Date",
+        "Title": "Title",
+        "Faction": "Faction",
+        "Global": "Global",
+        "Content": "Content"
+      },
+      "Buttons": {
+        "Add": "Add",
+        "Save": "Save",
+        "Cancel": "Cancel",
+        "HideUnknown": "Hide unknown",
+        "ActiveFactions": "My factions",
+        "ActiveFactionsAuto": "Auto",
+        "Details": "Details",
+        "Open": "Open",
+        "Edit": "Edit",
+        "Delete": "Delete",
+        "Close": "Close",
+        "Drag": "Drag"
+      },
+      "Groups": {
+        "ActiveFactions": "My factions",
+        "Details": "Details"
+      }
+    },
     "Journal": {
       "UpdateLog": {
         "Title": "Update Log",

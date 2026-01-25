@@ -715,6 +715,38 @@
         "Content": "Содержание"
       }
     },
+    "TimelineV2": {
+      "App": {
+        "Title": "Хронология",
+        "Loading": "Загрузка…",
+        "EmptyState": "Пока нет записей."
+      },
+      "Fields": {
+        "Date": "Дата",
+        "Title": "Название",
+        "Faction": "Фракция",
+        "Global": "Глобально",
+        "Content": "Содержание"
+      },
+      "Buttons": {
+        "Add": "Добавить",
+        "Save": "Сохранить",
+        "Cancel": "Отмена",
+        "HideUnknown": "Скрыть неизвестные",
+        "ActiveFactions": "Свои фракции",
+        "ActiveFactionsAuto": "Авто",
+        "Details": "Подробно",
+        "Open": "Открыть",
+        "Edit": "Редактировать",
+        "Delete": "Удалить",
+        "Close": "Закрыть",
+        "Drag": "Перетащить"
+      },
+      "Groups": {
+        "ActiveFactions": "Свои фракции",
+        "Details": "Подробно"
+      }
+    },
     "Journal": {
       "UpdateLog": {
         "Title": "Лог обновлений",

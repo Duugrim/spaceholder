@@ -25,9 +25,12 @@ import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
 import { registerJournalCheckSettings, installJournalCheckHooks } from './helpers/journal-check.mjs';
 // Journal Update Log window
 import { openJournalUpdateLogApp } from './helpers/journal-update-log-app.mjs';
-// Timeline
+// Timeline (legacy)
 import { registerTimelineSettings, installTimelineSocketHandlers, installTimelineHooks } from './helpers/timeline.mjs';
 import { openTimelineApp } from './helpers/timeline-app.mjs';
+// Timeline V2
+import { registerTimelineV2Settings, installTimelineV2SocketHandlers, installTimelineV2Hooks } from './helpers/timeline-v2.mjs';
+import { openTimelineV2App } from './helpers/timeline-v2-app.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -77,6 +80,7 @@ Hooks.once('init', function () {
   registerSpaceholderSettingsMenus();
   registerJournalCheckSettings();
   registerTimelineSettings();
+  registerTimelineV2Settings();
   installTokenPointerTabs();
   
   // DEPRECATED: Old height map scene configuration - disabled
@@ -92,6 +96,7 @@ Hooks.once('init', function () {
     anatomyManager,
     openJournalUpdateLogApp,
     openTimelineApp,
+    openTimelineV2App,
     // Icon library / picker
     pickIcon,
     applyIconPathToActorOrToken,
@@ -169,6 +174,9 @@ Hooks.once('init', function () {
   // Timeline: socket + hooks
   installTimelineSocketHandlers();
   installTimelineHooks();
+  // Timeline V2: socket + hooks
+  installTimelineV2SocketHandlers();
+  installTimelineV2Hooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
   // installAimingSystemHooks();
   // Install Token Controls hooks

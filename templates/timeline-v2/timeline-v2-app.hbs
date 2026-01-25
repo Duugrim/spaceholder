@@ -1,0 +1,216 @@
+<div class="sh-tl2">
+  <header class="sh-tl2__header">
+    <div class="sh-tl2__left">
+      <div class="sh-tl2__title">{{localize 'SPACEHOLDER.TimelineV2.App.Title'}}</div>
+    </div>
+
+    <div class="sh-tl2__controls">
+      {{#if showFactionMenu}}
+        <div class="sh-tl2__factionMenuWrap">
+          <button
+            type="button"
+            class="icon-btn sh-tl2__iconBtn {{#if factionMenuOpen}}is-active{{/if}}"
+            data-action="toggle-faction-menu"
+            aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ActiveFactions'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ActiveFactions'}}"
+          ><i class="fa-solid fa-users" aria-hidden="true"></i></button>
+
+          {{#if factionMenuOpen}}
+            <div class="sh-tl2__factionMenu" role="menu" aria-label="{{localize 'SPACEHOLDER.TimelineV2.Groups.ActiveFactions'}}">
+              <div class="sh-tl2__factionMenuHeader">
+                <div class="sh-tl2__factionMenuTitle">{{localize 'SPACEHOLDER.TimelineV2.Groups.ActiveFactions'}}</div>
+                <button
+                  type="button"
+                  class="icon-btn sh-tl2__iconBtn"
+                  data-action="set-active-factions-auto"
+                  aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ActiveFactionsAuto'}}"
+                  data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.ActiveFactionsAuto'}}"
+                ><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
+              </div>
+
+              <div class="sh-tl2__factionMenuList">
+                {{#each factions as |f|}}
+                  <label class="sh-tl2__factionRow" role="menuitemcheckbox" aria-checked="{{#if f.active}}true{{else}}false{{/if}}">
+                    <input
+                      type="checkbox"
+                      data-action="toggle-active-faction"
+                      data-uuid="{{f.uuid}}"
+                      {{#if f.active}}checked{{/if}}
+                    />
+                    <span class="sh-tl2__factionSwatch" {{#if f.color}}style="--sh-faction-color: {{f.color}};"{{/if}}></span>
+                    <span class="sh-tl2__factionName" title="{{f.name}}">{{f.name}}</span>
+                  </label>
+                {{/each}}
+              </div>
+            </div>
+          {{/if}}
+        </div>
+      {{/if}}
+
+      <button
+        type="button"
+        class="icon-btn sh-tl2__iconBtn {{#if hideUnknown}}is-active{{/if}}"
+        data-action="toggle-hide-unknown"
+        aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.HideUnknown'}}"
+        data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.HideUnknown'}}"
+      >
+        {{#if hideUnknown}}
+          <i class="fa-solid fa-eye" aria-hidden="true"></i>
+        {{else}}
+          <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+        {{/if}}
+      </button>
+
+      {{#if canCreate}}
+        <button
+          type="button"
+          class="icon-btn sh-tl2__iconBtn"
+          data-action="create-event"
+          aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Add'}}"
+          data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Add'}}"
+        ><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+      {{/if}}
+    </div>
+  </header>
+
+  <section class="sh-tl2__body">
+    {{#if loading}}
+      <div class="sh-tl2__empty">{{localize 'SPACEHOLDER.TimelineV2.App.Loading'}}</div>
+    {{else}}
+      <div class="sh-tl2__layout">
+        <div class="sh-tl2__viewport" data-field="timelineViewport">
+          <div
+            class="sh-tl2__canvas"
+            data-field="timelineCanvas"
+            data-year0-top="{{year0TopPx}}"
+            style="height: {{canvasHeightPx}}px;"
+          >
+            <div class="sh-tl2__line" aria-hidden="true"></div>
+
+            {{#each ticks as |t|}}
+              <div class="sh-tl2__tick" style="top: {{t.topPx}}px;" aria-hidden="true">
+                <div class="sh-tl2__tickLabel">{{t.year}}</div>
+              </div>
+            {{/each}}
+
+            {{#each events as |e|}}
+              <div
+                class="sh-tl2__event {{e.sideClass}} {{#if e.isUnknown}}is-unknown{{/if}} {{#if e.isSelected}}is-selected{{/if}}"
+                style="top: {{e.topPx}}px; {{#if e.color}}--sh-event-color: {{e.color}};{{/if}}"
+                data-action="select-event"
+                data-uuid="{{e.uuid}}"
+                {{#if e.isUnknown}}
+                  {{#if e.tooltip}}data-tooltip="{{e.tooltip}}"{{/if}}
+                {{/if}}
+              >
+                <div class="sh-tl2__pill">
+                  <div class="sh-tl2__eventIcon" aria-hidden="true">
+                    {{#if e.isUnknown}}
+                      <i class="fa-solid fa-question" aria-hidden="true"></i>
+                    {{else}}
+                      <i class="fa-solid fa-circle" aria-hidden="true"></i>
+                    {{/if}}
+                  </div>
+
+                  {{#unless e.isUnknown}}
+                    <div class="sh-tl2__pillBody">
+                      <div class="sh-tl2__eventTitle" title="{{e.titleText}}">{{e.titleText}}</div>
+
+                      <div class="sh-tl2__eventActions">
+                        {{#if e.canDrag}}
+                          <button
+                            type="button"
+                            class="icon-btn sh-tl2__iconBtn sh-tl2__dragBtn"
+                            data-action="drag-event"
+                            data-uuid="{{e.uuid}}"
+                            aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
+                            data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
+                          ><i class="fa-solid fa-grip-lines-vertical" aria-hidden="true"></i></button>
+                        {{/if}}
+
+                        <button
+                          type="button"
+                          class="icon-btn sh-tl2__iconBtn sh-tl2__detailsBtn"
+                          data-action="open-details"
+                          data-uuid="{{e.uuid}}"
+                          aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Details'}}"
+                          data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Details'}}"
+                        ><i class="fa-solid fa-circle-info" aria-hidden="true"></i></button>
+                      </div>
+                    </div>
+                  {{/unless}}
+                </div>
+              </div>
+            {{/each}}
+
+            {{#unless hasEvents}}
+              <div class="sh-tl2__overlayEmpty">{{localize 'SPACEHOLDER.TimelineV2.App.EmptyState'}}</div>
+            {{/unless}}
+          </div>
+        </div>
+
+        <aside class="sh-tl2__detailsPane {{#if drawerOpen}}is-open{{/if}}" aria-label="{{localize 'SPACEHOLDER.TimelineV2.Groups.Details'}}">
+          <header class="sh-tl2__detailsHeader">
+            <div class="sh-tl2__detailsHeading">
+              {{#if drawerOpen}}
+                <div class="sh-tl2__detailsTitle">{{drawerTitle}}</div>
+                <div class="sh-tl2__detailsDate">{{drawerDateText}}</div>
+              {{/if}}
+            </div>
+
+            <div class="sh-tl2__detailsActions">
+              {{#if drawerOpen}}
+                {{#if drawerCanOpen}}
+                  <button
+                    type="button"
+                    class="icon-btn sh-tl2__iconBtn"
+                    data-action="open-journal"
+                    data-uuid="{{drawerDetailUuid}}"
+                    aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Open'}}"
+                    data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Open'}}"
+                  ><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i></button>
+                {{/if}}
+
+                {{#if drawerCanEdit}}
+                  <button
+                    type="button"
+                    class="icon-btn sh-tl2__iconBtn"
+                    data-action="edit-event"
+                    data-uuid="{{drawerIndexUuid}}"
+                    aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Edit'}}"
+                    data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Edit'}}"
+                  ><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+
+                  <button
+                    type="button"
+                    class="icon-btn sh-tl2__iconBtn sh-tl2__dangerBtn"
+                    data-action="delete-event"
+                    data-uuid="{{drawerIndexUuid}}"
+                    aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Delete'}}"
+                    data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Delete'}}"
+                  ><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                {{/if}}
+              {{/if}}
+            </div>
+
+            <button
+              type="button"
+              class="icon-btn sh-tl2__iconBtn"
+              data-action="close-details"
+              aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Close'}}"
+              data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Close'}}"
+              {{#unless drawerOpen}}disabled{{/unless}}
+            ><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+          </header>
+
+          <section class="sh-tl2__detailsBody">
+            {{#if drawerOpen}}
+              {{{drawerContentHtml}}}
+            {{/if}}
+          </section>
+        </aside>
+      </div>
+    {{/if}}
+  </section>
+
+</div>
