@@ -2479,6 +2479,41 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   outline: 1px solid rgba(255, 255, 255, 0.35);
   outline-offset: 2px;
 }
+#sidebar #journal .spaceholder-journalcheck-status.sh-jc-status--multi,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status.sh-jc-status--multi {
+  width: 1.65em;
+}
+#sidebar #journal .sh-jc-statusbar,
+.sidebar-tab[data-tab=journal] .sh-jc-statusbar {
+  width: 100%;
+  height: 0.55em;
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+#sidebar #journal .sh-jc-statusbar__seg,
+.sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg {
+  height: 100%;
+  min-width: 1px;
+}
+#sidebar #journal .sh-jc-statusbar__seg--draft,
+.sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg--draft {
+  background: #3b82f6;
+}
+#sidebar #journal .sh-jc-statusbar__seg--proposed,
+.sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg--proposed {
+  background: #fbbf24;
+}
+#sidebar #journal .sh-jc-statusbar__seg--approved,
+.sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg--approved {
+  background: #22c55e;
+}
+#sidebar #journal .sh-jc-statusbar__seg--hidden,
+.sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg--hidden {
+  background: rgba(255, 255, 255, 0.18);
+}
 #sidebar #journal .sh-jc-status--draft,
 .sidebar-tab[data-tab=journal] .sh-jc-status--draft {
   color: #3b82f6;

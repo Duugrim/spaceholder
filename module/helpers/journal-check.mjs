@@ -635,6 +635,98 @@ function _makeStatusEl(status, { interactive = false } = {}) {
   return wrap;
 }
 
+function _canUserObserve(doc, user) {
+  try {
+    return !!doc?.testUserPermission?.(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER);
+  } catch (_) {
+    return true;
+  }
+}
+
+function _computeEntryPageStatusStats(entry, { user = null } = {}) {
+  const u = user ?? game?.user ?? null;
+  const pages = entry?.pages?.contents ?? [];
+
+  const counts = {
+    [STATUS.DRAFT]: 0,
+    [STATUS.PROPOSED]: 0,
+    [STATUS.APPROVED]: 0,
+  };
+
+  let hidden = 0;
+  let total = 0;
+
+  for (const p of pages) {
+    if (!p) continue;
+    total += 1;
+
+    if (u && !_canUserObserve(p, u)) {
+      hidden += 1;
+      continue;
+    }
+
+    const s = getStatus(p);
+    counts[s] = (counts[s] ?? 0) + 1;
+  }
+
+  return {
+    total,
+    hidden,
+    visible: Math.max(0, total - hidden),
+    counts,
+  };
+}
+
+function _multiPageStatusTitle(stats) {
+  const d = Number(stats?.counts?.[STATUS.DRAFT]) || 0;
+  const p = Number(stats?.counts?.[STATUS.PROPOSED]) || 0;
+  const a = Number(stats?.counts?.[STATUS.APPROVED]) || 0;
+  const hidden = Number(stats?.hidden) || 0;
+
+  const parts = [
+    `Черновик ${d}`,
+    `Предложено ${p}`,
+    `Одобрено ${a}`,
+  ];
+
+  if (hidden > 0) parts.push(`Скрыто ${hidden}`);
+
+  return `Страницы: ${parts.join(' • ')}`;
+}
+
+function _makeEntryMultiPageStatusEl(entry) {
+  const stats = _computeEntryPageStatusStats(entry);
+
+  const wrap = document.createElement('span');
+  wrap.classList.add('spaceholder-journalcheck-status', 'sh-jc-status--multi');
+  wrap.title = _multiPageStatusTitle(stats);
+
+  const bar = document.createElement('span');
+  bar.classList.add('sh-jc-statusbar');
+
+  const addSeg = (cls, count) => {
+    const n = Number(count) || 0;
+    if (n <= 0) return;
+    const seg = document.createElement('span');
+    seg.classList.add('sh-jc-statusbar__seg', cls);
+    seg.style.flex = `${n} 0 0`;
+    bar.appendChild(seg);
+  };
+
+  addSeg('sh-jc-statusbar__seg--draft', stats.counts[STATUS.DRAFT]);
+  addSeg('sh-jc-statusbar__seg--proposed', stats.counts[STATUS.PROPOSED]);
+  addSeg('sh-jc-statusbar__seg--approved', stats.counts[STATUS.APPROVED]);
+  addSeg('sh-jc-statusbar__seg--hidden', stats.hidden);
+
+  // Fallback (should not happen, but keep stable UI)
+  if (!bar.childElementCount) {
+    addSeg('sh-jc-statusbar__seg--hidden', 1);
+  }
+
+  wrap.appendChild(bar);
+  return wrap;
+}
+
 function _entryNextStatusOnIconClick(entry) {
   const cur = computeEntryStatusFromPages(entry);
   const isGM = !!game.user?.isGM;
@@ -783,6 +875,13 @@ function _injectHeaderButtons(root) {
 }
 
 function _createEntryStatusIcon(entry) {
+  const pages = entry?.pages?.contents ?? [];
+
+  // Multi-page journals: show ratio, but do not allow status toggling by clicking the icon.
+  if (pages.length > 1) {
+    return _makeEntryMultiPageStatusEl(entry);
+  }
+
   const curStatus = computeEntryStatusFromPages(entry);
   const el = _makeStatusEl(curStatus, { interactive: true });
 
@@ -1173,6 +1272,18 @@ export function installJournalCheckHooks() {
       _refreshEntryIconInDirectory(entry);
     } catch (e) {
       console.error('SpaceHolder | JournalCheck: failed to refresh directory icon on update', e);
+    }
+  });
+
+  // Page updates may change multi-page ratio without changing the computed entry status.
+  Hooks.on('updateJournalEntryPage', (page /*, changed, options, userId */) => {
+    try {
+      const entry = page?.parent;
+      if (!entry) return;
+      if (_isTimelineContainer(entry)) return;
+      _refreshEntryIconInDirectory(entry);
+    } catch (e) {
+      console.error('SpaceHolder | JournalCheck: failed to refresh directory icon on page update', e);
     }
   });
 

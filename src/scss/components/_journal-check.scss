@@ -34,6 +34,30 @@
     }
   }
 
+  .spaceholder-journalcheck-status.sh-jc-status--multi {
+    width: 1.65em;
+  }
+
+  .sh-jc-statusbar {
+    width: 100%;
+    height: 0.55em;
+    display: flex;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10) inset;
+  }
+
+  .sh-jc-statusbar__seg {
+    height: 100%;
+    min-width: 1px;
+  }
+
+  .sh-jc-statusbar__seg--draft { background: #3b82f6; }
+  .sh-jc-statusbar__seg--proposed { background: #fbbf24; }
+  .sh-jc-statusbar__seg--approved { background: #22c55e; }
+  .sh-jc-statusbar__seg--hidden { background: rgba(255, 255, 255, 0.18); }
+
   .sh-jc-status--draft { color: #3b82f6; }
   .sh-jc-status--proposed { color: #fbbf24; }
   .sh-jc-status--approved { color: #22c55e; }
