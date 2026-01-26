@@ -25,9 +25,6 @@ import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
 import { registerJournalCheckSettings, installJournalCheckHooks } from './helpers/journal-check.mjs';
 // Journal Update Log window
 import { openJournalUpdateLogApp } from './helpers/journal-update-log-app.mjs';
-// Timeline (legacy)
-import { registerTimelineSettings, installTimelineSocketHandlers, installTimelineHooks } from './helpers/timeline.mjs';
-import { openTimelineApp } from './helpers/timeline-app.mjs';
 // Timeline V2
 import { registerTimelineV2Settings, installTimelineV2SocketHandlers, installTimelineV2Hooks } from './helpers/timeline-v2.mjs';
 import { openTimelineV2App } from './helpers/timeline-v2-app.mjs';
@@ -40,17 +37,6 @@ import { DrawManager } from './helpers/draw-manager.mjs';
 import { ShotManager } from './helpers/shot-manager.mjs';
 // Influence manager for global objects influence zones
 import { InfluenceManager } from './helpers/influence-manager.mjs';
-// Height map manager and renderer
-// DEPRECATED: Old height/biome map system - disabled pending replacement
-// import { HeightMapManager } from './helpers/heightmap-manager.mjs';
-// import { HeightMapRenderer } from './helpers/heightmap-renderer.mjs';
-// import { HeightMapEditor } from './helpers/heightmap-editor.mjs';
-// import { registerHeightMapSceneConfig, installHeightMapSceneConfigHooks } from './helpers/heightmap-scene-config.mjs';
-// import { BiomeManager } from './helpers/biome-manager.mjs';
-// import { BiomeRenderer } from './helpers/biome-renderer.mjs';
-// import { BiomeEditor } from './helpers/biome-editor.mjs';
-// import { TerrainFieldManager } from './helpers/terrain-field-manager.mjs';
-// import { registerTerrainControls } from './helpers/terrain-controls.mjs';
 
 // NEW: Global map system (replacement for height/biome maps)
 import { GlobalMapProcessing } from './helpers/global-map/global-map-processing.mjs';
@@ -59,9 +45,6 @@ import { GlobalMapTools } from './helpers/global-map/global-map-tools.mjs';
 import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
 import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edge-ui.mjs';
-// import './helpers/old-test-aiming-system.mjs'; // Для отладки - DISABLED
-// import './helpers/old-aiming-demo-macros.mjs'; // Демо макросы - DISABLED
-// import './helpers/test-draw-manager.mjs'; // Тесты draw-manager
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
@@ -75,18 +58,11 @@ Hooks.once('init', function () {
   registerIconLibrarySettings();
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
-  // registerAimingSystemSettings(); // OLD SYSTEM DISABLED
   registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
   registerJournalCheckSettings();
-  registerTimelineSettings();
   registerTimelineV2Settings();
   installTokenPointerTabs();
-  
-  // DEPRECATED: Old height map scene configuration - disabled
-  // registerHeightMapSceneConfig();
-  // installHeightMapSceneConfigHooks();
-
   // Add utility classes to the global game object so that they're more easily
   // accessible in global contexts.
   game.spaceholder = {
@@ -95,7 +71,6 @@ Hooks.once('init', function () {
     rollItemMacro,
     anatomyManager,
     openJournalUpdateLogApp,
-    openTimelineApp,
     openTimelineV2App,
     // Icon library / picker
     pickIcon,
@@ -171,9 +146,6 @@ Hooks.once('init', function () {
   installJournalDirectoryHooks();
   // Install Journal Check hooks (statuses + UI)
   installJournalCheckHooks();
-  // Timeline: socket + hooks
-  installTimelineSocketHandlers();
-  installTimelineHooks();
   // Timeline V2: socket + hooks
   installTimelineV2SocketHandlers();
   installTimelineV2Hooks();

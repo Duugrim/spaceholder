@@ -1,3 +1,9 @@
+/**
+ * LEGACY MODULE: Deprecated in favor of timeline-v2.mjs
+ * This module is kept for backward compatibility only.
+ * New development should use the V2 timeline system.
+ */
+
 // Timeline (SpaceHolder)
 // Storage: JournalEntry containers + JournalEntryPage entries.
 // - World (Public)

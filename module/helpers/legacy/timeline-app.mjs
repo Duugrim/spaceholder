@@ -1,3 +1,9 @@
+/**
+ * LEGACY MODULE: Deprecated in favor of timeline-v2-app.mjs
+ * This module is kept for backward compatibility only.
+ * New development should use the V2 timeline system.
+ */
+
 import {
   TIMELINE_CONTAINER_KIND,
   TIMELINE_ORIGIN,
