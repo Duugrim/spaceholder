@@ -723,10 +723,20 @@
       },
       "Fields": {
         "Date": "Дата",
+        "StartDate": "Дата начала",
+        "EndDate": "Дата конца",
+        "HasDuration": "С продолжительностью",
+        "Duration": "Продолжительность",
         "Title": "Название",
         "Faction": "Фракция",
+        "Origin": "От имени",
+        "Icon": "Иконка",
         "Global": "Глобально",
         "Content": "Содержание"
+      },
+      "Origin": {
+        "Faction": "Фракции",
+        "World": "Мира"
       },
       "Buttons": {
         "Add": "Добавить",
@@ -735,7 +745,8 @@
         "HideUnknown": "Скрыть неизвестные",
         "ActiveFactions": "Свои фракции",
         "ActiveFactionsAuto": "Авто",
-        "Details": "Подробно",
+        "Pin": "Закрепить",
+        "Unpin": "Открепить",
         "Open": "Открыть",
         "Edit": "Редактировать",
         "Delete": "Удалить",
@@ -743,7 +754,13 @@
         "Drag": "Перетащить",
         "ZoomIn": "Приблизить",
         "ZoomOut": "Отдалить",
-        "PickDate": "Выбрать дату"
+        "PickDate": "Выбрать дату",
+        "PickEndDate": "Выбрать дату конца",
+        "PickIcon": "Выбрать иконку",
+        "ClearIcon": "Убрать иконку"
+      },
+      "Errors": {
+        "EndDateInvalid": "Дата конца должна быть позже даты начала"
       },
       "Groups": {
         "ActiveFactions": "Свои фракции",

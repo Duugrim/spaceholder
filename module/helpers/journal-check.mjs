@@ -4,6 +4,7 @@
 const MODULE_NS = 'spaceholder';
 const FLAG_ROOT = 'journalCheck';
 const TIMELINE_FLAG_ROOT = 'timeline';
+const TIMELINE_V2_FLAG_ROOT = 'timelineV2';
 
 function _getTimelineFlagObj(doc) {
   try {
@@ -13,14 +14,29 @@ function _getTimelineFlagObj(doc) {
   }
 }
 
+function _getTimelineV2FlagObj(doc) {
+  try {
+    return doc?.getFlag?.(MODULE_NS, TIMELINE_V2_FLAG_ROOT) ?? doc?.flags?.[MODULE_NS]?.[TIMELINE_V2_FLAG_ROOT] ?? {};
+  } catch (_) {
+    return {};
+  }
+}
+
 function _isTimelineContainer(entry) {
-  const f = _getTimelineFlagObj(entry);
-  return !!f?.isContainer;
+  const v1 = _getTimelineFlagObj(entry);
+  if (v1?.isContainer) return true;
+
+  const v2 = _getTimelineV2FlagObj(entry);
+  return !!v2?.isContainer;
 }
 
 function _isTimelinePage(page) {
-  const f = _getTimelineFlagObj(page);
-  if (f?.isEntry) return true;
+  const v1 = _getTimelineFlagObj(page);
+  if (v1?.isEntry) return true;
+
+  const v2 = _getTimelineV2FlagObj(page);
+  if (v2?.isIndex || v2?.isDetail) return true;
+
   return _isTimelineContainer(page?.parent);
 }
 

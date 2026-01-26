@@ -2,7 +2,14 @@
   <header class="sh-tl2e__header">
     <div class="sh-tl2e__row sh-tl2e__row--main">
       <div class="form-group sh-tl2e__fg sh-tl2e__fg--date">
-        <label>{{localize "SPACEHOLDER.TimelineV2.Fields.Date"}}</label>
+        <label>
+          {{#if hasDuration}}
+            {{localize "SPACEHOLDER.TimelineV2.Fields.StartDate"}}
+          {{else}}
+            {{localize "SPACEHOLDER.TimelineV2.Fields.Date"}}
+          {{/if}}
+        </label>
+
         <div class="form-fields sh-tl2e__dateFields">
           <input type="number" name="year" value="{{year}}" step="1" inputmode="numeric" class="sh-tl2e__year" />
           <input type="number" name="month" value="{{month}}" min="1" max="12" step="1" inputmode="numeric" class="sh-tl2e__month" />
@@ -15,6 +22,38 @@
             data-tooltip="{{localize "SPACEHOLDER.TimelineV2.Buttons.PickDate"}}"
           ><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></button>
         </div>
+
+        <div class="form-fields sh-tl2e__durationToggle">
+          <label class="checkbox sh-tl2e__checkbox">
+            <input type="checkbox" name="hasDuration" {{#if hasDuration}}checked{{/if}} />
+            <span>{{localize "SPACEHOLDER.TimelineV2.Fields.HasDuration"}}</span>
+          </label>
+        </div>
+
+        {{#if hasDuration}}
+          <div class="form-fields sh-tl2e__rangeFields">
+            <div class="sh-tl2e__rangeCol">
+              <label class="sh-tl2e__subLabel">{{localize "SPACEHOLDER.TimelineV2.Fields.Duration"}}</label>
+              <input type="number" name="durationDays" value="{{durationDays}}" min="1" step="1" inputmode="numeric" class="sh-tl2e__durationDays" />
+            </div>
+
+            <div class="sh-tl2e__rangeCol">
+              <label class="sh-tl2e__subLabel">{{localize "SPACEHOLDER.TimelineV2.Fields.EndDate"}}</label>
+              <div class="form-fields sh-tl2e__endDateFields">
+                <input type="number" name="endYear" value="{{endYear}}" step="1" inputmode="numeric" class="sh-tl2e__year" />
+                <input type="number" name="endMonth" value="{{endMonth}}" min="1" max="12" step="1" inputmode="numeric" class="sh-tl2e__month" />
+                <input type="number" name="endDay" value="{{endDay}}" min="1" max="30" step="1" inputmode="numeric" class="sh-tl2e__day" />
+                <button
+                  type="button"
+                  class="sh-tl2e__datePickBtn"
+                  data-action="pick-end-date"
+                  aria-label="{{localize "SPACEHOLDER.TimelineV2.Buttons.PickEndDate"}}"
+                  data-tooltip="{{localize "SPACEHOLDER.TimelineV2.Buttons.PickEndDate"}}"
+                ><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+        {{/if}}
       </div>
 
       <div class="form-group sh-tl2e__fg sh-tl2e__fg--title">
@@ -41,6 +80,49 @@
           </div>
         </div>
       {{/if}}
+
+      {{#if showOriginSelect}}
+        <div class="form-group sh-tl2e__fg sh-tl2e__fg--origin">
+          <label>{{localize "SPACEHOLDER.TimelineV2.Fields.Origin"}}</label>
+          <div class="form-fields">
+            <select name="origin">
+              <option value="faction" {{#if (eq origin "faction")}}selected{{/if}}>{{localize "SPACEHOLDER.TimelineV2.Origin.Faction"}}</option>
+              <option value="world" {{#if (eq origin "world")}}selected{{/if}}>{{localize "SPACEHOLDER.TimelineV2.Origin.World"}}</option>
+            </select>
+          </div>
+        </div>
+      {{/if}}
+
+      <div class="form-group sh-tl2e__fg sh-tl2e__fg--icon">
+        <label>{{localize "SPACEHOLDER.TimelineV2.Fields.Icon"}}</label>
+        <div class="form-fields sh-tl2e__iconFields">
+          <input type="hidden" name="iconPath" value="{{iconPath}}" />
+
+          {{#if iconPath}}
+            <img class="sh-tl2e__iconPreview" src="{{iconPath}}" alt="" />
+          {{else}}
+            <span class="sh-tl2e__iconPreview is-empty" aria-hidden="true"></span>
+          {{/if}}
+
+          <button
+            type="button"
+            class="sh-tl2e__iconPickBtn"
+            data-action="pick-icon"
+            aria-label="{{localize "SPACEHOLDER.TimelineV2.Buttons.PickIcon"}}"
+            data-tooltip="{{localize "SPACEHOLDER.TimelineV2.Buttons.PickIcon"}}"
+          ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
+
+          {{#if iconPath}}
+            <button
+              type="button"
+              class="sh-tl2e__iconPickBtn"
+              data-action="clear-icon"
+              aria-label="{{localize "SPACEHOLDER.TimelineV2.Buttons.ClearIcon"}}"
+              data-tooltip="{{localize "SPACEHOLDER.TimelineV2.Buttons.ClearIcon"}}"
+            ><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+          {{/if}}
+        </div>
+      </div>
 
       {{#if showGlobalToggle}}
         <div class="form-group sh-tl2e__fg sh-tl2e__fg--global">

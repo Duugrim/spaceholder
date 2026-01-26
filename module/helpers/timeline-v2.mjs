@@ -22,6 +22,12 @@ const SOCKET_TYPE = `${MODULE_NS}.timelineV2`;
 const SETTING_ACTIVE_FACTIONS = 'timelineV2.activeFactions';
 const SETTING_HIDE_UNKNOWN = 'timelineV2.hideUnknown';
 const SETTING_ZOOM = 'timelineV2.zoom';
+const SETTING_PINNED_EVENTS = 'timelineV2.pinnedEvents';
+
+export const TIMELINE_V2_ORIGIN = {
+  FACTION: 'faction',
+  WORLD: 'world',
+};
 
 export const TIMELINE_V2_CONTAINER_KIND = {
   WORLD: 'world',
@@ -179,6 +185,24 @@ function _normalizeDay(raw) {
   return Math.min(30, Math.max(1, d));
 }
 
+function _normalizeOrigin(raw, { factionUuid = '' } = {}) {
+  const s = String(raw ?? '').trim().toLowerCase();
+  if (s === TIMELINE_V2_ORIGIN.WORLD) return TIMELINE_V2_ORIGIN.WORLD;
+  if (s === TIMELINE_V2_ORIGIN.FACTION) return TIMELINE_V2_ORIGIN.FACTION;
+  return factionUuid ? TIMELINE_V2_ORIGIN.FACTION : TIMELINE_V2_ORIGIN.WORLD;
+}
+
+function _normalizeIconPath(raw) {
+  const s = String(raw ?? '').trim();
+  return s;
+}
+
+function _normalizeDurationDays(raw) {
+  const n = Number.parseInt(String(raw ?? '').trim(), 10);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return n;
+}
+
 export function getTimelineV2PageData(page) {
   const f = _getFlagObj(page);
 
@@ -187,8 +211,17 @@ export function getTimelineV2PageData(page) {
   const day = _normalizeDay(f?.day);
 
   const factionUuid = normalizeUuid(f?.factionUuid);
+
+  const origin = _normalizeOrigin(f?.origin, { factionUuid });
+  const iconPath = _normalizeIconPath(f?.iconPath);
+
   const isGlobal = !!f?.isGlobal;
   const isHidden = !!f?.isHidden;
+
+  const hasDuration = !!f?.hasDuration;
+  const durationDays = _normalizeDurationDays(f?.durationDays);
+
+  const schema = Number.parseInt(String(f?.schema ?? '').trim(), 10);
 
   const isIndex = !!f?.isIndex;
   const isDetail = !!f?.isDetail;
@@ -201,8 +234,13 @@ export function getTimelineV2PageData(page) {
     month,
     day,
     factionUuid,
+    origin,
+    iconPath,
     isGlobal,
     isHidden,
+    hasDuration: hasDuration && durationDays > 0,
+    durationDays,
+    schema: Number.isFinite(schema) ? schema : null,
     isIndex,
     isDetail,
     detailUuid,
@@ -511,6 +549,69 @@ export async function updateTimelineV2EventDate({ indexUuid, year, month, day } 
   return true;
 }
 
+async function _updateTimelineV2PageMeta(page, { iconPath, hasDuration, durationDays } = {}) {
+  if (!page) return false;
+
+  const f = { ..._getFlagObj(page) };
+
+  f.iconPath = _normalizeIconPath(iconPath);
+
+  const hd = !!hasDuration;
+  if (hd) {
+    const dd = _normalizeDurationDays(durationDays);
+    if (!(dd > 0)) throw new Error('Invalid duration');
+    f.hasDuration = true;
+    f.durationDays = dd;
+  } else {
+    f.hasDuration = false;
+    delete f.durationDays;
+  }
+
+  f.schema = 2;
+
+  await page.update({ [`flags.${MODULE_NS}.${FLAG_ROOT}`]: f }, { diff: false, spaceholderJournalCheck: true });
+  return true;
+}
+
+export async function updateTimelineV2EventMeta({
+  indexUuid,
+  iconPath = '',
+  hasDuration = false,
+  durationDays = 0,
+} = {}) {
+  const indexPage = await resolveTimelineV2Page(indexUuid);
+  if (!indexPage) throw new Error('Index page not found');
+
+  const t = getTimelineV2PageData(indexPage);
+  if (!t.isIndex) throw new Error('Expected index page');
+
+  const detailPage = await resolveTimelineV2DetailFromIndex(indexPage);
+  if (!detailPage) throw new Error('Detail page not found');
+
+  const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+
+  // GM can update directly.
+  if (game.user?.isGM) {
+    await _updateTimelineV2PageMeta(indexPage, { iconPath, hasDuration, durationDays });
+    await _updateTimelineV2PageMeta(detailPage, { iconPath, hasDuration, durationDays });
+    return true;
+  }
+
+  // Players can only request updates for pages they own.
+  if (!detailPage.testUserPermission?.(game.user, OWN)) {
+    throw new Error('No permission');
+  }
+
+  await _requestViaSocket('updateMeta', {
+    indexUuid: indexPage.uuid,
+    iconPath: _normalizeIconPath(iconPath),
+    hasDuration: !!hasDuration,
+    durationDays: _normalizeDurationDays(durationDays),
+  }, { timeoutMs: 12000 });
+
+  return true;
+}
+
 async function _deleteTimelineV2EmbeddedPage(page) {
   if (!page) return false;
 
@@ -691,6 +792,58 @@ export function getTimelineV2ActiveFactionUuids() {
   return Array.from(new Set(all.map(normalizeUuid).filter(Boolean)));
 }
 
+function _normalizePinnedEventUuids(raw) {
+  // New schema: { uuids: [] }
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const list = Array.isArray(raw.uuids) ? raw.uuids : [];
+    return Array.from(new Set(list.map(normalizeUuid).filter(Boolean)));
+  }
+
+  // Legacy: array
+  if (Array.isArray(raw)) {
+    return Array.from(new Set(raw.map(normalizeUuid).filter(Boolean)));
+  }
+
+  // Edge-case: arrays serialized as plain objects {"0":"uuid", ...}
+  if (raw && typeof raw === 'object') {
+    const vals = Object.values(raw).filter((v) => typeof v === 'string');
+    return Array.from(new Set(vals.map(normalizeUuid).filter(Boolean)));
+  }
+
+  return [];
+}
+
+export function getTimelineV2PinnedEventUuids() {
+  const raw = _getSettingSafe(SETTING_PINNED_EVENTS, { uuids: [] });
+  return _normalizePinnedEventUuids(raw);
+}
+
+export function isTimelineV2EventPinned(indexUuid) {
+  const uuid = normalizeUuid(indexUuid);
+  if (!uuid) return false;
+  return getTimelineV2PinnedEventUuids().includes(uuid);
+}
+
+export async function setTimelineV2PinnedEventUuids(uuids) {
+  const list = Array.isArray(uuids) ? uuids.map(normalizeUuid).filter(Boolean) : [];
+  const unique = Array.from(new Set(list));
+  return await _setSettingSafe(SETTING_PINNED_EVENTS, { uuids: unique });
+}
+
+export async function toggleTimelineV2EventPinned(indexUuid) {
+  const uuid = normalizeUuid(indexUuid);
+  if (!uuid) return false;
+
+  const cur = getTimelineV2PinnedEventUuids();
+  const set = new Set(cur);
+
+  if (set.has(uuid)) set.delete(uuid);
+  else set.add(uuid);
+
+  await setTimelineV2PinnedEventUuids(Array.from(set));
+  return set.has(uuid);
+}
+
 export function registerTimelineV2Settings() {
   const settings = game?.settings;
   const registry = settings?.settings;
@@ -726,6 +879,17 @@ export function registerTimelineV2Settings() {
         config: false,
         type: Number,
         default: 1,
+      });
+    }
+
+    if (registry?.has?.(`${MODULE_NS}.${SETTING_PINNED_EVENTS}`) !== true) {
+      settings.register(MODULE_NS, SETTING_PINNED_EVENTS, {
+        name: 'TimelineV2: Pinned events (client)',
+        hint: 'Internal list of pinned timeline events',
+        scope: 'client',
+        config: false,
+        type: Object,
+        default: { uuids: [] },
       });
     }
   } catch (e) {
@@ -868,6 +1032,58 @@ async function _handleSocketRequestAsGM(msg) {
 
       await _updateTimelineV2PageDate(indexPage, { year: y, month: m, day: d });
       await _updateTimelineV2PageDate(detailPage, { year: y, month: m, day: d });
+
+      reply(true, { ok: true });
+      return;
+    }
+
+    if (action === 'updateMeta') {
+      const requester = game?.users?.get?.(userId) ?? null;
+      if (!requester) {
+        reply(false, null, 'requester not found');
+        return;
+      }
+
+      const indexUuid = normalizeUuid(msg?.payload?.indexUuid);
+      const iconPath = msg?.payload?.iconPath;
+      const hasDuration = msg?.payload?.hasDuration;
+      const durationDays = msg?.payload?.durationDays;
+
+      const indexPage = await resolveTimelineV2Page(indexUuid);
+      if (!indexPage) {
+        reply(false, null, 'index page not found');
+        return;
+      }
+
+      const t = getTimelineV2PageData(indexPage);
+      if (!t.isIndex) {
+        reply(false, null, 'expected index page');
+        return;
+      }
+
+      const detailPage = await resolveTimelineV2DetailFromIndex(indexPage);
+      if (!detailPage) {
+        reply(false, null, 'detail page not found');
+        return;
+      }
+
+      const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+      const canEdit = requester.isGM || detailPage.testUserPermission?.(requester, OWN);
+      if (!canEdit) {
+        reply(false, null, 'no permission');
+        return;
+      }
+
+      const hd = !!hasDuration;
+      const dd = _normalizeDurationDays(durationDays);
+
+      if (hd && !(dd > 0)) {
+        reply(false, null, 'invalid duration');
+        return;
+      }
+
+      await _updateTimelineV2PageMeta(indexPage, { iconPath, hasDuration: hd, durationDays: dd });
+      await _updateTimelineV2PageMeta(detailPage, { iconPath, hasDuration: hd, durationDays: dd });
 
       reply(true, { ok: true });
       return;
@@ -1028,8 +1244,12 @@ export async function createTimelineV2Event({
   month,
   day,
   factionUuid = '',
+  origin = TIMELINE_V2_ORIGIN.FACTION,
   isGlobal = false,
   isHidden = false,
+  iconPath = '',
+  hasDuration = false,
+  durationDays = 0,
   title,
   content = '',
 } = {}) {
@@ -1045,6 +1265,14 @@ export async function createTimelineV2Event({
   // World-only events (no faction) are GM-only.
   if (!fu && !game.user?.isGM) {
     throw new Error('Faction is required');
+  }
+
+  const finalOrigin = _normalizeOrigin(origin, { factionUuid: fu });
+
+  const finalHasDuration = !!hasDuration;
+  const finalDurationDays = finalHasDuration ? _normalizeDurationDays(durationDays) : 0;
+  if (finalHasDuration && !(finalDurationDays > 0)) {
+    throw new Error('Invalid duration');
   }
 
   // World-only events are always global.
@@ -1081,11 +1309,16 @@ export async function createTimelineV2Event({
   const flagsDetail = {
     [MODULE_NS]: {
       [FLAG_ROOT]: {
+        schema: 2,
         isDetail: true,
         year: y,
         month: m,
         day: d,
         factionUuid: fu,
+        origin: finalOrigin,
+        iconPath: _normalizeIconPath(iconPath),
+        hasDuration: finalHasDuration && finalDurationDays > 0,
+        durationDays: finalHasDuration ? finalDurationDays : undefined,
         isGlobal: finalIsGlobal,
         isHidden: !!isHidden,
       },
@@ -1106,11 +1339,16 @@ export async function createTimelineV2Event({
   const flagsIndex = {
     [MODULE_NS]: {
       [FLAG_ROOT]: {
+        schema: 2,
         isIndex: true,
         year: y,
         month: m,
         day: d,
         factionUuid: fu,
+        origin: finalOrigin,
+        iconPath: _normalizeIconPath(iconPath),
+        hasDuration: finalHasDuration && finalDurationDays > 0,
+        durationDays: finalHasDuration ? finalDurationDays : undefined,
         isGlobal: finalIsGlobal,
         isHidden: !!isHidden,
         detailUuid: detailPage.uuid,

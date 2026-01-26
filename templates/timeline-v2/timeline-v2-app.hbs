@@ -113,53 +113,66 @@
 
             {{#each events as |e|}}
               <div
-                class="sh-tl2__event {{e.sideClass}} {{#if e.isUnknown}}is-unknown{{/if}} {{#if e.isSelected}}is-selected{{/if}}"
-                style="top: {{e.topPx}}px; {{#if e.color}}--sh-event-color: {{e.color}};{{/if}}"
-                data-action="select-event"
+                class="sh-tl2__event {{e.sideClass}} {{e.originClass}} {{#if e.isUnknown}}is-unknown{{/if}} {{#if e.isSelected}}is-selected{{/if}} {{#if e.isPinned}}is-pinned{{/if}} {{#if e.isRange}}is-range{{/if}} {{#if e.hasFaction}}has-faction{{/if}}"
+                style="top: {{e.topPx}}px; {{#if e.color}}--sh-event-color: {{e.color}};{{/if}} {{#if e.rangeLenPx}}--sh-range-length: {{e.rangeLenPx}}px;{{/if}}"
                 data-uuid="{{e.uuid}}"
                 data-anchor-top="{{e.topPx}}"
                 data-anchor-serial="{{e.serial}}"
+                data-range-len="{{e.rangeLenPx}}"
                 {{#if e.isUnknown}}
                   {{#if e.tooltip}}data-tooltip="{{e.tooltip}}"{{/if}}
                 {{/if}}
               >
-                <div class="sh-tl2__wire" aria-hidden="true"></div>
-                <div class="sh-tl2__pill">
-                  <div class="sh-tl2__eventIcon" aria-hidden="true">
-                    {{#if e.isUnknown}}
-                      <i class="fa-solid fa-question" aria-hidden="true"></i>
-                    {{else}}
-                      <i class="fa-solid fa-circle" aria-hidden="true"></i>
-                    {{/if}}
-                  </div>
+                {{#if e.isRange}}
+                  <div class="sh-tl2__range" aria-hidden="true"></div>
+                {{/if}}
 
+                <div class="sh-tl2__wire" aria-hidden="true"></div>
+
+                <div
+                  class="sh-tl2__pill"
                   {{#unless e.isUnknown}}
+                    data-action="open-details"
+                    data-uuid="{{e.uuid}}"
+                  {{/unless}}
+                >
+                  {{#if e.isUnknown}}
+                    <div class="sh-tl2__eventIcon" aria-hidden="true">
+                      <i class="fa-solid fa-question" aria-hidden="true"></i>
+                    </div>
+                  {{else}}
+                    <button
+                      type="button"
+                      class="sh-tl2__eventIconBtn {{#if e.isPinned}}is-active{{/if}}"
+                      data-action="toggle-pin"
+                      data-uuid="{{e.uuid}}"
+                      aria-label="{{#if e.isPinned}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Unpin'}}{{else}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Pin'}}{{/if}}"
+                      data-tooltip="{{#if e.isPinned}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Unpin'}}{{else}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Pin'}}{{/if}}"
+                    >
+                      <span class="sh-tl2__eventIcon" aria-hidden="true">
+                        {{#if e.iconPath}}
+                          <img class="sh-tl2__eventIconImg" src="{{e.iconPath}}" alt="" />
+                        {{else}}
+                          <i class="fa-solid fa-circle" aria-hidden="true"></i>
+                        {{/if}}
+                      </span>
+                    </button>
+
+                    {{#if e.canDrag}}
+                      <button
+                        type="button"
+                        class="icon-btn sh-tl2__iconBtn sh-tl2__dragBtn"
+                        data-action="drag-event"
+                        data-uuid="{{e.uuid}}"
+                        aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
+                        data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
+                      ><i class="fa-solid fa-grip-lines-vertical" aria-hidden="true"></i></button>
+                    {{/if}}
+
                     <div class="sh-tl2__pillBody">
                       <div class="sh-tl2__eventTitle" title="{{e.titleText}}">{{e.titleText}}</div>
-
-                      <div class="sh-tl2__eventActions">
-                        {{#if e.canDrag}}
-                          <button
-                            type="button"
-                            class="icon-btn sh-tl2__iconBtn sh-tl2__dragBtn"
-                            data-action="drag-event"
-                            data-uuid="{{e.uuid}}"
-                            aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
-                            data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
-                          ><i class="fa-solid fa-grip-lines-vertical" aria-hidden="true"></i></button>
-                        {{/if}}
-
-                        <button
-                          type="button"
-                          class="icon-btn sh-tl2__iconBtn sh-tl2__detailsBtn"
-                          data-action="open-details"
-                          data-uuid="{{e.uuid}}"
-                          aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Details'}}"
-                          data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Details'}}"
-                        ><i class="fa-solid fa-circle-info" aria-hidden="true"></i></button>
-                      </div>
                     </div>
-                  {{/unless}}
+                  {{/if}}
                 </div>
               </div>
             {{/each}}

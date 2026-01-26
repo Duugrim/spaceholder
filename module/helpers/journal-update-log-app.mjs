@@ -11,6 +11,24 @@ import {
 
 const MODULE_NS = 'spaceholder';
 const FLAG_ROOT = 'journalCheck';
+const TIMELINE_FLAG_ROOT = 'timeline';
+const TIMELINE_V2_FLAG_ROOT = 'timelineV2';
+
+function _getTimelineFlagObj(doc, flagRoot) {
+  try {
+    return doc?.getFlag?.(MODULE_NS, flagRoot) ?? doc?.flags?.[MODULE_NS]?.[flagRoot] ?? {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function _isTimelineContainer(entry) {
+  const v1 = _getTimelineFlagObj(entry, TIMELINE_FLAG_ROOT);
+  if (v1?.isContainer) return true;
+
+  const v2 = _getTimelineFlagObj(entry, TIMELINE_V2_FLAG_ROOT);
+  return !!v2?.isContainer;
+}
 
 const STATUS = {
   DRAFT: 'draft',
@@ -166,6 +184,7 @@ export class JournalUpdateLogApp extends foundry.applications.api.HandlebarsAppl
 
     for (const entry of entries) {
       if (!entry?.id) continue;
+      if (_isTimelineContainer(entry)) continue;
 
       const pages = entry?.pages?.contents ?? [];
 
@@ -260,6 +279,7 @@ export class JournalUpdateLogApp extends foundry.applications.api.HandlebarsAppl
 
         const entry = game.journal?.get?.(entryId) ?? null;
         if (!entry) continue;
+        if (_isTimelineContainer(entry)) continue;
 
         if (!isGM && !_canObserve(entry, user)) continue;
 

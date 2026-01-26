@@ -3393,9 +3393,9 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 2px;
+  width: 3px;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.2);
 }
 #spaceholder-timeline-v2 .sh-tl2__tick,
 .window-app.spaceholder.timeline-v2 .sh-tl2__tick,
@@ -3403,25 +3403,25 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 14px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.22);
+  width: 18px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.3);
 }
 #spaceholder-timeline-v2 .sh-tl2__tick::after,
 .window-app.spaceholder.timeline-v2 .sh-tl2__tick::after,
 .spaceholder.timeline-v2 .sh-tl2__tick::after {
   content: "";
   position: absolute;
-  top: -10px;
-  left: -20px;
-  width: 54px;
-  height: 22px;
+  top: -18px;
+  left: -34px;
+  width: 88px;
+  height: 38px;
   background: transparent;
 }
 #spaceholder-timeline-v2 .sh-tl2__tick:hover,
 .window-app.spaceholder.timeline-v2 .sh-tl2__tick:hover,
 .spaceholder.timeline-v2 .sh-tl2__tick:hover {
-  background: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.44);
 }
 #spaceholder-timeline-v2 .sh-tl2__tick:hover .sh-tl2__tickLabel,
 .window-app.spaceholder.timeline-v2 .sh-tl2__tick:hover .sh-tl2__tickLabel,
@@ -3433,12 +3433,12 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .spaceholder.timeline-v2 .sh-tl2__tickLabel {
   position: absolute;
   top: 50%;
-  left: 10px;
+  left: 12px;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.88);
   opacity: 0;
   transition: opacity 120ms ease;
   pointer-events: none;
@@ -3467,6 +3467,8 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   height: 0;
   --sh-event-offset: 44px;
   --sh-event-offsetSigned: -44px;
+  --sh-icon-size: 24px;
+  --sh-icon-img-size: 18px;
 }
 #spaceholder-timeline-v2 .sh-tl2__wire,
 .window-app.spaceholder.timeline-v2 .sh-tl2__wire,
@@ -3477,6 +3479,7 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   height: 2px;
   width: var(--sh-wire-length, 0px);
   background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--sh-event-color, rgba(255, 255, 255, 0.22)) 35%, transparent);
   transform-origin: 0 0;
   transform: translateY(var(--sh-wire-startY, 0px)) rotate(var(--sh-wire-angle, 0deg));
   pointer-events: none;
@@ -3498,6 +3501,36 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
+#spaceholder-timeline-v2 .sh-tl2__event.is-right,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-right,
+.spaceholder.timeline-v2 .sh-tl2__event.is-right {
+  --sh-range-offsetX: 2px;
+}
+#spaceholder-timeline-v2 .sh-tl2__event.is-left,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-left,
+.spaceholder.timeline-v2 .sh-tl2__event.is-left {
+  --sh-range-offsetX: -6px;
+}
+#spaceholder-timeline-v2 .sh-tl2__range,
+.window-app.spaceholder.timeline-v2 .sh-tl2__range,
+.spaceholder.timeline-v2 .sh-tl2__range {
+  position: absolute;
+  left: 0;
+  top: calc(var(--sh-range-startY, var(--sh-wire-startY, 0px)) - var(--sh-range-length, 0px));
+  width: 4px;
+  height: var(--sh-range-length, 0px);
+  transform: translateX(var(--sh-range-offsetX, 2px));
+  border-radius: 2px;
+  background: var(--sh-event-color, rgba(255, 255, 255, 0.22));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  z-index: 0;
+}
+#spaceholder-timeline-v2 .sh-tl2__event.is-range .sh-tl2__wire::before,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-range .sh-tl2__wire::before,
+.spaceholder.timeline-v2 .sh-tl2__event.is-range .sh-tl2__wire::before {
+  display: none;
+}
 #spaceholder-timeline-v2 .sh-tl2__pill,
 .window-app.spaceholder.timeline-v2 .sh-tl2__pill,
 .spaceholder.timeline-v2 .sh-tl2__pill {
@@ -3506,6 +3539,8 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   transform: translateY(-50%);
   display: flex;
   align-items: center;
+  gap: 6px;
+  cursor: pointer;
   padding: 2px 0;
   border-radius: 999px;
   background: transparent;
@@ -3527,15 +3562,30 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   flex-direction: row-reverse;
   z-index: 1;
 }
-#spaceholder-timeline-v2 .sh-tl2__eventIcon,
-.window-app.spaceholder.timeline-v2 .sh-tl2__eventIcon,
-.spaceholder.timeline-v2 .sh-tl2__eventIcon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+#spaceholder-timeline-v2 .sh-tl2__eventIconBtn,
+.window-app.spaceholder.timeline-v2 .sh-tl2__eventIconBtn,
+.spaceholder.timeline-v2 .sh-tl2__eventIconBtn {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  line-height: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+}
+#spaceholder-timeline-v2 .sh-tl2__eventIcon,
+.window-app.spaceholder.timeline-v2 .sh-tl2__eventIcon,
+.spaceholder.timeline-v2 .sh-tl2__eventIcon {
+  width: var(--sh-icon-size, 24px);
+  height: var(--sh-icon-size, 24px);
+  border-radius: 50%;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   background: var(--sh-event-color, rgba(255, 255, 255, 0.22));
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
@@ -3543,8 +3593,33 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 #spaceholder-timeline-v2 .sh-tl2__eventIcon i,
 .window-app.spaceholder.timeline-v2 .sh-tl2__eventIcon i,
 .spaceholder.timeline-v2 .sh-tl2__eventIcon i {
-  font-size: 10px;
+  font-size: calc(var(--sh-icon-size, 24px) * 0.42);
   line-height: 1;
+}
+#spaceholder-timeline-v2 .sh-tl2__eventIconImg,
+.window-app.spaceholder.timeline-v2 .sh-tl2__eventIconImg,
+.spaceholder.timeline-v2 .sh-tl2__eventIconImg {
+  width: var(--sh-icon-img-size, 18px);
+  height: var(--sh-icon-img-size, 18px);
+  object-fit: contain;
+  display: block;
+}
+#spaceholder-timeline-v2 .sh-tl2__event.is-origin-world.has-faction .sh-tl2__eventIcon,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-origin-world.has-faction .sh-tl2__eventIcon,
+.spaceholder.timeline-v2 .sh-tl2__event.is-origin-world.has-faction .sh-tl2__eventIcon {
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  border-radius: calc(var(--sh-icon-size, 24px) * 0.17);
+}
+#spaceholder-timeline-v2 .sh-tl2__event.is-range .sh-tl2__eventIcon,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-range .sh-tl2__eventIcon,
+.spaceholder.timeline-v2 .sh-tl2__event.is-range .sh-tl2__eventIcon {
+  clip-path: none;
+  border-radius: calc(var(--sh-icon-size, 24px) * 0.25);
+}
+#spaceholder-timeline-v2 .sh-tl2__event.is-range .sh-tl2__pill,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-range .sh-tl2__pill,
+.spaceholder.timeline-v2 .sh-tl2__event.is-range .sh-tl2__pill {
+  border-radius: 12px;
 }
 #spaceholder-timeline-v2 .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__pillBody,
@@ -3568,9 +3643,19 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .spaceholder.timeline-v2 .sh-tl2__event.is-selected .sh-tl2__eventIcon {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.16), 0 10px 24px rgba(0, 0, 0, 0.5);
 }
+#spaceholder-timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__eventIcon,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__eventIcon,
+.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__eventIcon {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.62), 0 10px 26px rgba(0, 0, 0, 0.56);
+}
 #spaceholder-timeline-v2 .sh-tl2__event.is-unknown,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-unknown,
 .spaceholder.timeline-v2 .sh-tl2__event.is-unknown {
+  cursor: default;
+}
+#spaceholder-timeline-v2 .sh-tl2__event.is-unknown .sh-tl2__pill,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-unknown .sh-tl2__pill,
+.spaceholder.timeline-v2 .sh-tl2__event.is-unknown .sh-tl2__pill {
   cursor: default;
 }
 #spaceholder-timeline-v2 .sh-tl2__event.is-unknown .sh-tl2__eventIcon,
@@ -3586,12 +3671,15 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 }
 #spaceholder-timeline-v2 .sh-tl2__event:hover .sh-tl2__pill,
 #spaceholder-timeline-v2 .sh-tl2__event.is-selected .sh-tl2__pill,
+#spaceholder-timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__pill,
 #spaceholder-timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__pill,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event:hover .sh-tl2__pill,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-selected .sh-tl2__pill,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__pill,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__pill,
 .spaceholder.timeline-v2 .sh-tl2__event:hover .sh-tl2__pill,
 .spaceholder.timeline-v2 .sh-tl2__event.is-selected .sh-tl2__pill,
+.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__pill,
 .spaceholder.timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__pill {
   background: rgba(0, 0, 0, 0.86);
   border-color: rgba(255, 255, 255, 0.1);
@@ -3599,37 +3687,60 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 }
 #spaceholder-timeline-v2 .sh-tl2__event:hover .sh-tl2__pillBody,
 #spaceholder-timeline-v2 .sh-tl2__event.is-selected .sh-tl2__pillBody,
+#spaceholder-timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__pillBody,
 #spaceholder-timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event:hover .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-selected .sh-tl2__pillBody,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event:hover .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-selected .sh-tl2__pillBody,
+.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__pillBody {
   max-width: min(52vw, 420px);
   opacity: 1;
   pointer-events: auto;
 }
+#spaceholder-timeline-v2 .sh-tl2__event:hover .sh-tl2__dragBtn,
+#spaceholder-timeline-v2 .sh-tl2__event.is-selected .sh-tl2__dragBtn,
+#spaceholder-timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__dragBtn,
+#spaceholder-timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__dragBtn,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event:hover .sh-tl2__dragBtn,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-selected .sh-tl2__dragBtn,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__dragBtn,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__dragBtn,
+.spaceholder.timeline-v2 .sh-tl2__event:hover .sh-tl2__dragBtn,
+.spaceholder.timeline-v2 .sh-tl2__event.is-selected .sh-tl2__dragBtn,
+.spaceholder.timeline-v2 .sh-tl2__event.is-pinned .sh-tl2__dragBtn,
+.spaceholder.timeline-v2 .sh-tl2__event.is-dragging .sh-tl2__dragBtn {
+  display: inline-flex;
+}
 #spaceholder-timeline-v2 .sh-tl2__event.is-right:hover .sh-tl2__pillBody,
 #spaceholder-timeline-v2 .sh-tl2__event.is-right.is-selected .sh-tl2__pillBody,
+#spaceholder-timeline-v2 .sh-tl2__event.is-right.is-pinned .sh-tl2__pillBody,
 #spaceholder-timeline-v2 .sh-tl2__event.is-right.is-dragging .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-right:hover .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-right.is-selected .sh-tl2__pillBody,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-right.is-pinned .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-right.is-dragging .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-right:hover .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-right.is-selected .sh-tl2__pillBody,
+.spaceholder.timeline-v2 .sh-tl2__event.is-right.is-pinned .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-right.is-dragging .sh-tl2__pillBody {
   margin-left: 8px;
   padding-right: 6px;
 }
 #spaceholder-timeline-v2 .sh-tl2__event.is-left:hover .sh-tl2__pillBody,
 #spaceholder-timeline-v2 .sh-tl2__event.is-left.is-selected .sh-tl2__pillBody,
+#spaceholder-timeline-v2 .sh-tl2__event.is-left.is-pinned .sh-tl2__pillBody,
 #spaceholder-timeline-v2 .sh-tl2__event.is-left.is-dragging .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-left:hover .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-left.is-selected .sh-tl2__pillBody,
+.window-app.spaceholder.timeline-v2 .sh-tl2__event.is-left.is-pinned .sh-tl2__pillBody,
 .window-app.spaceholder.timeline-v2 .sh-tl2__event.is-left.is-dragging .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-left:hover .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-left.is-selected .sh-tl2__pillBody,
+.spaceholder.timeline-v2 .sh-tl2__event.is-left.is-pinned .sh-tl2__pillBody,
 .spaceholder.timeline-v2 .sh-tl2__event.is-left.is-dragging .sh-tl2__pillBody {
   margin-right: 8px;
   padding-left: 6px;
@@ -3670,6 +3781,7 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .spaceholder.timeline-v2 .sh-tl2__dragBtn {
   width: 26px;
   height: 26px;
+  display: none;
   cursor: grab;
 }
 #spaceholder-timeline-v2 .sh-tl2__dragBtn:active,
@@ -3881,6 +3993,93 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   gap: 8px;
   align-items: center;
   margin: 0;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__durationToggle,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__durationToggle,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__durationToggle {
+  margin-top: 6px;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__rangeFields,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__rangeFields,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__rangeFields {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__rangeCol,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__rangeCol,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__rangeCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__subLabel,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__subLabel,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__subLabel {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.68);
+  margin: 0;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__endDateFields,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__endDateFields,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__endDateFields {
+  display: grid;
+  grid-template-columns: 110px 92px 92px 34px;
+  gap: 6px;
+  align-items: end;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__durationDays,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__durationDays,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__durationDays {
+  width: 120px;
+  min-width: 120px;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__iconFields,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__iconFields,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__iconFields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__iconPreview,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPreview,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPreview {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  object-fit: contain;
+  padding: 4px;
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__iconPreview.is-empty,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPreview.is-empty,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPreview.is-empty {
+  padding: 0;
+  background: rgba(0, 0, 0, 0.25);
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__iconPickBtn,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPickBtn,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPickBtn {
+  width: 34px;
+  min-width: 34px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.88);
+}
+#spaceholder-timeline-v2-event-editor .sh-tl2e__iconPickBtn:hover,
+.window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPickBtn:hover,
+.spaceholder.timeline-v2-event-editor .sh-tl2e__iconPickBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 #spaceholder-timeline-v2-event-editor .sh-tl2e__body,
 .window-app.spaceholder.timeline-v2-event-editor .sh-tl2e__body,

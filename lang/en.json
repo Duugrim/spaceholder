@@ -266,10 +266,20 @@
       },
       "Fields": {
         "Date": "Date",
+        "StartDate": "Start date",
+        "EndDate": "End date",
+        "HasDuration": "Has duration",
+        "Duration": "Duration",
         "Title": "Title",
         "Faction": "Faction",
+        "Origin": "Origin",
+        "Icon": "Icon",
         "Global": "Global",
         "Content": "Content"
+      },
+      "Origin": {
+        "Faction": "Faction",
+        "World": "World"
       },
       "Buttons": {
         "Add": "Add",
@@ -278,7 +288,8 @@
         "HideUnknown": "Hide unknown",
         "ActiveFactions": "My factions",
         "ActiveFactionsAuto": "Auto",
-        "Details": "Details",
+        "Pin": "Pin",
+        "Unpin": "Unpin",
         "Open": "Open",
         "Edit": "Edit",
         "Delete": "Delete",
@@ -286,7 +297,13 @@
         "Drag": "Drag",
         "ZoomIn": "Zoom in",
         "ZoomOut": "Zoom out",
-        "PickDate": "Pick date"
+        "PickDate": "Pick date",
+        "PickEndDate": "Pick end date",
+        "PickIcon": "Pick icon",
+        "ClearIcon": "Clear icon"
+      },
+      "Errors": {
+        "EndDateInvalid": "End date must be after start date"
       },
       "Groups": {
         "ActiveFactions": "My factions",

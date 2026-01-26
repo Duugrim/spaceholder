@@ -15,9 +15,15 @@ import {
   resolveTimelineV2DetailFromIndex,
   setTimelineV2ActiveFactionsSetting,
   setTimelineV2HideUnknown,
+  toggleTimelineV2EventPinned,
+  getTimelineV2PinnedEventUuids,
   updateTimelineV2EventDate,
+  updateTimelineV2EventMeta,
   deleteTimelineV2Event,
+  TIMELINE_V2_ORIGIN,
 } from './timeline-v2.mjs';
+
+import { pickIcon } from './icon-picker/icon-picker.mjs';
 
 const TEMPLATE_APP = 'systems/spaceholder/templates/timeline-v2/timeline-v2-app.hbs';
 const TEMPLATE_EDITOR = 'systems/spaceholder/templates/timeline-v2/timeline-v2-event-editor.hbs';
@@ -28,11 +34,11 @@ const DAYS_PER_YEAR = 12 * DAYS_PER_MONTH; // 360
 const CANVAS_PAD_PX = 40;
 const BASE_PX_PER_YEAR = 84;
 
-const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5];
 
 // Marker/pill layout (pixels)
 const EVENT_OFFSET_PX = 44;
-const EVENT_MIN_DY_PX = 32;
+const EVENT_MIN_DY_PX = 56;
 
 function _dateToSerial({ year, month, day }) {
   const y = Number(year) || 0;
@@ -454,7 +460,11 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     factions = [],
     allowNoFaction = false,
     factionUuid = '',
+    origin = TIMELINE_V2_ORIGIN.FACTION,
     isGlobal = false,
+    iconPath = '',
+    hasDuration = false,
+    durationDays = 0,
     year = 0,
     month = 1,
     day = 1,
@@ -472,8 +482,23 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
 
     this._factionUuid = String(factionUuid || '').trim();
 
+    this._origin = (String(origin || '').trim() === TIMELINE_V2_ORIGIN.WORLD)
+      ? TIMELINE_V2_ORIGIN.WORLD
+      : TIMELINE_V2_ORIGIN.FACTION;
+
+    // World events (no faction) always have world origin.
+    if (!this._factionUuid) this._origin = TIMELINE_V2_ORIGIN.WORLD;
+
     this._isGlobal = !!isGlobal;
     if (!this._factionUuid && this._allowNoFaction) this._isGlobal = true;
+
+    this._iconPath = String(iconPath || '').trim();
+
+    this._hasDuration = !!hasDuration;
+
+    this._durationDays = Number.parseInt(String(durationDays ?? '').trim(), 10);
+    if (!Number.isFinite(this._durationDays) || this._durationDays < 1) this._durationDays = 1;
+    if (!this._hasDuration) this._durationDays = 0;
 
     this._year = Number.parseInt(year, 10);
     if (!Number.isFinite(this._year)) this._year = 0;
@@ -498,19 +523,44 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     const isEdit = this._mode === 'edit';
 
     const showFactionSelect = !isEdit && (this._allowNoFaction || (this._factions.length > 0));
+    const showOriginSelect = !isEdit;
     const showGlobalToggle = !isEdit && !!this._factionUuid;
 
+    const startSerial = _dateToSerial({ year: this._year, month: this._month, day: this._day });
+
+    const endDate = (this._hasDuration && (Number(this._durationDays) > 0))
+      ? _serialToDate(startSerial + Number(this._durationDays))
+      : null;
+
+    const endYear = endDate ? endDate.year : 0;
+    const endMonth = endDate ? endDate.month : 1;
+    const endDay = endDate ? endDate.day : 1;
+
     return {
+      isEdit,
+
       year: this._year,
       month: this._month,
       day: this._day,
       title: this._title,
       content: this._content,
+
       factions: this._factions,
       allowNoFaction: this._allowNoFaction,
       factionUuid: this._factionUuid,
+      origin: this._origin,
       isGlobal: this._isGlobal,
+
+      iconPath: this._iconPath,
+
+      hasDuration: !!this._hasDuration,
+      durationDays: Number(this._durationDays) || 0,
+      endYear,
+      endMonth,
+      endDay,
+
       showFactionSelect,
+      showOriginSelect,
       showGlobalToggle,
       monthChoices,
       dayChoices,
@@ -551,6 +601,32 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
 
     const globalCb = root.querySelector('input[type="checkbox"][name="isGlobal"]');
     if (globalCb) this._isGlobal = !!globalCb.checked;
+
+    const originSel = root.querySelector('select[name="origin"]');
+    if (originSel) {
+      const v = String(originSel.value || '').trim();
+      this._origin = (v === TIMELINE_V2_ORIGIN.WORLD) ? TIMELINE_V2_ORIGIN.WORLD : TIMELINE_V2_ORIGIN.FACTION;
+      if (!this._factionUuid) this._origin = TIMELINE_V2_ORIGIN.WORLD;
+    }
+
+    const iconInput = root.querySelector('input[type="hidden"][name="iconPath"]');
+    if (iconInput && typeof iconInput.value === 'string') {
+      this._iconPath = String(iconInput.value || '').trim();
+    }
+
+    const hasDurationCb = root.querySelector('input[type="checkbox"][name="hasDuration"]');
+    if (hasDurationCb) {
+      this._hasDuration = !!hasDurationCb.checked;
+    }
+
+    const durationInput = root.querySelector('input[name="durationDays"]');
+    if (durationInput) {
+      const n = Number.parseInt(String(durationInput.value ?? '').trim(), 10);
+      if (Number.isFinite(n) && n > 0) this._durationDays = n;
+    }
+
+    if (!this._hasDuration) this._durationDays = 0;
+    else if (!Number.isFinite(this._durationDays) || this._durationDays < 1) this._durationDays = 1;
   }
 
   async _openDatePicker() {
@@ -575,6 +651,58 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     this._year = picked.year;
     this._month = picked.month;
     this._day = picked.day;
+
+    // Keep end-date display in sync.
+    this.render(false);
+  }
+
+  async _openEndDatePicker() {
+    const root = this.element;
+    if (!root) return;
+
+    this._syncDraftFromForm();
+
+    const startSerial = _dateToSerial({ year: this._year, month: this._month, day: this._day });
+    const curDuration = (this._hasDuration && (Number(this._durationDays) > 0)) ? Number(this._durationDays) : 1;
+
+    const endDate0 = _serialToDate(startSerial + curDuration);
+
+    const picked = await _pickTimelineV2Date(endDate0);
+    if (!picked) return;
+
+    const endSerial = _dateToSerial(picked);
+    const dd = endSerial - startSerial;
+
+    if (!(dd > 0)) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.TimelineV2.Errors.EndDateInvalid') || 'Некорректная дата конца');
+      return;
+    }
+
+    this._hasDuration = true;
+    this._durationDays = dd;
+
+    const cb = root.querySelector('input[type="checkbox"][name="hasDuration"]');
+    if (cb) cb.checked = true;
+
+    const durationInput = root.querySelector('input[name="durationDays"]');
+    if (durationInput) durationInput.value = String(dd);
+
+    this.render(false);
+  }
+
+  async _openIconPicker() {
+    const f = this._factions.find((x) => x.uuid === this._factionUuid) ?? null;
+    const defaultColor = String(f?.color ?? '').trim() || '#ffffff';
+
+    const title = game.i18n?.localize?.('SPACEHOLDER.TimelineV2.Buttons.PickIcon')
+      || game.i18n?.localize?.('SPACEHOLDER.IconPicker.Title')
+      || 'Pick icon';
+
+    const picked = await pickIcon({ defaultColor, title });
+    if (!picked) return;
+
+    this._iconPath = String(picked || '').trim();
+    this.render(false);
   }
 
   async _onClick(ev) {
@@ -593,6 +721,24 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       await this._openDatePicker();
       return;
     }
+
+    if (action === 'pick-end-date') {
+      ev.preventDefault();
+      await this._openEndDatePicker();
+      return;
+    }
+
+    if (action === 'pick-icon') {
+      ev.preventDefault();
+      await this._openIconPicker();
+      return;
+    }
+
+    if (action === 'clear-icon') {
+      ev.preventDefault();
+      this._iconPath = '';
+      this.render(false);
+    }
   }
 
   async _onChange(ev) {
@@ -600,7 +746,21 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     if (factionSel) {
       this._syncDraftFromForm();
       this._factionUuid = String(factionSel.value || '').trim();
-      if (!this._factionUuid && this._allowNoFaction) this._isGlobal = true;
+
+      if (!this._factionUuid) {
+        this._origin = TIMELINE_V2_ORIGIN.WORLD;
+        if (this._allowNoFaction) this._isGlobal = true;
+      }
+
+      this.render(false);
+      return;
+    }
+
+    const originSel = ev.target?.closest?.('select[name="origin"]');
+    if (originSel) {
+      const v = String(originSel.value || '').trim();
+      this._origin = (v === TIMELINE_V2_ORIGIN.WORLD) ? TIMELINE_V2_ORIGIN.WORLD : TIMELINE_V2_ORIGIN.FACTION;
+      if (!this._factionUuid) this._origin = TIMELINE_V2_ORIGIN.WORLD;
       this.render(false);
       return;
     }
@@ -609,6 +769,66 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     if (globalCb) {
       this._isGlobal = !!globalCb.checked;
       return;
+    }
+
+    const durationCb = ev.target?.closest?.('input[type="checkbox"][name="hasDuration"]');
+    if (durationCb) {
+      this._hasDuration = !!durationCb.checked;
+      if (!this._hasDuration) this._durationDays = 0;
+      else if (!Number.isFinite(this._durationDays) || this._durationDays < 1) this._durationDays = 1;
+      this.render(false);
+      return;
+    }
+
+    const durationInput = ev.target?.closest?.('input[name="durationDays"]');
+    if (durationInput) {
+      const n = Number.parseInt(String(durationInput.value ?? '').trim(), 10);
+      if (Number.isFinite(n) && n > 0) {
+        this._hasDuration = true;
+        this._durationDays = n;
+        this.render(false);
+      }
+      return;
+    }
+
+    const endDateInput = ev.target?.closest?.('input[name="endYear"], input[name="endMonth"], input[name="endDay"]');
+    if (endDateInput) {
+      const root = this.element;
+      if (!root) return;
+
+      this._syncDraftFromForm();
+
+      const endYear = _parseYear(root.querySelector('input[name="endYear"]')?.value, this._year);
+      const endMonth = _clampInt(root.querySelector('input[name="endMonth"]')?.value, 1, 12, this._month);
+      const endDay = _clampInt(root.querySelector('input[name="endDay"]')?.value, 1, 30, this._day);
+
+      const startSerial = _dateToSerial({ year: this._year, month: this._month, day: this._day });
+      const endSerial = _dateToSerial({ year: endYear, month: endMonth, day: endDay });
+      const dd = endSerial - startSerial;
+
+      if (!(dd > 0)) {
+        ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.TimelineV2.Errors.EndDateInvalid') || 'Некорректная дата конца');
+        this.render(false);
+        return;
+      }
+
+      this._hasDuration = true;
+      this._durationDays = dd;
+
+      const cb = root.querySelector('input[type="checkbox"][name="hasDuration"]');
+      if (cb) cb.checked = true;
+
+      const durationInput = root.querySelector('input[name="durationDays"]');
+      if (durationInput) durationInput.value = String(dd);
+
+      this.render(false);
+      return;
+    }
+
+    const dateInput = ev.target?.closest?.('input[name="year"], input[name="month"], input[name="day"]');
+    if (dateInput) {
+      this._syncDraftFromForm();
+      if (this._hasDuration) this.render(false);
     }
   }
 
@@ -624,6 +844,49 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     const year = _parseYear(data.year, this._year);
     const month = _clampInt(data.month, 1, 12, this._month);
     const day = _clampInt(data.day, 1, 30, this._day);
+
+    const origin = (String(data.origin ?? this._origin ?? '').trim() === TIMELINE_V2_ORIGIN.WORLD)
+      ? TIMELINE_V2_ORIGIN.WORLD
+      : TIMELINE_V2_ORIGIN.FACTION;
+
+    const iconPath = String(data.iconPath ?? this._iconPath ?? '').trim();
+
+    const hasDuration = !!data.hasDuration;
+
+    let durationDays = 0;
+    if (hasDuration) {
+      const ddFromDuration = _clampInt(data.durationDays, 1, 1000000, (Number(this._durationDays) || 1));
+
+      const endYear = _parseYear(data.endYear, year);
+      const endMonth = _clampInt(data.endMonth, 1, 12, month);
+      const endDay = _clampInt(data.endDay, 1, 30, day);
+
+      const startSerial = _dateToSerial({ year, month, day });
+      const endSerial = _dateToSerial({ year: endYear, month: endMonth, day: endDay });
+      const ddFromEnd = endSerial - startSerial;
+
+      const prev = Number(this._durationDays) || ddFromDuration;
+
+      const endValid = Number.isFinite(ddFromEnd) && ddFromEnd > 0;
+      const durValid = Number.isFinite(ddFromDuration) && ddFromDuration > 0;
+
+      let chosen = ddFromDuration;
+      if (endValid && durValid) {
+        // Prefer the value which differs from the previous draft (covers "changed field but didn't blur").
+        if (ddFromEnd !== prev && ddFromDuration === prev) chosen = ddFromEnd;
+        else if (ddFromDuration !== prev && ddFromEnd === prev) chosen = ddFromDuration;
+        else chosen = ddFromDuration;
+      } else if (endValid) chosen = ddFromEnd;
+      else if (durValid) chosen = ddFromDuration;
+      else chosen = 0;
+
+      if (!(chosen > 0)) {
+        ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.TimelineV2.Errors.EndDateInvalid') || 'Некорректная дата конца');
+        return;
+      }
+
+      durationDays = chosen;
+    }
 
     const content = String(data.content ?? '');
 
@@ -685,6 +948,28 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
           });
         }
 
+        const curIconPath = String(t.iconPath ?? '').trim();
+        const curHasDuration = !!t.hasDuration;
+        const curDurationDays = Number(t.durationDays) || 0;
+
+        const nextHasDuration = !!hasDuration;
+        const nextDurationDays = nextHasDuration ? durationDays : 0;
+
+        const metaChanged = (
+          curIconPath !== String(iconPath || '').trim()
+          || curHasDuration !== nextHasDuration
+          || curDurationDays !== nextDurationDays
+        );
+
+        if (metaChanged) {
+          await updateTimelineV2EventMeta({
+            indexUuid: indexPage.uuid,
+            iconPath,
+            hasDuration: nextHasDuration,
+            durationDays: nextDurationDays,
+          });
+        }
+
         if (this._onSaved) {
           await this._onSaved({ indexUuid: indexPage.uuid, detailUuid: detailPage.uuid });
         }
@@ -701,6 +986,17 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     // ===== Create =====
     const factionUuid = String(data.factionUuid ?? this._factionUuid ?? '').trim();
 
+    if (origin === TIMELINE_V2_ORIGIN.FACTION && !factionUuid) {
+      ui.notifications?.warn?.('Фракция обязательна');
+      return;
+    }
+
+    // World-only events are GM-only.
+    if (origin === TIMELINE_V2_ORIGIN.WORLD && !factionUuid && !_isGM()) {
+      ui.notifications?.warn?.('Фракция обязательна');
+      return;
+    }
+
     // World events are always global.
     const isGlobal = factionUuid ? !!data.isGlobal : true;
 
@@ -710,6 +1006,10 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
         month,
         day,
         factionUuid,
+        origin,
+        iconPath,
+        hasDuration,
+        durationDays,
         isGlobal,
         title,
         content,
@@ -934,7 +1234,11 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       factions,
       allowNoFaction: isGM,
       factionUuid: defaultFactionUuid,
+      origin: defaultFactionUuid ? TIMELINE_V2_ORIGIN.FACTION : TIMELINE_V2_ORIGIN.WORLD,
       isGlobal: false,
+      iconPath: '',
+      hasDuration: false,
+      durationDays: 0,
       year: 0,
       month: 1,
       day: 1,
@@ -980,6 +1284,10 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     const app = new TimelineV2EventEditorApp({
       mode: 'edit',
       indexUuid: indexPage.uuid,
+      origin: t.origin,
+      iconPath: t.iconPath,
+      hasDuration: t.hasDuration,
+      durationDays: t.durationDays,
       year: t.year,
       month: t.month,
       day: t.day,
@@ -1080,6 +1388,9 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     // If viewport isn't measurable yet, skip.
     if (!(vpBottom > vpTop)) return;
 
+    const vpH = vpBottom - vpTop;
+    const vpCenter = vpTop + (vpH * 0.5);
+
     const minDy = EVENT_MIN_DY_PX;
 
     // Keep floating pills inside viewport as much as possible.
@@ -1095,11 +1406,18 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     };
 
     for (const el of nodes) {
-      const anchorTop = Number.parseFloat(String(el.dataset.anchorTop || ''));
-      if (!Number.isFinite(anchorTop)) continue;
+      const startTop = Number.parseFloat(String(el.dataset.anchorTop || ''));
+      if (!Number.isFinite(startTop)) continue;
 
-      // Only render if the exact date point is currently visible.
-      const visible = anchorTop >= vpTop && anchorTop <= vpBottom;
+      const rangeLen = Number.parseFloat(String(el.dataset.rangeLen || ''));
+      const isRange = Number.isFinite(rangeLen) && rangeLen > 0;
+
+      // Point events: only render if the exact date point is visible.
+      // Range events: render if any part of the range intersects the viewport.
+      const visible = isRange
+        ? (startTop >= vpTop && (startTop - rangeLen) <= vpBottom)
+        : (startTop >= vpTop && startTop <= vpBottom);
+
       if (!visible) {
         el.style.display = 'none';
         continue;
@@ -1107,8 +1425,23 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
       el.style.display = '';
 
+      // Range pills should slide along their duration and "stick" closer to the viewport center.
+      // Keep range marker itself bound to the true start point.
+      let anchorTop = startTop;
+      if (isRange) {
+        const endTop = startTop - rangeLen;
+        const attachTop = Math.min(startTop, Math.max(endTop, vpCenter));
+        anchorTop = Number.isFinite(attachTop) ? attachTop : startTop;
+      }
+
       const side = el.classList.contains('is-left') ? 'left' : 'right';
-      sides[side].push({ el, anchorTop });
+      sides[side].push({
+        el,
+        startTop,
+        anchorTop,
+        isRange,
+        rangeLen: (isRange ? rangeLen : 0),
+      });
     }
 
     const layoutSide = (items) => {
@@ -1154,24 +1487,47 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       }
 
       for (let i = 0; i < items.length; i += 1) {
-        const { el, anchorTop } = items[i];
+        const { el, startTop, anchorTop, isRange, rangeLen } = items[i];
         const floatTop = y[i];
 
         // Move event anchor to the floating position.
         el.style.top = `${Math.round(floatTop)}px`;
 
-        // Wire from icon edge to the exact date point.
-        const dy = anchorTop - floatTop;
+        const startDy = startTop - floatTop;
+        const wireDy = anchorTop - floatTop;
+
+        // Dynamic icon size: bigger near viewport center (0..1 closeness).
+        const half = vpH * 0.5;
+        const dist = Math.abs(floatTop - vpCenter);
+        const close01 = (half > 0) ? (1 - Math.min(1, dist / half)) : 0;
+
+        const baseIcon = 24;
+        const growth = 1.0; // max +100%
+
+        const diamondBoost = (
+          el.classList.contains('is-origin-world')
+          && el.classList.contains('has-faction')
+          && !el.classList.contains('is-range')
+        ) ? 1.4 : 1;
+
+        const iconSize = (baseIcon + (baseIcon * growth * close01)) * diamondBoost;
+        const imgSize = iconSize * 0.75;
+
+        el.style.setProperty('--sh-icon-size', `${Math.round(iconSize)}px`);
+        el.style.setProperty('--sh-icon-img-size', `${Math.round(imgSize)}px`);
+
+        // Wire from icon edge to the chosen anchor point.
         const side = el.classList.contains('is-left') ? 'left' : 'right';
         const dx = (side === 'left') ? -EVENT_OFFSET_PX : EVENT_OFFSET_PX;
 
         const vx = dx;
-        const vy = -dy;
+        const vy = -wireDy;
 
         const len = Math.sqrt((vx * vx) + (vy * vy));
         const angle = Math.atan2(vy, vx) * (180 / Math.PI);
 
-        el.style.setProperty('--sh-wire-startY', `${Math.round(dy)}px`);
+        el.style.setProperty('--sh-range-startY', `${Math.round(startDy)}px`);
+        el.style.setProperty('--sh-wire-startY', `${Math.round(wireDy)}px`);
         el.style.setProperty('--sh-wire-length', `${Math.round(len)}px`);
         el.style.setProperty('--sh-wire-angle', `${angle}deg`);
       }
@@ -1188,7 +1544,12 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     const t = getTimelineV2PageData(indexPage);
     if (!t?.isIndex) return;
 
-    const dateText = _formatDate(t);
+    let dateText = _formatDate(t);
+
+    if (t.hasDuration && (Number(t.durationDays) > 0)) {
+      const endDate = _serialToDate(_dateToSerial(t) + Number(t.durationDays));
+      dateText = `${dateText} → ${_formatDate(endDate)}`;
+    }
 
     const OBS = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2;
     const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
@@ -1264,6 +1625,8 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     const activeFactionUuids = getTimelineV2ActiveFactionUuids();
     const activeSet = new Set(activeFactionUuids);
 
+    const pinnedSet = new Set(getTimelineV2PinnedEventUuids());
+
     const factionsUi = factions.map((f) => ({
       ...f,
       active: activeSet.has(f.uuid),
@@ -1306,9 +1669,27 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
       if (hideUnknown && isUnknown) continue;
 
-      const dateText = _formatDate(t);
+      const startSerial = _dateToSerial(t);
 
-      const sideClass = (!t.factionUuid || activeSet.has(t.factionUuid)) ? 'is-right' : 'is-left';
+      const durationDays = Number(t.durationDays) || 0;
+      const isRange = !!t.hasDuration && durationDays > 0;
+
+      const endSerial = isRange ? (startSerial + durationDays) : null;
+
+      const startDateText = _formatDate(t);
+      const endDateText = isRange ? _formatDate(_serialToDate(endSerial)) : '';
+      const dateText = isRange ? `${startDateText} → ${endDateText}` : startDateText;
+
+      const origin = (String(t.origin || '').trim() === TIMELINE_V2_ORIGIN.WORLD)
+        ? TIMELINE_V2_ORIGIN.WORLD
+        : TIMELINE_V2_ORIGIN.FACTION;
+
+      const originClass = (origin === TIMELINE_V2_ORIGIN.WORLD) ? 'is-origin-world' : 'is-origin-faction';
+
+      // "World" origin always renders on the world side.
+      const sideClass = (origin === TIMELINE_V2_ORIGIN.WORLD || !t.factionUuid || activeSet.has(t.factionUuid))
+        ? 'is-right'
+        : 'is-left';
 
       // Resolve faction color (best-effort). Faction actors are expected to be visible in this system.
       let color = '';
@@ -1339,7 +1720,15 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
       rawEvents.push({
         uuid: page.uuid,
-        serial: _dateToSerial(t),
+        serial: startSerial,
+        endSerial,
+        durationDays: isRange ? durationDays : 0,
+        origin,
+        originClass,
+        iconPath: String(t.iconPath || '').trim(),
+        isPinned: pinnedSet.has(page.uuid),
+        hasFaction: !!t.factionUuid,
+
         year: t.year,
         month: t.month,
         day: t.day,
@@ -1411,10 +1800,25 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     const events = rawEvents
-      .map((e) => ({
-        ...e,
-        topPx: serialToTopPx(e.serial),
-      }))
+      .map((e) => {
+        const topPx = serialToTopPx(e.serial);
+
+        const endTopPx = Number.isFinite(e.endSerial)
+          ? serialToTopPx(e.endSerial)
+          : null;
+
+        const rangeLenPx = (Number.isFinite(endTopPx))
+          ? Math.max(0, topPx - endTopPx)
+          : 0;
+
+        return {
+          ...e,
+          topPx,
+          endTopPx,
+          rangeLenPx,
+          isRange: rangeLenPx > 0,
+        };
+      })
       .sort((a, b) => {
         // Visually: upper (larger year) first -> smaller top
         if (a.topPx !== b.topPx) return a.topPx - b.topPx;
@@ -1664,16 +2068,14 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       return;
     }
 
-    if (action === 'select-event') {
+    if (action === 'toggle-pin') {
       event.preventDefault();
-
-      // Ignore unknown markers (no expandable content).
-      if (a.classList.contains('is-unknown')) return;
+      event.stopPropagation();
 
       const uuid = String(a.dataset.uuid || '').trim();
       if (!uuid) return;
 
-      this._selectedEventUuid = uuid;
+      await toggleTimelineV2EventPinned(uuid);
       this._renderPreserveScroll();
       return;
     }
@@ -1748,6 +2150,7 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     if (action === 'close-details') {
       event.preventDefault();
+      this._selectedEventUuid = '';
       this._closeDetailsDrawer();
       this._renderPreserveScroll();
       return;
@@ -1776,19 +2179,29 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     // When floating layout is enabled, markers are not at the exact date position.
     // For dragging, snap to the real (anchor) position first.
-    const anchorTopPx = Number.parseFloat(String(eventEl.dataset.anchorTop || ''));
-    const fallbackTopPx = Number.parseFloat(String(eventEl.style.top || '0').replace('px', ''));
-    const startTopPx = Number.isFinite(anchorTopPx)
-      ? anchorTopPx
-      : (Number.isFinite(fallbackTopPx) ? fallbackTopPx : 0);
+    const startAnchorTopPx = Number.parseFloat(String(eventEl.dataset.anchorTop || ''));
+    const currentTopPx = Number.parseFloat(String(eventEl.style.top || '0').replace('px', ''));
+
+    const startTopPx = Number.isFinite(currentTopPx)
+      ? currentTopPx
+      : (Number.isFinite(startAnchorTopPx) ? startAnchorTopPx : 0);
+
+    const startOffsetPx = Number.isFinite(startAnchorTopPx)
+      ? (startAnchorTopPx - startTopPx)
+      : 0;
 
     try {
+      // Keep the event where it currently is (range pills may be anchored mid-segment).
       eventEl.style.top = `${startTopPx}px`;
 
       const side = eventEl.classList.contains('is-left') ? 'left' : 'right';
       const dx = (side === 'left') ? -EVENT_OFFSET_PX : EVENT_OFFSET_PX;
       const angle = (dx < 0) ? 180 : 0;
 
+      // Keep range marker aligned to the true start point while dragging.
+      eventEl.style.setProperty('--sh-range-startY', `${Math.round(startOffsetPx)}px`);
+
+      // Wire stays horizontal from the current anchor point.
       eventEl.style.setProperty('--sh-wire-startY', '0px');
       eventEl.style.setProperty('--sh-wire-length', `${Math.abs(dx)}px`);
       eventEl.style.setProperty('--sh-wire-angle', `${angle}deg`);
@@ -1802,6 +2215,7 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       eventEl,
       startClientY: event.clientY,
       startTopPx,
+      startOffsetPx,
       lockedScrollTop: Number.isFinite(lockedScrollTop) ? lockedScrollTop : null,
     };
 
@@ -1872,7 +2286,13 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     const topPx = Number.parseFloat(String(eventEl.style.top || '0').replace('px', ''));
-    const serial = Math.round(meta.maxBoundSerial - ((topPx - meta.padPx) / meta.pxPerDay));
+
+    // Drag position represents the current anchor point (point event start, or range attach point).
+    // Convert back to the real start date using the initial offset.
+    const offsetPx = Number(drag.startOffsetPx) || 0;
+    const startTopPx = topPx + offsetPx;
+
+    const serial = Math.round(meta.maxBoundSerial - ((startTopPx - meta.padPx) / meta.pxPerDay));
 
     const next = _serialToDate(serial);
 
