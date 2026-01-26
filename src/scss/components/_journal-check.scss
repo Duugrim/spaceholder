@@ -56,11 +56,13 @@
   .sh-jc-statusbar__seg--draft { background: #3b82f6; }
   .sh-jc-statusbar__seg--proposed { background: #fbbf24; }
   .sh-jc-statusbar__seg--approved { background: #22c55e; }
+  .sh-jc-statusbar__seg--denied { background: #ef4444; }
   .sh-jc-statusbar__seg--hidden { background: rgba(255, 255, 255, 0.18); }
 
   .sh-jc-status--draft { color: #3b82f6; }
   .sh-jc-status--proposed { color: #fbbf24; }
   .sh-jc-status--approved { color: #22c55e; }
+  .sh-jc-status--denied { color: #ef4444; }
 }
 
 // JournalEntrySheet sidebar TOC (multi-page)

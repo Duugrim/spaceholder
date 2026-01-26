@@ -2510,6 +2510,10 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg--approved {
   background: #22c55e;
 }
+#sidebar #journal .sh-jc-statusbar__seg--denied,
+.sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg--denied {
+  background: #ef4444;
+}
 #sidebar #journal .sh-jc-statusbar__seg--hidden,
 .sidebar-tab[data-tab=journal] .sh-jc-statusbar__seg--hidden {
   background: rgba(255, 255, 255, 0.18);
@@ -2525,6 +2529,10 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 #sidebar #journal .sh-jc-status--approved,
 .sidebar-tab[data-tab=journal] .sh-jc-status--approved {
   color: #22c55e;
+}
+#sidebar #journal .sh-jc-status--denied,
+.sidebar-tab[data-tab=journal] .sh-jc-status--denied {
+  color: #ef4444;
 }
 
 .journal-entry .journal-sidebar .toc .page-heading {

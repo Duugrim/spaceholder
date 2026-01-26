@@ -35,18 +35,22 @@ const STATUS = {
   DRAFT: 'draft',
   PROPOSED: 'proposed',
   APPROVED: 'approved',
+  DENIED: 'denied',
 };
 
+// Used when computing a single "entry status" from embedded pages.
+// Lower is weaker.
 const STATUS_ORDER = {
-  [STATUS.DRAFT]: 0,
-  [STATUS.PROPOSED]: 1,
-  [STATUS.APPROVED]: 2,
+  [STATUS.DENIED]: 0,
+  [STATUS.DRAFT]: 1,
+  [STATUS.PROPOSED]: 2,
+  [STATUS.APPROVED]: 3,
 };
 
 let _hooksInstalled = false;
 
 function _isValidStatus(s) {
-  return s === STATUS.DRAFT || s === STATUS.PROPOSED || s === STATUS.APPROVED;
+  return s === STATUS.DRAFT || s === STATUS.PROPOSED || s === STATUS.APPROVED || s === STATUS.DENIED;
 }
 
 function _normalizeStatus(raw) {
@@ -76,11 +80,11 @@ export function computeEntryStatusFromPages(entry) {
 
   for (const p of pages) {
     const s = _normalizeStatus(_getRawStatus(p));
-    const order = STATUS_ORDER[s] ?? 0;
+    const order = STATUS_ORDER[s] ?? STATUS_ORDER[STATUS.DRAFT];
     if (order < weakestOrder) {
       weakest = s;
       weakestOrder = order;
-      if (weakestOrder === 0) break;
+      if (weakestOrder === STATUS_ORDER[STATUS.DENIED]) break;
     }
   }
 
@@ -323,6 +327,188 @@ async function _sendApprovalChatMessages(items) {
   } catch (e) {
     console.error('SpaceHolder | JournalCheck: failed to create approval chat message', e);
   }
+}
+
+function _canUserObserveStrict(doc, user) {
+  try {
+    return !!doc?.testUserPermission?.(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER);
+  } catch (_) {
+    return false;
+  }
+}
+
+function _canAllPlayersObserveByPermission(doc) {
+  const players = game?.users?.players ?? [];
+  for (const u of players) {
+    if (!_canUserObserveStrict(doc, u)) return false;
+  }
+  return true;
+}
+
+function _getObserverPlusPlayerIds(doc) {
+  const players = game?.users?.players ?? [];
+  const ids = [];
+
+  for (const u of players) {
+    if (!u?.id) continue;
+    if (_canUserObserveStrict(doc, u)) ids.push(u.id);
+  }
+
+  return ids;
+}
+
+function _getGMUserIds() {
+  const users = game?.users?.contents ?? [];
+  const ids = [];
+
+  for (const u of users) {
+    if (u?.isGM && u?.id) ids.push(u.id);
+  }
+
+  return ids;
+}
+
+function _renderDenialChatHtml({ entryName = '', pageName = null, title = 'Отказано:' } = {}) {
+  const e = String(entryName ?? '').trim();
+  if (!e) return '';
+
+  const p = String(pageName ?? '').trim();
+  const label = p ? `${e} — ${p}` : e;
+
+  const lines = [];
+  lines.push(`<div class="spaceholder-journal-update-chat">`);
+  lines.push(`<div class="sh-jul-chat__title">${_escapeHtml(title)}</div>`);
+  lines.push(`<ul class="sh-jul-chat__list">`);
+  lines.push(`<li class="sh-jul-chat__entry">${_escapeHtml(label)}</li>`);
+  lines.push(`</ul>`);
+  lines.push(`</div>`);
+
+  return lines.join('');
+}
+
+async function _sendDenialChatMessage({ entry = null, page = null } = {}) {
+  const doc = page ?? entry;
+  if (!doc) return;
+
+  const speaker = (() => {
+    try { return ChatMessage.getSpeaker({ alias: 'Журналы' }); } catch (_) {}
+    try { return ChatMessage.getSpeaker(); } catch (_) {}
+    return {};
+  })();
+
+  const entryName = String(entry?.name ?? doc?.name ?? '').trim() || '(без названия)';
+  const pageName = page ? (String(page?.name ?? '').trim() || '(без названия)') : null;
+
+  const content = _renderDenialChatHtml({
+    entryName,
+    pageName,
+    title: page ? 'Отказано (страница):' : 'Отказано:'
+  });
+  if (!content) return;
+
+  const allVisible = _canAllPlayersObserveByPermission(doc);
+  const whisperIds = allVisible
+    ? null
+    : [...new Set([..._getGMUserIds(), ..._getObserverPlusPlayerIds(doc)])];
+
+  const data = { content, speaker };
+  if (whisperIds?.length) data.whisper = whisperIds;
+
+  try {
+    await ChatMessage.create(data);
+  } catch (e) {
+    console.error('SpaceHolder | JournalCheck: failed to create denial chat message', e);
+  }
+}
+
+async function _denyEntry(entry, { source = 'ctx' } = {}) {
+  if (!game?.user?.isGM) return false;
+  if (!entry || !_canUserUpdate(entry)) return false;
+
+  const pages = entry?.pages?.contents ?? [];
+  if (pages.length > 1) return false; // no group denial
+
+  const current = computeEntryStatusFromPages(entry);
+  if (current === STATUS.DENIED) return false;
+
+  await setEntryStatus(entry, STATUS.DENIED, { reason: `deny-${source}`, applyToPages: true });
+  await _sendDenialChatMessage({ entry });
+
+  return true;
+}
+
+async function _denyPage(page, { source = 'ctx' } = {}) {
+  if (!game?.user?.isGM) return false;
+  if (!page || !_canUserUpdate(page)) return false;
+
+  const current = getStatus(page);
+  if (current === STATUS.DENIED) return false;
+
+  const entry = page?.parent ?? null;
+
+  await setPageStatus(page, STATUS.DENIED, { reason: `deny-${source}`, syncParent: true });
+  await _sendDenialChatMessage({ entry, page });
+
+  return true;
+}
+
+async function _bulkSetEntryPagesStatus(entry, fromStatus, toStatus, { reason = null } = {}) {
+  if (!entry) return false;
+  if (!_canUserUpdate(entry)) return false;
+
+  const from = _normalizeStatus(fromStatus);
+  const to = _normalizeStatus(toStatus);
+  if (from === to) return false;
+
+  const pages = entry?.pages?.contents ?? [];
+  if (!pages.length) return false;
+
+  const now = Date.now();
+  const changedBy = game?.user?.id ?? null;
+
+  const updates = [];
+  for (const p of pages) {
+    if (!p?.id) continue;
+    if (!_canUserUpdate(p)) continue;
+    if (getStatus(p) !== from) continue;
+
+    const u = {
+      _id: p.id,
+      [`flags.${MODULE_NS}.${FLAG_ROOT}.status`]: to,
+      [`flags.${MODULE_NS}.${FLAG_ROOT}.changedAt`]: now,
+      [`flags.${MODULE_NS}.${FLAG_ROOT}.changedBy`]: changedBy,
+    };
+    if (reason) u[`flags.${MODULE_NS}.${FLAG_ROOT}.reason`] = String(reason);
+    updates.push(u);
+  }
+
+  if (!updates.length) return false;
+
+  await entry.updateEmbeddedDocuments('JournalEntryPage', updates, { spaceholderJournalCheck: true });
+  await syncEntryStatusFromPages(entry, { reason: reason ?? 'bulkSetPages' });
+
+  return true;
+}
+
+async function _bulkApproveEntryProposedPages(entry, { source = 'ctx-bulk' } = {}) {
+  if (!game?.user?.isGM) return false;
+  if (!entry || !_canUserUpdate(entry)) return false;
+
+  const pages = entry?.pages?.contents ?? [];
+  if (!pages.length) return false;
+
+  const pageRefs = [];
+  for (const p of pages) {
+    if (!p?.id) continue;
+    if (!_canUserUpdate(p)) continue;
+    if (getStatus(p) !== STATUS.PROPOSED) continue;
+
+    pageRefs.push({ entryId: entry.id, pageId: p.id });
+  }
+
+  if (!pageRefs.length) return false;
+
+  return approveJournalItems({ pageRefs }, { source });
 }
 
 export async function approveJournalItems(
@@ -606,6 +792,8 @@ function _statusIconDef(status) {
       return { icon: 'fa-solid fa-check', label: 'Одобрено' };
     case STATUS.PROPOSED:
       return { icon: 'fa-solid fa-lightbulb', label: 'Предложено' };
+    case STATUS.DENIED:
+      return { icon: 'fa-solid fa-xmark', label: 'Отказано' };
     case STATUS.DRAFT:
     default:
       return { icon: 'fa-solid fa-pen', label: 'Черновик' };
@@ -651,6 +839,7 @@ function _computeEntryPageStatusStats(entry, { user = null } = {}) {
     [STATUS.DRAFT]: 0,
     [STATUS.PROPOSED]: 0,
     [STATUS.APPROVED]: 0,
+    [STATUS.DENIED]: 0,
   };
 
   let hidden = 0;
@@ -681,12 +870,14 @@ function _multiPageStatusTitle(stats) {
   const d = Number(stats?.counts?.[STATUS.DRAFT]) || 0;
   const p = Number(stats?.counts?.[STATUS.PROPOSED]) || 0;
   const a = Number(stats?.counts?.[STATUS.APPROVED]) || 0;
+  const r = Number(stats?.counts?.[STATUS.DENIED]) || 0;
   const hidden = Number(stats?.hidden) || 0;
 
   const parts = [
     `Черновик ${d}`,
     `Предложено ${p}`,
     `Одобрено ${a}`,
+    `Отказано ${r}`,
   ];
 
   if (hidden > 0) parts.push(`Скрыто ${hidden}`);
@@ -716,6 +907,7 @@ function _makeEntryMultiPageStatusEl(entry) {
   addSeg('sh-jc-statusbar__seg--draft', stats.counts[STATUS.DRAFT]);
   addSeg('sh-jc-statusbar__seg--proposed', stats.counts[STATUS.PROPOSED]);
   addSeg('sh-jc-statusbar__seg--approved', stats.counts[STATUS.APPROVED]);
+  addSeg('sh-jc-statusbar__seg--denied', stats.counts[STATUS.DENIED]);
   addSeg('sh-jc-statusbar__seg--hidden', stats.hidden);
 
   // Fallback (should not happen, but keep stable UI)
@@ -729,6 +921,8 @@ function _makeEntryMultiPageStatusEl(entry) {
 
 function _entryNextStatusOnIconClick(entry) {
   const cur = computeEntryStatusFromPages(entry);
+  if (cur === STATUS.DENIED) return null;
+
   const isGM = !!game.user?.isGM;
   const skip = isGM && !!_getSetting(SETTING_GM_SKIP, false);
 
@@ -754,6 +948,8 @@ function _entryNextStatusOnIconClick(entry) {
 
 function _pageNextStatusOnClick(page) {
   const cur = getStatus(page);
+  if (cur === STATUS.DENIED) return null;
+
   const isGM = !!game.user?.isGM;
   const skip = isGM && !!_getSetting(SETTING_GM_SKIP, false);
 
@@ -1092,6 +1288,41 @@ function _addEntryContextOptions(app, options) {
           return setEntryStatus(entry, STATUS.PROPOSED, { reason: 'ctx', applyToPages: true });
         },
       }),
+      make({
+        name: 'Отказать',
+        icon: '<i class="fa-solid fa-xmark"></i>',
+        condition: (li) => {
+          if (!isGM) return false;
+          const entry = getEntry(li);
+          if (!entry || !_canUserUpdate(entry)) return false;
+          const pages = entry?.pages?.contents ?? [];
+          if (pages.length > 1) return false;
+          const s = computeEntryStatusFromPages(entry);
+          return s === STATUS.PROPOSED || (skip && s === STATUS.DRAFT);
+        },
+        callback: (li) => {
+          const entry = getEntry(li);
+          if (!entry) return;
+          return _denyEntry(entry, { source: 'ctx' });
+        },
+      }),
+      make({
+        name: 'Снять отказ',
+        icon: '<i class="fa-solid fa-rotate-left"></i>',
+        condition: (li) => {
+          if (!isGM) return false;
+          const entry = getEntry(li);
+          if (!entry || !_canUserUpdate(entry)) return false;
+          const pages = entry?.pages?.contents ?? [];
+          if (pages.length > 1) return false;
+          return computeEntryStatusFromPages(entry) === STATUS.DENIED;
+        },
+        callback: (li) => {
+          const entry = getEntry(li);
+          if (!entry) return;
+          return setEntryStatus(entry, STATUS.PROPOSED, { reason: 'ctxDeniedClear', applyToPages: true });
+        },
+      }),
     );
   } catch (e) {
     console.error('SpaceHolder | JournalCheck: failed to extend JournalEntry context menu', e);
@@ -1168,6 +1399,37 @@ function _addPageContextOptions(app, options) {
         },
       }),
       make({
+        name: 'Страница: Отказать',
+        icon: '<i class="fa-solid fa-xmark"></i>',
+        condition: (li) => {
+          if (!isGM) return false;
+          const page = getPage(li);
+          if (!page || !_canUserUpdate(page)) return false;
+          const s = getStatus(page);
+          return s === STATUS.PROPOSED || (skip && s === STATUS.DRAFT);
+        },
+        callback: (li) => {
+          const page = getPage(li);
+          if (!page) return;
+          return _denyPage(page, { source: 'ctx' });
+        },
+      }),
+      make({
+        name: 'Страница: Снять отказ',
+        icon: '<i class="fa-solid fa-rotate-left"></i>',
+        condition: (li) => {
+          if (!isGM) return false;
+          const page = getPage(li);
+          if (!page || !_canUserUpdate(page)) return false;
+          return getStatus(page) === STATUS.DENIED;
+        },
+        callback: (li) => {
+          const page = getPage(li);
+          if (!page) return;
+          return setPageStatus(page, STATUS.PROPOSED, { reason: 'ctxDeniedClear', syncParent: true });
+        },
+      }),
+      make({
         name: 'Страница: Снять одобрение',
         icon: '<i class="fa-solid fa-rotate-left"></i>',
         condition: (li) => {
@@ -1191,19 +1453,19 @@ function _addPageContextOptions(app, options) {
           if (!isGM) return false;
           return _canUserUpdate(entry);
         },
-        callback: () => approveJournalItems({ entryIds: [entry.id] }, { source: 'ctx-bulk' }),
+        callback: () => _bulkApproveEntryProposedPages(entry, { source: 'ctx-bulk' }),
       }),
       make({
         name: 'Журнал: Предложить весь журнал',
         icon: '<i class="fa-solid fa-lightbulb"></i>',
         condition: () => _canUserUpdate(entry),
-        callback: () => setEntryStatus(entry, STATUS.PROPOSED, { reason: 'ctx-bulk', applyToPages: true }),
+        callback: () => _bulkSetEntryPagesStatus(entry, STATUS.DRAFT, STATUS.PROPOSED, { reason: 'ctx-bulkPropose' }),
       }),
       make({
         name: 'Журнал: В черновик весь журнал',
         icon: '<i class="fa-solid fa-pen"></i>',
         condition: () => _canUserUpdate(entry),
-        callback: () => setEntryStatus(entry, STATUS.DRAFT, { reason: 'ctx-bulk', applyToPages: true }),
+        callback: () => _bulkSetEntryPagesStatus(entry, STATUS.PROPOSED, STATUS.DRAFT, { reason: 'ctx-bulkDraft' }),
       }),
     );
   } catch (e) {
