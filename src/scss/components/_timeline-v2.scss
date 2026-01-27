@@ -186,48 +186,68 @@
   }
 
   .sh-tl2__tick {
+    --sh-year-scale: 1;
+    --sh-year-opacity: 0.65;
+
+    position: absolute;
+    left: 0;
+    right: 0;
+
+    pointer-events: none;
+  }
+
+  .sh-tl2__tickMark {
     position: absolute;
     left: 50%;
+    top: 0;
     transform: translateX(-50%);
 
     width: 18px;
     height: 2px;
+    border-radius: 2px;
+
     background: rgba(255, 255, 255, 0.30);
+  }
 
-    // Larger hover target near the line
-    &::after {
-      content: '';
-      position: absolute;
-      top: -18px;
-      left: -34px;
-      width: 88px;
-      height: 38px;
-      background: transparent;
-    }
+  .sh-tl2__tick.is-month .sh-tl2__tickMark {
+    width: 10px;
+    height: 1px;
+    opacity: 0.65;
+    background: rgba(255, 255, 255, 0.22);
+  }
 
-    &:hover {
-      background: rgba(255, 255, 255, 0.44);
+  .sh-tl2__yearGuide {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
 
-      .sh-tl2__tickLabel {
-        opacity: 1;
-      }
-    }
+    border-top: 1px dashed rgba(255, 255, 255, 0.14);
+
+    opacity: 0.65;
   }
 
   .sh-tl2__tickLabel {
     position: absolute;
-    top: 50%;
-    left: 12px;
-    transform: translateY(-50%);
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, -50%) scale(var(--sh-year-scale, 1));
 
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 900;
     font-variant-numeric: tabular-nums;
-    color: rgba(255, 255, 255, 0.88);
+    color: rgba(255, 255, 255, 0.90);
 
-    opacity: 0;
-    transition: opacity 120ms ease;
+    opacity: var(--sh-year-opacity, 0.65);
+    transition: transform 120ms ease, opacity 120ms ease;
+
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.55),
+      0 8px 22px rgba(0, 0, 0, 0.65);
+
     pointer-events: none;
+
+    z-index: 4;
   }
 
   .sh-tl2__overlayEmpty {
@@ -262,6 +282,15 @@
     // Dynamic icon sizing (set from JS).
     --sh-icon-size: 24px;
     --sh-icon-img-size: 18px;
+  }
+
+  // Prevent any inherited transitions from animating when JS updates CSS variables.
+  .sh-tl2__eventIconBtn,
+  .sh-tl2__eventIcon,
+  .sh-tl2__eventIconImg,
+  .sh-tl2__wire,
+  .sh-tl2__range {
+    transition: none;
   }
 
   // Diagonal "wire" from the exact date dot (on the line) to the icon edge.
@@ -341,6 +370,11 @@
     align-items: center;
     gap: 6px;
 
+    // Keep the pill body height stable; let the icon overflow when it scales up.
+    box-sizing: border-box;
+    height: 28px;
+    overflow: visible;
+
     cursor: pointer;
 
     // IMPORTANT: keep 0 horizontal padding so the icon remains flush with the connector line.
@@ -378,7 +412,52 @@
     align-items: center;
     justify-content: center;
 
+    // Hitbox should scale with the icon.
+    width: var(--sh-icon-size, 24px);
+    height: var(--sh-icon-size, 24px);
+    min-width: var(--sh-icon-size, 24px);
+    min-height: var(--sh-icon-size, 24px);
+
+    position: relative;
+
     cursor: pointer;
+
+    // Pinned ring indicator.
+    // Implemented as a border (not box-shadow) so we can shape it to diamond/square as needed.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+
+      opacity: 0;
+      transition: opacity 120ms ease;
+
+      pointer-events: none;
+
+      border: 3px solid rgba(255, 255, 255, 0.62);
+      border-radius: 999px;
+
+      filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.56));
+    }
+
+    &.is-active::after {
+      opacity: 1;
+    }
+  }
+
+  .sh-tl2__event.is-pinned .sh-tl2__eventIconBtn::after {
+    opacity: 1;
+  }
+
+  // Match the ring shape to icon markers.
+  .sh-tl2__event.is-origin-world.has-faction:not(.is-range) .sh-tl2__eventIconBtn::after {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    border-radius: calc(var(--sh-icon-size, 24px) * 0.17);
+  }
+
+  .sh-tl2__event.is-range .sh-tl2__eventIconBtn::after {
+    clip-path: none;
+    border-radius: calc(var(--sh-icon-size, 24px) * 0.25);
   }
 
 
@@ -451,9 +530,7 @@
     }
 
     &.is-pinned .sh-tl2__eventIcon {
-      box-shadow:
-        0 0 0 3px rgba(255, 255, 255, 0.62),
-        0 10px 26px rgba(0, 0, 0, 0.56);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.56);
     }
   }
 

@@ -106,8 +106,19 @@
             <div class="sh-tl2__line" aria-hidden="true"></div>
 
             {{#each ticks as |t|}}
-              <div class="sh-tl2__tick" style="top: {{t.topPx}}px;" aria-hidden="true">
-                <div class="sh-tl2__tickLabel">{{t.year}}</div>
+              <div
+                class="sh-tl2__tick {{#if t.isYear}}is-year{{/if}} {{#if t.isMonth}}is-month{{/if}}"
+                style="top: {{t.topPx}}px;"
+                data-year="{{t.year}}"
+                {{#if t.isMonth}}data-month="{{t.month}}"{{/if}}
+                aria-hidden="true"
+              >
+                <div class="sh-tl2__tickMark" aria-hidden="true"></div>
+
+                {{#if t.isYear}}
+                  <div class="sh-tl2__yearGuide" aria-hidden="true"></div>
+                  <div class="sh-tl2__tickLabel">{{t.year}}</div>
+                {{/if}}
               </div>
             {{/each}}
 
@@ -147,7 +158,6 @@
                       data-action="toggle-pin"
                       data-uuid="{{e.uuid}}"
                       aria-label="{{#if e.isPinned}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Unpin'}}{{else}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Pin'}}{{/if}}"
-                      data-tooltip="{{#if e.isPinned}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Unpin'}}{{else}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Pin'}}{{/if}}"
                     >
                       <span class="sh-tl2__eventIcon" aria-hidden="true">
                         {{#if e.iconPath}}
@@ -165,7 +175,6 @@
                         data-action="drag-event"
                         data-uuid="{{e.uuid}}"
                         aria-label="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
-                        data-tooltip="{{localize 'SPACEHOLDER.TimelineV2.Buttons.Drag'}}"
                       ><i class="fa-solid fa-grip-lines-vertical" aria-hidden="true"></i></button>
                     {{/if}}
 

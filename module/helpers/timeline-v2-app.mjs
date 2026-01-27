@@ -38,7 +38,17 @@ const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5];
 
 // Marker/pill layout (pixels)
 const EVENT_OFFSET_PX = 44;
-const EVENT_MIN_DY_PX = 56;
+
+// Floating layout (pixels)
+const EVENT_BASE_ICON_PX = 24;
+const EVENT_ICON_GROWTH = 1.0; // max +100%
+
+// Dynamic bumping between events
+const EVENT_BUMP_PADDING_PX = 10;
+const EVENT_BUMP_MIN_DY_PX = 34;
+
+// Month ticks are only shown when sufficiently zoomed in
+const MONTH_TICK_MIN_PX = 10;
 
 function _dateToSerial({ year, month, day }) {
   const y = Number(year) || 0;
@@ -1391,12 +1401,11 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     const vpH = vpBottom - vpTop;
     const vpCenter = vpTop + (vpH * 0.5);
 
-    const minDy = EVENT_MIN_DY_PX;
-
-    // Keep floating pills inside viewport as much as possible.
-    const pad = Math.round(minDy * 0.5);
-    const minY = vpTop + pad;
-    const maxY = vpBottom - pad;
+    const half = vpH * 0.5;
+    const close01FromY = (y) => {
+      const dist = Math.abs((Number(y) || 0) - vpCenter);
+      return (half > 0) ? (1 - Math.min(1, dist / half)) : 0;
+    };
 
     const nodes = Array.from(canvas.querySelectorAll('.sh-tl2__event'));
 
@@ -1455,35 +1464,82 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       const anchors = items.map((it) => it.anchorTop);
       const y = anchors.slice();
 
+      const isDiamond = (el) => (
+        el.classList.contains('is-origin-world')
+        && el.classList.contains('has-faction')
+        && !el.classList.contains('is-range')
+      );
+
+      // Estimate pill sizes at anchor points to compute dynamic bumping.
+      const metrics = items.map((it) => {
+        const close01 = close01FromY(it.anchorTop);
+        const diamondBoost = isDiamond(it.el) ? 1.4 : 1;
+
+        const iconBase = EVENT_BASE_ICON_PX * diamondBoost;
+        const iconSize = iconBase * (1 + (EVENT_ICON_GROWTH * close01));
+
+        // Approximate vertical height for collision prevention.
+        const minControl = 26; // drag handle button height
+        const itemH = Math.max(iconSize, minControl) + 4; // pill vertical padding
+
+        return { itemH };
+      });
+
+      const spacing = (a, b) => {
+        const ha = metrics[a]?.itemH ?? EVENT_BASE_ICON_PX;
+        const hb = metrics[b]?.itemH ?? EVENT_BASE_ICON_PX;
+        const raw = ((ha + hb) * 0.5) + EVENT_BUMP_PADDING_PX;
+        return Math.max(EVENT_BUMP_MIN_DY_PX, raw);
+      };
+
       // Forward pass: prevent overlaps.
       for (let i = 1; i < y.length; i += 1) {
-        const minNext = y[i - 1] + minDy;
+        const minNext = y[i - 1] + spacing(i - 1, i);
         if (y[i] < minNext) y[i] = minNext;
       }
 
       // Backward pass: pull back up where possible to stay closer to anchors.
       for (let i = y.length - 2; i >= 0; i -= 1) {
-        const maxPrev = y[i + 1] - minDy;
+        const maxPrev = y[i + 1] - spacing(i, i + 1);
         if (y[i] > maxPrev) y[i] = maxPrev;
       }
 
-      // Shift block into viewport if possible.
+      // Keep floating pills inside viewport as much as possible.
+      const maxHalfH = metrics.reduce((acc, m) => {
+        const v = (Number(m?.itemH) || 0) * 0.5;
+        return Math.max(acc, v);
+      }, 0);
+
+      const pad = Math.round(Math.min(48, Math.max(28, maxHalfH + 8)));
+      const minY = vpTop + pad;
+      const maxY = vpBottom - pad;
+
+      // Clamp overflow at viewport edges.
+      // This avoids a uniform shift (which makes all wires tilt with the same angle).
       if (Number.isFinite(minY) && Number.isFinite(maxY) && maxY > minY) {
-        const lowerShift = minY - y[0];
-        const upperShift = maxY - y[y.length - 1];
+        const clampTop = () => {
+          if (y[0] >= minY) return;
+          y[0] = minY;
+          for (let i = 1; i < y.length; i += 1) {
+            const minNext = y[i - 1] + spacing(i - 1, i);
+            if (y[i] < minNext) y[i] = minNext;
+          }
+        };
 
-        let shift = 0;
-        if (lowerShift <= upperShift) {
-          // Keep shift at 0 if possible.
-          shift = Math.min(upperShift, Math.max(lowerShift, 0));
-        } else {
-          // Cannot fit: center the block.
-          shift = ((minY + maxY) * 0.5) - ((y[0] + y[y.length - 1]) * 0.5);
-        }
+        const clampBottom = () => {
+          const last = y.length - 1;
+          if (y[last] <= maxY) return;
+          y[last] = maxY;
+          for (let i = last - 1; i >= 0; i -= 1) {
+            const maxPrev = y[i + 1] - spacing(i, i + 1);
+            if (y[i] > maxPrev) y[i] = maxPrev;
+          }
+        };
 
-        if (Number.isFinite(shift) && shift !== 0) {
-          for (let i = 0; i < y.length; i += 1) y[i] += shift;
-        }
+        clampTop();
+        clampBottom();
+        // If we clamped bottom, the top may be pushed out again (viewport too small). Try once more.
+        clampTop();
       }
 
       for (let i = 0; i < items.length; i += 1) {
@@ -1497,28 +1553,24 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
         const wireDy = anchorTop - floatTop;
 
         // Dynamic icon size: bigger near viewport center (0..1 closeness).
-        const half = vpH * 0.5;
-        const dist = Math.abs(floatTop - vpCenter);
-        const close01 = (half > 0) ? (1 - Math.min(1, dist / half)) : 0;
+        const close01 = close01FromY(floatTop);
+        const diamondBoost = isDiamond(el) ? 1.4 : 1;
 
-        const baseIcon = 24;
-        const growth = 1.0; // max +100%
-
-        const diamondBoost = (
-          el.classList.contains('is-origin-world')
-          && el.classList.contains('has-faction')
-          && !el.classList.contains('is-range')
-        ) ? 1.4 : 1;
-
-        const iconSize = (baseIcon + (baseIcon * growth * close01)) * diamondBoost;
+        const iconBase = EVENT_BASE_ICON_PX * diamondBoost;
+        const iconSize = iconBase * (1 + (EVENT_ICON_GROWTH * close01));
         const imgSize = iconSize * 0.75;
 
         el.style.setProperty('--sh-icon-size', `${Math.round(iconSize)}px`);
         el.style.setProperty('--sh-icon-img-size', `${Math.round(imgSize)}px`);
 
+        // Growth should be symmetric: move pill offset so the icon expands towards the line too.
+        const offset = EVENT_OFFSET_PX + ((iconBase - iconSize) * 0.5);
+        el.style.setProperty('--sh-event-offset', `${Math.round(offset)}px`);
+        el.style.setProperty('--sh-event-offsetSigned', `${Math.round(-offset)}px`);
+
         // Wire from icon edge to the chosen anchor point.
         const side = el.classList.contains('is-left') ? 'left' : 'right';
-        const dx = (side === 'left') ? -EVENT_OFFSET_PX : EVENT_OFFSET_PX;
+        const dx = (side === 'left') ? -offset : offset;
 
         const vx = dx;
         const vy = -wireDy;
@@ -1535,6 +1587,24 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     layoutSide(sides.left);
     layoutSide(sides.right);
+
+    // Year labels: always visible and scale towards viewport center.
+    try {
+      const yearTicks = Array.from(canvas.querySelectorAll('.sh-tl2__tick.is-year'));
+      for (const tickEl of yearTicks) {
+        const topPx = Number.parseFloat(String(tickEl.style.top || '0').replace('px', ''));
+        if (!Number.isFinite(topPx)) continue;
+
+        const close01 = close01FromY(topPx);
+        const scale = 0.9 + (0.9 * close01);
+        const opacity = 0.28 + (0.72 * close01);
+
+        tickEl.style.setProperty('--sh-year-scale', String(scale));
+        tickEl.style.setProperty('--sh-year-opacity', String(opacity));
+      }
+    } catch (_) {
+      // ignore
+    }
   }
 
   async _openDetailsDrawer(indexUuid) {
@@ -1785,19 +1855,53 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     const year0TopPx = serialToTopPx(0);
 
-    const ticks = [];
+    const pxPerMonth = pxPerDay * DAYS_PER_MONTH;
+
+    const monthCount = (maxYear - minYear + 1) * 12;
+    const showMonthTicks = (pxPerMonth >= MONTH_TICK_MIN_PX) && (monthCount <= 6000);
+
+    const yearTicks = [];
     for (let y = minYear; y <= maxYear; y += tickStep) {
-      ticks.push({
+      yearTicks.push({
+        kind: 'year',
+        isYear: true,
         year: y,
         topPx: serialToTopPx(y * DAYS_PER_YEAR),
       });
     }
 
     // Ensure year 0 tick exists
-    if (!ticks.some((t) => t.year === 0)) {
-      ticks.push({ year: 0, topPx: year0TopPx });
-      ticks.sort((a, b) => a.topPx - b.topPx);
+    if (!yearTicks.some((t) => t.year === 0)) {
+      yearTicks.push({ kind: 'year', isYear: true, year: 0, topPx: year0TopPx });
     }
+
+    const monthTicks = [];
+    if (showMonthTicks) {
+      const yearTickSet = new Set(yearTicks.map((t) => Number(t.year)));
+
+      for (let y = minYear; y <= maxYear; y += 1) {
+        for (let m = 1; m <= 12; m += 1) {
+          // Month ticks at the start of a year are redundant when a year tick exists.
+          if (m === 1 && yearTickSet.has(y)) continue;
+
+          const serial = (y * DAYS_PER_YEAR) + ((m - 1) * DAYS_PER_MONTH);
+          monthTicks.push({
+            kind: 'month',
+            isMonth: true,
+            year: y,
+            month: m,
+            topPx: serialToTopPx(serial),
+          });
+        }
+      }
+    }
+
+    const ticks = [...yearTicks, ...monthTicks].sort((a, b) => {
+      if (a.topPx !== b.topPx) return a.topPx - b.topPx;
+      if (a.isYear && !b.isYear) return -1;
+      if (!a.isYear && b.isYear) return 1;
+      return 0;
+    });
 
     const events = rawEvents
       .map((e) => {
@@ -2195,7 +2299,17 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       eventEl.style.top = `${startTopPx}px`;
 
       const side = eventEl.classList.contains('is-left') ? 'left' : 'right';
-      const dx = (side === 'left') ? -EVENT_OFFSET_PX : EVENT_OFFSET_PX;
+
+      let offset = EVENT_OFFSET_PX;
+      try {
+        const raw = globalThis.getComputedStyle?.(eventEl)?.getPropertyValue?.('--sh-event-offset');
+        const n = Number.parseFloat(String(raw ?? '').replace('px', '').trim());
+        if (Number.isFinite(n) && n > 0) offset = n;
+      } catch (_) {
+        // ignore
+      }
+
+      const dx = (side === 'left') ? -offset : offset;
       const angle = (dx < 0) ? 180 : 0;
 
       // Keep range marker aligned to the true start point while dragging.
