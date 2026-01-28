@@ -155,9 +155,9 @@
                     <button
                       type="button"
                       class="sh-tl2__eventIconBtn {{#if e.isPinned}}is-active{{/if}}"
-                      data-action="toggle-pin"
+                      data-action="open-details"
                       data-uuid="{{e.uuid}}"
-                      aria-label="{{#if e.isPinned}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Unpin'}}{{else}}{{localize 'SPACEHOLDER.TimelineV2.Buttons.Pin'}}{{/if}}"
+                      aria-label="{{localize 'SPACEHOLDER.TimelineV2.Groups.Details'}}"
                     >
                       <span class="sh-tl2__eventIcon" aria-hidden="true">
                         {{#if e.iconPath}}

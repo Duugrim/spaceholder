@@ -31,6 +31,12 @@ const TEMPLATE_EDITOR = 'systems/spaceholder/templates/timeline-v2/timeline-v2-e
 const DAYS_PER_MONTH = 30;
 const DAYS_PER_YEAR = 12 * DAYS_PER_MONTH; // 360
 
+function _snapSerialToMonthStart(serial) {
+  const s = Number(serial) || 0;
+  // Month granularity: day 1 of the month.
+  return Math.floor(s / DAYS_PER_MONTH) * DAYS_PER_MONTH;
+}
+
 const CANVAS_PAD_PX = 40;
 const BASE_PX_PER_YEAR = 84;
 
@@ -701,8 +707,7 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
   }
 
   async _openIconPicker() {
-    const f = this._factions.find((x) => x.uuid === this._factionUuid) ?? null;
-    const defaultColor = String(f?.color ?? '').trim() || '#ffffff';
+    const defaultColor = '#ffffff';
 
     const title = game.i18n?.localize?.('SPACEHOLDER.TimelineV2.Buttons.PickIcon')
       || game.i18n?.localize?.('SPACEHOLDER.IconPicker.Title')
@@ -1213,6 +1218,7 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     this._layoutRaf = null;
 
     this._onRootClick = this._onRootClick.bind(this);
+    this._onRootContextMenu = this._onRootContextMenu.bind(this);
     this._onRootChange = this._onRootChange.bind(this);
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerMove = this._onPointerMove.bind(this);
@@ -1975,6 +1981,7 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     if (el.dataset?.shTimelineV2Handlers !== 'true') {
       el.dataset.shTimelineV2Handlers = 'true';
       el.addEventListener('click', this._onRootClick);
+      el.addEventListener('contextmenu', this._onRootContextMenu);
       el.addEventListener('change', this._onRootChange);
       el.addEventListener('pointerdown', this._onPointerDown);
     }
@@ -2107,6 +2114,20 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     }
   }
 
+  async _onRootContextMenu(event) {
+    const btn = event.target?.closest?.('.sh-tl2__eventIconBtn');
+    if (!btn) return;
+
+    const uuid = String(btn.dataset.uuid || '').trim();
+    if (!uuid) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    await toggleTimelineV2EventPinned(uuid);
+    this._renderPreserveScroll();
+  }
+
   async _onRootClick(event) {
     const a = event.target?.closest?.('[data-action]');
     if (!a) return;
@@ -2173,14 +2194,8 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     if (action === 'toggle-pin') {
+      // Legacy: pin/unpin moved to RMB (contextmenu) on the icon.
       event.preventDefault();
-      event.stopPropagation();
-
-      const uuid = String(a.dataset.uuid || '').trim();
-      if (!uuid) return;
-
-      await toggleTimelineV2EventPinned(uuid);
-      this._renderPreserveScroll();
       return;
     }
 
@@ -2282,7 +2297,7 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     event.stopPropagation();
 
     // When floating layout is enabled, markers are not at the exact date position.
-    // For dragging, snap to the real (anchor) position first.
+    // Preserve the original anchor offset; during drag we snap the landing point to months.
     const startAnchorTopPx = Number.parseFloat(String(eventEl.dataset.anchorTop || ''));
     const currentTopPx = Number.parseFloat(String(eventEl.style.top || '0').replace('px', ''));
 
@@ -2294,34 +2309,18 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       ? (startAnchorTopPx - startTopPx)
       : 0;
 
+    const side = eventEl.classList.contains('is-left') ? 'left' : 'right';
+
+    let offset = EVENT_OFFSET_PX;
     try {
-      // Keep the event where it currently is (range pills may be anchored mid-segment).
-      eventEl.style.top = `${startTopPx}px`;
-
-      const side = eventEl.classList.contains('is-left') ? 'left' : 'right';
-
-      let offset = EVENT_OFFSET_PX;
-      try {
-        const raw = globalThis.getComputedStyle?.(eventEl)?.getPropertyValue?.('--sh-event-offset');
-        const n = Number.parseFloat(String(raw ?? '').replace('px', '').trim());
-        if (Number.isFinite(n) && n > 0) offset = n;
-      } catch (_) {
-        // ignore
-      }
-
-      const dx = (side === 'left') ? -offset : offset;
-      const angle = (dx < 0) ? 180 : 0;
-
-      // Keep range marker aligned to the true start point while dragging.
-      eventEl.style.setProperty('--sh-range-startY', `${Math.round(startOffsetPx)}px`);
-
-      // Wire stays horizontal from the current anchor point.
-      eventEl.style.setProperty('--sh-wire-startY', '0px');
-      eventEl.style.setProperty('--sh-wire-length', `${Math.abs(dx)}px`);
-      eventEl.style.setProperty('--sh-wire-angle', `${angle}deg`);
+      const raw = globalThis.getComputedStyle?.(eventEl)?.getPropertyValue?.('--sh-event-offset');
+      const n = Number.parseFloat(String(raw ?? '').replace('px', '').trim());
+      if (Number.isFinite(n) && n > 0) offset = n;
     } catch (_) {
       // ignore
     }
+
+    const dx = (side === 'left') ? -offset : offset;
 
     this._drag = {
       pointerId: event.pointerId,
@@ -2331,7 +2330,40 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       startTopPx,
       startOffsetPx,
       lockedScrollTop: Number.isFinite(lockedScrollTop) ? lockedScrollTop : null,
+      dx,
+      snappedSerial: null,
     };
+
+    try {
+      // Keep the event where it currently is (range pills may be anchored mid-segment).
+      eventEl.style.top = `${startTopPx}px`;
+
+      const meta = this._serialMeta;
+      if (meta && Number.isFinite(meta.pxPerDay) && Number.isFinite(meta.maxBoundSerial) && Number.isFinite(meta.padPx)) {
+        const rawStartTopPx = startTopPx + startOffsetPx;
+        const rawSerial = Math.round(meta.maxBoundSerial - ((rawStartTopPx - meta.padPx) / meta.pxPerDay));
+        const snappedSerial = _snapSerialToMonthStart(rawSerial);
+        const snappedStartTopPx = ((meta.maxBoundSerial - snappedSerial) * meta.pxPerDay) + meta.padPx;
+
+        const wireDy = snappedStartTopPx - startTopPx;
+        const vx = dx;
+        const vy = -wireDy;
+        const len = Math.sqrt((vx * vx) + (vy * vy));
+        const angle = Math.atan2(vy, vx) * (180 / Math.PI);
+
+        this._drag.snappedSerial = snappedSerial;
+
+        // Keep range marker aligned to the snapped start point while dragging.
+        eventEl.style.setProperty('--sh-range-startY', `${Math.round(wireDy)}px`);
+
+        // Wire points to the snapped landing point.
+        eventEl.style.setProperty('--sh-wire-startY', `${Math.round(wireDy)}px`);
+        eventEl.style.setProperty('--sh-wire-length', `${Math.round(len)}px`);
+        eventEl.style.setProperty('--sh-wire-angle', `${angle}deg`);
+      }
+    } catch (_) {
+      // ignore
+    }
 
     try {
       eventEl.classList.add('is-dragging');
@@ -2352,11 +2384,39 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     event.preventDefault();
 
-    const delta = event.clientY - this._drag.startClientY;
-    const nextTop = this._drag.startTopPx + delta;
+    const drag = this._drag;
+    const delta = event.clientY - drag.startClientY;
+    const nextTop = drag.startTopPx + delta;
 
     try {
-      this._drag.eventEl.style.top = `${nextTop}px`;
+      drag.eventEl.style.top = `${nextTop}px`;
+    } catch (_) {
+      // ignore
+    }
+
+    const meta = this._serialMeta;
+    if (!meta || !Number.isFinite(meta.pxPerDay) || !Number.isFinite(meta.maxBoundSerial) || !Number.isFinite(meta.padPx)) return;
+
+    const rawStartTopPx = nextTop + (Number(drag.startOffsetPx) || 0);
+    const rawSerial = Math.round(meta.maxBoundSerial - ((rawStartTopPx - meta.padPx) / meta.pxPerDay));
+    const snappedSerial = _snapSerialToMonthStart(rawSerial);
+    const snappedStartTopPx = ((meta.maxBoundSerial - snappedSerial) * meta.pxPerDay) + meta.padPx;
+
+    const wireDy = snappedStartTopPx - nextTop;
+
+    try {
+      const dx = Number(drag.dx) || 0;
+      const vx = dx;
+      const vy = -wireDy;
+      const len = Math.sqrt((vx * vx) + (vy * vy));
+      const angle = Math.atan2(vy, vx) * (180 / Math.PI);
+
+      drag.snappedSerial = snappedSerial;
+
+      drag.eventEl.style.setProperty('--sh-range-startY', `${Math.round(wireDy)}px`);
+      drag.eventEl.style.setProperty('--sh-wire-startY', `${Math.round(wireDy)}px`);
+      drag.eventEl.style.setProperty('--sh-wire-length', `${Math.round(len)}px`);
+      drag.eventEl.style.setProperty('--sh-wire-angle', `${angle}deg`);
     } catch (_) {
       // ignore
     }
@@ -2401,21 +2461,21 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     const topPx = Number.parseFloat(String(eventEl.style.top || '0').replace('px', ''));
 
-    // Drag position represents the current anchor point (point event start, or range attach point).
-    // Convert back to the real start date using the initial offset.
-    const offsetPx = Number(drag.startOffsetPx) || 0;
-    const startTopPx = topPx + offsetPx;
+    const rawStartTopPx = topPx + (Number(drag.startOffsetPx) || 0);
+    const rawSerial = Math.round(meta.maxBoundSerial - ((rawStartTopPx - meta.padPx) / meta.pxPerDay));
 
-    const serial = Math.round(meta.maxBoundSerial - ((startTopPx - meta.padPx) / meta.pxPerDay));
+    const snappedSerial = Number.isFinite(drag.snappedSerial)
+      ? Number(drag.snappedSerial)
+      : _snapSerialToMonthStart(rawSerial);
 
-    const next = _serialToDate(serial);
+    const next = _serialToDate(snappedSerial);
 
     try {
       await updateTimelineV2EventDate({
         indexUuid: uuid,
         year: next.year,
         month: next.month,
-        day: next.day,
+        day: 1,
       });
     } catch (e) {
       console.error('SpaceHolder | TimelineV2: drag update failed', e);
