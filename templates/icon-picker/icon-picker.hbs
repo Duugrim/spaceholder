@@ -21,25 +21,236 @@
       </div>
     </div>
 
-    <div class="sh-icon-picker__colorRow">
-      <input
-        class="sh-icon-picker__color"
-        type="color"
-        value="{{color}}"
-        data-action="color"
-        aria-label="{{localize 'SPACEHOLDER.IconPicker.Color'}}"
-        data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Color'}}"
-      />
+    <div class="sh-icon-picker__panels">
+      <section class="sh-icon-picker__panel" data-role="panel-icon">
+        <div class="sh-icon-picker__panelTitle">{{localize 'SPACEHOLDER.IconPicker.Sections.Icon'}}</div>
 
-      <input
-        class="sh-icon-picker__colorHex"
-        type="text"
-        value="{{color}}"
-        data-action="color-hex"
-        placeholder="{{localize 'SPACEHOLDER.IconPicker.Placeholders.Hex'}}"
-        aria-label="{{localize 'SPACEHOLDER.IconPicker.Color'}}"
-        data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Hex'}}"
-      />
+        <div class="sh-icon-picker__row">
+          <input
+            class="sh-icon-picker__color"
+            type="color"
+            value="{{color}}"
+            data-action="color"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Color'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Color'}}"
+          />
+
+          <input
+            class="sh-icon-picker__colorHex"
+            type="text"
+            value="{{color}}"
+            data-action="color-hex"
+            placeholder="{{localize 'SPACEHOLDER.IconPicker.Placeholders.Hex'}}"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Color'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Hex'}}"
+          />
+
+          <button
+            type="button"
+            class="icon-btn sh-icon-picker__iconBtn"
+            data-action="set-icon-faction-color"
+            {{#unless hasFactionColor}}disabled{{/unless}}
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.UseFactionColor'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.UseFactionColor'}}"
+          ><i class="fa-solid fa-flag" aria-hidden="true"></i></button>
+
+          <button
+            type="button"
+            class="icon-btn sh-icon-picker__iconBtn"
+            data-action="invert-icon"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.InvertIcon'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.InvertIcon'}}"
+          ><i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i></button>
+
+          <button
+            type="button"
+            class="icon-btn sh-icon-picker__iconBtn"
+            data-action="swap-colors"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.SwapColors'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.SwapColors'}}"
+          ><i class="fa-solid fa-right-left" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="sh-icon-picker__row">
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Icon.Scale'}}">{{localize 'SPACEHOLDER.IconPicker.Icon.Scale'}}</span>
+            <input
+              class="sh-icon-picker__range"
+              type="range"
+              min="25"
+              max="200"
+              step="5"
+              value="{{iconScalePct}}"
+              data-action="icon-scale"
+              aria-label="{{localize 'SPACEHOLDER.IconPicker.Icon.Scale'}}"
+              data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.IconScale'}}"
+            />
+            <input
+              class="sh-icon-picker__number"
+              type="number"
+              min="25"
+              max="200"
+              step="1"
+              value="{{iconScalePct}}"
+              data-action="icon-scale-number"
+              aria-label="{{localize 'SPACEHOLDER.IconPicker.Icon.Scale'}}"
+              data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.IconScale'}}"
+            />
+          </label>
+
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Icon.Opacity'}}">{{localize 'SPACEHOLDER.IconPicker.Icon.Opacity'}}</span>
+            <input class="sh-icon-picker__number" type="number" min="0" max="100" step="5" value="{{iconOpacityPct}}" data-action="icon-opacity" />
+          </label>
+        </div>
+
+        <div class="sh-icon-picker__row">
+          <label class="sh-icon-picker__toggle" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.IconStroke'}}">
+            <input type="checkbox" data-action="icon-stroke-enabled" {{#if iconStrokeEnabled}}checked{{/if}} />
+            <span>{{localize 'SPACEHOLDER.IconPicker.Icon.Stroke'}}</span>
+          </label>
+
+          <input
+            class="sh-icon-picker__color"
+            type="color"
+            value="{{iconStrokeColor}}"
+            data-action="icon-stroke-color"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Icon.StrokeColor'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Icon.StrokeColor'}}"
+          />
+
+          <input
+            class="sh-icon-picker__colorHex"
+            type="text"
+            value="{{iconStrokeColor}}"
+            data-action="icon-stroke-color-hex"
+            placeholder="{{localize 'SPACEHOLDER.IconPicker.Placeholders.Hex'}}"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Icon.StrokeColor'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Hex'}}"
+          />
+
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Icon.StrokeWidth'}}">{{localize 'SPACEHOLDER.IconPicker.Icon.StrokeWidth'}}</span>
+            <input class="sh-icon-picker__number" type="number" min="0" max="50" step="1" value="{{iconStrokeWidthPct}}" data-action="icon-stroke-width" />
+          </label>
+
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Icon.StrokeOpacity'}}">{{localize 'SPACEHOLDER.IconPicker.Icon.StrokeOpacity'}}</span>
+            <input class="sh-icon-picker__number" type="number" min="0" max="100" step="5" value="{{iconStrokeOpacityPct}}" data-action="icon-stroke-opacity" />
+          </label>
+        </div>
+      </section>
+
+      <section class="sh-icon-picker__panel" data-role="panel-bg">
+        <div class="sh-icon-picker__panelTitle">{{localize 'SPACEHOLDER.IconPicker.Sections.Background'}}</div>
+
+        <div class="sh-icon-picker__row">
+          <label class="sh-icon-picker__toggle" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.BackgroundEnabled'}}">
+            <input type="checkbox" data-action="bg-enabled" {{#if bgEnabled}}checked{{/if}} />
+            <span>{{localize 'SPACEHOLDER.IconPicker.Background.Enabled'}}</span>
+          </label>
+
+          <input
+            class="sh-icon-picker__color"
+            type="color"
+            value="{{bgColor}}"
+            data-action="bg-color"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Background.Color'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.Color'}}"
+          />
+          <input
+            class="sh-icon-picker__colorHex"
+            type="text"
+            value="{{bgColor}}"
+            data-action="bg-color-hex"
+            placeholder="{{localize 'SPACEHOLDER.IconPicker.Placeholders.Hex'}}"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Background.Color'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Hex'}}"
+          />
+
+          <button
+            type="button"
+            class="icon-btn sh-icon-picker__iconBtn"
+            data-action="set-bg-faction-color"
+            {{#unless hasFactionColor}}disabled{{/unless}}
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.UseFactionColor'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.UseFactionColor'}}"
+          ><i class="fa-solid fa-flag" aria-hidden="true"></i></button>
+
+          <button
+            type="button"
+            class="icon-btn sh-icon-picker__iconBtn"
+            data-action="invert-bg"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.InvertBackground'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.InvertBackground'}}"
+          ><i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="sh-icon-picker__row">
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.Shape'}}">{{localize 'SPACEHOLDER.IconPicker.Background.Shape'}}</span>
+            <select class="sh-icon-picker__select" data-action="bg-shape">
+              <option value="square" {{#if (eq bgShape 'square')}}selected{{/if}}>{{localize 'SPACEHOLDER.IconPicker.Background.Shapes.Square'}}</option>
+              <option value="rounded" {{#if (eq bgShape 'rounded')}}selected{{/if}}>{{localize 'SPACEHOLDER.IconPicker.Background.Shapes.Rounded'}}</option>
+              <option value="circle" {{#if (eq bgShape 'circle')}}selected{{/if}}>{{localize 'SPACEHOLDER.IconPicker.Background.Shapes.Circle'}}</option>
+              <option value="hex" {{#if (eq bgShape 'hex')}}selected{{/if}}>{{localize 'SPACEHOLDER.IconPicker.Background.Shapes.Hex'}}</option>
+            </select>
+          </label>
+
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.Inset'}}">{{localize 'SPACEHOLDER.IconPicker.Background.Inset'}}</span>
+            <input class="sh-icon-picker__number" type="number" min="0" max="49" step="1" value="{{bgInsetPct}}" data-action="bg-inset" />
+          </label>
+
+          {{#if (eq bgShape 'rounded')}}
+            <label class="sh-icon-picker__field">
+              <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.Radius'}}">{{localize 'SPACEHOLDER.IconPicker.Background.Radius'}}</span>
+              <input class="sh-icon-picker__number" type="number" min="0" max="50" step="1" value="{{bgRadiusPct}}" data-action="bg-radius" />
+            </label>
+          {{/if}}
+
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.Opacity'}}">{{localize 'SPACEHOLDER.IconPicker.Background.Opacity'}}</span>
+            <input class="sh-icon-picker__number" type="number" min="0" max="100" step="5" value="{{bgOpacityPct}}" data-action="bg-opacity" />
+          </label>
+        </div>
+
+        <div class="sh-icon-picker__row">
+          <label class="sh-icon-picker__toggle" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.BackgroundStroke'}}">
+            <input type="checkbox" data-action="bg-stroke-enabled" {{#if bgStrokeEnabled}}checked{{/if}} />
+            <span>{{localize 'SPACEHOLDER.IconPicker.Background.Stroke'}}</span>
+          </label>
+
+          <input
+            class="sh-icon-picker__color"
+            type="color"
+            value="{{bgStrokeColor}}"
+            data-action="bg-stroke-color"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Background.StrokeColor'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.StrokeColor'}}"
+          />
+
+          <input
+            class="sh-icon-picker__colorHex"
+            type="text"
+            value="{{bgStrokeColor}}"
+            data-action="bg-stroke-color-hex"
+            placeholder="{{localize 'SPACEHOLDER.IconPicker.Placeholders.Hex'}}"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Background.StrokeColor'}}"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Hex'}}"
+          />
+
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.StrokeWidth'}}">{{localize 'SPACEHOLDER.IconPicker.Background.StrokeWidth'}}</span>
+            <input class="sh-icon-picker__number" type="number" min="0" max="50" step="1" value="{{bgStrokeWidthPct}}" data-action="bg-stroke-width" />
+          </label>
+
+          <label class="sh-icon-picker__field">
+            <span class="sh-icon-picker__label" data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Background.StrokeOpacity'}}">{{localize 'SPACEHOLDER.IconPicker.Background.StrokeOpacity'}}</span>
+            <input class="sh-icon-picker__number" type="number" min="0" max="100" step="5" value="{{bgStrokeOpacityPct}}" data-action="bg-stroke-opacity" />
+          </label>
+        </div>
+      </section>
     </div>
 
     <div class="sh-icon-picker__actions">
@@ -63,7 +274,9 @@
         data-role="preview-thumb"
         data-src="{{previewUrl}}"
         aria-hidden="true"
-      ></div>
+      >
+        <img class="sh-icon-picker__thumbImg" data-role="preview-img" alt="" />
+      </div>
     {{else}}
       <div class="sh-icon-picker__empty" data-role="empty">
         {{localize 'SPACEHOLDER.IconPicker.Empty'}}

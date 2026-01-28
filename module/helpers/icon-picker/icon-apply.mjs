@@ -106,11 +106,24 @@ export async function pickAndApplyIconToActorOrToken({
   root = null,
   defaultColor = '#ffffff',
   title = null,
+  factionColor = null,
 } = {}) {
   const target = _normalizeApplyTo(applyTo);
   if (!target) return null;
 
-  const picked = await pickIcon({ root, defaultColor, title });
+  // Try to open the currently assigned icon for editing.
+  let initialPath = null;
+  try {
+    if (target === 'token') {
+      initialPath = String((tokenDoc?.texture?.src) ?? actor?.prototypeToken?.texture?.src ?? '').trim() || null;
+    } else {
+      initialPath = String(actor?.img ?? '').trim() || null;
+    }
+  } catch (_) {
+    initialPath = null;
+  }
+
+  const picked = await pickIcon({ root, defaultColor, title, factionColor, initialPath });
   if (!picked) return null;
 
   try {
@@ -129,6 +142,7 @@ export async function promptPickAndApplyIconToActorOrToken({
   root = null,
   defaultColor = '#ffffff',
   title = null,
+  factionColor = null,
 } = {}) {
   const applyTo = await promptIconApplyTarget();
   if (!applyTo) return null;
@@ -140,5 +154,6 @@ export async function promptPickAndApplyIconToActorOrToken({
     root,
     defaultColor,
     title,
+    factionColor,
   });
 }

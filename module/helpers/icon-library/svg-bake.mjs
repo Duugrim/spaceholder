@@ -3,8 +3,26 @@
 
 import { ensureIconLibraryDirs, getIconLibraryDirs } from './icon-library.mjs';
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 function _trimSlash(path) {
   return String(path ?? '').trim().replace(/\/+$/g, '');
+}
+
+function _clamp01(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 1;
+  if (x < 0) return 0;
+  if (x > 1) return 1;
+  return x;
+}
+
+function _clamp(n, min, max) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return min;
+  if (x < min) return min;
+  if (x > max) return max;
+  return x;
 }
 
 export function normalizeHexColor(raw, fallback = '#ffffff') {
@@ -32,10 +50,85 @@ function _toFetchUrl(path) {
   return `/${p}`;
 }
 
-export function computeBakeHash({ srcPath, color = '#ffffff', version = 'v1' } = {}) {
+function _normalizePct(raw, { fallback = 0, min = 0, max = 100 } = {}) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return _clamp(n, min, max);
+}
+
+function _normalizeShape(raw) {
+  const s = String(raw ?? '').trim().toLowerCase();
+  if (s === 'square' || s === 'rounded' || s === 'circle' || s === 'hex') return s;
+  return 'square';
+}
+
+function _stableBakeOpts(opts) {
+  const o = opts ?? {};
+  const icon = o.icon ?? {};
+  const bg = o.background ?? {};
+  const iconStroke = icon.stroke ?? {};
+  const bgStroke = bg.stroke ?? {};
+
+  return {
+    icon: {
+      color: normalizeHexColor(icon.color, '#ffffff'),
+      opacity: _clamp01(icon.opacity ?? 1),
+      scalePct: _normalizePct(icon.scalePct, { fallback: 100, min: 25, max: 200 }),
+      stroke: {
+        enabled: Boolean(iconStroke.enabled),
+        color: normalizeHexColor(iconStroke.color, '#000000'),
+        widthPct: _normalizePct(iconStroke.widthPct, { fallback: 4, min: 0, max: 50 }),
+        opacity: _clamp01(iconStroke.opacity ?? 1),
+      },
+    },
+    background: {
+      enabled: Boolean(bg.enabled),
+      shape: _normalizeShape(bg.shape),
+      color: normalizeHexColor(bg.color, '#000000'),
+      opacity: _clamp01(bg.opacity ?? 1),
+      insetPct: _normalizePct(bg.insetPct, { fallback: 0, min: 0, max: 49 }),
+      radiusPct: _normalizePct(bg.radiusPct, { fallback: 18, min: 0, max: 50 }),
+      stroke: {
+        enabled: Boolean(bgStroke.enabled),
+        color: normalizeHexColor(bgStroke.color, '#ffffff'),
+        widthPct: _normalizePct(bgStroke.widthPct, { fallback: 2, min: 0, max: 50 }),
+        opacity: _clamp01(bgStroke.opacity ?? 1),
+      },
+    },
+  };
+}
+
+export function normalizeBakeOptions(raw, { fallbackColor = '#ffffff' } = {}) {
+  if (!raw || typeof raw !== 'object') {
+    return _stableBakeOpts({ icon: { color: normalizeHexColor(fallbackColor) } });
+  }
+
+  // Legacy: allow {color:"#rrggbb"}
+  if (typeof raw?.color === 'string' && !raw?.icon) {
+    return _stableBakeOpts({ icon: { color: normalizeHexColor(raw.color, fallbackColor) } });
+  }
+
+  const opts = _stableBakeOpts(raw);
+  // Ensure icon.color always present.
+  opts.icon.color = normalizeHexColor(opts.icon.color, normalizeHexColor(fallbackColor));
+  return opts;
+}
+
+function _bakeOptsDigest(opts) {
+  // Small schema => fixed key order. This becomes part of the hash string.
+  return JSON.stringify(_stableBakeOpts(opts));
+}
+
+export function computeBakeHash({ srcPath, color = '#ffffff', opts = null, version = 'v1' } = {}) {
   const src = String(srcPath ?? '').trim();
-  const c = normalizeHexColor(color);
   const v = String(version ?? 'v1').trim() || 'v1';
+
+  if (opts) {
+    const n = normalizeBakeOptions(opts, { fallbackColor: color });
+    return _fnv1a32Hex(`${v}|${src}|${_bakeOptsDigest(n)}`);
+  }
+
+  const c = normalizeHexColor(color);
   return _fnv1a32Hex(`${v}|${src}|${c}`);
 }
 
@@ -51,42 +144,20 @@ export function extractBakeMeta(svgText) {
     const parsed = JSON.parse(decodeURIComponent(dataRaw));
     const srcPath = String(parsed?.src ?? '').trim();
     const color = String(parsed?.color ?? '').trim();
+    const opts = (parsed?.opts && typeof parsed.opts === 'object') ? parsed.opts : null;
+
     return {
       version,
       srcPath,
       color: /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : color,
+      opts: opts ? normalizeBakeOptions(opts, { fallbackColor: color }) : null,
     };
   } catch (_) {
     return { version };
   }
 }
 
-function _buildBakeMetaComment({ srcPath, color, version = 'v1' } = {}) {
-  const payload = {
-    src: String(srcPath ?? '').trim(),
-    color: normalizeHexColor(color),
-  };
-
-  // encodeURIComponent avoids forbidden "--" sequences in XML comments.
-  const data = encodeURIComponent(JSON.stringify(payload));
-  const v = String(version ?? 'v1').trim() || 'v1';
-  return `spaceholder-bake:${v} data=${data}`;
-}
-
-function _injectBakeMeta(svgText, { srcPath, color, version = 'v1' } = {}) {
-  const raw = String(svgText ?? '');
-
-  let doc = null;
-  try {
-    doc = new DOMParser().parseFromString(raw, 'image/svg+xml');
-  } catch (_) {
-    return raw;
-  }
-
-  const svg = doc?.querySelector?.('svg');
-  if (!svg) return raw;
-
-  // Remove previous bake comments if any.
+function _removeBakeComments(svg) {
   try {
     const nodes = Array.from(svg.childNodes || []);
     for (const n of nodes) {
@@ -99,9 +170,66 @@ function _injectBakeMeta(svgText, { srcPath, color, version = 'v1' } = {}) {
   } catch (_) {
     // ignore
   }
+}
+
+function _buildBakeMetaComment({ srcPath, opts, version = 'v2' } = {}) {
+  const normalized = normalizeBakeOptions(opts);
+  const payload = {
+    src: String(srcPath ?? '').trim(),
+    color: normalized.icon.color,
+    opts: normalized,
+  };
+
+  // encodeURIComponent avoids forbidden "--" sequences in XML comments.
+  const data = encodeURIComponent(JSON.stringify(payload));
+  const v = String(version ?? 'v2').trim() || 'v2';
+  return `spaceholder-bake:${v} data=${data}`;
+}
+
+function _injectBakeMetaToDoc(doc, svg, { srcPath, opts, version = 'v2' } = {}) {
+  if (!doc || !svg) return;
+  _removeBakeComments(svg);
 
   try {
-    const comment = doc.createComment(_buildBakeMetaComment({ srcPath, color, version }));
+    const comment = doc.createComment(_buildBakeMetaComment({ srcPath, opts, version }));
+    svg.insertBefore(comment, svg.firstChild);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function _buildBakeMetaCommentV1({ srcPath, color, version = 'v1' } = {}) {
+  const payload = {
+    src: String(srcPath ?? '').trim(),
+    color: normalizeHexColor(color),
+  };
+
+  const data = encodeURIComponent(JSON.stringify(payload));
+  const v = String(version ?? 'v1').trim() || 'v1';
+  return `spaceholder-bake:${v} data=${data}`;
+}
+
+function _injectBakeMetaV1(svgText, { srcPath, color } = {}) {
+  const raw = String(svgText ?? '');
+
+  let doc = null;
+  try {
+    doc = new DOMParser().parseFromString(raw, 'image/svg+xml');
+  } catch (_) {
+    return raw;
+  }
+
+  const svg = doc?.querySelector?.('svg');
+  if (!svg) return raw;
+
+  if (!svg.getAttribute('xmlns')) {
+    svg.setAttribute('xmlns', SVG_NS);
+  }
+
+  _removeBakeComments(svg);
+
+  try {
+    const comment = doc.createComment(_buildBakeMetaCommentV1({ srcPath, color, version: 'v1' }));
     svg.insertBefore(comment, svg.firstChild);
     return new XMLSerializer().serializeToString(svg);
   } catch (_) {
@@ -393,7 +521,7 @@ export function recolorSvg(svgText, { color = '#ffffff' } = {}) {
 
   // Ensure xmlns for safety
   if (!svg.getAttribute('xmlns')) {
-    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svg.setAttribute('xmlns', SVG_NS);
   }
 
   // Default fill at root helps cover elements without explicit fill.
@@ -445,15 +573,317 @@ export function recolorSvg(svgText, { color = '#ffffff' } = {}) {
   }
 }
 
+function _ensureXmlns(svg) {
+  if (!svg) return;
+  if (!svg.getAttribute('xmlns')) {
+    svg.setAttribute('xmlns', SVG_NS);
+  }
+}
+
+function _createSvgEl(doc, tag) {
+  try {
+    return doc.createElementNS(SVG_NS, tag);
+  } catch (_) {
+    return doc.createElement(tag);
+  }
+}
+
+function _wrapIconInGroup(doc, svg) {
+  if (!doc || !svg) return null;
+
+  const existing = svg.querySelector?.('g[data-sh-role="icon"]');
+  if (existing) return existing;
+
+  const group = _createSvgEl(doc, 'g');
+  group.setAttribute('data-sh-role', 'icon');
+  group.setAttribute('id', 'sh-icon');
+
+  const nodes = Array.from(svg.childNodes || []);
+  let moved = 0;
+
+  for (const n of nodes) {
+    if (n?.nodeType !== 1) continue; // element only
+    const tag = String(n.tagName ?? '').toLowerCase();
+    if (tag === 'defs' || tag === 'metadata' || tag === 'title' || tag === 'desc') continue;
+    try { group.appendChild(n); moved++; } catch (_) { /* ignore */ }
+  }
+
+  if (!moved) return null;
+
+  try {
+    svg.appendChild(group);
+    return group;
+  } catch (_) {
+    return null;
+  }
+}
+
+function _recolorSvgSubtree(rootEl, { color } = {}) {
+  const fillColor = normalizeHexColor(color);
+  if (!rootEl?.querySelectorAll) return;
+
+  // Default fill at group helps cover elements without explicit fill.
+  try { rootEl.setAttribute('fill', fillColor); } catch (_) { /* ignore */ }
+
+  const selector = [
+    'path', 'circle', 'rect', 'ellipse', 'polygon', 'polyline', 'line',
+  ].join(',');
+
+  const els = rootEl.querySelectorAll(selector);
+  for (const el of els) {
+    if (!el?.getAttribute) continue;
+
+    // Skip generated background.
+    if (String(el.getAttribute('data-sh-role') ?? '') === 'bg') continue;
+
+    const styleRaw = el.getAttribute('style');
+    if (styleRaw) {
+      const map = _parseStyle(styleRaw);
+      const fillV = String(map.fill ?? '').trim().toLowerCase();
+      if (!fillV || fillV !== 'none') {
+        map.fill = fillColor;
+      }
+      const strokeV = String(map.stroke ?? '').trim().toLowerCase();
+      if (strokeV && strokeV !== 'none') {
+        map.stroke = fillColor;
+      }
+      el.setAttribute('style', _serializeStyle(map));
+    }
+
+    const fillAttr = el.getAttribute('fill');
+    if (fillAttr === null) {
+      el.setAttribute('fill', fillColor);
+    } else {
+      const fv = String(fillAttr).trim().toLowerCase();
+      if (fv !== 'none') el.setAttribute('fill', fillColor);
+    }
+
+    if (el.hasAttribute('stroke')) {
+      const sv = String(el.getAttribute('stroke') ?? '').trim().toLowerCase();
+      if (sv !== 'none') el.setAttribute('stroke', fillColor);
+    }
+  }
+}
+
+function _applyStrokeToSubtree(rootEl, { color, width, opacity } = {}) {
+  if (!rootEl?.querySelectorAll) return;
+
+  const strokeColor = normalizeHexColor(color, '#000000');
+  const w = Number(width);
+  if (!Number.isFinite(w) || w <= 0) return;
+  const a = _clamp01(opacity ?? 1);
+
+  const selector = [
+    'path', 'circle', 'rect', 'ellipse', 'polygon', 'polyline', 'line',
+  ].join(',');
+
+  const els = rootEl.querySelectorAll(selector);
+  for (const el of els) {
+    if (!el?.setAttribute) continue;
+    if (String(el.getAttribute('data-sh-role') ?? '') === 'bg') continue;
+
+    el.setAttribute('stroke', strokeColor);
+    el.setAttribute('stroke-width', String(w));
+    el.setAttribute('stroke-linejoin', 'round');
+    el.setAttribute('stroke-linecap', 'round');
+    el.setAttribute('stroke-opacity', String(a));
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+
+    // Ensure stroke is rendered above fill.
+    const styleRaw = el.getAttribute('style');
+    const map = _parseStyle(styleRaw);
+    map['paint-order'] = 'stroke fill';
+    el.setAttribute('style', _serializeStyle(map));
+  }
+}
+
+function _computeViewBoxOrFallback(svg) {
+  const vb = _parseViewBox(svg);
+  if (vb) return vb;
+  return { minX: 0, minY: 0, width: 100, height: 100 };
+}
+
+function _insertBackground(doc, svg, iconGroup, vb, bg) {
+  if (!doc || !svg || !bg?.enabled) return null;
+
+  const minDim = Math.min(vb.width, vb.height);
+  const inset = minDim * (Number(bg.insetPct) / 100);
+  const x = vb.minX + inset;
+  const y = vb.minY + inset;
+  const w = Math.max(0, vb.width - 2 * inset);
+  const h = Math.max(0, vb.height - 2 * inset);
+
+  const shape = _normalizeShape(bg.shape);
+
+  let el = null;
+  if (shape === 'circle') {
+    el = _createSvgEl(doc, 'circle');
+    el.setAttribute('cx', String(vb.minX + vb.width / 2));
+    el.setAttribute('cy', String(vb.minY + vb.height / 2));
+    el.setAttribute('r', String(Math.max(0, (Math.min(vb.width, vb.height) / 2) - inset)));
+  } else if (shape === 'hex') {
+    el = _createSvgEl(doc, 'polygon');
+    const pts = [
+      [x + w * 0.25, y],
+      [x + w * 0.75, y],
+      [x + w, y + h / 2],
+      [x + w * 0.75, y + h],
+      [x + w * 0.25, y + h],
+      [x, y + h / 2],
+    ].map(([px, py]) => `${px},${py}`).join(' ');
+    el.setAttribute('points', pts);
+  } else {
+    // square / rounded
+    el = _createSvgEl(doc, 'rect');
+    el.setAttribute('x', String(x));
+    el.setAttribute('y', String(y));
+    el.setAttribute('width', String(w));
+    el.setAttribute('height', String(h));
+
+    if (shape === 'rounded') {
+      const rBase = minDim * (Number(bg.radiusPct) / 100);
+      const r = Math.max(0, Math.min(rBase, w / 2, h / 2));
+      el.setAttribute('rx', String(r));
+      el.setAttribute('ry', String(r));
+    }
+  }
+
+  if (!el) return null;
+
+  el.setAttribute('id', 'sh-bg');
+  el.setAttribute('data-sh-role', 'bg');
+  el.setAttribute('fill', normalizeHexColor(bg.color, '#000000'));
+  el.setAttribute('fill-opacity', String(_clamp01(bg.opacity ?? 1)));
+
+  // Optional background stroke.
+  if (bg.stroke?.enabled) {
+    const sw = minDim * (Number(bg.stroke.widthPct) / 100);
+    if (sw > 0) {
+      el.setAttribute('stroke', normalizeHexColor(bg.stroke.color, '#ffffff'));
+      el.setAttribute('stroke-width', String(sw));
+      el.setAttribute('stroke-linejoin', 'round');
+      el.setAttribute('stroke-linecap', 'round');
+      el.setAttribute('stroke-opacity', String(_clamp01(bg.stroke.opacity ?? 1)));
+      el.setAttribute('vector-effect', 'non-scaling-stroke');
+    }
+  }
+
+  try {
+    if (iconGroup && iconGroup.parentNode === svg) {
+      svg.insertBefore(el, iconGroup);
+    } else {
+      svg.insertBefore(el, svg.firstChild);
+    }
+  } catch (_) {
+    try { svg.appendChild(el); } catch (_) { /* ignore */ }
+  }
+
+  return el;
+}
+
+function _isLegacyEquivalent(opts) {
+  const o = normalizeBakeOptions(opts);
+  return !o.background.enabled
+    && !o.icon.stroke.enabled
+    && _clamp01(o.icon.opacity) === 1
+    && Number(o.icon.scalePct ?? 100) === 100;
+}
+
+export function buildBakedSvgText(srcSvgText, {
+  srcPath = '',
+  opts = null,
+  version = 'v2',
+  includeMeta = false,
+} = {}) {
+  const normalized = normalizeBakeOptions(opts);
+
+  // Start by stripping "native" bg.
+  const cleanedText = stripSvgBackground(srcSvgText);
+
+  let doc = null;
+  try {
+    doc = new DOMParser().parseFromString(String(cleanedText ?? ''), 'image/svg+xml');
+  } catch (_) {
+    return String(cleanedText ?? srcSvgText ?? '');
+  }
+
+  const svg = doc?.querySelector?.('svg');
+  if (!svg) return String(cleanedText ?? srcSvgText ?? '');
+
+  _ensureXmlns(svg);
+
+  const vb = _computeViewBoxOrFallback(svg);
+
+  // Wrap existing icon into a group so we can apply icon opacity without touching bg.
+  const iconGroup = _wrapIconInGroup(doc, svg) ?? svg;
+
+  // Recolor icon.
+  _recolorSvgSubtree(iconGroup, { color: normalized.icon.color });
+
+  // Insert background (if enabled) before applying strokes, so strokes can target bg separately.
+  _insertBackground(doc, svg, (iconGroup === svg) ? null : iconGroup, vb, normalized.background);
+
+  // Icon scale (around viewBox center). Only safe when icon is wrapped in its own group.
+  if (iconGroup !== svg) {
+    const sp = Number(normalized.icon.scalePct ?? 100);
+    if (Number.isFinite(sp) && sp > 0 && sp !== 100) {
+      const s = sp / 100;
+      const cx = vb.minX + vb.width / 2;
+      const cy = vb.minY + vb.height / 2;
+      const old = String(iconGroup.getAttribute('transform') ?? '').trim();
+      const t = `translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`;
+      try {
+        iconGroup.setAttribute('transform', old ? `${old} ${t}` : t);
+      } catch (_) {
+        // ignore
+      }
+    }
+  }
+
+  // Icon stroke.
+  if (normalized.icon.stroke?.enabled) {
+    const minDim = Math.min(vb.width, vb.height);
+    const sw = minDim * (Number(normalized.icon.stroke.widthPct) / 100);
+    _applyStrokeToSubtree(iconGroup, {
+      color: normalized.icon.stroke.color,
+      width: sw,
+      opacity: normalized.icon.stroke.opacity,
+    });
+  }
+
+  // Icon opacity.
+  if (iconGroup !== svg) {
+    try { iconGroup.setAttribute('opacity', String(_clamp01(normalized.icon.opacity))); } catch (_) { /* ignore */ }
+  }
+
+  if (includeMeta) {
+    if (_isLegacyEquivalent(normalized) && String(version) === 'v1') {
+      // v1: keep legacy meta shape.
+      return _injectBakeMetaV1(new XMLSerializer().serializeToString(svg), {
+        srcPath,
+        color: normalized.icon.color,
+      });
+    }
+
+    _injectBakeMetaToDoc(doc, svg, { srcPath, opts: normalized, version });
+  }
+
+  try {
+    return new XMLSerializer().serializeToString(svg);
+  } catch (_) {
+    return String(cleanedText ?? srcSvgText ?? '');
+  }
+}
+
 /**
  * Bake a recolored SVG to the icon library generated/ folder.
  * @returns {Promise<string>} destPath
  */
-export async function bakeSvgToGenerated({ srcPath, color = '#ffffff', root = null } = {}) {
+export async function bakeSvgToGenerated({ srcPath, color = '#ffffff', opts = null, root = null } = {}) {
   const src = String(srcPath ?? '').trim();
   if (!src) throw new Error('Missing srcPath');
 
-  const c = normalizeHexColor(color);
+  const normalized = normalizeBakeOptions(opts ?? { icon: { color } }, { fallbackColor: color });
 
   await ensureIconLibraryDirs({ root });
   const { generated } = getIconLibraryDirs({ root });
@@ -468,16 +898,29 @@ export async function bakeSvgToGenerated({ srcPath, color = '#ffffff', root = nu
     throw new Error(`Failed to fetch SVG: ${e?.message ?? e}`);
   }
 
-  // Remove background squares if present, then recolor.
-  const cleaned = stripSvgBackground(svgText);
-  const baked0 = recolorSvg(cleaned, { color: c });
-  const baked = _injectBakeMeta(baked0, { srcPath: src, color: c, version: 'v1' });
+  // Legacy-equivalent => keep v1 file identity to avoid duplicating existing generated icons.
+  const useLegacy = _isLegacyEquivalent(normalized);
+
+  const baked = useLegacy
+    ? _injectBakeMetaV1(recolorSvg(stripSvgBackground(svgText), { color: normalized.icon.color }), {
+      srcPath: src,
+      color: normalized.icon.color,
+    })
+    : buildBakedSvgText(svgText, {
+      srcPath: src,
+      opts: normalized,
+      version: 'v2',
+      includeMeta: true,
+    });
 
   const fileNameRaw = src.split('/').pop() ?? 'icon.svg';
   const base = _slugify(fileNameRaw);
 
-  const hash = computeBakeHash({ srcPath: src, color: c, version: 'v1' });
-  const colorToken = c.slice(1);
+  const hash = useLegacy
+    ? computeBakeHash({ srcPath: src, color: normalized.icon.color, version: 'v1' })
+    : computeBakeHash({ srcPath: src, opts: normalized, color: normalized.icon.color, version: 'v2' });
+
+  const colorToken = normalizeHexColor(normalized.icon.color).slice(1);
   const fileName = `${base}__${colorToken}__${hash}.svg`;
 
   // Upload (overwrite to keep deterministic file stable even if algo changes)

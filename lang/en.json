@@ -64,7 +64,45 @@
         "Open": "Choose icon",
         "Color": "Pick color",
         "Hex": "Hex (#rrggbb)",
-        "Refresh": "Refresh list"
+        "Refresh": "Refresh list",
+        "SwapColors": "Swap icon/background colors",
+        "InvertIcon": "Invert icon color",
+        "InvertBackground": "Invert background color",
+        "UseFactionColor": "Use faction color",
+        "IconScale": "Icon size",
+        "BackgroundEnabled": "Toggle background",
+        "BackgroundStroke": "Background stroke",
+        "IconStroke": "Icon stroke"
+      },
+      "Sections": {
+        "Background": "Background",
+        "Icon": "Icon"
+      },
+      "Background": {
+        "Enabled": "Background",
+        "Color": "Background color",
+        "Shape": "Shape",
+        "Inset": "Inset (%)",
+        "Radius": "Radius (%)",
+        "Opacity": "Opacity (%)",
+        "Stroke": "Stroke",
+        "StrokeColor": "Stroke color",
+        "StrokeWidth": "Stroke width (%)",
+        "StrokeOpacity": "Stroke opacity (%)",
+        "Shapes": {
+          "Square": "Square",
+          "Rounded": "Rounded",
+          "Circle": "Circle",
+          "Hex": "Hex"
+        }
+      },
+      "Icon": {
+        "Scale": "Size (%)",
+        "Stroke": "Stroke",
+        "StrokeColor": "Stroke color",
+        "StrokeWidth": "Stroke width (%)",
+        "StrokeOpacity": "Stroke opacity (%)",
+        "Opacity": "Opacity (%)"
       },
       "ApplyDialog": {
         "Title": "Apply icon",

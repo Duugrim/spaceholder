@@ -102,6 +102,77 @@
     width: 110px;
   }
 
+  .sh-icon-picker__iconBtn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sh-icon-picker__panels {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sh-icon-picker__panel {
+    padding: 10px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+    background: var(--sh-surface-1);
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sh-icon-picker__panelTitle {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sh-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .sh-icon-picker__row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .sh-icon-picker__toggle {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .sh-icon-picker__field {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .sh-icon-picker__label {
+    font-size: 12px;
+    color: var(--sh-text-dim);
+  }
+
+  .sh-icon-picker__number {
+    width: 72px;
+  }
+
+  .sh-icon-picker__range {
+    width: 160px;
+  }
+
+  .sh-icon-picker__select {
+    min-width: 140px;
+  }
+
   .sh-icon-picker__actions {
     display: flex;
     gap: 8px;
@@ -129,26 +200,27 @@
     width: 52px;
     height: 52px;
 
-    // Per-thumb vars (so changing color doesn't recolor the whole window)
-    --sh-icon-color: #ffffff;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+    background: var(--sh-surface-1);
 
-    background: var(--sh-icon-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    -webkit-mask-image: var(--sh-icon-url);
-    mask-image: var(--sh-icon-url);
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    mask-position: center;
-    -webkit-mask-size: contain;
-    mask-size: contain;
-
-    opacity: 0.95;
+    opacity: 0.98;
 
     &.is-large {
       width: 180px;
       height: 180px;
     }
+  }
+
+  .sh-icon-picker__thumbImg {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
   }
 
   .sh-icon-picker__empty {

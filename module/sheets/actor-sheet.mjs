@@ -841,10 +841,50 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const actor = this.document;
     const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
 
+    const normalizeHex = (raw) => {
+      const s = String(raw ?? '').trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(s)) return s.toLowerCase();
+      const m3 = s.match(/^#([0-9a-fA-F]{3})$/);
+      if (m3) {
+        const h = m3[1];
+        return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`.toLowerCase();
+      }
+      return '';
+    };
+
+    let factionColor = '';
+    factionColor = normalizeHex(actor?.system?.fColor);
+
+    if (!factionColor) {
+      // GlobalObject: some sheets compute faction color from system.gFaction via InfluenceManager.
+      try {
+        const cssColor = this._getFactionColorCss?.(actor?.system);
+        factionColor = normalizeHex(cssColor);
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    if (!factionColor) {
+      // Fallback: if gFaction is an UUID of an Actor(faction), try resolve it.
+      const factionUuid = String(actor?.system?.gFaction ?? '').trim();
+      if (factionUuid) {
+        try {
+          const doc = await fromUuid(factionUuid);
+          if (doc?.documentName === 'Actor' && doc?.type === 'faction') {
+            factionColor = normalizeHex(doc?.system?.fColor);
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+
     const picked = await promptPickAndApplyIconToActorOrToken({
       actor,
       tokenDoc,
       defaultColor: '#ffffff',
+      factionColor: factionColor || null,
     });
 
     if (picked) {

@@ -4361,6 +4361,75 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .spaceholder .sh-icon-picker__colorHex {
   width: 110px;
 }
+.window-app.spaceholder .sh-icon-picker__iconBtn,
+.spaceholder .sh-icon-picker__iconBtn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.window-app.spaceholder .sh-icon-picker__panels,
+.spaceholder .sh-icon-picker__panels {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.window-app.spaceholder .sh-icon-picker__panel,
+.spaceholder .sh-icon-picker__panel {
+  padding: 10px;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: var(--sh-surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.window-app.spaceholder .sh-icon-picker__panelTitle,
+.spaceholder .sh-icon-picker__panelTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sh-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.window-app.spaceholder .sh-icon-picker__row,
+.spaceholder .sh-icon-picker__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder .sh-icon-picker__toggle,
+.spaceholder .sh-icon-picker__toggle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.window-app.spaceholder .sh-icon-picker__field,
+.spaceholder .sh-icon-picker__field {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.window-app.spaceholder .sh-icon-picker__label,
+.spaceholder .sh-icon-picker__label {
+  font-size: 12px;
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .sh-icon-picker__number,
+.spaceholder .sh-icon-picker__number {
+  width: 72px;
+}
+.window-app.spaceholder .sh-icon-picker__range,
+.spaceholder .sh-icon-picker__range {
+  width: 160px;
+}
+.window-app.spaceholder .sh-icon-picker__select,
+.spaceholder .sh-icon-picker__select {
+  min-width: 140px;
+}
 .window-app.spaceholder .sh-icon-picker__actions,
 .spaceholder .sh-icon-picker__actions {
   display: flex;
@@ -4386,22 +4455,25 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .spaceholder .sh-icon-picker__thumb {
   width: 52px;
   height: 52px;
-  --sh-icon-color: #ffffff;
-  background: var(--sh-icon-color);
-  -webkit-mask-image: var(--sh-icon-url);
-  mask-image: var(--sh-icon-url);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  opacity: 0.95;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: var(--sh-surface-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.98;
 }
 .window-app.spaceholder .sh-icon-picker__thumb.is-large,
 .spaceholder .sh-icon-picker__thumb.is-large {
   width: 180px;
   height: 180px;
+}
+.window-app.spaceholder .sh-icon-picker__thumbImg,
+.spaceholder .sh-icon-picker__thumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .window-app.spaceholder .sh-icon-picker__empty,
 .spaceholder .sh-icon-picker__empty {

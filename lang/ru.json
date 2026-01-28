@@ -64,7 +64,45 @@
         "Open": "Выбрать иконку",
         "Color": "Цвет",
         "Hex": "Hex (#rrggbb)",
-        "Refresh": "Обновить список"
+        "Refresh": "Обновить список",
+        "SwapColors": "Поменять местами цвета",
+        "InvertIcon": "Инвертировать цвет иконки",
+        "InvertBackground": "Инвертировать цвет фона",
+        "UseFactionColor": "Задать цвет фракции",
+        "IconScale": "Размер иконки",
+        "BackgroundEnabled": "Фон",
+        "BackgroundStroke": "Обводка фона",
+        "IconStroke": "Обводка иконки"
+      },
+      "Sections": {
+        "Background": "Фон",
+        "Icon": "Иконка"
+      },
+      "Background": {
+        "Enabled": "Фон",
+        "Color": "Цвет фона",
+        "Shape": "Форма",
+        "Inset": "Отступ (%)",
+        "Radius": "Скругление (%)",
+        "Opacity": "Прозрачность (%)",
+        "Stroke": "Обводка",
+        "StrokeColor": "Цвет обводки",
+        "StrokeWidth": "Толщина (%)",
+        "StrokeOpacity": "Прозрачность обводки (%)",
+        "Shapes": {
+          "Square": "Квадрат",
+          "Rounded": "Скруглённый",
+          "Circle": "Круг",
+          "Hex": "Шестиугольник"
+        }
+      },
+      "Icon": {
+        "Scale": "Размер (%)",
+        "Stroke": "Обводка",
+        "StrokeColor": "Цвет обводки",
+        "StrokeWidth": "Толщина (%)",
+        "StrokeOpacity": "Прозрачность обводки (%)",
+        "Opacity": "Прозрачность (%)"
       },
       "ApplyDialog": {
         "Title": "Применить иконку",
