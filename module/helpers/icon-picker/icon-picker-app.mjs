@@ -12,6 +12,14 @@ function _trim(s) {
   return String(s ?? '').trim();
 }
 
+function _toPreviewUrl(path) {
+  const p = String(path ?? '').trim();
+  if (!p) return '';
+  if (p.startsWith('/')) return p;
+  if (/^[a-zA-Z]+:/.test(p)) return p;
+  return `/${p}`;
+}
+
 function _normalizeColor(raw, fallback = '#ffffff') {
   const s = _trim(raw);
   if (/^#[0-9a-fA-F]{6}$/.test(s)) return s.toLowerCase();
@@ -23,16 +31,13 @@ function _normalizeColor(raw, fallback = '#ffffff') {
   return fallback;
 }
 
-function _buildSearchKey(icon) {
-  const parts = [
-    icon?.name,
-    icon?.category,
-    ...(Array.isArray(icon?.tags) ? icon.tags : []),
-  ]
-    .map((x) => String(x ?? '').toLowerCase().trim())
-    .filter(Boolean);
+function _isSvgPath(path) {
+  const p = String(path ?? '').trim().toLowerCase();
+  return p.endsWith('.svg');
+}
 
-  return parts.join(' ');
+function _getFilePickerImpl() {
+  return foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
 }
 
 export class IconPickerApp extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -44,7 +49,7 @@ export class IconPickerApp extends foundry.applications.api.HandlebarsApplicatio
     classes: ['spaceholder', 'icon-picker'],
     tag: 'div',
     window: { title: 'Icon Picker', resizable: true },
-    position: { width: 760, height: 720 },
+    position: { width: 560, height: 520 },
   };
 
   static PARTS = {
@@ -52,28 +57,27 @@ export class IconPickerApp extends foundry.applications.api.HandlebarsApplicatio
   };
 
   constructor({
-    icons = [],
     title = null,
     defaultColor = '#ffffff',
-    loadIcons = null,
+    startDir = '',
+    autoOpenFilePicker = false,
   } = {}) {
     super();
 
     this._titleOverride = _trim(title) || null;
 
-    this._icons = Array.isArray(icons) ? icons : [];
-    this._loadIcons = (typeof loadIcons === 'function') ? loadIcons : null;
+    this._startDir = String(startDir ?? '').trim();
+    this._autoOpenFilePicker = Boolean(autoOpenFilePicker);
+    this._didAutoOpen = false;
 
-    this._query = '';
-    this._category = '';
+    this._srcPath = '';
     this._color = _normalizeColor(defaultColor);
-
-    this._selectedId = '';
 
     this._resolve = null;
 
+    this._previewToken = 0;
+
     this._onRootClick = this._onRootClick.bind(this);
-    this._onRootDblClick = this._onRootDblClick.bind(this);
     this._onRootInput = this._onRootInput.bind(this);
   }
 
@@ -100,40 +104,16 @@ export class IconPickerApp extends foundry.applications.api.HandlebarsApplicatio
     }
   }
 
-  _getCategories() {
-    const set = new Set();
-    for (const ic of (Array.isArray(this._icons) ? this._icons : [])) {
-      const c = _trim(ic?.category);
-      if (!c) continue;
-      set.add(c);
-    }
-    return Array.from(set.values()).sort((a, b) => a.localeCompare(b, 'ru'));
-  }
-
-  _getSelectedIcon() {
-    const id = String(this._selectedId ?? '');
-    if (!id) return null;
-    return (Array.isArray(this._icons) ? this._icons : []).find((i) => String(i?.id) === id) ?? null;
-  }
-
   async _prepareContext(_options) {
-    const icons = (Array.isArray(this._icons) ? this._icons : []).map((i) => ({
-      ...i,
-      searchKey: _buildSearchKey(i),
-    }));
-
-    const selected = {};
-    if (this._selectedId) selected[String(this._selectedId)] = true;
-
+    const srcPath = String(this._srcPath ?? '').trim();
+    const fileName = srcPath ? (srcPath.split('/').pop() ?? srcPath) : '';
     return {
-      query: this._query,
-      category: this._category,
+      srcPath,
+      fileName,
+      hasSrc: !!srcPath,
+      previewUrl: _toPreviewUrl(srcPath),
       color: this._color,
-      categories: this._getCategories(),
-      icons,
-      selected,
-      hasSelection: !!this._selectedId,
-      canRefresh: !!this._loadIcons,
+      canConfirm: !!srcPath,
     };
   }
 
@@ -148,53 +128,18 @@ export class IconPickerApp extends foundry.applications.api.HandlebarsApplicatio
     if (root.dataset?.shIconPickerHandlers !== 'true') {
       root.dataset.shIconPickerHandlers = 'true';
       root.addEventListener('click', this._onRootClick);
-      root.addEventListener('dblclick', this._onRootDblClick);
       root.addEventListener('input', this._onRootInput);
       root.addEventListener('change', this._onRootInput);
     }
 
-    // Apply current color to CSS var (for instant preview)
-    try {
-      root.style.setProperty('--sh-icon-color', this._color);
-    } catch (_) {
-      // ignore
+    // Sync preview (mask hydration + current color)
+    this._syncPreview(root);
+
+    // Optionally auto-open file picker on first render.
+    if (this._autoOpenFilePicker && !this._didAutoOpen && !this._srcPath) {
+      this._didAutoOpen = true;
+      setTimeout(() => this._openFilePicker(), 0);
     }
-
-    // Apply initial filtering state
-    this._applyFiltersToDom(root);
-    this._syncConfirmButton(root);
-
-    // Hydrate previews: convert SVGs to background-free mask data URIs
-    this._hydrateMaskPreviews(root);
-  }
-
-  _applyFiltersToDom(root) {
-    const q = String(this._query ?? '').trim().toLowerCase();
-    const cat = String(this._category ?? '').trim();
-
-    const items = Array.from(root.querySelectorAll('[data-action="select-icon"][data-id]'));
-    let visible = 0;
-
-    for (const btn of items) {
-      const s = String(btn.dataset.search ?? '').toLowerCase();
-      const itemCat = String(btn.dataset.category ?? '');
-
-      const okQ = !q || s.includes(q);
-      const okCat = !cat || itemCat === cat;
-
-      const show = okQ && okCat;
-      btn.classList.toggle('is-hidden', !show);
-      if (show) visible++;
-    }
-
-    const empty = root.querySelector('[data-role="empty"]');
-    if (empty) empty.classList.toggle('is-hidden', visible > 0);
-  }
-
-  _syncConfirmButton(root) {
-    const btn = root.querySelector('[data-action="confirm"]');
-    if (!btn) return;
-    btn.disabled = !this._selectedId;
   }
 
   _encodeSvgDataUri(svgText) {
@@ -202,91 +147,100 @@ export class IconPickerApp extends foundry.applications.api.HandlebarsApplicatio
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}`;
   }
 
-  async _hydrateOneMaskPreview(btn) {
-    if (!btn || btn.dataset?.shMaskReady === 'true' || btn.dataset?.shMaskFailed === 'true') return;
+  async _hydratePreviewThumb(thumb, src) {
+    const token = ++this._previewToken;
+    if (!thumb) return;
 
-    const src = String(btn.dataset?.src ?? '').trim();
-    if (!src) return;
-
-    btn.dataset.shMaskReady = 'pending';
+    thumb.dataset.shMaskReady = 'pending';
+    thumb.dataset.shMaskFailed = 'false';
 
     let svgText = '';
     try {
       const res = await fetch(src);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       svgText = await res.text();
-    } catch (e) {
-      btn.dataset.shMaskFailed = 'true';
+    } catch (_) {
+      if (token !== this._previewToken) return;
+      thumb.dataset.shMaskFailed = 'true';
+      thumb.dataset.shMaskReady = 'false';
       return;
     }
+
+    if (token !== this._previewToken) return;
 
     const cleaned = stripSvgBackground(svgText);
     const uri = this._encodeSvgDataUri(cleaned);
 
-    const thumb = btn.querySelector('.sh-icon-picker__thumb');
-    if (thumb) {
-      // Update the CSS var used by mask-image
+    try {
       thumb.style.setProperty('--sh-icon-url', `url("${uri}")`);
+    } catch (_) {
+      // ignore
     }
 
-    btn.dataset.shMaskReady = 'true';
+    thumb.dataset.shMaskReady = 'true';
+    thumb.dataset.shMaskFailed = 'false';
   }
 
-  _hydrateMaskPreviews(root) {
-    // Fire-and-forget, guard against re-entrancy.
-    if (this._maskHydrateRunning) return;
-    this._maskHydrateRunning = true;
+  _syncPreview(root) {
+    const thumb = root.querySelector('[data-role="preview-thumb"]');
+    if (!thumb) return;
 
-    const run = async () => {
-      try {
-        const btns = Array.from(root.querySelectorAll('.sh-icon-picker__item[data-src]'));
-        if (!btns.length) return;
+    // Always keep preview color in sync.
+    try {
+      thumb.style.setProperty('--sh-icon-color', this._color);
+    } catch (_) {
+      // ignore
+    }
 
-        // Small concurrency to keep UI responsive.
-        const concurrency = 6;
-        let idx = 0;
+    const src = String(thumb.dataset?.src ?? '').trim();
+    if (!src) return;
 
-        const worker = async () => {
-          while (idx < btns.length) {
-            const b = btns[idx++];
-            await this._hydrateOneMaskPreview(b);
-          }
-        };
-
-        const workers = [];
-        for (let i = 0; i < concurrency; i++) workers.push(worker());
-        await Promise.allSettled(workers);
-      } finally {
-        this._maskHydrateRunning = false;
-      }
-    };
-
-    // Allow initial paint first.
-    setTimeout(() => run(), 0);
+    // Re-hydrate mask when source changes.
+    if (thumb.dataset?.shMaskSrc !== src) {
+      thumb.dataset.shMaskSrc = src;
+      thumb.dataset.shMaskReady = 'false';
+      thumb.dataset.shMaskFailed = 'false';
+      this._hydratePreviewThumb(thumb, src);
+    }
   }
 
-  _setSelected(root, id) {
-    const nextId = String(id ?? '').trim();
-    if (!nextId) return;
+  _openFilePicker() {
+    const FP = _getFilePickerImpl();
+    if (typeof FP !== 'function') {
+      ui.notifications?.warn?.('FilePicker недоступен');
+      return;
+    }
 
-    // Update DOM selection
-    const prev = root.querySelector('.sh-icon-picker__item.is-selected');
-    if (prev) prev.classList.remove('is-selected');
+    const current = this._srcPath || this._startDir || '';
+    const fp = new FP({
+      type: 'image',
+      current,
+      callback: (path) => {
+        const next = String(path ?? '').trim();
+        if (!next) return;
+        this._srcPath = next;
+        this.render(false);
+      },
+    });
 
-    const nextEl = Array.from(root.querySelectorAll('[data-action="select-icon"][data-id]'))
-      .find((b) => String(b.dataset.id ?? '') === nextId);
-    if (nextEl) nextEl.classList.add('is-selected');
-
-    this._selectedId = nextId;
-    this._syncConfirmButton(root);
+    try {
+      fp.render(true);
+    } catch (_) {
+      try { fp.browse(); } catch (_) { /* ignore */ }
+    }
   }
 
   async _confirmSelection() {
-    const icon = this._getSelectedIcon();
-    if (!icon) return;
+    const srcPath = String(this._srcPath ?? '').trim();
+    if (!srcPath) return;
+
+    if (!_isSvgPath(srcPath)) {
+      ui.notifications?.warn?.(_L('SPACEHOLDER.IconPicker.Errors.OnlySvg'));
+      return;
+    }
 
     const payload = {
-      srcPath: String(icon.path ?? ''),
+      srcPath,
       color: this._color,
     };
 
@@ -299,60 +253,44 @@ export class IconPickerApp extends foundry.applications.api.HandlebarsApplicatio
     await this.close();
   }
 
-  async _refreshIcons() {
-    if (!this._loadIcons) return;
-
-    try {
-      const icons = await this._loadIcons();
-      this._icons = Array.isArray(icons) ? icons : [];
-      this._selectedId = '';
-      await this.render(false);
-    } catch (e) {
-      console.error('SpaceHolder | IconPicker: refresh failed', e);
-      ui.notifications?.error?.(_L('SPACEHOLDER.IconPicker.Errors.RefreshFailed'));
-    }
-  }
-
   _onRootInput(ev) {
     const root = ev.currentTarget;
-
-    const search = ev.target?.closest?.('input[data-action="search"]');
-    if (search) {
-      this._query = String(search.value ?? '');
-      this._applyFiltersToDom(root);
-      return;
-    }
-
-    const category = ev.target?.closest?.('select[data-action="category"]');
-    if (category) {
-      this._category = String(category.value ?? '');
-      this._applyFiltersToDom(root);
-      return;
-    }
 
     const color = ev.target?.closest?.('input[type="color"][data-action="color"]');
     if (color) {
       this._color = _normalizeColor(color.value, this._color);
-      try {
-        root.style.setProperty('--sh-icon-color', this._color);
-      } catch (_) {
-        // ignore
-      }
+
+      const hex = root.querySelector('input[data-action="color-hex"]');
+      if (hex) hex.value = this._color;
+
+      this._syncPreview(root);
       return;
+    }
+
+    const hex = ev.target?.closest?.('input[type="text"][data-action="color-hex"]');
+    if (hex) {
+      const next = _normalizeColor(hex.value, this._color);
+      this._color = next;
+
+      const colorInput = root.querySelector('input[type="color"][data-action="color"]');
+      if (colorInput) colorInput.value = this._color;
+
+      hex.value = this._color;
+
+      this._syncPreview(root);
     }
   }
 
   async _onRootClick(ev) {
-    const root = ev.currentTarget;
     const el = ev.target?.closest?.('[data-action]');
     if (!el) return;
 
     const action = String(el.dataset.action ?? '').trim();
 
-    if (action === 'select-icon') {
+    if (action === 'pick-file') {
       ev.preventDefault();
       ev.stopPropagation();
-      this._setSelected(root, el.dataset.id);
+      this._openFilePicker();
       return;
     }
 
@@ -367,25 +305,6 @@ export class IconPickerApp extends foundry.applications.api.HandlebarsApplicatio
       ev.preventDefault();
       ev.stopPropagation();
       await this.close();
-      return;
     }
-
-    if (action === 'refresh') {
-      ev.preventDefault();
-      ev.stopPropagation();
-      await this._refreshIcons();
-    }
-  }
-
-  async _onRootDblClick(ev) {
-    const root = ev.currentTarget;
-    const el = ev.target?.closest?.('[data-action="select-icon"]');
-    if (!el) return;
-
-    ev.preventDefault();
-    ev.stopPropagation();
-
-    this._setSelected(root, el.dataset.id);
-    await this._confirmSelection();
   }
 }

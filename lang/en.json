@@ -52,13 +52,18 @@
       "Category": "Category",
       "CategoryAll": "All",
       "Color": "Color",
-      "Empty": "No icons found.",
+      "Empty": "No icon selected.",
+      "Placeholders": {
+        "Hex": "#rrggbb"
+      },
       "Buttons": {
-        "Select": "Select"
+        "Select": "Select",
+        "PickFile": "Choose file"
       },
       "Tooltips": {
         "Open": "Choose icon",
         "Color": "Pick color",
+        "Hex": "Hex (#rrggbb)",
         "Refresh": "Refresh list"
       },
       "ApplyDialog": {
@@ -72,7 +77,8 @@
         "LoadFailed": "Failed to load icons list",
         "RefreshFailed": "Failed to refresh icons list",
         "BakeFailed": "Failed to create icon",
-        "ApplyFailed": "Failed to apply icon"
+        "ApplyFailed": "Failed to apply icon",
+        "OnlySvg": "Please choose an SVG file"
       }
     },
     "Common": {

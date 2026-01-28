@@ -42,9 +42,6 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-
-    // Default color for mask previews (can be overridden by inline style)
-    --sh-icon-color: #ffffff;
   }
 
   .sh-icon-picker__toolbar {
@@ -57,21 +54,39 @@
     gap: 10px;
   }
 
-  .sh-icon-picker__filters {
+  .sh-icon-picker__fileRow {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
   }
 
-  .sh-icon-picker__search {
-    flex: 1 1 220px;
-    min-width: 180px;
+  .sh-icon-picker__path {
+    flex: 1 1 auto;
+    min-width: 220px;
+    max-width: 100%;
+
+    padding: 6px 8px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+    background: var(--sh-surface-1);
+
+    color: var(--sh-text);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.is-empty {
+      color: var(--sh-text-dim);
+    }
   }
 
-  .sh-icon-picker__category {
-    flex: 0 0 auto;
-    min-width: 160px;
+  .sh-icon-picker__colorRow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   .sh-icon-picker__color {
@@ -81,6 +96,10 @@
     border-radius: var(--sh-radius-sm);
     border: 1px solid var(--sh-border);
     background: var(--sh-surface-1);
+  }
+
+  .sh-icon-picker__colorHex {
+    width: 110px;
   }
 
   .sh-icon-picker__actions {
@@ -96,52 +115,22 @@
     align-items: center;
   }
 
-  .sh-icon-picker__grid {
-    padding: 10px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-    grid-auto-rows: 76px;
-    gap: 8px;
-    overflow: auto;
-    align-content: start;
-  }
-
-  .sh-icon-picker__item {
-    height: 100%;
-
-    background: var(--sh-surface-2);
-    border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-md);
-    padding: 8px 6px;
+  .sh-icon-picker__preview {
+    padding: 12px;
+    flex: 1 1 auto;
 
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 6px;
-
-    cursor: pointer;
-
-    &:hover {
-      background: var(--sh-surface-3);
-      border-color: var(--sh-border-strong);
-    }
-
-    &.is-selected {
-      border-color: var(--sh-accent-strong);
-      box-shadow: 0 0 0 1px var(--sh-accent-strong) inset;
-    }
-
-    &.is-hidden {
-      display: none;
-    }
+    justify-content: center;
   }
 
   .sh-icon-picker__thumb {
-    display: block;
-    flex: 0 0 auto;
-
+    // Default (small) size remains for potential reuse.
     width: 52px;
     height: 52px;
+
+    // Per-thumb vars (so changing color doesn't recolor the whole window)
+    --sh-icon-color: #ffffff;
 
     background: var(--sh-icon-color);
 
@@ -155,20 +144,16 @@
     mask-size: contain;
 
     opacity: 0.95;
-  }
 
-  // We rely on tooltips for names; keep the grid compact.
-  .sh-icon-picker__label {
-    display: none;
+    &.is-large {
+      width: 180px;
+      height: 180px;
+    }
   }
 
   .sh-icon-picker__empty {
     padding: 12px;
     color: var(--sh-text-dim);
     text-align: center;
-
-    &.is-hidden {
-      display: none;
-    }
   }
 }

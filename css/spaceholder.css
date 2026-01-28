@@ -4306,7 +4306,6 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   height: 100%;
   display: flex;
   flex-direction: column;
-  --sh-icon-color: #ffffff;
 }
 .window-app.spaceholder .sh-icon-picker__toolbar,
 .spaceholder .sh-icon-picker__toolbar {
@@ -4317,22 +4316,37 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   flex-direction: column;
   gap: 10px;
 }
-.window-app.spaceholder .sh-icon-picker__filters,
-.spaceholder .sh-icon-picker__filters {
+.window-app.spaceholder .sh-icon-picker__fileRow,
+.spaceholder .sh-icon-picker__fileRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder .sh-icon-picker__path,
+.spaceholder .sh-icon-picker__path {
+  flex: 1 1 auto;
+  min-width: 220px;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: var(--sh-surface-1);
+  color: var(--sh-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .sh-icon-picker__path.is-empty,
+.spaceholder .sh-icon-picker__path.is-empty {
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .sh-icon-picker__colorRow,
+.spaceholder .sh-icon-picker__colorRow {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-}
-.window-app.spaceholder .sh-icon-picker__search,
-.spaceholder .sh-icon-picker__search {
-  flex: 1 1 220px;
-  min-width: 180px;
-}
-.window-app.spaceholder .sh-icon-picker__category,
-.spaceholder .sh-icon-picker__category {
-  flex: 0 0 auto;
-  min-width: 160px;
 }
 .window-app.spaceholder .sh-icon-picker__color,
 .spaceholder .sh-icon-picker__color {
@@ -4342,6 +4356,10 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   border-radius: var(--sh-radius-sm);
   border: 1px solid var(--sh-border);
   background: var(--sh-surface-1);
+}
+.window-app.spaceholder .sh-icon-picker__colorHex,
+.spaceholder .sh-icon-picker__colorHex {
+  width: 110px;
 }
 .window-app.spaceholder .sh-icon-picker__actions,
 .spaceholder .sh-icon-picker__actions {
@@ -4356,49 +4374,19 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   gap: 6px;
   align-items: center;
 }
-.window-app.spaceholder .sh-icon-picker__grid,
-.spaceholder .sh-icon-picker__grid {
-  padding: 10px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  grid-auto-rows: 76px;
-  gap: 8px;
-  overflow: auto;
-  align-content: start;
-}
-.window-app.spaceholder .sh-icon-picker__item,
-.spaceholder .sh-icon-picker__item {
-  height: 100%;
-  background: var(--sh-surface-2);
-  border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-md);
-  padding: 8px 6px;
+.window-app.spaceholder .sh-icon-picker__preview,
+.spaceholder .sh-icon-picker__preview {
+  padding: 12px;
+  flex: 1 1 auto;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-.window-app.spaceholder .sh-icon-picker__item:hover,
-.spaceholder .sh-icon-picker__item:hover {
-  background: var(--sh-surface-3);
-  border-color: var(--sh-border-strong);
-}
-.window-app.spaceholder .sh-icon-picker__item.is-selected,
-.spaceholder .sh-icon-picker__item.is-selected {
-  border-color: var(--sh-accent-strong);
-  box-shadow: 0 0 0 1px var(--sh-accent-strong) inset;
-}
-.window-app.spaceholder .sh-icon-picker__item.is-hidden,
-.spaceholder .sh-icon-picker__item.is-hidden {
-  display: none;
+  justify-content: center;
 }
 .window-app.spaceholder .sh-icon-picker__thumb,
 .spaceholder .sh-icon-picker__thumb {
-  display: block;
-  flex: 0 0 auto;
   width: 52px;
   height: 52px;
+  --sh-icon-color: #ffffff;
   background: var(--sh-icon-color);
   -webkit-mask-image: var(--sh-icon-url);
   mask-image: var(--sh-icon-url);
@@ -4410,17 +4398,14 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   mask-size: contain;
   opacity: 0.95;
 }
-.window-app.spaceholder .sh-icon-picker__label,
-.spaceholder .sh-icon-picker__label {
-  display: none;
+.window-app.spaceholder .sh-icon-picker__thumb.is-large,
+.spaceholder .sh-icon-picker__thumb.is-large {
+  width: 180px;
+  height: 180px;
 }
 .window-app.spaceholder .sh-icon-picker__empty,
 .spaceholder .sh-icon-picker__empty {
   padding: 12px;
   color: var(--sh-text-dim);
   text-align: center;
-}
-.window-app.spaceholder .sh-icon-picker__empty.is-hidden,
-.spaceholder .sh-icon-picker__empty.is-hidden {
-  display: none;
 }

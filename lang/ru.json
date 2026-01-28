@@ -52,13 +52,18 @@
       "Category": "Категория",
       "CategoryAll": "Все",
       "Color": "Цвет",
-      "Empty": "Иконки не найдены.",
+      "Empty": "Иконка не выбрана.",
+      "Placeholders": {
+        "Hex": "#rrggbb"
+      },
       "Buttons": {
-        "Select": "Выбрать"
+        "Select": "Выбрать",
+        "PickFile": "Выбрать файл"
       },
       "Tooltips": {
         "Open": "Выбрать иконку",
         "Color": "Цвет",
+        "Hex": "Hex (#rrggbb)",
         "Refresh": "Обновить список"
       },
       "ApplyDialog": {
@@ -72,7 +77,8 @@
         "LoadFailed": "Не удалось загрузить список иконок",
         "RefreshFailed": "Не удалось обновить список иконок",
         "BakeFailed": "Не удалось создать иконку",
-        "ApplyFailed": "Не удалось применить иконку"
+        "ApplyFailed": "Не удалось применить иконку",
+        "OnlySvg": "Выберите SVG файл"
       }
     },
     "Common": {

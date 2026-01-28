@@ -7,7 +7,7 @@ function _trimSlash(path) {
   return String(path ?? '').trim().replace(/\/+$/g, '');
 }
 
-function _normalizeHexColor(raw, fallback = '#ffffff') {
+export function normalizeHexColor(raw, fallback = '#ffffff') {
   const s = String(raw ?? '').trim();
   if (!s) return fallback;
 
@@ -22,6 +22,91 @@ function _normalizeHexColor(raw, fallback = '#ffffff') {
   if (m6) return `#${m6[1]}`.toLowerCase();
 
   return fallback;
+}
+
+function _toFetchUrl(path) {
+  const p = String(path ?? '').trim();
+  if (!p) return '';
+  if (p.startsWith('/')) return p;
+  if (/^[a-zA-Z]+:/.test(p)) return p;
+  return `/${p}`;
+}
+
+export function computeBakeHash({ srcPath, color = '#ffffff', version = 'v1' } = {}) {
+  const src = String(srcPath ?? '').trim();
+  const c = normalizeHexColor(color);
+  const v = String(version ?? 'v1').trim() || 'v1';
+  return _fnv1a32Hex(`${v}|${src}|${c}`);
+}
+
+export function extractBakeMeta(svgText) {
+  const s = String(svgText ?? '');
+  const m = s.match(/<!--\s*spaceholder-bake:(v\d+)\s+data=([\s\S]*?)\s*-->/);
+  if (!m) return null;
+
+  const version = m[1];
+  const dataRaw = String(m[2] ?? '').trim();
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(dataRaw));
+    const srcPath = String(parsed?.src ?? '').trim();
+    const color = String(parsed?.color ?? '').trim();
+    return {
+      version,
+      srcPath,
+      color: /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : color,
+    };
+  } catch (_) {
+    return { version };
+  }
+}
+
+function _buildBakeMetaComment({ srcPath, color, version = 'v1' } = {}) {
+  const payload = {
+    src: String(srcPath ?? '').trim(),
+    color: normalizeHexColor(color),
+  };
+
+  // encodeURIComponent avoids forbidden "--" sequences in XML comments.
+  const data = encodeURIComponent(JSON.stringify(payload));
+  const v = String(version ?? 'v1').trim() || 'v1';
+  return `spaceholder-bake:${v} data=${data}`;
+}
+
+function _injectBakeMeta(svgText, { srcPath, color, version = 'v1' } = {}) {
+  const raw = String(svgText ?? '');
+
+  let doc = null;
+  try {
+    doc = new DOMParser().parseFromString(raw, 'image/svg+xml');
+  } catch (_) {
+    return raw;
+  }
+
+  const svg = doc?.querySelector?.('svg');
+  if (!svg) return raw;
+
+  // Remove previous bake comments if any.
+  try {
+    const nodes = Array.from(svg.childNodes || []);
+    for (const n of nodes) {
+      if (n?.nodeType !== 8) continue; // Comment
+      const txt = String(n.nodeValue ?? '').trim();
+      if (txt.startsWith('spaceholder-bake:')) {
+        try { svg.removeChild(n); } catch (_) { /* ignore */ }
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  try {
+    const comment = doc.createComment(_buildBakeMetaComment({ srcPath, color, version }));
+    svg.insertBefore(comment, svg.firstChild);
+    return new XMLSerializer().serializeToString(svg);
+  } catch (_) {
+    return raw;
+  }
 }
 
 function _fnv1a32Hex(str) {
@@ -294,7 +379,7 @@ export function stripSvgBackground(svgText) {
 }
 
 export function recolorSvg(svgText, { color = '#ffffff' } = {}) {
-  const fillColor = _normalizeHexColor(color);
+  const fillColor = normalizeHexColor(color);
 
   let doc = null;
   try {
@@ -368,7 +453,7 @@ export async function bakeSvgToGenerated({ srcPath, color = '#ffffff', root = nu
   const src = String(srcPath ?? '').trim();
   if (!src) throw new Error('Missing srcPath');
 
-  const c = _normalizeHexColor(color);
+  const c = normalizeHexColor(color);
 
   await ensureIconLibraryDirs({ root });
   const { generated } = getIconLibraryDirs({ root });
@@ -376,7 +461,7 @@ export async function bakeSvgToGenerated({ srcPath, color = '#ffffff', root = nu
   // Load source SVG
   let svgText = '';
   try {
-    const res = await fetch(src);
+    const res = await fetch(_toFetchUrl(src));
     if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
     svgText = await res.text();
   } catch (e) {
@@ -385,12 +470,13 @@ export async function bakeSvgToGenerated({ srcPath, color = '#ffffff', root = nu
 
   // Remove background squares if present, then recolor.
   const cleaned = stripSvgBackground(svgText);
-  const baked = recolorSvg(cleaned, { color: c });
+  const baked0 = recolorSvg(cleaned, { color: c });
+  const baked = _injectBakeMeta(baked0, { srcPath: src, color: c, version: 'v1' });
 
   const fileNameRaw = src.split('/').pop() ?? 'icon.svg';
   const base = _slugify(fileNameRaw);
 
-  const hash = _fnv1a32Hex(`v1|${src}|${c}`);
+  const hash = computeBakeHash({ srcPath: src, color: c, version: 'v1' });
   const colorToken = c.slice(1);
   const fileName = `${base}__${colorToken}__${hash}.svg`;
 
