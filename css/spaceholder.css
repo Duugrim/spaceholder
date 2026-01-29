@@ -2465,6 +2465,7 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   width: 1.1em;
   margin-right: 6px;
   opacity: 0.9;
+  position: relative;
 }
 #sidebar #journal .spaceholder-journalcheck-status.is-interactive,
 .sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status.is-interactive {
@@ -2478,6 +2479,30 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status.is-interactive:focus {
   outline: 1px solid rgba(255, 255, 255, 0.35);
   outline-offset: 2px;
+}
+#sidebar #journal .spaceholder-journalcheck-status[data-all-players]::after,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status[data-all-players]::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+#sidebar #journal .spaceholder-journalcheck-status[data-all-players=none]::after,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status[data-all-players=none]::after {
+  background: rgba(255, 255, 255, 0.2);
+}
+#sidebar #journal .spaceholder-journalcheck-status[data-all-players=observer]::after,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status[data-all-players=observer]::after {
+  background: #60a5fa;
+}
+#sidebar #journal .spaceholder-journalcheck-status[data-all-players=owner]::after,
+.sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status[data-all-players=owner]::after {
+  background: #fbbf24;
 }
 #sidebar #journal .spaceholder-journalcheck-status.sh-jc-status--multi,
 .sidebar-tab[data-tab=journal] .spaceholder-journalcheck-status.sh-jc-status--multi {

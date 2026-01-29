@@ -211,6 +211,54 @@ function _getAllPlayersOwnershipLevel(doc, { _depth = 0, _seen = null } = {}) {
   }
 }
 
+const ALL_PLAYERS_VIS = {
+  NONE: 'none',
+  OBSERVER: 'observer',
+  OWNER: 'owner',
+};
+
+function _getOwnershipLevelConst(levelName, fallback) {
+  const k = String(levelName ?? '').trim();
+  if (!k) return fallback;
+
+  try {
+    const v = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.[k];
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function _allPlayersKeyLabel(key) {
+  const k = String(key ?? '').trim();
+  if (k === ALL_PLAYERS_VIS.OWNER) return 'Owner';
+  if (k === ALL_PLAYERS_VIS.OBSERVER) return 'Observer';
+  return 'None';
+}
+
+function _getAllPlayersKey(doc) {
+  const lvl = _getAllPlayersOwnershipLevel(doc);
+  const OWN = _getOwnershipLevelConst('OWNER', 3);
+  const OBS = _getOwnershipLevelConst('OBSERVER', 2);
+
+  if (lvl >= OWN) return ALL_PLAYERS_VIS.OWNER;
+  if (lvl >= OBS) return ALL_PLAYERS_VIS.OBSERVER;
+  return ALL_PLAYERS_VIS.NONE;
+}
+
+function _applyAllPlayersKeyToStatusEl(el, doc) {
+  if (!el || !doc) return;
+  if (!game.user?.isGM) return;
+
+  const key = _getAllPlayersKey(doc);
+  el.dataset.allPlayers = key;
+
+  const prev = String(el.title ?? '').trim();
+  const line = `All Players: ${_allPlayersKeyLabel(key)}`;
+  el.title = prev ? `${prev}\n${line}` : line;
+}
+
 function _canAllPlayersObserve(doc) {
   const lvl = _getAllPlayersOwnershipLevel(doc);
   try {
@@ -932,6 +980,7 @@ function _makeEntryMultiPageStatusEl(entry) {
   }
 
   wrap.appendChild(bar);
+  _applyAllPlayersKeyToStatusEl(wrap, entry);
   return wrap;
 }
 
@@ -1137,6 +1186,7 @@ function _createEntryStatusIcon(entry) {
     el.click();
   });
 
+  _applyAllPlayersKeyToStatusEl(el, entry);
   return el;
 }
 
@@ -1223,6 +1273,28 @@ function _renderJournalSheetPageIcons(app, root) {
   }
 }
 
+function _cloneOwnership(doc) {
+  const own = doc?.ownership ?? doc?.data?.ownership ?? {};
+  try {
+    return foundry.utils.deepClone(own);
+  } catch (_) {
+    if (own && typeof own === 'object') return { ...own };
+    return {};
+  }
+}
+
+async function _setAllPlayersDefaultOwnership(entry, defaultLevel) {
+  if (!entry) return false;
+  if (!game.user?.isGM) return false;
+  if (!_canUserUpdate(entry)) return false;
+
+  const ownership = _cloneOwnership(entry);
+  ownership.default = Number(defaultLevel);
+
+  await entry.update({ ownership }, { diff: false, spaceholderJournalCheck: true });
+  return true;
+}
+
 function _addEntryContextOptions(app, options) {
   try {
     if (app?.constructor?.name !== 'JournalDirectory') return;
@@ -1238,6 +1310,10 @@ function _addEntryContextOptions(app, options) {
 
     const isGM = !!game.user?.isGM;
     const skip = !!(isGM && _getSetting(SETTING_GM_SKIP, false));
+
+    const LVL_NONE = _getOwnershipLevelConst('NONE', 0);
+    const LVL_OBSERVER = _getOwnershipLevelConst('OBSERVER', 2);
+    const LVL_OWNER = _getOwnershipLevelConst('OWNER', 3);
 
     const make = ({ name, icon, condition, callback }) => ({ name, icon, condition, callback });
 
@@ -1337,6 +1413,53 @@ function _addEntryContextOptions(app, options) {
           const entry = getEntry(li);
           if (!entry) return;
           return setEntryStatus(entry, STATUS.PROPOSED, { reason: 'ctxDeniedClear', applyToPages: true });
+        },
+      }),
+
+      // All Players visibility shortcuts (GM)
+      make({
+        name: 'Видимость игрокам: None',
+        icon: '<i class="fa-solid fa-eye-slash"></i>',
+        condition: (li) => {
+          if (!isGM) return false;
+          const entry = getEntry(li);
+          if (!entry || !_canUserUpdate(entry)) return false;
+          return _getAllPlayersOwnershipLevel(entry) !== LVL_NONE;
+        },
+        callback: (li) => {
+          const entry = getEntry(li);
+          if (!entry) return;
+          return _setAllPlayersDefaultOwnership(entry, LVL_NONE);
+        },
+      }),
+      make({
+        name: 'Видимость игрокам: Observer',
+        icon: '<i class="fa-solid fa-eye"></i>',
+        condition: (li) => {
+          if (!isGM) return false;
+          const entry = getEntry(li);
+          if (!entry || !_canUserUpdate(entry)) return false;
+          return _getAllPlayersOwnershipLevel(entry) !== LVL_OBSERVER;
+        },
+        callback: (li) => {
+          const entry = getEntry(li);
+          if (!entry) return;
+          return _setAllPlayersDefaultOwnership(entry, LVL_OBSERVER);
+        },
+      }),
+      make({
+        name: 'Видимость игрокам: Owner',
+        icon: '<i class="fa-solid fa-crown"></i>',
+        condition: (li) => {
+          if (!isGM) return false;
+          const entry = getEntry(li);
+          if (!entry || !_canUserUpdate(entry)) return false;
+          return _getAllPlayersOwnershipLevel(entry) !== LVL_OWNER;
+        },
+        callback: (li) => {
+          const entry = getEntry(li);
+          if (!entry) return;
+          return _setAllPlayersDefaultOwnership(entry, LVL_OWNER);
         },
       }),
     );
