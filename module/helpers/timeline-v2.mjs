@@ -333,20 +333,12 @@ async function _gmUpsertContainer({ kind, factionUuid = '' }) {
 
   const name = _buildContainerName({ kind, factionDoc, factionUuid: fu });
 
-  const OBS = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2;
-  const NONE = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.NONE ?? 0;
+  const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
 
-  const ownerIds = (() => {
-    if (kind === TIMELINE_V2_CONTAINER_KIND.WORLD) return [];
-    if (!fu) return [];
-    return getUsersForFaction(fu).map((u) => u?.id).filter(Boolean);
-  })();
-
-  const defaultLevel = (() => {
-    if (kind === TIMELINE_V2_CONTAINER_KIND.FACTION_PUBLIC) return OBS;
-    if (kind === TIMELINE_V2_CONTAINER_KIND.FACTION_PRIVATE || kind === TIMELINE_V2_CONTAINER_KIND.FACTION_DETAILS) return NONE;
-    return OBS; // world
-  })();
+  // В этой конфигурации мы доверяем игрокам: все контейнеры (включая world) доступны на уровне OWNER.
+  // Это позволяет создавать/редактировать индексные страницы напрямую, без проксирования через сокет.
+  const ownerIds = [];
+  const defaultLevel = OWN;
 
   const desiredOwnership = _ownershipObj({ defaultLevel, ownerIds });
 
@@ -1468,11 +1460,14 @@ export async function createTimelineV2Event({
 
   let indexPage = null;
   try {
-    if (game.user?.isGM) {
+    const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+    const canWriteWorld = !!world?.testUserPermission?.(game.user, OWN);
+
+    if (game.user?.isGM || canWriteWorld) {
       const createdIndexArr = await world.createEmbeddedDocuments('JournalEntryPage', [indexData], { spaceholderJournalCheck: true });
       indexPage = createdIndexArr?.[0] ?? null;
     } else {
-      // Players cannot create in the world container directly (index is GM-owned); publish via socket.
+      // Fallback: if world container is GM-owned, publish via socket.
       const res = await _requestViaSocket('createIndex', { detailUuid: detailPage.uuid }, { timeoutMs: 12000 });
       const indexUuid = normalizeUuid(res?.indexUuid);
       if (!indexUuid) throw new Error('Failed to create index page');

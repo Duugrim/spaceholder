@@ -124,7 +124,7 @@
 
             {{#each events as |e|}}
               <div
-                class="sh-tl2__event {{e.sideClass}} {{e.originClass}} {{#if e.isUnknown}}is-unknown{{/if}} {{#if e.isSelected}}is-selected{{/if}} {{#if e.isPinned}}is-pinned{{/if}} {{#if e.isRange}}is-range{{/if}} {{#if e.hasFaction}}has-faction{{/if}}"
+                class="sh-tl2__event {{e.sideClass}} {{e.originClass}} {{#if e.isUnknown}}is-unknown{{/if}} {{#if e.isSelected}}is-selected{{/if}} {{#if e.isPinned}}is-pinned{{/if}} {{#if e.isRange}}is-range{{/if}} {{#if e.hasFaction}}has-faction{{/if}} {{#unless e.isUnknown}}{{#if e.iconPath}}has-custom-icon{{/if}}{{/unless}}"
                 style="top: {{e.topPx}}px; {{#if e.color}}--sh-event-color: {{e.color}};{{/if}} {{#if e.rangeLenPx}}--sh-range-length: {{e.rangeLenPx}}px;{{/if}}"
                 data-uuid="{{e.uuid}}"
                 data-anchor-top="{{e.topPx}}"

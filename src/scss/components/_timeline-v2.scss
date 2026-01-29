@@ -282,6 +282,11 @@
     // Dynamic icon sizing (set from JS).
     --sh-icon-size: 24px;
     --sh-icon-img-size: 18px;
+
+    // When using an icon picked via icon-picker, prefer rendering the baked SVG at full marker size.
+    &.has-custom-icon {
+      --sh-icon-img-size: var(--sh-icon-size, 24px);
+    }
   }
 
   // Prevent any inherited transitions from animating when JS updates CSS variables.
@@ -460,6 +465,16 @@
     border-radius: calc(var(--sh-icon-size, 24px) * 0.25);
   }
 
+  // For icon-picker icons, always keep pinned ring circular (override diamond/square ring shapes).
+  .sh-tl2__event.has-custom-icon.is-origin-world.has-faction:not(.is-range) .sh-tl2__eventIconBtn::after {
+    clip-path: none;
+    border-radius: 999px;
+  }
+
+  .sh-tl2__event.has-custom-icon.is-range .sh-tl2__eventIconBtn::after {
+    clip-path: none;
+    border-radius: 999px;
+  }
 
   .sh-tl2__eventIcon {
     width: var(--sh-icon-size, 24px);
@@ -474,6 +489,7 @@
 
     overflow: hidden;
 
+    // Default marker background: faction color.
     background: var(--sh-event-color, rgba(255, 255, 255, 0.22));
     border: 1px solid rgba(255, 255, 255, 0.14);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
@@ -482,6 +498,24 @@
       font-size: calc(var(--sh-icon-size, 24px) * 0.42);
       line-height: 1;
     }
+  }
+
+  // If the icon comes from icon-picker, do not impose background or shape here.
+  // The baked SVG itself may include its own background/shape.
+  .sh-tl2__event.has-custom-icon .sh-tl2__eventIcon {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+
+    overflow: visible;
+    clip-path: none;
+    border-radius: 0;
+  }
+
+  // Keep pinned ring simple for custom icons (don't force diamond/square ring).
+  .sh-tl2__event.has-custom-icon .sh-tl2__eventIconBtn::after {
+    clip-path: none;
+    border-radius: 999px;
   }
 
   .sh-tl2__eventIconImg {
@@ -501,6 +535,19 @@
   .sh-tl2__event.is-range .sh-tl2__eventIcon {
     clip-path: none;
     border-radius: calc(var(--sh-icon-size, 24px) * 0.25);
+  }
+
+  // For icon-picker icons, do not clip to TimelineV2 marker shapes.
+  .sh-tl2__event.has-custom-icon.is-origin-world.has-faction .sh-tl2__eventIcon {
+    overflow: visible;
+    clip-path: none;
+    border-radius: 0;
+  }
+
+  .sh-tl2__event.has-custom-icon.is-range .sh-tl2__eventIcon {
+    overflow: visible;
+    clip-path: none;
+    border-radius: 0;
   }
 
   .sh-tl2__event.is-range .sh-tl2__pill {
@@ -531,6 +578,11 @@
 
     &.is-pinned .sh-tl2__eventIcon {
       box-shadow: 0 10px 26px rgba(0, 0, 0, 0.56);
+    }
+
+    // Do not apply TimelineV2-specific marker shadows for icon-picker icons.
+    &.has-custom-icon .sh-tl2__eventIcon {
+      box-shadow: none;
     }
   }
 
@@ -786,7 +838,7 @@
 
   .sh-tl2e__dateFields {
     display: grid;
-    grid-template-columns: 110px 92px 92px 34px;
+    grid-template-columns: 92px 92px 110px 34px;
     gap: 6px;
   }
 
@@ -856,7 +908,7 @@
 
   .sh-tl2e__endDateFields {
     display: grid;
-    grid-template-columns: 110px 92px 92px 34px;
+    grid-template-columns: 92px 92px 110px 34px;
     gap: 6px;
     align-items: end;
   }

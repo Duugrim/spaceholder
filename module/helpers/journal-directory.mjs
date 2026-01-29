@@ -11,8 +11,9 @@ let _hooksInstalled = false;
  */
 function _isTimelineContainer(entry) {
   try {
-    const f = entry?.getFlag?.('spaceholder', 'timeline') ?? entry?.flags?.spaceholder?.timeline ?? {};
-    return !!f?.isContainer;
+    const f1 = entry?.getFlag?.('spaceholder', 'timeline') ?? entry?.flags?.spaceholder?.timeline ?? {};
+    const f2 = entry?.getFlag?.('spaceholder', 'timelineV2') ?? entry?.flags?.spaceholder?.timelineV2 ?? {};
+    return !!(f1?.isContainer || f2?.isContainer);
   } catch (_) {
     return false;
   }
@@ -20,8 +21,9 @@ function _isTimelineContainer(entry) {
 
 function _isTimelineFolder(folder) {
   try {
-    const f = folder?.getFlag?.('spaceholder', 'timeline') ?? folder?.flags?.spaceholder?.timeline ?? {};
-    return !!f?.isFolder;
+    const f1 = folder?.getFlag?.('spaceholder', 'timeline') ?? folder?.flags?.spaceholder?.timeline ?? {};
+    const f2 = folder?.getFlag?.('spaceholder', 'timelineV2') ?? folder?.flags?.spaceholder?.timelineV2 ?? {};
+    return !!(f1?.isFolder || f2?.isFolder);
   } catch (_) {
     return false;
   }

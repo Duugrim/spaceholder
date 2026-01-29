@@ -204,7 +204,7 @@ async function _pickTimelineV2Date({ year, month, day } = {}) {
       const y = _parseYear(yearInput.value, y0);
       const m = Math.floor(state.dayOfYear / DAYS_PER_MONTH) + 1;
       const d = (state.dayOfYear % DAYS_PER_MONTH) + 1;
-      readoutEl.textContent = `${y}.${pad2(m)}.${pad2(d)}`;
+      readoutEl.textContent = `${pad2(d)}.${pad2(m)}.${y}`;
     };
 
     const setDayOfYear = (next) => {
@@ -713,7 +713,17 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       || game.i18n?.localize?.('SPACEHOLDER.IconPicker.Title')
       || 'Pick icon';
 
-    const picked = await pickIcon({ defaultColor, title });
+    const factionColor = (() => {
+      const fu = String(this._factionUuid || '').trim();
+      if (!fu) return null;
+      const f = (Array.isArray(this._factions) ? this._factions : []).find((x) => String(x?.uuid || '').trim() === fu);
+      const c = String(f?.color ?? '').trim();
+      return c || null;
+    })();
+
+    const initialPath = String(this._iconPath || '').trim() || null;
+
+    const picked = await pickIcon({ defaultColor, title, factionColor, initialPath });
     if (!picked) return;
 
     this._iconPath = String(picked || '').trim();
@@ -1042,7 +1052,7 @@ function _formatDate({ year, month, day }) {
   const y = Number(year) || 0;
   const m = String(Number(month) || 1).padStart(2, '0');
   const d = String(Number(day) || 1).padStart(2, '0');
-  return `${y}.${m}.${d}`;
+  return `${d}.${m}.${y}`;
 }
 
 function _pickTickStep(rangeYears) {
@@ -1827,20 +1837,36 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     let maxYear = 10;
 
     if (hasEvents) {
-      const serials = rawEvents.map((e) => e.serial);
-      const minSerial = Math.min(...serials);
-      const maxSerial = Math.max(...serials);
+      // Include range end dates too, otherwise long events can extend beyond the scrollable canvas.
+      let minSerial = Number.POSITIVE_INFINITY;
+      let maxSerial = Number.NEGATIVE_INFINITY;
 
-      minYear = Math.floor(minSerial / DAYS_PER_YEAR);
-      maxYear = Math.floor(maxSerial / DAYS_PER_YEAR);
+      for (const e of rawEvents) {
+        const s0 = Number(e.serial);
+        if (Number.isFinite(s0)) {
+          if (s0 < minSerial) minSerial = s0;
+          if (s0 > maxSerial) maxSerial = s0;
+        }
 
-      // Ensure year 0 is always in view
-      minYear = Math.min(minYear, 0);
-      maxYear = Math.max(maxYear, 0);
+        const s1 = Number(e.endSerial);
+        if (Number.isFinite(s1)) {
+          if (s1 < minSerial) minSerial = s1;
+          if (s1 > maxSerial) maxSerial = s1;
+        }
+      }
 
-      // Padding
-      minYear -= 2;
-      maxYear += 2;
+      if (Number.isFinite(minSerial) && Number.isFinite(maxSerial)) {
+        minYear = Math.floor(minSerial / DAYS_PER_YEAR);
+        maxYear = Math.floor(maxSerial / DAYS_PER_YEAR);
+
+        // Ensure year 0 is always in view
+        minYear = Math.min(minYear, 0);
+        maxYear = Math.max(maxYear, 0);
+
+        // Padding
+        minYear -= 2;
+        maxYear += 2;
+      }
     }
 
     const rangeYears = maxYear - minYear;
