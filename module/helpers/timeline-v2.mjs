@@ -989,6 +989,109 @@ async function _handleSocketRequestAsGM(msg) {
       return;
     }
 
+    if (action === 'createIndex') {
+      const requester = game?.users?.get?.(userId) ?? null;
+      if (!requester) {
+        reply(false, null, 'requester not found');
+        return;
+      }
+
+      const OWN = CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+
+      const detailUuid = normalizeUuid(msg?.payload?.detailUuid);
+      const detailPage = await resolveTimelineV2Page(detailUuid);
+      if (!detailPage || !isTimelineV2DetailPage(detailPage)) {
+        reply(false, null, 'detail page not found');
+        return;
+      }
+
+      // Prevent players from creating world-only (no faction) events.
+      const detailData = getTimelineV2PageData(detailPage);
+      if (!detailData?.isDetail) {
+        reply(false, null, 'expected detail page');
+        return;
+      }
+
+      if (!detailData.factionUuid && !requester.isGM) {
+        reply(false, null, 'faction is required');
+        return;
+      }
+
+      // Allow only owners of the detail page to publish it into the world index.
+      const canEdit = requester.isGM || detailPage.testUserPermission?.(requester, OWN);
+      if (!canEdit) {
+        reply(false, null, 'no permission');
+        return;
+      }
+
+      // If already linked, return the existing index UUID.
+      if (detailData.indexUuid) {
+        const existingIndex = await resolveTimelineV2Page(detailData.indexUuid);
+        if (existingIndex && isTimelineV2IndexPage(existingIndex)) {
+          reply(true, { indexUuid: existingIndex.uuid });
+          return;
+        }
+      }
+
+      // Ensure world container exists.
+      let world = getTimelineV2Container({ kind: TIMELINE_V2_CONTAINER_KIND.WORLD });
+      if (!world) {
+        await _gmEnsureTimelineV2Folder();
+        world = await _gmUpsertContainer({ kind: TIMELINE_V2_CONTAINER_KIND.WORLD });
+      }
+
+      if (!world) {
+        reply(false, null, 'world container not found');
+        return;
+      }
+
+      const flagsIndex = {
+        [MODULE_NS]: {
+          [FLAG_ROOT]: {
+            schema: 2,
+            isIndex: true,
+            year: detailData.year,
+            month: detailData.month,
+            day: detailData.day,
+            factionUuid: detailData.factionUuid,
+            origin: detailData.origin,
+            iconPath: _normalizeIconPath(detailData.iconPath),
+            hasDuration: !!detailData.hasDuration,
+            durationDays: detailData.hasDuration ? detailData.durationDays : undefined,
+            isGlobal: !!detailData.isGlobal,
+            isHidden: !!detailData.isHidden,
+            detailUuid: detailPage.uuid,
+          },
+        },
+      };
+
+      const indexData = {
+        name: '(событие)',
+        type: 'text',
+        text: { content: '' },
+        flags: flagsIndex,
+      };
+
+      const createdIndexArr = await world.createEmbeddedDocuments('JournalEntryPage', [indexData], { spaceholderJournalCheck: true });
+      const indexPage = createdIndexArr?.[0] ?? null;
+      if (!indexPage) {
+        reply(false, null, 'failed to create index page');
+        return;
+      }
+
+      // Link back (best-effort)
+      try {
+        const f = { ..._getFlagObj(detailPage) };
+        f.indexUuid = indexPage.uuid;
+        await detailPage.update({ [`flags.${MODULE_NS}.${FLAG_ROOT}`]: f }, { diff: false, spaceholderJournalCheck: true });
+      } catch (_) {
+        // ignore
+      }
+
+      reply(true, { indexUuid: indexPage.uuid });
+      return;
+    }
+
     if (action === 'updateDate') {
       const requester = game?.users?.get?.(userId) ?? null;
       if (!requester) {
@@ -1365,8 +1468,19 @@ export async function createTimelineV2Event({
 
   let indexPage = null;
   try {
-    const createdIndexArr = await world.createEmbeddedDocuments('JournalEntryPage', [indexData], { spaceholderJournalCheck: true });
-    indexPage = createdIndexArr?.[0] ?? null;
+    if (game.user?.isGM) {
+      const createdIndexArr = await world.createEmbeddedDocuments('JournalEntryPage', [indexData], { spaceholderJournalCheck: true });
+      indexPage = createdIndexArr?.[0] ?? null;
+    } else {
+      // Players cannot create in the world container directly (index is GM-owned); publish via socket.
+      const res = await _requestViaSocket('createIndex', { detailUuid: detailPage.uuid }, { timeoutMs: 12000 });
+      const indexUuid = normalizeUuid(res?.indexUuid);
+      if (!indexUuid) throw new Error('Failed to create index page');
+
+      // Index page propagation to clients can be asynchronous; don't hard-fail if it isn't resolvable yet.
+      indexPage = await resolveTimelineV2Page(indexUuid);
+      if (!indexPage) indexPage = { uuid: indexUuid };
+    }
   } catch (e) {
     // Rollback best-effort
     try {
