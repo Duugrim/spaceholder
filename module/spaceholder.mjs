@@ -48,6 +48,7 @@ import { GlobalMapTools } from './helpers/global-map/global-map-tools.mjs';
 import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
 import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edge-ui.mjs';
+import { installGlobalMapFactionVision } from './helpers/global-map/global-map-faction-vision.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
@@ -141,6 +142,8 @@ Hooks.once('init', function () {
   installGlobalMapSceneConfigHooks();
   // Edge UI (fixed panel) for global map scenes
   installGlobalMapEdgeUiHooks();
+  // Global Map: vision sources by faction instead of OBSERVER
+  installGlobalMapFactionVision();
   // Install Token Pointer hooks
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks
