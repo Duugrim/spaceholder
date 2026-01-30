@@ -1688,38 +1688,8 @@ export function installJournalCheckHooks() {
     }
   });
 
-  // Auto-dirty on updates (only act on the originating client)
-  Hooks.on('updateJournalEntry', async (entry, changed, options, userId) => {
-    try {
-      if (_isTimelineContainer(entry)) return;
-      if (_isOurUpdate(options)) return;
-      if (!_currentUserIsActor(userId)) return;
-      if (_isUserGM(userId)) return;
-
-      const status = computeEntryStatusFromPages(entry);
-      if (status !== STATUS.APPROVED) return;
-
-      await setEntryStatus(entry, STATUS.PROPOSED, { reason: 'autoDirtyEntry', applyToPages: true });
-    } catch (e) {
-      console.error('SpaceHolder | JournalCheck: updateJournalEntry failed', e);
-    }
-  });
-
-  Hooks.on('updateJournalEntryPage', async (page, changed, options, userId) => {
-    try {
-      if (_isTimelinePage(page)) return;
-      if (_isOurUpdate(options)) return;
-      if (!_currentUserIsActor(userId)) return;
-      if (_isUserGM(userId)) return;
-
-      const status = getStatus(page);
-      if (status !== STATUS.APPROVED) return;
-
-      await setPageStatus(page, STATUS.PROPOSED, { reason: 'autoDirtyPage', syncParent: true });
-    } catch (e) {
-      console.error('SpaceHolder | JournalCheck: updateJournalEntryPage failed', e);
-    }
-  });
+  // NOTE: Auto-dirty (auto reset from Approved -> Proposed) on player edits is intentionally disabled.
+  // Keeping approval stable is preferred for this project.
 
   // Sync entry status when pages are added/removed
   const parseCreateDeleteArgs = (args) => {
