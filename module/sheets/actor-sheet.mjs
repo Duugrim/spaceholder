@@ -1034,7 +1034,7 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
 
     // Progression Points (PP)
     context.ppEnabled = isProgressionEnabled();
-    context.system.ppCost ??= 0;
+    context.system.ppCost ??= 1;
 
     // Flags (на случай старых актёров)
     context.flags = context.flags || {};
@@ -1761,11 +1761,8 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
       return;
     }
 
-    // Для JournalEntryPage стараемся хранить UUID родительского JournalEntry
-    let uuidToStore = uuid;
-    if (docName === 'JournalEntryPage' && doc.parent?.uuid) {
-      uuidToStore = doc.parent.uuid;
-    }
+    // system.gLink: разрешаем хранить UUID страницы, чтобы ссылка могла вести прямо на страницу
+    let uuidToStore = doc.uuid ?? uuid;
 
     await this.actor.update({ [field]: uuidToStore });
     input.value = uuidToStore;
@@ -1795,9 +1792,13 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
       return;
     }
 
-    // Для JournalEntryPage обычно открываем родительский JournalEntry
+    // Для JournalEntryPage обычно открываем родительский JournalEntry, но стараемся фокусироваться на странице
     if (doc.documentName === 'JournalEntryPage' && doc.parent?.sheet?.render) {
-      doc.parent.sheet.render(true);
+      try {
+        doc.parent.sheet.render(true, { pageId: doc.id });
+      } catch (e) {
+        doc.parent.sheet.render(true);
+      }
       return;
     }
 

@@ -219,7 +219,8 @@ export function computeFactionMaxPoints(factionActor) {
   const mod = Number(factionActor?.system?.ppModifier);
   const modifier = Number.isFinite(mod) ? mod : 1;
 
-  return base * modifier;
+  // Points limit must be integer; also avoids floating point artifacts like 7.7000...0001
+  return Math.floor(base * modifier);
 }
 
 function _isGlobalMapScene(scene) {
@@ -408,18 +409,91 @@ export function installProgressionPointsHooks() {
 
   Hooks.on('preCreateJournalEntryPage', (page, data, options, userId) => {
     try {
-      if (!isProgressionEnabled()) return;
+      // Defaults should be applied even when PP UI is disabled.
+      // Some Foundry flows may pass userId as undefined, so we derive it from options when possible.
       if (_isOurUpdate(options)) return;
-      if (!_currentUserIsActor(userId)) return;
 
-      const current = foundry.utils.getProperty(data, `flags.${MODULE_NS}.${FLAG_ROOT}`);
-      const hasPoints = current && current.points !== undefined && current.points !== null;
-      const hasAuthor = current && current.authorUserId !== undefined && current.authorUserId !== null;
+      const creatorId = String(
+        userId
+          ?? options?.userId
+          ?? options?.user?.id
+          ?? options?.user
+          ?? ''
+      ).trim();
 
-      if (!hasPoints) foundry.utils.setProperty(data, `flags.${MODULE_NS}.${FLAG_ROOT}.points`, 1);
-      if (!hasAuthor) foundry.utils.setProperty(data, `flags.${MODULE_NS}.${FLAG_ROOT}.authorUserId`, game.user.id);
+      // If we can identify the creating user and it is not us, don't mutate their payload.
+      if (creatorId && !_currentUserIsActor(creatorId)) return;
+
+      const current = foundry.utils.getProperty(data, `flags.${MODULE_NS}.${FLAG_ROOT}`) ?? {};
+
+      const curPoints = Number(current?.points);
+      const needsDefaultPoints = (!Number.isFinite(curPoints) || curPoints === 0);
+
+      const curAuthor = String(current?.authorUserId ?? '').trim();
+      const hasAuthor = !!curAuthor;
+
+      if (needsDefaultPoints) foundry.utils.setProperty(data, `flags.${MODULE_NS}.${FLAG_ROOT}.points`, 1);
+      if (!hasAuthor) foundry.utils.setProperty(data, `flags.${MODULE_NS}.${FLAG_ROOT}.authorUserId`, creatorId || game.user.id);
     } catch (e) {
       console.error('SpaceHolder | Progression: preCreateJournalEntryPage failed', e);
+    }
+  });
+
+  // Fallback: if some creation flows bypass/ignore preCreate data mutation,
+  // enforce defaults right after creation (creator-side only).
+  Hooks.on('createJournalEntryPage', async (page, options, userId) => {
+    try {
+      if (_isOurUpdate(options)) return;
+
+      const creatorId = String(
+        userId
+          ?? options?.userId
+          ?? options?.user?.id
+          ?? options?.user
+          ?? ''
+      ).trim();
+
+      if (creatorId && !_currentUserIsActor(creatorId)) return;
+
+      const curPoints = getPagePoints(page);
+      const curAuthorId = getPageAuthorUserId(page);
+
+      const nextPoints = (!Number.isFinite(curPoints) || curPoints === 0) ? 1 : curPoints;
+      const nextAuthorId = curAuthorId || creatorId || game.user.id;
+
+      const needsUpdate = (nextPoints !== curPoints) || (nextAuthorId !== curAuthorId);
+      if (!needsUpdate) return;
+
+      await setPageProgression(page, { points: nextPoints, authorUserId: nextAuthorId });
+    } catch (e) {
+      console.error('SpaceHolder | Progression: createJournalEntryPage fallback failed', e);
+    }
+  });
+
+  Hooks.on('preCreateActor', (_actor, data, options, userId) => {
+    try {
+      if (_isOurUpdate(options)) return;
+
+      const creatorId = String(
+        userId
+          ?? options?.userId
+          ?? options?.user?.id
+          ?? options?.user
+          ?? ''
+      ).trim();
+
+      if (creatorId && !_currentUserIsActor(creatorId)) return;
+
+      // Default PP cost for Global Object actors (used by Global Map tokens)
+      const type = String(data?.type ?? '').trim();
+      if (type !== 'globalobject') return;
+
+      const raw = foundry.utils.getProperty(data, 'system.ppCost');
+      const n = Number(raw);
+      const needsDefaultCost = (!Number.isFinite(n) || n === 0);
+      if (needsDefaultCost) foundry.utils.setProperty(data, 'system.ppCost', 1);
+    } catch (e) {
+      console.error('SpaceHolder | Progression: preCreateActor failed', e);
     }
   });
 
