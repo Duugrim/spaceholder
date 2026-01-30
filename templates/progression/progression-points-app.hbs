@@ -1,0 +1,83 @@
+<div class="sh-pp">
+  <header class="sh-pp__header">
+    <div class="sh-pp__title">
+      {{#if isGM}}
+        <select class="sh-pp__userSelect" data-action="pp-select-user">
+          {{#each userChoices as |u|}}
+            <option value="{{u.id}}" {{#if (eq u.id @root.targetUserId)}}selected{{/if}}>{{u.name}}</option>
+          {{/each}}
+        </select>
+      {{else}}
+        {{userName}}
+      {{/if}}
+    </div>
+
+    <div class="sh-pp__totals">
+      <div class="sh-pp__total"><span class="k">Журналы</span> <span class="v">{{journalPoints}}</span></div>
+      <div class="sh-pp__total"><span class="k">Ручные</span> <span class="v">{{manualPoints}}</span></div>
+      <div class="sh-pp__total sh-pp__total--sum"><span class="k">Итого</span> <span class="v">{{totalPlayerPoints}}</span></div>
+    </div>
+  </header>
+
+  <section class="sh-pp__body">
+    <div class="sh-pp__col">
+      <div class="sh-pp__sectionTitle">Одобренные страницы</div>
+
+      {{#if journalLines.length}}
+        <div class="sh-pp__list">
+          {{#each journalLines as |row|}}
+            <div class="sh-pp__row">
+              <button type="button" class="sh-pp__open" data-action="open-journal" data-uuid="{{row.uuid}}">{{row.entryName}} — {{row.name}}</button>
+              <div class="sh-pp__pts">{{row.points}}</div>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="sh-pp__empty">Нет одобренных страниц</div>
+      {{/if}}
+    </div>
+
+    <div class="sh-pp__col">
+      <div class="sh-pp__sectionTitle sh-pp__sectionTitle--withBtn">
+        <span>Ручные записи</span>
+        <button type="button" class="icon-btn" data-action="pp-manual-add" title="Добавить">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+      </div>
+
+      {{#if manual.length}}
+        <div class="sh-pp__manual">
+          {{#each manual as |m|}}
+            <div class="sh-pp__manualRow" data-id="{{m.id}}">
+              <input
+                type="text"
+                class="sh-pp__manualName"
+                value="{{m.name}}"
+                placeholder="Название"
+                data-action="pp-manual-edit"
+                data-id="{{m.id}}"
+                data-field="name"
+              />
+
+              <input
+                type="number"
+                class="sh-pp__manualPts"
+                value="{{m.points}}"
+                step="1"
+                data-action="pp-manual-edit"
+                data-id="{{m.id}}"
+                data-field="points"
+              />
+
+              <button type="button" class="icon-btn" data-action="pp-manual-remove" data-id="{{m.id}}" title="Удалить">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="sh-pp__empty">Нет ручных записей</div>
+      {{/if}}
+    </div>
+  </section>
+</div>

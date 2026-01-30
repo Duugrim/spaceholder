@@ -1,0 +1,352 @@
+// Progression Points (PP)
+
+// Sidebar (Journal Directory)
+#sidebar #journal,
+.sidebar-tab[data-tab="journal"] {
+  .spaceholder-progression-open {
+    flex: 0 0 auto;
+    min-width: 30px;
+    padding: 0 8px;
+    line-height: 1;
+  }
+}
+
+// Journal page meta block (core sheet header, not a SpaceHolder window)
+.spaceholder-pp-meta {
+  // We inject it into the journal header; keep it one-line and compact.
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.22);
+
+  font-size: 12px;
+
+  input,
+  select {
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(0, 0, 0, 0.30);
+    color: rgba(255, 255, 255, 0.92);
+    padding: 0 6px;
+  }
+
+  .spaceholder-pp-meta__points {
+    width: 64px;
+    flex: 0 0 64px;
+    text-align: center;
+    font-family: $font-mono;
+  }
+
+  .spaceholder-pp-meta__author {
+    min-width: 0;
+    width: 180px;
+    max-width: 240px;
+  }
+
+  input:disabled,
+  select:disabled {
+    opacity: 0.65;
+    cursor: default;
+  }
+}
+
+// App window (ApplicationV2)
+#spaceholder-progression-points,
+.window-app.spaceholder.progression-points,
+.spaceholder.progression-points {
+  .sh-pp {
+    background: rgba(0, 0, 0, 0.85);
+    color: var(--sh-text);
+    padding: 12px;
+    border-radius: var(--sh-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .sh-pp__header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .sh-pp__title {
+    font-weight: 600;
+  }
+
+  .sh-pp__userSelect {
+    height: 30px;
+    border-radius: var(--sh-radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--sh-text);
+    padding: 0 8px;
+    min-width: 220px;
+  }
+
+  .sh-pp__totals {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .sh-pp__total {
+    font-size: 12px;
+    color: var(--sh-text-muted);
+
+    .v {
+      color: var(--sh-text);
+      margin-left: 6px;
+      font-family: $font-mono;
+    }
+
+    &.sh-pp__total--sum {
+      .v { color: #fff; }
+    }
+  }
+
+  .sh-pp__body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sh-pp__col {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-md);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px;
+  }
+
+  .sh-pp__sectionTitle {
+    font-size: 12px;
+    color: var(--sh-text);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sh-pp__row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    &:last-child { border-bottom: none; }
+  }
+
+  .sh-pp__open {
+    background: transparent;
+    border: none;
+    padding: 0;
+
+    color: var(--sh-text);
+    text-align: left;
+    cursor: pointer;
+
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover,
+    &:focus {
+      color: #fff;
+      text-decoration: underline;
+    }
+  }
+
+  .sh-pp__pts {
+    margin-left: auto;
+    font-family: $font-mono;
+    color: rgba(255, 255, 255, 0.92);
+    flex: 0 0 auto;
+  }
+
+  .sh-pp__manualRow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+  }
+
+  .sh-pp__manualName {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sh-pp__manualPts {
+    width: 90px;
+    flex: 0 0 90px;
+    text-align: center;
+    font-family: $font-mono;
+  }
+
+  .sh-pp__empty {
+    color: var(--sh-text-dim);
+    font-size: 12px;
+    padding: 6px 0;
+  }
+}
+
+// Faction sheet section styling
+// Primary selectors: SpaceHolder faction sheet form has class "faction".
+// Fallback: if outer classes change, scope by the unique PP wrapper.
+.window-app.spaceholder .faction,
+.spaceholder.faction,
+.window-app .sh-pp-faction,
+.sh-pp-faction {
+  .sh-pp-faction__summary {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 8px 0;
+  }
+
+  .sh-pp-faction__pill {
+    font-size: 12px;
+    color: var(--sh-text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-sm);
+    padding: 4px 8px;
+
+    .v {
+      color: var(--sh-text);
+      margin-left: 6px;
+      font-family: $font-mono;
+    }
+  }
+
+  .sh-pp-faction__warn {
+    font-size: 12px;
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: var(--sh-radius-sm);
+    padding: 4px 8px;
+  }
+
+  .sh-pp-faction__section {
+    margin-top: 10px;
+  }
+
+  .sh-pp-faction__sectionTitle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--sh-text);
+    margin-bottom: 6px;
+  }
+
+  .sh-pp-faction__table {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sh-radius-md);
+    background: rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+  }
+
+  .sh-pp-faction__thead,
+  .sh-pp-faction__tr {
+    display: grid;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+  }
+
+  // 3-col table (spends)
+  .sh-pp-faction__table--spends {
+    .sh-pp-faction__thead,
+    .sh-pp-faction__tr {
+      grid-template-columns: 1fr 92px 30px;
+    }
+  }
+
+  // 4-col table (tokens)
+  .sh-pp-faction__table--tokens {
+    .sh-pp-faction__thead,
+    .sh-pp-faction__tr {
+      grid-template-columns: 1fr 1fr 92px 30px;
+    }
+  }
+
+  .sh-pp-faction__thead {
+    background: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sh-pp-faction__th {
+    font-size: 11px;
+    color: var(--sh-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .sh-pp-faction__tbody {
+    .sh-pp-faction__tr {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      &:last-child { border-bottom: none; }
+    }
+  }
+
+  .sh-pp-faction__input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .sh-pp-faction__input--pts {
+    text-align: center;
+    font-family: $font-mono;
+  }
+
+  .sh-pp-faction__tokenPts {
+    text-align: center;
+    font-family: $font-mono;
+  }
+
+  .sh-pp-faction__tokenName {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-pp-faction__tokenMeta {
+    font-size: 11px;
+    color: var(--sh-text-dim);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-pp-faction__empty {
+    color: var(--sh-text-dim);
+    font-size: 12px;
+    padding: 8px;
+  }
+}

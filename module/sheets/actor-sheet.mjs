@@ -4,6 +4,11 @@ import {
 } from '../helpers/effects.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
 import { promptPickAndApplyIconToActorOrToken } from '../helpers/icon-picker/icon-apply.mjs';
+import {
+  isProgressionEnabled,
+  computeFactionMaxPoints,
+  computeFactionSpentPoints,
+} from '../helpers/progression-points.mjs';
 
 // Base V2 Actor Sheet with Handlebars rendering
 export class SpaceHolderBaseActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -1027,6 +1032,10 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     context.system.gActors ??= [];
     if (!Array.isArray(context.system.gActors)) context.system.gActors = [];
 
+    // Progression Points (PP)
+    context.ppEnabled = isProgressionEnabled();
+    context.system.ppCost ??= 0;
+
     // Flags (на случай старых актёров)
     context.flags = context.flags || {};
     context.flags.spaceholder = context.flags.spaceholder || {};
@@ -1820,6 +1829,27 @@ export class SpaceHolderFactionSheet extends SpaceHolderBaseActorSheet {
     context.system.fLink ??= '';
     context.system.fColor ??= '#666666';
 
+    // Progression Points (PP)
+    context.ppEnabled = isProgressionEnabled();
+    context.system.ppModifier ??= 1;
+    context.system.ppSpends ??= [];
+    if (!Array.isArray(context.system.ppSpends)) context.system.ppSpends = [];
+
+    if (context.ppEnabled) {
+      const max = computeFactionMaxPoints(this.actor);
+      const spent = computeFactionSpentPoints(this.actor);
+      context.pp = {
+        maxPoints: max,
+        spentTablePoints: spent.spentTablePoints,
+        spentGlobalObjectsPoints: spent.spentGlobalObjectsPoints,
+        spentTotal: spent.spentTotal,
+        overLimit: (Number(spent.spentTotal) || 0) > (Number(max) || 0),
+        tokenRows: spent.tokenRows,
+      };
+    } else {
+      context.pp = null;
+    }
+
     // Имя для отображения (как content-link)
     context.fLinkName = await this._resolveDocName(context.system.fLink);
 
@@ -1850,6 +1880,60 @@ export class SpaceHolderFactionSheet extends SpaceHolderBaseActorSheet {
     // Очистка UUID поля
     el.querySelectorAll('[data-action="uuid-clear"]').forEach((btn) => {
       btn.addEventListener('click', this._onUuidClear.bind(this));
+    });
+
+    // Progression Points (PP): spends table
+    const randomId = () => {
+      try { return foundry.utils.randomID?.(); } catch (_) {}
+      try { return globalThis.randomID?.(); } catch (_) {}
+      try { return globalThis.crypto?.randomUUID?.(); } catch (_) {}
+      return String(Date.now());
+    };
+
+    const getSpends = () => {
+      const raw = this.actor?.system?.ppSpends;
+      return Array.isArray(raw) ? raw : [];
+    };
+
+    const setSpends = async (next) => {
+      await this.actor.update({ 'system.ppSpends': Array.isArray(next) ? next : [] });
+      this.render(false);
+    };
+
+    el.querySelectorAll('[data-action="pp-spend-add"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const next = [...getSpends(), { id: randomId(), name: '', points: 0 }];
+        await setSpends(next);
+      });
+    });
+
+    el.querySelectorAll('[data-action="pp-spend-remove"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const id = String(btn.dataset.id ?? '').trim();
+        if (!id) return;
+        const next = getSpends().filter((r) => String(r?.id ?? '') !== id);
+        await setSpends(next);
+      });
+    });
+
+    el.querySelectorAll('[data-action="pp-spend-edit"]').forEach((input) => {
+      input.addEventListener('change', async (ev) => {
+        const id = String(input.dataset.id ?? '').trim();
+        const field = String(input.dataset.field ?? '').trim();
+        if (!id || !field) return;
+
+        const next = getSpends().map((r) => {
+          if (String(r?.id ?? '') !== id) return r;
+          const copy = { ...(r || {}), id };
+          if (field === 'name') copy.name = String(input.value ?? '').trim();
+          if (field === 'points') copy.points = Number(input.value) || 0;
+          return copy;
+        });
+
+        await setSpends(next);
+      });
     });
   }
 

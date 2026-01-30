@@ -148,6 +148,16 @@
       </div>
     </div>
 
+    {{#if ppEnabled}}
+      {{!-- Стоимость PP --}}
+      <div class="form-group globalobject-ppcost">
+        <label for="system.ppCost">PP</label>
+        <div class="form-fields">
+          <input type="number" name="system.ppCost" value="{{system.ppCost}}" data-dtype="Number" step="1" />
+        </div>
+      </div>
+    {{/if}}
+
     {{!-- Контейнер актёров (drag&drop сюда) --}}
     <div class="inventory-panel globalobject-actors-panel" data-action="gactors-drop">
       {{#if gActorsResolved.length}}

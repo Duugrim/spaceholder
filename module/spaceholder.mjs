@@ -23,6 +23,9 @@ import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction
 import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
 // Journal Check (workflow statuses)
 import { registerJournalCheckSettings, installJournalCheckHooks } from './helpers/journal-check.mjs';
+// Progression Points (PP)
+import { registerProgressionPointsSettings, installProgressionPointsHooks } from './helpers/progression-points.mjs';
+import { openProgressionPointsApp } from './helpers/progression-points-app.mjs';
 // Journal Update Log window
 import { openJournalUpdateLogApp } from './helpers/journal-update-log-app.mjs';
 // Timeline V2
@@ -61,6 +64,7 @@ Hooks.once('init', function () {
   registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
   registerJournalCheckSettings();
+  registerProgressionPointsSettings();
   registerTimelineV2Settings();
   installTokenPointerTabs();
   // Add utility classes to the global game object so that they're more easily
@@ -71,6 +75,7 @@ Hooks.once('init', function () {
     rollItemMacro,
     anatomyManager,
     openJournalUpdateLogApp,
+    openProgressionPointsApp,
     openTimelineV2App,
     // Icon library / picker
     pickIcon,
@@ -146,6 +151,8 @@ Hooks.once('init', function () {
   installJournalDirectoryHooks();
   // Install Journal Check hooks (statuses + UI)
   installJournalCheckHooks();
+  // Install Progression Points hooks (PP)
+  installProgressionPointsHooks();
   // Timeline V2: socket + hooks
   installTimelineV2SocketHandlers();
   installTimelineV2Hooks();

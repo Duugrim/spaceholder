@@ -55,5 +55,122 @@
       </div>
     </div>
 
+    {{#if ppEnabled}}
+      <div class="sh-pp-faction">
+
+        <div class="form-group">
+          <label for="system.ppModifier">Модификатор PP</label>
+          <div class="form-fields">
+            <input type="number" name="system.ppModifier" value="{{system.ppModifier}}" data-dtype="Number" step="0.01" />
+          </div>
+        </div>
+
+        {{#if pp}}
+          <div class="sh-pp-faction__summary">
+            <div class="sh-pp-faction__pill"><span class="k">Лимит</span> <span class="v">{{pp.maxPoints}}</span></div>
+            <div class="sh-pp-faction__pill"><span class="k">Потрачено</span> <span class="v">{{pp.spentTotal}}</span></div>
+            {{#if pp.overLimit}}
+              <div class="sh-pp-faction__warn">Превышение лимита</div>
+            {{/if}}
+          </div>
+
+          <div class="sh-pp-faction__section">
+            <div class="sh-pp-faction__sectionTitle">
+              <span>Траты</span>
+              <button type="button" class="icon-btn" data-action="pp-spend-add" title="Добавить">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+
+            <div class="sh-pp-faction__table sh-pp-faction__table--spends">
+              <div class="sh-pp-faction__thead">
+                <div class="sh-pp-faction__th sh-pp-faction__th--name">Название</div>
+                <div class="sh-pp-faction__th sh-pp-faction__th--pts">PP</div>
+                <div class="sh-pp-faction__th sh-pp-faction__th--actions"></div>
+              </div>
+
+              {{#if system.ppSpends.length}}
+                <div class="sh-pp-faction__tbody">
+                  {{#each system.ppSpends as |s|}}
+                    <div class="sh-pp-faction__tr" data-id="{{s.id}}">
+                      <div class="sh-pp-faction__td sh-pp-faction__td--name">
+                        <input
+                          type="text"
+                          class="sh-pp-faction__input"
+                          value="{{s.name}}"
+                          placeholder="Название"
+                          data-action="pp-spend-edit"
+                          data-id="{{s.id}}"
+                          data-field="name"
+                        />
+                      </div>
+                      <div class="sh-pp-faction__td sh-pp-faction__td--pts">
+                        <input
+                          type="number"
+                          class="sh-pp-faction__input sh-pp-faction__input--pts"
+                          value="{{s.points}}"
+                          step="1"
+                          data-action="pp-spend-edit"
+                          data-id="{{s.id}}"
+                          data-field="points"
+                        />
+                      </div>
+                      <div class="sh-pp-faction__td sh-pp-faction__td--actions">
+                        <button type="button" class="icon-btn" data-action="pp-spend-remove" data-id="{{s.id}}" title="Удалить">
+                          <i class="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                    </div>
+                  {{/each}}
+                </div>
+              {{else}}
+                <div class="sh-pp-faction__empty">Нет трат</div>
+              {{/if}}
+            </div>
+          </div>
+
+          <div class="sh-pp-faction__section">
+            <div class="sh-pp-faction__sectionTitle"><span>Global Objects</span></div>
+
+            <div class="sh-pp-faction__table sh-pp-faction__table--tokens">
+              <div class="sh-pp-faction__thead">
+                <div class="sh-pp-faction__th sh-pp-faction__th--name">Токен</div>
+                <div class="sh-pp-faction__th sh-pp-faction__th--meta">Сцена</div>
+                <div class="sh-pp-faction__th sh-pp-faction__th--pts">PP</div>
+                <div class="sh-pp-faction__th sh-pp-faction__th--actions"></div>
+              </div>
+
+              {{#if pp.tokenRows.length}}
+                <div class="sh-pp-faction__tbody">
+                  {{#each pp.tokenRows as |t|}}
+                    <div class="sh-pp-faction__tr">
+                      <div class="sh-pp-faction__td sh-pp-faction__td--name">
+                        <div class="sh-pp-faction__tokenName">{{t.tokenName}}</div>
+                      </div>
+                      <div class="sh-pp-faction__td sh-pp-faction__td--meta">
+                        <div class="sh-pp-faction__tokenMeta">{{t.sceneName}}</div>
+                      </div>
+                      <div class="sh-pp-faction__td sh-pp-faction__td--pts">
+                        <div class="sh-pp-faction__tokenPts">{{t.cost}}</div>
+                      </div>
+                      <div class="sh-pp-faction__td sh-pp-faction__td--actions">
+                        {{#if t.actorUuid}}
+                          <button type="button" class="icon-btn" data-action="uuid-open" data-uuid="{{t.actorUuid}}" title="Открыть актёра">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                          </button>
+                        {{/if}}
+                      </div>
+                    </div>
+                  {{/each}}
+                </div>
+              {{else}}
+                <div class="sh-pp-faction__empty">Нет объектов на Global Map</div>
+              {{/if}}
+            </div>
+          </div>
+        {{/if}}
+      </div>
+    {{/if}}
+
   </section>
 </form>

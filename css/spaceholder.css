@@ -2805,6 +2805,397 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   font-size: 12px;
 }
 
+#sidebar #journal .spaceholder-progression-open,
+.sidebar-tab[data-tab=journal] .spaceholder-progression-open {
+  flex: 0 0 auto;
+  min-width: 30px;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+.spaceholder-pp-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 12px;
+}
+.spaceholder-pp-meta input,
+.spaceholder-pp-meta select {
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.92);
+  padding: 0 6px;
+}
+.spaceholder-pp-meta .spaceholder-pp-meta__points {
+  width: 64px;
+  flex: 0 0 64px;
+  text-align: center;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.spaceholder-pp-meta .spaceholder-pp-meta__author {
+  min-width: 0;
+  width: 180px;
+  max-width: 240px;
+}
+.spaceholder-pp-meta input:disabled,
+.spaceholder-pp-meta select:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+#spaceholder-progression-points .sh-pp,
+.window-app.spaceholder.progression-points .sh-pp,
+.spaceholder.progression-points .sh-pp {
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--sh-text);
+  padding: 12px;
+  border-radius: var(--sh-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+}
+#spaceholder-progression-points .sh-pp__header,
+.window-app.spaceholder.progression-points .sh-pp__header,
+.spaceholder.progression-points .sh-pp__header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+#spaceholder-progression-points .sh-pp__title,
+.window-app.spaceholder.progression-points .sh-pp__title,
+.spaceholder.progression-points .sh-pp__title {
+  font-weight: 600;
+}
+#spaceholder-progression-points .sh-pp__userSelect,
+.window-app.spaceholder.progression-points .sh-pp__userSelect,
+.spaceholder.progression-points .sh-pp__userSelect {
+  height: 30px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--sh-text);
+  padding: 0 8px;
+  min-width: 220px;
+}
+#spaceholder-progression-points .sh-pp__totals,
+.window-app.spaceholder.progression-points .sh-pp__totals,
+.spaceholder.progression-points .sh-pp__totals {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#spaceholder-progression-points .sh-pp__total,
+.window-app.spaceholder.progression-points .sh-pp__total,
+.spaceholder.progression-points .sh-pp__total {
+  font-size: 12px;
+  color: var(--sh-text-muted);
+}
+#spaceholder-progression-points .sh-pp__total .v,
+.window-app.spaceholder.progression-points .sh-pp__total .v,
+.spaceholder.progression-points .sh-pp__total .v {
+  color: var(--sh-text);
+  margin-left: 6px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+#spaceholder-progression-points .sh-pp__total.sh-pp__total--sum .v,
+.window-app.spaceholder.progression-points .sh-pp__total.sh-pp__total--sum .v,
+.spaceholder.progression-points .sh-pp__total.sh-pp__total--sum .v {
+  color: #fff;
+}
+#spaceholder-progression-points .sh-pp__body,
+.window-app.spaceholder.progression-points .sh-pp__body,
+.spaceholder.progression-points .sh-pp__body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+#spaceholder-progression-points .sh-pp__col,
+.window-app.spaceholder.progression-points .sh-pp__col,
+.spaceholder.progression-points .sh-pp__col {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px;
+}
+#spaceholder-progression-points .sh-pp__sectionTitle,
+.window-app.spaceholder.progression-points .sh-pp__sectionTitle,
+.spaceholder.progression-points .sh-pp__sectionTitle {
+  font-size: 12px;
+  color: var(--sh-text);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#spaceholder-progression-points .sh-pp__row,
+.window-app.spaceholder.progression-points .sh-pp__row,
+.spaceholder.progression-points .sh-pp__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+#spaceholder-progression-points .sh-pp__row:last-child,
+.window-app.spaceholder.progression-points .sh-pp__row:last-child,
+.spaceholder.progression-points .sh-pp__row:last-child {
+  border-bottom: none;
+}
+#spaceholder-progression-points .sh-pp__open,
+.window-app.spaceholder.progression-points .sh-pp__open,
+.spaceholder.progression-points .sh-pp__open {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--sh-text);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#spaceholder-progression-points .sh-pp__open:hover, #spaceholder-progression-points .sh-pp__open:focus,
+.window-app.spaceholder.progression-points .sh-pp__open:hover,
+.window-app.spaceholder.progression-points .sh-pp__open:focus,
+.spaceholder.progression-points .sh-pp__open:hover,
+.spaceholder.progression-points .sh-pp__open:focus {
+  color: #fff;
+  text-decoration: underline;
+}
+#spaceholder-progression-points .sh-pp__pts,
+.window-app.spaceholder.progression-points .sh-pp__pts,
+.spaceholder.progression-points .sh-pp__pts {
+  margin-left: auto;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: rgba(255, 255, 255, 0.92);
+  flex: 0 0 auto;
+}
+#spaceholder-progression-points .sh-pp__manualRow,
+.window-app.spaceholder.progression-points .sh-pp__manualRow,
+.spaceholder.progression-points .sh-pp__manualRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+#spaceholder-progression-points .sh-pp__manualName,
+.window-app.spaceholder.progression-points .sh-pp__manualName,
+.spaceholder.progression-points .sh-pp__manualName {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#spaceholder-progression-points .sh-pp__manualPts,
+.window-app.spaceholder.progression-points .sh-pp__manualPts,
+.spaceholder.progression-points .sh-pp__manualPts {
+  width: 90px;
+  flex: 0 0 90px;
+  text-align: center;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+#spaceholder-progression-points .sh-pp__empty,
+.window-app.spaceholder.progression-points .sh-pp__empty,
+.spaceholder.progression-points .sh-pp__empty {
+  color: var(--sh-text-dim);
+  font-size: 12px;
+  padding: 6px 0;
+}
+
+.window-app.spaceholder .faction .sh-pp-faction__summary,
+.spaceholder.faction .sh-pp-faction__summary,
+.window-app .sh-pp-faction .sh-pp-faction__summary,
+.sh-pp-faction .sh-pp-faction__summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 8px 0;
+}
+.window-app.spaceholder .faction .sh-pp-faction__pill,
+.spaceholder.faction .sh-pp-faction__pill,
+.window-app .sh-pp-faction .sh-pp-faction__pill,
+.sh-pp-faction .sh-pp-faction__pill {
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-sm);
+  padding: 4px 8px;
+}
+.window-app.spaceholder .faction .sh-pp-faction__pill .v,
+.spaceholder.faction .sh-pp-faction__pill .v,
+.window-app .sh-pp-faction .sh-pp-faction__pill .v,
+.sh-pp-faction .sh-pp-faction__pill .v {
+  color: var(--sh-text);
+  margin-left: 6px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.window-app.spaceholder .faction .sh-pp-faction__warn,
+.spaceholder.faction .sh-pp-faction__warn,
+.window-app .sh-pp-faction .sh-pp-faction__warn,
+.sh-pp-faction .sh-pp-faction__warn {
+  font-size: 12px;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--sh-radius-sm);
+  padding: 4px 8px;
+}
+.window-app.spaceholder .faction .sh-pp-faction__section,
+.spaceholder.faction .sh-pp-faction__section,
+.window-app .sh-pp-faction .sh-pp-faction__section,
+.sh-pp-faction .sh-pp-faction__section {
+  margin-top: 10px;
+}
+.window-app.spaceholder .faction .sh-pp-faction__sectionTitle,
+.spaceholder.faction .sh-pp-faction__sectionTitle,
+.window-app .sh-pp-faction .sh-pp-faction__sectionTitle,
+.sh-pp-faction .sh-pp-faction__sectionTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--sh-text);
+  margin-bottom: 6px;
+}
+.window-app.spaceholder .faction .sh-pp-faction__table,
+.spaceholder.faction .sh-pp-faction__table,
+.window-app .sh-pp-faction .sh-pp-faction__table,
+.sh-pp-faction .sh-pp-faction__table {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+.window-app.spaceholder .faction .sh-pp-faction__thead,
+.window-app.spaceholder .faction .sh-pp-faction__tr,
+.spaceholder.faction .sh-pp-faction__thead,
+.spaceholder.faction .sh-pp-faction__tr,
+.window-app .sh-pp-faction .sh-pp-faction__thead,
+.window-app .sh-pp-faction .sh-pp-faction__tr,
+.sh-pp-faction .sh-pp-faction__thead,
+.sh-pp-faction .sh-pp-faction__tr {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+.window-app.spaceholder .faction .sh-pp-faction__table--spends .sh-pp-faction__thead,
+.window-app.spaceholder .faction .sh-pp-faction__table--spends .sh-pp-faction__tr,
+.spaceholder.faction .sh-pp-faction__table--spends .sh-pp-faction__thead,
+.spaceholder.faction .sh-pp-faction__table--spends .sh-pp-faction__tr,
+.window-app .sh-pp-faction .sh-pp-faction__table--spends .sh-pp-faction__thead,
+.window-app .sh-pp-faction .sh-pp-faction__table--spends .sh-pp-faction__tr,
+.sh-pp-faction .sh-pp-faction__table--spends .sh-pp-faction__thead,
+.sh-pp-faction .sh-pp-faction__table--spends .sh-pp-faction__tr {
+  grid-template-columns: 1fr 92px 30px;
+}
+.window-app.spaceholder .faction .sh-pp-faction__table--tokens .sh-pp-faction__thead,
+.window-app.spaceholder .faction .sh-pp-faction__table--tokens .sh-pp-faction__tr,
+.spaceholder.faction .sh-pp-faction__table--tokens .sh-pp-faction__thead,
+.spaceholder.faction .sh-pp-faction__table--tokens .sh-pp-faction__tr,
+.window-app .sh-pp-faction .sh-pp-faction__table--tokens .sh-pp-faction__thead,
+.window-app .sh-pp-faction .sh-pp-faction__table--tokens .sh-pp-faction__tr,
+.sh-pp-faction .sh-pp-faction__table--tokens .sh-pp-faction__thead,
+.sh-pp-faction .sh-pp-faction__table--tokens .sh-pp-faction__tr {
+  grid-template-columns: 1fr 1fr 92px 30px;
+}
+.window-app.spaceholder .faction .sh-pp-faction__thead,
+.spaceholder.faction .sh-pp-faction__thead,
+.window-app .sh-pp-faction .sh-pp-faction__thead,
+.sh-pp-faction .sh-pp-faction__thead {
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.window-app.spaceholder .faction .sh-pp-faction__th,
+.spaceholder.faction .sh-pp-faction__th,
+.window-app .sh-pp-faction .sh-pp-faction__th,
+.sh-pp-faction .sh-pp-faction__th {
+  font-size: 11px;
+  color: var(--sh-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.window-app.spaceholder .faction .sh-pp-faction__tbody .sh-pp-faction__tr,
+.spaceholder.faction .sh-pp-faction__tbody .sh-pp-faction__tr,
+.window-app .sh-pp-faction .sh-pp-faction__tbody .sh-pp-faction__tr,
+.sh-pp-faction .sh-pp-faction__tbody .sh-pp-faction__tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.window-app.spaceholder .faction .sh-pp-faction__tbody .sh-pp-faction__tr:last-child,
+.spaceholder.faction .sh-pp-faction__tbody .sh-pp-faction__tr:last-child,
+.window-app .sh-pp-faction .sh-pp-faction__tbody .sh-pp-faction__tr:last-child,
+.sh-pp-faction .sh-pp-faction__tbody .sh-pp-faction__tr:last-child {
+  border-bottom: none;
+}
+.window-app.spaceholder .faction .sh-pp-faction__input,
+.spaceholder.faction .sh-pp-faction__input,
+.window-app .sh-pp-faction .sh-pp-faction__input,
+.sh-pp-faction .sh-pp-faction__input {
+  width: 100%;
+  min-width: 0;
+}
+.window-app.spaceholder .faction .sh-pp-faction__input--pts,
+.spaceholder.faction .sh-pp-faction__input--pts,
+.window-app .sh-pp-faction .sh-pp-faction__input--pts,
+.sh-pp-faction .sh-pp-faction__input--pts {
+  text-align: center;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.window-app.spaceholder .faction .sh-pp-faction__tokenPts,
+.spaceholder.faction .sh-pp-faction__tokenPts,
+.window-app .sh-pp-faction .sh-pp-faction__tokenPts,
+.sh-pp-faction .sh-pp-faction__tokenPts {
+  text-align: center;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.window-app.spaceholder .faction .sh-pp-faction__tokenName,
+.spaceholder.faction .sh-pp-faction__tokenName,
+.window-app .sh-pp-faction .sh-pp-faction__tokenName,
+.sh-pp-faction .sh-pp-faction__tokenName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .faction .sh-pp-faction__tokenMeta,
+.spaceholder.faction .sh-pp-faction__tokenMeta,
+.window-app .sh-pp-faction .sh-pp-faction__tokenMeta,
+.sh-pp-faction .sh-pp-faction__tokenMeta {
+  font-size: 11px;
+  color: var(--sh-text-dim);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .faction .sh-pp-faction__empty,
+.spaceholder.faction .sh-pp-faction__empty,
+.window-app .sh-pp-faction .sh-pp-faction__empty,
+.sh-pp-faction .sh-pp-faction__empty {
+  color: var(--sh-text-dim);
+  font-size: 12px;
+  padding: 8px;
+}
+
 #spaceholder-timeline .sh-tl,
 .window-app.spaceholder.timeline .sh-tl,
 .spaceholder.timeline .sh-tl {

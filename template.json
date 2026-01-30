@@ -45,11 +45,14 @@
       "gLink": "",
       "gFaction": "",
       "gActors": [],
+      "ppCost": 0,
       "biography": ""
     },
     "faction": {
       "fLink": "",
       "fColor": "#666666",
+      "ppModifier": 1,
+      "ppSpends": [],
       "biography": ""
     }
   },
