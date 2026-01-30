@@ -2442,6 +2442,103 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   transform: translateY(0);
 }
 
+#spaceholder-hotbar-faction-ui,
+.spaceholder.sh-hotbar-faction {
+  --sh-hotbar-slot: 50px;
+  --sh-hotbar-gap: 6px;
+  position: relative;
+  z-index: 70;
+  pointer-events: auto;
+  background: transparent;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+  margin-right: var(--sh-hotbar-gap);
+}
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__main,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sh-hotbar-gap);
+}
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__btn,
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__item,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__btn,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__item {
+  width: var(--sh-hotbar-slot);
+  height: var(--sh-hotbar-slot);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--slot-color, var(--color-cool-5-90));
+  color: var(--key-text-color, var(--color-light-1));
+  cursor: var(--cursor-pointer, pointer);
+}
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__btn:hover,
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__item:hover,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__btn:hover,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__item:hover {
+  border-color: var(--color-light-6, rgba(255, 255, 255, 0.2));
+}
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__btn:disabled,
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__item:disabled,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__btn:disabled,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__item:disabled {
+  opacity: 0.6;
+  cursor: var(--cursor-default, default);
+}
+#spaceholder-hotbar-faction-ui[data-open=true] .sh-hotbar-faction__btn,
+.spaceholder.sh-hotbar-faction[data-open=true] .sh-hotbar-faction__btn {
+  border-color: var(--color-warm-1, rgba(255, 255, 255, 0.25));
+}
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__img,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__img {
+  width: calc(var(--sh-hotbar-slot) - 4px);
+  height: calc(var(--sh-hotbar-slot) - 4px);
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__pp,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__pp {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+}
+#spaceholder-hotbar-faction-ui .sh-hotbar-faction__flyout,
+.spaceholder.sh-hotbar-faction .sh-hotbar-faction__flyout {
+  position: absolute;
+  left: 0;
+  bottom: calc(var(--sh-hotbar-slot) + var(--sh-hotbar-gap));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+#spaceholder-hotbar-faction-ui[data-open=true] .sh-hotbar-faction__flyout,
+.spaceholder.sh-hotbar-faction[data-open=true] .sh-hotbar-faction__flyout {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 #sidebar #journal .spaceholder-journalcheck-toggle-icons,
 #sidebar #journal .spaceholder-journalcheck-toggle-gm-skip,
 #sidebar #journal .spaceholder-journalcheck-open-update-log,

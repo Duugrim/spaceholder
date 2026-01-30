@@ -1,0 +1,63 @@
+<section
+  id="spaceholder-hotbar-faction-ui"
+  class="spaceholder sh-hotbar-faction"
+  data-open="false"
+  aria-label="{{toggleLabel}}"
+>
+  <div class="sh-hotbar-faction__main">
+    <button
+      type="button"
+      class="icon-btn sh-hotbar-faction__btn"
+      data-action="toggle"
+      aria-label="{{toggleLabel}}"
+      data-tooltip="{{toggleLabel}}"
+      {{#unless canToggle}}disabled{{/unless}}
+    >
+      {{#if active.img}}
+        <img class="sh-hotbar-faction__img" src="{{active.img}}" alt="" />
+      {{else}}
+        <i class="fa-solid fa-ban" aria-hidden="true"></i>
+      {{/if}}
+    </button>
+
+    {{#if ppText}}
+      <div
+        class="sh-hotbar-faction__pp"
+        data-tooltip="{{ppTooltip}}"
+        aria-label="{{ppTooltip}}"
+      >{{ppText}}</div>
+    {{/if}}
+  </div>
+
+  {{#if canToggle}}
+    <div class="sh-hotbar-faction__flyout" aria-hidden="true">
+      {{#if showNoFaction}}
+        <button
+          type="button"
+          class="icon-btn sh-hotbar-faction__item"
+          data-action="choose"
+          data-uuid=""
+          aria-label="{{noFactionLabel}}"
+          data-tooltip="{{noFactionLabel}}"
+        ><i class="fa-solid fa-ban" aria-hidden="true"></i></button>
+      {{/if}}
+
+      {{#each choices as |f|}}
+        <button
+          type="button"
+          class="icon-btn sh-hotbar-faction__item"
+          data-action="choose"
+          data-uuid="{{f.uuid}}"
+          aria-label="{{f.name}}"
+          data-tooltip="{{f.name}}"
+        >
+          {{#if f.img}}
+            <img class="sh-hotbar-faction__img" src="{{f.img}}" alt="" />
+          {{else}}
+            <i class="fa-solid fa-flag" aria-hidden="true"></i>
+          {{/if}}
+        </button>
+      {{/each}}
+    </div>
+  {{/if}}
+</section>

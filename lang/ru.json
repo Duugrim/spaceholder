@@ -122,6 +122,11 @@
     "Common": {
       "Optional": "(опционально)"
     },
+    "HotbarFaction": {
+      "Faction": "Фракция",
+      "NoFaction": "Нет фракции",
+      "PP": "Очки прогрессии фракции"
+    },
     "Inventory": {
       "TotalWeight": "Общий вес:",
       "TotalItems": "Предметов:",

@@ -122,6 +122,11 @@
     "Common": {
       "Optional": "(optional)"
     },
+    "HotbarFaction": {
+      "Faction": "Faction",
+      "NoFaction": "No faction",
+      "PP": "Faction progression points"
+    },
     "Inventory": {
       "TotalWeight": "Total weight:",
       "TotalItems": "Items:",

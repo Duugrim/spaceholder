@@ -1,6 +1,6 @@
 const MODULE_NS = 'spaceholder';
 
-import { getUserFactionUuids, getTokenFactionUuids } from '../user-factions.mjs';
+import { getEffectiveFactionUuidForUser, getTokenFactionUuids } from '../user-factions.mjs';
 
 let _installed = false;
 let _originalIsVisionSource = null;
@@ -62,9 +62,16 @@ function patchIsVisionSource() {
   _originalIsVisionSource = original;
 
   proto._isVisionSource = function spaceholder_isVisionSourcePatched() {
-    // Delegate for GM and non-global-map scenes.
+    // Delegate for non-global-map scenes.
     const scene = this?.scene ?? this?.document?.parent ?? canvas?.scene;
-    if (!isGlobalMapScene(scene) || game.user?.isGM) {
+    if (!isGlobalMapScene(scene)) {
+      return _originalIsVisionSource.call(this);
+    }
+
+    // GM can optionally "view as faction" by selecting an active faction.
+    // When no active faction is selected ("Нет фракции"), keep full GM vision.
+    const effectiveFaction = getEffectiveFactionUuidForUser(game.user);
+    if (game.user?.isGM && !effectiveFaction) {
       return _originalIsVisionSource.call(this);
     }
 
@@ -79,7 +86,7 @@ function patchIsVisionSource() {
     if (anyControlledWithSight) return false;
 
     // Fallback (no controlled tokens with sight): use faction matching.
-    const userFactions = getUserFactionUuids(game.user);
+    const userFactions = effectiveFaction ? [effectiveFaction] : [];
     if (!userFactions.length) return false;
 
     const tokenFactions = getTokenFactionUuids(this);
@@ -119,8 +126,14 @@ function installHooks() {
 
       const flags = changes?.flags;
       const sh = flags?.[MODULE_NS];
-      const changedViaFlagsObject = !!(sh && typeof sh === 'object' && Object.prototype.hasOwnProperty.call(sh, 'factions'));
-      const changedViaFlatKey = Object.keys(changes ?? {}).some((k) => k === `flags.${MODULE_NS}.factions` || k.startsWith(`flags.${MODULE_NS}.factions`));
+      const changedViaFlagsObject = !!(
+        sh && typeof sh === 'object'
+        && (Object.prototype.hasOwnProperty.call(sh, 'factions') || Object.prototype.hasOwnProperty.call(sh, 'activeFaction'))
+      );
+      const changedViaFlatKey = Object.keys(changes ?? {}).some((k) => (
+        k === `flags.${MODULE_NS}.factions` || k.startsWith(`flags.${MODULE_NS}.factions`)
+        || k === `flags.${MODULE_NS}.activeFaction` || k.startsWith(`flags.${MODULE_NS}.activeFaction`)
+      ));
 
       if (!(changedViaFlagsObject || changedViaFlatKey)) return;
       refreshFactionVision();

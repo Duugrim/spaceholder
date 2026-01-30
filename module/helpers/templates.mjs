@@ -16,5 +16,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/item/parts/item-effects.hbs',
     // Icon picker (ApplicationV2)
     'systems/spaceholder/templates/icon-picker/icon-picker.hbs',
+    // HUD: Hotbar faction selector
+    'systems/spaceholder/templates/hud/hotbar-faction-ui.hbs',
   ]);
 };

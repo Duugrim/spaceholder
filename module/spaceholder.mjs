@@ -49,6 +49,8 @@ import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
 import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edge-ui.mjs';
 import { installGlobalMapFactionVision } from './helpers/global-map/global-map-faction-vision.mjs';
+// Hotbar: faction selector + PP indicator
+import { installHotbarFactionUiHooks } from './helpers/hotbar-faction-ui.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
@@ -150,6 +152,8 @@ Hooks.once('init', function () {
   installTokenRotator();
   // Install User -> Factions hooks (UserConfig UI)
   installUserFactionsHooks();
+  // Hotbar: faction selector + PP indicator
+  installHotbarFactionUiHooks();
   // Install Journal Directory hooks (Clear Journals button)
   installJournalDirectoryHooks();
   // Install Journal Check hooks (statuses + UI)

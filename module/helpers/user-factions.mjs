@@ -1,4 +1,7 @@
 const MODULE_NS = 'spaceholder';
+const FLAG_FACTIONS = 'factions';
+const FLAG_ACTIVE_FACTION = 'activeFaction';
+
 let _hooksInstalled = false;
 
 /**
@@ -45,8 +48,110 @@ export function parseFactionUuidList(raw) {
  */
 export function getUserFactionUuids(user) {
   if (!user) return [];
-  const raw = user.getFlag?.(MODULE_NS, 'factions');
+  const raw = user.getFlag?.(MODULE_NS, FLAG_FACTIONS);
   return parseFactionUuidList(raw);
+}
+
+/**
+ * Получить выбранную (активную) фракцию пользователя.
+ * Хранение: flags.spaceholder.activeFaction
+ * @param {User} user
+ * @returns {string}
+ */
+export function getUserActiveFactionUuid(user) {
+  if (!user) return '';
+  const raw = user.getFlag?.(MODULE_NS, FLAG_ACTIVE_FACTION);
+  return normalizeUuid(raw);
+}
+
+/**
+ * Установить выбранную (активную) фракцию пользователя.
+ * Пустая строка означает "Нет фракции" (важно для ГМа).
+ * @param {User} user
+ * @param {unknown} factionUuid
+ */
+export async function setUserActiveFactionUuid(user, factionUuid) {
+  if (!user?.setFlag) return;
+  const uuid = normalizeUuid(factionUuid);
+  await user.setFlag(MODULE_NS, FLAG_ACTIVE_FACTION, uuid || '');
+}
+
+/**
+ * Получить все фракции мира (Actor.type === 'faction'), отсортированные по имени.
+ * @returns {Actor[]}
+ */
+export function getWorldFactionActors() {
+  const actors = Array.from(game?.actors?.values?.() ?? game?.actors?.contents ?? []);
+  return actors
+    .filter((a) => a?.type === 'faction')
+    .sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' }));
+}
+
+/**
+ * Разрешённые фракции для пользователя.
+ * Игрок: из flags.spaceholder.factions.
+ * ГМ: все фракции мира.
+ * @param {User} user
+ * @returns {string[]} UUID
+ */
+export function getAllowedFactionUuidsForUser(user) {
+  if (!user) return [];
+  if (user.isGM) {
+    return getWorldFactionActors().map((a) => a.uuid).filter(Boolean);
+  }
+  return getUserFactionUuids(user);
+}
+
+/**
+ * Эффективная фракция пользователя (одна) для UI/vision.
+ * - Игрок: activeFaction, иначе первая из разрешённых.
+ * - ГМ: activeFaction (может быть пустой строкой => "нет фракции").
+ * @param {User} user
+ * @returns {string} UUID или ''
+ */
+export function getEffectiveFactionUuidForUser(user) {
+  if (!user) return '';
+
+  const allowed = getAllowedFactionUuidsForUser(user);
+  const active = getUserActiveFactionUuid(user);
+
+  if (user.isGM) {
+    // GM can deliberately choose "none".
+    if (!active) return '';
+    return allowed.includes(active) ? active : '';
+  }
+
+  if (active && allowed.includes(active)) return active;
+  return allowed[0] || '';
+}
+
+/**
+ * Для игроков: если активная фракция не задана/невалидна, сохранить первую доступную.
+ * Для ГМа: не автоназначаем, но если установлена невалидная — очищаем.
+ * @param {User} user
+ * @returns {Promise<string>} итоговый effective UUID или ''
+ */
+export async function ensureUserActiveFaction(user) {
+  if (!user) return '';
+
+  const allowed = getAllowedFactionUuidsForUser(user);
+  const active = getUserActiveFactionUuid(user);
+
+  if (user.isGM) {
+    if (!active) return '';
+    if (allowed.includes(active)) return active;
+    await setUserActiveFactionUuid(user, '');
+    return '';
+  }
+
+  if (active && allowed.includes(active)) return active;
+  const next = allowed[0] || '';
+  if (next) {
+    await setUserActiveFactionUuid(user, next);
+  } else if (active) {
+    await setUserActiveFactionUuid(user, '');
+  }
+  return next;
 }
 
 /**
