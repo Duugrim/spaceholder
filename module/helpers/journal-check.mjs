@@ -1008,6 +1008,7 @@ function _entryNextStatusOnIconClick(entry) {
   // Player
   if (cur === STATUS.DRAFT) return STATUS.PROPOSED;
   if (cur === STATUS.PROPOSED) return STATUS.DRAFT;
+  if (cur === STATUS.APPROVED) return STATUS.PROPOSED;
   return null;
 }
 
@@ -1033,6 +1034,7 @@ function _pageNextStatusOnClick(page) {
 
   if (cur === STATUS.DRAFT) return STATUS.PROPOSED;
   if (cur === STATUS.PROPOSED) return STATUS.DRAFT;
+  if (cur === STATUS.APPROVED) return STATUS.PROPOSED;
   return null;
 }
 
@@ -1156,9 +1158,8 @@ function _createEntryStatusIcon(entry) {
     const next = _entryNextStatusOnIconClick(entry);
     if (!next) return;
 
-    // Permission gating: players cannot change approval states.
+    // Permission gating: players cannot set Approved.
     if (!game.user.isGM) {
-      if (current === STATUS.APPROVED) return;
       if (next === STATUS.APPROVED) return;
     }
 
@@ -1368,16 +1369,21 @@ function _addEntryContextOptions(app, options) {
         name: 'Снять одобрение',
         icon: '<i class="fa-solid fa-rotate-left"></i>',
         condition: (li) => {
-          if (!isGM) return false;
           const entry = getEntry(li);
           if (!entry || !_canUserUpdate(entry)) return false;
           const s = computeEntryStatusFromPages(entry);
           return s === STATUS.APPROVED;
         },
-        callback: (li) => {
+        callback: async (li) => {
           const entry = getEntry(li);
           if (!entry) return;
-          return setEntryStatus(entry, STATUS.PROPOSED, { reason: 'ctx', applyToPages: true });
+
+          const pages = entry?.pages?.contents ?? [];
+          if (pages.length) {
+            return _bulkSetEntryPagesStatus(entry, STATUS.APPROVED, STATUS.PROPOSED, { reason: 'ctx-unapprove' });
+          }
+
+          return setEntryStatus(entry, STATUS.PROPOSED, { reason: 'ctx-unapprove', applyToPages: false });
         },
       }),
       make({
@@ -1572,7 +1578,6 @@ function _addPageContextOptions(app, options) {
         name: 'Страница: Снять одобрение',
         icon: '<i class="fa-solid fa-rotate-left"></i>',
         condition: (li) => {
-          if (!isGM) return false;
           const page = getPage(li);
           if (!page || !_canUserUpdate(page)) return false;
           return getStatus(page) === STATUS.APPROVED;
@@ -1580,7 +1585,7 @@ function _addPageContextOptions(app, options) {
         callback: (li) => {
           const page = getPage(li);
           if (!page) return;
-          return setPageStatus(page, STATUS.PROPOSED, { reason: 'ctx', syncParent: true });
+          return setPageStatus(page, STATUS.PROPOSED, { reason: 'ctx-unapprove', syncParent: true });
         },
       }),
 
