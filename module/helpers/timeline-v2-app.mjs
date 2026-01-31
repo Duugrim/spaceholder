@@ -1574,7 +1574,12 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
         const iconBase = EVENT_BASE_ICON_PX * diamondBoost;
         const iconSize = iconBase * (1 + (EVENT_ICON_GROWTH * close01));
-        const imgSize = iconSize * 0.75;
+
+        // Icon-picker bakes an SVG; render it at full marker size (avoid 0.75 downscale).
+        // Default (font-awesome) placeholder uses CSS font-size and doesn't rely on --sh-icon-img-size.
+        const hasCustomIcon = el.classList.contains('has-custom-icon');
+        const imgScale = hasCustomIcon ? 1.0 : 0.75;
+        const imgSize = iconSize * imgScale;
 
         el.style.setProperty('--sh-icon-size', `${Math.round(iconSize)}px`);
         el.style.setProperty('--sh-icon-img-size', `${Math.round(imgSize)}px`);
