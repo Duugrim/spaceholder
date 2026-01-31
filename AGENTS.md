@@ -1,109 +1,169 @@
 # AGENTS.md
 
-Руководство для контрибьютеров и AI-агентов, работающих с системой SpaceHolder для FoundryVTT.
+Руководство для контрибьютеров и AI-агентов, работающих с системой SpaceHolder для Foundry VTT.
 
-## Структура проекта
+> Источник истины по архитектуре в этом репозитории — код в `module/`. Этот документ обновлён на основе `WARP.md` и текущей структуры `module/**`.
 
-SpaceHolder — это игровая система для FoundryVTT, организованная следующим образом:
+## Проект в двух словах
 
-- **`module/`** — основной код системы (ES modules)
-  - `spaceholder.mjs` — точка входа, инициализация хуков
-  - `documents/` — классы Actor и Item
-  - `sheets/` — Application V2 листы персонажей и предметов
-  - `helpers/` — вспомогательные модули (timeline, icon-picker, shot-manager, etc.)
-  - `data/` — JSON-данные (анатомии, конфигурации)
-- **`templates/`** — Handlebars шаблоны для UI
-- **`src/scss/`** — исходники стилей (SCSS)
-- **`css/`** — скомпилированные стили
-- **`lang/`** — локализация (en.json, ru.json)
-- **`docs/`** — техническая документация систем (анатомия, прицеливание, зоны влияния)
-- **`packs/`** — compendium пакеты
+SpaceHolder — игровая система (Foundry VTT v13+) с ES-модулями. Точка входа — `module/spaceholder.mjs`. Система регистрирует кастомные Document-классы (Actor/Item), Application V2 листы, набор хуков/настроек и публикует вспомогательный API в `game.spaceholder`.
 
-## Команды сборки и разработки
+## Где что лежит (актуально по `module/`)
+
+- **`module/spaceholder.mjs`** — инициализация системы (Hooks `init`/`ready`), регистрация документов/листов/хелперов, экспорт публичного API в `game.spaceholder`.
+- **`module/documents/`**
+  - `actor.mjs` — логика Actor (в т.ч. анатомия/здоровье).
+  - `item.mjs` — логика Item (в т.ч. `roll()`).
+- **`module/sheets/`**
+  - `actor-sheet.mjs` — Application V2 лист актёра.
+  - `item-sheet.mjs` — Application V2 лист предмета.
+- **`module/anatomy-manager.mjs`** — загрузка/валидация/кэш анатомий.
+- **`module/helpers/`** — подсистемы и UI-инструменты:
+  - Боёвка/прицеливание/визуализация:
+    - `aiming-manager.mjs` — управление режимом прицеливания и выбором payload.
+    - `shot-manager.mjs` — расчёт попаданий/коллизий/сегментов (крупный модуль).
+    - `draw-manager.mjs` — отрисовка результатов выстрела/сегментов на PIXI.
+  - Зоны влияния:
+    - `influence-manager.mjs` — расчёт/отрисовка influence-зон глобальных объектов.
+  - Таймлайн:
+    - `timeline-v2.mjs` — данные/инфраструктура (контейнеры/страницы/флаги/сокеты/настройки).
+    - `timeline-v2-app.mjs` — UI (Application V2) для Timeline V2.
+  - Иконки:
+    - `icon-library/*` — индексация/миграции/"bake" SVG.
+    - `icon-picker/*` — UI выбора, перекраска и применение к Actor/Token.
+  - Глобальная карта:
+    - `global-map/*` — обработка/рендер/инструменты/Editor UI.
+  - Пользователи и фракции:
+    - `user-factions.mjs` — привязка пользователей/токенов/акторов к фракциям (через флаги).
+    - `faction-display.mjs`, `hotbar-faction-ui.mjs` — UI-хелперы для фракций.
+  - Журналы/прогрессия:
+    - `journal-check.mjs` — workflow статусов Journal (draft/proposed/approved/denied), bulk-действия.
+    - `progression-points.mjs`, `progression-points-app.mjs` — система progression points и UI.
+  - Токены:
+    - `token-pointer.mjs` — рендер/настройки указателя токена.
+    - `token-rotator.mjs` — вращение токена, снап, хоткеи.
+  - Прочее:
+    - `effects.mjs` — управление ActiveEffect.
+    - `settings-menus.mjs`, `token-controls.mjs`, `journal-directory.mjs`, `journal-update-log-app.mjs` и др.
+  - **`helpers/legacy/`** — старый/экспериментальный код (не расширять без причины).
+- **`module/data/`** — данные системы (JSON):
+  - `data/anatomy/*` — анатомии (`registry.json`, шаблоны анатомий).
+  - `data/payloads/*` — payload-описания для прицеливания/выстрелов (`manifest.json` + набор паттернов).
+  - `data/globalmaps/*` — конфиги глобальной карты (биомы/heightmap).
+
+## Остальные ключевые папки проекта
+
+- `templates/` — Handlebars-шаблоны UI (подгружаются заранее).
+- `src/scss/` → `css/spaceholder.css` — стили (SCSS компилируется в CSS).
+- `lang/en.json`, `lang/ru.json` — локализация.
+- `docs/` — техническая документация: `SHOOTING_SYSTEM.md` (стрельба/payload/сегменты), анатомия, влияние, глобальная карта и т.д.
+
+## Команды разработки
 
 ```bash
-# Компиляция SCSS в CSS (однократно)
-npm run build
-
-# Автоматическая пересборка при изменениях (для разработки)
-npm run watch
+npm install
+npm run build   # SCSS → css/spaceholder.css
+npm run watch   # авто-пересборка SCSS
 ```
 
-**Важно:** После изменения `.scss` файлов запустите `npm run build` или `npm run watch`, чтобы обновить `css/spaceholder.css`.
+Важно: после правок в `src/scss/` нужно прогнать `npm run build` или `npm run watch`, чтобы обновился `css/spaceholder.css`.
+
+## Инициализация и публичный API
+
+### Инициализация
+
+В `module/spaceholder.mjs` система в основном делает:
+- `Hooks.once('init')`:
+  - настраивает `CONFIG.SPACEHOLDER` и базовые вещи (инициатива и т.п.);
+  - регистрирует documentClass для Actor/Item;
+  - регистрирует Application V2 листы;
+  - регистрирует Handlebars helpers;
+  - отключает legacyTransferral для ActiveEffect;
+  - прелоадит шаблоны.
+- `Hooks.once('ready')`:
+  - инициализирует менеджеры (например `AnatomyManager`);
+  - подключает дополнительные хуки (например hotbar drop → item macro).
+
+### Публичный API (`game.spaceholder`)
+
+Система публикует часть функций/менеджеров в `game.spaceholder` (см. `module/spaceholder.mjs`). Наиболее используемое:
+
+- Документы:
+  - `game.spaceholder.SpaceHolderActor`
+  - `game.spaceholder.SpaceHolderItem`
+- Макросы:
+  - `game.spaceholder.rollItemMacro(itemUuid)`
+- Иконки:
+  - `await game.spaceholder.pickIcon({ root?, defaultColor?, title?, factionColor?, initialPath?, initialOpts? }) → string | null`
+  - `await game.spaceholder.applyIconPathToActorOrToken({ path, actor, tokenDoc?, applyTo: 'actor'|'token'|'both' }) → boolean`
+  - `await game.spaceholder.pickAndApplyIconToActorOrToken(...) → string | null`
+  - `await game.spaceholder.promptPickAndApplyIconToActorOrToken(...) → string | null`
+  - `await game.spaceholder.getIconLibraryIndex({ root?, force?, extensions? }) → icon[]`
+  - `game.spaceholder.getIconLibraryCacheInfo() → { root, hasIcons, count, at }`
+  - миграции generated SVG:
+    - `game.spaceholder.migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke(opts)`
+    - `game.spaceholder.migrateIconLibraryGeneratedSvgsInsetBackgroundStroke(opts)`
+- Influence:
+  - `game.spaceholder.showInfluence(debug?)`, `hideInfluence()`, `toggleInfluence(debug?)`
+- Фракции пользователей:
+  - `game.spaceholder.getUserFactionUuids(user)`
+  - `game.spaceholder.getUsersForFaction(factionUuid)`
+  - `game.spaceholder.getUsersForToken(tokenLike)`
+  - `game.spaceholder.normalizeUuid(raw)`
+- Доступ к инстансам/подсистемам (если экспортируются):
+  - `game.spaceholder.tokenpointer`, `drawManager`, `shotManager`, `influenceManager`
+  - `game.spaceholder.globalMapProcessing`, `globalMapRenderer`, `globalMapTools`
+
+Если добавляете новый публичный метод, считайте это как изменение внешнего API: документируйте в этом файле и старайтесь держать сигнатуру стабильной.
+
+## Икон-библиотека и Icon Picker (важные правила)
+
+(Актуально по `WARP.md`)
+
+- Иконки лежат в папке мира (Data): `<root>/source/**.svg`.
+- Перекрашенные/"запечённые" версии автоматически сохраняются в `<root>/generated/`.
+- По умолчанию `<root>` = `worlds/<worldId>/spaceholder/icon-library`.
+  - Можно переопределить через world setting `spaceholder.iconLibrary.root` (setting скрыт из UI; менять через консоль).
+- Подпапки внутри `source/` считаются категориями (category = относительный путь).
+- Сейчас поддерживается только `.svg`.
 
 ## Стиль кода и соглашения
 
-### JavaScript/ES Modules
-- Используйте ES6+ синтаксис (import/export)
-- Именование классов: `PascalCase` (например, `AnatomyManager`, `ShotManager`)
-- Именование функций и переменных: `camelCase`
-- Константы: `UPPER_SNAKE_CASE` (например, `SPACEHOLDER`)
-- Комментарии: JSDoc для публичных методов, краткие inline-комментарии для сложной логики
-- Избегайте "магических значений" — выносите литералы в именованные константы
+### JavaScript / ES Modules
+- ES6+ синтаксис (import/export).
+- Классы: `PascalCase`, функции/переменные: `camelCase`.
+- Константы: `UPPER_SNAKE_CASE`.
+- Избегайте магических значений — выносите в именованные константы.
+- Для публичных функций/классов: JSDoc.
 
-### Handlebars Templates
-- Файлы: `.hbs` расширение
-- Размещение: `templates/` с подпапками по типу (actor, item, timeline, etc.)
+### UI/шаблоны
+- Handlebars: `.hbs` в `templates/`.
+- Любой новый UI-текст — через i18n:
+  - добавляйте ключи в `lang/en.json` и `lang/ru.json`.
 
 ### SCSS/CSS
-- Исходники в `src/scss/`, компиляция в `css/`
-- Используйте вложенность и переменные SCSS
-- Префиксы классов: `.spaceholder-*` для избежания конфликтов
+- Правим `src/scss/`, результат — `css/spaceholder.css`.
+- Префиксуйте классы `spaceholder-*`.
 
-### Тестирование
-- Тестовые скрипты: `test-*.js` в корне проекта
-- Запуск: `node test-<name>.js` (для Node.js скриптов)
-- Для тестирования в FoundryVTT используйте консоль браузера и макросы
+## Паттерны проекта, на которые стоит ориентироваться
 
-## Соглашения о коммитах и PR
+- **Большие подсистемы живут в `module/helpers/*`**, а вход в них — из `module/spaceholder.mjs`.
+- **Флаги (`flags.spaceholder.*`) активно используются** для хранения состояния (фракции, токен-указатель, journal-check, timeline v2 и т.п.).
+- **Timeline V2** имеет инфраструктуру контейнеров/страниц и сокет-операции для GM-действий (`timeline-v2.mjs`).
+- **Global Map** — отдельный пакет модулей (`helpers/global-map/*`) с UI и обработкой данных.
+- **`helpers/legacy/*`**: не расширяйте и не рефакторьте по пути, если задача не про это.
 
-### Формат коммитов
-Анализ истории показывает краткие описательные сообщения на английском:
-- Используйте императивное наклонение: `Add feature`, `Fix bug`, `Update docs`
-- Примеры из истории:
-  - `icons for factions instead of color swatches`
-  - `Timeline V2: LIVE!`
-  - `Journal check: rejected and bulk-actions`
-  - `hotfix timeline`
+## Тестирование и проверка изменений
 
-### Pull Requests
-- Описание: кратко объясните, что изменено и зачем
-- Связанные issue: укажите номер issue, если применимо (`Fixes #123`)
-- Тестирование: опишите, как проверить изменения в FoundryVTT
+- В репозитории нет единого тест-раннера. Возможны точечные Node-скрипты (`test-*.js` в корне) или ручная проверка в Foundry.
+- Для изменений UI/хуков основная проверка — запуск Foundry пользователем и просмотр консоли.
 
-## Архитектура и ключевые системы
+## Коммиты и релизы
 
-### Менеджеры и модули
-- **AnatomyManager** — управление анатомиями существ (загрузка, кэширование)
-- **ShotManager** — расчёт выстрелов и попаданий
-- **DrawManager** — визуализация траекторий выстрелов
-- **InfluenceManager** — зоны влияния глобальных объектов
-- **Timeline V2** — система таймлайна для управления событиями
-- **Icon Library & Picker** — библиотека иконок и UI для выбора
-- **Token Pointer/Rotator** — управление указателями и поворотом токенов
-- **User Factions** — привязка пользователей к фракциям
-- **Progression Points** — система прогрессии персонажей
-- **Journal Check** — статусы workflow для журналов
-
-### Документация
-Подробные описания систем находятся в `docs/`:
-- `ANATOMY_SYSTEM.md` — система анатомий
-- `AIMING_SYSTEM_DOCUMENTATION.md` — система прицеливания
-- `HEALTH_SYSTEM_DOCUMENTATION.md` — система здоровья
-- `influence-zones.md` — зоны влияния
-- `GLOBAL_MAP_ARCHITECTURE.md` — архитектура глобальных карт
-
-## Советы для AI-агентов
-
-- **Перед редактированием** прочитайте целевой файл целиком, чтобы понять контекст
-- **Не используйте fully qualified names** без необходимости
-- **Проверяйте зависимости**: убедитесь, что импорты корректны
-- **Тестируйте в FoundryVTT**: система работает в контексте Foundry, проверяйте изменения в реальной среде
-- **Читайте docs/**: перед изменением сложных систем изучите документацию в `docs/`
-- **Локализация**: при добавлении UI-текстов добавляйте ключи в `lang/en.json` и `lang/ru.json`
+- Сообщения коммитов — короткие, описательные, обычно на английском (исторически).
+- Не делайте push автоматически.
+- Релизы делаются через `release.ps1` (обновляет `system.json`, формирует ассеты и т.д.).
 
 ---
 
-**Версия системы:** 0.164  
-**Совместимость:** FoundryVTT v13+  
-**Лицензия:** MIT
+**Совместимость:** Foundry VTT v13+

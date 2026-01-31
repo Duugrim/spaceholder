@@ -1,12 +1,15 @@
 # DrawManager Documentation
 
-DrawManager - модуль для отрисовки траекторий выстрелов в системе SpaceHolder для FoundryVTT.
+DrawManager — модуль для отрисовки траекторий выстрелов в системе SpaceHolder. Визуализирует результат работы ShotManager.
+
+См. также [SHOOTING_SYSTEM.md](./SHOOTING_SYSTEM.md) для общей архитектуры.
 
 ## Инициализация
 
 ```javascript
-// DrawManager автоматически инициализируется в system и доступен как:
+// DrawManager инициализируется в spaceholder.mjs
 game.spaceholder.drawManager
+game.spaceholder.drawManager.initialize()  // при canvasReady
 ```
 
 ## Основные методы
@@ -16,39 +19,39 @@ game.spaceholder.drawManager
 Основной метод для отрисовки результата выстрела.
 
 **Параметры:**
-- `shotResult` (Object) - объект с результатами выстрела
+- `shotResult` (Object) — объект, возвращаемый `ShotManager.getShotResult(uid)`
 
-**Структура shotResult:**
+**Структура shotResult (из ShotManager):**
 ```javascript
 {
   shotPaths: [
-    // Массив сегментов для отрисовки
-    {
-      id: 0,           // Уникальный идентификатор сегмента
-      type: "line",    // Тип сегмента: "line", "circle", "cone"
-      // ... дополнительные параметры в зависимости от типа
-    }
+    { type: "line", start: {x,y}, end: {x,y} },
+    { type: "circle", start: {x,y}, range: number },
+    { type: "cone", start: {x,y}, range, angle, direction, cut }
   ],
   shotHits: [
-    // Игнорируется в текущей версии
+    { point: {x,y}, type: "token"|"wall", object, ...details }
   ]
 }
 ```
 
+Поле `id` в сегментах опционально (для имени PIXI-объекта).
+```
+
 **Пример использования:**
 ```javascript
-const shotResult = {
-  shotPaths: [
-    {
-      id: 0,
-      type: "line",
-      start: { x: 100, y: 300 },
-      end: { x: 200, y: 270 }
-    }
-  ]
-};
-
+// Через ShotManager
+const uid = game.spaceholder.shotManager.createShot(token, payload, direction);
+const shotResult = game.spaceholder.shotManager.getShotResult(uid);
 game.spaceholder.drawManager.drawShot(shotResult);
+
+// Ручной shotResult
+game.spaceholder.drawManager.drawShot({
+  shotPaths: [
+    { type: "line", start: { x: 100, y: 300 }, end: { x: 200, y: 270 } }
+  ],
+  shotHits: []
+});
 ```
 
 ### `clearAll()`
@@ -103,75 +106,51 @@ game.spaceholder.drawManager.setStyles({
 
 Отрисовывает прямую линию между двумя точками.
 
-**Структура:**
+**Структура (как создаёт ShotManager):**
 ```javascript
 {
-  id: 0,
   type: "line",
-  start: { x: 100, y: 300 },  // Начальная точка
-  end: { x: 200, y: 270 }     // Конечная точка
+  start: { x: 100, y: 300 },
+  end: { x: 200, y: 270 }
 }
 ```
 
-**Обязательные поля:**
-- `id` - идентификатор
-- `type` - должен быть `"line"`
-- `start` - начальная точка с координатами `x` и `y`
-- `end` - конечная точка с координатами `x` и `y`
+**Обязательные поля:** `type`, `start`, `end`
 
 ### 2. Circle (Окружность)
 
 Отрисовывает круг с центром и радиусом.
 
-**Структура:**
+**Структура (как создаёт ShotManager):**
 ```javascript
 {
-  id: 1,
   type: "circle",
-  start: { x: 250, y: 240 },  // Центр окружности
-  end: { x: 250, y: 240 },    // Не используется, но должен быть
-  range: 50                   // Радиус окружности
+  start: { x: 250, y: 240 },  // Центр
+  range: 50                   // Радиус
 }
 ```
 
-**Обязательные поля:**
-- `id` - идентификатор
-- `type` - должен быть `"circle"`
-- `start` - центр окружности с координатами `x` и `y`
-- `range` - радиус окружности
+**Обязательные поля:** `type`, `start`, `range`
 
 ### 3. Cone (Конус)
 
 Отрисовывает конусообразный сектор.
 
-**Структура:**
+**Структура (как создаёт ShotManager):**
 ```javascript
 {
-  id: 2,
   type: "cone",
-  start: { x: 300, y: 200 },  // Центр конуса
-  end: { x: 300, y: 200 },    // Не используется, но должен быть
-  range: 100,                 // Радиус конуса
-  angle: 45,                  // Угол конуса в градусах
-  direction: 90,              // Направление конуса в градусах
-  cut: 20                     // Радиус усечения (опционально)
+  start: { x: 300, y: 200 },
+  range: 100,
+  angle: 45,
+  direction: 90,
+  cut: 20                     // опционально, по умолчанию 0
 }
 ```
 
-**Обязательные поля:**
-- `id` - идентификатор
-- `type` - должен быть `"cone"`
-- `start` - центр конуса с координатами `x` и `y`
-- `range` - внешний радиус конуса
-- `angle` - угол раскрытия конуса в градусах
-- `direction` - направление конуса в градусах:
-  - `0°` = восток (→)
-  - `90°` = юг (↓)
-  - `180°` = запад (←)
-  - `270°` = север (↑)
-
-**Опциональные поля:**
-- `cut` - радиус внутреннего усечения. Если не указан или `0`, рисуется обычный конус от центра. Если `> 0`, рисуется кольцевой сектор.
+**Обязательные поля:** `type`, `start`, `range`, `angle`, `direction`  
+**Опционально:** `cut` — радиус внутреннего усечения (0 = конус от центра, >0 = кольцевой сектор)  
+**Направление:** 0° = восток (→), 90° = юг (↓), 180° = запад (←), 270° = север (↑)
 
 **Примеры конусов:**
 ```javascript
