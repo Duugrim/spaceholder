@@ -325,6 +325,7 @@ export function installUserFactionsHooks() {
           const isFactionActor = doc?.documentName === 'Actor' && doc?.type === 'faction';
           const name = String(doc?.name || uuid);
           const color = isFactionActor ? String(doc?.system?.fColor || '').trim() : '';
+          const img = isFactionActor ? String(doc?.img || '').trim() : '';
 
           const row = document.createElement('div');
           row.classList.add('spaceholder-user-faction-row');
@@ -346,10 +347,22 @@ export function installUserFactionsHooks() {
           link.style.minWidth = '0';
           link.style.flex = '1 1 auto';
 
-          const swatch = document.createElement('span');
-          swatch.className = 'faction-color-swatch';
-          swatch.setAttribute('aria-hidden', 'true');
-          if (color) swatch.style.setProperty('--faction-color', color);
+          let avatarEl = null;
+          if (img) {
+            const aimg = document.createElement('img');
+            aimg.className = 'sh-faction-avatar sh-faction-avatar--sm';
+            aimg.src = img;
+            aimg.alt = '';
+            aimg.loading = 'lazy';
+            aimg.decoding = 'async';
+            avatarEl = aimg;
+          } else {
+            const ph = document.createElement('span');
+            ph.className = 'sh-faction-avatarPlaceholder sh-faction-avatarPlaceholder--sm';
+            ph.setAttribute('aria-hidden', 'true');
+            ph.innerHTML = '<i class="fa-solid fa-flag" aria-hidden="true"></i>';
+            avatarEl = ph;
+          }
 
           const text = document.createElement('span');
           text.style.minWidth = '0';
@@ -358,7 +371,7 @@ export function installUserFactionsHooks() {
           text.style.whiteSpace = 'nowrap';
           text.textContent = name;
 
-          link.appendChild(swatch);
+          link.appendChild(avatarEl);
           link.appendChild(text);
 
           const removeBtn = document.createElement('button');

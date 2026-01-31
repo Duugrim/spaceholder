@@ -2,6 +2,7 @@ import {
   onManageActiveEffect,
   prepareActiveEffectCategories,
 } from '../helpers/effects.mjs';
+import { enrichHTMLWithFactionIcons } from '../helpers/faction-display.mjs';
 
 // Base V2 Item Sheet with Handlebars rendering
 export class SpaceHolderBaseItemSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -45,7 +46,7 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     const itemData = this.document.toObject(false);
 
     // Enrich description info for display
-    context.enrichedDescription = await foundry.applications.ux.TextEditor.implementation.enrichHTML(this.item.system.description, {
+    context.enrichedDescription = await enrichHTMLWithFactionIcons(this.item.system.description, {
       secrets: this.document.isOwner,
       async: true,
       rollData: this.item.getRollData(),

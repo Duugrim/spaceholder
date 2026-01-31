@@ -9,6 +9,7 @@ import {
   computeFactionMaxPoints,
   computeFactionSpentPoints,
 } from '../helpers/progression-points.mjs';
+import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
 
 // Base V2 Actor Sheet with Handlebars rendering
 export class SpaceHolderBaseActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -132,7 +133,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     this._prepareInjuriesData(context);
 
     // Enrich biography info for display
-    context.enrichedBiography = await foundry.applications.ux.TextEditor.implementation.enrichHTML(this.actor.system.biography, {
+    context.enrichedBiography = await enrichHTMLWithFactionIcons(this.actor.system.biography, {
       secrets: this.document.isOwner,
       async: true,
       rollData: this.actor.getRollData(),
@@ -1043,6 +1044,15 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     // Имена для отображения (как content-link в тексте Foundry)
     context.gLinkName = await this._resolveJournalName(context.system.gLink);
     context.gFactionName = await this._resolveJournalName(context.system.gFaction);
+
+    // Аватар фракции (Actor(faction).img)
+    context.gFactionImg = '';
+    try {
+      const disp = await resolveFactionDisplay(context.system.gFaction);
+      context.gFactionImg = String(disp?.img || '').trim();
+    } catch (_) {
+      context.gFactionImg = '';
+    }
 
     // Контейнер актёров (UUID -> данные для шаблона)
     context.gActorsResolved = [];

@@ -53,8 +53,9 @@
       }
     }
 
-    // Ensure swatch never collapses in flex layouts
-    .faction-color-swatch {
+    // Ensure avatar never collapses in flex layouts
+    .sh-faction-avatar,
+    .sh-faction-avatarPlaceholder {
       flex: 0 0 12px;
     }
   }

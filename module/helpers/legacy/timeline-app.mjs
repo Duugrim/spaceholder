@@ -25,6 +25,7 @@ import {
   setTimelineEntryHidden,
   updateTimelineEntryPage,
 } from './timeline.mjs';
+import { enrichHTMLWithFactionIcons } from '../faction-display.mjs';
 
 const TEMPLATE_APP = 'systems/spaceholder/templates/timeline/timeline-app.hbs';
 const TEMPLATE_EDITOR = 'systems/spaceholder/templates/timeline/timeline-entry-editor.hbs';
@@ -497,7 +498,7 @@ class TimelineApp extends foundry.applications.api.HandlebarsApplicationMixin(
       if (isExpanded) {
         try {
           const rawHtml = String(page?.text?.content ?? '');
-          enrichedContent = await foundry.applications.ux.TextEditor.implementation.enrichHTML(rawHtml, {
+          enrichedContent = await enrichHTMLWithFactionIcons(rawHtml, {
             async: true,
             secrets: canEdit,
             relativeTo: entry,
@@ -1013,7 +1014,7 @@ class TimelineEntryEditorApp extends foundry.applications.api.HandlebarsApplicat
   async _prepareContext(_options) {
     let enrichedContent = '';
     try {
-      enrichedContent = await foundry.applications.ux.TextEditor.implementation.enrichHTML(this._content, {
+      enrichedContent = await enrichHTMLWithFactionIcons(this._content, {
         async: true,
         secrets: true,
       });

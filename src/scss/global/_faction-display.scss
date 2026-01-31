@@ -1,0 +1,68 @@
+// Faction display (avatar instead of color swatch)
+
+// Used in:
+// - templates (GlobalObject, UserConfig injected panel)
+// - enriched content links (chat/journals/etc.) via JS decorator
+
+// Generic small avatar (used outside .spaceholder too, e.g. in UserConfig)
+.sh-faction-avatar,
+.sh-faction-link__img {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: cover;
+
+  border-radius: 3px;
+
+  // Avoid collapsing inside flex layouts
+  flex: 0 0 auto;
+}
+
+.sh-faction-avatar {
+  width: 14px;
+  height: 14px;
+}
+
+.sh-faction-avatar--sm {
+  width: 12px;
+  height: 12px;
+}
+
+// Content links: keep default icon-ish size
+.sh-faction-link__img {
+  width: 14px;
+  height: 14px;
+}
+
+.sh-faction-avatarPlaceholder,
+.sh-faction-link__placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  vertical-align: middle;
+
+  border-radius: 3px;
+  flex: 0 0 auto;
+
+  width: 14px;
+  height: 14px;
+
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.8);
+
+  i {
+    font-size: 10px;
+    line-height: 1;
+    pointer-events: none;
+  }
+}
+
+.sh-faction-avatarPlaceholder--sm {
+  width: 12px;
+  height: 12px;
+
+  i {
+    font-size: 9px;
+  }
+}

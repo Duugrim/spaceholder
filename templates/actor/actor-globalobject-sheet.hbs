@@ -70,12 +70,11 @@
         {{#if system.gFaction}}
           <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
           <a class="content-link" data-action="uuid-open" data-uuid="{{system.gFaction}}">
-            <span
-              class="faction-color-swatch"
-              title="{{factionColor}}"
-              aria-hidden="true"
-              {{#if factionColor}}style="--faction-color: {{factionColor}};"{{/if}}
-            ></span>
+            {{#if gFactionImg}}
+              <img class="sh-faction-avatar sh-faction-avatar--sm" src="{{gFactionImg}}" alt="" />
+            {{else}}
+              <span class="sh-faction-avatarPlaceholder sh-faction-avatarPlaceholder--sm" aria-hidden="true"><i class="fa-solid fa-flag" aria-hidden="true"></i></span>
+            {{/if}}
             {{gFactionName}}
           </a>
           <button type="button" class="icon-btn" data-action="uuid-clear" data-field="system.gFaction">

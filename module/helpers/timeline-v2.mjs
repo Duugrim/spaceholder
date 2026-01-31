@@ -763,8 +763,9 @@ export function getAvailableFactionChoices({ includeAllWorldFactions = false } =
 
     const name = String(doc?.name ?? uuid);
     const color = String(doc?.system?.fColor ?? '').trim();
+    const img = String(doc?.img ?? '').trim();
 
-    out.push({ uuid, name, color });
+    out.push({ uuid, name, color, img });
   }
 
   out.sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru', { sensitivity: 'base' }));

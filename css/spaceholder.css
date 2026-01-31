@@ -171,6 +171,59 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   border-bottom-color: rgba(255, 255, 255, 0.12);
 }
 
+.sh-faction-avatar,
+.sh-faction-link__img {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: cover;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.sh-faction-avatar {
+  width: 14px;
+  height: 14px;
+}
+
+.sh-faction-avatar--sm {
+  width: 12px;
+  height: 12px;
+}
+
+.sh-faction-link__img {
+  width: 14px;
+  height: 14px;
+}
+
+.sh-faction-avatarPlaceholder,
+.sh-faction-link__placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.8);
+}
+.sh-faction-avatarPlaceholder i,
+.sh-faction-link__placeholder i {
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.sh-faction-avatarPlaceholder--sm {
+  width: 12px;
+  height: 12px;
+}
+.sh-faction-avatarPlaceholder--sm i {
+  font-size: 9px;
+}
+
 .window-app.spaceholder,
 .spaceholder {
   --sh-bg: #0b0b0b;
@@ -1368,8 +1421,10 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   border-color: var(--sh-border-strong);
   color: #fff;
 }
-.window-app.spaceholder .globalobject .globalobject-faction .faction-color-swatch,
-.spaceholder.globalobject .globalobject-faction .faction-color-swatch {
+.window-app.spaceholder .globalobject .globalobject-faction .sh-faction-avatar,
+.window-app.spaceholder .globalobject .globalobject-faction .sh-faction-avatarPlaceholder,
+.spaceholder.globalobject .globalobject-faction .sh-faction-avatar,
+.spaceholder.globalobject .globalobject-faction .sh-faction-avatarPlaceholder {
   flex: 0 0 12px;
 }
 .window-app.spaceholder .globalobject .sheet-header,
@@ -4493,7 +4548,7 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .window-app.spaceholder.timeline-v2 .sh-tl2__factionRow,
 .spaceholder.timeline-v2 .sh-tl2__factionRow {
   display: grid;
-  grid-template-columns: 18px 12px 1fr;
+  grid-template-columns: 18px 14px 1fr;
   gap: 8px;
   align-items: center;
   padding: 6px 8px;
@@ -4511,14 +4566,34 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
 .spaceholder.timeline-v2 .sh-tl2__factionRow input[type=checkbox] {
   margin: 0;
 }
-#spaceholder-timeline-v2 .sh-tl2__factionSwatch,
-.window-app.spaceholder.timeline-v2 .sh-tl2__factionSwatch,
-.spaceholder.timeline-v2 .sh-tl2__factionSwatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--sh-faction-color, rgba(255, 255, 255, 0.2));
+#spaceholder-timeline-v2 .sh-tl2__factionAvatar,
+.window-app.spaceholder.timeline-v2 .sh-tl2__factionAvatar,
+.spaceholder.timeline-v2 .sh-tl2__factionAvatar {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  object-fit: cover;
+  display: block;
+}
+#spaceholder-timeline-v2 .sh-tl2__factionAvatarPlaceholder,
+.window-app.spaceholder.timeline-v2 .sh-tl2__factionAvatarPlaceholder,
+.spaceholder.timeline-v2 .sh-tl2__factionAvatarPlaceholder {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.8);
+}
+#spaceholder-timeline-v2 .sh-tl2__factionAvatarPlaceholder i,
+.window-app.spaceholder.timeline-v2 .sh-tl2__factionAvatarPlaceholder i,
+.spaceholder.timeline-v2 .sh-tl2__factionAvatarPlaceholder i {
+  font-size: 9px;
+  line-height: 1;
+  pointer-events: none;
 }
 #spaceholder-timeline-v2 .sh-tl2__factionName,
 .window-app.spaceholder.timeline-v2 .sh-tl2__factionName,
@@ -4822,17 +4897,9 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   border-radius: 6px;
   padding: 2px 4px;
 }
-.spaceholder-user-factions .faction-color-swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  min-width: 12px;
-  min-height: 12px;
-  border-radius: 3px;
-  background: var(--faction-color, #666);
-  border: 1px solid rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
-  vertical-align: middle;
+.spaceholder-user-factions .sh-faction-avatar,
+.spaceholder-user-factions .sh-faction-avatarPlaceholder {
+  flex: 0 0 12px;
 }
 
 .window-app.spaceholder .sh-portrait,

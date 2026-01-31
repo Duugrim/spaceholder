@@ -24,6 +24,7 @@ import {
 } from './timeline-v2.mjs';
 
 import { pickIcon } from './icon-picker/icon-picker.mjs';
+import { enrichHTMLWithFactionIcons } from './faction-display.mjs';
 
 const TEMPLATE_APP = 'systems/spaceholder/templates/timeline-v2/timeline-v2-app.hbs';
 const TEMPLATE_EDITOR = 'systems/spaceholder/templates/timeline-v2/timeline-v2-event-editor.hbs';
@@ -80,10 +81,7 @@ function _getTextEditorImpl() {
 }
 
 async function _enrichHtml(content, { relativeTo = null } = {}) {
-  const impl = _getTextEditorImpl();
-  if (!impl?.enrichHTML) return String(content ?? '');
-
-  return await impl.enrichHTML(String(content ?? ''), {
+  return await enrichHTMLWithFactionIcons(String(content ?? ''), {
     async: true,
     secrets: _isGM(),
     relativeTo,

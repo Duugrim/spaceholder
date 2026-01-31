@@ -37,7 +37,11 @@
                       data-uuid="{{f.uuid}}"
                       {{#if f.active}}checked{{/if}}
                     />
-                    <span class="sh-tl2__factionSwatch" {{#if f.color}}style="--sh-faction-color: {{f.color}};"{{/if}}></span>
+                    {{#if f.img}}
+                      <img class="sh-tl2__factionAvatar" src="{{f.img}}" alt="" />
+                    {{else}}
+                      <span class="sh-tl2__factionAvatarPlaceholder" aria-hidden="true"><i class="fa-solid fa-flag" aria-hidden="true"></i></span>
+                    {{/if}}
                     <span class="sh-tl2__factionName" title="{{f.name}}">{{f.name}}</span>
                   </label>
                 {{/each}}
