@@ -3493,7 +3493,7 @@ export class GlobalMapTools {
               <span style="font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Filters.FilterByBiome')}</span>
             </label>
             <div style="display: none;" id="height-tool-biome-filter-controls">
-              <div id="height-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
+              <div id="height-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 26px); grid-auto-rows: 26px; gap: 2px; margin-bottom: 5px;"></div>
               <div style="font-size: 9px; color: #aaa; text-align: center;">
                 ${t('SPACEHOLDER.GlobalMap.Tools.Heights.BiomeFilterHint')}
               </div>
@@ -3534,7 +3534,7 @@ export class GlobalMapTools {
             <!-- Biome Palette -->
             <div style="margin-top: 10px;">
               <label style="display: block; margin-bottom: 5px; font-size: 11px;">${t('SPACEHOLDER.GlobalMap.Tools.Biomes.PaletteLabel')}:</label>
-              <div id="biome-preset-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
+              <div id="biome-preset-matrix" style="display: grid; grid-template-columns: repeat(5, 26px); grid-auto-rows: 26px; gap: 2px; margin-bottom: 5px;"></div>
               <div style="font-size: 9px; color: #aaa; text-align: center;">
                 ${t('SPACEHOLDER.GlobalMap.Tools.Biomes.PaletteHint')}
               </div>
@@ -3569,7 +3569,7 @@ export class GlobalMapTools {
               <span style="font-weight: bold; font-size: 12px;">${t('SPACEHOLDER.GlobalMap.Tools.Filters.FilterByBiome')}</span>
             </label>
             <div style="display: none;" id="biome-tool-biome-filter-controls">
-              <div id="biome-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 5px;"></div>
+              <div id="biome-filter-biome-matrix" style="display: grid; grid-template-columns: repeat(5, 26px); grid-auto-rows: 26px; gap: 2px; margin-bottom: 5px;"></div>
               <div style="font-size: 9px; color: #aaa; text-align: center;">
                 ${t('SPACEHOLDER.GlobalMap.Tools.Biomes.BiomeFilterExcludeHint')}
               </div>
@@ -3778,7 +3778,7 @@ export class GlobalMapTools {
                   <input type="checkbox" id="replace-use-biome" style="margin: 0;">
                   <span>${t('SPACEHOLDER.GlobalMap.Tools.Replace.Filters.SourceBiome')}:</span>
                 </label>
-                <div id="replace-source-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
+                <div id="replace-source-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 26px); grid-auto-rows: 26px; gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
               </div>
             </div>
             
@@ -3802,7 +3802,7 @@ export class GlobalMapTools {
                   <input type="checkbox" id="replace-set-biome" style="margin: 0;">
                   <span>${t('SPACEHOLDER.GlobalMap.Tools.Replace.Actions.SetBiome')}:</span>
                 </label>
-                <div id="replace-target-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
+                <div id="replace-target-biome-matrix" style="display: none; display: grid; grid-template-columns: repeat(5, 26px); grid-auto-rows: 26px; gap: 2px; margin-top: 4px; opacity: 0.6;"></div>
               </div>
             </div>
             
@@ -3909,7 +3909,9 @@ export class GlobalMapTools {
           'border': isSelected ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.3)',
           'border-radius': '2px',
           'box-shadow': isSelected ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none',
-          'position': 'relative'
+          'position': 'relative',
+          'min-width': '24px',
+          'min-height': '24px'
         };
 
         // Add pattern or solid background (simple CSS preview)
@@ -3919,9 +3921,9 @@ export class GlobalMapTools {
             cellStyles['background'] = `repeating-linear-gradient(
               45deg,
               ${colorHex},
-              ${colorHex} 8px,
-              ${patternColor} 8px,
-              ${patternColor} 16px
+              ${colorHex} 6px,
+              ${patternColor} 6px,
+              ${patternColor} 12px
             )`;
           } else {
             cellStyles['background-color'] = colorHex;
@@ -3971,8 +3973,8 @@ export class GlobalMapTools {
           'border-radius': '2px',
           'box-shadow': selected ? '0 0 0 2px rgba(255,255,255,0.3) inset' : 'none',
           'position': 'relative',
-          'min-width': '50px',
-          'min-height': '50px'
+          'min-width': '24px',
+          'min-height': '24px'
         };
 
         // Add pattern or solid background
@@ -3982,9 +3984,9 @@ export class GlobalMapTools {
             cellStyles['background'] = `repeating-linear-gradient(
               45deg,
               ${colorHex},
-              ${colorHex} 10px,
-              ${patternColor} 10px,
-              ${patternColor} 20px
+              ${colorHex} 6px,
+              ${patternColor} 6px,
+              ${patternColor} 12px
             )`;
           } else {
             cellStyles['background-color'] = colorHex;
@@ -4032,8 +4034,8 @@ export class GlobalMapTools {
           'border': excluded ? '2px solid #ff6666' : '1px solid rgba(0,0,0,0.3)',
           'border-radius': '2px',
           'position': 'relative',
-          'min-width': '50px',
-          'min-height': '50px'
+          'min-width': '24px',
+          'min-height': '24px'
         };
 
         // Add pattern or solid background
@@ -4043,9 +4045,9 @@ export class GlobalMapTools {
             cellStyles['background'] = `repeating-linear-gradient(
               45deg,
               ${colorHex},
-              ${colorHex} 10px,
-              ${patternColor} 10px,
-              ${patternColor} 20px
+              ${colorHex} 6px,
+              ${patternColor} 6px,
+              ${patternColor} 12px
             )`;
           } else {
             cellStyles['background-color'] = colorHex;
@@ -4062,7 +4064,7 @@ export class GlobalMapTools {
         // Add small X overlay when excluded
         if (excluded) {
           const overlay = $('<div></div>').css({
-            'position': 'absolute','inset':'0','display':'flex','align-items':'center','justify-content':'center','color':'#ffdddd','font-weight':'bold','text-shadow':'0 0 2px #000','font-size':'14px','background':'rgba(0,0,0,0.3)'
+            'position': 'absolute','inset':'0','display':'flex','align-items':'center','justify-content':'center','color':'#ffdddd','font-weight':'bold','text-shadow':'0 0 2px #000','font-size':'10px','background':'rgba(0,0,0,0.3)'
           }).text('×');
           cell.append(overlay);
         }
@@ -4101,8 +4103,8 @@ export class GlobalMapTools {
           'border': isSelected ? '2px solid #ffff00' : '1px solid rgba(0,0,0,0.3)',
           'border-radius': '2px',
           'position': 'relative',
-          'min-width': '40px',
-          'min-height': '40px'
+          'min-width': '24px',
+          'min-height': '24px'
         };
 
         // Add pattern or solid background
@@ -4112,9 +4114,9 @@ export class GlobalMapTools {
             cellStyles['background'] = `repeating-linear-gradient(
               45deg,
               ${colorHex},
-              ${colorHex} 10px,
-              ${patternColor} 10px,
-              ${patternColor} 20px
+              ${colorHex} 6px,
+              ${patternColor} 6px,
+              ${patternColor} 12px
             )`;
           } else {
             cellStyles['background-color'] = colorHex;
@@ -4162,8 +4164,8 @@ export class GlobalMapTools {
           'border': isSelected ? '2px solid #00ff00' : '1px solid rgba(0,0,0,0.3)',
           'border-radius': '2px',
           'position': 'relative',
-          'min-width': '40px',
-          'min-height': '40px'
+          'min-width': '24px',
+          'min-height': '24px'
         };
 
         // Add pattern or solid background
@@ -4173,9 +4175,9 @@ export class GlobalMapTools {
             cellStyles['background'] = `repeating-linear-gradient(
               45deg,
               ${colorHex},
-              ${colorHex} 10px,
-              ${patternColor} 10px,
-              ${patternColor} 20px
+              ${colorHex} 6px,
+              ${patternColor} 6px,
+              ${patternColor} 12px
             )`;
           } else {
             cellStyles['background-color'] = colorHex;
