@@ -846,7 +846,7 @@ class GlobalMapEdgeUI {
     if (!doc) return false;
 
     if (doc.documentName === 'JournalEntryPage' && doc.parent?.sheet?.render) {
-      doc.parent.sheet.render(true);
+      doc.parent.sheet.render(true, { pageId: doc.id });
       return true;
     }
 
