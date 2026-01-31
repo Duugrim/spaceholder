@@ -15,6 +15,11 @@ import { registerTokenRotatorSettings, installTokenRotator } from './helpers/tok
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
 // Icon library + picker
 import { registerIconLibrarySettings, getIconIndexCacheInfo as getIconLibraryCacheInfo, getIconIndex as getIconLibraryIndex } from './helpers/icon-library/icon-library.mjs';
+import {
+  registerIconLibraryMigrationSettings,
+  migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke,
+  migrateIconLibraryGeneratedSvgsInsetBackgroundStroke,
+} from './helpers/icon-library/icon-migrations.mjs';
 import { pickIcon } from './helpers/icon-picker/icon-picker.mjs';
 import { applyIconPathToActorOrToken, pickAndApplyIconToActorOrToken, promptPickAndApplyIconToActorOrToken } from './helpers/icon-picker/icon-apply.mjs';
 // User -> Factions mapping (used by timeline and other faction-aware features)
@@ -62,6 +67,7 @@ import { registerTokenControlButtons, installTokenControlsHooks } from './helper
 Hooks.once('init', function () {
   // Register SpaceHolder settings and menus early
   registerIconLibrarySettings();
+  registerIconLibraryMigrationSettings();
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
   registerTokenControlButtons();
@@ -85,6 +91,8 @@ Hooks.once('init', function () {
     applyIconPathToActorOrToken,
     pickAndApplyIconToActorOrToken,
     promptPickAndApplyIconToActorOrToken,
+    migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke: (opts = {}) => migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke(opts),
+    migrateIconLibraryGeneratedSvgsInsetBackgroundStroke: (opts = {}) => migrateIconLibraryGeneratedSvgsInsetBackgroundStroke(opts),
     getIconLibraryIndex: (opts = {}) => getIconLibraryIndex(opts),
     getIconLibraryCacheInfo: () => getIconLibraryCacheInfo(),
     // Helper functions for influence zones
@@ -282,6 +290,21 @@ Handlebars.registerHelper('eq', function (a, b) {
 /* -------------------------------------------- */
 
 Hooks.once('ready', async function () {
+  // Migrate existing baked icons to match current SVG bake behavior.
+  // (GM-only; best-effort; runs once per world)
+  try {
+    if (game?.user?.isGM) {
+      setTimeout(() => {
+        (async () => {
+          try { await migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke(); } catch (_) { /* ignore */ }
+          try { await migrateIconLibraryGeneratedSvgsInsetBackgroundStroke(); } catch (_) { /* ignore */ }
+        })();
+      }, 0);
+    }
+  } catch (_) {
+    // ignore
+  }
+
   // Initialize anatomy manager
   try {
     await anatomyManager.initialize();

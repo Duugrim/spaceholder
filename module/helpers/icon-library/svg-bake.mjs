@@ -687,7 +687,6 @@ function _applyStrokeToSubtree(rootEl, { color, width, opacity } = {}) {
     el.setAttribute('stroke-linejoin', 'round');
     el.setAttribute('stroke-linecap', 'round');
     el.setAttribute('stroke-opacity', String(a));
-    el.setAttribute('vector-effect', 'non-scaling-stroke');
 
     // Ensure stroke is rendered above fill.
     const styleRaw = el.getAttribute('style');
@@ -707,7 +706,18 @@ function _insertBackground(doc, svg, iconGroup, vb, bg) {
   if (!doc || !svg || !bg?.enabled) return null;
 
   const minDim = Math.min(vb.width, vb.height);
-  const inset = minDim * (Number(bg.insetPct) / 100);
+
+  const baseInset = minDim * (Number(bg.insetPct) / 100);
+
+  // SVG stroke is centered on the shape outline (half inside, half outside).
+  // To keep the entire stroke inside the viewBox (avoid clipping), inset the shape by strokeWidth/2.
+  let strokeInset = 0;
+  if (bg.stroke?.enabled) {
+    const sw = minDim * (Number(bg.stroke.widthPct) / 100);
+    if (Number.isFinite(sw) && sw > 0) strokeInset = sw / 2;
+  }
+
+  const inset = baseInset + strokeInset;
   const x = vb.minX + inset;
   const y = vb.minY + inset;
   const w = Math.max(0, vb.width - 2 * inset);
@@ -720,6 +730,7 @@ function _insertBackground(doc, svg, iconGroup, vb, bg) {
     el = _createSvgEl(doc, 'circle');
     el.setAttribute('cx', String(vb.minX + vb.width / 2));
     el.setAttribute('cy', String(vb.minY + vb.height / 2));
+    // Keep radius in sync with inset-adjusted rect/hex (supports bg stroke inset above).
     el.setAttribute('r', String(Math.max(0, (Math.min(vb.width, vb.height) / 2) - inset)));
   } else if (shape === 'hex') {
     el = _createSvgEl(doc, 'polygon');
@@ -764,7 +775,9 @@ function _insertBackground(doc, svg, iconGroup, vb, bg) {
       el.setAttribute('stroke-linejoin', 'round');
       el.setAttribute('stroke-linecap', 'round');
       el.setAttribute('stroke-opacity', String(_clamp01(bg.stroke.opacity ?? 1)));
-      el.setAttribute('vector-effect', 'non-scaling-stroke');
+
+      // Marker for migrations/diagnostics: background geometry was inset to keep stroke inside.
+      el.setAttribute('data-sh-bg-stroke-inset', '1');
     }
   }
 
