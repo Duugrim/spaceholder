@@ -81,17 +81,7 @@
         </div>
       {{/if}}
 
-      {{#if showOriginSelect}}
-        <div class="form-group sh-tl2e__fg sh-tl2e__fg--origin">
-          <label>{{localize "SPACEHOLDER.TimelineV2.Fields.Origin"}}</label>
-          <div class="form-fields">
-            <select name="origin">
-              <option value="faction" {{#if (eq origin "faction")}}selected{{/if}}>{{localize "SPACEHOLDER.TimelineV2.Origin.Faction"}}</option>
-              <option value="world" {{#if (eq origin "world")}}selected{{/if}}>{{localize "SPACEHOLDER.TimelineV2.Origin.World"}}</option>
-            </select>
-          </div>
-        </div>
-      {{/if}}
+
 
       <div class="form-group sh-tl2e__fg sh-tl2e__fg--icon">
         <label>{{localize "SPACEHOLDER.TimelineV2.Fields.Icon"}}</label>

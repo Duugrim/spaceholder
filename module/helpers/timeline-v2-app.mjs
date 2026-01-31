@@ -4,7 +4,6 @@ import {
   getAvailableFactionChoices,
   getTimelineV2ActiveFactionsSetting,
   getTimelineV2ActiveFactionUuids,
-  getTimelineV2HideUnknown,
   getTimelineV2PageData,
   getTimelineV2Zoom,
   setTimelineV2Zoom,
@@ -14,7 +13,6 @@ import {
   resolveTimelineV2Page,
   resolveTimelineV2DetailFromIndex,
   setTimelineV2ActiveFactionsSetting,
-  setTimelineV2HideUnknown,
   toggleTimelineV2EventPinned,
   getTimelineV2PinnedEventUuids,
   updateTimelineV2EventDate,
@@ -22,6 +20,7 @@ import {
   deleteTimelineV2Event,
   TIMELINE_V2_ORIGIN,
 } from './timeline-v2.mjs';
+
 
 import { pickIcon } from './icon-picker/icon-picker.mjs';
 import { enrichHTMLWithFactionIcons } from './faction-display.mjs';
@@ -537,7 +536,8 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     const isEdit = this._mode === 'edit';
 
     const showFactionSelect = !isEdit && (this._allowNoFaction || (this._factions.length > 0));
-    const showOriginSelect = !isEdit;
+    const showOriginSelect = false;
+
     const showGlobalToggle = !isEdit && !!this._factionUuid;
 
     const startSerial = _dateToSerial({ year: this._year, month: this._month, day: this._day });
@@ -574,7 +574,7 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       endDay,
 
       showFactionSelect,
-      showOriginSelect,
+
       showGlobalToggle,
       monthChoices,
       dayChoices,
@@ -616,12 +616,7 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     const globalCb = root.querySelector('input[type="checkbox"][name="isGlobal"]');
     if (globalCb) this._isGlobal = !!globalCb.checked;
 
-    const originSel = root.querySelector('select[name="origin"]');
-    if (originSel) {
-      const v = String(originSel.value || '').trim();
-      this._origin = (v === TIMELINE_V2_ORIGIN.WORLD) ? TIMELINE_V2_ORIGIN.WORLD : TIMELINE_V2_ORIGIN.FACTION;
-      if (!this._factionUuid) this._origin = TIMELINE_V2_ORIGIN.WORLD;
-    }
+
 
     const iconInput = root.querySelector('input[type="hidden"][name="iconPath"]');
     if (iconInput && typeof iconInput.value === 'string') {
@@ -779,14 +774,7 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       return;
     }
 
-    const originSel = ev.target?.closest?.('select[name="origin"]');
-    if (originSel) {
-      const v = String(originSel.value || '').trim();
-      this._origin = (v === TIMELINE_V2_ORIGIN.WORLD) ? TIMELINE_V2_ORIGIN.WORLD : TIMELINE_V2_ORIGIN.FACTION;
-      if (!this._factionUuid) this._origin = TIMELINE_V2_ORIGIN.WORLD;
-      this.render(false);
-      return;
-    }
+
 
     const globalCb = ev.target?.closest?.('input[type="checkbox"][name="isGlobal"]');
     if (globalCb) {
@@ -868,11 +856,8 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     const month = _clampInt(data.month, 1, 12, this._month);
     const day = _clampInt(data.day, 1, 30, this._day);
 
-    const origin = (String(data.origin ?? this._origin ?? '').trim() === TIMELINE_V2_ORIGIN.WORLD)
-      ? TIMELINE_V2_ORIGIN.WORLD
-      : TIMELINE_V2_ORIGIN.FACTION;
-
     const iconPath = String(data.iconPath ?? this._iconPath ?? '').trim();
+
 
     const hasDuration = !!data.hasDuration;
 
@@ -1009,13 +994,13 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     // ===== Create =====
     const factionUuid = String(data.factionUuid ?? this._factionUuid ?? '').trim();
 
-    if (origin === TIMELINE_V2_ORIGIN.FACTION && !factionUuid) {
-      ui.notifications?.warn?.('Фракция обязательна');
-      return;
-    }
+    // Origin is derived, UI cannot select "world" for a real faction anymore.
+    // - when faction is set => origin=faction
+    // - when faction is empty ("Фракция: Мир") => origin=world
+    const origin = factionUuid ? TIMELINE_V2_ORIGIN.FACTION : TIMELINE_V2_ORIGIN.WORLD;
 
     // World-only events are GM-only.
-    if (origin === TIMELINE_V2_ORIGIN.WORLD && !factionUuid && !_isGM()) {
+    if (!factionUuid && !_isGM()) {
       ui.notifications?.warn?.('Фракция обязательна');
       return;
     }
@@ -1037,6 +1022,7 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
         title,
         content,
       });
+
 
       await this.close();
     } catch (e) {
@@ -1699,8 +1685,8 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     const isGM = _isGM();
     const loading = !!this._loading;
 
-    const hideUnknown = getTimelineV2HideUnknown();
     const zoom = getTimelineV2Zoom();
+
 
     const minZoom = ZOOM_STEPS[0] ?? 1;
     const maxZoom = ZOOM_STEPS[ZOOM_STEPS.length - 1] ?? 1;
@@ -1756,7 +1742,7 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       const canDrag = !!detail && (isGM || detail.testUserPermission?.(game.user, OWN));
       const isUnknown = !canSeeDetail;
 
-      if (hideUnknown && isUnknown) continue;
+
 
       const startSerial = _dateToSerial(t);
 
@@ -1972,8 +1958,8 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     return {
       isGM,
       loading,
-      hideUnknown,
       zoom,
+
       canZoomIn,
       canZoomOut,
       showFactionMenu,
@@ -2163,12 +2149,7 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
 
     const action = String(a.dataset.action || '').trim();
 
-    if (action === 'toggle-hide-unknown') {
-      event.preventDefault();
-      await setTimelineV2HideUnknown(!getTimelineV2HideUnknown());
-      this._renderPreserveScroll();
-      return;
-    }
+
 
     if (action === 'zoom-in' || action === 'zoom-out') {
       event.preventDefault();
