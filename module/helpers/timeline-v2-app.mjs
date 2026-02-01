@@ -1291,9 +1291,14 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       return;
     }
 
+    const factions = this._getFactionChoicesForUi();
+    const factionUuid = String(t.factionUuid ?? '').trim();
+
     const app = new TimelineV2EventEditorApp({
       mode: 'edit',
       indexUuid: indexPage.uuid,
+      factions,
+      factionUuid,
       origin: t.origin,
       iconPath: t.iconPath,
       hasDuration: t.hasDuration,
