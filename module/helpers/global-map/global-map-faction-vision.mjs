@@ -12,6 +12,34 @@ function isGlobalMapScene(scene) {
   );
 }
 
+/**
+ * Release control of Global Object (POI) tokens that were auto-selected on scene load.
+ * Foundry selects all owned tokens on load; POIs live in a shared folder with All Players = owner,
+ * so players get vision from every POI until they deselect. We release only globalobject tokens
+ * so that faction vision is used instead and the rest of the selection is unchanged.
+ */
+function releaseGlobalObjectTokensFromControl() {
+  try {
+    const scene = canvas?.scene;
+    if (!scene || !isGlobalMapScene(scene)) return;
+
+    const controlled = canvas?.tokens?.controlled ?? [];
+    let released = 0;
+    for (const token of controlled) {
+      const actorType = token?.document?.actor?.type ?? token?.actor?.type;
+      if (actorType === 'globalobject' && typeof token.release === 'function') {
+        token.release();
+        released++;
+      }
+    }
+    if (released > 0) {
+      refreshFactionVision();
+    }
+  } catch (e) {
+    console.error('SpaceHolder | GlobalMapFactionVision: releaseGlobalObjectTokensFromControl failed', e);
+  }
+}
+
 function arraysIntersect(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b) || !a.length || !b.length) return false;
   const setB = new Set(b);
@@ -98,7 +126,11 @@ function patchIsVisionSource() {
 
 function installHooks() {
   // Re-evaluate when the canvas is ready.
-  Hooks.on('canvasReady', () => refreshFactionVision());
+  Hooks.on('canvasReady', () => {
+    refreshFactionVision();
+    // Defer so we run after Foundry's auto-selection of owned tokens; then release Global Object (POI) tokens.
+    setTimeout(() => releaseGlobalObjectTokensFromControl(), 0);
+  });
 
   // Re-evaluate when toggling isGlobalMap on the active scene.
   Hooks.on('updateScene', (scene, changes) => {
@@ -155,4 +187,5 @@ export function installGlobalMapFactionVision() {
 export const __debug = {
   refreshFactionVision,
   isGlobalMapScene,
+  releaseGlobalObjectTokensFromControl,
 };
