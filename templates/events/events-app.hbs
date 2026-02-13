@@ -1,0 +1,200 @@
+<div class="sh-events">
+  {{#if loading}}
+    <p class="sh-events__loading">{{localize "SPACEHOLDER.Events.App.Loading"}}</p>
+  {{/if}}
+
+  <header class="sh-events__header">
+    {{#if isGM}}
+      <nav class="sh-events__tabs">
+        <button type="button" class="sh-events__tab {{#if tabDrafts}}is-active{{/if}}" data-action="set-tab" data-tab="drafts">
+          {{localize "SPACEHOLDER.Events.Tabs.Drafts"}}
+        </button>
+        <button type="button" class="sh-events__tab {{#if tabEvents}}is-active{{/if}}" data-action="set-tab" data-tab="events">
+          {{localize "SPACEHOLDER.Events.Tabs.Events"}}
+        </button>
+      </nav>
+    {{/if}}
+
+    <div class="sh-events__actions">
+      {{#if tabDrafts}}
+        <button type="button" class="sh-events__toolbarBtn" data-action="create-template">
+          <i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i>
+          <span>{{localize "SPACEHOLDER.Events.Buttons.CreateTemplate"}}</span>
+        </button>
+      {{/if}}
+      {{#if tabEvents}}
+        {{#if isGM}}
+          <button type="button" class="sh-events__toolbarBtn" data-action="create-event">
+            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+            <span>{{localize "SPACEHOLDER.Events.Buttons.CreateEvent"}}</span>
+          </button>
+        {{/if}}
+      {{/if}}
+    </div>
+  </header>
+
+  {{#if tabEvents}}
+    <section class="sh-events__filters">
+      <label>
+        {{localize "SPACEHOLDER.Events.Fields.Faction"}}
+        <select data-action="faction-filter">
+          <option value="">{{localize "SPACEHOLDER.Events.Filters.AllFactions"}}</option>
+          {{#each factions}}
+            <option value="{{this.uuid}}" {{#if (eq ../factionFilter this.uuid)}}selected{{/if}}>{{this.name}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label>
+        {{localize "SPACEHOLDER.Events.Fields.Status"}}
+        <select data-action="status-filter">
+          {{#each statusOptions}}
+            <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label>
+        {{localize "SPACEHOLDER.Events.Fields.Sort"}}
+        <select data-action="sort-mode">
+          {{#each sortOptions}}
+            <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+    </section>
+  {{/if}}
+
+  {{#if tabDrafts}}
+    <section class="sh-events__list">
+      {{#if templates.length}}
+        {{#each templates}}
+          <article class="sh-events__row {{this.statusClass}}">
+            <div class="sh-events__rowMain">
+              <h4>{{this.title}}</h4>
+              <div class="sh-events__meta">
+                <span>{{localize "SPACEHOLDER.Events.Fields.Date"}}: {{this.eventDateText}}</span>
+                <span>{{localize "SPACEHOLDER.Events.Fields.Options"}}: {{this.optionsCount}}</span>
+                <span>{{localize "SPACEHOLDER.Events.Fields.ResponseMode"}}: {{this.responseModeLabel}}</span>
+              </div>
+            </div>
+            <div class="sh-events__rowActions is-inline">
+              <select data-action="template-target-faction" data-uuid="{{this.uuid}}">
+                <option value="">{{localize "SPACEHOLDER.Events.Fields.Faction"}}</option>
+                {{#each ../factions}}
+                  <option value="{{this.uuid}}" {{#if (eq ../targetFactionUuid this.uuid)}}selected{{/if}}>{{this.name}}</option>
+                {{/each}}
+              </select>
+              <button type="button" class="sh-events__iconBtn" data-action="send-template" data-uuid="{{this.uuid}}" title="{{localize "SPACEHOLDER.Events.Buttons.SendToFaction"}}">
+                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="sh-events__iconBtn" data-action="edit-template" data-uuid="{{this.uuid}}" title="{{localize "SPACEHOLDER.Actions.Edit"}}">
+                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="sh-events__iconBtn" data-action="delete-page" data-uuid="{{this.uuid}}" title="{{localize "SPACEHOLDER.Actions.Delete"}}">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
+            </div>
+          </article>
+        {{/each}}
+      {{else}}
+        <p class="sh-events__empty">{{localize "SPACEHOLDER.Events.App.Empty"}}</p>
+      {{/if}}
+    </section>
+  {{/if}}
+
+  {{#if tabEvents}}
+    <section class="sh-events__layout">
+      <section class="sh-events__list">
+        {{#if events.length}}
+          {{#each events}}
+            <button
+              type="button"
+              class="sh-events__rowCompact {{this.statusClass}} {{#if this.isSelected}}is-selected{{/if}}"
+              data-action="select-event"
+              data-uuid="{{this.uuid}}"
+            >
+              <span class="sh-events__rowCompactIcon" aria-hidden="true">
+                <i class="{{this.statusIcon}}"></i>
+              </span>
+              <span class="sh-events__rowCompactTitle" title="{{this.title}}">{{this.title}}</span>
+            </button>
+          {{/each}}
+        {{else}}
+          <p class="sh-events__empty">{{localize "SPACEHOLDER.Events.App.Empty"}}</p>
+        {{/if}}
+      </section>
+
+      <aside class="sh-events__details">
+        {{#if selectedEvent}}
+          <header class="sh-events__detailsHeader">
+            <div>
+              <h3>{{selectedEvent.title}}</h3>
+              <div class="sh-events__meta">
+                <span>{{localize "SPACEHOLDER.Events.Fields.Faction"}}: {{selectedEvent.targetFactionName}}</span>
+                <span>{{localize "SPACEHOLDER.Events.Fields.Date"}}: {{selectedEvent.eventDateText}}</span>
+                <span>{{localize "SPACEHOLDER.Events.Fields.Status"}}: {{selectedEvent.statusLabel}}</span>
+              </div>
+            </div>
+            <div class="sh-events__rowActions">
+              <button type="button" class="sh-events__iconBtn" data-action="respond" data-uuid="{{selectedEvent.uuid}}" title="{{localize "SPACEHOLDER.Events.Buttons.Respond"}}">
+                <i class="fa-solid fa-reply" aria-hidden="true"></i>
+              </button>
+              {{#if selectedEvent.canResolve}}
+                <button type="button" class="sh-events__iconBtn" data-action="resolve-outcome" data-uuid="{{selectedEvent.uuid}}" title="{{localize "SPACEHOLDER.Events.Buttons.Resolve"}}">
+                  <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="sh-events__iconBtn" data-action="edit-event" data-uuid="{{selectedEvent.uuid}}" title="{{localize "SPACEHOLDER.Actions.Edit"}}">
+                  <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+              {{#if selectedEvent.canTimeline}}
+                <button type="button" class="sh-events__iconBtn" data-action="quick-timeline" data-uuid="{{selectedEvent.uuid}}" title="{{localize "SPACEHOLDER.Events.Buttons.ToTimeline"}}">
+                  <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+              {{#if selectedEvent.showMarkFinished}}
+                <button type="button" class="sh-events__iconBtn" data-action="mark-finished" data-uuid="{{selectedEvent.uuid}}" title="{{localize "SPACEHOLDER.Events.Fields.Finished"}}">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+              {{#if isGM}}
+                <button type="button" class="sh-events__iconBtn" data-action="delete-page" data-uuid="{{selectedEvent.uuid}}" title="{{localize "SPACEHOLDER.Actions.Delete"}}">
+                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+            </div>
+          </header>
+
+          <section class="sh-events__detailsBody">
+            <div class="sh-events__detailsGroup">
+              <h4>{{localize "SPACEHOLDER.Events.Fields.Description"}}</h4>
+              <div class="sh-events__detailsText">{{{selectedEvent.descriptionHtml}}}</div>
+            </div>
+
+            {{#if selectedEvent.selectedOptionLabel}}
+              <div class="sh-events__detailsGroup">
+                <h4>{{localize "SPACEHOLDER.Events.Fields.SelectedOption"}}</h4>
+                <p>{{selectedEvent.selectedOptionLabel}}</p>
+              </div>
+            {{/if}}
+
+            {{#if selectedEvent.hasFreeText}}
+              <div class="sh-events__detailsGroup">
+                <h4>{{localize "SPACEHOLDER.Events.Fields.FreeText"}}</h4>
+                <div class="sh-events__detailsText">{{{selectedEvent.freeTextHtml}}}</div>
+              </div>
+            {{/if}}
+
+            {{#if selectedEvent.hasOutcome}}
+              <div class="sh-events__detailsGroup">
+                <h4>{{localize "SPACEHOLDER.Events.Fields.Outcome"}}</h4>
+                <div class="sh-events__detailsText">{{{selectedEvent.outcomeHtml}}}</div>
+              </div>
+            {{/if}}
+          </section>
+        {{else}}
+          <p class="sh-events__empty">{{localize "SPACEHOLDER.Events.App.Empty"}}</p>
+        {{/if}}
+      </aside>
+    </section>
+  {{/if}}
+</div>

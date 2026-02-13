@@ -121,6 +121,14 @@
     <div class="form-group globalobject-influence">
       <label for="system.gRange" title="r: радиус (клетки), p: сила влияния">Влияние</label>
       <div class="form-fields influence-fields">
+        <label class="token-vision-toggle" data-tooltip="{{localize 'SPACEHOLDER.GlobalObject.InfluenceEnabledHint'}}">
+          <input
+            type="checkbox"
+            name="system.gInfluenceEnabled"
+            {{#if system.gInfluenceEnabled}}checked{{/if}}
+          />
+          <span>{{localize "SPACEHOLDER.GlobalObject.InfluenceEnabled"}}</span>
+        </label>
         <span class="influence-prefix" data-tooltip="Радиус (клетки)">r:</span>
         <input
           class="influence-input"

@@ -179,6 +179,8 @@ export function computePlayerPointsBreakdown(user) {
       id: page.uuid ?? `${entry.id}:${page.id}`,
       name: (page?.name || '').trim() || '(без названия)',
       entryName: (entry?.name || '').trim() || '(без названия)',
+      entryId: String(entry?.id ?? '').trim() || null,
+      entryUuid: entry?.uuid ?? null,
       points: pts,
       uuid: page.uuid ?? null,
     });

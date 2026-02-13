@@ -67,20 +67,7 @@ function addCustomButtons(tokenControls) {
     order: 10,
   });
 
-  const addedInfluence = upsertTool(tokenControls, {
-    name: 'toggle-influence',
-    title: game.i18n.localize('SPACEHOLDER.TokenControls.InfluenceTool.Title'),
-    icon: 'fas fa-flag',
-    onChange: (isActive) => {
-      // На кнопках Foundry/окружения могут вызывать onChange и при «снятии» — не переключаемся обратно.
-      if (isActive === false) return;
-      handleInfluenceToggle();
-    },
-    button: true,
-    order: 20,
-  });
-
-  if (addedAiming || addedInfluence) {
+  if (addedAiming) {
     console.log('SpaceHolder | Added custom Token Control buttons');
   }
 }
@@ -111,20 +98,6 @@ function upsertTool(tokenControls, tool) {
 
   console.error('SpaceHolder | tokenControls.tools has unsupported type:', tools);
   return false;
-}
-
-/**
- * Переключить отображение влияния.
- */
-function handleInfluenceToggle() {
-  const manager = game.spaceholder?.influenceManager;
-  if (!manager) {
-    ui.notifications.warn(game.i18n.localize('SPACEHOLDER.TokenControls.Messages.Unavailable'));
-    return;
-  }
-
-  const enabled = manager.toggle({ debug: false });
-  ui.notifications.info(enabled ? game.i18n.localize('SPACEHOLDER.TokenControls.Messages.InfluenceShown') : game.i18n.localize('SPACEHOLDER.TokenControls.Messages.InfluenceHidden'));
 }
 
 /**

@@ -2,7 +2,8 @@
 
 #spaceholder-hotbar-faction-ui,
 .spaceholder.sh-hotbar-faction {
-  --sh-hotbar-slot: 50px;
+  --sh-hotbar-faction-size: 60px;
+  --sh-hotbar-quick-size: 30px;
   --sh-hotbar-gap: 6px;
 
   position: relative;
@@ -13,21 +14,29 @@
   display: inline-flex;
   align-items: flex-end;
   justify-content: flex-start;
+  gap: var(--sh-hotbar-gap);
 
   flex: 0 0 auto;
   margin-right: var(--sh-hotbar-gap);
 
   .sh-hotbar-faction__main {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-end;
     gap: var(--sh-hotbar-gap);
   }
 
-  .sh-hotbar-faction__btn,
-  .sh-hotbar-faction__item {
-    width: var(--sh-hotbar-slot);
-    height: var(--sh-hotbar-slot);
+  .sh-hotbar-faction__quick-grid {
+    display: grid;
+    grid-template-rows: repeat(2, var(--sh-hotbar-quick-size));
+    grid-auto-flow: column;
+    grid-auto-columns: var(--sh-hotbar-quick-size);
+    align-items: center;
+    gap: 4px;
+  }
 
+  .sh-hotbar-faction__btn,
+  .sh-hotbar-faction__item,
+  .sh-hotbar-faction__quick-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -53,6 +62,22 @@
     }
   }
 
+  .sh-hotbar-faction__btn,
+  .sh-hotbar-faction__item {
+    width: var(--sh-hotbar-faction-size);
+    height: var(--sh-hotbar-faction-size);
+  }
+
+  .sh-hotbar-faction__quick-btn {
+    width: var(--sh-hotbar-quick-size);
+    height: var(--sh-hotbar-quick-size);
+    border-radius: 8px;
+
+    i {
+      font-size: 14px;
+    }
+  }
+
   // When flyout is open, give the main button a subtle accent like core UI states.
   &[data-open="true"] {
     .sh-hotbar-faction__btn {
@@ -61,8 +86,8 @@
   }
 
   .sh-hotbar-faction__img {
-    width: calc(var(--sh-hotbar-slot) - 4px);
-    height: calc(var(--sh-hotbar-slot) - 4px);
+    width: calc(var(--sh-hotbar-faction-size) - 4px);
+    height: calc(var(--sh-hotbar-faction-size) - 4px);
     border-radius: 8px;
     object-fit: cover;
     display: block;
@@ -82,11 +107,15 @@
     color: rgba(255, 255, 255, 0.92);
   }
 
+  .sh-hotbar-faction__quick-btn.is-active {
+    border-color: var(--color-warm-1, rgba(255, 255, 255, 0.25));
+  }
+
   // Flyout (drop-up)
   .sh-hotbar-faction__flyout {
     position: absolute;
-    left: 0;
-    bottom: calc(var(--sh-hotbar-slot) + var(--sh-hotbar-gap));
+    right: 0;
+    bottom: calc(var(--sh-hotbar-faction-size) + var(--sh-hotbar-gap));
 
     display: flex;
     flex-direction: column;

@@ -1,6 +1,6 @@
 {
   "Actor": {
-    "types": ["character", "npc", "globalobject", "faction"],
+    "types": ["globalobject", "character", "npc", "faction"],
     "templates": {
       "base": {
         "anatomy": {
@@ -42,6 +42,7 @@
     "globalobject": {
       "gRange": 0,
       "gPower": 0,
+      "gInfluenceEnabled": true,
       "gLink": "",
       "gFaction": "",
       "gActors": [],

@@ -39,6 +39,8 @@
       "Delete": "Удалить",
       "Save": "Сохранить",
       "Cancel": "Отмена",
+      "Yes": "Да",
+      "No": "Нет",
       "Apply": "Применить",
       "Clear": "Очистить",
       "Refresh": "Обновить",
@@ -125,7 +127,16 @@
     "HotbarFaction": {
       "Faction": "Фракция",
       "NoFaction": "Нет фракции",
-      "PP": "Очки прогрессии фракции"
+      "PP": "Очки прогрессии фракции",
+      "QuickActions": "Быстрые действия",
+      "Tools": {
+        "OpenTimeline": "Открыть хронологию",
+        "OpenEvents": "Открыть события",
+        "OpenJournalLog": "Лог изменений",
+        "OpenProgressionPoints": "Полученные PP",
+        "ToggleInfluence": "Переключить отображение влияния",
+        "Placeholder": "Заглушка"
+      }
     },
     "Inventory": {
       "TotalWeight": "Общий вес:",
@@ -189,6 +200,10 @@
     "Token": {
       "VisionEnabled": "Зрение включено",
       "VisionRange": "Дальность зрения"
+    },
+    "GlobalObject": {
+      "InfluenceEnabled": "Влияние включено",
+      "InfluenceEnabledHint": "Отключает влияние этого объекта, не изменяя радиус"
     },
     "GlobalMap": {
       "Title": "Глобальная карта",
@@ -814,6 +829,84 @@
       "Groups": {
         "ActiveFactions": "Свои фракции",
         "Details": "Подробно"
+      }
+    },
+    "Events": {
+      "App": {
+        "Title": "События",
+        "Loading": "Загрузка…",
+        "Empty": "Событий пока нет."
+      },
+      "Tabs": {
+        "Drafts": "Черновики",
+        "Events": "События фракций"
+      },
+      "Fields": {
+        "Title": "Название",
+        "Description": "Описание",
+        "Date": "Дата",
+        "Icon": "Иконка",
+        "Faction": "Фракция",
+        "Status": "Статус",
+        "Options": "Варианты",
+        "SelectedOption": "Выбранный вариант",
+        "NoOption": "Без выбранного варианта",
+        "FreeText": "Свободный ответ",
+        "Outcome": "Исход",
+        "ResponseMode": "Режим ответа",
+        "Finished": "Закончено",
+        "Sort": "Сортировка"
+      },
+      "Buttons": {
+        "CreateTemplate": "Создать черновик",
+        "CreateEvent": "Создать событие",
+        "SendToFaction": "Отправить фракции",
+        "Respond": "Ответить",
+        "Resolve": "Указать исход",
+        "PickDate": "Выбрать дату",
+        "PickIcon": "Выбрать иконку",
+        "ClearIcon": "Убрать иконку",
+        "ToTimeline": "Создать запись в таймлайне",
+        "SubmitResponse": "Отправить ответ"
+      },
+      "Status": {
+        "Created": "Создано",
+        "Answered": "Отвечено",
+        "Resolved": "Решено",
+        "Finished": "Закончено"
+      },
+      "Filters": {
+        "AllStatuses": "Все статусы",
+        "AllFactions": "Все фракции"
+      },
+      "Sort": {
+        "DateDesc": "Дата: новые сверху",
+        "DateAsc": "Дата: старые сверху",
+        "Status": "По статусу",
+        "Title": "По названию"
+      },
+      "Hints": {
+        "OptionsFormat": "Один вариант на строку. Формат: \"текст варианта | исход\", если нужен авто-исход.",
+        "DropRefs": "Можно перетаскивать Actor/Journal в текстовые поля для вставки @UUID-ссылок."
+      },
+      "ResponseMode": {
+        "ChoiceOnly": "Только выбор",
+        "TextOnly": "Только текст",
+        "Either": "Выбор или текст",
+        "Both": "Выбор и текст"
+      },
+      "Notifications": {
+        "Sent": "Событие отправлено фракции",
+        "TimelineCreated": "Запись в таймлайне создана из события"
+      },
+      "Confirm": {
+        "DeleteTitle": "Удалить событие?",
+        "DeleteContent": "Действие необратимо."
+      },
+      "Errors": {
+        "FactionRequired": "Нужно выбрать фракцию",
+        "TitleRequired": "Название обязательно",
+        "ResponseInvalid": "Ответ не соответствует выбранному режиму ответа"
       }
     },
     "Journal": {

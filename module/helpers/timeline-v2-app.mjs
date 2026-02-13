@@ -474,7 +474,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     allowNoFaction = false,
     factionUuid = '',
     origin = TIMELINE_V2_ORIGIN.FACTION,
-    isGlobal = false,
     iconPath = '',
     hasDuration = false,
     durationDays = 0,
@@ -501,9 +500,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
 
     // World events (no faction) always have world origin.
     if (!this._factionUuid) this._origin = TIMELINE_V2_ORIGIN.WORLD;
-
-    this._isGlobal = !!isGlobal;
-    if (!this._factionUuid && this._allowNoFaction) this._isGlobal = true;
 
     this._iconPath = String(iconPath || '').trim();
 
@@ -538,8 +534,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     const showFactionSelect = !isEdit && (this._allowNoFaction || (this._factions.length > 0));
     const showOriginSelect = false;
 
-    const showGlobalToggle = !isEdit && !!this._factionUuid;
-
     const startSerial = _dateToSerial({ year: this._year, month: this._month, day: this._day });
 
     const endDate = (this._hasDuration && (Number(this._durationDays) > 0))
@@ -563,7 +557,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       allowNoFaction: this._allowNoFaction,
       factionUuid: this._factionUuid,
       origin: this._origin,
-      isGlobal: this._isGlobal,
 
       iconPath: this._iconPath,
 
@@ -574,8 +567,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       endDay,
 
       showFactionSelect,
-
-      showGlobalToggle,
       monthChoices,
       dayChoices,
     };
@@ -613,11 +604,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     const contentEl = root.querySelector('textarea[name="content"]');
     if (typeof contentEl?.value === 'string') this._content = contentEl.value;
 
-    const globalCb = root.querySelector('input[type="checkbox"][name="isGlobal"]');
-    if (globalCb) this._isGlobal = !!globalCb.checked;
-
-
-
     const iconInput = root.querySelector('input[type="hidden"][name="iconPath"]');
     if (iconInput && typeof iconInput.value === 'string') {
       this._iconPath = String(iconInput.value || '').trim();
@@ -641,6 +627,7 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
   async _openDatePicker() {
     const root = this.element;
     if (!root) return;
+    this._syncDraftFromForm();
 
     const yearInput = root.querySelector('input[name="year"]');
     const monthInput = root.querySelector('input[name="month"]');
@@ -700,6 +687,8 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
   }
 
   async _openIconPicker() {
+    this._syncDraftFromForm();
+
     const defaultColor = '#ffffff';
 
     const title = game.i18n?.localize?.('SPACEHOLDER.TimelineV2.Buttons.PickIcon')
@@ -754,6 +743,7 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
 
     if (action === 'clear-icon') {
       ev.preventDefault();
+      this._syncDraftFromForm();
       this._iconPath = '';
       this.render(false);
     }
@@ -767,7 +757,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
 
       if (!this._factionUuid) {
         this._origin = TIMELINE_V2_ORIGIN.WORLD;
-        if (this._allowNoFaction) this._isGlobal = true;
       }
 
       this.render(false);
@@ -775,12 +764,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
     }
 
 
-
-    const globalCb = ev.target?.closest?.('input[type="checkbox"][name="isGlobal"]');
-    if (globalCb) {
-      this._isGlobal = !!globalCb.checked;
-      return;
-    }
 
     const durationCb = ev.target?.closest?.('input[type="checkbox"][name="hasDuration"]');
     if (durationCb) {
@@ -1005,9 +988,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
       return;
     }
 
-    // World events are always global.
-    const isGlobal = factionUuid ? !!data.isGlobal : true;
-
     try {
       await createTimelineV2Event({
         year,
@@ -1018,7 +998,6 @@ class TimelineV2EventEditorApp extends foundry.applications.api.HandlebarsApplic
         iconPath,
         hasDuration,
         durationDays,
-        isGlobal,
         title,
         content,
       });
@@ -1054,6 +1033,19 @@ let _hooksInstalled = false;
 
 function _isGM() {
   return !!game?.user?.isGM;
+}
+
+function _toHtmlWithLineBreaks(text) {
+  const s = String(text ?? '');
+  const escape = foundry?.utils?.escapeHTML
+    ? foundry.utils.escapeHTML
+    : ((v) => String(v)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;'));
+  return escape(s).replace(/\r\n?/g, '\n').replace(/\n/g, '<br>');
 }
 
 function _installHooksOnce() {
@@ -1162,6 +1154,50 @@ export function openTimelineV2App() {
   return _singleton;
 }
 
+export function openTimelineV2CreateEventEditor({
+  factionUuid = '',
+  year = 0,
+  month = 1,
+  day = 1,
+  title = '',
+  content = '',
+  iconPath = '',
+  hasDuration = false,
+  durationDays = 0,
+} = {}) {
+  const isGM = _isGM();
+  const factions = getAvailableFactionChoices({ includeAllWorldFactions: isGM });
+  const active = getTimelineV2ActiveFactionUuids();
+
+  const pickDefaultFaction = () => {
+    const fromArg = String(factionUuid || '').trim();
+    if (fromArg && factions.some((f) => f.uuid === fromArg)) return fromArg;
+    for (const u of active) {
+      if (factions.some((f) => f.uuid === u)) return u;
+    }
+    return factions?.[0]?.uuid ?? '';
+  };
+
+  const selectedFactionUuid = isGM ? (pickDefaultFaction() || '') : pickDefaultFaction();
+  const app = new TimelineV2EventEditorApp({
+    factions,
+    allowNoFaction: isGM,
+    factionUuid: selectedFactionUuid,
+    origin: selectedFactionUuid ? TIMELINE_V2_ORIGIN.FACTION : TIMELINE_V2_ORIGIN.WORLD,
+    iconPath: String(iconPath || '').trim(),
+    hasDuration: !!hasDuration,
+    durationDays: Number(durationDays) || 0,
+    year: Number.isFinite(Number(year)) ? Number.parseInt(year, 10) : 0,
+    month: Math.min(12, Math.max(1, Number.parseInt(month, 10) || 1)),
+    day: Math.min(30, Math.max(1, Number.parseInt(day, 10) || 1)),
+    title: String(title || ''),
+    content: String(content || ''),
+  });
+
+  app.render(true);
+  return app;
+}
+
 class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 ) {
@@ -1245,7 +1281,6 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
       allowNoFaction: isGM,
       factionUuid: defaultFactionUuid,
       origin: defaultFactionUuid ? TIMELINE_V2_ORIGIN.FACTION : TIMELINE_V2_ORIGIN.WORLD,
-      isGlobal: false,
       iconPath: '',
       hasDuration: false,
       durationDays: 0,
@@ -1664,12 +1699,14 @@ class TimelineV2App extends foundry.applications.api.HandlebarsApplicationMixin(
     this._drawerTitle = String(detail?.name ?? '').trim() || untitledText;
 
     const rawHtml = String(detail?.text?.content ?? '');
+    const looksLikeHtml = /<[^>]+>/.test(rawHtml);
+    const contentForEnrich = looksLikeHtml ? rawHtml : _toHtmlWithLineBreaks(rawHtml);
     let enriched = '';
     try {
-      enriched = await _enrichHtml(rawHtml, { relativeTo: detail });
+      enriched = await _enrichHtml(contentForEnrich, { relativeTo: detail });
     } catch (e) {
       console.warn('SpaceHolder | TimelineV2: enrichHTML failed', e);
-      enriched = rawHtml;
+      enriched = contentForEnrich;
     }
 
     this._drawerContentHtml = enriched;

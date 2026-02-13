@@ -4,6 +4,22 @@
   data-open="false"
   aria-label="{{toggleLabel}}"
 >
+  <div class="sh-hotbar-faction__quick-grid" role="group" aria-label="{{localize "SPACEHOLDER.HotbarFaction.QuickActions"}}">
+    {{#each quickActions as |a|}}
+      <button
+        type="button"
+        class="icon-btn sh-hotbar-faction__quick-btn {{#if a.active}}is-active{{/if}}"
+        data-action="{{a.action}}"
+        aria-pressed="{{#if a.active}}true{{else}}false{{/if}}"
+        aria-label="{{a.label}}"
+        data-tooltip="{{a.label}}"
+        {{#if a.disabled}}disabled{{/if}}
+      >
+        <i class="{{a.icon}}" aria-hidden="true"></i>
+      </button>
+    {{/each}}
+  </div>
+
   <div class="sh-hotbar-faction__main">
     <button
       type="button"

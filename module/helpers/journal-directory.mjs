@@ -13,7 +13,8 @@ function _isTimelineContainer(entry) {
   try {
     const f1 = entry?.getFlag?.('spaceholder', 'timeline') ?? entry?.flags?.spaceholder?.timeline ?? {};
     const f2 = entry?.getFlag?.('spaceholder', 'timelineV2') ?? entry?.flags?.spaceholder?.timelineV2 ?? {};
-    return !!(f1?.isContainer || f2?.isContainer);
+    const fe = entry?.getFlag?.('spaceholder', 'events') ?? entry?.flags?.spaceholder?.events ?? {};
+    return !!(f1?.isContainer || f2?.isContainer || fe?.isContainer);
   } catch (_) {
     return false;
   }
@@ -23,7 +24,8 @@ function _isTimelineFolder(folder) {
   try {
     const f1 = folder?.getFlag?.('spaceholder', 'timeline') ?? folder?.flags?.spaceholder?.timeline ?? {};
     const f2 = folder?.getFlag?.('spaceholder', 'timelineV2') ?? folder?.flags?.spaceholder?.timelineV2 ?? {};
-    return !!(f1?.isFolder || f2?.isFolder);
+    const fe = folder?.getFlag?.('spaceholder', 'events') ?? folder?.flags?.spaceholder?.events ?? {};
+    return !!(f1?.isFolder || f2?.isFolder || fe?.isFolder);
   } catch (_) {
     return false;
   }

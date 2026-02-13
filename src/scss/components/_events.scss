@@ -1,0 +1,432 @@
+.spaceholder .sh-events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.spaceholder .sh-events__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.spaceholder .sh-events__tabs {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.spaceholder .sh-events__tab.is-active {
+  font-weight: 700;
+}
+
+.spaceholder .sh-events__toolbarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.spaceholder .sh-events__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.spaceholder .sh-events__filters label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spaceholder .sh-events__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+}
+
+.spaceholder .sh-events__layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(340px, 1.35fr);
+  gap: 0.5rem;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.spaceholder .sh-events__details {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 0.5rem;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.spaceholder .sh-events__detailsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.spaceholder .sh-events__detailsHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.spaceholder .sh-events__detailsBody {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-right: 0.15rem;
+}
+
+.spaceholder .sh-events__detailsGroup {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 0.4rem 0.45rem;
+}
+
+.spaceholder .sh-events__detailsGroup h4 {
+  margin: 0 0 0.2rem 0;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+
+.spaceholder .sh-events__detailsGroup p {
+  margin: 0;
+}
+
+.spaceholder .sh-events__detailsText > :first-child {
+  margin-top: 0;
+}
+
+.spaceholder .sh-events__detailsText > :last-child {
+  margin-bottom: 0;
+}
+
+.spaceholder .sh-events__rowCompact {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.11);
+  padding: 0.4rem 0.45rem;
+}
+
+.spaceholder .sh-events__rowCompact:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.spaceholder .sh-events__rowCompact.is-selected {
+  border-color: rgba(140, 180, 255, 0.75);
+  background: rgba(70, 110, 200, 0.2);
+}
+
+.spaceholder .sh-events__rowCompactIcon {
+  width: 1.2rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.spaceholder .sh-events__rowCompactTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spaceholder .sh-events__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 0.4rem 0.45rem 0.4rem 0.55rem;
+  background: rgba(0, 0, 0, 0.12);
+  min-height: 0;
+}
+
+.spaceholder .sh-events__statusBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 6px 0 0 6px;
+  background: transparent;
+}
+
+.spaceholder .sh-events__row.is-created .sh-events__statusBar {
+  background: #8c8c8c;
+}
+
+.spaceholder .sh-events__row.is-answered .sh-events__statusBar {
+  background: #d4a017;
+}
+
+.spaceholder .sh-events__row.is-resolved .sh-events__statusBar {
+  background: #2f80ed;
+}
+
+.spaceholder .sh-events__row.is-finished .sh-events__statusBar {
+  background: #34a853;
+}
+
+.spaceholder .sh-events__rowMain h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.spaceholder .sh-events__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.spaceholder .sh-events__rowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.spaceholder .sh-events__rowActions.is-inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-width: 260px;
+}
+
+.spaceholder .sh-events__iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.spaceholder .sh-events__finishToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.2rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.spaceholder .sh-events__finishToggle span {
+  opacity: 0.85;
+}
+
+.spaceholder .sh-events__rowCompact.is-created .sh-events__rowCompactIcon {
+  color: #8c8c8c;
+}
+
+.spaceholder .sh-events__rowCompact.is-answered .sh-events__rowCompactIcon {
+  color: #d4a017;
+}
+
+.spaceholder .sh-events__rowCompact.is-resolved .sh-events__rowCompactIcon {
+  color: #2f80ed;
+}
+
+.spaceholder .sh-events__rowCompact.is-finished .sh-events__rowCompactIcon {
+  color: #34a853;
+}
+
+.spaceholder .sh-events__desc {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.82rem;
+  opacity: 0.82;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.spaceholder .sh-events__empty,
+.spaceholder .sh-events__loading {
+  opacity: 0.8;
+}
+
+.window-app.spaceholder.event-editor,
+.window-app.spaceholder.event-response-editor,
+.spaceholder.event-editor,
+.spaceholder.event-response-editor,
+#spaceholder-event-editor,
+#spaceholder-event-response-editor {
+  width: 100%;
+  height: 100%;
+}
+
+.spaceholder .sh-eventsEditor,
+.spaceholder .sh-eventsResponseEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  height: 100%;
+}
+
+.spaceholder .sh-eventsEditor .form-group,
+.spaceholder .sh-eventsResponseEditor .form-group {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
+.window-app.spaceholder.event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group,
+.window-app.spaceholder.event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group > .form-fields,
+.window-app.spaceholder.event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group > .form-fields > textarea,
+.spaceholder.event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group,
+.spaceholder.event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group > .form-fields,
+.spaceholder.event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group > .form-fields > textarea,
+#spaceholder-event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group,
+#spaceholder-event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group > .form-fields,
+#spaceholder-event-editor .sh-eventsEditor .sh-eventsEditor__body > .form-group > .form-fields > textarea {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+
+.spaceholder.event-editor .window-content .sh-eventsEditor .sh-eventsEditor__body textarea {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+.spaceholder .sh-eventsEditor .form-group > label,
+.spaceholder .sh-eventsResponseEditor .form-group > label {
+  width: 100%;
+  max-width: none;
+  flex: 0 0 auto;
+}
+
+.spaceholder .sh-eventsEditor .form-fields,
+.spaceholder .sh-eventsResponseEditor .form-fields {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+}
+
+.spaceholder .sh-eventsEditor .form-fields > input,
+.spaceholder .sh-eventsEditor .form-fields > select,
+.spaceholder .sh-eventsEditor .form-fields > textarea,
+.spaceholder .sh-eventsResponseEditor .form-fields > input,
+.spaceholder .sh-eventsResponseEditor .form-fields > select,
+.spaceholder .sh-eventsResponseEditor .form-fields > textarea {
+  width: 100%;
+  max-width: none;
+}
+
+.spaceholder .sh-eventsEditor__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.4rem;
+}
+
+.spaceholder .sh-eventsEditor__dateFields {
+  display: grid;
+  grid-template-columns: 74px 74px 1fr auto;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.spaceholder .sh-eventsEditor__datePickBtn {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.spaceholder .sh-eventsEditor__statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.spaceholder .sh-eventsEditor__statusBadge.is-created i {
+  color: #8c8c8c;
+}
+
+.spaceholder .sh-eventsEditor__statusBadge.is-answered i {
+  color: #d4a017;
+}
+
+.spaceholder .sh-eventsEditor__statusBadge.is-resolved i {
+  color: #2f80ed;
+}
+
+.spaceholder .sh-eventsEditor__statusBadge.is-finished i {
+  color: #34a853;
+}
+
+.spaceholder .sh-eventsEditor__body,
+.spaceholder .sh-eventsResponseEditor .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.spaceholder .sh-eventsEditor textarea,
+.spaceholder .sh-eventsResponseEditor textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.spaceholder .sh-eventsEditor .hint {
+  margin: 0.1rem 0 0 0;
+  opacity: 0.72;
+  font-size: 0.78rem;
+}
+
+.spaceholder .sh-eventsResponseEditor__header h3 {
+  margin: 0;
+}
+
+.spaceholder .sh-eventsResponseEditor__description {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  padding: 0.45rem;
+  background: rgba(0, 0, 0, 0.12);
+  max-height: 170px;
+  overflow: auto;
+}
+
+.spaceholder .sh-eventsResponseEditor__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 200px;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.spaceholder .sh-eventsResponseEditor__option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}

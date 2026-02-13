@@ -1,0 +1,91 @@
+<div class="sh-eventsEditor">
+  <header class="sh-eventsEditor__header">
+    <div class="form-group">
+      <label>{{localize "SPACEHOLDER.Events.Fields.Title"}}</label>
+      <div class="form-fields">
+        <input type="text" name="title" value="{{title}}" required />
+      </div>
+    </div>
+  </header>
+
+  <section class="sh-eventsEditor__meta">
+    {{#if (eq mode "create-event")}}
+      <div class="form-group">
+        <label>{{localize "SPACEHOLDER.Events.Fields.Faction"}}</label>
+        <div class="form-fields">
+          <select name="targetFactionUuid" required>
+            <option value="">{{localize "SPACEHOLDER.Events.Fields.Faction"}}</option>
+            {{#each factions}}
+              <option value="{{this.uuid}}" {{#if (eq ../targetFactionUuid this.uuid)}}selected{{/if}}>{{this.name}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+    {{/if}}
+
+    <div class="form-group">
+      <label>{{localize "SPACEHOLDER.Events.Fields.Date"}}</label>
+      <div class="form-fields sh-eventsEditor__dateFields">
+        <input type="number" name="dateDay" value="{{dateDay}}" min="1" max="30" step="1" inputmode="numeric" />
+        <input type="number" name="dateMonth" value="{{dateMonth}}" min="1" max="12" step="1" inputmode="numeric" />
+        <input type="number" name="dateYear" value="{{dateYear}}" step="1" inputmode="numeric" />
+        <button
+          type="button"
+          class="sh-eventsEditor__datePickBtn"
+          data-action="pick-date"
+          aria-label="{{localize "SPACEHOLDER.Events.Buttons.PickDate"}}"
+          data-tooltip="{{localize "SPACEHOLDER.Events.Buttons.PickDate"}}"
+        ><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></button>
+      </div>
+      <input type="hidden" name="eventDate" value="{{eventDate}}" />
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "SPACEHOLDER.Events.Fields.ResponseMode"}}</label>
+      <div class="form-fields">
+        <select name="responseMode">
+          {{#each modeOptions}}
+            <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "SPACEHOLDER.Events.Fields.Status"}}</label>
+      <div class="form-fields sh-eventsEditor__statusBadge {{editorStatusClass}}">
+        <i class="{{editorStatusIcon}}" aria-hidden="true"></i>
+        <span>{{editorStatusLabel}}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sh-eventsEditor__body">
+    <div class="form-group">
+      <label>{{localize "SPACEHOLDER.Events.Fields.Description"}}</label>
+      <div class="form-fields">
+        <textarea name="description" rows="8" data-accept-drop-uuid="true" style="width: 100%; max-width: none; min-width: 0; box-sizing: border-box;">{{description}}</textarea>
+      </div>
+      <p class="hint">{{localize "SPACEHOLDER.Events.Hints.DropRefs"}}</p>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "SPACEHOLDER.Events.Fields.Options"}}</label>
+      <p class="hint">{{localize "SPACEHOLDER.Events.Hints.OptionsFormat"}}</p>
+      <div class="form-fields">
+        <textarea name="optionsRaw" rows="10" placeholder="Option label | Optional outcome" data-accept-drop-uuid="true" style="width: 100%; max-width: none; min-width: 0; box-sizing: border-box;">{{optionsRaw}}</textarea>
+      </div>
+    </div>
+  </section>
+
+  <footer class="form-footer">
+    <button type="submit" class="primary">
+      <i class="fa-solid fa-check" aria-hidden="true"></i>
+      {{localize "SPACEHOLDER.Actions.Save"}}
+    </button>
+    <button type="button" data-action="cancel">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      {{localize "SPACEHOLDER.Actions.Cancel"}}
+    </button>
+  </footer>
+</div>

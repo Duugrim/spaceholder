@@ -11,7 +11,7 @@
 // - Faction (Public)
 // Ordering: year ASC, id ASC (id is an integer sort key per year; values are sparse to allow insert-between reordering).
 
-import { getUserFactionUuids, getUsersForFaction, normalizeUuid as normalizeUuidUserFactions } from './user-factions.mjs';
+import { getUserFactionUuids, getUsersForFaction, normalizeUuid as normalizeUuidUserFactions } from '../user-factions.mjs';
 
 const MODULE_NS = 'spaceholder';
 const FLAG_ROOT = 'timeline';

@@ -81,6 +81,7 @@ export class ProgressionPointsApp extends foundry.applications.api.HandlebarsApp
   constructor({ userId = null } = {}) {
     super();
     this._targetUserId = String(userId ?? '').trim() || null;
+    this._entryCollapsed = new Map();
   }
 
   setTargetUserId(userId) {
@@ -112,8 +113,39 @@ export class ProgressionPointsApp extends foundry.applications.api.HandlebarsApp
     const breakdown = computePlayerPointsBreakdown(user);
 
     const journalLines = breakdown.journalLines
+      .filter((row) => (Number(row?.points) || 0) !== 0)
       .slice()
-      .sort((a, b) => String(a.entryName ?? '').localeCompare(String(b.entryName ?? ''), 'ru'));
+      .sort((a, b) => {
+        const byEntry = String(a.entryName ?? '').localeCompare(String(b.entryName ?? ''), 'ru');
+        if (byEntry !== 0) return byEntry;
+        return String(a.name ?? '').localeCompare(String(b.name ?? ''), 'ru');
+      });
+
+    const groupedMap = new Map();
+    for (const row of journalLines) {
+      const key = String(row.entryUuid ?? row.entryId ?? row.entryName ?? '').trim() || String(row.id ?? '');
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, {
+          id: key,
+          entryName: String(row.entryName ?? '').trim() || '(без названия)',
+          pages: [],
+          totalPoints: 0,
+        });
+      }
+      const group = groupedMap.get(key);
+      group.pages.push(row);
+      group.totalPoints += Number(row.points) || 0;
+    }
+
+    const journalGroups = Array.from(groupedMap.values())
+      .sort((a, b) => String(a.entryName).localeCompare(String(b.entryName), 'ru'))
+      .map((group) => {
+        if (!this._entryCollapsed.has(group.id)) this._entryCollapsed.set(group.id, true);
+        return {
+          ...group,
+          collapsed: !!this._entryCollapsed.get(group.id),
+        };
+      });
 
     const manual = getUserManualAdjustments(user);
 
@@ -129,6 +161,7 @@ export class ProgressionPointsApp extends foundry.applications.api.HandlebarsApp
       userName: String(user?.name ?? '').trim() || '—',
 
       journalLines,
+      journalGroups,
       manual,
 
       journalPoints: breakdown.journalPoints,
@@ -148,6 +181,18 @@ export class ProgressionPointsApp extends foundry.applications.api.HandlebarsApp
         ev.preventDefault();
         ev.stopPropagation();
         await _openJournalUuid(btn.dataset.uuid);
+      });
+    });
+
+    el.querySelectorAll('[data-action="pp-toggle-entry"]').forEach((btn) => {
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const entryId = String(btn.dataset.entryId ?? '').trim();
+        if (!entryId) return;
+        const current = !!this._entryCollapsed.get(entryId);
+        this._entryCollapsed.set(entryId, !current);
+        try { this.render(false); } catch (_) {}
       });
     });
 

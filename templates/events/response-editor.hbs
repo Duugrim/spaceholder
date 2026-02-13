@@ -1,0 +1,41 @@
+<div class="sh-eventsResponseEditor">
+  <header class="sh-eventsResponseEditor__header">
+    <h3>{{title}}</h3>
+    <div class="sh-eventsResponseEditor__description">{{{description}}}</div>
+  </header>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.Events.Fields.Options"}}</label>
+    <div class="sh-eventsResponseEditor__options">
+      {{#each options}}
+        <label class="sh-eventsResponseEditor__option">
+          <input type="radio" name="selectedOptionIndex" value="{{this.idx}}" {{#if this.selected}}checked{{/if}} />
+          <span>{{this.label}}</span>
+        </label>
+      {{/each}}
+      <label class="sh-eventsResponseEditor__option">
+        <input type="radio" name="selectedOptionIndex" value="" {{#unless hasSelectedOption}}checked{{/unless}} />
+        <span>{{localize "SPACEHOLDER.Events.Fields.NoOption"}}</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.Events.Fields.FreeText"}}</label>
+    <div class="form-fields">
+      <textarea name="freeText" rows="10" data-accept-drop-uuid="true" style="width: 100%; max-width: none; min-width: 0; box-sizing: border-box;">{{freeText}}</textarea>
+    </div>
+    <p class="hint">{{localize "SPACEHOLDER.Events.Hints.DropRefs"}}</p>
+  </div>
+
+  <footer class="form-footer">
+    <button type="submit" class="primary">
+      <i class="fa-solid fa-check" aria-hidden="true"></i>
+      {{localize "SPACEHOLDER.Events.Buttons.SubmitResponse"}}
+    </button>
+    <button type="button" data-action="cancel">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      {{localize "SPACEHOLDER.Actions.Cancel"}}
+    </button>
+  </footer>
+</div>

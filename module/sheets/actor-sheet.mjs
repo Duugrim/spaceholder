@@ -1031,6 +1031,7 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     context.system.gLink ??= '';
     context.system.gFaction ??= '';
     context.system.gActors ??= [];
+    context.system.gInfluenceEnabled ??= true;
     if (!Array.isArray(context.system.gActors)) context.system.gActors = [];
 
     // Progression Points (PP)

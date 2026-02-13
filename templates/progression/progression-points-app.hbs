@@ -23,12 +23,32 @@
     <div class="sh-pp__col">
       <div class="sh-pp__sectionTitle">Одобренные страницы</div>
 
-      {{#if journalLines.length}}
+      {{#if journalGroups.length}}
         <div class="sh-pp__list">
-          {{#each journalLines as |row|}}
-            <div class="sh-pp__row">
-              <button type="button" class="sh-pp__open" data-action="open-journal" data-uuid="{{row.uuid}}">{{row.entryName}} — {{row.name}}</button>
-              <div class="sh-pp__pts">{{row.points}}</div>
+          {{#each journalGroups as |group|}}
+            <div class="sh-pp__group {{#if group.collapsed}}is-collapsed{{/if}}">
+              <div class="sh-pp__groupHead">
+                <button
+                  type="button"
+                  class="sh-pp__collapse"
+                  data-action="pp-toggle-entry"
+                  data-entry-id="{{group.id}}"
+                  aria-expanded="{{#if group.collapsed}}false{{else}}true{{/if}}"
+                >
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="sh-pp__groupName">{{group.entryName}}</div>
+                <div class="sh-pp__pts">{{group.totalPoints}}</div>
+              </div>
+
+              <div class="sh-pp__groupBody">
+                {{#each group.pages as |row|}}
+                  <div class="sh-pp__row">
+                    <button type="button" class="sh-pp__open" data-action="open-journal" data-uuid="{{row.uuid}}">{{row.name}}</button>
+                    <div class="sh-pp__pts">{{row.points}}</div>
+                  </div>
+                {{/each}}
+              </div>
             </div>
           {{/each}}
         </div>

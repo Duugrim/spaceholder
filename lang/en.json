@@ -39,6 +39,8 @@
       "Delete": "Delete",
       "Save": "Save",
       "Cancel": "Cancel",
+      "Yes": "Yes",
+      "No": "No",
       "Apply": "Apply",
       "Clear": "Clear",
       "Refresh": "Refresh",
@@ -125,7 +127,16 @@
     "HotbarFaction": {
       "Faction": "Faction",
       "NoFaction": "No faction",
-      "PP": "Faction progression points"
+      "PP": "Faction progression points",
+      "QuickActions": "Quick actions",
+      "Tools": {
+        "OpenTimeline": "Open timeline",
+        "OpenEvents": "Open events",
+        "OpenJournalLog": "Journal update log",
+        "OpenProgressionPoints": "Received PP",
+        "ToggleInfluence": "Toggle influence display",
+        "Placeholder": "Placeholder"
+      }
     },
     "Inventory": {
       "TotalWeight": "Total weight:",
@@ -359,6 +370,84 @@
         "Details": "Details"
       }
     },
+    "Events": {
+      "App": {
+        "Title": "Events",
+        "Loading": "Loading…",
+        "Empty": "No events yet."
+      },
+      "Tabs": {
+        "Drafts": "Drafts",
+        "Events": "Faction events"
+      },
+      "Fields": {
+        "Title": "Title",
+        "Description": "Description",
+        "Date": "Date",
+        "Icon": "Icon",
+        "Faction": "Faction",
+        "Status": "Status",
+        "Options": "Options",
+        "SelectedOption": "Selected option",
+        "NoOption": "No option",
+        "FreeText": "Free response",
+        "Outcome": "Outcome",
+        "ResponseMode": "Response mode",
+        "Finished": "Finished",
+        "Sort": "Sort"
+      },
+      "Buttons": {
+        "CreateTemplate": "Create draft",
+        "CreateEvent": "Create event",
+        "SendToFaction": "Send to faction",
+        "Respond": "Respond",
+        "Resolve": "Resolve",
+        "PickDate": "Pick date",
+        "PickIcon": "Pick icon",
+        "ClearIcon": "Clear icon",
+        "ToTimeline": "Create timeline entry",
+        "SubmitResponse": "Submit response"
+      },
+      "Status": {
+        "Created": "Created",
+        "Answered": "Answered",
+        "Resolved": "Resolved",
+        "Finished": "Finished"
+      },
+      "Filters": {
+        "AllStatuses": "All statuses",
+        "AllFactions": "All factions"
+      },
+      "Sort": {
+        "DateDesc": "Date: new first",
+        "DateAsc": "Date: old first",
+        "Status": "Status",
+        "Title": "Title"
+      },
+      "Hints": {
+        "OptionsFormat": "One option per line. Use \"label | outcome\" format to predefine auto-outcome.",
+        "DropRefs": "You can drag Actor/Journal into text fields to insert @UUID links."
+      },
+      "ResponseMode": {
+        "ChoiceOnly": "Choice only",
+        "TextOnly": "Text only",
+        "Either": "Choice or text",
+        "Both": "Choice and text"
+      },
+      "Notifications": {
+        "Sent": "Event was sent to faction",
+        "TimelineCreated": "Timeline entry created from event"
+      },
+      "Confirm": {
+        "DeleteTitle": "Delete event?",
+        "DeleteContent": "This action cannot be undone."
+      },
+      "Errors": {
+        "FactionRequired": "Faction is required",
+        "TitleRequired": "Title is required",
+        "ResponseInvalid": "Response does not satisfy current response mode"
+      }
+    },
     "Journal": {
       "UpdateLog": {
         "Title": "Update Log",
@@ -398,6 +487,10 @@
     "Token": {
       "VisionEnabled": "Vision Enabled",
       "VisionRange": "Vision Range"
+    },
+    "GlobalObject": {
+      "InfluenceEnabled": "Influence enabled",
+      "InfluenceEnabledHint": "Disable this object's influence without changing its radius"
     },
     "GlobalMap": {
       "Title": "Global Map",

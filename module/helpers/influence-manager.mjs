@@ -172,13 +172,13 @@ export class InfluenceManager {
     // Вложенная форма: {system: {gRange: ...}}
     const sys = change.system;
     if (sys && typeof sys === 'object') {
-      if ('gRange' in sys || 'gPower' in sys || 'gFaction' in sys) return true;
+      if ('gRange' in sys || 'gPower' in sys || 'gFaction' in sys || 'gInfluenceEnabled' in sys) return true;
     }
 
     // Dotted форма: {"system.gRange": ...}
     for (const k of Object.keys(change)) {
-      if (k === 'system.gRange' || k === 'system.gPower' || k === 'system.gFaction') return true;
-      if (k.startsWith('system.gRange') || k.startsWith('system.gPower') || k.startsWith('system.gFaction')) return true;
+      if (k === 'system.gRange' || k === 'system.gPower' || k === 'system.gFaction' || k === 'system.gInfluenceEnabled') return true;
+      if (k.startsWith('system.gRange') || k.startsWith('system.gPower') || k.startsWith('system.gFaction') || k.startsWith('system.gInfluenceEnabled')) return true;
     }
 
     return false;
@@ -391,6 +391,14 @@ export class InfluenceManager {
 
       const system = actor.system;
       if (!system) continue;
+
+      const rawEnabled = system.gInfluenceEnabled;
+      const influenceEnabled = (rawEnabled === undefined || rawEnabled === null)
+        ? true
+        : (typeof rawEnabled === 'string'
+          ? !['false', '0', 'off', 'no'].includes(rawEnabled.trim().toLowerCase())
+          : Boolean(rawEnabled));
+      if (!influenceEnabled) continue;
 
       // gRange задаётся в клетках → переводим в пиксели
       // Например: gRange=5 и gridSize=100 → 500 пикселей

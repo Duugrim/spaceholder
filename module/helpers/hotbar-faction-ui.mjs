@@ -212,6 +212,59 @@ class HotbarFactionUI {
       }
     }
 
+    const influenceEnabled = !!game?.spaceholder?.influenceManager?.enabled;
+    const canOpenTimeline = isGM || allowedUuids.length > 0;
+    const quickActions = [
+      {
+        key: 'timeline',
+        action: 'open-timeline',
+        icon: 'fa-solid fa-timeline',
+        label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenTimeline'),
+        disabled: !canOpenTimeline,
+        active: false,
+      },
+      {
+        key: 'journal-log',
+        action: 'open-journal-update-log',
+        icon: 'fa-solid fa-book',
+        label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenJournalLog'),
+        disabled: false,
+        active: false,
+      },
+      {
+        key: 'progression-points',
+        action: 'open-progression-points',
+        icon: 'fa-solid fa-chart-line',
+        label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenProgressionPoints'),
+        disabled: false,
+        active: false,
+      },
+      {
+        key: 'events',
+        action: 'open-events',
+        icon: 'fa-solid fa-bolt',
+        label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenEvents'),
+        disabled: false,
+        active: false,
+      },
+      {
+        key: 'influence',
+        action: 'toggle-influence',
+        icon: 'fa-solid fa-flag',
+        label: _t('SPACEHOLDER.HotbarFaction.Tools.ToggleInfluence'),
+        disabled: false,
+        active: influenceEnabled,
+      },
+      {
+        key: 'placeholder-1',
+        action: 'placeholder',
+        icon: 'fa-solid fa-plus',
+        label: _t('SPACEHOLDER.HotbarFaction.Tools.Placeholder'),
+        disabled: true,
+        active: false,
+      },
+    ];
+
     return {
       active,
       choices,
@@ -221,6 +274,7 @@ class HotbarFactionUI {
       toggleLabel,
       ppText,
       ppTooltip,
+      quickActions,
     };
   }
 
@@ -283,7 +337,6 @@ class HotbarFactionUI {
     if (!el) return;
 
     this._setOpen(el, false);
-
     try { el.removeEventListener('click', this._onRootClick); } catch (_) {}
     el.remove();
   }
@@ -344,6 +397,77 @@ class HotbarFactionUI {
 
       this._setOpen(root, false);
       this.scheduleRender();
+    }
+
+    if (action === 'open-timeline') {
+      ev.preventDefault();
+      if (btn.disabled) return;
+      try {
+        game?.spaceholder?.openTimelineV2App?.();
+      } catch (_) {
+        // ignore
+      }
+      return;
+    }
+
+    if (action === 'open-journal-update-log') {
+      ev.preventDefault();
+      if (btn.disabled) return;
+      try {
+        game?.spaceholder?.openJournalUpdateLogApp?.();
+      } catch (_) {
+        // ignore
+      }
+      return;
+    }
+
+    if (action === 'open-progression-points') {
+      ev.preventDefault();
+      if (btn.disabled) return;
+      try {
+        game?.spaceholder?.openProgressionPointsApp?.();
+      } catch (_) {
+        // ignore
+      }
+      return;
+    }
+
+    if (action === 'open-events') {
+      ev.preventDefault();
+      if (btn.disabled) return;
+      try {
+        game?.spaceholder?.openEventsApp?.();
+      } catch (_) {
+        // ignore
+      }
+      return;
+    }
+
+    if (action === 'toggle-influence') {
+      ev.preventDefault();
+      if (btn.disabled) return;
+      try {
+        const manager = game?.spaceholder?.influenceManager;
+        if (!manager) {
+          ui.notifications?.warn?.(_t('SPACEHOLDER.TokenControls.Messages.Unavailable'));
+          return;
+        }
+        const enabled = manager.toggle({ debug: false });
+        ui.notifications?.info?.(
+          enabled
+            ? _t('SPACEHOLDER.TokenControls.Messages.InfluenceShown')
+            : _t('SPACEHOLDER.TokenControls.Messages.InfluenceHidden')
+        );
+        this.scheduleRender();
+      } catch (_) {
+        // ignore
+      }
+      return;
+    }
+
+    if (action === 'placeholder') {
+      ev.preventDefault();
+      return;
     }
   }
 }

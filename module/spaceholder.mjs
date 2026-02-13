@@ -35,7 +35,10 @@ import { openProgressionPointsApp } from './helpers/progression-points-app.mjs';
 import { openJournalUpdateLogApp } from './helpers/journal-update-log-app.mjs';
 // Timeline V2
 import { registerTimelineV2Settings, installTimelineV2SocketHandlers, installTimelineV2Hooks } from './helpers/timeline-v2.mjs';
-import { openTimelineV2App } from './helpers/timeline-v2-app.mjs';
+import { openTimelineV2App, openTimelineV2CreateEventEditor } from './helpers/timeline-v2-app.mjs';
+// Events
+import { installEventsSocketHandlers, installEventsHooks } from './helpers/events.mjs';
+import { openEventsApp } from './helpers/events-app.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -86,6 +89,8 @@ Hooks.once('init', function () {
     openJournalUpdateLogApp,
     openProgressionPointsApp,
     openTimelineV2App,
+    openTimelineV2CreateEventEditor,
+    openEventsApp,
     // Icon library / picker
     pickIcon,
     applyIconPathToActorOrToken,
@@ -171,6 +176,9 @@ Hooks.once('init', function () {
   // Timeline V2: socket + hooks
   installTimelineV2SocketHandlers();
   installTimelineV2Hooks();
+  // Events: socket + hooks
+  installEventsSocketHandlers();
+  installEventsHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
   // installAimingSystemHooks();
   // Install Token Controls hooks
