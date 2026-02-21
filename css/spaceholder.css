@@ -842,8 +842,8 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   border: none;
 }
 
-.window-app.spaceholder .rimworld-health-section,
-.spaceholder .rimworld-health-section {
+.window-app.spaceholder .stats-panel,
+.spaceholder .stats-panel {
   margin: 0;
   padding: 12px;
   background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
@@ -851,10 +851,10 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   border-radius: var(--sh-radius-lg);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
 }
-.window-app.spaceholder .rimworld-health-section > .rimworld-header,
-.window-app.spaceholder .inventory-panel > .rimworld-header,
-.spaceholder .rimworld-health-section > .rimworld-header,
-.spaceholder .inventory-panel > .rimworld-header {
+.window-app.spaceholder .stats-panel > .section-header,
+.window-app.spaceholder .inventory-panel > .section-header,
+.spaceholder .stats-panel > .section-header,
+.spaceholder .inventory-panel > .section-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -868,10 +868,10 @@ body.game #chat-popout .chat-message .table-draw ul.table-results li {
   font-weight: 700;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
-.window-app.spaceholder .rimworld-health-section > .rimworld-header i,
-.window-app.spaceholder .inventory-panel > .rimworld-header i,
-.spaceholder .rimworld-health-section > .rimworld-header i,
-.spaceholder .inventory-panel > .rimworld-header i {
+.window-app.spaceholder .stats-panel > .section-header i,
+.window-app.spaceholder .inventory-panel > .section-header i,
+.spaceholder .stats-panel > .section-header i,
+.spaceholder .inventory-panel > .section-header i {
   color: var(--sh-accent-strong);
   font-size: 16px;
 }

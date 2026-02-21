@@ -895,16 +895,12 @@ export class ShotManager {
    */
   _isHitCircle(segment, whitelist) {
     const collisions = [];
-    const checkTokens = segment.collision.tokens !== false;
+    const checkTokens = segment.collision?.tokens !== false;
     const shooterToken = segment.shooterToken;
-    
-    if (!checkTokens || !canvas.tokens?.placeables) {
-      return [];
-    }
-    
     const circleCenter = segment.start;
     const circleRadius = segment.range;
     
+    if (checkTokens && canvas.tokens?.placeables) {
     for (const token of canvas.tokens.placeables) {
       if (whitelist.includes(token)) continue;
       if (!token.visible) continue;
@@ -950,6 +946,28 @@ export class ShotManager {
         }
       }
     }
+    }
+    
+    // Проверка столкновений со стенами (отрезок стены пересекает круг)
+    const checkWalls = segment.collision?.walls !== false;
+    if (checkWalls && canvas.walls?.placeables) {
+      for (const wall of canvas.walls.placeables) {
+        if (!wall.document.move) continue;
+        const wallStart = { x: wall.document.c[0], y: wall.document.c[1] };
+        const wallEnd = { x: wall.document.c[2], y: wall.document.c[3] };
+        const hit = this._rayCircleIntersection(wallStart, wallEnd, circleCenter, circleRadius);
+        if (hit) {
+          const distance = Math.hypot(hit.x - circleCenter.x, hit.y - circleCenter.y);
+          collisions.push({
+            type: 'wall',
+            object: wall,
+            point: hit,
+            distance: distance,
+            details: {}
+          });
+        }
+      }
+    }
     
     // Сортируем по расстоянию
     collisions.sort((a, b) => a.distance - b.distance);
@@ -963,19 +981,15 @@ export class ShotManager {
    */
   _isHitCone(segment, whitelist) {
     const collisions = [];
-    const checkTokens = segment.collision.tokens !== false;
+    const checkTokens = segment.collision?.tokens !== false;
     const shooterToken = segment.shooterToken;
-    
-    if (!checkTokens || !canvas.tokens?.placeables) {
-      return [];
-    }
-    
     const coneOrigin = segment.start;
     const coneRange = segment.range;
     const coneCut = segment.cut || 0;
     const coneDirectionRad = (segment.direction * Math.PI) / 180;
     const coneHalfAngleRad = ((segment.angle || 90) / 2 * Math.PI) / 180;
     
+    if (checkTokens && canvas.tokens?.placeables) {
     for (const token of canvas.tokens.placeables) {
       if (whitelist.includes(token)) continue;
       if (!token.visible) continue;
@@ -1021,6 +1035,51 @@ export class ShotManager {
             hitPoints: result.hitPoints
           }
         });
+      }
+    }
+    }
+    
+    // Проверка столкновений со стенами (сектор конуса пересекает отрезок стены)
+    const checkWalls = segment.collision?.walls !== false;
+    if (checkWalls && canvas.walls?.placeables) {
+      const ray1End = {
+        x: coneOrigin.x + coneRange * Math.cos(coneDirectionRad - coneHalfAngleRad),
+        y: coneOrigin.y + coneRange * Math.sin(coneDirectionRad - coneHalfAngleRad)
+      };
+      const ray2End = {
+        x: coneOrigin.x + coneRange * Math.cos(coneDirectionRad + coneHalfAngleRad),
+        y: coneOrigin.y + coneRange * Math.sin(coneDirectionRad + coneHalfAngleRad)
+      };
+      for (const wall of canvas.walls.placeables) {
+        if (!wall.document.move) continue;
+        const wallStart = { x: wall.document.c[0], y: wall.document.c[1] };
+        const wallEnd = { x: wall.document.c[2], y: wall.document.c[3] };
+        const candidates = [];
+        const p1 = this._raySegmentIntersection(coneOrigin, ray1End, wallStart, wallEnd);
+        if (p1) candidates.push(p1);
+        const p2 = this._raySegmentIntersection(coneOrigin, ray2End, wallStart, wallEnd);
+        if (p2) candidates.push(p2);
+        const p3 = this._rayCircleIntersection(wallStart, wallEnd, coneOrigin, coneRange);
+        if (p3 && this._isPointInCone(p3, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) candidates.push(p3);
+        const p4 = this._rayCircleIntersection(wallStart, wallEnd, coneOrigin, coneCut);
+        if (p4 && this._isPointInCone(p4, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
+          const d = Math.hypot(p4.x - coneOrigin.x, p4.y - coneOrigin.y);
+          if (d >= coneCut - 1e-6) candidates.push(p4);
+        }
+        if (candidates.length === 0) continue;
+        const closest = candidates.reduce((best, p) => {
+          const d = Math.hypot(p.x - coneOrigin.x, p.y - coneOrigin.y);
+          return (d >= coneCut && d <= coneRange && (!best || d < best.distance)) ? { point: p, distance: d } : best;
+        }, null);
+        if (closest) {
+          collisions.push({
+            type: 'wall',
+            object: wall,
+            point: closest.point,
+            distance: closest.distance,
+            details: {}
+          });
+        }
       }
     }
     
@@ -1640,7 +1699,14 @@ export class ShotManager {
           } else {
             // TODO: Здесь будет проверка пробития стены
             
-            // СТЕНА ОСТАНОВИЛА ЛУЧ
+            // СТЕНА ОСТАНОВИЛА ЛУЧ — добавляем попадание в стену в shotHits
+            shot.shotResult.shotHits.push({
+              point: firstHit.point,
+              type: firstHit.type,
+              object: firstHit.object,
+              ...(firstHit.details || {})
+            });
+            shot.actualHits.push(firstHit);
             shouldContinue = (onHit === "next" || onHit === "skip");
             segmentEndPos = firstHit.point;
             

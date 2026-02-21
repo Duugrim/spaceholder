@@ -2,8 +2,8 @@
 
 .window-app.spaceholder,
 .spaceholder {
-  // RimWorld-style section panel
-  .rimworld-health-section {
+  // Section panel (stats tab, etc.)
+  .stats-panel {
     margin: 0;
     padding: 12px;
     background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
@@ -13,8 +13,8 @@
   }
 
   // Header bars: only when used as a direct panel header (avoid bleeding into cards)
-  .rimworld-health-section > .rimworld-header,
-  .inventory-panel > .rimworld-header {
+  .stats-panel > .section-header,
+  .inventory-panel > .section-header {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -32,8 +32,8 @@
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.80);
   }
 
-  .rimworld-health-section > .rimworld-header i,
-  .inventory-panel > .rimworld-header i {
+  .stats-panel > .section-header i,
+  .inventory-panel > .section-header i {
     color: var(--sh-accent-strong);
     font-size: 16px;
   }

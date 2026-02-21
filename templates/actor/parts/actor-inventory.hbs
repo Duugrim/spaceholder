@@ -1,5 +1,5 @@
 <div class="inventory-panel">
-  <div class="rimworld-header">
+  <div class="section-header">
     <i class="fas fa-backpack"></i>
     {{localize 'SPACEHOLDER.Tabs.Inventory'}}
   </div>
@@ -31,7 +31,7 @@
 
   <div class='inventory-list'>
     {{#each gear as |item id|}}
-      <div class='inventory-item-card rimworld-header' data-item-id='{{item._id}}'>
+      <div class='inventory-item-card' data-item-id='{{item._id}}'>
         <div class='item-main'>
           <div class='item-image'>
             <a class='rollable' data-roll-type='item'>
