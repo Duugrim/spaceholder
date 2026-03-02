@@ -2,180 +2,46 @@
   "id": "quadruped",
   "name": "Quadruped",
   "description": "Four-legged creature anatomy",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "grid": { "width": 9, "height": 10 },
   "bodyParts": {
-    "torso": {
-      "id": "torso",
-      "name": "Torso",
-      "parent": null,
-      "coverage": 10000,
-      "maxHp": 60,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["core", "vital", "armor_body"]
-    },
-    "neck": {
-      "id": "neck",
-      "name": "Neck",
-      "parent": "torso",
-      "coverage": 1200,
-      "maxHp": 20,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["vital", "armor_neck"]
-    },
-    "head": {
-      "id": "head",
-      "name": "Head",
-      "parent": "neck",
-      "coverage": 8000,
-      "maxHp": 30,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["vital", "brain", "sensory", "armor_head"]
-    },
-    "frontLeftShoulder": {
-      "id": "frontLeftShoulder",
-      "name": "Front Left Shoulder",
-      "parent": "torso",
-      "coverage": 1000,
-      "maxHp": 18,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["joint", "left_side", "front", "armor_shoulder"]
-    },
-    "frontLeftLeg": {
-      "id": "frontLeftLeg",
-      "name": "Front Left Leg",
-      "parent": "frontLeftShoulder",
-      "coverage": 8500,
-      "maxHp": 25,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["limb", "left_side", "front", "locomotion", "armor_leg"]
-    },
-    "frontLeftPaw": {
-      "id": "frontLeftPaw",
-      "name": "Front Left Paw",
-      "parent": "frontLeftLeg",
-      "coverage": 1500,
-      "maxHp": 12,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["extremity", "left_side", "front", "locomotion", "armor_paw"]
-    },
-    "frontRightShoulder": {
-      "id": "frontRightShoulder",
-      "name": "Front Right Shoulder",
-      "parent": "torso",
-      "coverage": 1000,
-      "maxHp": 18,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["joint", "right_side", "front", "armor_shoulder"]
-    },
-    "frontRightLeg": {
-      "id": "frontRightLeg",
-      "name": "Front Right Leg",
-      "parent": "frontRightShoulder",
-      "coverage": 8500,
-      "maxHp": 25,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["limb", "right_side", "front", "locomotion", "armor_leg"]
-    },
-    "frontRightPaw": {
-      "id": "frontRightPaw",
-      "name": "Front Right Paw",
-      "parent": "frontRightLeg",
-      "coverage": 1500,
-      "maxHp": 12,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["extremity", "right_side", "front", "locomotion", "armor_paw"]
-    },
-    "backLeftHip": {
-      "id": "backLeftHip",
-      "name": "Back Left Hip",
-      "parent": "torso",
-      "coverage": 1000,
-      "maxHp": 20,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["joint", "left_side", "back", "armor_hip"]
-    },
-    "backLeftLeg": {
-      "id": "backLeftLeg",
-      "name": "Back Left Leg",
-      "parent": "backLeftHip",
-      "coverage": 8500,
-      "maxHp": 28,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["limb", "left_side", "back", "locomotion", "armor_leg"]
-    },
-    "backLeftPaw": {
-      "id": "backLeftPaw",
-      "name": "Back Left Paw",
-      "parent": "backLeftLeg",
-      "coverage": 1500,
-      "maxHp": 12,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["extremity", "left_side", "back", "locomotion", "armor_paw"]
-    },
-    "backRightHip": {
-      "id": "backRightHip",
-      "name": "Back Right Hip",
-      "parent": "torso",
-      "coverage": 1000,
-      "maxHp": 20,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["joint", "right_side", "back", "armor_hip"]
-    },
-    "backRightLeg": {
-      "id": "backRightLeg",
-      "name": "Back Right Leg",
-      "parent": "backRightHip",
-      "coverage": 8500,
-      "maxHp": 28,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["limb", "right_side", "back", "locomotion", "armor_leg"]
-    },
-    "backRightPaw": {
-      "id": "backRightPaw",
-      "name": "Back Right Paw",
-      "parent": "backRightLeg",
-      "coverage": 1500,
-      "maxHp": 12,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["extremity", "right_side", "back", "locomotion", "armor_paw"]
-    },
-    "tail": {
-      "id": "tail",
-      "name": "Tail",
-      "parent": "torso",
-      "coverage": 800,
-      "maxHp": 10,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["extremity", "balance", "armor_tail"]
-    }
+    "torso": { "id": "torso", "name": "Torso", "weight": 10000, "maxHp": 60, "x": 4, "y": 3, "status": "healthy", "internal": false, "tags": ["core", "vital", "armor_body"], "links": ["neck", "frontLeftShoulder", "frontRightShoulder", "backLeftHip", "backRightHip", "tail"] },
+    "neck": { "id": "neck", "name": "Neck", "weight": 1200, "maxHp": 20, "x": 4, "y": 2, "status": "healthy", "internal": false, "tags": ["vital", "armor_neck"], "links": ["torso", "head"] },
+    "head": { "id": "head", "name": "Head", "weight": 8000, "maxHp": 30, "x": 4, "y": 1, "status": "healthy", "internal": false, "tags": ["vital", "brain", "sensory", "armor_head"], "links": ["neck"] },
+    "frontLeftShoulder": { "id": "frontLeftShoulder", "name": "Front Left Shoulder", "weight": 1000, "maxHp": 18, "x": 7, "y": 4, "status": "healthy", "internal": false, "tags": ["joint", "left_side", "front", "armor_shoulder"], "links": ["torso", "frontLeftLeg"] },
+    "frontLeftLeg": { "id": "frontLeftLeg", "name": "Front Left Leg", "weight": 8500, "maxHp": 25, "x": 6, "y": 4, "status": "healthy", "internal": false, "tags": ["limb", "left_side", "front", "locomotion", "armor_leg"], "links": ["frontLeftShoulder", "frontLeftPaw"] },
+    "frontLeftPaw": { "id": "frontLeftPaw", "name": "Front Left Paw", "weight": 1500, "maxHp": 12, "x": 5, "y": 4, "status": "healthy", "internal": false, "tags": ["extremity", "left_side", "front", "locomotion", "armor_paw"], "links": ["frontLeftLeg"] },
+    "frontRightShoulder": { "id": "frontRightShoulder", "name": "Front Right Shoulder", "weight": 1000, "maxHp": 18, "x": 5, "y": 3, "status": "healthy", "internal": false, "tags": ["joint", "right_side", "front", "armor_shoulder"], "links": ["torso", "frontRightLeg"] },
+    "frontRightLeg": { "id": "frontRightLeg", "name": "Front Right Leg", "weight": 8500, "maxHp": 25, "x": 6, "y": 3, "status": "healthy", "internal": false, "tags": ["limb", "right_side", "front", "locomotion", "armor_leg"], "links": ["frontRightShoulder", "frontRightPaw"] },
+    "frontRightPaw": { "id": "frontRightPaw", "name": "Front Right Paw", "weight": 1500, "maxHp": 12, "x": 7, "y": 3, "status": "healthy", "internal": false, "tags": ["extremity", "right_side", "front", "locomotion", "armor_paw"], "links": ["frontRightLeg"] },
+    "backLeftHip": { "id": "backLeftHip", "name": "Back Left Hip", "weight": 1000, "maxHp": 20, "x": 3, "y": 4, "status": "healthy", "internal": false, "tags": ["joint", "left_side", "back", "armor_hip"], "links": ["torso", "backLeftLeg"] },
+    "backLeftLeg": { "id": "backLeftLeg", "name": "Back Left Leg", "weight": 8500, "maxHp": 28, "x": 2, "y": 4, "status": "healthy", "internal": false, "tags": ["limb", "left_side", "back", "locomotion", "armor_leg"], "links": ["backLeftHip", "backLeftPaw"] },
+    "backLeftPaw": { "id": "backLeftPaw", "name": "Back Left Paw", "weight": 1500, "maxHp": 12, "x": 1, "y": 4, "status": "healthy", "internal": false, "tags": ["extremity", "left_side", "back", "locomotion", "armor_paw"], "links": ["backLeftLeg"] },
+    "backRightHip": { "id": "backRightHip", "name": "Back Right Hip", "weight": 1000, "maxHp": 20, "x": 5, "y": 4, "status": "healthy", "internal": false, "tags": ["joint", "right_side", "back", "armor_hip"], "links": ["torso", "backRightLeg"] },
+    "backRightLeg": { "id": "backRightLeg", "name": "Back Right Leg", "weight": 8500, "maxHp": 28, "x": 6, "y": 4, "status": "healthy", "internal": false, "tags": ["limb", "right_side", "back", "locomotion", "armor_leg"], "links": ["backRightHip", "backRightPaw"] },
+    "backRightPaw": { "id": "backRightPaw", "name": "Back Right Paw", "weight": 1500, "maxHp": 12, "x": 7, "y": 4, "status": "healthy", "internal": false, "tags": ["extremity", "right_side", "back", "locomotion", "armor_paw"], "links": ["backRightLeg"] },
+    "tail": { "id": "tail", "name": "Tail", "weight": 800, "maxHp": 10, "x": 4, "y": 5, "status": "healthy", "internal": false, "tags": ["extremity", "balance", "armor_tail"], "links": ["torso"] }
   },
+  "links": [
+    { "from": "torso", "to": "neck" },
+    { "from": "neck", "to": "head" },
+    { "from": "torso", "to": "frontLeftShoulder" },
+    { "from": "frontLeftShoulder", "to": "frontLeftLeg" },
+    { "from": "frontLeftLeg", "to": "frontLeftPaw" },
+    { "from": "torso", "to": "frontRightShoulder" },
+    { "from": "frontRightShoulder", "to": "frontRightLeg" },
+    { "from": "frontRightLeg", "to": "frontRightPaw" },
+    { "from": "torso", "to": "backLeftHip" },
+    { "from": "backLeftHip", "to": "backLeftLeg" },
+    { "from": "backLeftLeg", "to": "backLeftPaw" },
+    { "from": "torso", "to": "backRightHip" },
+    { "from": "backRightHip", "to": "backRightLeg" },
+    { "from": "backRightLeg", "to": "backRightPaw" },
+    { "from": "torso", "to": "tail" }
+  ],
   "meta": {
-    "totalCoverage": 10000,
     "totalBodyParts": 16,
-    "rootPart": "torso",
-    "supportedStatuses": ["healthy", "bruised", "injured”, “badly_injured", "destroyed", "missing"],
-    "commonTags": {
-      "functionality": ["vital", "core", "limb", "extremity", "joint", "locomotion", "sensory", "balance"],
-      "position": ["left_side", "right_side", "center", "front", "back"],
-      "vulnerability": ["vulnerable", "protected", "armored"],
-      "armor_locations": ["armor_head", "armor_neck", "armor_body", "armor_shoulder", "armor_leg", "armor_paw", "armor_hip", "armor_tail"],
-      "special": ["brain", "internal"]
-    }
+    "supportedStatuses": ["healthy", "bruised", "injured", "badly_injured", "destroyed", "missing"],
+    "commonTags": { "functionality": ["vital", "core", "limb", "extremity", "joint", "locomotion", "sensory", "balance"], "position": ["left_side", "right_side", "center", "front", "back"], "armor_locations": ["armor_head", "armor_neck", "armor_body", "armor_shoulder", "armor_leg", "armor_paw", "armor_hip", "armor_tail"], "special": ["brain", "internal"] }
   }
 }

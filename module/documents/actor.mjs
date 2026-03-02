@@ -79,10 +79,9 @@ export class SpaceHolderActor extends Actor {
       sumDamageByPart[inj.partId] = (sumDamageByPart[inj.partId] || 0) + Math.max(0, inj.amount | 0);
     }
 
-    // Обновляем производные поля частей тела
-    for (let [partId, bodyPart] of Object.entries(bodyParts)) {
-      // Дети для выбора попаданий
-      bodyPart.children = this._getChildrenParts(partId, bodyParts);
+    // Обновляем производные поля частей тела (граф связей по links; попадания — в shot-manager)
+    for (const [partId, bodyPart] of Object.entries(bodyParts)) {
+      bodyPart.linkedPartIds = Array.isArray(bodyPart.links) ? [...bodyPart.links] : [];
 
       // Вычисляем текущее здоровье из травм: current = maxHp - floor(sum(amount)/100)
       const sumAmt = sumDamageByPart[partId] || 0;
@@ -172,24 +171,6 @@ export class SpaceHolderActor extends Actor {
   }
 
   /**
-   * Get all children parts for a given parent part
-   */
-  _getChildrenParts(parentId, bodyParts) {
-    const children = [];
-    for (let [partId, bodyPart] of Object.entries(bodyParts)) {
-      if (bodyPart.parent === parentId) {
-        children.push({
-          id: partId,
-          coverage: bodyPart.coverage,
-          name: bodyPart.name
-        });
-      }
-    }
-    // Sort by coverage descending for better hit distribution
-    return children.sort((a, b) => b.coverage - a.coverage);
-  }
-
-  /**
    * Get status description for body part
    */
   _getBodyPartStatus(bodyPart) {
@@ -207,91 +188,47 @@ export class SpaceHolderActor extends Actor {
 
 
   /**
-   * Recursive function to determine hit location
-   * @param {string} targetPartId - ID of the current target body part
-   * @param {number} roll - Random number from 0 to 9999 (for deterministic results)
-   * @returns {string} Final hit location ID
+   * Stub: resolve hit location. Actual hit resolution will be implemented in shot-manager.
+   * @param {string} targetPartId - ID of the target body part
+   * @param {number} [_roll] - Unused; for future use
+   * @returns {string} targetPartId
    */
-  chanceHit(targetPartId, roll = null) {
+  chanceHit(targetPartId, _roll = null) {
     const bodyParts = this.system.health?.bodyParts;
     if (!bodyParts || !bodyParts[targetPartId]) return targetPartId;
-
-    const targetPart = bodyParts[targetPartId];
-    const children = targetPart.children || [];
-    
-    // If no children, we hit this part
-    if (children.length === 0) {
-      return targetPartId;
-    }
-
-    // Generate roll if not provided
-    if (roll === null) {
-      roll = Math.floor(Math.random() * 10000);
-    }
-
-    // Calculate cumulative coverage for children
-    let cumulativeCoverage = 0;
-    for (let child of children) {
-      cumulativeCoverage += child.coverage;
-      
-      // If roll falls within this child's coverage, recurse into it
-      if (roll < cumulativeCoverage) {
-        // Generate new roll for the child (scaled to 0-9999 range)
-        const childRoll = Math.floor(Math.random() * 10000);
-        return this.chanceHit(child.id, childRoll);
-      }
-    }
-
-    // If roll doesn't hit any child, we hit the parent part
     return targetPartId;
   }
 
   /**
-   * Get the root body part (usually torso)
-   * @returns {string} Root body part ID
+   * Stub: return first body part ID for legacy callers. Hit resolution will be in shot-manager.
+   * @returns {string|null} First body part ID or null
    */
   getRootBodyPart() {
     const bodyParts = this.system.health?.bodyParts;
-    if (!bodyParts) return null;
-
-    // Find part with no parent
-    for (let [partId, bodyPart] of Object.entries(bodyParts)) {
-      if (!bodyPart.parent) {
-        return partId;
-      }
-    }
-    return null;
+    if (!bodyParts || !Object.keys(bodyParts).length) return null;
+    const sorted = Object.entries(bodyParts).sort((a, b) => (b[1].weight ?? 0) - (a[1].weight ?? 0));
+    return sorted[0][0];
   }
 
   /**
-   * Perform a hit against this actor
+   * Perform a hit against this actor (applies damage to given or first part).
    * @param {number} damage - Amount of damage to deal
-   * @param {string} targetPart - Optional specific target part (defaults to root)
-   * @returns {Object} Hit result with final target and damage dealt
+   * @param {string|null} targetPart - Optional specific target part (defaults to first by weight)
+   * @returns {Object|null} Hit result with final target and damage dealt
    */
   async performHit(damage, targetPart = null) {
-    // Get root part if no specific target
-    if (!targetPart) {
-      targetPart = this.getRootBodyPart();
-    }
-    
-    if (!targetPart) {
+    const partId = targetPart || this.getRootBodyPart();
+    if (!partId) {
       console.warn("No valid body parts found for hit");
       return null;
     }
-
-    // Determine final hit location
-    const finalTarget = this.chanceHit(targetPart);
-    
-    // Добавляем травму вместо прямого уменьшения HP
-    const success = await this.applyBodyPartDamage(finalTarget, damage);
-    
+    const success = await this.applyBodyPartDamage(partId, damage);
     const bodyParts = this.system.health?.bodyParts;
     return {
-      targetPart: finalTarget,
-      damage: damage,
+      targetPart: partId,
+      damage,
       success,
-      bodyPart: bodyParts?.[finalTarget]
+      bodyPart: bodyParts?.[partId]
     };
   }
 
@@ -339,6 +276,7 @@ export class SpaceHolderActor extends Actor {
   async setAnatomy(anatomyId) {
     try {
       const anatomy = await anatomyManager.createActorAnatomy(anatomyId);
+      const displayName = anatomyManager.getAnatomyDisplayName(anatomyId);
       
       // Удаляем существующие части точечно (без слияния)
       const currentParts = this.system.health?.bodyParts || {};
@@ -350,11 +288,17 @@ export class SpaceHolderActor extends Actor {
         await this.update(delUpdate);
       }
       
-      // Устанавливаем тип и новые части (totalHealth удалён из системы)
-      await this.update({
+      // Устанавливаем сведения об анатомии, сетку (если есть в шаблоне) и новые части
+      const update = {
+        'system.anatomy.id': anatomyId,
+        'system.anatomy.name': displayName,
         'system.anatomy.type': anatomyId,
         'system.health.bodyParts': anatomy.bodyParts
-      });
+      };
+      if (anatomy.grid && typeof anatomy.grid.width === 'number' && typeof anatomy.grid.height === 'number') {
+        update['system.health.anatomyGrid'] = { width: anatomy.grid.width, height: anatomy.grid.height };
+      }
+      await this.update(update);
       
       // Пересчёт данных
       await this.prepareData();
@@ -380,7 +324,11 @@ export class SpaceHolderActor extends Actor {
       for (const id of Object.keys(currentParts)) {
         delUpdate[`system.health.bodyParts.-=${id}`] = null;
       }
-      if (clearType) delUpdate['system.anatomy.type'] = null;
+      if (clearType) {
+        delUpdate['system.anatomy.id'] = null;
+        delUpdate['system.anatomy.name'] = null;
+        delUpdate['system.anatomy.type'] = null;
+      }
       await this.update(delUpdate);
 
       await this.prepareData();

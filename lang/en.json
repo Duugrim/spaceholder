@@ -48,6 +48,20 @@
       "Redo": "Redo",
       "Bake": "Bake"
     },
+    "Health": {
+      "Anatomy": {
+        "ManageTitle": "Manage anatomy",
+        "Current": "Current anatomy",
+        "Select": "Load anatomy",
+        "SystemGroup": "System",
+        "WorldGroup": "World",
+        "Apply": "Apply",
+        "AppliedWorld": "World anatomy applied",
+        "ApplyWorldFailed": "Failed to apply world anatomy",
+        "SaveWorld": "Save to world",
+        "None": "Not selected"
+      }
+    },
     "IconPicker": {
       "Title": "Icon Picker",
       "SearchPlaceholder": "Search…",
@@ -180,6 +194,7 @@
       "RollModifier": "Roll Modifier"
     },
     "Item": {
+      "ImplantReplaceOrgan": "Replaces organ (slot)",
       "Spell": {
         "SpellLVL": "Level {level} Spells",
         "AddLVL": "Add LVL {level}"

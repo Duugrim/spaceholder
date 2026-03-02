@@ -1,22 +1,60 @@
 {{!-- Health Tab Content --}}
 <div class="health-container">
 
-  <div class="health-main-layout">
+  {{!-- Верх: одна строка — название анатомии слева, кнопки справа --}}
+  <div class="anatomy-management-container">
+    <div class="anatomy-management-row">
+      <button type="button" class="anatomy-current-btn{{#unless hasAnatomy}} anatomy-current-btn--empty{{/unless}}" {{#unless editable}}disabled{{/unless}}>
+        {{#if hasAnatomy}}
+          {{anatomyDisplayName}}
+        {{else}}
+          Не выбрана
+        {{/if}}
+      </button>
+      <span class="anatomy-management-spacer"></span>
+      <div class="anatomy-actions">
+      <span class="anatomy-actions-sep"></span>
+      <button type="button" class="anatomy-icon-btn anatomy-editor-link-mode-btn" title="Режим связей: перетащите часть на другую часть для создания связи">
+        <i class="fas fa-link"></i>
+      </button>
+      <button type="button" class="anatomy-icon-btn anatomy-editor-add-part-btn" title="Добавить часть тела">
+        <i class="fas fa-plus"></i>
+      </button>
+      <button type="button" class="anatomy-icon-btn anatomy-editor-grid-btn" title="Размер сетки анатомии">
+        <i class="fas fa-th-large"></i>
+      </button>
+      <button type="button" class="anatomy-icon-btn anatomy-editor-edit-btn" title="Режим редактирования: перемещение, добавление и удаление частей">
+        <i class="fas fa-edit"></i>
+      </button>
+      </div>
+    </div>
+  </div>
 
-    {{!-- Body Parts --}}
+  <div class="health-main-layout">
+    {{!-- Колонка 1: список экипировки (плейсхолдер) --}}
+    <div class="health-equipment-column">
+      <div class="health-equipment-placeholder">
+        <span class="health-equipment-placeholder-label">Экипировка по зонам</span>
+        <p class="health-equipment-placeholder-hint"><em>Список экипировки по частям тела (скоро)</em></p>
+      </div>
+    </div>
+
+    {{!-- Колонка 2: только визуализация --}}
+    <div class="health-anatomy-editor-column">
+      <div class="anatomy-editor-wrap anatomy-editor-wrap--fixed">
+        <div class="anatomy-editor-container" data-anatomy-editor="container"></div>
+      </div>
+    </div>
+
+    {{!-- Колонка 3: список частей тела --}}
     <div class="health-bodyparts-column">
       <div class="body-parts-hierarchy">
         {{#if hierarchicalBodyParts}}
         <div class="parts-tree">
 {{#each hierarchicalBodyParts as |part|}}
-          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}">
+          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}" data-part-id="{{part.id}}" role="button" tabindex="0">
             <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
             <span class="part-spacer"></span>
-            {{#if part.isInjured}}
-              <span class="part-status-text">{{part.status}}</span>
-            {{else}}
-              <span class="part-status-text">healthy</span>
-            {{/if}}
             <span class="health-numbers">{{part.currentHp}}/{{part.maxHp}}</span>
           </div>
           {{/each}}
@@ -29,24 +67,15 @@
       </div>
     </div>
 
-  </div>
-
-  {{!-- Bottom: Anatomy Management --}}
-  <div class="anatomy-management-container">
-    <div class="current-anatomy">
-      <label>Анатомия:</label>
-      {{#if hasAnatomy}}
-        <span class="anatomy-name">{{anatomyDisplayName}}</span>
-        <button type="button" class="anatomy-toggle-btn danger" title="Удалить анатомию (очистить части тела)">
-          <i class="fas fa-trash"></i> Удалить анатомию
-        </button>
-      {{else}}
-        <span class="no-anatomy">Анатомия не выбрана</span>
-        <button type="button" class="anatomy-toggle-btn primary" title="Выбрать тип анатомии">
-          <i class="fas fa-plus"></i> Выбрать анатомию
-        </button>
-      {{/if}}
+    {{!-- Указатель линия список <-> круг (при наведении); цепляется слева от имени в списке --}}
+    <div class="health-anatomy-pointer-overlay" aria-hidden="true">
+      <svg class="health-anatomy-pointer-svg">
+        <line class="health-anatomy-pointer-line" x1="0" y1="0" x2="0" y2="0"/>
+      </svg>
     </div>
   </div>
+
+  {{!-- Панель просмотра части тела: на всю ширину, под тремя колонками; внутри — три колонки: защита | общая информация | органы --}}
+  <div class="anatomy-editor-selected-panel anatomy-editor-selected-panel--fullwidth" data-anatomy-editor="panel"></div>
 
 </div>

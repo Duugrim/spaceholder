@@ -79,6 +79,18 @@ Hooks.once('init', function () {
   registerProgressionPointsSettings();
   registerTimelineV2Settings();
   installTokenPointerTabs();
+  // Legacy world anatomy keys: used only for one-time migration into world folder files
+  // World anatomies live in: worlds/<worldId>/spaceholder/anatomy/*.json (FilePicker upload/browse)
+  game.settings.register("spaceholder", "worldAnatomyEntries", {
+    scope: "world",
+    config: false,
+    default: { entries: [] }
+  });
+  game.settings.register("spaceholder", "anatomyPresets", {
+    scope: "world",
+    config: false,
+    default: { presets: [] }
+  });
   // Add utility classes to the global game object so that they're more easily
   // accessible in global contexts.
   game.spaceholder = {

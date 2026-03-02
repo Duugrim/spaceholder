@@ -61,7 +61,8 @@
     "types": ["item", "feature", "spell"],
     "templates": {
       "base": {
-        "description": ""
+        "description": "",
+        "implantReplaceOrgan": null
       }
     },
     "item": {

@@ -48,6 +48,20 @@
       "Redo": "Повторить",
       "Bake": "Запечь"
     },
+    "Health": {
+      "Anatomy": {
+        "ManageTitle": "Управление анатомией",
+        "Current": "Текущая анатомия",
+        "Select": "Загрузить анатомию",
+        "SystemGroup": "Система",
+        "WorldGroup": "Мир",
+        "Apply": "Применить",
+        "AppliedWorld": "Мировая анатомия применена",
+        "ApplyWorldFailed": "Не удалось применить мировую анатомию",
+        "SaveWorld": "Сохранить в мир",
+        "None": "Не выбрана"
+      }
+    },
     "IconPicker": {
       "Title": "Выбор иконки",
       "SearchPlaceholder": "Поиск…",
@@ -180,6 +194,7 @@
       "RollModifier": "Модификатор"
     },
     "Item": {
+      "ImplantReplaceOrgan": "Заменяет орган (слот)",
       "Spell": {
         "SpellLVL": "Заклинания {level} уровня",
         "AddLVL": "Добавить уровень {level}"

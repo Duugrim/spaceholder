@@ -3,6 +3,7 @@ import {
   prepareActiveEffectCategories,
 } from '../helpers/effects.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
+import { AnatomyEditor } from '../helpers/anatomy-editor.mjs';
 import { promptPickAndApplyIconToActorOrToken } from '../helpers/icon-picker/icon-apply.mjs';
 import {
   isProgressionEnabled,
@@ -18,7 +19,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   /** @override */
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
     classes: ['spaceholder', 'sheet', 'actor'],
-    position: { width: 640, height: 'auto' },
+    position: { width: 900, height: 'auto' },
     window: {
       resizable: true,
       contentClasses: ['standard-form']
@@ -167,16 +168,23 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Get available anatomies
     const availableAnatomies = anatomyManager.getAvailableAnatomies();
     
-    // Create choices array for dialog dropdown
-    context.anatomyChoices = {};
-    for (let [id, anatomy] of Object.entries(availableAnatomies)) {
-      context.anatomyChoices[id] = anatomyManager.getAnatomyDisplayName(id);
-    }
-    
-    // Current anatomy type from the actual actor data  
-    context.currentAnatomyType = this.actor.system.anatomy?.type;
-    context.anatomyDisplayName = context.currentAnatomyType ? 
-      anatomyManager.getAnatomyDisplayName(context.currentAnatomyType) : null;
+    // List of anatomy types for icon-button selector
+    context.anatomyTypeList = Object.keys(availableAnatomies).map((id) => ({
+      id,
+      displayName: anatomyManager.getAnatomyDisplayName(id)
+    }));
+
+    // Текущая анатомия: единая модель без разделения «система/мир»
+    const anatomyInfo = this.actor.system.anatomy ?? {};
+    const currentId = anatomyInfo.id ?? anatomyInfo.type ?? null;
+    context.currentAnatomyId = currentId;
+    context.currentAnatomyName = anatomyInfo.name ?? null;
+    context.anatomyDisplayName = anatomyInfo.name
+      || (currentId ? anatomyManager.getAnatomyDisplayName(currentId) : null);
+
+    // Мировые анатомии загружаются из папки мира по необходимости
+    await anatomyManager.loadWorldPresets();
+    context.worldAnatomyPresets = anatomyManager.getWorldPresets();
   }
 
   /**
@@ -224,88 +232,38 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Add injured parts to context (for backward compatibility)
     context.injuredParts = Object.keys(injuredParts).length > 0 ? injuredParts : null;
     
-    // Build hierarchical structure for all body parts using fresh data (подставляем currentHp из карты)
-    context.hierarchicalBodyParts = this._buildHierarchicalBodyParts(bodyParts, currentHpMap);
-    
+    // Flat list of body parts by graph (links); sort by weight descending, then id
+    context.hierarchicalBodyParts = this._buildBodyPartsList(bodyParts, currentHpMap);
   }
-  
+
   /**
-   * Build hierarchical structure of body parts for ASCII tree display
+   * Build flat list of body parts for display (graph-based; no parent tree). Sorted by weight desc, then id.
    * @param {object} bodyParts - All body parts
-   * @returns {Array} Flat array with tree structure info
+   * @param {object} currentHpMap - Part ID -> current HP
+   * @returns {Array} Flat array with part display info
    */
-  _buildHierarchicalBodyParts(bodyParts, currentHpMap = {}) {
+  _buildBodyPartsList(bodyParts, currentHpMap = {}) {
     if (!bodyParts) return [];
-    
-    const result = [];
-    
-    // Find root parts
-    const rootParts = [];
-    for (let [partId, part] of Object.entries(bodyParts)) {
-      if (!part.parent) {
-        const currentHp = currentHpMap[partId] ?? part.maxHp;
-        rootParts.push({ ...part, id: partId, currentHp });
-      }
+
+    const list = [];
+    for (const [partId, part] of Object.entries(bodyParts)) {
+      const currentHp = currentHpMap[partId] ?? part.maxHp;
+      list.push({
+        ...part,
+        id: partId,
+        currentHp,
+        treePrefix: "",
+        hasChildren: Array.isArray(part.links) && part.links.length > 0,
+        isInjured: currentHp < part.maxHp
+      });
     }
-    
-    // Recursive function to build tree lines
-    const buildTreeLines = (parentId, prefix = '', isLast = true) => {
-      const children = [];
-      for (let [partId, part] of Object.entries(bodyParts)) {
-        if (part.parent === parentId) {
-          const currentHp = currentHpMap[partId] ?? part.maxHp;
-          children.push({ ...part, id: partId, currentHp });
-        }
-      }
-      
-      // Sort children by coverage (descending)
-      children.sort((a, b) => b.coverage - a.coverage);
-      
-      children.forEach((child, index) => {
-        const isLastChild = index === children.length - 1;
-        const currentPrefix = prefix + (isLastChild ? '└─ ' : '├─ ');
-        const nextPrefix = prefix + (isLastChild ? '   ' : '│  ');
-        
-        result.push({
-          ...child,
-          treePrefix: currentPrefix,
-          hasChildren: this._hasChildren(child.id, bodyParts),
-          isInjured: (child.currentHp ?? child.maxHp) < child.maxHp
-        });
-        
-        // Recursively add children
-        buildTreeLines(child.id, nextPrefix, isLastChild);
-      });
-    };
-    
-    // Add root parts and their children
-    rootParts.forEach((rootPart, index) => {
-      result.push({
-        ...rootPart,
-        treePrefix: '',
-        hasChildren: this._hasChildren(rootPart.id, bodyParts),
-        isInjured: (rootPart.currentHp ?? rootPart.maxHp) < rootPart.maxHp
-      });
-      
-      buildTreeLines(rootPart.id, '', true);
+    list.sort((a, b) => {
+      const wA = a.weight ?? 0;
+      const wB = b.weight ?? 0;
+      if (wB !== wA) return wB - wA;
+      return (a.id || "").localeCompare(b.id || "");
     });
-    
-    return result;
-  }
-  
-  /**
-   * Check if a body part has children
-   * @param {string} partId - Body part ID
-   * @param {object} bodyParts - All body parts
-   * @returns {boolean}
-   */
-  _hasChildren(partId, bodyParts) {
-    for (let part of Object.values(bodyParts)) {
-      if (part.parent === partId) {
-        return true;
-      }
-    }
-    return false;
+    return list;
   }
 
   /**
@@ -516,9 +474,81 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Rollable abilities.
     el.querySelectorAll('.rollable').forEach(btn => btn.addEventListener('click', this._onRoll.bind(this)));
 
-    // Anatomy toggle button (choose/delete)
-    el.querySelectorAll('.anatomy-toggle-btn').forEach(btn => btn.addEventListener('click', this._onAnatomyToggleClick.bind(this)));
+    // Anatomy: управление через кнопку текущей анатомии и панель инструментов редактора
+    el.querySelector('.anatomy-current-btn')?.addEventListener('click', (e) => this._onAnatomyManageClick(e));
 
+    const editorContainer = el.querySelector('[data-anatomy-editor="container"]');
+    const selectedPanel = el.querySelector('[data-anatomy-editor="panel"]');
+    if (editorContainer) {
+      const preserveEdit = this._anatomyEditor?.editMode ?? false;
+      const preserveLink = this._anatomyEditor?.linkMode ?? false;
+      const preserveSel = this._anatomyEditor?.selectedPartId ?? null;
+      this._anatomyEditor = new AnatomyEditor(editorContainer, {
+        fixedDisplayWidth: 378,
+        fixedDisplayHeight: 420,
+        actor: this.actor,
+        editable: this.isEditable,
+        selectedPanel: selectedPanel ?? undefined,
+        editMode: preserveEdit,
+        linkMode: preserveLink,
+        selectedPartId: preserveSel
+      });
+      this._anatomyEditor.render();
+      const editBtn = el.querySelector('.anatomy-editor-edit-btn');
+      const linkModeBtn = el.querySelector('.anatomy-editor-link-mode-btn');
+      const addPartBtn = el.querySelector('.anatomy-editor-add-part-btn');
+      const gridBtn = el.querySelector('.anatomy-editor-grid-btn');
+      const anatomyBtn = el.querySelector('.anatomy-current-btn');
+
+      const applyEditState = () => {
+        const isEditing = !!this._anatomyEditor?.editMode && this.isEditable;
+        if (editBtn) editBtn.classList.toggle('active', isEditing);
+        if (linkModeBtn) {
+          linkModeBtn.style.display = isEditing ? '' : 'none';
+          if (!isEditing) linkModeBtn.classList.remove('active');
+        }
+        if (addPartBtn) addPartBtn.style.display = isEditing ? '' : 'none';
+        if (gridBtn) gridBtn.style.display = isEditing ? '' : 'none';
+        if (anatomyBtn) {
+          anatomyBtn.disabled = !isEditing || !this.isEditable;
+        }
+      };
+
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          this._anatomyEditor.setEditMode(!this._anatomyEditor.editMode);
+          this._anatomyEditor.render();
+          applyEditState();
+        });
+      }
+
+      if (linkModeBtn) {
+        if (preserveLink) linkModeBtn.classList.add('active');
+        linkModeBtn.addEventListener('click', () => {
+          if (!this._anatomyEditor.editMode) return;
+          this._anatomyEditor.setLinkMode(!this._anatomyEditor.linkMode);
+          linkModeBtn.classList.toggle('active', this._anatomyEditor.linkMode);
+        });
+      }
+
+      if (addPartBtn) {
+        addPartBtn.addEventListener('click', () => {
+          if (!this._anatomyEditor.editMode) return;
+          this._anatomyEditor.addPart();
+        });
+      }
+
+      if (gridBtn) {
+        gridBtn.addEventListener('click', () => {
+          if (!this._anatomyEditor.editMode) return;
+          this._onAnatomyGridClick();
+        });
+      }
+
+      applyEditState();
+    }
+
+    this._setupAnatomyListPointer(el, editorContainer);
 
     // Drag events for macros.
     if (this.actor.isOwner) {
@@ -532,9 +562,108 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
-   * Handle health debug mode toggle
-   * @param {Event} event   The originating change event
+   * Указатель список <-> круг: линия при наведении, клик по списку выбирает часть.
+   * @param {HTMLElement} el - элемент вкладки (health)
+   * @param {HTMLElement|null} editorContainer - контейнер редактора анатомии
+   * @private
    */
+  _setupAnatomyListPointer(el, editorContainer) {
+    const overlay = el.querySelector(".health-anatomy-pointer-overlay");
+    const lineEl = overlay?.querySelector(".health-anatomy-pointer-line");
+    const svgEl = overlay?.querySelector(".health-anatomy-pointer-svg");
+    if (!overlay || !lineEl || !svgEl) return;
+
+    const updateLine = (fromEl, toEl) => {
+      const overlayRect = overlay.getBoundingClientRect();
+      const fromRect = fromEl.getBoundingClientRect();
+      const toRect = toEl.getBoundingClientRect();
+      const isFromRow = fromEl.classList?.contains("body-part-line");
+      const isToRow = toEl.classList?.contains("body-part-line");
+      const x1 = isFromRow ? fromRect.left - overlayRect.left : fromRect.left + fromRect.width / 2 - overlayRect.left;
+      const y1 = fromRect.top + fromRect.height / 2 - overlayRect.top;
+      const x2 = isToRow ? toRect.left - overlayRect.left : toRect.left + toRect.width / 2 - overlayRect.left;
+      const y2 = toRect.top + toRect.height / 2 - overlayRect.top;
+      svgEl.setAttribute("width", overlayRect.width);
+      svgEl.setAttribute("height", overlayRect.height);
+      lineEl.setAttribute("x1", x1);
+      lineEl.setAttribute("y1", y1);
+      lineEl.setAttribute("x2", x2);
+      lineEl.setAttribute("y2", y2);
+      overlay.classList.add("health-anatomy-pointer-overlay--visible");
+    };
+
+    const clearLine = () => {
+      overlay.classList.remove("health-anatomy-pointer-overlay--visible");
+      lineEl.setAttribute("x1", 0);
+      lineEl.setAttribute("y1", 0);
+      lineEl.setAttribute("x2", 0);
+      lineEl.setAttribute("y2", 0);
+    };
+
+    const clearHoverClasses = (partId) => {
+      if (partId) {
+        el.querySelector(`.body-part-line[data-part-id="${partId}"]`)?.classList.remove("anatomy-pointer-hover");
+        editorContainer?.querySelector(`[data-part-id="${partId}"]`)?.classList.remove("anatomy-pointer-hover");
+      }
+    };
+
+    const clearAllHoverClasses = () => {
+      el.querySelectorAll(".body-part-line.anatomy-pointer-hover").forEach((r) => r.classList.remove("anatomy-pointer-hover"));
+      editorContainer?.querySelectorAll(".anatomy-editor-part-circle.anatomy-pointer-hover").forEach((c) => c.classList.remove("anatomy-pointer-hover"));
+    };
+
+    el.querySelectorAll(".body-part-line[data-part-id]").forEach((row) => {
+      const partId = row.dataset.partId;
+      if (!partId) return;
+
+      row.addEventListener("mouseenter", () => {
+        const circle = editorContainer?.querySelector(`[data-part-id="${partId}"]`);
+        if (circle) {
+          updateLine(row, circle);
+          row.classList.add("anatomy-pointer-hover");
+          circle.classList.add("anatomy-pointer-hover");
+        }
+      });
+      row.addEventListener("mouseleave", () => {
+        clearLine();
+        clearHoverClasses(partId);
+      });
+
+      row.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (this._anatomyEditor) this._anatomyEditor.setSelectedPartId(partId);
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (this._anatomyEditor) this._anatomyEditor.setSelectedPartId(partId);
+        }
+      });
+    });
+
+    if (editorContainer) {
+      editorContainer.addEventListener("mouseover", (e) => {
+        const circle = e.target.closest?.(".anatomy-editor-part-circle[data-part-id]");
+        if (!circle) return;
+        const partId = circle.dataset.partId;
+        const row = el.querySelector(`.body-part-line[data-part-id="${partId}"]`);
+        if (row) {
+          updateLine(circle, row);
+          circle.classList.add("anatomy-pointer-hover");
+          row.classList.add("anatomy-pointer-hover");
+        }
+      });
+      editorContainer.addEventListener("mouseout", (e) => {
+        const toEl = e.relatedTarget;
+        const stillInEditor = toEl && editorContainer.contains(toEl);
+        const movedToList = toEl?.closest?.(".body-part-line[data-part-id]");
+        if (!stillInEditor && !movedToList) {
+          clearLine();
+          clearAllHoverClasses();
+        }
+      });
+    }
+  }
 
   /**
    * Handle creating a new Owned Item for the actor using initial data defined in the HTML dataset
@@ -689,62 +818,161 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
-   * Handle anatomy change button click
-   * @param {Event} event   The originating click event
+   * Открыть диалог размера сетки анатомии и сохранить system.health.anatomyGrid
    * @private
    */
-  async _onChangeAnatomyClick(event) {
-    event.preventDefault();
-    
-    const availableAnatomies = anatomyManager.getAvailableAnatomies();
-    const currentType = this.actor.system.anatomy?.type;
-    
-    // Build options for the select
-    let optionsHTML = '';
-    for (let [id, anatomy] of Object.entries(availableAnatomies)) {
-      const selected = id === currentType ? 'selected' : '';
-      const displayName = anatomyManager.getAnatomyDisplayName(id);
-      optionsHTML += `<option value="${id}" ${selected}>${displayName}</option>`;
-    }
-    
-    const dialogContent = `
-      <div class="anatomy-change-dialog">
-        <p><strong>Выберите новый тип анатомии:</strong></p>
-        <div class="form-group">
-          <select id="anatomy-select" style="width: 100%; padding: 8px; margin: 10px 0; height: 40px; font-size: 14px;">
-            ${optionsHTML}
-          </select>
-        </div>
-        ${currentType ? 
-          '<p class="warning"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> This will replace all current body parts and reset health values.</p>' : 
-          '<p class="info"><i class="fas fa-info-circle"></i> This will initialize the anatomy system for this character.</p>'
-        }
-      </div>
-    `;
-    
-    // Show dialog
+  async _onAnatomyGridClick() {
+    const grid = this.actor?.system?.health?.anatomyGrid ?? {};
+    const w = Math.max(1, parseInt(grid.width ?? 9, 10) || 9);
+    const h = Math.max(1, parseInt(grid.height ?? 10, 10) || 10);
+    const content = `
+      <div class="anatomy-grid-dialog">
+        <div class="form-group"><label>Ширина (ячеек)</label><input type="number" id="ag-width" value="${w}" min="1" max="99" style="width:100%;"/></div>
+        <div class="form-group"><label>Высота (ячеек)</label><input type="number" id="ag-height" value="${h}" min="1" max="99" style="width:100%;"/></div>
+      </div>`;
     await foundry.applications.api.DialogV2.wait({
-      window: { title: currentType ? 'Change Anatomy Type' : 'Select Anatomy Type', icon: 'fa-solid fa-user' },
-      position: { width: 400 },
-      content: dialogContent,
+      window: { title: "Размер сетки анатомии", icon: "fa-solid fa-th-large" },
+      position: { width: 260 },
+      content,
       buttons: [
         {
-          action: 'change',
-          label: currentType ? 'Change' : 'Select',
-          icon: 'fa-solid fa-check',
+          action: "save",
+          label: "Сохранить",
+          icon: "fa-solid fa-check",
           default: true,
-          callback: async (event) => {
-            const selectedType = event.currentTarget.querySelector('#anatomy-select')?.value;
-            if (selectedType && selectedType !== currentType) {
-              await this._performAnatomyChange(selectedType);
-            }
+          callback: async () => {
+            const width = Math.max(1, Math.min(99, parseInt(document.querySelector("#ag-width")?.value ?? "9", 10) || 9));
+            const height = Math.max(1, Math.min(99, parseInt(document.querySelector("#ag-height")?.value ?? "10", 10) || 10));
+            await this.actor.update({ "system.health.anatomyGrid": { width, height } });
+            if (this._anatomyEditor) this._anatomyEditor.render();
           }
         },
-        { action: 'cancel', label: 'Cancel', icon: 'fa-solid fa-times' }
+        { action: "cancel", label: "Отмена", icon: "fa-solid fa-times" }
       ]
     });
   }
-  
+
+  /**
+   * Открыть диалог управления анатомией: выбор системной/мировой, сохранение и очистка.
+   * @param {Event} event
+   * @private
+   */
+  async _onAnatomyManageClick(event) {
+    event.preventDefault();
+
+    if (!this.isEditable || !this._anatomyEditor?.editMode) {
+      ui.notifications?.info?.("Включите режим редактирования, чтобы менять анатомию.");
+      return;
+    }
+
+    await anatomyManager.loadWorldPresets();
+    const worldAnatomies = anatomyManager.getWorldPresets();
+    const availableAnatomies = anatomyManager.getAvailableAnatomies();
+
+    const L = (key) => game.i18n.localize(key);
+
+    const title = L('SPACEHOLDER.Health.Anatomy.ManageTitle');
+    const labelCurrent = L('SPACEHOLDER.Health.Anatomy.Current');
+    const labelSelect = L('SPACEHOLDER.Health.Anatomy.Select');
+    const labelSystemGroup = L('SPACEHOLDER.Health.Anatomy.SystemGroup');
+    const labelWorldGroup = L('SPACEHOLDER.Health.Anatomy.WorldGroup');
+
+    const currentName = this.actor.system.anatomy?.name
+      || (this.actor.system.anatomy?.id
+        ? anatomyManager.getAnatomyDisplayName(this.actor.system.anatomy.id)
+        : L('SPACEHOLDER.Health.Anatomy.None'));
+
+    const systemOptions = Object.entries(availableAnatomies)
+      .map(([id]) => {
+        const name = anatomyManager.getAnatomyDisplayName(id);
+        const safeVal = `system:${String(id).replace(/"/g, "&quot;")}`;
+        return `<option value="${safeVal}">${name.replace(/</g, "&lt;")}</option>`;
+      })
+      .join("");
+
+    const worldOptions = worldAnatomies
+      .map((a) => {
+        const safeVal = `world:${String(a.id).replace(/"/g, "&quot;")}`;
+        const name = (a.name || a.id).replace(/</g, "&lt;");
+        return `<option value="${safeVal}">${name}</option>`;
+      })
+      .join("");
+
+    const worldGroupHtml = worldOptions
+      ? `<optgroup label="${labelWorldGroup.replace(/"/g, "&quot;")}">${worldOptions}</optgroup>`
+      : "";
+
+    const content = `
+      <div class="anatomy-manage-dialog">
+        <p><strong>${labelCurrent}:</strong> ${currentName.replace(/</g, "&lt;")}</p>
+        <hr/>
+        <div class="form-group">
+          <label>${labelSelect}</label>
+          <select id="anatomy-manage-select" style="width:100%; height:32px;">
+            <option value="">—</option>
+            <optgroup label="${labelSystemGroup.replace(/"/g, "&quot;")}">
+              ${systemOptions}
+            </optgroup>
+            ${worldGroupHtml}
+          </select>
+        </div>
+      </div>
+    `;
+
+    const buttons = [
+      {
+        action: 'apply',
+        label: L('SPACEHOLDER.Health.Anatomy.Apply'),
+        icon: 'fa-solid fa-check',
+        default: true,
+        callback: async (dlgEvent) => {
+          const root = dlgEvent.currentTarget;
+          const raw = root.querySelector('#anatomy-manage-select')?.value;
+          if (!raw || !raw.includes(":")) return;
+          const [source, id] = raw.split(":", 2);
+          if (source === "system") {
+            await this._performAnatomyChange(id);
+          } else if (source === "world" && id) {
+            if (await anatomyManager.applyPresetToActor(this.actor, id)) {
+              ui.notifications.info(L('SPACEHOLDER.Health.Anatomy.AppliedWorld'));
+              this._activeTabPrimary = 'health';
+              this.render({ force: true, tab: { primary: 'health' } });
+            } else {
+              ui.notifications.error(L('SPACEHOLDER.Health.Anatomy.ApplyWorldFailed'));
+            }
+          }
+        }
+      },
+      {
+        action: 'save-world',
+        label: L('SPACEHOLDER.Health.Anatomy.SaveWorld'),
+        icon: 'fa-solid fa-save',
+        callback: async () => {
+          await this._anatomyEditor.saveAnatomyToWorld();
+          await anatomyManager.loadWorldPresets();
+          this._activeTabPrimary = 'health';
+          this.render({ force: true, tab: { primary: 'health' } });
+        }
+      },
+      {
+        action: 'reset',
+        label: L('SPACEHOLDER.Actions.Clear'),
+        icon: 'fa-solid fa-trash',
+        callback: async (e) => {
+          await this._onResetAnatomyClick(e);
+        }
+      },
+      { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
+    ];
+
+    await foundry.applications.api.DialogV2.wait({
+      window: { title, icon: 'fa-solid fa-dna' },
+      position: { width: 420 },
+      content,
+      buttons
+    });
+  }
+
   /**
    * Perform the anatomy change with proper cleanup
    * @param {string} newAnatomyType - New anatomy type ID
@@ -767,22 +995,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       console.error('Ошибка при смене анатомии:', error);
       ui.notifications.error('Произошла ошибка при смене анатомии');
     }
-  }
-  
-  /**
-   * Handle anatomy toggle click: choose new anatomy if none, otherwise delete existing
-   * @param {Event} event
-   * @private
-   */
-  async _onAnatomyToggleClick(event) {
-    event.preventDefault();
-    const hasAnatomy = !!(this.actor.system.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
-    if (hasAnatomy) {
-      // Delegate to reset handler
-      return this._onResetAnatomyClick(event);
-    }
-    // Otherwise open selection dialog
-    return this._onChangeAnatomyClick(event);
   }
   
   /**
