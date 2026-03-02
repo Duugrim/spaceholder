@@ -27,6 +27,15 @@
       <i class="fas fa-plus"></i>
       <span class="btn-text">{{localize 'SPACEHOLDER.Inventory.NewItem'}}</span>
     </button>
+    <button
+      type="button"
+      class="item-create-btn"
+      title="{{localize 'SPACEHOLDER.Inventory.CreateWearable'}}"
+      data-type="wearable"
+    >
+      <i class="fas fa-shield-alt"></i>
+      <span class="btn-text">{{localize 'SPACEHOLDER.Inventory.NewWearable'}}</span>
+    </button>
   </div>
 
   <div class='inventory-list'>
@@ -59,6 +68,17 @@
           </div>
         </div>
         <div class='item-controls'>
+          {{#if (eq item.type "wearable")}}
+          <button
+            type="button"
+            class="icon-btn item-wearable-toggle {{#if item.system.equipped}}active{{/if}}"
+            title="{{localize 'SPACEHOLDER.Wearable.EquipToggleTooltip'}}"
+            data-item-id="{{item._id}}"
+            data-action="wearable-toggle"
+          >
+            <i class="fas fa-shield-alt"></i>
+          </button>
+          {{/if}}
           <button
             type="button"
             class='icon-btn item-edit'

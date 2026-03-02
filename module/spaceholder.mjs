@@ -3,12 +3,13 @@ import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
 // Import sheet classes (Application V2)
 import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderGlobalObjectSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
-import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic } from './sheets/item-sheet.mjs';
+import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic, SpaceHolderItemSheet_Wearable } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
 import { SPACEHOLDER } from './helpers/config.mjs';
 // Import anatomy manager
 import { anatomyManager } from './anatomy-manager.mjs';
+import { WearableCoverageEditor } from './helpers/wearable-coverage-editor.mjs';
 // Token pointer integration
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
@@ -250,6 +251,11 @@ Hooks.once('init', function () {
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.Item',
   });
+  foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Wearable, {
+    types: ['wearable'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Item',
+  });
   foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Feature, {
     types: ['feature'],
     makeDefault: true,
@@ -266,9 +272,275 @@ Hooks.once('init', function () {
     label: 'SPACEHOLDER.SheetLabels.Item',
   });
 
+  // Wearable: привязка кнопок и визуализатора покрытия через renderItemSheetV2
+  Hooks.on('renderItemSheetV2', async (app, element, context, options) => {
+    const doc = app.document;
+    if (!doc || doc.type !== 'wearable') return;
+    if (!(element instanceof HTMLElement)) return;
+
+    const btn = element.querySelector('[data-action="wearable-select-anatomy-group"]');
+    if (btn && !btn.dataset.spaceholderBound) {
+      btn.dataset.spaceholderBound = '1';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openWearableAnatomyDialog(doc);
+      });
+    }
+
+    // После перерисовки листа Wearable возвращаем пользователя на вкладку «Покрытие»
+    const renderAndStayOnCoverage = async () => {
+      await app.render();
+      try {
+        app.changeTab?.('attributes', 'primary', { updatePosition: false });
+      } catch (_) { /* ignore */ }
+    };
+
+    // Кнопка режима редактирования покрытия
+    const editModeBtn = element.querySelector('[data-action="wearable-coverage-edit-mode"]');
+    if (editModeBtn && !editModeBtn.dataset.spaceholderBound) {
+      editModeBtn.dataset.spaceholderBound = '1';
+      editModeBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const next = !doc.flags?.spaceholder?.wearableCoverageEditMode;
+        await doc.update({ 'flags.spaceholder.wearableCoverageEditMode': next });
+        await renderAndStayOnCoverage();
+      });
+    }
+
+    // Визуализатор: в режиме редактирования — все части + голубая пометка выбранных; без редактирования — только выбранные части
+    const editorContainer = element.querySelector('[data-wearable-coverage-editor="container"]');
+    if (editorContainer && doc.system?.anatomyId) {
+      let anatomyData = null;
+      try {
+        if (anatomyManager.getAnatomyInfo(doc.system.anatomyId)) {
+          anatomyData = await anatomyManager.loadAnatomy(doc.system.anatomyId);
+        } else {
+          await anatomyManager.loadWorldPresets();
+          const preset = anatomyManager.getWorldPresets().find((p) => p.id === doc.system.anatomyId);
+          if (preset) anatomyData = preset;
+        }
+      } catch (_) { /* ignore */ }
+      if (anatomyData?.bodyParts) {
+        const armorByPart = foundry.utils.deepClone(doc.system?.armorByPart ?? {});
+        const showOnlyCovered = !doc.flags?.spaceholder?.wearableCoverageEditMode;
+        const editor = new WearableCoverageEditor(editorContainer, {
+          anatomyData: { bodyParts: anatomyData.bodyParts, grid: anatomyData.grid ?? {} },
+          armorByPart,
+          showOnlyCovered,
+          onChange: showOnlyCovered ? undefined : async (next) => {
+            // next — новое состояние armorByPart, собранное редактором (карта partId → { value })
+            const prev = doc.system?.armorByPart ?? {};
+            const update = {};
+
+            // Сначала помечаем удалённые ключи специальным синтаксисом "-=key"
+            for (const key of Object.keys(prev)) {
+              if (!Object.prototype.hasOwnProperty.call(next, key)) {
+                update[`system.armorByPart.-=${key}`] = null;
+              }
+            }
+
+            // Затем проставляем/обновляем оставшиеся значения
+            for (const [key, data] of Object.entries(next)) {
+              const val = Number(data?.value) || 0;
+              update[`system.armorByPart.${key}.value`] = val;
+            }
+
+            await doc.update(update);
+            await renderAndStayOnCoverage();
+          }
+        });
+        editor.render();
+      }
+    }
+
+    // Правая колонка: редактирование и удаление покрытия
+    if (app.isEditable) {
+      element.querySelectorAll('[data-action="wearable-coverage-edit"]').forEach((el) => {
+        if (el.dataset.spaceholderBound) return;
+        el.dataset.spaceholderBound = '1';
+        el.addEventListener('click', (e) => {
+          e.preventDefault();
+          const partId = e.currentTarget.dataset?.partId;
+          const partName = e.currentTarget.dataset?.partName || partId;
+          if (!partId) return;
+          openWearableCoverageEditDialog(doc, partId, partName).then(() => renderAndStayOnCoverage());
+        });
+      });
+      element.querySelectorAll('[data-action="wearable-coverage-remove"]').forEach((el) => {
+        if (el.dataset.spaceholderBound) return;
+        el.dataset.spaceholderBound = '1';
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const partId = e.currentTarget.dataset?.partId;
+          if (!partId) return;
+
+          const prev = doc.system?.armorByPart ?? {};
+          if (!Object.prototype.hasOwnProperty.call(prev, partId)) return;
+
+          const update = {};
+          update[`system.armorByPart.-=${partId}`] = null;
+
+          await doc.update(update);
+          await renderAndStayOnCoverage();
+        });
+      });
+    }
+  });
+
+  // Делегирование клика: кнопка «Выбрать анатомию» работает даже если хук renderItemSheetV2 не сработал
+  document.body.addEventListener('click', async (e) => {
+    const btn = e.target.closest?.('[data-action="wearable-select-anatomy-group"]');
+    if (!btn?.dataset?.itemUuid) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const doc = await fromUuid(btn.dataset.itemUuid);
+    if (doc?.type === 'wearable') openWearableAnatomyDialog(doc);
+  });
+
   // Preload Handlebars templates.
   return preloadHandlebarsTemplates();
 });
+
+/**
+ * Открыть диалог выбора анатомии для предмета Wearable (системные + мировые). Сохраняет anatomyId и anatomyGroup.
+ * @param {Item} item - документ предмета типа wearable
+ */
+async function openWearableAnatomyDialog(item) {
+  if (!item || item.type !== 'wearable') return;
+  await anatomyManager.loadWorldPresets();
+  const availableAnatomies = anatomyManager.getAvailableAnatomies();
+  const worldPresets = anatomyManager.getWorldPresets();
+  const currentId = String(item.system?.anatomyId ?? '').trim() || '';
+
+  const L = (key) => game.i18n.localize(key);
+  const labelSelect = L('SPACEHOLDER.Wearable.Anatomy');
+  const labelSystem = L('SPACEHOLDER.Health.Anatomy.SystemGroup');
+  const labelWorld = L('SPACEHOLDER.Health.Anatomy.WorldGroup');
+
+  const systemOptions = Object.entries(availableAnatomies)
+    .map(([id]) => {
+      const name = anatomyManager.getAnatomyDisplayName(id);
+      const safeVal = String(id).replace(/"/g, '&quot;');
+      const safeName = (name || id).replace(/</g, '&lt;');
+      const sel = id === currentId ? ' selected' : '';
+      return `<option value="${safeVal}"${sel}>${safeName}</option>`;
+    })
+    .join('');
+
+  const worldOptions = worldPresets
+    .map((p) => {
+      const id = p.id || '';
+      const name = (p.name || id).replace(/</g, '&lt;');
+      const safeVal = id.replace(/"/g, '&quot;');
+      const sel = id === currentId ? ' selected' : '';
+      return `<option value="world:${safeVal}"${sel}>${name}</option>`;
+    })
+    .join('');
+
+  const worldGroupHtml = worldOptions
+    ? `<optgroup label="${labelWorld.replace(/"/g, '&quot;')}">${worldOptions}</optgroup>`
+    : '';
+
+  const content = `
+    <div class="wearable-anatomy-dialog">
+      <div class="form-group">
+        <label>${labelSelect.replace(/</g, '&lt;')}</label>
+        <select id="wearable-anatomy-select" style="width:100%; height:32px;">
+          <option value="">${L('SPACEHOLDER.Wearable.NoAnatomySelected').replace(/</g, '&lt;')}</option>
+          <optgroup label="${labelSystem.replace(/"/g, '&quot;')}">
+            ${systemOptions}
+          </optgroup>
+          ${worldGroupHtml}
+        </select>
+      </div>
+    </div>
+  `;
+
+  const buttons = [
+    {
+      action: 'apply',
+      label: L('SPACEHOLDER.Health.Anatomy.Apply'),
+      icon: 'fa-solid fa-check',
+      default: true,
+      callback: async (dlgEvent) => {
+        const root = dlgEvent.currentTarget;
+        const raw = (root.querySelector('#wearable-anatomy-select')?.value ?? '').trim();
+        let anatomyId = null;
+        let anatomyGroup = null;
+        if (raw && raw.startsWith('world:')) {
+          anatomyId = raw.slice(6);
+          const preset = worldPresets.find((p) => p.id === anatomyId);
+          anatomyGroup = preset?.meta?.group ?? anatomyManager.getAnatomyGroupId(anatomyId) ?? null;
+        } else if (raw) {
+          anatomyId = raw;
+          anatomyGroup = anatomyManager.getAnatomyGroupId(anatomyId);
+        }
+        await item.update({
+          'system.anatomyId': anatomyId,
+          'system.anatomyGroup': anatomyGroup
+        });
+        await item.sheet?.render?.();
+        try {
+          item.sheet?.changeTab?.('attributes', 'primary', { updatePosition: false });
+        } catch (_) { /* ignore */ }
+      }
+    },
+    { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
+  ];
+
+  await foundry.applications.api.DialogV2.wait({
+    window: { title: L('SPACEHOLDER.Wearable.SelectAnatomy'), icon: 'fa-solid fa-list' },
+    position: { width: 400 },
+    content,
+    buttons
+  });
+}
+
+/**
+ * Диалог редактирования значения защиты для одной части тела (предмет Wearable).
+ * @param {Item} item - документ предмета типа wearable
+ * @param {string} partId - id части тела
+ * @param {string} [partName] - отображаемое имя части
+ */
+async function openWearableCoverageEditDialog(item, partId, partName) {
+  if (!item || item.type !== 'wearable' || !partId) return;
+  const armorByPart = item.system?.armorByPart ?? {};
+  const current = Number(armorByPart[partId]?.value) || 0;
+  const displayName = (partName || partId).replace(/</g, '&lt;');
+
+  const L = (key) => game.i18n.localize(key);
+  const labelValue = L('SPACEHOLDER.Wearable.ArmorValue');
+  const content = `
+    <div class="wearable-coverage-edit-dialog">
+      <p><strong>${displayName}</strong></p>
+      <div class="form-group">
+        <label>${labelValue.replace(/</g, '&lt;')}</label>
+        <input type="number" id="wearable-coverage-value" value="${current}" min="0" step="1" style="width:100%;"/>
+      </div>
+    </div>
+  `;
+
+  await foundry.applications.api.DialogV2.wait({
+    window: { title: L('SPACEHOLDER.Actions.Edit'), icon: 'fa-solid fa-shield-alt' },
+    position: { width: 280 },
+    content,
+    buttons: [
+      {
+        action: 'save',
+        label: L('SPACEHOLDER.Actions.Save'),
+        icon: 'fa-solid fa-check',
+        default: true,
+        callback: async (dlgEvent) => {
+          const root = dlgEvent.currentTarget;
+          const raw = root.querySelector('#wearable-coverage-value')?.value;
+          const value = Math.max(0, parseInt(raw, 10) || 0);
+          await item.update({ [`system.armorByPart.${partId}.value`]: value });
+        }
+      },
+      { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
+    ]
+  });
+}
 
 /* -------------------------------------------- */
 /*  Handlebars Helpers                          */

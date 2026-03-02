@@ -217,4 +217,376 @@
       color: inherit;
     }
   }
+
+  // Item sheet: заголовки секций (как в листе персонажа)
+  .spaceholder.sheet.item .tab .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px 0;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(44, 74, 45, 0.95), rgba(61, 90, 62, 0.95));
+    color: #fff;
+    border-radius: var(--sh-radius-md);
+    border: 1px solid rgba(74, 110, 74, 0.8);
+    font-size: 14px;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+
+    i {
+      color: var(--sh-accent-strong);
+      font-size: 16px;
+    }
+  }
+
+  // Wearable sheet: текущая анатомия как кнопка смены (в стиле листа персонажа) + теги групп
+  .wearable-anatomy-row {
+    margin: 0 0 12px 0;
+  }
+
+  .wearable-anatomy-current-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    min-height: 28px;
+    border-radius: var(--sh-radius-sm);
+    border: 1px solid rgba(143, 185, 143, 0.35);
+    background: rgba(143, 185, 143, 0.08);
+    color: var(--sh-accent-strong);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    max-width: 280px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    margin: 0 0 8px 0;
+
+    &:hover:not(:disabled) {
+      background: rgba(143, 185, 143, 0.18);
+      border-color: rgba(143, 185, 143, 0.55);
+    }
+
+    &.wearable-anatomy-current-btn--empty {
+      color: rgba(255, 152, 0, 0.95);
+      background: rgba(255, 152, 0, 0.1);
+      border-color: rgba(255, 152, 0, 0.35);
+      font-style: italic;
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+  }
+
+  .wearable-anatomy-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 10px 0;
+  }
+
+  .wearable-anatomy-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--sh-radius-sm);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--sh-border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--sh-text-muted);
+    text-transform: lowercase;
+  }
+
+  // Wearable sheet: таблица «части тела — защита»
+  .wearable-armor-table {
+    margin: 12px 0 0;
+    padding: 0;
+    background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+
+  .wearable-armor-header {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, rgba(44, 74, 45, 0.95), rgba(61, 90, 62, 0.95));
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+
+    .col-part {
+      min-width: 0;
+    }
+
+    .col-armor {
+      text-align: center;
+    }
+  }
+
+  .wearable-armor-row {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .col-part {
+      min-width: 0;
+      font-size: 13px;
+      color: var(--sh-text);
+    }
+
+    .col-armor {
+      display: flex;
+      justify-content: center;
+
+      input {
+        width: 56px;
+        text-align: center;
+        font-family: $font-mono;
+      }
+    }
+  }
+
+  // Wearable sheet: блок модификаторов (способности и т.д.)
+  .wearable-modifiers-block {
+    margin: 12px 0 0;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+
+    > h3 {
+      margin: 0 0 10px 0;
+      padding: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sh-text-muted);
+    }
+  }
+
+  .wearable-modifiers-table {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border-radius: var(--sh-radius-md);
+    border: 1px solid var(--sh-border);
+  }
+
+  .wearable-modifiers-header {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--sh-border);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sh-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+
+    .col-target {
+      min-width: 0;
+    }
+
+    .col-value {
+      text-align: center;
+    }
+  }
+
+  .wearable-modifiers-row {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    background: var(--sh-surface-1);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .col-target {
+      min-width: 0;
+
+      select {
+        width: 100%;
+        max-width: 220px;
+      }
+    }
+
+    .col-value {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+
+      input[type="number"] {
+        width: 56px;
+        text-align: center;
+      }
+    }
+  }
+
+  // Wearable Coverage tab: верхняя строка + две колонки (как анатомия/травмы)
+  .wearable-coverage-management-container {
+    margin: 0 0 12px 0;
+  }
+
+  .wearable-coverage-management-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .wearable-coverage-tags-inline {
+    margin: 0;
+  }
+
+  .wearable-coverage-spacer {
+    flex: 1 1 auto;
+    min-width: 12px;
+  }
+
+  .wearable-coverage-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .wearable-coverage-main-layout {
+    display: flex;
+    gap: 15px;
+    align-items: stretch;
+    min-height: 420px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .wearable-coverage-left-column {
+    flex: 0 0 378px;
+    width: 378px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wearable-coverage-editor-wrap {
+    width: 100%;
+    height: 420px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    overflow: hidden;
+  }
+
+  .wearable-coverage-editor-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  .wearable-coverage-placeholder {
+    width: 100%;
+    min-height: 200px;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px dashed var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sh-text-muted);
+    font-size: 13px;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .wearable-coverage-right-column {
+    flex: 1 1 0;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wearable-coverage-panel {
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-lg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wearable-coverage-panel-header {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--sh-text);
+    margin: 0 0 10px 0;
+    padding: 0;
+  }
+
+  .wearable-coverage-list {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .wearable-coverage-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    margin: 0 0 6px 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .wearable-coverage-card-main {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .wearable-coverage-card-line {
+    font-size: 12px;
+    color: var(--sh-text);
+  }
+
+  .wearable-coverage-card-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  // Кружок части тела в режиме «покрыто»
+  .wearable-coverage-part--covered {
+    --part-fill: #5eb8c4;
+    box-shadow: 0 0 0 2px rgba(94, 184, 196, 0.8);
+  }
 }

@@ -24,3 +24,21 @@ SPACEHOLDER.abilityAbbreviations = {
   luc: 'SPACEHOLDER.Ability.Luc.abbr',
 };
 
+/**
+ * Конфигурация целей модификаторов персонажа от надетых предметов.
+ * Используется листом предмета и логикой актора.
+ */
+SPACEHOLDER.characterModifierTargets = {
+  abilities: [
+    { id: 'abilities.end', path: 'abilities.end.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.End' },
+    { id: 'abilities.str', path: 'abilities.str.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Str' },
+    { id: 'abilities.dex', path: 'abilities.dex.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Dex' },
+    { id: 'abilities.cor', path: 'abilities.cor.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Cor' },
+    { id: 'abilities.per', path: 'abilities.per.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Per' },
+    { id: 'abilities.int', path: 'abilities.int.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Int' },
+    { id: 'abilities.luc', path: 'abilities.luc.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Luc' }
+  ],
+  derived: [],
+  params: []
+};
+

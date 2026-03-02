@@ -23,7 +23,9 @@
       "Description": "Описание",
       "Items": "Предметы",
       "Effects": "Эффекты",
-      "Attributes": "Атрибуты"
+      "Attributes": "Атрибуты",
+      "Coverage": "Покрытие",
+      "Modifiers": "Модификаторы"
     },
     "Placeholder": {
       "Name": "Имя"
@@ -157,6 +159,8 @@
       "TotalItems": "Предметов:",
       "CreateItem": "Создать предмет",
       "NewItem": "Новый предмет",
+      "CreateWearable": "Создать надеваемый предмет",
+      "NewWearable": "Новый надеваемый",
       "Quantity": "Кол-во:",
       "ItemTotalWeight": "Общий вес:",
       "EditItem": "Редактировать предмет",
@@ -198,6 +202,57 @@
       "Spell": {
         "SpellLVL": "Заклинания {level} уровня",
         "AddLVL": "Добавить уровень {level}"
+      }
+    },
+    "Wearable": {
+      "TypeName": "Надеваемый",
+      "AnatomyGroup": "Группа анатомий",
+      "BodyPart": "Часть тела",
+      "ArmorValue": "Защита",
+      "ArmorByPartSection": "Защита по частям тела",
+      "Equipped": "Экипирован",
+      "EquipToggleTooltip": "Переключить экипировку",
+      "ModifiersSection": "Модификаторы характеристик",
+      "NoGroupSelected": "Группа анатомий не выбрана",
+      "SelectAnatomyGroup": "Выбрать группу анатомий",
+      "ForAnatomy": "Для",
+      "Anatomy": "Анатомия",
+      "SelectAnatomy": "Выбрать анатомию",
+      "NoAnatomySelected": "Не выбрана",
+      "NoBodyPartsForGroup": "Нет доступных частей тела для выбранной группы",
+      "CoverageEditMode": "Режим настройки покрытия",
+      "CoverageEditModeHint": "Нажмите кнопку редактирования выше, чтобы выбрать части тела и задать защиту.",
+      "SelectAnatomyFirst": "Сначала выберите анатомию.",
+      "CoverageList": "Покрытие и защита",
+      "CoverageEmpty": "Нет выбранных частей. Включите режим настройки и кликайте по частям тела слева.",
+      "CoverageNoParts": "Нет выбранных частей тела",
+      "AnatomyNotLoaded": "Анатомия не загружена"
+    },
+    "Modifiers": {
+      "Abilities": "Основные характеристики",
+      "Derived": "Производные характеристики",
+      "Params": "Параметры персонажа",
+      "Target": "Цель",
+      "Value": "Значение",
+      "Mode": "Режим",
+      "ModeAdd": "Плюс",
+      "AbilitiesShort": {
+        "End": "END",
+        "Str": "STR",
+        "Dex": "DEX",
+        "Cor": "COR",
+        "Per": "PER",
+        "Int": "INT",
+        "Luc": "LUC"
+      },
+      "AbilitiesLong": {
+        "End": "Выносливость",
+        "Str": "Сила",
+        "Dex": "Подвижность",
+        "Cor": "Координация",
+        "Per": "Восприятие",
+        "Int": "Интеллект",
+        "Luc": "Удача"
       }
     },
     "Effect": {
@@ -971,7 +1026,8 @@
     "Item": {
       "item": "Предмет",
       "feature": "Особенность",
-      "spell": "Заклинание"
+      "spell": "Заклинание",
+      "wearable": "Надеваемый"
     }
   }
 }

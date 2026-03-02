@@ -46,8 +46,10 @@ export class SpaceHolderActor extends Actor {
   _prepareCharacterData(actorData) {
     if (actorData.type !== 'character') return;
 
-    // Make modifications to data here. For example:
     const systemData = actorData.system;
+
+    // Применяем модификаторы от экипированных надетых предметов к базовым значениям
+    this._applyWearableModifiers(systemData);
 
     // Loop through ability scores, and add their modifiers to our sheet output.
     for (let [key, ability] of Object.entries(systemData.abilities)) {
@@ -57,6 +59,8 @@ export class SpaceHolderActor extends Actor {
 
     // Process body parts health system (always based on health)
     this._prepareBodyParts(systemData);
+    // Применяем защиту по частям тела от надетых предметов
+    this._prepareWearableDefense(systemData);
     
   }
 
@@ -93,6 +97,96 @@ export class SpaceHolderActor extends Actor {
       if (!bodyPart.status || bodyPart.status === 'healthy') {
         bodyPart.status = this._getBodyPartStatus({ healthPercentage: bodyPart.healthPercentage });
       }
+    }
+  }
+
+  /**
+   * Подготовить защиту по частям тела от экипированных wearable-предметов.
+   * Производные значения, не сохраняются в документ.
+   */
+  _prepareWearableDefense(systemData) {
+    const bodyParts = systemData.health?.bodyParts || {};
+    if (!bodyParts || !Object.keys(bodyParts).length) return;
+
+    // Сбросить защиту перед перерасчётом
+    for (const part of Object.values(bodyParts)) {
+      part.armor = 0;
+    }
+
+    const anatomy = systemData.anatomy || {};
+    const anatomyType = anatomy.id || anatomy.type || null;
+    if (!anatomyType) return;
+
+    const groupId = anatomyManager.getAnatomyGroupId(anatomyType);
+    if (!groupId) return;
+
+    const wearables = this.items.filter((i) => i.type === 'wearable' && i.system?.equipped);
+    if (!wearables.length) return;
+
+    for (const item of wearables) {
+      const itemGroup = String(item.system?.anatomyGroup ?? '').trim();
+      if (!itemGroup || itemGroup !== groupId) continue;
+      const armorByPart = item.system?.armorByPart || {};
+      for (const [partId, entry] of Object.entries(armorByPart)) {
+        const part = bodyParts[partId];
+        if (!part) continue;
+        const val = Number(entry?.value ?? 0);
+        if (!Number.isFinite(val) || val <= 0) continue;
+        part.armor = (part.armor ?? 0) + val;
+      }
+    }
+  }
+
+  /**
+   * Применить модификаторы характеристик от экипированных wearable-предметов.
+   * Модификаторы влияют только на производные данные (runtime), не меняя сохранённый источник.
+   */
+  _applyWearableModifiers(systemData) {
+    if (this.type !== 'character') return;
+
+    const wearables = this.items.filter((i) => i.type === 'wearable' && i.system?.equipped);
+    if (!wearables.length) return;
+
+    const targetsCfg = CONFIG.SPACEHOLDER?.characterModifierTargets || {};
+    const allTargets = [
+      ...(targetsCfg.abilities || []),
+      ...(targetsCfg.derived || []),
+      ...(targetsCfg.params || [])
+    ];
+    if (!allTargets.length) return;
+
+    const sums = new Map();
+
+    for (const item of wearables) {
+      const mods = item.system?.modifiers || {};
+      const collect = (arr) => {
+        if (!Array.isArray(arr)) return;
+        for (const m of arr) {
+          const id = String(m?.targetId ?? m?.id ?? '').trim();
+          if (!id) continue;
+          const mode = String(m?.mode || 'add').trim() || 'add';
+          if (mode !== 'add') continue;
+          const val = Number(m?.value ?? 0);
+          if (!Number.isFinite(val) || val === 0) continue;
+          sums.set(id, (sums.get(id) || 0) + val);
+        }
+      };
+      collect(mods.abilities);
+      collect(mods.derived);
+      collect(mods.params);
+    }
+
+    if (!sums.size) return;
+
+    for (const cfg of allTargets) {
+      const id = String(cfg.id ?? '').trim();
+      const path = String(cfg.path ?? '').trim();
+      if (!id || !path) continue;
+      const delta = sums.get(id);
+      if (!delta) continue;
+      const current = foundry.utils.getProperty(systemData, path);
+      const base = Number.isFinite(Number(current)) ? Number(current) : 0;
+      foundry.utils.setProperty(systemData, path, base + delta);
     }
   }
 

@@ -23,7 +23,9 @@
       "Description": "Description",
       "Items": "Items",
       "Effects": "Effects",
-      "Attributes": "Attributes"
+      "Attributes": "Attributes",
+      "Coverage": "Coverage",
+      "Modifiers": "Modifiers"
     },
     "Placeholder": {
       "Name": "Name"
@@ -157,6 +159,8 @@
       "TotalItems": "Items:",
       "CreateItem": "Create item",
       "NewItem": "New item",
+      "CreateWearable": "Create wearable item",
+      "NewWearable": "New wearable",
       "Quantity": "Qty:",
       "ItemTotalWeight": "Total weight:",
       "EditItem": "Edit item",
@@ -198,6 +202,57 @@
       "Spell": {
         "SpellLVL": "Level {level} Spells",
         "AddLVL": "Add LVL {level}"
+      }
+    },
+    "Wearable": {
+      "TypeName": "Wearable",
+      "AnatomyGroup": "Anatomy group",
+      "BodyPart": "Body part",
+      "ArmorValue": "Armor",
+      "ArmorByPartSection": "Armor by body part",
+      "Equipped": "Equipped",
+      "EquipToggleTooltip": "Toggle equip",
+      "ModifiersSection": "Character modifiers",
+      "NoGroupSelected": "No anatomy group selected",
+      "SelectAnatomyGroup": "Select anatomy group",
+      "ForAnatomy": "For",
+      "Anatomy": "Anatomy",
+      "SelectAnatomy": "Select anatomy",
+      "NoAnatomySelected": "Not selected",
+      "NoBodyPartsForGroup": "No body parts available for selected group",
+      "CoverageEditMode": "Coverage edit mode",
+      "CoverageEditModeHint": "Click the edit button above to select body parts and set armor.",
+      "SelectAnatomyFirst": "Select an anatomy first.",
+      "CoverageList": "Coverage & armor",
+      "CoverageEmpty": "No parts selected. Enable edit mode and click body parts on the left.",
+      "CoverageNoParts": "No body parts selected",
+      "AnatomyNotLoaded": "Anatomy not loaded"
+    },
+    "Modifiers": {
+      "Abilities": "Core abilities",
+      "Derived": "Derived stats",
+      "Params": "Character parameters",
+      "Target": "Target",
+      "Value": "Value",
+      "Mode": "Mode",
+      "ModeAdd": "Add",
+      "AbilitiesShort": {
+        "End": "END",
+        "Str": "STR",
+        "Dex": "DEX",
+        "Cor": "COR",
+        "Per": "PER",
+        "Int": "INT",
+        "Luc": "LUC"
+      },
+      "AbilitiesLong": {
+        "End": "Endurance",
+        "Str": "Strength",
+        "Dex": "Dexterity",
+        "Cor": "Coordination",
+        "Per": "Perception",
+        "Int": "Intellect",
+        "Luc": "Luck"
       }
     },
     "Effect": {
@@ -971,7 +1026,8 @@
     "Item": {
       "item": "Item",
       "feature": "Feature",
-      "spell": "Spell"
+      "spell": "Spell",
+      "wearable": "Wearable"
     }
   }
 }

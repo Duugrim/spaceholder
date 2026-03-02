@@ -58,7 +58,7 @@
     }
   },
   "Item": {
-    "types": ["item", "feature", "spell"],
+    "types": ["item", "feature", "spell", "wearable"],
     "templates": {
       "base": {
         "description": "",
@@ -77,6 +77,20 @@
     "spell": {
       "templates": ["base"],
       "spellLevel": 1
+    },
+    "wearable": {
+      "templates": ["base"],
+      "quantity": 1,
+      "weight": 0,
+      "equipped": false,
+      "anatomyId": null,
+      "anatomyGroup": null,
+      "armorByPart": {},
+      "modifiers": {
+        "abilities": [],
+        "derived": [],
+        "params": []
+      }
     }
   }
 }

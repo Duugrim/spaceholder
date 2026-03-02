@@ -296,8 +296,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Iterate through items, allocating to containers
     for (let i of items) {
       i.img = i.img || Item.DEFAULT_ICON;
-      // Append to gear.
-      if (i.type === 'item') {
+      // Append to gear (обычные предметы и надеваемые).
+      if (i.type === 'item' || i.type === 'wearable') {
         gear.push(i);
       }
       // Append to features.
@@ -335,7 +335,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * Update inventory totals in the DOM without full re-render
    */
   _updateInventoryTotals() {
-    const gear = this.actor.items.filter(i => i.type === 'item');
+    const gear = this.actor.items.filter(i => i.type === 'item' || i.type === 'wearable');
     let totalWeight = 0;
     let totalItems = 0;
     
@@ -455,6 +455,20 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         const itemId = card?.dataset?.itemId || btn.dataset?.itemId;
         const item = this.actor.items.get(itemId);
         item?.delete();
+        this.render(false);
+      });
+    });
+
+    // Toggle Wearable equip
+    el.querySelectorAll('[data-action="wearable-toggle"]').forEach(btn => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const card = ev.currentTarget.closest('.inventory-item-card');
+        const itemId = card?.dataset?.itemId || btn.dataset?.itemId;
+        const item = this.actor.items.get(itemId);
+        if (!item || item.type !== 'wearable') return;
+        const current = Boolean(item.system?.equipped);
+        await item.update({ 'system.equipped': !current });
         this.render(false);
       });
     });

@@ -1,0 +1,180 @@
+<form class="{{cssClass}}" autocomplete="off">
+  <header class="sheet-header">
+    <img
+      class="profile-img"
+      src="{{item.img}}"
+      data-edit="img"
+      title="{{item.name}}"
+    />
+    <div class="header-fields">
+      <h1 class="charname">
+        <input
+          name="name"
+          type="text"
+          value="{{item.name}}"
+          placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"
+        />
+      </h1>
+      <div class="grid grid-2col">
+        <div class="resource">
+          <label class="resource-label">{{localize 'SPACEHOLDER.Resources.Quantity'}}</label>
+          <input
+            type="text"
+            name="system.quantity"
+            value="{{system.quantity}}"
+            data-dtype="Number"
+          />
+        </div>
+        <div class="resource">
+          <label class="resource-label">{{localize 'SPACEHOLDER.Resources.Weight'}}</label>
+          <input
+            type="text"
+            name="system.weight"
+            value="{{system.weight}}"
+            data-dtype="Number"
+          />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  {{!-- Sheet Tab Navigation --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-action="tab" data-group="primary" data-tab="description">
+      {{localize 'SPACEHOLDER.Tabs.Description'}}
+    </a>
+    <a class="item" data-action="tab" data-group="primary" data-tab="attributes">
+      {{localize 'SPACEHOLDER.Tabs.Coverage'}}
+    </a>
+    <a class="item" data-action="tab" data-group="primary" data-tab="modifiers">
+      {{localize 'SPACEHOLDER.Tabs.Modifiers'}}
+    </a>
+  </nav>
+
+  {{!-- Sheet Body --}}
+  <section class="sheet-body">
+
+    {{!-- Description Tab --}}
+    <div class="tab" data-group="primary" data-tab="description">
+      {{editor
+        enrichedDescription
+        target="system.description"
+        engine="prosemirror"
+        button=true
+        editable=editable
+      }}
+    </div>
+
+    {{!-- Coverage Tab: в стиле вкладки анатомии — верхняя строка, две колонки --}}
+    <div class="tab attributes" data-group="primary" data-tab="attributes">
+      <div class="wearable-coverage-management-container">
+        <div class="wearable-coverage-management-row">
+          <button type="button" class="wearable-anatomy-current-btn {{#unless selectedAnatomyId}}wearable-anatomy-current-btn--empty{{/unless}}" data-action="wearable-select-anatomy-group" data-item-uuid="{{item.uuid}}" title="{{localize 'SPACEHOLDER.Wearable.SelectAnatomy'}}">
+            {{anatomyDisplayName}}
+          </button>
+          {{#if anatomyGroupTags.length}}
+            <div class="wearable-anatomy-tags wearable-coverage-tags-inline">
+              {{#each anatomyGroupTags as |tag|}}
+                <span class="wearable-anatomy-tag">{{tag}}</span>
+              {{/each}}
+            </div>
+          {{/if}}
+          <span class="wearable-coverage-spacer"></span>
+          <div class="wearable-coverage-actions">
+            <button type="button" class="anatomy-icon-btn wearable-coverage-edit-mode-btn {{#if wearableCoverageEditMode}}active{{/if}}" data-action="wearable-coverage-edit-mode" title="{{localize 'SPACEHOLDER.Wearable.CoverageEditMode'}}">
+              <i class="fas fa-edit"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wearable-coverage-main-layout">
+        {{!-- Левая колонка: визуализатор — в режиме редактирования все части + голубая пометка; без редактирования только выбранные части --}}
+        <div class="wearable-coverage-left-column">
+          {{#if anatomyDataForEditor}}
+            <div class="wearable-coverage-editor-wrap" data-wearable-coverage-edit-mode="{{wearableCoverageEditMode}}">
+              <div class="wearable-coverage-editor-container" data-wearable-coverage-editor="container"></div>
+            </div>
+          {{else}}
+            <div class="wearable-coverage-placeholder">
+              <p><em>{{localize 'SPACEHOLDER.Wearable.SelectAnatomyFirst'}}</em></p>
+            </div>
+          {{/if}}
+        </div>
+
+        {{!-- Правая колонка: список покрытых частей с редактированием значения (как Травмы) --}}
+        <div class="wearable-coverage-right-column">
+          <div class="wearable-coverage-panel">
+            <div class="wearable-coverage-panel-header">{{localize 'SPACEHOLDER.Wearable.CoverageList'}}</div>
+            <div class="wearable-coverage-list">
+              {{#if coveredList.length}}
+                {{#each coveredList as |entry|}}
+                  <div class="wearable-coverage-card" data-coverage-part-id="{{entry.partId}}">
+                    <div class="wearable-coverage-card-main">
+                      <span class="wearable-coverage-card-line">{{entry.partName}}, {{localize 'SPACEHOLDER.Wearable.ArmorValue'}}: {{entry.armorValue}}</span>
+                    </div>
+                    <div class="wearable-coverage-card-actions">
+                      <button type="button" class="icon-btn wearable-coverage-edit-btn" data-action="wearable-coverage-edit" data-part-id="{{entry.partId}}" data-part-name="{{entry.partName}}" title="{{localize 'SPACEHOLDER.Actions.Edit'}}"><i class="fas fa-pen"></i></button>
+                      <button type="button" class="icon-btn wearable-coverage-remove-btn" data-action="wearable-coverage-remove" data-part-id="{{entry.partId}}" title="{{localize 'SPACEHOLDER.Actions.Delete'}}"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </div>
+                {{/each}}
+              {{else}}
+                <p><em>{{localize 'SPACEHOLDER.Wearable.CoverageEmpty'}}</em></p>
+              {{/if}}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{!-- Modifiers Tab --}}
+    <div class="tab" data-group="primary" data-tab="modifiers">
+      <div class="section-header">
+        <i class="fas fa-dumbbell"></i>
+        {{localize 'SPACEHOLDER.Wearable.ModifiersSection'}}
+      </div>
+
+      {{!-- Abilities modifiers --}}
+      <div class="wearable-modifiers-block">
+        <h3>{{localize 'SPACEHOLDER.Modifiers.Abilities'}}</h3>
+        <div class="wearable-modifiers-table">
+          <div class="wearable-modifiers-header">
+            <span class="col-target">{{localize 'SPACEHOLDER.Modifiers.Target'}}</span>
+            <span class="col-value">{{localize 'SPACEHOLDER.Modifiers.Value'}}</span>
+          </div>
+          {{#each system.modifiers.abilities as |mod idx|}}
+            <div class="wearable-modifiers-row">
+              <span class="col-target">
+                <select name="system.modifiers.abilities.{{idx}}.targetId">
+                  {{#each ../modifierTargets.abilities as |t|}}
+                    <option value="{{t.id}}" {{#if (eq ../../mod.targetId t.id)}}selected{{/if}}>
+                      {{localize t.label}}
+                    </option>
+                  {{/each}}
+                </select>
+              </span>
+              <span class="col-value">
+                <input
+                  type="number"
+                  name="system.modifiers.abilities.{{idx}}.value"
+                  value="{{mod.value}}"
+                  data-dtype="Number"
+                />
+                <input
+                  type="hidden"
+                  name="system.modifiers.abilities.{{idx}}.mode"
+                  value="{{mod.mode}}"
+                />
+              </span>
+            </div>
+          {{/each}}
+        </div>
+      </div>
+
+      {{!-- Для первой версии без динамического добавления/удаления строк оставляем массив редактируемым через JSON/структуру.
+           При необходимости можно будет добавить кнопки +/- и обработчики в JS. --}}
+    </div>
+  </section>
+</form>
+
