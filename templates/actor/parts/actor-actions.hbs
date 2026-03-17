@@ -1,0 +1,136 @@
+<div class="sh-actions-panel">
+  <div class="section-header">
+    <i class="fa-solid fa-bolt"></i>
+    {{localize 'SPACEHOLDER.ActionsSystem.UI.Title'}}
+  </div>
+
+  <div class="sh-actions-resources">
+    <div class="sh-actions-resource">
+      <div class="sh-actions-resource__label">{{localize 'SPACEHOLDER.ActionsSystem.UI.ActionPoints'}}</div>
+      <div class="sh-actions-resource__value">
+        <input type="number" name="system.actionPoints.value" value="{{system.actionPoints.value}}" data-dtype="Number"/>
+        <span class="sh-actions-resource__sep">/</span>
+        <input type="number" name="system.actionPoints.max" value="{{system.actionPoints.max}}" data-dtype="Number"/>
+      </div>
+      {{#if actionPointsCurrent}}
+      <div class="sh-actions-resource__hint">
+        {{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}}:
+        {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}
+      </div>
+      {{/if}}
+    </div>
+
+    <div class="sh-actions-resource">
+      <div class="sh-actions-resource__label">{{localize 'SPACEHOLDER.ActionsSystem.UI.Speed'}}</div>
+      <div class="sh-actions-resource__value">
+        <input type="number" name="system.speed" value="{{system.speed}}" data-dtype="Number"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh-actions-available">
+    <div class="sh-actions-subheader">{{localize 'SPACEHOLDER.ActionsSystem.UI.AvailableActions'}}</div>
+
+    {{#if availableActions.length}}
+      <div class="sh-actions-grid">
+        {{#each availableActions as |a|}}
+          <button
+            type="button"
+            class="sh-action-btn"
+            data-action="sh-action-run"
+            data-action-id="{{a.id}}"
+            title="{{a.label}}"
+          >
+            {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+            <span class="sh-action-btn__label">{{a.label}}</span>
+            {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+          </button>
+        {{/each}}
+      </div>
+    {{else}}
+      <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.NoActions'}}</em></p>
+    {{/if}}
+
+    {{#if actionsContext.hasTokenContext}}
+      <div class="sh-movement-controls">
+        <button type="button" class="sh-action-btn sh-action-btn--confirm" data-action="sh-move-confirm">
+          <i class="fa-solid fa-check" aria-hidden="true"></i>
+          <span class="sh-action-btn__label">{{localize 'SPACEHOLDER.ActionsSystem.Movement.Confirm'}}</span>
+        </button>
+        <button type="button" class="sh-action-btn sh-action-btn--cancel" data-action="sh-move-cancel">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          <span class="sh-action-btn__label">{{localize 'SPACEHOLDER.ActionsSystem.Movement.Cancel'}}</span>
+        </button>
+      </div>
+    {{/if}}
+  </div>
+
+  <div class="sh-actions-custom">
+    <div class="sh-actions-subheader sh-actions-subheader--row">
+      <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActions'}}</span>
+      {{#if editable}}
+        <button type="button" class="icon-btn" data-action="sh-custom-action-add" title="{{localize 'SPACEHOLDER.Actions.Add'}}">
+          <i class="fas fa-plus"></i>
+        </button>
+      {{/if}}
+    </div>
+
+    {{#if system.actions.length}}
+      <div class="sh-custom-actions-list">
+        {{#each system.actions as |ca|}}
+          <div class="sh-custom-action-row" data-id="{{ca.id}}">
+            <input
+              type="text"
+              value="{{ca.name}}"
+              placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActionName'}}"
+              data-action="sh-custom-action-edit"
+              data-id="{{ca.id}}"
+              data-field="name"
+            />
+            <input
+              type="number"
+              value="{{ca.apCost}}"
+              min="0"
+              data-action="sh-custom-action-edit"
+              data-id="{{ca.id}}"
+              data-field="apCost"
+              title="{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}"
+            />
+            <select data-action="sh-custom-action-edit" data-id="{{ca.id}}" data-field="mode">
+              <option value="chat" {{#if (eq ca.mode "chat")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeChat'}}</option>
+              <option value="macro" {{#if (eq ca.mode "macro")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeMacro'}}</option>
+            </select>
+            <label class="sh-custom-action-flag">
+              <input type="checkbox" {{#if ca.showInCombat}}checked{{/if}} data-action="sh-custom-action-edit" data-id="{{ca.id}}" data-field="showInCombat"/>
+              <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+            </label>
+            <label class="sh-custom-action-flag">
+              <input type="checkbox" {{#if ca.showInQuickbar}}checked{{/if}} data-action="sh-custom-action-edit" data-id="{{ca.id}}" data-field="showInQuickbar"/>
+              <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+            </label>
+
+            {{#if (eq ca.mode "macro")}}
+              <textarea
+                class="sh-custom-action-macro"
+                rows="3"
+                placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.MacroPlaceholder'}}"
+                data-action="sh-custom-action-edit"
+                data-id="{{ca.id}}"
+                data-field="macro"
+              >{{ca.macro}}</textarea>
+            {{/if}}
+
+            {{#if @root.editable}}
+              <button type="button" class="icon-btn" data-action="sh-custom-action-remove" data-id="{{ca.id}}" title="{{localize 'SPACEHOLDER.Actions.Delete'}}">
+                <i class="fas fa-trash"></i>
+              </button>
+            {{/if}}
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomEmpty'}}</em></p>
+    {{/if}}
+  </div>
+</div>
+

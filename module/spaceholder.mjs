@@ -63,6 +63,9 @@ import { installHotbarFactionUiHooks } from './helpers/hotbar-faction-ui.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
+// Actions system (MVP)
+import { collectActorActions, executeActorAction } from './helpers/actions/action-service.mjs';
+import { MovementManager } from './helpers/actions/movement-manager.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -122,6 +125,9 @@ Hooks.once('init', function () {
     getUsersForFaction: (factionUuid) => getUsersForFactionByUuid(factionUuid),
     getUsersForToken: (tokenLike) => getUsersForTokenByFaction(tokenLike),
     normalizeUuid: (raw) => normalizeUuidValue(raw),
+    // Actions system (MVP)
+    collectActorActions: (actor, ctx = {}) => collectActorActions(actor, ctx),
+    executeActorAction: (actor, action, ctx = {}) => executeActorAction(actor, action, ctx),
     // Global map helpers (new system)
     // TODO: Add new global map helpers when ready
     
@@ -131,6 +137,11 @@ Hooks.once('init', function () {
 
   // Initialize Token Pointer and expose
   game.spaceholder.tokenpointer = new TokenPointer();
+
+  // Initialize Movement Manager (actions MVP)
+  game.spaceholder.movementManager = new MovementManager();
+  // Hooks are installed lazily on start(), but we keep explicit install available
+  try { game.spaceholder.movementManager.installHooks(); } catch (_) {}
   
   // Initialize Aiming System - OLD SYSTEM DISABLED
   // game.spaceholder.aimingSystem = new AimingSystem();

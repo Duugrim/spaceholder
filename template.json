@@ -25,6 +25,12 @@
           "value": 1
         }
       },
+      "actionPoints": {
+        "value": 100,
+        "max": 100
+      },
+      "speed": 1,
+      "actions": [],
       "abilities": {
         "end": { "value": 10 },
         "str": { "value": 10 },
@@ -62,7 +68,8 @@
     "templates": {
       "base": {
         "description": "",
-        "implantReplaceOrgan": null
+        "implantReplaceOrgan": null,
+        "actions": []
       }
     },
     "item": {
@@ -86,6 +93,16 @@
       "anatomyId": null,
       "anatomyGroup": null,
       "coveredParts": [],
+      "defaultActions": {
+        "equip": {
+          "showInCombat": false,
+          "showInQuickbar": true
+        },
+        "unequip": {
+          "showInCombat": false,
+          "showInQuickbar": true
+        }
+      },
       "modifiers": {
         "abilities": [],
         "derived": [],

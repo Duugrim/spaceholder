@@ -179,6 +179,52 @@
         "Placeholder": "Заглушка"
       }
     },
+    "ActionsSystem": {
+      "UI": {
+        "Title": "Действия",
+        "ActionsTab": "Действия",
+        "ItemActions": "Действия предмета",
+        "ActionPoints": "Очки Действия (база)",
+        "CurrentAP": "Текущие ОД",
+        "Speed": "Скорость",
+        "AvailableActions": "Доступные действия",
+        "NoActions": "Нет доступных действий",
+        "CustomActions": "Кастомные действия",
+        "CustomEmpty": "Пока нет кастомных действий",
+        "CustomActionName": "Название действия",
+        "APCost": "ОД",
+        "ModeChat": "Чат",
+        "ModeMacro": "Макрос",
+        "ModeItemRoll": "Бросок предмета",
+        "ShowInCombat": "Показывать в бою",
+        "ShowInQuickbar": "Показывать в быстрых",
+        "MacroPlaceholder": "Тело JS-макроса (для продвинутых)",
+        "WearableDefaults": "Стандартные действия wearable"
+      },
+      "Common": {
+        "NotEditable": "Лист не редактируемый"
+      },
+      "Wearable": {
+        "Equip": "Надеть: {item}",
+        "Unequip": "Снять: {item}",
+        "EquipShort": "Надеть",
+        "UnequipShort": "Снять"
+      },
+      "Movement": {
+        "Move": "Движение",
+        "Started": "Режим движения включён. Двигайте токен, затем подтвердите или отмените. ESC/ПКМ — отмена.",
+        "Confirm": "Подтвердить движение",
+        "Cancel": "Отменить движение",
+        "Cancelled": "Движение отменено",
+        "Confirmed": "Пройдено {dist}, потрачено ОД: {cost}",
+        "SpeedZero": "Скорость 0: движение недоступно",
+        "NoTokenContext": "Откройте лист из токена, чтобы использовать движение"
+      },
+      "Errors": {
+        "NotEnoughAP": "Недостаточно Очков Действия (нужно {need}, есть {have})",
+        "MovementNotAvailable": "Система движения недоступна"
+      }
+    },
     "Inventory": {
       "TotalWeight": "Общий вес:",
       "TotalItems": "Предметов:",

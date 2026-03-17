@@ -179,6 +179,52 @@
         "Placeholder": "Placeholder"
       }
     },
+    "ActionsSystem": {
+      "UI": {
+        "Title": "Actions",
+        "ActionsTab": "Actions",
+        "ItemActions": "Item actions",
+        "ActionPoints": "Action Points",
+        "CurrentAP": "Current AP",
+        "Speed": "Speed",
+        "AvailableActions": "Available actions",
+        "NoActions": "No actions available",
+        "CustomActions": "Custom actions",
+        "CustomEmpty": "No custom actions yet",
+        "CustomActionName": "Action name",
+        "APCost": "AP",
+        "ModeChat": "Chat",
+        "ModeMacro": "Macro",
+        "ModeItemRoll": "Item roll",
+        "ShowInCombat": "Show in combat",
+        "ShowInQuickbar": "Show in quickbar",
+        "MacroPlaceholder": "JavaScript macro body (advanced)",
+        "WearableDefaults": "Wearable default actions"
+      },
+      "Common": {
+        "NotEditable": "Sheet is not editable"
+      },
+      "Wearable": {
+        "Equip": "Equip: {item}",
+        "Unequip": "Unequip: {item}",
+        "EquipShort": "Equip",
+        "UnequipShort": "Unequip"
+      },
+      "Movement": {
+        "Move": "Move",
+        "Started": "Movement mode started. Move the token, then confirm or cancel. ESC/RMB cancels.",
+        "Confirm": "Confirm movement",
+        "Cancel": "Cancel movement",
+        "Cancelled": "Movement cancelled",
+        "Confirmed": "Moved {dist} and spent {cost} AP",
+        "SpeedZero": "Speed is 0: movement is not available",
+        "NoTokenContext": "Open the sheet from a token to use movement"
+      },
+      "Errors": {
+        "NotEnoughAP": "Not enough Action Points (need {need}, have {have})",
+        "MovementNotAvailable": "Movement system is not available"
+      }
+    },
     "Inventory": {
       "TotalWeight": "Total weight:",
       "TotalItems": "Items:",

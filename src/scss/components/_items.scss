@@ -94,4 +94,33 @@
     flex: 0 0 200px;
     padding: 0 8px;
   }
+
+  // Item actions (Actions tab)
+  .sh-item-actions {
+    padding: 12px;
+  }
+
+  .sh-wearable-default-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .sh-wearable-default-actions__row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .sh-wearable-default-actions__title {
+    min-width: 160px;
+    font-weight: 800;
+    color: #ffffff;
+    font-size: 12px;
+  }
 }

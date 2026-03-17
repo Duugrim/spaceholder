@@ -11,6 +11,7 @@ import {
   computeFactionSpentPoints,
 } from '../helpers/progression-points.mjs';
 import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
+import { collectActorActions, executeActorAction, getActorActionPoints } from '../helpers/actions/action-service.mjs';
 
 // Base V2 Actor Sheet with Handlebars rendering
 export class SpaceHolderBaseActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -143,6 +144,31 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Prepare active effects
     context.effects = prepareActiveEffectCategories(this.actor.allApplicableEffects());
+
+    // Actions (MVP): collect runtime actions for Character only
+    if (actorData.type === 'character') {
+      // Defaults for older actors (context-only; persisted when user edits fields)
+      context.system.actionPoints = context.system.actionPoints || { value: 100, max: 100 };
+      if (context.system.actionPoints.value === undefined || context.system.actionPoints.value === null) {
+        context.system.actionPoints.value = 100;
+      }
+      if (context.system.actionPoints.max === undefined || context.system.actionPoints.max === null) {
+        context.system.actionPoints.max = context.system.actionPoints.value ?? 100;
+      }
+      if (context.system.speed === undefined || context.system.speed === null) context.system.speed = 1;
+      if (!Array.isArray(context.system.actions)) context.system.actions = [];
+
+      const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+      const collected = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
+      context.availableActions = collected.actions;
+      context.actionsContext = {
+        hasTokenContext: !!tokenDoc,
+        inCombat: collected.context.inCombat,
+      };
+
+      // Current AP based on action log
+      context.actionPointsCurrent = getActorActionPoints(this.actor);
+    }
 
     return context;
   }
@@ -492,6 +518,95 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Everything below here is only needed if the sheet is editable
     if (!this.isEditable) return;
+
+    // Actions: dispatcher
+    el.querySelectorAll('[data-action="sh-action-run"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const actionId = String(btn.dataset.actionId ?? '').trim();
+        if (!actionId) return;
+        const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+        const { actions } = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
+        const action = actions.find((a) => a.id === actionId);
+        if (!action) return;
+        await executeActorAction(this.actor, action, { tokenDoc, editable: this.isEditable });
+        this.render(false);
+      });
+    });
+
+    // Movement controls (confirm/cancel) — calls movementManager directly
+    el.querySelectorAll('[data-action="sh-move-confirm"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        await game.spaceholder?.movementManager?.confirm?.();
+        this.render(false);
+      });
+    });
+    el.querySelectorAll('[data-action="sh-move-cancel"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        await game.spaceholder?.movementManager?.cancel?.();
+        this.render(false);
+      });
+    });
+
+    // Custom actions editor (actor.system.actions)
+    const randomId = () => {
+      try { return foundry.utils.randomID?.(); } catch (_) {}
+      try { return globalThis.randomID?.(); } catch (_) {}
+      try { return globalThis.crypto?.randomUUID?.(); } catch (_) {}
+      return String(Date.now());
+    };
+
+    const getActions = () => {
+      const raw = this.actor?.system?.actions;
+      return Array.isArray(raw) ? raw : [];
+    };
+
+    const setActions = async (next) => {
+      await this.actor.update({ 'system.actions': Array.isArray(next) ? next : [] });
+      this.render(false);
+    };
+
+    el.querySelectorAll('[data-action="sh-custom-action-add"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const next = [...getActions(), { id: randomId(), name: '', apCost: 0, mode: 'chat', macro: '', showInCombat: true, showInQuickbar: true }];
+        await setActions(next);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-custom-action-remove"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const id = String(btn.dataset.id ?? '').trim();
+        if (!id) return;
+        const next = getActions().filter((a) => String(a?.id ?? '') !== id);
+        await setActions(next);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-custom-action-edit"]').forEach((input) => {
+      input.addEventListener('change', async (ev) => {
+        const id = String(input.dataset.id ?? '').trim();
+        const field = String(input.dataset.field ?? '').trim();
+        if (!id || !field) return;
+
+        const next = getActions().map((a) => {
+          if (String(a?.id ?? '') !== id) return a;
+          const copy = { ...(a || {}), id };
+          if (field === 'name') copy.name = String(input.value ?? '').trim();
+          if (field === 'apCost') copy.apCost = Number(input.value) || 0;
+          if (field === 'mode') copy.mode = String(input.value ?? '').trim() || 'chat';
+          if (field === 'macro') copy.macro = String(input.value ?? '');
+          if (field === 'showInCombat') copy.showInCombat = !!input.checked;
+          if (field === 'showInQuickbar') copy.showInQuickbar = !!input.checked;
+          return copy;
+        });
+
+        await setActions(next);
+      });
+    });
 
     // Injuries: add listeners
     el.querySelectorAll('[data-action="injury-open-create"]').forEach(btn => btn.addEventListener('click', this._onInjuryCreateOpen.bind(this)));

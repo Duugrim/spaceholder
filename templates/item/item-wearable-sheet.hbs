@@ -46,6 +46,9 @@
     <a class="item" data-action="tab" data-group="primary" data-tab="attributes">
       {{localize 'SPACEHOLDER.Tabs.Coverage'}}
     </a>
+    <a class="item" data-action="tab" data-group="primary" data-tab="actions">
+      {{localize 'SPACEHOLDER.ActionsSystem.UI.ActionsTab'}}
+    </a>
     <a class="item" data-action="tab" data-group="primary" data-tab="modifiers">
       {{localize 'SPACEHOLDER.Tabs.Modifiers'}}
     </a>
@@ -126,6 +129,11 @@
           </div>
         </div>
       </div>
+    </div>
+
+    {{!-- Actions Tab --}}
+    <div class="tab actions" data-group="primary" data-tab="actions">
+      {{> "systems/spaceholder/templates/item/parts/item-actions.hbs"}}
     </div>
 
     {{!-- Modifiers Tab --}}

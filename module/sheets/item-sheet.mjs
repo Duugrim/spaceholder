@@ -20,6 +20,7 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
       tabs: [
         { id: 'description' },
         { id: 'attributes' },
+        { id: 'actions' },
         { id: 'effects' }
       ],
       initial: 'description'
@@ -68,6 +69,14 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
 
     context.effects = prepareActiveEffectCategories(this.item.effects);
 
+    // Defaults for older items
+    context.system.actions = Array.isArray(context.system.actions) ? context.system.actions : [];
+    if (this.item.type === 'wearable') {
+      context.system.defaultActions = context.system.defaultActions || {};
+      context.system.defaultActions.equip = context.system.defaultActions.equip || { showInCombat: false, showInQuickbar: true };
+      context.system.defaultActions.unequip = context.system.defaultActions.unequip || { showInCombat: false, showInQuickbar: true };
+    }
+
     return context;
   }
 
@@ -87,6 +96,65 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     this.element.querySelectorAll('.effect-control').forEach(btn =>
       btn.addEventListener('click', (ev) => onManageActiveEffect(ev, this.item))
     );
+
+    // Custom actions editor (item.system.actions)
+    const el = this.element;
+    const randomId = () => {
+      try { return foundry.utils.randomID?.(); } catch (_) {}
+      try { return globalThis.randomID?.(); } catch (_) {}
+      try { return globalThis.crypto?.randomUUID?.(); } catch (_) {}
+      return String(Date.now());
+    };
+
+    const getActions = () => {
+      const raw = this.item?.system?.actions;
+      return Array.isArray(raw) ? raw : [];
+    };
+
+    const setActions = async (next) => {
+      await this.item.update({ 'system.actions': Array.isArray(next) ? next : [] });
+      this.render(false);
+    };
+
+    el.querySelectorAll('[data-action="sh-item-custom-action-add"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const next = [...getActions(), { id: randomId(), name: '', apCost: 0, mode: 'chat', macro: '', showInCombat: true, showInQuickbar: true }];
+        await setActions(next);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-custom-action-remove"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const id = String(btn.dataset.id ?? '').trim();
+        if (!id) return;
+        const next = getActions().filter((a) => String(a?.id ?? '') !== id);
+        await setActions(next);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-custom-action-edit"]').forEach((input) => {
+      input.addEventListener('change', async (ev) => {
+        const id = String(input.dataset.id ?? '').trim();
+        const field = String(input.dataset.field ?? '').trim();
+        if (!id || !field) return;
+
+        const next = getActions().map((a) => {
+          if (String(a?.id ?? '') !== id) return a;
+          const copy = { ...(a || {}), id };
+          if (field === 'name') copy.name = String(input.value ?? '').trim();
+          if (field === 'apCost') copy.apCost = Number(input.value) || 0;
+          if (field === 'mode') copy.mode = String(input.value ?? '').trim() || 'chat';
+          if (field === 'macro') copy.macro = String(input.value ?? '');
+          if (field === 'showInCombat') copy.showInCombat = !!input.checked;
+          if (field === 'showInQuickbar') copy.showInQuickbar = !!input.checked;
+          return copy;
+        });
+
+        await setActions(next);
+      });
+    });
   }
 }
 
@@ -121,6 +189,7 @@ export class SpaceHolderItemSheet_Wearable extends SpaceHolderBaseItemSheet {
       tabs: [
         { id: 'description' },
         { id: 'attributes' },
+        { id: 'actions' },
         { id: 'modifiers' },
         { id: 'effects' }
       ],

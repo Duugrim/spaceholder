@@ -12,8 +12,10 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/actor/parts/actor-injuries.hbs',
     'systems/spaceholder/templates/actor/parts/actor-inventory.hbs',
     'systems/spaceholder/templates/actor/parts/actor-effects.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-actions.hbs',
     // Item partials
     'systems/spaceholder/templates/item/parts/item-effects.hbs',
+    'systems/spaceholder/templates/item/parts/item-actions.hbs',
     // Icon picker (ApplicationV2)
     'systems/spaceholder/templates/icon-picker/icon-picker.hbs',
     // HUD: Hotbar faction selector

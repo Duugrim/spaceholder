@@ -1,0 +1,102 @@
+<div class="sh-item-actions">
+  <div class="section-header">
+    <i class="fa-solid fa-bolt"></i>
+    {{localize 'SPACEHOLDER.ActionsSystem.UI.ItemActions'}}
+  </div>
+
+  <div class="sh-actions-subheader sh-actions-subheader--row">
+    <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActions'}}</span>
+    {{#if editable}}
+      <button type="button" class="icon-btn" data-action="sh-item-custom-action-add" title="{{localize 'SPACEHOLDER.Actions.Add'}}">
+        <i class="fas fa-plus"></i>
+      </button>
+    {{/if}}
+  </div>
+
+  {{#if system.actions.length}}
+    <div class="sh-custom-actions-list">
+      {{#each system.actions as |ca|}}
+        <div class="sh-custom-action-row" data-id="{{ca.id}}">
+          <input
+            type="text"
+            value="{{ca.name}}"
+            placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActionName'}}"
+            data-action="sh-item-custom-action-edit"
+            data-id="{{ca.id}}"
+            data-field="name"
+          />
+          <input
+            type="number"
+            value="{{ca.apCost}}"
+            min="0"
+            data-action="sh-item-custom-action-edit"
+            data-id="{{ca.id}}"
+            data-field="apCost"
+            title="{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}"
+          />
+          <select data-action="sh-item-custom-action-edit" data-id="{{ca.id}}" data-field="mode">
+            <option value="chat" {{#if (eq ca.mode "chat")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeChat'}}</option>
+            <option value="itemRoll" {{#if (eq ca.mode "itemRoll")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeItemRoll'}}</option>
+            <option value="macro" {{#if (eq ca.mode "macro")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeMacro'}}</option>
+          </select>
+          <label class="sh-custom-action-flag">
+            <input type="checkbox" {{#if ca.showInCombat}}checked{{/if}} data-action="sh-item-custom-action-edit" data-id="{{ca.id}}" data-field="showInCombat"/>
+            <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+          </label>
+          <label class="sh-custom-action-flag">
+            <input type="checkbox" {{#if ca.showInQuickbar}}checked{{/if}} data-action="sh-item-custom-action-edit" data-id="{{ca.id}}" data-field="showInQuickbar"/>
+            <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+          </label>
+
+          {{#if (eq ca.mode "macro")}}
+            <textarea
+              class="sh-custom-action-macro"
+              rows="3"
+              placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.MacroPlaceholder'}}"
+              data-action="sh-item-custom-action-edit"
+              data-id="{{ca.id}}"
+              data-field="macro"
+            >{{ca.macro}}</textarea>
+          {{/if}}
+
+          {{#if @root.editable}}
+            <button type="button" class="icon-btn" data-action="sh-item-custom-action-remove" data-id="{{ca.id}}" title="{{localize 'SPACEHOLDER.Actions.Delete'}}">
+              <i class="fas fa-trash"></i>
+            </button>
+          {{/if}}
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomEmpty'}}</em></p>
+  {{/if}}
+
+  {{#if (eq item.type "wearable")}}
+    <div class="sh-actions-subheader">{{localize 'SPACEHOLDER.ActionsSystem.UI.WearableDefaults'}}</div>
+    <div class="sh-wearable-default-actions">
+      <div class="sh-wearable-default-actions__row">
+        <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.EquipShort'}}</div>
+        <label class="sh-custom-action-flag">
+          <input type="checkbox" name="system.defaultActions.equip.showInCombat" {{#if system.defaultActions.equip.showInCombat}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+        </label>
+        <label class="sh-custom-action-flag">
+          <input type="checkbox" name="system.defaultActions.equip.showInQuickbar" {{#if system.defaultActions.equip.showInQuickbar}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+        </label>
+      </div>
+      <div class="sh-wearable-default-actions__row">
+        <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.UnequipShort'}}</div>
+        <label class="sh-custom-action-flag">
+          <input type="checkbox" name="system.defaultActions.unequip.showInCombat" {{#if system.defaultActions.unequip.showInCombat}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+        </label>
+        <label class="sh-custom-action-flag">
+          <input type="checkbox" name="system.defaultActions.unequip.showInQuickbar" {{#if system.defaultActions.unequip.showInQuickbar}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+        </label>
+      </div>
+    </div>
+  {{/if}}
+</div>
+

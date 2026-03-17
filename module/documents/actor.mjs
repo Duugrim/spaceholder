@@ -137,7 +137,14 @@ export class SpaceHolderActor extends Actor {
     if (!wearables.length) return;
 
     for (const item of wearables) {
-      const itemGroup = String(item.system?.anatomyGroup ?? '').trim();
+      // Resolve wearable group:
+      // - Prefer explicit system.anatomyGroup
+      // - Fallback to anatomyId -> groupId (older items / incomplete config)
+      let itemGroup = String(item.system?.anatomyGroup ?? '').trim();
+      if (!itemGroup) {
+        const anatomyId = String(item.system?.anatomyId ?? '').trim();
+        if (anatomyId) itemGroup = String(anatomyManager.getAnatomyGroupId(anatomyId) ?? '').trim();
+      }
       if (!itemGroup || itemGroup !== groupId) continue;
       const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
       for (const entry of coveredParts) {
