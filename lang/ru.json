@@ -64,6 +64,31 @@
         "None": "Не выбрана"
       }
     },
+    "BodyParts": {
+      "head": "Голова",
+      "neck": "Шея",
+      "back": "Спина",
+      "chest": "Грудь",
+      "abdomen": "Живот",
+      "groin": "Пах",
+      "leftShoulder": "Левое плечо",
+      "rightShoulder": "Правое плечо",
+      "leftArm": "Левая рука",
+      "rightArm": "Правая рука",
+      "leftHand": "Левая кисть",
+      "rightHand": "Правая кисть",
+      "leftThigh": "Левое бедро",
+      "rightThigh": "Правое бедро",
+      "leftShin": "Левая голень",
+      "rightShin": "Правая голень",
+      "leftFoot": "Левая ступня",
+      "rightFoot": "Правая ступня"
+      ,
+      "cephalothorax": "Головогрудь",
+      "abdomenSegment": "Брюшко",
+      "leftLeg": "Левая нога",
+      "rightLeg": "Правая нога"
+    },
     "IconPicker": {
       "Title": "Выбор иконки",
       "SearchPlaceholder": "Поиск…",

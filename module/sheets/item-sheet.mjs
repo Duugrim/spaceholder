@@ -145,6 +145,15 @@ export class SpaceHolderItemSheet_Wearable extends SpaceHolderBaseItemSheet {
     context.anatomyGroupTags = system.anatomyGroup ? [system.anatomyGroup] : [];
     context.bodyPartsForGroup = [];
 
+    const coveredParts = Array.isArray(system.coveredParts) ? system.coveredParts : [];
+    const valueBySlotRef = Object.fromEntries(
+      coveredParts.map((c) => {
+        const ref = String(c.slotRef ?? c.partId ?? "").trim();
+        if (!ref) return null;
+        return [ref, Number(c?.value) || 0];
+      }).filter(Boolean)
+    );
+
     if (selectedAnatomyId) {
       try {
         let anatomyData = null;
@@ -166,20 +175,47 @@ export class SpaceHolderItemSheet_Wearable extends SpaceHolderBaseItemSheet {
         if (groupId) context.anatomyGroupTags = [groupId];
         else if (system.anatomyGroup) context.anatomyGroupTags = [system.anatomyGroup];
 
-        if (anatomyData?.bodyParts) {
-          const armorByPart = system.armorByPart || {};
-          const parts = anatomyData.bodyParts;
-          context.bodyPartsForGroup = Object.values(parts)
-            .map((p) => {
-              const id = p.id || '';
-              const armorEntry = armorByPart[id] || {};
-              return {
-                id,
-                name: p.name || id,
-                armorValue: Number.isFinite(Number(armorEntry.value)) ? Number(armorEntry.value) : 0
-              };
-            })
-            .sort((a, b) => a.name.localeCompare(b.name, game.i18n?.lang || 'en'));
+        const parts = anatomyData?.bodyParts ?? {};
+        if (Object.keys(parts).length) {
+          context.anatomyDataForEditor = {
+            bodyParts: parts,
+            grid: anatomyData.grid ?? {}
+          };
+
+          // Построим детерминированный список экземпляров для UI
+          const byTypeId = new Map();
+          for (const [slotRef, part] of Object.entries(parts)) {
+            const typeId = String(part.id ?? slotRef ?? "").trim();
+            if (!typeId) continue;
+            const arr = byTypeId.get(typeId) || [];
+            arr.push({ slotRef, part });
+            byTypeId.set(typeId, arr);
+          }
+
+          const entries = [];
+          for (const [typeId, arr] of byTypeId.entries()) {
+            arr.sort((a, b) => {
+              const ax = a.part.x ?? 0;
+              const bx = b.part.x ?? 0;
+              if (ax !== bx) return ax - bx;
+              const ay = a.part.y ?? 0;
+              const by = b.part.y ?? 0;
+              if (ay !== by) return ay - by;
+              return a.slotRef.localeCompare(b.slotRef);
+            });
+            arr.forEach((entry, index) => {
+              const baseName = entry.part.displayName || entry.part.name || typeId;
+              const duplicateIndex = arr.length > 1 ? index + 1 : null;
+              const displayName = duplicateIndex ? `${baseName} (${duplicateIndex})` : baseName;
+              entries.push({
+                id: entry.slotRef,
+                name: displayName,
+                armorValue: valueBySlotRef[entry.slotRef] ?? 0
+              });
+            });
+          }
+
+          context.bodyPartsForGroup = entries.sort((a, b) => a.name.localeCompare(b.name, game.i18n?.lang || 'en'));
         }
       } catch (e) {
         console.error('SpaceHolder | Failed to prepare wearable body parts list:', e);
@@ -193,39 +229,33 @@ export class SpaceHolderItemSheet_Wearable extends SpaceHolderBaseItemSheet {
     // Режим редактирования покрытия (флаг на документе)
     context.wearableCoverageEditMode = !!this.document?.flags?.spaceholder?.wearableCoverageEditMode;
 
-    // Данные анатомии для визуализатора (левая колонка)
-    context.anatomyDataForEditor = null;
-    context.coveredList = [];
-    if (selectedAnatomyId) {
-      try {
-        let anatomyData = null;
-        const registryInfo = anatomyManager.getAnatomyInfo(selectedAnatomyId);
-        if (registryInfo) anatomyData = await anatomyManager.loadAnatomy(selectedAnatomyId);
-        else {
-          await anatomyManager.loadWorldPresets();
-          const preset = anatomyManager.getWorldPresets().find((p) => p.id === selectedAnatomyId);
-          if (preset) anatomyData = preset;
-        }
-        if (anatomyData?.bodyParts) {
-          context.anatomyDataForEditor = {
-            bodyParts: anatomyData.bodyParts,
-            grid: anatomyData.grid ?? {}
-          };
-          const armorByPart = system.armorByPart || {};
-          const parts = anatomyData.bodyParts;
-          context.coveredList = Object.keys(armorByPart)
-            .filter((id) => parts[id])
-            .map((id) => ({
-              partId: id,
-              partName: parts[id].name || id,
-              armorValue: Number.isFinite(Number(armorByPart[id]?.value)) ? Number(armorByPart[id].value) : 0
-            }))
-            .sort((a, b) => a.partName.localeCompare(b.partName, game.i18n?.lang || 'en'));
-        }
-      } catch (e) {
-        console.error('SpaceHolder | Failed to prepare wearable coverage data:', e);
-      }
+    // Список покрытых частей — из coveredParts; имена берём из анатомии, если есть
+    const partsForNames = context.anatomyDataForEditor?.bodyParts ?? {};
+    const countByTypeId = {};
+    for (const p of Object.values(partsForNames)) {
+      const typeId = String(p?.id ?? "").trim();
+      if (!typeId) continue;
+      countByTypeId[typeId] = (countByTypeId[typeId] || 0) + 1;
     }
+    context.coveredList = coveredParts
+      .map((entry) => {
+        const slotRef = String(entry.slotRef ?? entry.partId ?? "").trim();
+        if (!slotRef) return null;
+        const part = partsForNames[slotRef];
+        const baseName = part?.displayName || part?.name || part?.id || slotRef;
+        const typeId = String(part?.id ?? "").trim();
+        const hasDup = !!typeId && (countByTypeId[typeId] || 0) > 1;
+        const m = String(slotRef).match(/#(\d+)$/);
+        const dupIndex = hasDup && m ? Number(m[1]) : null;
+        const uiName = dupIndex ? `${baseName} (${dupIndex})` : baseName;
+        return {
+          partId: slotRef,
+          partName: uiName,
+          armorValue: Number(entry?.value) || 0
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.partName.localeCompare(b.partName, game.i18n?.lang || 'en'));
 
     // Targets для модификаторов (используется на вкладке Modifiers)
     const cfgTargets = CONFIG.SPACEHOLDER?.characterModifierTargets || {};
@@ -250,25 +280,4 @@ export class SpaceHolderItemSheet_Wearable extends SpaceHolderBaseItemSheet {
     await super._onRender(context, options);
   }
 
-  /**
-   * Собрать armorByPart из полей формы и сохранить в документ.
-   * Вызывается из хука renderItemSheet и при blur/change полей защиты.
-   * @param {HTMLFormElement} form
-   * @private
-   */
-  async _submitWearableArmorFromForm(form) {
-    const armorUpdates = {};
-    form.querySelectorAll('input[name^="system.armorByPart."][name$=".value"]').forEach((input) => {
-      const name = input.getAttribute('name') || '';
-      const m = name.match(/^system\.armorByPart\.([^.]+)\.value$/);
-      if (m) {
-        const partId = m[1];
-        const value = Number(input.value);
-        armorUpdates[`system.armorByPart.${partId}.value`] = Number.isFinite(value) ? value : 0;
-      }
-    });
-    if (Object.keys(armorUpdates).length) {
-      await this.document.update(armorUpdates);
-    }
-  }
 }

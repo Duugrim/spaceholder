@@ -17,6 +17,92 @@ function _safeAnatomyFileName(id) {
   return String(id ?? "").replace(/[^a-zA-Z0-9_-]/g, "_") || "anatomy";
 }
 
+/** Попытаться локализовать имя части тела по её типу (id). */
+function _resolveBodyPartName(id, explicitName) {
+  const cleanId = String(id ?? "").trim();
+  const explicit = String(explicitName ?? "").trim();
+  if (cleanId) {
+    const key = `SPACEHOLDER.BodyParts.${cleanId}`;
+    const localized = game.i18n?.localize?.(key);
+    if (localized && localized !== key) return localized;
+  }
+  if (explicit) return explicit;
+  return cleanId || "-";
+}
+
+/**
+ * Построить нормализованный словарь частей тела для актёра.
+ * - Использует part.id как тип (ключ локализации).
+ * - Генерирует slotRef (детерминированный, по порядку и счётчику id).
+ * - Генерирует uuid для отличия экземпляров с одинаковым id.
+ *
+ * @param {Object<string, Object>} rawBodyParts - bodyParts из anatomy JSON (ключ не считается типом).
+ * @returns {Object<string, Object>} Нормализованный словарь { slotRef -> part }
+ */
+function _buildNormalizedActorBodyParts(rawBodyParts) {
+  const src = rawBodyParts && typeof rawBodyParts === "object" ? rawBodyParts : {};
+  const result = {};
+  const idCounters = new Map();
+  const rawKeyToSlotRef = {};
+
+  for (const [rawKey, rawPart] of Object.entries(src)) {
+    if (!rawPart || typeof rawPart !== "object") continue;
+    const typeId = String(rawPart.id ?? rawKey ?? "").trim();
+    if (!typeId) continue;
+
+    const prev = idCounters.get(typeId) || 0;
+    const nextIndex = prev + 1;
+    idCounters.set(typeId, nextIndex);
+
+    const slotRef = `${typeId}#${nextIndex}`;
+    rawKeyToSlotRef[rawKey] = slotRef;
+
+    const part = foundry.utils.deepClone(rawPart);
+    part.id = typeId;
+    part.slotRef = slotRef;
+
+    const uuid =
+      part.uuid ||
+      foundry.utils.randomID?.() ||
+      globalThis.randomID?.() ||
+      globalThis.crypto?.randomUUID?.() ||
+      `${typeId}-${nextIndex}`;
+    part.uuid = String(uuid);
+
+    part.displayName = _resolveBodyPartName(typeId, part.name);
+
+    if (!Array.isArray(part.organs)) part.organs = [];
+    if (!Array.isArray(part.tags)) part.tags = Array.isArray(rawPart.tags) ? rawPart.tags : [];
+    if (typeof part.x !== "number") part.x = Number(rawPart.x ?? 0) || 0;
+    if (typeof part.y !== "number") part.y = Number(rawPart.y ?? 0) || 0;
+    if (!Array.isArray(part.links)) part.links = Array.isArray(rawPart.links) ? rawPart.links : [];
+    if (!("status" in part)) part.status = "healthy";
+    if (!("internal" in part)) part.internal = false;
+
+    result[slotRef] = part;
+  }
+
+  // Второй проход: ремапим links из исходных ключей anatomy JSON -> slotRef.
+  // Это нужно, чтобы визуализаторы (actor anatomy editor / wearable coverage editor) видели связи.
+  for (const part of Object.values(result)) {
+    const links = Array.isArray(part.links) ? part.links : [];
+    part.links = links
+      .map((to) => {
+        const key = String(to ?? "").trim();
+        if (!key) return null;
+        // Если уже slotRef и существует — оставляем.
+        if (result[key]) return key;
+        // Иначе пробуем как исходный ключ из JSON.
+        const mapped = rawKeyToSlotRef[key];
+        if (mapped && result[mapped]) return mapped;
+        return null;
+      })
+      .filter(Boolean);
+  }
+
+  return result;
+}
+
 export class AnatomyManager {
   
   constructor() {
@@ -143,9 +229,11 @@ export class AnatomyManager {
     
     const anatomyTemplate = await this.loadAnatomy(anatomyId);
     const actorAnatomy = foundry.utils.deepClone(anatomyTemplate);
+
+    actorAnatomy.bodyParts = _buildNormalizedActorBodyParts(actorAnatomy.bodyParts);
     
     // Применяем модификаторы и переопределения; задаём слоты органов по умолчанию
-    for (const [partId, part] of Object.entries(actorAnatomy.bodyParts)) {
+    for (const [slotRef, part] of Object.entries(actorAnatomy.bodyParts)) {
       let newMax = part.maxHp;
       if (healthMultiplier !== 1.0) {
         newMax = Math.ceil(newMax * healthMultiplier);
@@ -153,8 +241,9 @@ export class AnatomyManager {
       part.maxHp = newMax;
       if (!Array.isArray(part.organs)) part.organs = [];
 
-      if (overrides[partId]) {
-        Object.assign(part, overrides[partId]);
+      const overrideByTypeId = overrides[part.id];
+      if (overrideByTypeId) {
+        Object.assign(part, overrideByTypeId);
       }
     }
 
@@ -291,10 +380,7 @@ export class AnatomyManager {
       await actor.update(delUpdate);
     }
 
-    const bodyParts = foundry.utils.deepClone(preset.bodyParts);
-    for (const part of Object.values(bodyParts)) {
-      if (!Array.isArray(part.organs)) part.organs = [];
-    }
+    const bodyParts = _buildNormalizedActorBodyParts(foundry.utils.deepClone(preset.bodyParts));
 
     const update = {
       "system.anatomy.id": preset.id,
@@ -407,7 +493,7 @@ export class AnatomyManager {
       return false;
     }
 
-    const required = ['id', 'name', 'bodyParts'];
+    const required = ['id', 'bodyParts'];
     for (const field of required) {
       if (!(field in anatomyData)) {
         console.error(`Missing required field: ${field}`);
@@ -421,7 +507,7 @@ export class AnatomyManager {
       return false;
     }
 
-    const partRequired = ['id', 'name', 'weight', 'maxHp'];
+    const partRequired = ['id', 'weight', 'maxHp'];
     for (let [partId, part] of Object.entries(bodyParts)) {
       for (const field of partRequired) {
         if (!(field in part)) {

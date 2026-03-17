@@ -85,7 +85,7 @@
       "equipped": false,
       "anatomyId": null,
       "anatomyGroup": null,
-      "armorByPart": {},
+      "coveredParts": [],
       "modifiers": {
         "abilities": [],
         "derived": [],

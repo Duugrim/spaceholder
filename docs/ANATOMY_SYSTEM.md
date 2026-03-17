@@ -60,10 +60,8 @@ module/data/anatomy/
   "bodyParts": {
     "torso": {
       "id": "torso",
-      "name": "Torso", 
-      "parent": null,
-      "coverage": 10000,
       "maxHp": 50,
+      "weight": 1400,
       "status": "healthy",
       "internal": false,
       "tags": ["core", "vital", "armor_chest"]
@@ -72,7 +70,7 @@ module/data/anatomy/
 }
 ```
 
-Примечание: currentHp не хранится в файлах анатомии. Он инициализируется автоматически из maxHp при применении анатомии к актёру. Контейнер system.health.bodyParts является единственным источником правды для текущего состояния частей тела.
+Примечание: currentHp и uuid/slotRef не хранятся в файлах анатомии. Они инициализируются автоматически при применении анатомии к актёру. Контейнер system.health.bodyParts является единственным источником правды для текущего состояния частей тела.
 
 ### Новые поля частей тела
 - **status** (string): Текущее состояние ("healthy", "bruised", "injured", "badly_injured", "destroyed", "missing")

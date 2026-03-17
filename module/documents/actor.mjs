@@ -76,11 +76,24 @@ export class SpaceHolderActor extends Actor {
       return;
     }
 
+    // Построим map uuid -> slotRef для новых анатомий; для старых (без uuid) fallback на partId.
+    const uuidToSlotRef = {};
+    for (const [slotRef, part] of Object.entries(bodyParts)) {
+      if (part?.uuid) uuidToSlotRef[part.uuid] = slotRef;
+    }
+
     // Предварительно собираем сумму урона по частям (amount хранится в масштабе x100)
     const sumDamageByPart = {};
     for (const inj of injuries) {
-      if (!inj?.partId || typeof inj.amount !== 'number') continue;
-      sumDamageByPart[inj.partId] = (sumDamageByPart[inj.partId] || 0) + Math.max(0, inj.amount | 0);
+      if (typeof inj?.amount !== 'number') continue;
+      let key = null;
+      if (inj.partUuid && uuidToSlotRef[inj.partUuid]) {
+        key = uuidToSlotRef[inj.partUuid];
+      } else if (inj.partId && bodyParts[inj.partId]) {
+        key = inj.partId;
+      }
+      if (!key) continue;
+      sumDamageByPart[key] = (sumDamageByPart[key] || 0) + Math.max(0, inj.amount | 0);
     }
 
     // Обновляем производные поля частей тела (граф связей по links; попадания — в shot-manager)
@@ -126,9 +139,12 @@ export class SpaceHolderActor extends Actor {
     for (const item of wearables) {
       const itemGroup = String(item.system?.anatomyGroup ?? '').trim();
       if (!itemGroup || itemGroup !== groupId) continue;
-      const armorByPart = item.system?.armorByPart || {};
-      for (const [partId, entry] of Object.entries(armorByPart)) {
-        const part = bodyParts[partId];
+      const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
+      for (const entry of coveredParts) {
+        // Новый формат: slotRef; legacy: partId
+        const slotRef = String(entry?.slotRef ?? entry?.partId ?? '').trim();
+        if (!slotRef) continue;
+        const part = bodyParts[slotRef];
         if (!part) continue;
         const val = Number(entry?.value ?? 0);
         if (!Number.isFinite(val) || val <= 0) continue;
@@ -194,15 +210,40 @@ export class SpaceHolderActor extends Actor {
    * Добавить травму
    * amount хранится как целое число в масштабе x100 (например, 125 = 1.25 урона)
    */
-  async addInjury({ partId, amount, type = 'unknown', status = 'raw', source = '' } = {}) {
+  async addInjury({ partId, partUuid, amount, type = 'unknown', status = 'raw', source = '' } = {}) {
     const bodyParts = this.system.health?.bodyParts || {};
-    if (!partId || !bodyParts[partId]) return false;
+    if (!bodyParts || !Object.keys(bodyParts).length) return false;
+
+    // Разрешаем как новый формат (partUuid), так и legacy (partId/slotRef).
+    let resolvedSlotRef = null;
+    let resolvedUuid = null;
+
+    if (partUuid) {
+      for (const [slotRef, part] of Object.entries(bodyParts)) {
+        if (part?.uuid && part.uuid === partUuid) {
+          resolvedSlotRef = slotRef;
+          resolvedUuid = part.uuid;
+          break;
+        }
+      }
+    }
+
+    if (!resolvedSlotRef && partId) {
+      const part = bodyParts[partId];
+      if (part) {
+        resolvedSlotRef = partId;
+        resolvedUuid = part.uuid || null;
+      }
+    }
+
+    if (!resolvedSlotRef) return false;
 
     // Гарантируем целое и неотрицательное значение
     const amt = Math.max(0, (amount ?? 0) | 0);
     const injury = {
       id: foundry.utils.randomID?.() || randomID?.() || crypto.randomUUID?.() || String(Date.now()),
-      partId,
+      partId: resolvedSlotRef,
+      partUuid: resolvedUuid ?? undefined,
       amount: amt, // x100
       type,
       status,
@@ -246,7 +287,7 @@ export class SpaceHolderActor extends Actor {
   /** Получить травмы по части тела */
   getInjuriesByPart(partId) {
     const injuries = Array.isArray(this.system.health?.injuries) ? this.system.health.injuries : [];
-    return injuries.filter(i => i.partId === partId);
+    return injuries.filter(i => i.partId === partId || i.partUuid === partId);
   }
 
   /** Текущее здоровье части тела (derived, без сохранения) */

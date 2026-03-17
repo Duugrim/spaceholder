@@ -20,6 +20,16 @@
       "icon": "fas fa-horse",
       "group": "quadruped"
     },
+    "arachnid": {
+      "name": "Arachnid",
+      "nameLocalized": "SPACEHOLDER.Anatomy.Arachnid",
+      "file": "arachnid.json",
+      "description": "Eight-legged spider-like creature",
+      "descriptionLocalized": "SPACEHOLDER.Anatomy.Arachnid.Desc",
+      "category": "basic",
+      "icon": "fas fa-spider",
+      "group": "arachnid"
+    },
     "_serpentine": {
       "name": "Serpentine",
       "nameLocalized": "SPACEHOLDER.Anatomy.Serpentine",

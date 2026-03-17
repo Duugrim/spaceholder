@@ -22,7 +22,7 @@ function toPx(x, y, wrapW, wrapH, centerX, centerY, cellSize, circleRadius) {
  * @param {HTMLElement} container
  * @param {Object} options
  * @param {{ bodyParts: Object, grid?: { width?: number, height?: number } }} options.anatomyData
- * @param {Object} options.armorByPart - { [partId]: { value: number } }
+ * @param {Object} options.armorByPart - { [slotRef]: { value: number } }
  * @param {(armorByPart: Object) => void} options.onChange - вызывается после переключения покрытия части
  * @param {boolean} [options.showOnlyCovered] - если true, показывать только выбранные (покрытые) части без голубой пометки и без клика
  */
@@ -48,10 +48,10 @@ export class WearableCoverageEditor {
     if (this.showOnlyCovered) this.container.classList.add("wearable-coverage-editor--summary");
 
     const partsById = {};
-    for (const [partId, part] of Object.entries(bodyParts)) {
+    for (const [slotRef, part] of Object.entries(bodyParts)) {
       const x = Number(part.x ?? 0);
       const y = Number(part.y ?? 0);
-      partsById[partId] = { ...part, id: partId, x, y };
+      partsById[slotRef] = { ...part, id: slotRef, x, y };
     }
 
     const partIdsToShow = this.showOnlyCovered
@@ -146,7 +146,7 @@ export class WearableCoverageEditor {
       node.style.top = `${px.top}px`;
       node.style.width = `${circleRadius * 2}px`;
       node.style.height = `${circleRadius * 2}px`;
-      node.title = part.name || partId;
+      node.title = part.displayName || part.name || partId;
       inner.appendChild(node);
 
       if (!this.showOnlyCovered) {

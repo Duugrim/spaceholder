@@ -321,31 +321,25 @@ Hooks.once('init', function () {
         }
       } catch (_) { /* ignore */ }
       if (anatomyData?.bodyParts) {
-        const armorByPart = foundry.utils.deepClone(doc.system?.armorByPart ?? {});
+        const coveredParts = Array.isArray(doc.system?.coveredParts) ? doc.system.coveredParts : [];
+        const armorByPart = Object.fromEntries(
+          coveredParts.map((c) => {
+            const slotRef = String(c.slotRef ?? c.partId ?? "").trim();
+            if (!slotRef) return null;
+            return [slotRef, { value: Number(c?.value) || 0 }];
+          }).filter(Boolean)
+        );
         const showOnlyCovered = !doc.flags?.spaceholder?.wearableCoverageEditMode;
         const editor = new WearableCoverageEditor(editorContainer, {
           anatomyData: { bodyParts: anatomyData.bodyParts, grid: anatomyData.grid ?? {} },
           armorByPart,
           showOnlyCovered,
           onChange: showOnlyCovered ? undefined : async (next) => {
-            // next — новое состояние armorByPart, собранное редактором (карта partId → { value })
-            const prev = doc.system?.armorByPart ?? {};
-            const update = {};
-
-            // Сначала помечаем удалённые ключи специальным синтаксисом "-=key"
-            for (const key of Object.keys(prev)) {
-              if (!Object.prototype.hasOwnProperty.call(next, key)) {
-                update[`system.armorByPart.-=${key}`] = null;
-              }
-            }
-
-            // Затем проставляем/обновляем оставшиеся значения
-            for (const [key, data] of Object.entries(next)) {
-              const val = Number(data?.value) || 0;
-              update[`system.armorByPart.${key}.value`] = val;
-            }
-
-            await doc.update(update);
+            const nextCoveredParts = Object.entries(next).map(([slotRef, data]) => ({
+              slotRef,
+              value: Number(data?.value) || 0
+            }));
+            await doc.update({ system: { coveredParts: nextCoveredParts } });
             await renderAndStayOnCoverage();
           }
         });
@@ -360,10 +354,10 @@ Hooks.once('init', function () {
         el.dataset.spaceholderBound = '1';
         el.addEventListener('click', (e) => {
           e.preventDefault();
-          const partId = e.currentTarget.dataset?.partId;
-          const partName = e.currentTarget.dataset?.partName || partId;
-          if (!partId) return;
-          openWearableCoverageEditDialog(doc, partId, partName).then(() => renderAndStayOnCoverage());
+          const slotRef = e.currentTarget.dataset?.partId;
+          const partName = e.currentTarget.dataset?.partName || slotRef;
+          if (!slotRef) return;
+          openWearableCoverageEditDialog(doc, slotRef, partName).then(() => renderAndStayOnCoverage());
         });
       });
       element.querySelectorAll('[data-action="wearable-coverage-remove"]').forEach((el) => {
@@ -371,16 +365,17 @@ Hooks.once('init', function () {
         el.dataset.spaceholderBound = '1';
         el.addEventListener('click', async (e) => {
           e.preventDefault();
-          const partId = e.currentTarget.dataset?.partId;
-          if (!partId) return;
+          const slotRef = e.currentTarget.dataset?.partId;
+          if (!slotRef) return;
 
-          const prev = doc.system?.armorByPart ?? {};
-          if (!Object.prototype.hasOwnProperty.call(prev, partId)) return;
+          const prev = Array.isArray(doc.system?.coveredParts) ? doc.system.coveredParts : [];
+          const nextCoveredParts = prev.filter((c) => {
+            const ref = String(c.slotRef ?? c.partId ?? "").trim();
+            return ref && ref !== slotRef;
+          });
+          if (nextCoveredParts.length === prev.length) return;
 
-          const update = {};
-          update[`system.armorByPart.-=${partId}`] = null;
-
-          await doc.update(update);
+          await doc.update({ system: { coveredParts: nextCoveredParts } });
           await renderAndStayOnCoverage();
         });
       });
@@ -499,14 +494,18 @@ async function openWearableAnatomyDialog(item) {
 /**
  * Диалог редактирования значения защиты для одной части тела (предмет Wearable).
  * @param {Item} item - документ предмета типа wearable
- * @param {string} partId - id части тела
+ * @param {string} partRef - slotRef части тела (или legacy partId)
  * @param {string} [partName] - отображаемое имя части
  */
-async function openWearableCoverageEditDialog(item, partId, partName) {
-  if (!item || item.type !== 'wearable' || !partId) return;
-  const armorByPart = item.system?.armorByPart ?? {};
-  const current = Number(armorByPart[partId]?.value) || 0;
-  const displayName = (partName || partId).replace(/</g, '&lt;');
+async function openWearableCoverageEditDialog(item, partRef, partName) {
+  if (!item || item.type !== 'wearable' || !partRef) return;
+  const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
+  const entry = coveredParts.find((c) => {
+    const ref = String(c.slotRef ?? c.partId ?? "").trim();
+    return ref && ref === partRef;
+  });
+  const current = entry ? (Number(entry.value) || 0) : 0;
+  const displayName = (partName || partRef).replace(/</g, '&lt;');
 
   const L = (key) => game.i18n.localize(key);
   const labelValue = L('SPACEHOLDER.Wearable.ArmorValue');
@@ -534,7 +533,17 @@ async function openWearableCoverageEditDialog(item, partId, partName) {
           const root = dlgEvent.currentTarget;
           const raw = root.querySelector('#wearable-coverage-value')?.value;
           const value = Math.max(0, parseInt(raw, 10) || 0);
-          await item.update({ [`system.armorByPart.${partId}.value`]: value });
+          const prev = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
+          const idx = prev.findIndex((c) => {
+            const ref = String(c.slotRef ?? c.partId ?? "").trim();
+            return ref && ref === partRef;
+          });
+          const nextEntry = { slotRef: partRef, value };
+          const nextCoveredParts =
+            idx >= 0
+              ? prev.map((c, i) => (i === idx ? nextEntry : c))
+              : [...prev, nextEntry];
+          await item.update({ system: { coveredParts: nextCoveredParts } });
         }
       },
       { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }

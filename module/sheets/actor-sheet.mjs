@@ -245,12 +245,29 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   _buildBodyPartsList(bodyParts, currentHpMap = {}) {
     if (!bodyParts) return [];
 
+    const countByTypeId = {};
+    for (const part of Object.values(bodyParts)) {
+      const typeId = String(part?.id ?? "").trim();
+      if (!typeId) continue;
+      countByTypeId[typeId] = (countByTypeId[typeId] || 0) + 1;
+    }
+
     const list = [];
     for (const [partId, part] of Object.entries(bodyParts)) {
       const currentHp = currentHpMap[partId] ?? part.maxHp;
+      const baseName = part.displayName || part.name || part.id || partId;
+      const typeId = String(part.id ?? "").trim();
+      const hasDup = !!typeId && (countByTypeId[typeId] || 0) > 1;
+      let dupIndex = null;
+      if (hasDup) {
+        const m = String(partId).match(/#(\d+)$/);
+        dupIndex = m ? Number(m[1]) : null;
+      }
+      const uiName = hasDup && dupIndex ? `${baseName} (${dupIndex})` : baseName;
       list.push({
         ...part,
         id: partId,
+        name: uiName,
         currentHp,
         treePrefix: "",
         hasChildren: Array.isArray(part.links) && part.links.length > 0,
@@ -384,16 +401,54 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const injuries = Array.isArray(system.health?.injuries) ? system.health.injuries : [];
     const bodyParts = system.health?.bodyParts || {};
 
-    // Опции для выпадающего списка частей
-    context.bodyPartSelectOptions = Object.entries(bodyParts).map(([id, part]) => ({ id, name: part.name }));
+    // Построим список частей с учётом дублей (по part.id)
+    const byTypeId = new Map();
+    for (const [slotRef, part] of Object.entries(bodyParts)) {
+      const typeId = String(part.id ?? slotRef ?? "").trim();
+      if (!typeId) continue;
+      const arr = byTypeId.get(typeId) || [];
+      arr.push({ slotRef, part });
+      byTypeId.set(typeId, arr);
+    }
+
+    const partOptions = [];
+    for (const [typeId, arr] of byTypeId.entries()) {
+      arr.sort((a, b) => {
+        const ax = a.part.x ?? 0;
+        const bx = b.part.x ?? 0;
+        if (ax !== bx) return ax - bx;
+        const ay = a.part.y ?? 0;
+        const by = b.part.y ?? 0;
+        if (ay !== by) return ay - by;
+        return a.slotRef.localeCompare(b.slotRef);
+      });
+      arr.forEach((entry, index) => {
+        const baseName = entry.part.displayName || entry.part.name || typeId;
+        const duplicateIndex = arr.length > 1 ? index + 1 : null;
+        const displayName = duplicateIndex ? `${baseName} (${duplicateIndex})` : baseName;
+        partOptions.push({ id: entry.part.uuid || entry.slotRef, name: displayName });
+      });
+    }
+
+    // Опции для выпадающего списка частей: идентификатор — uuid (если есть), иначе slotRef
+    context.bodyPartSelectOptions = partOptions;
 
     // Представление травм для UI
     context.injuriesList = injuries.map(inj => {
-      const part = bodyParts[inj.partId];
+      let part = null;
+      let partKey = null;
+      if (inj.partUuid) {
+        partKey = Object.keys(bodyParts).find((slotRef) => bodyParts[slotRef]?.uuid === inj.partUuid) || null;
+      }
+      if (!partKey && inj.partId && bodyParts[inj.partId]) {
+        partKey = inj.partId;
+      }
+      if (partKey) part = bodyParts[partKey];
+
       return {
         ...this.actor.formatInjuryForDisplay?.(inj) ?? inj,
         id: inj.id,
-        partName: part?.name || inj.partId,
+        partName: part?.displayName || part?.name || inj.partId || inj.partUuid || "",
         amountDisplay: (Math.floor((inj.amount ?? 0)) / 100).toFixed(2), // amount хранится x100
         createdAtText: inj.createdAt ? new Date(inj.createdAt).toLocaleString() : ''
       };
@@ -721,7 +776,11 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const labelSource = L('SPACEHOLDER.Injuries.Fields.Source');
     const optional = L('SPACEHOLDER.Common.Optional');
 
-    const optionsHTML = Object.entries(bodyParts).map(([id, p]) => `<option value="${id}">${p.name}</option>`).join('');
+    // Используем подготовленный список опций (uuid/slotRef + отображаемое имя)
+    const options = Array.isArray(this._context?.bodyPartSelectOptions)
+      ? this._context.bodyPartSelectOptions
+      : Object.entries(bodyParts).map(([id, p]) => ({ id, name: p.displayName || p.name || id }));
+    const optionsHTML = options.map((opt) => `<option value="${opt.id}">${opt.name}</option>`).join('');
     const content = `
       <div class="injury-create-dialog">
         <div class="form-group"><label>${labelPart}</label>
@@ -742,18 +801,19 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           action: 'create', label: L('SPACEHOLDER.Actions.Add'), icon: 'fa-solid fa-check', default: true,
           callback: async (dlgEvent) => {
             const root = dlgEvent.currentTarget;
-            const partId = root.querySelector('#inj-part')?.value;
+            const partRef = root.querySelector('#inj-part')?.value;
             const amountStr = root.querySelector('#inj-amount')?.value ?? '0';
             const type = root.querySelector('#inj-type')?.value ?? '';
             const status = root.querySelector('#inj-status')?.value ?? '';
             const source = root.querySelector('#inj-source')?.value ?? '';
             const parsed = Number.parseFloat(String(amountStr).replace(',', '.'));
-            if (!partId || Number.isNaN(parsed)) {
+            if (!partRef || Number.isNaN(parsed)) {
               ui.notifications.warn(L('SPACEHOLDER.Injuries.Errors.InvalidInput'));
               return;
             }
             const amount = Math.max(0, Math.floor(parsed * 100));
-            await this.actor.addInjury({ partId, amount, type, status, source });
+            // Считаем, что селект возвращает uuid, если он есть; actor.addInjury разберётся.
+            await this.actor.addInjury({ partUuid: partRef, amount, type, status, source });
             this.render(false);
           }
         },

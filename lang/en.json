@@ -64,6 +64,31 @@
         "None": "Not selected"
       }
     },
+    "BodyParts": {
+      "head": "Head",
+      "neck": "Neck",
+      "back": "Back",
+      "chest": "Chest",
+      "abdomen": "Abdomen",
+      "groin": "Groin",
+      "leftShoulder": "Left Shoulder",
+      "rightShoulder": "Right Shoulder",
+      "leftArm": "Left Arm",
+      "rightArm": "Right Arm",
+      "leftHand": "Left Hand",
+      "rightHand": "Right Hand",
+      "leftThigh": "Left Thigh",
+      "rightThigh": "Right Thigh",
+      "leftShin": "Left Shin",
+      "rightShin": "Right Shin",
+      "leftFoot": "Left Foot",
+      "rightFoot": "Right Foot"
+      ,
+      "cephalothorax": "Cephalothorax",
+      "abdomenSegment": "Abdomen",
+      "leftLeg": "Left Leg",
+      "rightLeg": "Right Leg"
+    },
     "IconPicker": {
       "Title": "Icon Picker",
       "SearchPlaceholder": "Search…",

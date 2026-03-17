@@ -314,7 +314,13 @@ export class AnatomyEditor {
     header.className = "anatomy-editor-panel-header";
     const nameEl = document.createElement("div");
     nameEl.className = "anatomy-editor-panel-title";
-    nameEl.textContent = bodyPart.name || partId;
+    const allBodyParts = this.actor?.system?.health?.bodyParts ?? {};
+    const typeId = String(bodyPart?.id ?? "").trim();
+    const hasDup = !!typeId && Object.values(allBodyParts).filter((p) => String(p?.id ?? "").trim() === typeId).length > 1;
+    const baseName = bodyPart.displayName || bodyPart.name || bodyPart.id || partId;
+    const m = String(partId).match(/#(\d+)$/);
+    const dupIndex = hasDup && m ? Number(m[1]) : null;
+    nameEl.textContent = dupIndex ? `${baseName} (${dupIndex})` : baseName;
     header.appendChild(nameEl);
     if (this.editMode && this.editable) {
       const editBtn = document.createElement("button");
@@ -709,20 +715,27 @@ export class AnatomyEditor {
           callback: async (e) => {
             const root = e.currentTarget;
             const id = (root.querySelector("#ap-id")?.value ?? "").trim().replace(/\s+/g, "") || foundry.utils.randomID();
-            const name = (root.querySelector("#ap-name")?.value ?? "").trim() || id;
+            const name = (root.querySelector("#ap-name")?.value ?? "").trim() || "";
             const weight = Math.max(1, parseInt(root.querySelector("#ap-weight")?.value ?? "500", 10));
             const maxHp = Math.max(1, parseInt(root.querySelector("#ap-maxHp")?.value ?? "20", 10));
             const material = (root.querySelector("#ap-material")?.value ?? "").trim() || null;
             const x = parseInt(root.querySelector("#ap-x")?.value ?? "0", 10) || 0;
             const y = parseInt(root.querySelector("#ap-y")?.value ?? "0", 10) || 0;
             const bodyParts = foundry.utils.deepClone(this.actor.system.health?.bodyParts ?? {});
-            if (bodyParts[id]) {
+            // Для runtime-структуры анатомии актёра ключом выступает slotRef; здесь используем id#N
+            const existing = Object.keys(bodyParts).filter((k) => k === id || k.startsWith(`${id}#`));
+            const nextIndex = existing.length ? existing.length + 1 : 1;
+            const slotRef = `${id}#${nextIndex}`;
+            if (bodyParts[slotRef]) {
               ui.notifications.warn("Часть с таким ID уже существует");
               return;
             }
-            bodyParts[id] = {
+            const uuid = foundry.utils.randomID?.() || globalThis.randomID?.() || globalThis.crypto?.randomUUID?.() || `${id}-${Date.now()}`;
+            bodyParts[slotRef] = {
               id,
-              name,
+              name: name || undefined,
+              uuid,
+              slotRef,
               weight,
               maxHp,
               material,

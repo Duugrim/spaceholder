@@ -1,0 +1,120 @@
+{
+  "id": "arachnid",
+  "name": "Arachnid",
+  "description": "Eight-legged spider-like creature anatomy",
+  "version": "2.0.0",
+  "grid": { "width": 9, "height": 7 },
+  "bodyParts": {
+    "cephalothorax": {
+      "id": "cephalothorax",
+      "weight": 6000,
+      "maxHp": 55,
+      "x": 4,
+      "y": 3,
+      "tags": ["core", "vital", "armor_body"],
+      "links": [
+        "abdomenSegment",
+        "leftLeg1",
+        "leftLeg2",
+        "leftLeg3",
+        "leftLeg4",
+        "rightLeg1",
+        "rightLeg2",
+        "rightLeg3",
+        "rightLeg4"
+      ]
+    },
+    "abdomenSegment": {
+      "id": "abdomenSegment",
+      "weight": 4500,
+      "maxHp": 45,
+      "x": 4,
+      "y": 4,
+      "tags": ["core", "armor_body"],
+      "links": ["cephalothorax"]
+    },
+    "leftLeg1": {
+      "id": "leftLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 2,
+      "y": 2,
+      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    },
+    "leftLeg2": {
+      "id": "leftLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 2,
+      "y": 3,
+      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    },
+    "leftLeg3": {
+      "id": "leftLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 2,
+      "y": 4,
+      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    },
+    "leftLeg4": {
+      "id": "leftLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 2,
+      "y": 5,
+      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    },
+    "rightLeg1": {
+      "id": "rightLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 6,
+      "y": 2,
+      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    },
+    "rightLeg2": {
+      "id": "rightLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 6,
+      "y": 3,
+      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    },
+    "rightLeg3": {
+      "id": "rightLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 6,
+      "y": 4,
+      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    },
+    "rightLeg4": {
+      "id": "rightLeg",
+      "weight": 1200,
+      "maxHp": 18,
+      "x": 6,
+      "y": 5,
+      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
+      "links": ["cephalothorax"]
+    }
+  },
+  "links": [
+    { "from": "cephalothorax", "to": "abdomenSegment" },
+    { "from": "cephalothorax", "to": "leftLeg1" },
+    { "from": "cephalothorax", "to": "leftLeg2" },
+    { "from": "cephalothorax", "to": "leftLeg3" },
+    { "from": "cephalothorax", "to": "leftLeg4" },
+    { "from": "cephalothorax", "to": "rightLeg1" },
+    { "from": "cephalothorax", "to": "rightLeg2" },
+    { "from": "cephalothorax", "to": "rightLeg3" },
+    { "from": "cephalothorax", "to": "rightLeg4" }
+  ]
+}
