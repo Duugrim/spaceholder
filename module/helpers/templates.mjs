@@ -13,6 +13,9 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/actor/parts/actor-inventory.hbs',
     'systems/spaceholder/templates/actor/parts/actor-effects.hbs',
     'systems/spaceholder/templates/actor/parts/actor-actions.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-stats-derived.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-character-header.hbs',
+    'systems/spaceholder/templates/partials/sh-tab-banner.hbs',
     // Item partials
     'systems/spaceholder/templates/item/parts/item-effects.hbs',
     'systems/spaceholder/templates/item/parts/item-actions.hbs',

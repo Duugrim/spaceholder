@@ -1,8 +1,9 @@
-<form class='{{cssClass}}' autocomplete='off'>
+<form class='{{cssClass}} flexcol' autocomplete='off'>
+  <div class='spaceholder-sheet-stack flexcol'>
   <header class='sheet-header'>
     <img
       class='profile-img'
-      src='{{item.img}}'
+      src='{{itemImgSrc}}'
       data-edit='img'
       title='{{item.name}}'
     />
@@ -16,19 +17,19 @@
     </div>
   </header>
 
-  {{! Sheet Tab Navigation }}
-<nav class='sheet-tabs tabs' data-group='primary'>
-<a class='item' data-action='tab' data-group='primary' data-tab='description'>{{localize 'SPACEHOLDER.Tabs.Description'}}</a>
-    <a class='item' data-action='tab' data-group='primary' data-tab='attributes'>{{localize 'SPACEHOLDER.Tabs.Attributes'}}</a>
-    <a class='item' data-action='tab' data-group='primary' data-tab='actions'>{{localize 'SPACEHOLDER.ActionsSystem.UI.ActionsTab'}}</a>
-  </nav>
+  <section class='sheet-body sheet-body--item-primary'>
+    <nav class='sheet-tabs tabs sheet-tabs--item-primary' data-group='primary' data-tooltip-direction="UP">
+      {{#each sheetPrimaryTabs as |t|}}
+      <a class='item' data-action='tab' data-group='primary' data-tab='{{t.id}}' data-tooltip="{{localize t.labelKey}}" aria-label="{{localize t.labelKey}}"><i class='{{t.icon}}' aria-hidden='true'></i></a>
+      {{/each}}
+    </nav>
 
-  {{! Sheet Body }}
-  <section class='sheet-body'>
-
-    {{! Description Tab }}
     <div class='tab' data-group='primary' data-tab='description'>
-      {{! Editors must receive enriched text data from getData to properly handle rolls }}
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "description")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{editor
         enrichedDescription
         target='system.description'
@@ -38,9 +39,12 @@
       }}
     </div>
 
-    {{! Attributes Tab }}
     <div class='tab attributes' data-group='primary' data-tab='attributes'>
-      {{! As you add new fields, add them in here! }}
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "attributes")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       <div class='resource'>
         <label class='resource-label'>{{localize 'SPACEHOLDER.Resources.SpellLevel'}}</label>
         <input
@@ -52,9 +56,23 @@
       </div>
     </div>
 
-    {{! Actions Tab }}
     <div class='tab actions' data-group='primary' data-tab='actions'>
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "actions")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{> "systems/spaceholder/templates/item/parts/item-actions.hbs"}}
     </div>
+
+    <div class='tab effects' data-group='primary' data-tab='effects'>
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "effects")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-effects.hbs"}}
+    </div>
   </section>
+  </div>
 </form>

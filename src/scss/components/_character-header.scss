@@ -1,0 +1,297 @@
+// Character sheet: шапка (карточка портрет+фракция, имя, вкладки в колонке справа)
+
+$sh-character-portrait-size: 150px;
+$sh-character-faction-icon: 75px;
+$sh-character-faction-overlap: 40px;
+// Левый край поля имени: за границей карточки + padding + портрет + небольшой зазор (частично на трапеции)
+$sh-character-card-border-left: 1px;
+$sh-character-card-pad-left: 8px;
+$sh-character-name-offset-after-portrait: 10px;
+$sh-character-name-left: $sh-character-card-border-left + $sh-character-card-pad-left + $sh-character-portrait-size +
+  $sh-character-name-offset-after-portrait;
+// Трапеция: верх короче справа, низ на полную ширину (скос «наружу» вниз справа)
+$sh-character-card-trapeze-top-right-x: 84%;
+
+.window-app.spaceholder,
+.spaceholder {
+  // Не привязываемся к form.character — в App V2 класс типа актёра может быть не на <form>
+  .sheet-header.sh-character-header {
+    position: relative;
+    z-index: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 0 10px 0;
+    margin: 0 0 10px 0;
+    background: transparent;
+    border-bottom: 1px solid var(--sh-border);
+    min-height: 0;
+
+    .sh-character-header__card {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: max-content;
+      max-width: 100%;
+      min-width: calc(#{$sh-character-portrait-size} + #{$sh-character-faction-icon} + 8px + 12px);
+      padding: 8px 12px 8px 8px;
+      border-radius: 0;
+      border: 1px solid color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 50%, var(--sh-border));
+      background: linear-gradient(
+        155deg,
+        color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 38%, #0e1014) 0%,
+        color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 20%, #12151c) 100%
+      );
+      color: rgba(255, 255, 255, 0.95);
+      box-sizing: border-box;
+      // Без path(): острые углы (старые движки)
+      clip-path: polygon(
+        0% 0%,
+        $sh-character-card-trapeze-top-right-x 0%,
+        100% 100%,
+        0% 100%
+      );
+    }
+
+    .sh-character-header__card--factionDrop {
+      cursor: copy;
+    }
+
+    .sh-character-header__top {
+      display: grid;
+      grid-template-columns: $sh-character-portrait-size $sh-character-faction-icon;
+      grid-template-rows: $sh-character-portrait-size;
+      column-gap: 0;
+      align-items: end;
+      position: relative;
+    }
+
+    .sh-character-header__portrait.sh-portrait {
+      position: relative;
+      z-index: 1;
+      flex: 0 0 $sh-character-portrait-size;
+      width: $sh-character-portrait-size;
+      height: $sh-character-portrait-size;
+
+      .profile-img {
+        flex: 0 0 auto;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        border: none;
+        background: transparent;
+        object-fit: cover;
+      }
+    }
+
+    .sh-character-header__factionIconWrap {
+      position: relative;
+      z-index: 2;
+      box-sizing: border-box;
+      width: $sh-character-faction-icon;
+      height: $sh-character-faction-icon;
+      min-width: 0;
+      min-height: 0;
+      flex-shrink: 0;
+      justify-self: start;
+      align-self: end;
+      margin-left: -$sh-character-faction-overlap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0;
+      border: none;
+      background: transparent;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      cursor: default;
+
+      &:hover {
+        opacity: 0.92;
+      }
+    }
+
+    a.sh-character-header__factionIconWrap {
+      cursor: pointer;
+    }
+
+    .sh-character-header__factionIconImg {
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .sh-character-header__factionIconPh {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      color: rgba(255, 255, 255, 0.85);
+
+      i {
+        font-size: 28px;
+        line-height: 1;
+        pointer-events: none;
+      }
+    }
+
+    .sh-character-header__caption {
+      margin-top: 4px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      align-self: stretch;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      gap: 2px;
+    }
+
+    .sh-character-header__captionRow {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      line-height: 1;
+      min-height: 0;
+    }
+
+    .sh-character-header__captionFactionName {
+      font-family: #{$font-secondary};
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.74);
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transform: scaleX(1.045);
+      transform-origin: center;
+      font-stretch: semi-expanded;
+    }
+
+    // Диспозиция без фракции: по центру на всю ширину карточки
+    .sh-character-header__caption > .sh-character-header__captionFactionName {
+      box-sizing: border-box;
+      display: block;
+      width: 100%;
+      text-align: center;
+    }
+
+    .sh-character-header__captionRow .sh-character-header__captionFactionName {
+      flex: 0 1 auto;
+      width: max-content;
+      max-width: 100%;
+      padding: 0 22px;
+      box-sizing: border-box;
+    }
+
+    .sh-character-header__factionUuidInput {
+      width: 100%;
+      max-width: 100%;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: var(--sh-radius-sm);
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .sh-character-header__factionClear.icon-btn {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      box-sizing: border-box;
+      width: 16px;
+      height: 16px;
+      min-width: 16px;
+      min-height: 16px;
+      padding: 0;
+      line-height: 1;
+      border-radius: 3px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+
+      i {
+        font-size: 11px;
+        line-height: 1;
+      }
+    }
+
+    .sh-character-header__caption:hover .sh-character-header__factionClear.icon-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sh-character-header__aside {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: flex-end;
+      gap: 0;
+    }
+
+    h1.charname {
+      position: absolute;
+      z-index: 3;
+      left: $sh-character-name-left;
+      right: 0;
+      top: $sh-character-card-pad-left;
+      margin: 0;
+      align-self: stretch;
+      border: none;
+      box-sizing: border-box;
+
+      input {
+        width: 100%;
+        height: 42px;
+        padding: 4px 10px;
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.1;
+        box-sizing: border-box;
+        background: var(--sh-surface-1);
+        border: 1px solid var(--sh-border);
+        color: var(--sh-text);
+      }
+    }
+  }
+
+  &.sheet.actor .sheet-header.sh-character-header {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+}
+
+// Скругление только слева (верх/низ): path() с дугами; трапеция справа без изменений
+@supports (clip-path: path('M0 0 L1 0 L1 1 L0 1 Z')) {
+  $sh-tr: $sh-character-card-trapeze-top-right-x;
+  $sh-r: $sh-radius-md;
+
+  .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__card,
+  .spaceholder .sheet-header.sh-character-header .sh-character-header__card {
+    clip-path: path(
+      'M 0 #{$sh-r} A #{$sh-r} #{$sh-r} 0 0 1 #{$sh-r} 0 L #{$sh-tr} 0 L 100% 100% L #{$sh-r} 100% A #{$sh-r} #{$sh-r} 0 0 1 0 calc(100% - #{$sh-r}) L 0 #{$sh-r} Z'
+    );
+  }
+}

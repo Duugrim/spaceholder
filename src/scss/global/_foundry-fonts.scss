@@ -1,30 +1,32 @@
 // Foundry core typography override (in-world only)
-// Goal: replace Signika/Palatino fallback with a Cyrillic-friendly UI font.
+// Goal: IBM Plex Sans everywhere the core exposes --font-* tokens (foundry2.css loads after system CSS and resets --font-body etc.).
 // Scope: body.game (world UI), so Setup screen is unaffected.
+// !important on custom properties: otherwise core theme wins in cascade.
 
-body.game {
-  // Core variables (Foundry v13)
-  --font-sans: #{$font-primary};
-  --font-serif: #{$font-primary};
-
-  --font-body: var(--font-sans);
-  --font-blockquote: var(--font-sans);
-
-  // Headings (avoid non-cyrillic decorative fonts in Russian UI)
-  --font-h1: var(--font-sans);
-  --font-h2: var(--font-sans);
-  --font-h3: var(--font-sans);
-  --font-h4: var(--font-sans);
-  --font-h5: var(--font-sans);
-  --font-h6: var(--font-sans);
-
-  // Legacy variable still used in some parts of the UI
-  --font-primary: var(--font-sans);
+@mixin spaceholder-foundry-font-tokens {
+  --font-sans: #{$font-primary} !important;
+  --font-serif: #{$font-primary} !important;
+  --font-body: #{$font-primary} !important;
+  --font-blockquote: #{$font-primary} !important;
+  --font-h1: #{$font-primary} !important;
+  --font-h2: #{$font-primary} !important;
+  --font-h3: #{$font-primary} !important;
+  --font-h4: #{$font-primary} !important;
+  --font-h5: #{$font-primary} !important;
+  --font-h6: #{$font-primary} !important;
+  --font-primary: #{$font-primary} !important;
+  --font-secondary: #{$font-secondary} !important;
 }
 
-// Some legacy rules set --font-primary on .app; override there as well.
-body.game .app {
-  --font-primary: var(--font-sans);
+body.game {
+  @include spaceholder-foundry-font-tokens;
+  font-family: #{$font-primary};
+}
+
+// .themed / .app may reintroduce core tokens for subtrees
+body.game .app,
+body.game .themed {
+  @include spaceholder-foundry-font-tokens;
 }
 
 // Token Config (v13): prevent icon/label wrapping inside tab buttons after font changes.

@@ -12,6 +12,21 @@ import {
 } from '../helpers/progression-points.mjs';
 import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
 import { collectActorActions, executeActorAction, getActorActionPoints } from '../helpers/actions/action-service.mjs';
+import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
+
+/** Навигация и баннеры вкладок: один источник id / иконка / ключ i18n */
+const CHARACTER_SHEET_PRIMARY_TABS = Object.freeze([
+  { id: 'stats', icon: 'fas fa-dumbbell', labelKey: 'SPACEHOLDER.Tabs.Stats' },
+  { id: 'health', icon: 'fas fa-heart-pulse', labelKey: 'SPACEHOLDER.Tabs.Health' },
+  { id: 'injuries', icon: 'fas fa-bandage', labelKey: 'SPACEHOLDER.Tabs.Injuries' },
+  { id: 'inventory', icon: 'fas fa-box-open', labelKey: 'SPACEHOLDER.Tabs.Inventory' },
+]);
+
+const NPC_SHEET_PRIMARY_TABS = Object.freeze([
+  { id: 'description', icon: 'fas fa-file-lines', labelKey: 'SPACEHOLDER.Tabs.Description' },
+  { id: 'items', icon: 'fas fa-suitcase', labelKey: 'SPACEHOLDER.Tabs.Items' },
+  { id: 'effects', icon: 'fas fa-wand-magic-sparkles', labelKey: 'SPACEHOLDER.Tabs.Effects' },
+]);
 
 // Base V2 Actor Sheet with Handlebars rendering
 export class SpaceHolderBaseActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -125,8 +140,39 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       this._prepareItems(context);
       this._prepareCharacterData(context);
       await this._prepareAnatomyData(context);
+      context.system.gFaction ??= '';
+      context.gFactionName = '';
+      context.gFactionImg = '';
+      try {
+        if (context.system.gFaction) {
+          const disp = await resolveFactionDisplay(context.system.gFaction);
+          context.gFactionName = disp?.name || context.system.gFaction;
+          context.gFactionImg = String(disp?.img || '').trim();
+        }
+      } catch (_) {
+        context.gFactionName = context.system.gFaction || '';
+      }
+      let factionBarColor = '';
+      try {
+        if (context.system.gFaction) {
+          const fac = await fromUuid(context.system.gFaction);
+          if (fac?.documentName === 'Actor' && fac?.type === 'faction') {
+            const raw = String(fac?.system?.fColor ?? '').trim();
+            if (/^#[0-9a-fA-F]{6}$/i.test(raw)) factionBarColor = raw.toLowerCase();
+          }
+        }
+      } catch (_) {
+        /* ignore */
+      }
+      if (!factionBarColor) factionBarColor = this._getFactionColorCss(context.system) || '';
+      context.factionColor = factionBarColor || null;
+      context.characterHeaderAccent = this._resolveCharacterHeaderAccentHex(factionBarColor, this.actor);
+      context.characterDispositionLabel = game.i18n.localize(this._characterDispositionLabelKey(this.actor));
+      context.characterDispositionIconClass = this._characterDispositionIconClass(this.actor);
+      context.sheetPrimaryTabs = CHARACTER_SHEET_PRIMARY_TABS;
     } else if (actorData.type === 'npc') {
       this._prepareItems(context);
+      context.sheetPrimaryTabs = NPC_SHEET_PRIMARY_TABS;
     }
 
     // Всегда обновляем данные здоровья при каждой перерисовке
@@ -147,6 +193,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Actions (MVP): collect runtime actions for Character only
     if (actorData.type === 'character') {
+      await ensureCharacterApSynced(this.actor);
       // Defaults for older actors (context-only; persisted when user edits fields)
       context.system.actionPoints = context.system.actionPoints || { value: 100, max: 100 };
       if (context.system.actionPoints.value === undefined || context.system.actionPoints.value === null) {
@@ -156,17 +203,14 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         context.system.actionPoints.max = context.system.actionPoints.value ?? 100;
       }
       if (context.system.speed === undefined || context.system.speed === null) context.system.speed = 1;
+      if (context.system.turnStarts === undefined || context.system.turnStarts === null) context.system.turnStarts = 1;
       if (!Array.isArray(context.system.actions)) context.system.actions = [];
 
       const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
       const collected = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
       context.availableActions = collected.actions;
-      context.actionsContext = {
-        hasTokenContext: !!tokenDoc,
-        inCombat: collected.context.inCombat,
-      };
 
-      // Current AP based on action log
+      // Current AP from stored system fields (+ one-time legacy sync)
       context.actionPointsCurrent = getActorActionPoints(this.actor);
     }
 
@@ -340,7 +384,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     for (let i of items) {
       i.img = i.img || Item.DEFAULT_ICON;
       // Append to gear (обычные предметы и надеваемые).
-      if (i.type === 'item' || i.type === 'wearable') {
+      if (i.type === 'item') {
         gear.push(i);
       }
       // Append to features.
@@ -378,7 +422,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * Update inventory totals in the DOM without full re-render
    */
   _updateInventoryTotals() {
-    const gear = this.actor.items.filter(i => i.type === 'item' || i.type === 'wearable');
+    const gear = this.actor.items.filter(i => i.type === 'item');
     let totalWeight = 0;
     let totalItems = 0;
     
@@ -534,21 +578,35 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       });
     });
 
-    // Movement controls (confirm/cancel) — calls movementManager directly
-    el.querySelectorAll('[data-action="sh-move-confirm"]').forEach((btn) => {
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        await game.spaceholder?.movementManager?.confirm?.();
-        this.render(false);
+    // Character: фракция — дроп Actor(faction) куда угодно по листу (form + capture dragover)
+    if (this.actor?.type === 'character') {
+      el.querySelectorAll('[data-action="uuid-open"]').forEach((btn) => {
+        btn.addEventListener('click', this._onCharacterUuidOpen.bind(this));
       });
-    });
-    el.querySelectorAll('[data-action="sh-move-cancel"]').forEach((btn) => {
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        await game.spaceholder?.movementManager?.cancel?.();
-        this.render(false);
+      el.querySelectorAll('[data-action="uuid-clear"]').forEach((btn) => {
+        btn.addEventListener('click', this._onCharacterUuidClear.bind(this));
       });
-    });
+      const form = el.matches?.('form') ? el : el.querySelector('form');
+      if (form) {
+        if (!this._onCharacterFactionFormDragOverBound) {
+          this._onCharacterFactionFormDragOverBound = (e) => {
+            e.preventDefault();
+            try {
+              e.dataTransfer.dropEffect = 'copy';
+            } catch (_) {
+              /* ignore */
+            }
+          };
+        }
+        if (!this._onCharacterSheetFactionFormDropBound) {
+          this._onCharacterSheetFactionFormDropBound = this._onCharacterSheetFactionFormDrop.bind(this);
+        }
+        form.removeEventListener('dragover', this._onCharacterFactionFormDragOverBound, true);
+        form.addEventListener('dragover', this._onCharacterFactionFormDragOverBound, true);
+        form.removeEventListener('drop', this._onCharacterSheetFactionFormDropBound);
+        form.addEventListener('drop', this._onCharacterSheetFactionFormDropBound);
+      }
+    }
 
     // Custom actions editor (actor.system.actions)
     const randomId = () => {
@@ -636,7 +694,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         const card = ev.currentTarget.closest('.inventory-item-card');
         const itemId = card?.dataset?.itemId || btn.dataset?.itemId;
         const item = this.actor.items.get(itemId);
-        if (!item || item.type !== 'wearable') return;
+        if (!item || item.type !== 'item') return;
+        if (!item.system?.itemTags?.isArmor) return;
         const current = Boolean(item.system?.equipped);
         await item.update({ 'system.equipped': !current });
         this.render(false);
@@ -856,23 +915,22 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    */
   async _onItemCreate(event) {
     event.preventDefault();
-    const header = event.currentTarget;
-    // Get the type of item to create.
-    const type = header.dataset.type;
-    // Grab any data associated with this control.
-    const data = duplicate(header.dataset);
-    // Initialize a default name.
-    const name = `New ${type.capitalize()}`;
-    // Prepare the item object.
-    const itemData = {
-      name: name,
-      type: type,
-      system: data,
-    };
-    // Remove the type from the dataset since it's in the itemData.type prop.
-    delete itemData.system['type'];
+    const btn = event.currentTarget;
+    const type = btn.dataset.type;
+    if (!type) return;
 
-    // Finally, create the item!
+    const defaultName =
+      type === 'item'
+        ? (game.i18n?.localize?.('SPACEHOLDER.Inventory.NewItem') ?? 'New item')
+        : `New ${typeof type.capitalize === 'function' ? type.capitalize() : String(type)}`;
+
+    const itemData = {
+      name: defaultName,
+      type,
+      img: Item.DEFAULT_ICON,
+      system: {},
+    };
+
     return await Item.create(itemData, { parent: this.actor });
   }
 
@@ -1368,14 +1426,242 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       return roll;
     }
   }
+
+  /** Character UUID helpers: copied behavior from GlobalObject sheet flow. */
+  _normalizeUuidShared(raw) {
+    const str = String(raw ?? '').trim();
+    if (!str) return '';
+    const match = str.match(/@UUID\[(.+?)\]/);
+    return (match?.[1] ?? str).trim();
+  }
+
+  _extractUuidFromDropEventShared(event) {
+    const dt = event?.dataTransfer;
+    if (!dt) return '';
+    const rawCandidates = [
+      dt.getData('application/json'),
+      dt.getData('text/plain'),
+    ].filter(Boolean);
+    for (const raw of rawCandidates) {
+      try {
+        const data = JSON.parse(raw);
+        const uuid = data?.uuid || data?.data?.uuid;
+        if (uuid) return this._normalizeUuidShared(uuid);
+      } catch (_) {
+        const uuid = this._normalizeUuidShared(raw);
+        if (uuid) return uuid;
+      }
+    }
+    return '';
+  }
+
+  /**
+   * Тип документа из payload Foundry (text/plain | application/json), без async.
+   * @param {DragEvent} event
+   * @returns {string}
+   */
+  _syncFoundryDropDocumentType(event) {
+    const dt = event?.dataTransfer;
+    if (!dt) return '';
+    for (const key of ['text/plain', 'application/json']) {
+      const raw = dt.getData(key);
+      if (!raw) continue;
+      try {
+        const j = JSON.parse(raw);
+        const t = String(j?.type ?? '').trim();
+        if (t) return t;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    return '';
+  }
+
+  /**
+   * Лист персонажа: назначить фракцию при дропе Actor(faction) в любую область формы.
+   * Не перехватывает Item / ActiveEffect / Folder — отдаёт ядру.
+   * @param {DragEvent} event
+   */
+  async _onCharacterSheetFactionFormDrop(event) {
+    if (!this.isEditable || this.actor?.type !== 'character') return;
+
+    const docType = this._syncFoundryDropDocumentType(event);
+    if (docType === 'Item' || docType === 'ActiveEffect' || docType === 'Folder') return;
+
+    const uuid = this._extractUuidFromDropEventShared(event);
+    if (!uuid) return;
+
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (_) {
+      doc = null;
+    }
+    if (!doc || doc.documentName !== 'Actor' || doc.type !== 'faction') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const uuidToStore = doc.uuid ?? uuid;
+    await this.actor.update({ 'system.gFaction': uuidToStore });
+    this.render(false);
+  }
+
+  async _onCharacterUuidOpen(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const uuid = this._normalizeUuidShared(event.currentTarget?.dataset?.uuid);
+    if (!uuid) return;
+    let doc = null;
+    try {
+      doc = await fromUuid(uuid);
+    } catch (_) {
+      doc = null;
+    }
+    if (!doc?.sheet?.render) return;
+    doc.sheet.render(true);
+  }
+
+  async _onCharacterUuidClear(event) {
+    event.preventDefault();
+    const field = event.currentTarget?.dataset?.field;
+    if (!field) return;
+    await this.actor.update({ [field]: '' });
+    this.render(false);
+  }
+
+  /**
+   * Hex заливки шапки персонажа при отсутствии цвета выбранной фракции (по диспозиции прототипа токена).
+   * @param {Actor} actor
+   * @returns {string}
+   * @protected
+   */
+  _prototypeTokenDispositionAccentHex(actor) {
+    const F = CONST.TOKEN_DISPOSITIONS ?? { FRIENDLY: 1, NEUTRAL: 0, HOSTILE: -1, SECRET: -2 };
+    const d = Number(actor?.prototypeToken?.disposition ?? F.NEUTRAL);
+    switch (d) {
+      case F.HOSTILE:
+        return '#8f2d2d';
+      case F.FRIENDLY:
+        return '#2d6b45';
+      case F.NEUTRAL:
+        return '#756d2e';
+      case F.SECRET:
+        return '#6b3d94';
+      default:
+        return '#3d4a5c';
+    }
+  }
+
+  /**
+   * Классы Font Awesome для плейсхолдера диспозиции (без фракции).
+   * @param {Actor} actor
+   * @returns {string}
+   * @protected
+   */
+  _characterDispositionIconClass(actor) {
+    const F = CONST.TOKEN_DISPOSITIONS ?? { FRIENDLY: 1, NEUTRAL: 0, HOSTILE: -1, SECRET: -2 };
+    const d = Number(actor?.prototypeToken?.disposition ?? F.NEUTRAL);
+    const map = {
+      [F.HOSTILE]: 'fa-solid fa-skull',
+      [F.FRIENDLY]: 'fa-solid fa-handshake-simple',
+      [F.NEUTRAL]: 'fa-solid fa-scale-balanced',
+      [F.SECRET]: 'fa-solid fa-eye-slash',
+    };
+    return map[d] || 'fa-solid fa-scale-balanced';
+  }
+
+  /**
+   * @param {string} factionHex
+   * @param {Actor} actor
+   * @returns {string}
+   * @protected
+   */
+  _resolveCharacterHeaderAccentHex(factionHex, actor) {
+    const h = String(factionHex ?? '').trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(h)) return h.toLowerCase();
+    return this._prototypeTokenDispositionAccentHex(actor);
+  }
+
+  /**
+   * @param {Actor} actor
+   * @returns {string} i18n key
+   * @protected
+   */
+  _characterDispositionLabelKey(actor) {
+    const F = CONST.TOKEN_DISPOSITIONS ?? { FRIENDLY: 1, NEUTRAL: 0, HOSTILE: -1, SECRET: -2 };
+    const d = Number(actor?.prototypeToken?.disposition ?? F.NEUTRAL);
+    const map = {
+      [F.HOSTILE]: 'SPACEHOLDER.Character.DispositionHostile',
+      [F.FRIENDLY]: 'SPACEHOLDER.Character.DispositionFriendly',
+      [F.NEUTRAL]: 'SPACEHOLDER.Character.DispositionNeutral',
+      [F.SECRET]: 'SPACEHOLDER.Character.DispositionSecret',
+    };
+    return map[d] || 'SPACEHOLDER.Character.DispositionNeutral';
+  }
+
+  /**
+   * CSS-цвет акцента по привязке фракции (InfluenceManager или детерминированный fallback по строке UUID).
+   * @param {object} system
+   * @returns {string}
+   * @protected
+   */
+  _getFactionColorCss(system) {
+    const key = String(system?.gFaction ?? '').trim();
+    if (!key) return '';
+
+    const im = game?.spaceholder?.influenceManager;
+    const n = im?.getColorForSide?.(key);
+    if (typeof n === 'number') return `#${n.toString(16).padStart(6, '0')}`;
+
+    const hue = this._hashStringToHue(key);
+    const hex = this._hslToHex(hue, 65, 50);
+    return `#${hex.toString(16).padStart(6, '0')}`;
+  }
+
+  /** @private */
+  _hashStringToHue(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash) % 360;
+  }
+
+  /** @private */
+  _hslToHex(h, s, l) {
+    const sat = (s ?? 0) / 100;
+    const lig = (l ?? 0) / 100;
+    const c = (1 - Math.abs(2 * lig - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = lig - c / 2;
+
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+
+    const to255 = (v) => Math.max(0, Math.min(255, Math.round((v + m) * 255)));
+    const rr = to255(r);
+    const gg = to255(g);
+    const bb = to255(b);
+    return (rr << 16) + (gg << 8) + bb;
+  }
 }
 
 // Character-specific sheet (Application V2)
 export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
+  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+    position: { width: 950, height: 950 },
+  }, { inplace: false });
+
   // Native tabs for character sheet: stats (Характеристики) and health (Здоровье)
   static TABS = {
     primary: {
-      tabs: [ { id: 'stats' }, { id: 'health' }, { id: 'injuries' } ],
+      tabs: [ { id: 'stats' }, { id: 'health' }, { id: 'injuries' }, { id: 'inventory' } ],
       initial: 'stats'
     }
   };
@@ -1408,6 +1694,13 @@ export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
 
 // NPC-specific sheet (Application V2)
 export class SpaceHolderNPCSheet extends SpaceHolderBaseActorSheet {
+  static TABS = {
+    primary: {
+      tabs: [ { id: 'description' }, { id: 'items' }, { id: 'effects' } ],
+      initial: 'description',
+    },
+  };
+
   static PARTS = {
     body: { root: true, template: 'systems/spaceholder/templates/actor/actor-npc-sheet.hbs' }
   };
@@ -1780,57 +2073,6 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     }
 
     return doc?.name || uuid;
-  }
-
-  /**
-   * Получить CSS-цвет для подсветки (из InfluenceManager, либо детерминированный fallback)
-   * @private
-   */
-  _getFactionColorCss(system) {
-    const key = String(system?.gFaction ?? '').trim();
-    if (!key) return '';
-
-    const im = game?.spaceholder?.influenceManager;
-    const n = im?.getColorForSide?.(key);
-    if (typeof n === 'number') return `#${n.toString(16).padStart(6, '0')}`;
-
-    // Fallback: hash -> hue -> hex
-    const hue = this._hashStringToHue(key);
-    const hex = this._hslToHex(hue, 65, 50);
-    return `#${hex.toString(16).padStart(6, '0')}`;
-  }
-
-  /** @private */
-  _hashStringToHue(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
-    }
-    return Math.abs(hash) % 360;
-  }
-
-  /** @private */
-  _hslToHex(h, s, l) {
-    const sat = (s ?? 0) / 100;
-    const lig = (l ?? 0) / 100;
-    const c = (1 - Math.abs(2 * lig - 1)) * sat;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = lig - c / 2;
-
-    let r = 0, g = 0, b = 0;
-    if (h < 60) { r = c; g = x; b = 0; }
-    else if (h < 120) { r = x; g = c; b = 0; }
-    else if (h < 180) { r = 0; g = c; b = x; }
-    else if (h < 240) { r = 0; g = x; b = c; }
-    else if (h < 300) { r = x; g = 0; b = c; }
-    else { r = c; g = 0; b = x; }
-
-    const to255 = (v) => Math.max(0, Math.min(255, Math.round((v + m) * 255)));
-    const rr = to255(r);
-    const gg = to255(g);
-    const bb = to255(b);
-    return (rr << 16) + (gg << 8) + bb;
   }
 
   /** @private */

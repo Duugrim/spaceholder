@@ -133,10 +133,11 @@ export class SpaceHolderActor extends Actor {
     const groupId = anatomyManager.getAnatomyGroupId(anatomyType);
     if (!groupId) return;
 
-    const wearables = this.items.filter((i) => i.type === 'wearable' && i.system?.equipped);
+    const wearables = this.items.filter((i) => i.type === 'item' && i.system?.equipped);
     if (!wearables.length) return;
 
     for (const item of wearables) {
+      if (!item.system?.itemTags?.isArmor) continue;
       // Resolve wearable group:
       // - Prefer explicit system.anatomyGroup
       // - Fallback to anatomyId -> groupId (older items / incomplete config)
@@ -167,7 +168,7 @@ export class SpaceHolderActor extends Actor {
   _applyWearableModifiers(systemData) {
     if (this.type !== 'character') return;
 
-    const wearables = this.items.filter((i) => i.type === 'wearable' && i.system?.equipped);
+    const wearables = this.items.filter((i) => i.type === 'item' && i.system?.equipped);
     if (!wearables.length) return;
 
     const targetsCfg = CONFIG.SPACEHOLDER?.characterModifierTargets || {};
@@ -181,6 +182,7 @@ export class SpaceHolderActor extends Actor {
     const sums = new Map();
 
     for (const item of wearables) {
+      if (!item.system?.itemTags?.isModifiers) continue;
       const mods = item.system?.modifiers || {};
       const collect = (arr) => {
         if (!Array.isArray(arr)) return;

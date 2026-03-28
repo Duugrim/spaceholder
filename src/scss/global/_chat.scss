@@ -63,10 +63,17 @@ body.game {
     }
 
     .message-header .message-metadata,
-    .message-header .message-timestamp,
     .message-header .message-delete,
     .message-header .message-dismiss {
       color: #{$sh-text-muted};
+    }
+
+    // Relative / elapsed time in the header (core `.message-timestamp`); keep it visually secondary and compact.
+    .message-header .message-timestamp {
+      color: #{$sh-text-muted};
+      font-size: 0.7rem;
+      line-height: 1.2;
+      font-weight: 400;
     }
 
     .message-header .message-delete:hover,
@@ -123,6 +130,42 @@ body.game {
       ul.table-results li {
         border-bottom-color: rgba(255, 255, 255, 0.12);
       }
+    }
+  }
+
+  // Context menu (global `#context-menu`): unify chat vs sidebar. Chat inherits theme-light beige
+  // (~rgb(217,216,200)) while directories use dark chrome — one dark panel + light text everywhere.
+  #context-menu {
+    background: #{rgba($sh-context-menu-surface, 0.98)};
+    border: 1px solid rgba(130, 160, 200, 0.22);
+    box-shadow:
+      0 4px 18px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(0, 0, 0, 0.35);
+
+    --color-text-primary: #{$sh-text};
+    --color-text-secondary: #{$sh-text-muted};
+    --color-text-subtle: #{$sh-text-dim};
+    color: #{$sh-text};
+
+    .context-item,
+    .context-item > span,
+    .menu-item,
+    [role="menuitem"],
+    [role="menuitem"] > span {
+      color: #{$sh-text};
+    }
+
+    .context-item:hover,
+    .menu-item:hover,
+    [role="menuitem"]:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .context-item.disabled,
+    .menu-item.disabled,
+    [role="menuitem"][aria-disabled="true"] {
+      color: #{$sh-text-dim};
     }
   }
 }

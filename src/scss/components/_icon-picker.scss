@@ -13,27 +13,46 @@
       width: 100%;
       height: 100%;
     }
-  }
 
-  .sh-portrait__pick {
-    position: absolute;
-    right: 6px;
-    bottom: 6px;
+    .sh-portrait__pick {
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      right: auto;
+      bottom: auto;
+      z-index: 1;
 
-    width: 24px;
-    height: 24px;
+      box-sizing: border-box;
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+      min-height: 24px;
+      aspect-ratio: 1;
+      flex-shrink: 0;
+      padding: 0;
 
-    background: rgba(0, 0, 0, 0.45);
-    border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-sm);
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--sh-border);
+      border-radius: var(--sh-radius-sm);
 
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
 
-    &:hover {
-      background: rgba(0, 0, 0, 0.65);
-      border-color: var(--sh-border-strong);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.65);
+        border-color: var(--sh-border-strong);
+      }
+    }
+
+    &:hover .sh-portrait__pick,
+    &:focus-within .sh-portrait__pick {
+      opacity: 1;
+      pointer-events: auto;
     }
   }
 

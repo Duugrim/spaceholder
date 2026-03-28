@@ -171,34 +171,7 @@
     }
   }
 
-  .sheet-tabs {
-    display: flex;
-    gap: 6px;
-    padding: 0 10px 8px 10px;
-    margin: 0;
-    border-bottom: 1px solid var(--sh-border);
-
-    .item {
-      background: var(--sh-surface-2);
-      color: var(--sh-text-muted);
-      border: 1px solid var(--sh-border);
-      border-bottom: none;
-      border-radius: var(--sh-radius-md) var(--sh-radius-md) 0 0;
-      padding: 6px 12px;
-      cursor: pointer;
-
-      &:hover {
-        background: var(--sh-surface-3);
-        color: #fff;
-      }
-
-      &.active {
-        background: var(--sh-bg);
-        color: #fff;
-        border-color: var(--sh-border-strong);
-      }
-    }
-  }
+  // Tab strip + sheet body chrome for tabbed sheets: see components/_sheet-tabs.scss
 
   .sheet-body {
     padding: 10px;

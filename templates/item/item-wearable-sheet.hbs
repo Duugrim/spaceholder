@@ -1,8 +1,9 @@
-<form class="{{cssClass}}" autocomplete="off">
+<form class="{{cssClass}} flexcol" autocomplete="off">
+  <div class="spaceholder-sheet-stack flexcol">
   <header class="sheet-header">
     <img
       class="profile-img"
-      src="{{item.img}}"
+      src="{{itemImgSrc}}"
       data-edit="img"
       title="{{item.name}}"
     />
@@ -38,27 +39,20 @@
     </div>
   </header>
 
-  {{!-- Sheet Tab Navigation --}}
-  <nav class="sheet-tabs tabs" data-group="primary">
-    <a class="item" data-action="tab" data-group="primary" data-tab="description">
-      {{localize 'SPACEHOLDER.Tabs.Description'}}
-    </a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="attributes">
-      {{localize 'SPACEHOLDER.Tabs.Coverage'}}
-    </a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="actions">
-      {{localize 'SPACEHOLDER.ActionsSystem.UI.ActionsTab'}}
-    </a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="modifiers">
-      {{localize 'SPACEHOLDER.Tabs.Modifiers'}}
-    </a>
-  </nav>
-
-  {{!-- Sheet Body --}}
-  <section class="sheet-body">
+  <section class="sheet-body sheet-body--item-primary">
+    <nav class="sheet-tabs tabs sheet-tabs--item-primary" data-group="primary" data-tooltip-direction="UP">
+      {{#each sheetPrimaryTabs as |t|}}
+      <a class="item" data-action="tab" data-group="primary" data-tab="{{t.id}}" data-tooltip="{{localize t.labelKey}}" aria-label="{{localize t.labelKey}}"><i class="{{t.icon}}" aria-hidden="true"></i></a>
+      {{/each}}
+    </nav>
 
     {{!-- Description Tab --}}
     <div class="tab" data-group="primary" data-tab="description">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "description")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{editor
         enrichedDescription
         target="system.description"
@@ -68,8 +62,71 @@
       }}
     </div>
 
-    {{!-- Coverage Tab: в стиле вкладки анатомии — верхняя строка, две колонки --}}
+    {{!-- Tags Tab: включаем группы механик --}}
+    <div class="tab tags" data-group="primary" data-tab="tags">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "tags")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      <div class="section-header">
+        <i class="fas fa-tags"></i>
+        {{localize 'SPACEHOLDER.ItemTags.SectionTitle'}}
+      </div>
+      <p class="sh-item-tags-hint"><em>{{localize 'SPACEHOLDER.ItemTags.Hint'}}</em></p>
+      <div class="sh-item-tags-list">
+        <label class="sh-item-tag-row">
+          <input type="checkbox" name="system.itemTags.isArmor" data-dtype="Boolean" {{#if system.itemTags.isArmor}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.ItemTags.Armor'}}</span>
+        </label>
+        <label class="sh-item-tag-row">
+          <input type="checkbox" name="system.itemTags.isActions" data-dtype="Boolean" {{#if system.itemTags.isActions}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.ItemTags.Actions'}}</span>
+        </label>
+        <label class="sh-item-tag-row">
+          <input type="checkbox" name="system.itemTags.isModifiers" data-dtype="Boolean" {{#if system.itemTags.isModifiers}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.ItemTags.Modifiers'}}</span>
+        </label>
+      </div>
+      {{#if hasArmorTag}}
+      <div class="sh-item-tags-wearable-defaults">
+        <div class="sh-actions-subheader">{{localize 'SPACEHOLDER.ActionsSystem.UI.WearableDefaults'}}</div>
+        <div class="sh-wearable-default-actions">
+          <div class="sh-wearable-default-actions__row">
+            <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.EquipShort'}}</div>
+            <label class="sh-custom-action-flag">
+              <input type="checkbox" name="system.defaultActions.equip.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.equip.showInCombat}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+            </label>
+            <label class="sh-custom-action-flag">
+              <input type="checkbox" name="system.defaultActions.equip.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.equip.showInQuickbar}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+            </label>
+          </div>
+          <div class="sh-wearable-default-actions__row">
+            <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.UnequipShort'}}</div>
+            <label class="sh-custom-action-flag">
+              <input type="checkbox" name="system.defaultActions.unequip.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.unequip.showInCombat}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+            </label>
+            <label class="sh-custom-action-flag">
+              <input type="checkbox" name="system.defaultActions.unequip.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.unequip.showInQuickbar}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      {{/if}}
+    </div>
+
+    {{#if hasArmorTag}}
+    {{!-- Coverage Tab --}}
     <div class="tab attributes" data-group="primary" data-tab="attributes">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "attributes")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       <div class="wearable-coverage-management-container">
         <div class="wearable-coverage-management-row">
           <button type="button" class="wearable-anatomy-current-btn {{#unless selectedAnatomyId}}wearable-anatomy-current-btn--empty{{/unless}}" data-action="wearable-select-anatomy-group" data-item-uuid="{{item.uuid}}" title="{{localize 'SPACEHOLDER.Wearable.SelectAnatomy'}}">
@@ -92,7 +149,6 @@
       </div>
 
       <div class="wearable-coverage-main-layout">
-        {{!-- Левая колонка: визуализатор — в режиме редактирования все части + голубая пометка; без редактирования только выбранные части --}}
         <div class="wearable-coverage-left-column">
           {{#if anatomyDataForEditor}}
             <div class="wearable-coverage-editor-wrap" data-wearable-coverage-edit-mode="{{wearableCoverageEditMode}}">
@@ -105,7 +161,6 @@
           {{/if}}
         </div>
 
-        {{!-- Правая колонка: список покрытых частей с редактированием значения (как Травмы) --}}
         <div class="wearable-coverage-right-column">
           <div class="wearable-coverage-panel">
             <div class="wearable-coverage-panel-header">{{localize 'SPACEHOLDER.Wearable.CoverageList'}}</div>
@@ -130,20 +185,33 @@
         </div>
       </div>
     </div>
+    {{/if}}
 
+    {{#if hasActionsTag}}
     {{!-- Actions Tab --}}
     <div class="tab actions" data-group="primary" data-tab="actions">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "actions")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{> "systems/spaceholder/templates/item/parts/item-actions.hbs"}}
     </div>
+    {{/if}}
 
+    {{#if hasModifiersTag}}
     {{!-- Modifiers Tab --}}
     <div class="tab" data-group="primary" data-tab="modifiers">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "modifiers")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       <div class="section-header">
         <i class="fas fa-dumbbell"></i>
         {{localize 'SPACEHOLDER.Wearable.ModifiersSection'}}
       </div>
 
-      {{!-- Abilities modifiers --}}
       <div class="wearable-modifiers-block">
         <h3>{{localize 'SPACEHOLDER.Modifiers.Abilities'}}</h3>
         <div class="wearable-modifiers-table">
@@ -179,10 +247,8 @@
           {{/each}}
         </div>
       </div>
-
-      {{!-- Для первой версии без динамического добавления/удаления строк оставляем массив редактируемым через JSON/структуру.
-           При необходимости можно будет добавить кнопки +/- и обработчики в JS. --}}
     </div>
+    {{/if}}
   </section>
+  </div>
 </form>
-

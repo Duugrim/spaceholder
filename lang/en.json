@@ -25,10 +25,25 @@
       "Effects": "Effects",
       "Attributes": "Attributes",
       "Coverage": "Coverage",
-      "Modifiers": "Modifiers"
+      "Modifiers": "Modifiers",
+      "Tags": "Tags"
+    },
+    "ItemTags": {
+      "SectionTitle": "Feature groups",
+      "Hint": "Enable groups to show related tabs and apply mechanics. Disabled groups keep their data but do not apply.",
+      "Armor": "Armor (coverage, equip/unequip)",
+      "Actions": "Actions (custom item actions)",
+      "Modifiers": "Modifiers (character stats)"
     },
     "Placeholder": {
       "Name": "Name"
+    },
+    "Character": {
+      "OpenFactionSheet": "Open faction sheet",
+      "DispositionFriendly": "Friendly",
+      "DispositionNeutral": "Neutral",
+      "DispositionHostile": "Hostile",
+      "DispositionSecret": "Secret"
     },
     "Units": {
       "Kg": "kg"
@@ -187,6 +202,8 @@
         "ActionPoints": "Action Points",
         "CurrentAP": "Current AP",
         "Speed": "Speed",
+        "TurnStarts": "Turns per round",
+        "Faction": "Faction (UUID)",
         "AvailableActions": "Available actions",
         "NoActions": "No actions available",
         "CustomActions": "Custom actions",
@@ -211,18 +228,46 @@
         "UnequipShort": "Unequip"
       },
       "Movement": {
-        "Move": "Move",
-        "Started": "Movement mode started. Move the token, then confirm or cancel. ESC/RMB cancels.",
-        "Confirm": "Confirm movement",
-        "Cancel": "Cancel movement",
-        "Cancelled": "Movement cancelled",
-        "Confirmed": "Moved {dist} and spent {cost} AP",
-        "SpeedZero": "Speed is 0: movement is not available",
-        "NoTokenContext": "Open the sheet from a token to use movement"
+        "Move": "Move"
       },
       "Errors": {
         "NotEnoughAP": "Not enough Action Points (need {need}, have {have})",
-        "MovementNotAvailable": "Movement system is not available"
+        "ApSpendFailed": "Could not apply Action Point spend"
+      }
+    },
+    "ActionChatJournal": {
+      "Title": "Round {round} — Actions",
+      "Undo": "Undo",
+      "Undone": "Undone",
+      "UndoFailed": "Could not undo action"
+    },
+    "Combat": {
+      "PanelTitle": "Combat actions",
+      "CurrentSide": "Current side",
+      "NextSide": "Next side",
+      "UseAlternation": "Use side alternation",
+      "EndTurn": "End turn",
+      "ActionTable": "Action table",
+      "ChangeSide": "Change side",
+      "UndoLastAction": "Undo last action",
+      "NoActions": "No actions yet",
+      "RowMove": "Move",
+      "RowAction": "Action",
+      "ForceMove": "Forced movement",
+      "ForceMoveToggleOn": "Forced movement — does not spend AP",
+      "ForceMoveToggleOff": "Cancel forced — restore AP cost",
+      "SideNow": "Acting now",
+      "SideNext": "Next",
+      "IndicatorActive": "Active",
+      "IndicatorDone": "Done",
+      "IndicatorPending": "Pending",
+      "NewSide": "Select side",
+      "OrNewSide": "Or enter custom side",
+      "Side": {
+        "friendly": "Friendly",
+        "neutral": "Neutral",
+        "hostile": "Hostile",
+        "secret": "Secret"
       }
     },
     "Inventory": {
@@ -230,8 +275,6 @@
       "TotalItems": "Items:",
       "CreateItem": "Create item",
       "NewItem": "New item",
-      "CreateWearable": "Create wearable item",
-      "NewWearable": "New wearable",
       "Quantity": "Qty:",
       "ItemTotalWeight": "Total weight:",
       "EditItem": "Edit item",
@@ -1097,8 +1140,7 @@
     "Item": {
       "item": "Item",
       "feature": "Feature",
-      "spell": "Spell",
-      "wearable": "Wearable"
+      "spell": "Spell"
     }
   }
 }

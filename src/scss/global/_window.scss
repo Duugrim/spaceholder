@@ -30,8 +30,10 @@
   --sh-focus-ring: rgba(143, 185, 143, 0.35);
   --sh-border-focus: rgba(143, 185, 143, 0.65);
 
+  --font-secondary: #{$font-secondary};
+
   color-scheme: dark;
-  font-family: $font-primary;
+  font-family: #{$font-primary};
 
   background: var(--sh-bg);
   color: var(--sh-text);
@@ -44,6 +46,13 @@
   *::before,
   *::after {
     box-sizing: border-box;
+  }
+
+  // Secondary / de-emphasized copy (Exo 2; Cyrillic-capable). Use .sh-font-secondary for ad-hoc blocks.
+  :where(.sh-font-secondary),
+  :where(.sh-derived-hint),
+  :where(.sh-character-header__caption) {
+    font-family: #{$font-secondary};
   }
 
   // Basic typography (avoid !important; keep specificity low)
@@ -89,6 +98,11 @@
     background: var(--sh-bg);
     color: var(--sh-text);
     overflow: auto;
+  }
+
+  // Тест: убрать padding ядра у контента листов (V2: contentClasses standard-form на .window-content)
+  .window-content.standard-form {
+    padding: 0;
   }
 
   // Scrollbars (Chromium)

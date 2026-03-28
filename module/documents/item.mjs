@@ -4,6 +4,52 @@
  */
 export class SpaceHolderItem extends Item {
   /**
+   * Merge legacy `wearable` into `item` and backfill unified `item.system` fields.
+   * @param {object} source
+   * @param {object} [migrationData]
+   * @returns {object}
+   */
+  static migrateData(source, migrationData) {
+    if (source.type === 'wearable') source.type = 'item';
+
+    if (source.type === 'item' && source.system && typeof source.system === 'object') {
+      const s = source.system;
+      if (s.equipped === undefined) s.equipped = false;
+      if (s.anatomyId === undefined) s.anatomyId = null;
+      if (s.anatomyGroup === undefined) s.anatomyGroup = null;
+      if (!Array.isArray(s.coveredParts)) s.coveredParts = [];
+      if (!s.defaultActions || typeof s.defaultActions !== 'object') {
+        s.defaultActions = {
+          equip: { showInCombat: false, showInQuickbar: true },
+          unequip: { showInCombat: false, showInQuickbar: true },
+        };
+      } else {
+        s.defaultActions.equip = s.defaultActions.equip || { showInCombat: false, showInQuickbar: true };
+        s.defaultActions.unequip = s.defaultActions.unequip || { showInCombat: false, showInQuickbar: true };
+      }
+      if (!s.modifiers || typeof s.modifiers !== 'object') {
+        s.modifiers = { abilities: [], derived: [], params: [] };
+      } else {
+        s.modifiers.abilities = Array.isArray(s.modifiers.abilities) ? s.modifiers.abilities : [];
+        s.modifiers.derived = Array.isArray(s.modifiers.derived) ? s.modifiers.derived : [];
+        s.modifiers.params = Array.isArray(s.modifiers.params) ? s.modifiers.params : [];
+      }
+      if (s.formula === undefined) {
+        s.formula = 'd20 + @str.mod + ceil(@lvl / 2)';
+      }
+      if (!s.itemTags || typeof s.itemTags !== 'object') {
+        s.itemTags = { isArmor: false, isActions: false, isModifiers: false };
+      } else {
+        s.itemTags.isArmor = !!s.itemTags.isArmor;
+        s.itemTags.isActions = !!s.itemTags.isActions;
+        s.itemTags.isModifiers = !!s.itemTags.isModifiers;
+      }
+    }
+
+    return super.migrateData(source, migrationData);
+  }
+
+  /**
    * Augment the basic Item data model with additional dynamic data.
    */
   prepareData() {

@@ -5,11 +5,60 @@
   // Section panel (stats tab, etc.)
   .stats-panel {
     margin: 0;
-    padding: 12px;
+    padding: 0 12px;
     background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
     border: 1px solid var(--sh-border);
     border-radius: var(--sh-radius-lg);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
+  }
+
+  // Stats tab: abilities + derived + reserved skills column
+  .sh-stats-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .sh-stats-column {
+    min-width: 0;
+  }
+
+  @media (max-width: 560px) {
+    .tab.stats .sh-stats-columns {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .stats-panel--skills-reserved {
+    min-height: 100%;
+    box-sizing: border-box;
+  }
+
+  .sh-derived-ap {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    > .capacity-line {
+      border-bottom: none;
+    }
+  }
+
+  .sh-derived-hint {
+    margin: 0 0 6px 0;
+    padding: 0 0 2px 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--sh-text-muted);
+  }
+
+  .sh-derived-value {
+    input {
+      width: 88px;
+    }
+
+    .sh-derived-readonly {
+      min-width: 88px;
+    }
   }
 
   // Header bars: only when used as a direct panel header (avoid bleeding into cards)
@@ -118,45 +167,6 @@
     border-radius: var(--sh-radius-lg);
   }
 
-  .sh-actions-resources {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin: 0 0 12px 0;
-  }
-
-  .sh-actions-resource {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-md);
-  }
-
-  .sh-actions-resource__label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--sh-text-muted);
-  }
-
-  .sh-actions-resource__value {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    input {
-      width: 88px;
-      text-align: center;
-      font-family: $font-mono;
-    }
-  }
-
-  .sh-actions-resource__sep {
-    color: var(--sh-text-dim);
-  }
-
   .sh-actions-subheader {
     margin: 10px 0 8px 0;
     font-size: 12px;
@@ -216,20 +226,6 @@
     font-family: $font-mono;
     font-weight: 800;
     color: var(--sh-text-muted);
-  }
-
-  .sh-movement-controls {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-  }
-
-  .sh-action-btn--confirm {
-    border-color: rgba(74, 140, 90, 0.85);
-  }
-
-  .sh-action-btn--cancel {
-    border-color: rgba(160, 90, 90, 0.85);
   }
 
   .sh-custom-actions-list {

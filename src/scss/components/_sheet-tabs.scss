@@ -1,0 +1,299 @@
+// Иконки вкладок (nav) + цветной баннер первым элементом внутри каждой .tab
+
+// Расстояние между кнопками вкладок и отступ полосы от правого края окна (одно значение)
+$sh-sheet-tabs-item-gap: 6px;
+
+// Акценты вкладок: середина между яркой палитрой и сильно приглушённой
+$sh-tab-accents: (
+  'stats': #5385ab,
+  'health': #b65360,
+  'injuries': #b68c3c,
+  'inventory': #7d71af,
+  'description': #469588,
+  'attributes': #926aaf,
+  'actions': #b29e55,
+  'effects': #5b7fb8,
+  'tags': #aa7658,
+  'modifiers': #5890a6,
+  'items': #6890c1,
+  'biography': #469588,
+);
+
+.window-app.spaceholder,
+.spaceholder {
+  @each $id, $c in $sh-tab-accents {
+    form:has(.sheet-body .tab[data-tab='#{$id}'].active) {
+      --sh-sheet-tab-accent: #{$c};
+    }
+
+    // Рамка .sheet-body: явный акцент на самой секции (наследование с form + color-mix у ядра даёт серую линию)
+    @at-root {
+      .window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab='#{$id}']),
+      .spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab='#{$id}']) {
+        --sh-sheet-frame-accent: #{$c};
+      }
+    }
+  }
+
+  .sh-character-faction-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 0 8px 0;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    border-left: 4px solid var(--faction-color, rgba(255, 255, 255, 0.2));
+    box-shadow: none;
+
+    &__label {
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--sh-text-muted);
+    }
+
+    &__value {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+
+      a.content-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: $sh-control-height;
+        padding: 0 10px;
+        border-radius: var(--sh-radius-sm);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--sh-border);
+        border-left: 3px solid var(--faction-color, var(--sh-border-strong));
+        color: var(--sh-text);
+        text-decoration: none;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.06);
+          color: #fff;
+        }
+      }
+
+      input[type='text'] {
+        flex: 1 1 200px;
+        min-width: 120px;
+        max-width: 100%;
+      }
+    }
+
+    &__empty {
+      color: var(--sh-text-dim);
+      font-size: 13px;
+    }
+  }
+
+  nav.sheet-tabs.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: $sh-sheet-tabs-item-gap;
+    padding: 0;
+    margin: 0 $sh-sheet-tabs-item-gap 0 0;
+    border: none;
+    border-bottom: none;
+    box-shadow: none;
+    background: transparent;
+    list-style: none;
+
+    .item {
+      --tab-accent: rgba(255, 255, 255, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 52px;
+      height: 44px;
+      padding: 0 10px;
+      margin: 0;
+      border-radius: var(--sh-radius-md) var(--sh-radius-md) 0 0;
+      border: 1px solid color-mix(in srgb, var(--tab-accent) 38%, var(--sh-border));
+      border-bottom: none;
+      background: color-mix(in srgb, var(--sh-surface-2) 88%, var(--tab-accent));
+      color: color-mix(in srgb, var(--tab-accent) 72%, var(--sh-text-muted));
+      cursor: pointer;
+      text-decoration: none;
+      flex: 0 0 auto;
+      transition:
+        background 0.12s ease,
+        color 0.12s ease,
+        border-color 0.12s ease,
+        box-shadow 0.12s ease;
+
+      i {
+        font-size: 22px;
+        line-height: 1;
+        pointer-events: none;
+      }
+
+      &:hover {
+        background: color-mix(in srgb, var(--sh-surface-3) 75%, var(--tab-accent));
+        color: color-mix(in srgb, #fff 40%, var(--tab-accent));
+        border-color: color-mix(in srgb, var(--tab-accent) 55%, var(--sh-border));
+      }
+
+      &:focus-visible {
+        @include sh-focus-ring;
+        z-index: 1;
+      }
+
+      &.active {
+        background: color-mix(in srgb, var(--sh-bg) 56%, var(--tab-accent));
+        color: color-mix(in srgb, var(--tab-accent) 4%, #f7f7f7);
+        border-color: var(--tab-accent);
+        box-shadow:
+          0 0 0 1px color-mix(in srgb, var(--tab-accent) 36%, transparent),
+          inset 0 -2px 0 0 var(--tab-accent);
+        z-index: 2;
+      }
+    }
+
+    @each $id, $c in $sh-tab-accents {
+      .item[data-tab='#{$id}'] {
+        --tab-accent: #{$c};
+      }
+    }
+  }
+
+  // Лист персонажа / предмета: первый ребёнок .sheet-body — nav + .tab; баннер активной вкладки (см. actor-character-sheet.hbs, item-*-sheet.hbs)
+  .sheet-body.sheet-body--character-primary,
+  .sheet-body.sheet-body--item-primary {
+    // Сдвиг вверх неактивных; активная без этого сдвига = визуально на 8px ниже
+    --sh-character-primary-tab-lift: 8px;
+    // Высота полосы вкладок: 40px кнопка + запас под «опускание» активной
+    --sh-character-primary-tab-strip-height: calc(40px + var(--sh-character-primary-tab-lift));
+    // Доп. подъём листа к шапке (px), суммируется с высотой полосы вкладок в margin-top стека
+    --sh-character-primary-extra-pull: 10px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  nav.sheet-tabs.tabs.sheet-tabs--character-primary,
+  nav.sheet-tabs.tabs.sheet-tabs--item-primary {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 3;
+    // Горизонталь под вкладками; боковая рамка — .sheet-body::before (с clip-path)
+    border-bottom: 1px solid var(--sh-sheet-frame-accent, var(--sh-border));
+    // Отступ кнопок от правого края — padding, чтобы border-right шёл по краю листа
+    margin: 0;
+    padding: 0 $sh-sheet-tabs-item-gap 0 0;
+    justify-content: flex-end;
+    align-items: flex-end;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: var(--sh-character-primary-tab-strip-height);
+
+    .item {
+      min-width: 48px;
+      height: 40px;
+      padding: 0 8px;
+      transition:
+        background 0.18s ease,
+        color 0.18s ease,
+        border-color 0.18s ease,
+        border-width 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+
+      // Неактивные: выше на --tab-lift, полная рамка и скругление со всех сторон
+      &:not(.active) {
+        border-radius: var(--sh-radius-md);
+        border: 1px solid color-mix(in srgb, var(--tab-accent) 38%, var(--sh-border));
+        background: color-mix(in srgb, var(--sh-surface-2) 88%, var(--tab-accent));
+        transform: translateY(calc(-1 * var(--sh-character-primary-tab-lift)));
+      }
+
+      // Активная: верх 4px, бока 2px, низ без линии (стык с баннером)
+      &.active {
+        border-radius: var(--sh-radius-md) var(--sh-radius-md) 0 0;
+        border: none;
+        border-top: 4px solid var(--tab-accent);
+        border-left: 2px solid var(--tab-accent);
+        border-right: 2px solid var(--tab-accent);
+        border-bottom: none;
+        background: color-mix(in srgb, var(--sh-bg) 56%, var(--tab-accent));
+        box-shadow: none;
+        margin-bottom: -1px;
+        transform: translateY(0);
+        position: relative;
+        z-index: 2;
+      }
+
+      i {
+        font-size: 20px;
+      }
+    }
+  }
+
+  // Баннер: те же оттенки, что у nav .item.active (выбранная вкладка), а не приглушённый неактивный стиль
+  .sheet-body .tab .sh-tab-banner {
+    --banner-accent: var(--sh-sheet-tab-accent, var(--sh-accent));
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin: 0 -10px 12px -10px;
+    padding: 12px 16px;
+    min-height: 48px;
+    border-radius: 0;
+    box-sizing: border-box;
+    border: 2px solid var(--banner-accent);
+    border-bottom-width: 1px;
+    background: color-mix(in srgb, var(--sh-bg) 56%, var(--banner-accent));
+    color: color-mix(in srgb, var(--banner-accent) 5%, #f5f5f5);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.48);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--banner-accent) 36%, transparent),
+      inset 0 -1px 0 0 var(--banner-accent);
+
+    i {
+      font-size: 22px;
+      line-height: 1;
+      color: inherit;
+      opacity: 0.935;
+    }
+  }
+
+  @each $id, $c in $sh-tab-accents {
+    .sheet-body .tab .sh-tab-banner[data-tab='#{$id}'] {
+      --banner-accent: #{$c};
+    }
+  }
+
+  // Лист персонажа / предмета: стык с активной вкладкой (nav поверх панели — иначе баннер перекрывает саму активную кнопку)
+  .sheet-body.sheet-body--character-primary .tab.active .sh-tab-banner,
+  .sheet-body.sheet-body--item-primary .tab.active .sh-tab-banner {
+    border-radius: 0;
+    margin-top: -3px;
+  }
+
+  // Табbed-листы: верх баннера скруглён (кроме primary-strip — баннер вплотную к полосе вкладок)
+  .spaceholder-sheet-stack:has(> nav.sheet-tabs.tabs) .sheet-body .tab .sh-tab-banner,
+  .sheet-body:not(.sheet-body--character-primary):not(.sheet-body--item-primary):has(> nav.sheet-tabs.tabs)
+    .tab
+    .sh-tab-banner {
+    border-radius: var(--sh-radius-md) var(--sh-radius-md) 0 0;
+  }
+
+  form:has(nav.sheet-tabs):not(:has(.sheet-body .tab.active)) {
+    --sh-sheet-tab-accent: var(--sh-accent-strong);
+  }
+}

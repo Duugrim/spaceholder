@@ -1,0 +1,60 @@
+{{!-- Character sheet: портрет + иконка фракции (клик — открыть лист фракции); подпись — имя фракции / диспозиция / UUID --}}
+<header class="sheet-header sh-character-header">
+  <div
+    class="sh-character-header__card{{#if editable}}{{#unless system.gFaction}} sh-character-header__card--factionDrop{{/unless}}{{/if}}"
+    style="--sh-character-header-accent: {{#if characterHeaderAccent}}{{characterHeaderAccent}}{{else}}#3d4a5c{{/if}};{{#if factionColor}} --faction-color: {{factionColor}};{{/if}}"
+  >
+    <div class="sh-character-header__top">
+      <div class="sh-portrait sh-character-header__portrait">
+        <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="150" width="150" alt=""/>
+        {{#if editable}}
+          <button
+            type="button"
+            class="icon-btn sh-portrait__pick"
+            data-action="sh-icon-pick"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+          ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
+        {{/if}}
+      </div>
+      {{#if system.gFaction}}
+        <a
+          class="sh-character-header__factionIconWrap"
+          href="#"
+          data-action="uuid-open"
+          data-uuid="{{system.gFaction}}"
+          data-tooltip="{{localize 'SPACEHOLDER.Character.OpenFactionSheet'}}"
+          aria-label="{{localize 'SPACEHOLDER.Character.OpenFactionSheet'}}"
+        >
+          {{#if gFactionImg}}
+            <img class="sh-character-header__factionIconImg" src="{{gFactionImg}}" width="75" height="75" alt="" />
+          {{else}}
+            <span class="sh-character-header__factionIconPh" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
+          {{/if}}
+        </a>
+      {{else}}
+        <div class="sh-character-header__factionIconWrap">
+          <span class="sh-character-header__factionIconPh sh-character-header__factionIconPh--disposition" aria-hidden="true"><i class="{{characterDispositionIconClass}}"></i></span>
+        </div>
+      {{/if}}
+    </div>
+    <div class="sh-character-header__caption">
+      {{#if system.gFaction}}
+        <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
+        <div class="sh-character-header__captionRow">
+          <span class="sh-character-header__captionFactionName">{{gFactionName}}</span>
+          {{#if editable}}
+            <button type="button" class="icon-btn sh-character-header__factionClear" data-action="uuid-clear" data-field="system.gFaction" data-tooltip="{{localize 'SPACEHOLDER.Actions.Clear'}}" aria-label="{{localize 'SPACEHOLDER.Actions.Clear'}}">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          {{/if}}
+        </div>
+      {{else}}
+        <span class="sh-character-header__captionFactionName">{{characterDispositionLabel}}</span>
+      {{/if}}
+    </div>
+  </div>
+  <div class="sh-character-header__aside">
+    <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
+  </div>
+</header>

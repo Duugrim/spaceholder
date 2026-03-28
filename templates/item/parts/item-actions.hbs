@@ -28,7 +28,6 @@
           <input
             type="number"
             value="{{ca.apCost}}"
-            min="0"
             data-action="sh-item-custom-action-edit"
             data-id="{{ca.id}}"
             data-field="apCost"
@@ -69,34 +68,6 @@
     </div>
   {{else}}
     <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomEmpty'}}</em></p>
-  {{/if}}
-
-  {{#if (eq item.type "wearable")}}
-    <div class="sh-actions-subheader">{{localize 'SPACEHOLDER.ActionsSystem.UI.WearableDefaults'}}</div>
-    <div class="sh-wearable-default-actions">
-      <div class="sh-wearable-default-actions__row">
-        <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.EquipShort'}}</div>
-        <label class="sh-custom-action-flag">
-          <input type="checkbox" name="system.defaultActions.equip.showInCombat" {{#if system.defaultActions.equip.showInCombat}}checked{{/if}} />
-          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
-        </label>
-        <label class="sh-custom-action-flag">
-          <input type="checkbox" name="system.defaultActions.equip.showInQuickbar" {{#if system.defaultActions.equip.showInQuickbar}}checked{{/if}} />
-          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
-        </label>
-      </div>
-      <div class="sh-wearable-default-actions__row">
-        <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.UnequipShort'}}</div>
-        <label class="sh-custom-action-flag">
-          <input type="checkbox" name="system.defaultActions.unequip.showInCombat" {{#if system.defaultActions.unequip.showInCombat}}checked{{/if}} />
-          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
-        </label>
-        <label class="sh-custom-action-flag">
-          <input type="checkbox" name="system.defaultActions.unequip.showInQuickbar" {{#if system.defaultActions.unequip.showInQuickbar}}checked{{/if}} />
-          <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
-        </label>
-      </div>
-    </div>
   {{/if}}
 </div>
 

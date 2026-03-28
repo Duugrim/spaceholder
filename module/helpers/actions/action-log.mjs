@@ -16,7 +16,27 @@ function _num(v, fallback = 0) {
 export function getActorActionLog(actor) {
   if (!actor) return [];
   const raw = actor.getFlag?.('spaceholder', 'actionLog');
-  return Array.isArray(raw) ? raw : [];
+  const list = Array.isArray(raw) ? raw : [];
+  return list.map((entry) => {
+    if (!entry || typeof entry !== 'object') return null;
+    const apCost = _num(entry.apCost, 0);
+    return {
+      id: String(entry.id ?? ''),
+      type: String(entry.type ?? 'other'),
+      movementId: entry.movementId ?? null,
+      tokenUuid: entry.tokenUuid ?? null,
+      combatId: entry.combatId ?? null,
+      combatantId: entry.combatantId ?? null,
+      round: _num(entry.round, 0),
+      distance: _num(entry.distance, 0),
+      baseApCost: _num(entry.baseApCost, apCost),
+      apCost,
+      forced: !!entry.forced,
+      ignored: !!entry.ignored,
+      replacedBy: entry.replacedBy ?? null,
+      createdAt: _num(entry.createdAt, Date.now()),
+    };
+  }).filter(Boolean);
 }
 
 /**
@@ -47,7 +67,11 @@ export async function addActionEntry(actor, entry) {
     type: String(entry?.type ?? 'other'),
     movementId: entry?.movementId ?? null,
     tokenUuid: entry?.tokenUuid ?? null,
+    combatId: entry?.combatId ?? null,
+    combatantId: entry?.combatantId ?? null,
+    round: _num(entry?.round, 0),
     distance: _num(entry?.distance, 0),
+    baseApCost: _num(entry?.baseApCost, _num(entry?.apCost, 0)),
     apCost: Math.max(0, Math.floor(_num(entry?.apCost, 0))),
     forced: !!entry?.forced,
     ignored: !!entry?.ignored,

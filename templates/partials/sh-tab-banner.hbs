@@ -1,0 +1,5 @@
+{{!-- Заголовок вкладки внутри .tab (цвет по data-tab в _sheet-tabs.scss). Параметры: tab, group, icon, labelKey --}}
+<header class="sh-tab-banner" data-tab="{{tab}}" {{#if group}}data-group="{{group}}"{{/if}}>
+  <i class="{{icon}}" aria-hidden="true"></i>
+  <span>{{localize labelKey}}</span>
+</header>

@@ -27,9 +27,11 @@
       },
       "actionPoints": {
         "value": 100,
-        "max": 100
+        "max": 1000
       },
       "speed": 1,
+      "turnStarts": 1,
+      "gFaction": "",
       "actions": [],
       "abilities": {
         "end": { "value": 10 },
@@ -64,7 +66,7 @@
     }
   },
   "Item": {
-    "types": ["item", "feature", "spell", "wearable"],
+    "types": ["item", "feature", "spell"],
     "templates": {
       "base": {
         "description": "",
@@ -76,19 +78,7 @@
       "templates": ["base"],
       "quantity": 1,
       "weight": 0,
-      "formula": "d20 + @str.mod + ceil(@lvl / 2)"
-    },
-    "feature": {
-      "templates": ["base"]
-    },
-    "spell": {
-      "templates": ["base"],
-      "spellLevel": 1
-    },
-    "wearable": {
-      "templates": ["base"],
-      "quantity": 1,
-      "weight": 0,
+      "formula": "d20 + @str.mod + ceil(@lvl / 2)",
       "equipped": false,
       "anatomyId": null,
       "anatomyGroup": null,
@@ -107,7 +97,19 @@
         "abilities": [],
         "derived": [],
         "params": []
+      },
+      "itemTags": {
+        "isArmor": false,
+        "isActions": false,
+        "isModifiers": false
       }
+    },
+    "feature": {
+      "templates": ["base"]
+    },
+    "spell": {
+      "templates": ["base"],
+      "spellLevel": 1
     }
   }
 }

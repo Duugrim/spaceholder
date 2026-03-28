@@ -25,10 +25,25 @@
       "Effects": "Эффекты",
       "Attributes": "Атрибуты",
       "Coverage": "Покрытие",
-      "Modifiers": "Модификаторы"
+      "Modifiers": "Модификаторы",
+      "Tags": "Теги"
+    },
+    "ItemTags": {
+      "SectionTitle": "Группы функционала",
+      "Hint": "Включайте группы, чтобы показать связанные вкладки и применять механики. Выключенные группы сохраняют данные, но не применяются.",
+      "Armor": "Броня (покрытие, надеть/снять)",
+      "Actions": "Действия (кастомные действия предмета)",
+      "Modifiers": "Модификаторы (характеристики персонажа)"
     },
     "Placeholder": {
       "Name": "Имя"
+    },
+    "Character": {
+      "OpenFactionSheet": "Открыть лист фракции",
+      "DispositionFriendly": "Дружественный",
+      "DispositionNeutral": "Нейтральный",
+      "DispositionHostile": "Враждебный",
+      "DispositionSecret": "Секретный"
     },
     "Units": {
       "Kg": "кг"
@@ -187,6 +202,8 @@
         "ActionPoints": "Очки Действия (база)",
         "CurrentAP": "Текущие ОД",
         "Speed": "Скорость",
+        "TurnStarts": "Ходов за раунд",
+        "Faction": "Фракция (UUID)",
         "AvailableActions": "Доступные действия",
         "NoActions": "Нет доступных действий",
         "CustomActions": "Кастомные действия",
@@ -211,18 +228,46 @@
         "UnequipShort": "Снять"
       },
       "Movement": {
-        "Move": "Движение",
-        "Started": "Режим движения включён. Двигайте токен, затем подтвердите или отмените. ESC/ПКМ — отмена.",
-        "Confirm": "Подтвердить движение",
-        "Cancel": "Отменить движение",
-        "Cancelled": "Движение отменено",
-        "Confirmed": "Пройдено {dist}, потрачено ОД: {cost}",
-        "SpeedZero": "Скорость 0: движение недоступно",
-        "NoTokenContext": "Откройте лист из токена, чтобы использовать движение"
+        "Move": "Движение"
       },
       "Errors": {
         "NotEnoughAP": "Недостаточно Очков Действия (нужно {need}, есть {have})",
-        "MovementNotAvailable": "Система движения недоступна"
+        "ApSpendFailed": "Не удалось списать очки действия"
+      }
+    },
+    "ActionChatJournal": {
+      "Title": "Раунд {round} — действия",
+      "Undo": "Отменить",
+      "Undone": "Отменено",
+      "UndoFailed": "Не удалось отменить действие"
+    },
+    "Combat": {
+      "PanelTitle": "Боевые действия",
+      "CurrentSide": "Текущая сторона",
+      "NextSide": "Следующая сторона",
+      "UseAlternation": "Использовать чередование сторон",
+      "EndTurn": "Закончить ход",
+      "ActionTable": "Таблица действий",
+      "ChangeSide": "Сменить сторону",
+      "UndoLastAction": "Отменить последнее действие",
+      "NoActions": "Пока нет действий",
+      "RowMove": "Передвижение",
+      "RowAction": "Действие",
+      "ForceMove": "Вынужденное движение",
+      "ForceMoveToggleOn": "Вынужденное движение — не тратит AP",
+      "ForceMoveToggleOff": "Отменить вынужденность — вернуть стоимость AP",
+      "SideNow": "Ходит сейчас",
+      "SideNext": "Следующая",
+      "IndicatorActive": "Активный",
+      "IndicatorDone": "Походил",
+      "IndicatorPending": "Не ходил",
+      "NewSide": "Выберите сторону",
+      "OrNewSide": "Или введите custom side",
+      "Side": {
+        "friendly": "Дружественные",
+        "neutral": "Нейтральные",
+        "hostile": "Враждебные",
+        "secret": "Секретные"
       }
     },
     "Inventory": {
@@ -230,8 +275,6 @@
       "TotalItems": "Предметов:",
       "CreateItem": "Создать предмет",
       "NewItem": "Новый предмет",
-      "CreateWearable": "Создать надеваемый предмет",
-      "NewWearable": "Новый надеваемый",
       "Quantity": "Кол-во:",
       "ItemTotalWeight": "Общий вес:",
       "EditItem": "Редактировать предмет",
@@ -1097,8 +1140,7 @@
     "Item": {
       "item": "Предмет",
       "feature": "Особенность",
-      "spell": "Заклинание",
-      "wearable": "Надеваемый"
+      "spell": "Заклинание"
     }
   }
 }

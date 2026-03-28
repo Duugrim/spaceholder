@@ -1,3 +1,5 @@
-$font-primary: 'IBM Plex Sans', 'Roboto', 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
-$font-secondary: $font-primary;
+// IBM Plex + Exo 2 via spaceholder.scss Google Fonts import. Avoid Roboto in fallback: core ships @font-face for it.
+// One string so interpolation into --font-* keeps quotes around multi-word family names (Sass lists lose them).
+$font-primary: '"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif';
+$font-secondary: '"Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif';
 $font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;

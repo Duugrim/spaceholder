@@ -396,10 +396,12 @@
   resize: vertical;
 }
 
-.spaceholder .sh-eventsEditor .hint {
+.spaceholder .sh-eventsEditor .hint,
+.spaceholder .sh-eventsResponseEditor .hint {
   margin: 0.1rem 0 0 0;
   opacity: 0.72;
   font-size: 0.78rem;
+  font-family: #{$font-secondary};
 }
 
 .spaceholder .sh-eventsResponseEditor__header h3 {

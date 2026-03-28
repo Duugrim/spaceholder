@@ -17,7 +17,7 @@
  
 /**
  * @typedef {object} ActionDescriptor
- * @property {string} id - Stable id, e.g. "actor.move" or "item.<uuid>.equip"
+ * @property {string} id - Stable id, e.g. "item.<uuid>.equip"
  * @property {string} source - "actor" | "item" | "system"
  * @property {string} label - Localized label
  * @property {string} [icon] - FontAwesome class, e.g. "fa-solid fa-person-walking"
@@ -50,28 +50,70 @@ function _num(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
  
-import { getActorActionLog, addActionEntry } from './action-log.mjs';
+import { ensureCharacterApSynced, getStoredActionPoints, spendAp } from './transaction-ledger.mjs';
+import { appendCombatActionJournalLine } from './action-chat-journal.mjs';
+
+function _activeCombat() {
+  return game?.combat?.started ? game.combat : null;
+}
+
+function _getCombatantForActor(actor, tokenDoc = null, combat = _activeCombat()) {
+  if (!actor || !combat) return null;
+  const list = combat.combatants?.contents || [];
+  if (tokenDoc?.id) {
+    const byToken = list.find((c) => String(c.tokenId ?? c.token?.id ?? '') === String(tokenDoc.id));
+    if (byToken) return byToken;
+  }
+  return list.find((c) => String(c.actorId ?? c.actor?.id ?? '') === String(actor.id)) || null;
+}
+
+function _coordinationValue(actor) {
+  return _num(actor?.system?.abilities?.cor?.value, 10);
+}
+
+/**
+ * Raw AP for movement from scene distance: AP per 1 grid-agnostic distance unit × distance, rounded up.
+ * `actor.system.speed` = AP spent per 1 unit of distance (not per cell).
+ * If speed is not set (<= 0), falls back to the cost/distance reported by core (e.g. grid steps), then ceil.
+ *
+ * @param {Actor|null|undefined} actor
+ * @param {number} distance - passed segment length from TokenMovementData
+ * @param {number} [coreReportedCost] - Foundry-reported cost for the segment (fallback)
+ * @returns {number}
+ */
+export function getMovementDistanceApBase(actor, distance, coreReportedCost = 0) {
+  const dist = Math.max(0, _num(distance, 0));
+  const speed = _num(actor?.system?.speed, 0);
+  if (speed > 0) {
+    if (dist <= 0) return 0;
+    return Math.ceil(dist * speed);
+  }
+  const core = Math.max(0, _num(coreReportedCost, 0));
+  if (core > 0) return Math.ceil(core);
+  if (dist > 0) return Math.ceil(dist);
+  return 0;
+}
+
+/**
+ * Coordination modifies non-negative base costs only.
+ * Base negative costs remain negative by design.
+ * @param {Actor} actor
+ * @param {number} baseCost
+ */
+export function getEffectiveActionCost(actor, baseCost) {
+  const base = _num(baseCost, 0);
+  if (base < 0) return base;
+  const cor = _coordinationValue(actor);
+  const reduction = cor - 10;
+  return Math.max(0, Math.floor(base - reduction));
+}
+
 /**
  * @param {Actor} actor
  * @returns {{value:number,max:number,base:number,spent:number}}
  */
 export function getActorActionPoints(actor) {
-  const ap = actor?.system?.actionPoints ?? null;
-  const base = _num(ap?.value, 0);
-  const max = _num(ap?.max, base);
-
-  const log = getActorActionLog(actor);
-  let spent = 0;
-  for (const e of log) {
-    if (!e || e.ignored) continue;
-    const cost = _num(e.apCost, 0);
-    if (cost <= 0) continue;
-    if (e.replacedBy) continue;
-    spent += cost;
-  }
-
-  const current = Math.max(0, base - spent);
-  return { value: current, max, base, spent };
+  return getStoredActionPoints(actor);
 }
  
 /**
@@ -108,7 +150,8 @@ function _collectWearableToggleActions(actor, ctx) {
   const actions = [];
   const items = actor?.items ? Array.from(actor.items) : [];
   for (const item of items) {
-    if (!item || item.type !== 'wearable') continue;
+    if (!item || item.type !== 'item') continue;
+    if (!item.system?.itemTags?.isArmor) continue;
     const equipped = !!item.system?.equipped;
     const defaults = item.system?.defaultActions ?? {};
     const equipDefaults = defaults?.equip ?? {};
@@ -189,6 +232,7 @@ function _collectCustomActions(actor, ctx) {
  
   const items = actor?.items ? Array.from(actor.items) : [];
   for (const item of items) {
+    if (item?.type === 'item' && !item.system?.itemTags?.isActions) continue;
     const itemActions = _normalizeCustomActions(item?.system?.actions);
     for (const a of itemActions) {
       out.push({
@@ -224,40 +268,6 @@ function _collectCustomActions(actor, ctx) {
 }
  
 /**
- * Collect base actor actions (MVP: movement entry point only).
- * The actual movement mode is handled by movement-manager; here we just provide action descriptor.
- * @param {Actor} actor
- * @param {ActionContext} ctx
- */
-function _collectBaseActorActions(actor, ctx) {
-  const out = [];
-  const speed = _num(actor?.system?.speed, 0);
-  if (actor?.type === 'character' && speed > 0) {
-    out.push({
-      id: 'actor.move',
-      source: 'system',
-      label: _t('SPACEHOLDER.ActionsSystem.Movement.Move'),
-      icon: 'fa-solid fa-person-walking',
-      apCost: 0, // spent on confirm
-      showInCombat: true,
-      showInQuickbar: true,
-      visible: () => true,
-      enabled: (c) => !!c.tokenDoc,
-      disabledReason: (c) => (c.tokenDoc ? null : _t('SPACEHOLDER.ActionsSystem.Movement.NoTokenContext')),
-      run: async (c) => {
-        const mm = game.spaceholder?.movementManager;
-        if (!mm) {
-          ui.notifications?.error?.(_t('SPACEHOLDER.ActionsSystem.Errors.MovementNotAvailable'));
-          return;
-        }
-        await mm.start({ actor: c.actor, tokenDoc: c.tokenDoc });
-      }
-    });
-  }
-  return out;
-}
- 
-/**
  * Apply context filters.
  * @param {ActionDescriptor[]} list
  * @param {ActionContext} ctx
@@ -282,14 +292,13 @@ export function collectActorActions(actor, partialCtx = {}) {
   const ctx = {
     user: game.user,
     isGM: !!game.user?.isGM,
-    inCombat: !!game.combat,
+    inCombat: !!_activeCombat(),
     actor,
     tokenDoc: partialCtx.tokenDoc ?? null,
     editable: partialCtx.editable !== undefined ? !!partialCtx.editable : !!actor?.isOwner,
   };
  
   let list = [];
-  list = list.concat(_collectBaseActorActions(actor, ctx));
   list = list.concat(_collectWearableToggleActions(actor, ctx));
   list = list.concat(_collectCustomActions(actor, ctx));
  
@@ -304,7 +313,7 @@ export function collectActorActions(actor, partialCtx = {}) {
  
 /**
  * Execute action by descriptor and spend AP if needed.
- * Note: movement spends on confirm; this function only applies direct apCost.
+ * Movement AP is handled when the token finishes a move (movement-manager); this applies direct apCost for the action.
  * @param {Actor} actor
  * @param {ActionDescriptor} action
  * @param {Partial<ActionContext>} partialCtx
@@ -320,17 +329,70 @@ export async function executeActorAction(actor, action, partialCtx = {}) {
     return false;
   }
  
-  const cost = Math.max(0, Math.floor(_num(action.apCost, 0)));
+  const baseCost = Math.floor(_num(action.apCost, 0));
+  const cost = getEffectiveActionCost(actor, baseCost);
+  await ensureCharacterApSynced(actor);
+
+  let transactionId = null;
+  if (cost > 0 && actor.type === "character") {
+    const combatPre = _activeCombat();
+    const combatantPre = _getCombatantForActor(actor, ctx.tokenDoc ?? null, combatPre);
+    let spend = null;
+    try {
+      spend = await spendAp(actor, cost, {
+        combatantId: combatantPre?.id ?? null,
+        source: { type: "action", actionId: action.id, label: action.label },
+      });
+    } catch (e) {
+      ui.notifications?.warn?.(String(e?.message || e) || _t("SPACEHOLDER.ActionsSystem.Errors.ApSpendFailed"));
+      return false;
+    }
+    if (!spend?.ok) {
+      ui.notifications?.warn?.(spend?.error || _t("SPACEHOLDER.ActionsSystem.Errors.ApSpendFailed"));
+      return false;
+    }
+    transactionId = spend.transactionId ?? null;
+  }
+
   await action.run(ctx);
-  if (cost > 0) {
-    await addActionEntry(actor, {
-      type: 'other',
+
+  const combat = _activeCombat();
+  const combatant = _getCombatantForActor(actor, ctx.tokenDoc ?? null, combat);
+  let combatEventId = null;
+  if (combat && combatant && game.spaceholder?.combatSessionManager?.logAction) {
+    const logResult = await game.spaceholder.combatSessionManager.logAction({
+      combat,
+      actor,
+      combatant,
+      type: 'action',
+      baseApCost: baseCost,
       apCost: cost,
-      movementId: null,
+      data: {
+        actionId: action.id,
+        label: action.label,
+        tokenUuid: ctx.tokenDoc?.uuid ?? null,
+        transactionId,
+      },
+      effects: [],
+      inverse: [],
+    });
+    combatEventId = logResult?.eventId ?? null;
+  }
+
+  if (combat && combatant) {
+    await appendCombatActionJournalLine({
+      actor,
+      combat,
+      combatant,
+      label: action.label,
+      apCost: cost,
+      kind: 'action',
+      transactionId,
+      combatEventId,
       tokenUuid: ctx.tokenDoc?.uuid ?? null,
     });
   }
- 
+
   return true;
 }
  

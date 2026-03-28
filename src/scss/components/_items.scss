@@ -123,4 +123,40 @@
     color: #ffffff;
     font-size: 12px;
   }
+
+  // Item tags tab (system.itemTags)
+  .tab.tags {
+    padding: 12px;
+  }
+
+  .sh-item-tags-hint {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    color: var(--sh-text-muted);
+  }
+
+  .sh-item-tags-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .sh-item-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    cursor: pointer;
+
+    input {
+      flex: 0 0 auto;
+    }
+  }
+
+  .sh-item-tags-wearable-defaults {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--sh-border);
+  }
 }

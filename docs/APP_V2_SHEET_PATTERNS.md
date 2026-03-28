@@ -1,6 +1,6 @@
 # Паттерны Application V2: листы документов (Item/Actor)
 
-Шпаргалка по типичным задачам в листах Foundry Application V2. Решения проверены на коде SpaceHolder (лист предмета Wearable, лист персонажа). При проблемах вида «кнопка не нажимается» или «вкладка сбрасывается после обновления» — сверяться с этим документом. Если после дебага найдено новое решение такого же типа — **добавить его в этот документ**.
+Шпаргалка по типичным задачам в листах Foundry Application V2. Решения проверены на коде SpaceHolder (лист предмета типа `item`, лист персонажа). При проблемах вида «кнопка не нажимается» или «вкладка сбрасывается после обновления» — сверяться с этим документом. Если после дебага найдено новое решение такого же типа — **добавить его в этот документ**.
 
 ## Краткая сводка
 
@@ -8,6 +8,8 @@
 |--------|-------------------|
 | Кнопка в листе Item/Actor V2 | Хук `renderItemSheetV2` / `renderActorSheetV2` + при необходимости делегирование на `document.body` с `data-*-uuid` на кнопке |
 | Вкладка сбрасывается после render | `_activeTabPrimary`, переопределение `changeTab`, `_configureRenderOptions` (options.tab), в `_onRender` — `changeTab(..., { force: true })`, после своих update+render — снова `changeTab` |
+| Имя предмета сбрасывается после своего `item.update` + render; частичный submit | `_getPendingNameFromForm()`, подмешивать `name` в `update` и в `_prepareSubmitData` (см. §1b) |
+| Портрет предмета / битый `img` в Item V2 | Явный клик по `img.profile-img` + FilePicker (`_onProfileImageClick`), в контексте `itemImgSrc` с fallback `Item.DEFAULT_ICON` (см. §1b) |
 | Удалить ключ из объекта в документе | `doc.update({ ['system.object.-=key']: null })`; для массового удаления/обновления — циклы с `-=` и точечными путями |
 
 ---
@@ -32,7 +34,7 @@
 ```javascript
 Hooks.on('renderItemSheetV2', async (app, element, context, options) => {
   const doc = app.document;
-  if (!doc || doc.type !== 'wearable') return;  // или нужный тип
+  if (!doc || doc.type !== 'item') return;  // или нужный тип
   if (!(element instanceof HTMLElement)) return;
 
   const btn = element.querySelector('[data-action="wearable-select-anatomy-group"]');
@@ -61,7 +63,7 @@ document.body.addEventListener('click', async (e) => {
   e.preventDefault();
   e.stopPropagation();
   const doc = await fromUuid(btn.dataset.itemUuid);
-  if (doc?.type === 'wearable') openWearableAnatomyDialog(doc);
+  if (doc?.type === 'item') openWearableAnatomyDialog(doc);
 });
 ```
 
@@ -75,6 +77,23 @@ document.body.addEventListener('click', async (e) => {
 - В обработчике: `const doc = await fromUuid(btn.dataset.itemUuid)`.
 
 Итог: для кнопок в V2-листах использовать **`renderItemSheetV2`** (или `renderActorSheetV2` для актора) и при необходимости — делегирование на `document.body` с `data-*-uuid` на кнопке.
+
+---
+
+## 1b. Лист предмета (ItemSheet V2): имя в шапке и портрет
+
+### Проблема
+
+- После `item.update` только по части полей (теги, `system.actions` и т.д.) и `render(false)` поле **имени** снова берётся из документа — текст в `<input name="name">`, ещё не отправленный формой, **теряется**.
+- Атрибут **`data-edit="img"`** на портрете в ItemSheet V2 **не всегда** обрабатывается ядром; пустой **`item.img`** даёт битую картинку в `<img src>`.
+
+### Решение (реализация: `module/sheets/item-sheet.mjs`)
+
+1. **`_getPendingNameFromForm()`** — прочитать `this.element.querySelector('input[name="name"]')`, вернуть обрезанную строку или `null`.
+2. **`_prepareSubmitData`** — если в DOM непустое имя, задать `data.name` из DOM (приоритет над пустым полем из частичного submit); иначе сохранить fallback на `this.document.name` для валидации DataModel.
+3. Любой **собственный** `item.update` перед `render` (чекбоксы тегов, редактор `system.actions`, …) — в тот же объект обновления добавить **`name`**, если `_getPendingNameFromForm()` непустое и отличается от `this.item.name`.
+4. Портрет: в **`_onRender`** сразу после `super._onRender` повесить обработчик клика на **`img.profile-img[data-edit]`** / **`img.profile-img`** → метод вроде **`_onProfileImageClick`** (FilePicker при редактировании, `ImagePopout` при просмотре), **аналогично** `actor-sheet.mjs`.
+5. В **`_prepareContext`** выставить **`itemImgSrc`**: действующий `item.img` или **`Item.DEFAULT_ICON`** — в шаблоне `src="{{itemImgSrc}}"`.
 
 ---
 
@@ -186,8 +205,8 @@ for (const [key, data] of Object.entries(next)) {
 await doc.update(update);
 ```
 
-**Сравнение с массивами:** для массивов (например, `system.health.injuries`, **`system.coveredParts`** у Wearable) полная замена работает: `await this.update({ 'system.health.injuries': filtered })` или `await doc.update({ system: { coveredParts: nextCoveredParts } })` — массив подменяется целиком. Для объектов-словарей полагаться на замену целиком не стоит — использовать `-=key` для удаления.
+**Сравнение с массивами:** для массивов (например, `system.health.injuries`, **`system.coveredParts`** у предмета типа `item`) полная замена работает через **точечный путь**: `await this.update({ 'system.health.injuries': filtered })` или `await doc.update({ 'system.coveredParts': nextCoveredParts, 'system.anatomyId': …, 'system.anatomyGroup': … })`. У **Item** в SpaceHolder одного ключа `'system.coveredParts'` **недостаточно** — в текущей связке Foundry/DataModel это сбрасывает `anatomyId`/`anatomyGroup`; передавайте их в том же `update`. Не использовать `update({ system: { coveredParts: … } })` — вложенный объект `system` может заменить весь `system`. Для объектов-словарей полагаться на замену целиком не стоит — использовать `-=key` для удаления.
 
-Итого: чтобы запись в объекте документа действительно исчезла, использовать ключ вида **`path.-=keyName`** со значением **`null`** в `update()`. Для списка покрытых частей Wearable используется массив **`system.coveredParts`** (`[{ partId, value }, ...]`), чтобы не привязывать данные к объекту-словарю и упростить обновление (замена массива целиком).
+Итого: чтобы запись в объекте документа действительно исчезла, использовать ключ вида **`path.-=keyName`** со значением **`null`** в `update()`. Для списка покрытых частей предмета используется массив **`system.coveredParts`** (`[{ partId, value }, ...]`), чтобы не привязывать данные к объекту-словарю и упростить обновление (замена массива целиком).
 
 Если при дебаге проблемы вида «кнопка не нажимается» или «вкладка сбрасывается» найдено решение, которого нет в этом документе — добавить его в соответствующий раздел (или новый) и при необходимости обновить сводку в начале документа.

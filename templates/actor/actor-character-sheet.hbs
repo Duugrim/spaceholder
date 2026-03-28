@@ -1,49 +1,43 @@
-<form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off">
-  <header class="sheet-header">
-    <div class="sh-portrait">
-      <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
-      {{#if editable}}
-        <button
-          type="button"
-          class="icon-btn sh-portrait__pick"
-          data-action="sh-icon-pick"
-          data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
-          aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
-        ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
-      {{/if}}
-    </div>
-    <div class="header-fields">
-      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
-    </div>
-  </header>
+<form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off"{{#if factionColor}} style="--faction-color: {{factionColor}};"{{/if}}>
+  <div class="spaceholder-sheet-stack flexcol">
+  {{> "systems/spaceholder/templates/actor/parts/actor-character-header.hbs"}}
 
-  <nav class="sheet-tabs tabs" data-group="primary">
-<a class="item" data-action="tab" data-group="primary" data-tab="stats">{{localize 'SPACEHOLDER.Tabs.Stats'}}</a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="health">{{localize 'SPACEHOLDER.Tabs.Health'}}</a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="injuries">{{localize 'SPACEHOLDER.Tabs.Injuries'}}</a>
-    <a class="item" data-action="tab" data-group="primary" data-tab="inventory">{{localize 'SPACEHOLDER.Tabs.Inventory'}}</a>
-  </nav>
-
-  <section class="sheet-body">
+  <section class="sheet-body sheet-body--character-primary">
+    <nav class="sheet-tabs tabs sheet-tabs--character-primary" data-group="primary" data-tooltip-direction="UP">
+      {{#each sheetPrimaryTabs as |t|}}
+        <a class="item" data-action="tab" data-group="primary" data-tab="{{t.id}}" data-tooltip="{{localize t.labelKey}}" aria-label="{{localize t.labelKey}}"><i class="{{t.icon}}" aria-hidden="true"></i></a>
+      {{/each}}
+    </nav>
     <div class="tab stats" data-group="primary" data-tab="stats">
-      <div class="stats-panel">
-        <div class="section-header">
-          <i class="fas fa-dumbbell"></i>
-          {{localize 'SPACEHOLDER.Tabs.Stats'}}
-        </div>
-        <div class="capacities-list">
-          {{#each system.abilities as |ability key|}}
-          <div class="capacity-line">
-            <div class="capacity-name rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">
-              <span class="abbr">{{localize (lookup @root.config.abilityAbbreviations key)}}</span>
-              {{localize (lookup @root.config.abilities key)}}
-            </div>
-            <div class="capacity-value flexrow flex-center flex-between">
-              <input type="text" name="system.abilities.{{key}}.value" value="{{ability.value}}" data-dtype="Number"/>
-              <span class="ability-mod rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">{{numberFormat ability.mod decimals=0 sign=true}}</span>
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "stats")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      <div class="sh-stats-columns">
+        <div class="sh-stats-column sh-stats-column--abilities">
+          <div class="stats-panel">
+            <div class="capacities-list">
+              {{#each system.abilities as |ability key|}}
+              <div class="capacity-line">
+                <div class="capacity-name rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">
+                  <span class="abbr">{{localize (lookup @root.config.abilityAbbreviations key)}}</span>
+                  {{localize (lookup @root.config.abilities key)}}
+                </div>
+                <div class="capacity-value flexrow flex-center flex-between">
+                  <input type="text" name="system.abilities.{{key}}.value" value="{{ability.value}}" data-dtype="Number"/>
+                  <span class="ability-mod rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">{{numberFormat ability.mod decimals=0 sign=true}}</span>
+                </div>
+              </div>
+              {{/each}}
             </div>
           </div>
-          {{/each}}
+        </div>
+        <div class="sh-stats-column sh-stats-column--derived">
+          {{> "systems/spaceholder/templates/actor/parts/actor-stats-derived.hbs"}}
+        </div>
+        <div class="sh-stats-column sh-stats-column--skills">
+          <div class="stats-panel stats-panel--skills-reserved" aria-hidden="true"></div>
         </div>
       </div>
 
@@ -51,15 +45,31 @@
     </div>
 
     <div class="tab health flexcol" data-group="primary" data-tab="health">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "health")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{> "systems/spaceholder/templates/actor/parts/actor-health.hbs"}}
     </div>
 
     <div class="tab injuries flexcol" data-group="primary" data-tab="injuries">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "injuries")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{> "systems/spaceholder/templates/actor/parts/actor-injuries.hbs"}}
     </div>
 
     <div class="tab inventory flexcol" data-group="primary" data-tab="inventory">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "inventory")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{> "systems/spaceholder/templates/actor/parts/actor-inventory.hbs"}}
     </div>
   </section>
+  </div>
 </form>

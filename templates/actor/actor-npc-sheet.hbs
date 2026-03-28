@@ -1,6 +1,6 @@
 <form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off">
+  <div class="spaceholder-sheet-stack flexcol">
 
-  {{!-- Sheet Header --}}
   <header class="sheet-header">
     <div class="sh-portrait">
       <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
@@ -16,14 +16,8 @@
     </div>
     <div class="header-fields">
       <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
-      {{!-- The grid classes are defined in scss/global/_grid.scss. To use,
-      use both the "grid" and "grid-Ncol" class where "N" can be any number
-      from 1 to 12 and will create that number of columns.  --}}
       <div class="resources grid grid-3col">
 
-        {{!-- "flex-group-center" is also defined in the _grid.scss file
-        and it will add a small amount of padding, a border, and will
-        center all of its child elements content and text. --}}
         <div class="resource flex-group-center">
           <label for="system.health.value" class="resource-label">{{localize 'SPACEHOLDER.Resources.Health'}}</label>
           <div class="resource-content flexrow flex-center flex-between">
@@ -55,33 +49,41 @@
     </div>
   </header>
 
-  {{!-- Sheet Tab Navigation --}}
-  <nav class="sheet-tabs tabs" data-group="primary">
-    {{!-- Default tab is specified in actor-sheet.mjs --}}
-    <a class="item" data-tab="description">{{localize 'SPACEHOLDER.Tabs.Description'}}</a>
-    <a class="item" data-tab="items">{{localize 'SPACEHOLDER.Tabs.Items'}}</a>
-    <a class="item" data-tab="effects">{{localize 'SPACEHOLDER.Tabs.Effects'}}</a>
+  <nav class="sheet-tabs tabs" data-group="primary" data-tooltip-direction="UP">
+    {{#each sheetPrimaryTabs as |t|}}
+    <a class="item" data-action="tab" data-group="primary" data-tab="{{t.id}}" data-tooltip="{{localize t.labelKey}}" aria-label="{{localize t.labelKey}}"><i class="{{t.icon}}" aria-hidden="true"></i></a>
+    {{/each}}
   </nav>
 
-  {{!-- Sheet Body --}}
   <section class="sheet-body">
 
-    {{!-- Biography Tab --}}
     <div class="tab biography" data-group="primary" data-tab="description">
-      {{!-- Editors must receive enriched text data from getData to properly handle rolls --}}
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "description")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{editor enrichedBiography target="system.biography" engine="prosemirror" button=true editable=editable}}
     </div>
 
-    {{!-- Owned Items Tab --}}
     <div class="tab items" data-group="primary" data-tab="items">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "items")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
        {{> "systems/spaceholder/templates/actor/parts/actor-items.hbs"}}
     </div>
 
-    {{!-- Active Effects Tab --}}
     <div class="tab effects flexcol" data-group="primary" data-tab="effects">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "effects")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
       {{> "systems/spaceholder/templates/actor/parts/actor-effects.hbs"}}
     </div>
 
   </section>
+  </div>
 </form>
-

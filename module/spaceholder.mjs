@@ -3,7 +3,7 @@ import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
 // Import sheet classes (Application V2)
 import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderGlobalObjectSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
-import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic, SpaceHolderItemSheet_Wearable } from './sheets/item-sheet.mjs';
+import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
 import { SPACEHOLDER } from './helpers/config.mjs';
@@ -65,7 +65,17 @@ import { installHotbarFactionUiHooks } from './helpers/hotbar-faction-ui.mjs';
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
 // Actions system (MVP)
 import { collectActorActions, executeActorAction } from './helpers/actions/action-service.mjs';
+import {
+  spendAp,
+  undoTransaction,
+  getStoredActionPoints,
+  ensureCharacterApSynced,
+  installTransactionLedgerHooks,
+} from './helpers/actions/transaction-ledger.mjs';
+import { installActionChatJournalHooks } from './helpers/actions/action-chat-journal.mjs';
 import { MovementManager } from './helpers/actions/movement-manager.mjs';
+import { CombatSessionManager } from './helpers/combat/combat-session-manager.mjs';
+import { installTurnPickOverlay } from './helpers/combat/turn-pick-overlay.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -128,6 +138,14 @@ Hooks.once('init', function () {
     // Actions system (MVP)
     collectActorActions: (actor, ctx = {}) => collectActorActions(actor, ctx),
     executeActorAction: (actor, action, ctx = {}) => executeActorAction(actor, action, ctx),
+    spendAp: (actor, cost, meta = {}) => spendAp(actor, cost, meta),
+    undoTransaction: (opts = {}) => undoTransaction(opts),
+    getStoredActionPoints: (actor) => getStoredActionPoints(actor),
+    ensureCharacterApSynced: (actor) => ensureCharacterApSynced(actor),
+    setCombatantSide: (args = {}) => game.spaceholder.combatSessionManager?.setCombatantSide?.(args),
+    endCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.endTurn?.(args),
+    pickCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.pickTurn?.(args),
+    undoCombatAction: (args = {}) => game.spaceholder.combatSessionManager?.undoLastAction?.(args),
     // Global map helpers (new system)
     // TODO: Add new global map helpers when ready
     
@@ -142,6 +160,9 @@ Hooks.once('init', function () {
   game.spaceholder.movementManager = new MovementManager();
   // Hooks are installed lazily on start(), but we keep explicit install available
   try { game.spaceholder.movementManager.installHooks(); } catch (_) {}
+  game.spaceholder.combatSessionManager = new CombatSessionManager();
+  try { game.spaceholder.combatSessionManager.install(); } catch (_) {}
+  try { installTurnPickOverlay(); } catch (_) {}
   
   // Initialize Aiming System - OLD SYSTEM DISABLED
   // game.spaceholder.aimingSystem = new AimingSystem();
@@ -262,11 +283,6 @@ Hooks.once('init', function () {
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.Item',
   });
-  foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Wearable, {
-    types: ['wearable'],
-    makeDefault: true,
-    label: 'SPACEHOLDER.SheetLabels.Item',
-  });
   foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Feature, {
     types: ['feature'],
     makeDefault: true,
@@ -283,11 +299,12 @@ Hooks.once('init', function () {
     label: 'SPACEHOLDER.SheetLabels.Item',
   });
 
-  // Wearable: привязка кнопок и визуализатора покрытия через renderItemSheetV2
+  // Предмет (gear): привязка кнопок и визуализатора покрытия через renderItemSheetV2
   Hooks.on('renderItemSheetV2', async (app, element, context, options) => {
     const doc = app.document;
-    if (!doc || doc.type !== 'wearable') return;
+    if (!doc || doc.type !== 'item') return;
     if (!(element instanceof HTMLElement)) return;
+    if (!doc.system?.itemTags?.isArmor) return;
 
     const btn = element.querySelector('[data-action="wearable-select-anatomy-group"]');
     if (btn && !btn.dataset.spaceholderBound) {
@@ -350,7 +367,14 @@ Hooks.once('init', function () {
               slotRef,
               value: Number(data?.value) || 0
             }));
-            await doc.update({ system: { coveredParts: nextCoveredParts } });
+            const keepAnatomyId = doc.system?.anatomyId ?? null;
+            const keepAnatomyGroup = doc.system?.anatomyGroup ?? null;
+            // Item DataModel: обновление только coveredParts сбрасывает anatomyId/anatomyGroup — явно сохраняем.
+            await doc.update({
+              'system.coveredParts': nextCoveredParts,
+              'system.anatomyId': keepAnatomyId,
+              'system.anatomyGroup': keepAnatomyGroup,
+            });
             await renderAndStayOnCoverage();
           }
         });
@@ -386,7 +410,13 @@ Hooks.once('init', function () {
           });
           if (nextCoveredParts.length === prev.length) return;
 
-          await doc.update({ system: { coveredParts: nextCoveredParts } });
+          const keepAid = doc.system?.anatomyId ?? null;
+          const keepGrp = doc.system?.anatomyGroup ?? null;
+          await doc.update({
+            'system.coveredParts': nextCoveredParts,
+            'system.anatomyId': keepAid,
+            'system.anatomyGroup': keepGrp,
+          });
           await renderAndStayOnCoverage();
         });
       });
@@ -400,7 +430,7 @@ Hooks.once('init', function () {
     e.preventDefault();
     e.stopPropagation();
     const doc = await fromUuid(btn.dataset.itemUuid);
-    if (doc?.type === 'wearable') openWearableAnatomyDialog(doc);
+    if (doc?.type === 'item' && doc.system?.itemTags?.isArmor) openWearableAnatomyDialog(doc);
   });
 
   // Preload Handlebars templates.
@@ -409,10 +439,11 @@ Hooks.once('init', function () {
 
 /**
  * Открыть диалог выбора анатомии для предмета Wearable (системные + мировые). Сохраняет anatomyId и anatomyGroup.
- * @param {Item} item - документ предмета типа wearable
+ * @param {Item} item - документ предмета типа item (gear)
  */
 async function openWearableAnatomyDialog(item) {
-  if (!item || item.type !== 'wearable') return;
+  if (!item || item.type !== 'item') return;
+  if (!item.system?.itemTags?.isArmor) return;
   await anatomyManager.loadWorldPresets();
   const availableAnatomies = anatomyManager.getAvailableAnatomies();
   const worldPresets = anatomyManager.getWorldPresets();
@@ -504,12 +535,13 @@ async function openWearableAnatomyDialog(item) {
 
 /**
  * Диалог редактирования значения защиты для одной части тела (предмет Wearable).
- * @param {Item} item - документ предмета типа wearable
+ * @param {Item} item - документ предмета типа item (gear)
  * @param {string} partRef - slotRef части тела (или legacy partId)
  * @param {string} [partName] - отображаемое имя части
  */
 async function openWearableCoverageEditDialog(item, partRef, partName) {
-  if (!item || item.type !== 'wearable' || !partRef) return;
+  if (!item || item.type !== 'item' || !partRef) return;
+  if (!item.system?.itemTags?.isArmor) return;
   const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
   const entry = coveredParts.find((c) => {
     const ref = String(c.slotRef ?? c.partId ?? "").trim();
@@ -554,7 +586,13 @@ async function openWearableCoverageEditDialog(item, partRef, partName) {
             idx >= 0
               ? prev.map((c, i) => (i === idx ? nextEntry : c))
               : [...prev, nextEntry];
-          await item.update({ system: { coveredParts: nextCoveredParts } });
+          const keepAid = item.system?.anatomyId ?? null;
+          const keepGrp = item.system?.anatomyGroup ?? null;
+          await item.update({
+            'system.coveredParts': nextCoveredParts,
+            'system.anatomyId': keepAid,
+            'system.anatomyGroup': keepGrp,
+          });
         }
       },
       { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
@@ -667,6 +705,19 @@ Hooks.once('ready', async function () {
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
   Hooks.on('hotbarDrop', (bar, data, slot) => createItemMacro(data, slot));
+
+  installTransactionLedgerHooks();
+  installActionChatJournalHooks();
+  (async () => {
+    for (const a of game.actors ?? []) {
+      if (a?.type !== "character") continue;
+      try {
+        await ensureCharacterApSynced(a);
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  })();
 });
 
 /* -------------------------------------------- */

@@ -1,0 +1,90 @@
+// Табbed sheets: колонка как у обычного листа (flex-col, рост по высоте), но без вертикальных
+// зазоров между шапкой, полосой фракции, вкладками и телом. Не трогаем глобальный .standard-form.
+
+.window-app.spaceholder,
+.spaceholder {
+  .spaceholder-sheet-stack {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    gap: 0;
+    row-gap: 0;
+  }
+}
+
+.window-app.spaceholder.sheet .spaceholder-sheet-stack,
+.spaceholder.sheet .spaceholder-sheet-stack {
+  > .sheet-header {
+    margin-bottom: 0;
+  }
+
+  > .sh-character-faction-bar {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  > nav.sheet-tabs {
+    margin-top: 0;
+  }
+
+  > .sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    // Ядро Foundry задаёт .sheet-body padding позже в каскаде — без !important наше padding:0 не применяется.
+    padding: 0 !important;
+    margin: 0;
+    // --sh-sheet-frame-accent задаётся на .sheet-body через :has(> .tab.active) в _sheet-tabs.scss; !important — ядро перебивает border у .sheet-body
+    // Как border-color у nav .item.active — полный акцент выбранной вкладки
+    border: 1px solid var(--sh-sheet-frame-accent, var(--sh-border)) !important;
+    border-top: none !important;
+    border-radius: 0 0 var(--sh-radius-lg) var(--sh-radius-lg);
+    background: var(--sh-bg);
+  }
+
+  // Лист персонажа / предмета: вкладки внутри .sheet-body — поднимаем блок (полоса вкладок + доп. подтяжка к шапке)
+  > .sheet-body.sheet-body--character-primary,
+  > .sheet-body.sheet-body--item-primary {
+    margin-top: calc(
+      -1 * (var(--sh-character-primary-tab-strip-height, 48px) + var(--sh-character-primary-extra-pull, 0px))
+    );
+    position: relative;
+    overflow: visible;
+    // Рамку рисуем nav (верх) + ::before (низ), иначе боковые линии .sheet-body «вылезают» в шапку
+    border: none !important;
+    background: transparent !important;
+
+    // Рамка на всю высоту, но верх обрезан = боковые линии не заходят в шапку.
+    // z-index поверх фона .tab.active (иначе низ и стороны не видны).
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      border-left: 1px solid var(--sh-sheet-frame-accent, var(--sh-border));
+      border-right: 1px solid var(--sh-sheet-frame-accent, var(--sh-border));
+      border-bottom: 1px solid var(--sh-sheet-frame-accent, var(--sh-border));
+      border-radius: 0 0 var(--sh-radius-lg) var(--sh-radius-lg);
+      clip-path: inset(
+        var(--sh-character-primary-tab-strip-height, 48px) 0 0 0 round 0 0 var(--sh-radius-lg) var(--sh-radius-lg)
+      );
+    }
+  }
+
+  > .sheet-body > .tab.active {
+    padding: 0 10px 10px 10px;
+    box-sizing: border-box;
+  }
+
+  > .sheet-body.sheet-body--character-primary > .tab.active,
+  > .sheet-body.sheet-body--item-primary > .tab.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
+    background: var(--sh-bg);
+    border-radius: 0 0 var(--sh-radius-lg) var(--sh-radius-lg);
+  }
+}
