@@ -1,22 +1,7 @@
 {{! This template is a fallback when items don't have more specific templates. }}
 <form class='{{cssClass}} flexcol' autocomplete='off'>
   <div class='spaceholder-sheet-stack flexcol'>
-  <header class='sheet-header'>
-    <img
-      class='profile-img'
-      src='{{itemImgSrc}}'
-      data-edit='img'
-      title='{{item.name}}'
-    />
-    <div class='header-fields'>
-      <h1 class='charname'><input
-          name='name'
-          type='text'
-          value='{{item.name}}'
-          placeholder='{{localize "SPACEHOLDER.Placeholder.Name"}}'
-        /></h1>
-    </div>
-  </header>
+  {{> "systems/spaceholder/templates/item/parts/item-sheet-header.hbs"}}
 
   <section class='sheet-body sheet-body--item-primary'>
     <nav class='sheet-tabs tabs sheet-tabs--item-primary' data-group='primary' data-tooltip-direction="UP">

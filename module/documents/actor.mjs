@@ -68,6 +68,27 @@ export class SpaceHolderActor extends Actor {
    * Prepare body parts health system
    */
   _prepareBodyParts(systemData) {
+    const isUnlinkedTokenActor = Boolean(this.isToken && this.token && this.token.actorLink === false);
+    // В prepareDerivedData нельзя читать token.delta: это может инстанцировать ActorDelta
+    // и рекурсивно вызвать подготовку данных synthetic actor.
+    const tokenDeltaBodyParts = this.token?._source?.delta?.system?.health?.bodyParts;
+    const hasDeltaBodyPartsOverride = Boolean(
+      this.token?._source?.delta?.system?.health &&
+      Object.prototype.hasOwnProperty.call(this.token._source.delta.system.health, 'bodyParts')
+    );
+    if (
+      isUnlinkedTokenActor &&
+      hasDeltaBodyPartsOverride &&
+      tokenDeltaBodyParts &&
+      typeof tokenDeltaBodyParts === 'object'
+    ) {
+      // Для unlinked synthetic actor считаем delta-части тела источником истины.
+      // Иначе Foundry deep-merge добавляет базовые части актёра к токеновым.
+      const mergedBeforeCount = Object.keys(systemData?.health?.bodyParts ?? {}).length;
+      systemData.health = systemData.health || {};
+      systemData.health.bodyParts = foundry.utils.deepClone(tokenDeltaBodyParts);
+    }
+
     // Основной источник состояния — травмы.
     const bodyParts = systemData.health?.bodyParts || {};
     const injuries = systemData.health?.injuries || [];
@@ -234,6 +255,11 @@ export class SpaceHolderActor extends Actor {
           resolvedUuid = part.uuid;
           break;
         }
+      }
+      // Совместимость: для старых анатомий без uuid partUuid может быть slotRef.
+      if (!resolvedSlotRef && bodyParts[partUuid]) {
+        resolvedSlotRef = partUuid;
+        resolvedUuid = bodyParts[partUuid]?.uuid || null;
       }
     }
 
@@ -422,27 +448,49 @@ export class SpaceHolderActor extends Actor {
       const anatomy = await anatomyManager.createActorAnatomy(anatomyId);
       const displayName = anatomyManager.getAnatomyDisplayName(anatomyId);
       
-      // Удаляем существующие части точечно (без слияния)
-      const currentParts = this.system.health?.bodyParts || {};
-      const delUpdate = {};
-      for (const id of Object.keys(currentParts)) {
-        delUpdate[`system.health.bodyParts.-=${id}`] = null;
+      const isUnlinkedTokenActor = Boolean(this.isToken && this.token && this.token.actorLink === false);
+      if (isUnlinkedTokenActor && this.token?.update) {
+        const currentDeltaParts = this.token?._source?.delta?.system?.health?.bodyParts ?? {};
+        const currentMergedParts = this.system?.health?.bodyParts ?? {};
+        const delUpdate = {};
+        // Удаляем и ключи из текущего delta, и ключи из merged-состояния, чтобы не оставалось хвостов.
+        const keysToDelete = new Set([
+          ...Object.keys(currentDeltaParts),
+          ...Object.keys(currentMergedParts)
+        ]);
+        for (const id of keysToDelete) {
+          delUpdate[`delta.system.health.bodyParts.-=${id}`] = null;
+        }
+        delUpdate['delta.system.anatomy.id'] = anatomyId;
+        delUpdate['delta.system.anatomy.name'] = displayName;
+        delUpdate['delta.system.anatomy.type'] = anatomyId;
+        // Записываем bodyParts по ключам, чтобы избежать merge целого объекта в ActorDelta.
+        for (const [slotRef, partData] of Object.entries(anatomy.bodyParts ?? {})) {
+          delUpdate[`delta.system.health.bodyParts.${slotRef}`] = partData;
+        }
+        delUpdate['delta.system.health.injuries'] = [];
+        if (anatomy.grid && typeof anatomy.grid.width === 'number' && typeof anatomy.grid.height === 'number') {
+          delUpdate['delta.system.health.anatomyGrid'] = { width: anatomy.grid.width, height: anatomy.grid.height };
+        }
+        await this.token.update(delUpdate);
+      } else {
+        // Для обычного actor-контекста оставляем обновление через actor.update.
+        await this.update({ 'system.health.-=bodyParts': null });
+        
+        // Устанавливаем сведения об анатомии, сетку (если есть в шаблоне) и новые части
+        const update = {
+          'system.anatomy.id': anatomyId,
+          'system.anatomy.name': displayName,
+          'system.anatomy.type': anatomyId,
+          'system.health.bodyParts': anatomy.bodyParts,
+          // Травмы привязаны к slotRef/uuid старой анатомии, очищаем при полной замене.
+          'system.health.injuries': []
+        };
+        if (anatomy.grid && typeof anatomy.grid.width === 'number' && typeof anatomy.grid.height === 'number') {
+          update['system.health.anatomyGrid'] = { width: anatomy.grid.width, height: anatomy.grid.height };
+        }
+        await this.update(update);
       }
-      if (Object.keys(delUpdate).length) {
-        await this.update(delUpdate);
-      }
-      
-      // Устанавливаем сведения об анатомии, сетку (если есть в шаблоне) и новые части
-      const update = {
-        'system.anatomy.id': anatomyId,
-        'system.anatomy.name': displayName,
-        'system.anatomy.type': anatomyId,
-        'system.health.bodyParts': anatomy.bodyParts
-      };
-      if (anatomy.grid && typeof anatomy.grid.width === 'number' && typeof anatomy.grid.height === 'number') {
-        update['system.health.anatomyGrid'] = { width: anatomy.grid.width, height: anatomy.grid.height };
-      }
-      await this.update(update);
       
       // Пересчёт данных
       await this.prepareData();
@@ -462,19 +510,37 @@ export class SpaceHolderActor extends Actor {
    */
   async resetAnatomy(clearType = true) {
     try {
-      // Точечное удаление всех текущих частей
-      const currentParts = this.system.health?.bodyParts || {};
-      const delUpdate = {};
-      for (const id of Object.keys(currentParts)) {
-        delUpdate[`system.health.bodyParts.-=${id}`] = null;
+      const isUnlinkedTokenActor = Boolean(this.isToken && this.token && this.token.actorLink === false);
+      if (isUnlinkedTokenActor && this.token?.update) {
+        const currentDeltaParts = this.token?._source?.delta?.system?.health?.bodyParts ?? {};
+        const currentMergedParts = this.system?.health?.bodyParts ?? {};
+        const deltaUpdate = {};
+        const keysToDelete = new Set([
+          ...Object.keys(currentDeltaParts),
+          ...Object.keys(currentMergedParts)
+        ]);
+        for (const id of keysToDelete) {
+          deltaUpdate[`delta.system.health.bodyParts.-=${id}`] = null;
+        }
+        if (clearType) {
+          deltaUpdate['delta.system.anatomy.id'] = null;
+          deltaUpdate['delta.system.anatomy.name'] = null;
+          deltaUpdate['delta.system.anatomy.type'] = null;
+        }
+        // Шаг 1: удаляем все известные ключи и анатомию.
+        await this.token.update(deltaUpdate);
+        // Шаг 2: создаём явный пустой override, чтобы synthetic actor не фоллбэчился к базовому bodyParts.
+        await this.token.update({ 'delta.system.health.bodyParts': {} });
+      } else {
+        // Удаляем bodyParts целиком, чтобы не сохранялись унаследованные ключи в synthetic actor.
+        const delUpdate = { 'system.health.-=bodyParts': null };
+        if (clearType) {
+          delUpdate['system.anatomy.id'] = null;
+          delUpdate['system.anatomy.name'] = null;
+          delUpdate['system.anatomy.type'] = null;
+        }
+        await this.update(delUpdate);
       }
-      if (clearType) {
-        delUpdate['system.anatomy.id'] = null;
-        delUpdate['system.anatomy.name'] = null;
-        delUpdate['system.anatomy.type'] = null;
-      }
-      await this.update(delUpdate);
-
       await this.prepareData();
       console.log(`Anatomy reset for actor ${this.name}${clearType ? ' (type cleared)' : ''}`);
       return true;

@@ -371,14 +371,9 @@ export class AnatomyManager {
     const preset = presets.find(p => p.id === presetId);
     if (!preset?.bodyParts) return false;
 
-    const currentParts = actor.system.health?.bodyParts || {};
-    const delUpdate = {};
-    for (const id of Object.keys(currentParts)) {
-      delUpdate[`system.health.bodyParts.-=${id}`] = null;
-    }
-    if (Object.keys(delUpdate).length) {
-      await actor.update(delUpdate);
-    }
+    // Важно для synthetic actor (unlinked token): удаляем bodyParts целиком,
+    // иначе новые части могут смержиться с унаследованными от базового актёра.
+    await actor.update({ "system.health.-=bodyParts": null });
 
     const bodyParts = _buildNormalizedActorBodyParts(foundry.utils.deepClone(preset.bodyParts));
 
@@ -386,7 +381,9 @@ export class AnatomyManager {
       "system.anatomy.id": preset.id,
       "system.anatomy.name": preset.name || preset.id,
       "system.anatomy.type": preset.id,
-      "system.health.bodyParts": bodyParts
+      "system.health.bodyParts": bodyParts,
+      // Иначе в новой анатомии могут остаться травмы, ссылающиеся на старые slotRef/uuid.
+      "system.health.injuries": []
     };
     if (preset.grid && typeof preset.grid.width === "number" && typeof preset.grid.height === "number") {
       update["system.health.anatomyGrid"] = { width: preset.grid.width, height: preset.grid.height };

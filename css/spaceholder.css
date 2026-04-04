@@ -312,9 +312,11 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder :where(.sh-font-secondary),
 .window-app.spaceholder :where(.sh-derived-hint),
 .window-app.spaceholder :where(.sh-character-header__caption),
+.window-app.spaceholder :where(.sh-item-header__caption),
 .spaceholder :where(.sh-font-secondary),
 .spaceholder :where(.sh-derived-hint),
-.spaceholder :where(.sh-character-header__caption) {
+.spaceholder :where(.sh-character-header__caption),
+.spaceholder :where(.sh-item-header__caption) {
   font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
 }
 .window-app.spaceholder :where(h1, h2, h3, h4, h5, h6),
@@ -360,6 +362,20 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .window-content.standard-form,
 .spaceholder .window-content.standard-form {
   padding: 0;
+}
+.window-app.spaceholder.sheet .window-content.standard-form,
+.spaceholder.sheet .window-content.standard-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.window-app.spaceholder.sheet .window-content.standard-form > form,
+.spaceholder.sheet .window-content.standard-form > form {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .window-app.spaceholder ::-webkit-scrollbar,
 .spaceholder ::-webkit-scrollbar {
@@ -996,6 +1012,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .wearable-coverage-management-container,
 .spaceholder .wearable-coverage-management-container {
   margin: 0 0 12px 0;
+  flex: 0 0 auto;
 }
 .window-app.spaceholder .wearable-coverage-management-row,
 .spaceholder .wearable-coverage-management-row {
@@ -1024,21 +1041,35 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   display: flex;
   gap: 15px;
   align-items: stretch;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  height: 420px;
   min-height: 420px;
+  max-height: 420px;
   width: 100%;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .window-app.spaceholder .wearable-coverage-left-column,
 .spaceholder .wearable-coverage-left-column {
   flex: 0 0 378px;
   width: 378px;
+  height: 420px;
+  min-height: 420px;
+  max-height: 420px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  align-self: stretch;
 }
 .window-app.spaceholder .wearable-coverage-editor-wrap,
 .spaceholder .wearable-coverage-editor-wrap {
   width: 100%;
   height: 420px;
+  min-height: 420px;
+  max-height: 420px;
+  flex: 0 0 auto;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
@@ -1052,7 +1083,10 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .wearable-coverage-placeholder,
 .spaceholder .wearable-coverage-placeholder {
   width: 100%;
-  min-height: 200px;
+  height: 420px;
+  min-height: 420px;
+  max-height: 420px;
+  flex: 0 0 auto;
   padding: 24px;
   background: rgba(0, 0, 0, 0.15);
   border: 1px dashed var(--sh-border);
@@ -1070,9 +1104,14 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .wearable-coverage-right-column,
 .spaceholder .wearable-coverage-right-column {
   flex: 1 1 0;
-  min-width: 220px;
+  min-width: 180px;
+  height: 420px;
+  min-height: 420px;
+  max-height: 420px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  align-self: stretch;
 }
 .window-app.spaceholder .wearable-coverage-panel,
 .spaceholder .wearable-coverage-panel {
@@ -1148,6 +1187,25 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   row-gap: 0;
 }
 
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:not(.sheet-body--character-primary):not(.sheet-body--item-primary):has(> .tab),
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:not(.sheet-body--character-primary):not(.sheet-body--item-primary):has(> .tab) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:not(.sheet-body--character-primary):not(.sheet-body--item-primary) > .tab.active,
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:not(.sheet-body--character-primary):not(.sheet-body--item-primary) > .tab.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-header,
 .spaceholder.sheet .spaceholder-sheet-stack > .sheet-header {
   margin-bottom: 0;
@@ -1201,6 +1259,9 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder.sheet .spaceholder-sheet-stack > .sheet-body > .tab.active {
   padding: 0 10px 10px 10px;
   box-sizing: border-box;
+  gap: 0;
+  row-gap: 0;
+  column-gap: 0;
 }
 .window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--character-primary > .tab.active,
 .window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active,
@@ -1208,10 +1269,15 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   position: relative;
   z-index: 1;
   background: var(--sh-bg);
   border-radius: 0 0 var(--sh-radius-lg) var(--sh-radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .window-app.spaceholder form:has(.sheet-body .tab[data-tab=stats].active),
@@ -1568,7 +1634,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   flex-direction: row;
   align-items: center;
   gap: 12px;
-  margin: 0 -10px 12px -10px;
+  margin: 0 -10px 0 -10px;
   padding: 12px 16px;
   min-height: 48px;
   border-radius: 0;
@@ -1661,19 +1727,27 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   color: var(--sh-text-muted);
 }
 
-.window-app.spaceholder .items-list {
+.window-app.spaceholder .sheet-body .tab.active > .items-list,
+.spaceholder .sheet-body .tab.active > .items-list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.window-app.spaceholder .items-list,
+.spaceholder .items-list {
   list-style: none;
   margin: 0;
   padding: 0;
   overflow-y: auto;
   color: var(--sh-text);
 }
-.window-app.spaceholder .items-list .item-list {
+.window-app.spaceholder .items-list .item-list,
+.spaceholder .items-list .item-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.window-app.spaceholder .items-list .items-header {
+.window-app.spaceholder .items-list .items-header,
+.spaceholder .items-list .items-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1684,23 +1758,28 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border-radius: var(--sh-radius-sm);
   font-weight: 700;
 }
-.window-app.spaceholder .items-list .items-header > * {
+.window-app.spaceholder .items-list .items-header > *,
+.spaceholder .items-list .items-header > * {
   font-size: 12px;
 }
-.window-app.spaceholder .items-list .items-header .item-name {
+.window-app.spaceholder .items-list .items-header .item-name,
+.spaceholder .items-list .items-header .item-name {
   flex: 1 1 auto;
 }
-.window-app.spaceholder .items-list .item {
+.window-app.spaceholder .items-list .item,
+.spaceholder .items-list .item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--sh-border);
 }
-.window-app.spaceholder .items-list .item:last-child {
+.window-app.spaceholder .items-list .item:last-child,
+.spaceholder .items-list .item:last-child {
   border-bottom: none;
 }
-.window-app.spaceholder .items-list .item-name {
+.window-app.spaceholder .items-list .item-name,
+.spaceholder .items-list .item-name {
   flex: 2 1 auto;
   display: flex;
   align-items: center;
@@ -1708,42 +1787,56 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   min-width: 0;
 }
 .window-app.spaceholder .items-list .item-name h3,
-.window-app.spaceholder .items-list .item-name h4 {
+.window-app.spaceholder .items-list .item-name h4,
+.spaceholder .items-list .item-name h3,
+.spaceholder .items-list .item-name h4 {
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.window-app.spaceholder .items-list .item-image img {
+.window-app.spaceholder .items-list .item-image img,
+.spaceholder .items-list .item-image img {
   border-radius: var(--sh-radius-sm);
   border: 1px solid var(--sh-border);
 }
-.window-app.spaceholder .items-list .item-controls {
+.window-app.spaceholder .items-list .item-controls,
+.spaceholder .items-list .item-controls {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   flex: 0 0 auto;
 }
-.window-app.spaceholder .items-list .item-controls a {
+.window-app.spaceholder .items-list .item-controls a,
+.spaceholder .items-list .item-controls a {
   color: var(--sh-text-muted);
 }
-.window-app.spaceholder .items-list .item-controls a:hover {
+.window-app.spaceholder .items-list .item-controls a:hover,
+.spaceholder .items-list .item-controls a:hover {
   color: #fff;
 }
-.window-app.spaceholder .items-list .item-prop {
+.window-app.spaceholder .items-list .item-prop,
+.spaceholder .items-list .item-prop {
   text-align: center;
   font-size: 12px;
   color: var(--sh-text-dim);
   font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
-.window-app.spaceholder .item-formula {
+.window-app.spaceholder .item-formula,
+.spaceholder .item-formula {
   flex: 0 0 200px;
   padding: 0 8px;
 }
-.window-app.spaceholder .sh-item-actions {
+.window-app.spaceholder .sh-item-actions,
+.spaceholder .sh-item-actions {
   padding: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
-.window-app.spaceholder .sh-wearable-default-actions {
+.window-app.spaceholder .sh-wearable-default-actions,
+.spaceholder .sh-wearable-default-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1752,43 +1845,87 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border-radius: var(--sh-radius-md);
   background: rgba(255, 255, 255, 0.03);
 }
-.window-app.spaceholder .sh-wearable-default-actions__row {
+.window-app.spaceholder .sh-wearable-default-actions__row,
+.spaceholder .sh-wearable-default-actions__row {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
-.window-app.spaceholder .sh-wearable-default-actions__title {
+.window-app.spaceholder .sh-wearable-default-actions__title,
+.spaceholder .sh-wearable-default-actions__title {
   min-width: 160px;
   font-weight: 800;
   color: #ffffff;
   font-size: 12px;
 }
-.window-app.spaceholder .tab.tags {
+.window-app.spaceholder .tab.tags,
+.spaceholder .tab.tags {
   padding: 12px;
 }
-.window-app.spaceholder .sh-item-tags-hint {
+.window-app.spaceholder .sh-item-settings-weight,
+.spaceholder .sh-item-settings-weight {
+  margin: 0 0 16px 0;
+  max-width: 220px;
+}
+.window-app.spaceholder .sh-item-tags-hint,
+.spaceholder .sh-item-tags-hint {
   margin: 0 0 12px 0;
   font-size: 12px;
   color: var(--sh-text-muted);
 }
-.window-app.spaceholder .sh-item-tags-list {
+.window-app.spaceholder .sh-item-tags-list,
+.spaceholder .sh-item-tags-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-bottom: 16px;
 }
-.window-app.spaceholder .sh-item-tag-row {
+.window-app.spaceholder .sh-item-tag-row,
+.spaceholder .sh-item-tag-row {
   display: flex;
   align-items: center;
   gap: 10px;
   font-weight: 600;
   cursor: pointer;
 }
-.window-app.spaceholder .sh-item-tag-row input {
+.window-app.spaceholder .sh-item-tag-row input,
+.spaceholder .sh-item-tag-row input {
   flex: 0 0 auto;
 }
-.window-app.spaceholder .sh-item-tags-wearable-defaults {
+.window-app.spaceholder .sh-item-tags-apply-row,
+.spaceholder .sh-item-tags-apply-row {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.window-app.spaceholder .sh-item-tags-apply-btn,
+.spaceholder .sh-item-tags-apply-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid var(--sh-border-strong);
+  background: color-mix(in srgb, var(--sh-accent) 22%, var(--sh-surface-2));
+  color: var(--sh-text);
+  cursor: pointer;
+}
+.window-app.spaceholder .sh-item-tags-apply-btn:hover,
+.spaceholder .sh-item-tags-apply-btn:hover {
+  background: color-mix(in srgb, var(--sh-accent) 32%, var(--sh-surface-3));
+}
+.window-app.spaceholder .sh-item-tags-apply-btn:focus-visible,
+.spaceholder .sh-item-tags-apply-btn:focus-visible {
+  outline: 2px solid var(--sh-accent-strong);
+  outline-offset: 2px;
+}
+.window-app.spaceholder .sh-item-tags-wearable-defaults,
+.spaceholder .sh-item-tags-wearable-defaults {
   margin-top: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--sh-border);
@@ -1816,15 +1953,16 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   padding: 0 12px;
   background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
 }
 .window-app.spaceholder .sh-stats-columns,
 .spaceholder .sh-stats-columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 0;
   align-items: stretch;
+  flex: 0 0 auto;
 }
 .window-app.spaceholder .sh-stats-column,
 .spaceholder .sh-stats-column {
@@ -1956,11 +2094,16 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .sh-actions-panel,
 .spaceholder .sh-actions-panel {
-  margin-top: 12px;
+  margin-top: 0;
   padding: 12px;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(48vh, 560px);
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .window-app.spaceholder .sh-actions-subheader,
 .spaceholder .sh-actions-subheader {
@@ -1980,7 +2123,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .sh-actions-grid,
 .spaceholder .sh-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
 }
 .window-app.spaceholder .sh-action-btn,
@@ -2075,32 +2218,48 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   resize: vertical;
 }
 
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--character-primary > .tab.health.active,
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--character-primary > .tab.health.active {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
 .window-app.spaceholder .tab.health,
 .spaceholder .tab.health {
-  min-height: 560px;
-  min-width: 838px;
+  min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+}
+.window-app.spaceholder .tab.health > .sh-tab-banner,
+.spaceholder .tab.health > .sh-tab-banner {
+  flex: 0 0 auto;
 }
 .window-app.spaceholder .health-container,
 .spaceholder .health-container {
   width: 100%;
-  min-width: 838px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
   flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .window-app.spaceholder .health-main-layout,
 .spaceholder .health-main-layout {
   position: relative;
   display: flex;
-  flex: 1 1 0;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  height: 420px;
   min-height: 420px;
-  gap: 15px;
+  max-height: 420px;
+  gap: 0;
   align-items: stretch;
   width: 100%;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .window-app.spaceholder .health-anatomy-pointer-overlay,
 .spaceholder .health-anatomy-pointer-overlay {
@@ -2129,11 +2288,13 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .health-equipment-column,
 .spaceholder .health-equipment-column {
   flex: 1 1 0;
-  min-width: 200px;
+  min-width: 160px;
   display: flex;
   flex-direction: column;
   height: 420px;
+  min-height: 420px;
   flex-shrink: 0;
+  align-self: stretch;
 }
 .window-app.spaceholder .health-equipment-placeholder,
 .spaceholder .health-equipment-placeholder {
@@ -2142,7 +2303,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   min-height: 0;
   background: rgba(0, 0, 0, 0.25);
   border: 1px dashed var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -2164,11 +2325,13 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .health-bodyparts-column,
 .spaceholder .health-bodyparts-column {
   flex: 1 1 0;
-  min-width: 240px;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   height: 420px;
+  min-height: 420px;
   flex-shrink: 0;
+  align-self: stretch;
 }
 .window-app.spaceholder .body-parts-hierarchy,
 .spaceholder .body-parts-hierarchy {
@@ -2180,7 +2343,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   flex-direction: column;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
   padding: 12px;
 }
 .window-app.spaceholder .parts-tree,
@@ -2299,11 +2462,11 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .anatomy-management-container,
 .spaceholder .anatomy-management-container {
   flex: 0 0 auto;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   padding: 12px 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-md);
+  border-radius: 0;
 }
 .window-app.spaceholder .anatomy-management-row,
 .spaceholder .anatomy-management-row {
@@ -2408,25 +2571,31 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .health-anatomy-editor-column,
 .spaceholder .health-anatomy-editor-column {
   flex: 0 0 auto;
-  height: 420px;
+  width: 378px;
+  min-width: 378px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  height: 420px;
+  min-height: 420px;
+  max-height: 420px;
+  align-self: stretch;
 }
 .window-app.spaceholder .anatomy-editor-wrap,
 .spaceholder .anatomy-editor-wrap {
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
   padding: 10px;
 }
 .window-app.spaceholder .anatomy-editor-wrap--fixed,
 .spaceholder .anatomy-editor-wrap--fixed {
   width: 378px;
   height: 420px;
+  min-height: 420px;
+  max-height: 420px;
+  flex: 0 0 auto;
   padding: 0;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2542,12 +2711,12 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .anatomy-editor-selected-panel,
 .spaceholder .anatomy-editor-selected-panel {
-  margin-top: 10px;
+  margin-top: 0;
   padding: 12px 14px;
   min-height: 80px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-sm);
+  border-radius: 0;
   font-size: 12px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel.anatomy-editor-selected-panel--fullwidth,
@@ -2555,6 +2724,10 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-cols,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-cols {
@@ -2817,6 +2990,11 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .injuries-container,
 .spaceholder .injuries-container {
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .window-app.spaceholder .injuries-panel,
 .spaceholder .injuries-panel {
@@ -2824,12 +3002,18 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
   padding: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .window-app.spaceholder .injuries-actions,
 .spaceholder .injuries-actions {
   display: flex;
   justify-content: flex-end;
   margin: 0 0 10px 0;
+  flex: 0 0 auto;
 }
 .window-app.spaceholder .injury-create-open-btn,
 .spaceholder .injury-create-open-btn {
@@ -2858,6 +3042,10 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .window-app.spaceholder .injury-card,
 .spaceholder .injury-card {
@@ -2905,6 +3093,11 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
   padding: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .window-app.spaceholder .inventory-stats,
 .spaceholder .inventory-stats {
@@ -2972,6 +3165,10 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   gap: 6px;
   margin: 0;
   padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .window-app.spaceholder .inventory-item-card,
 .spaceholder .inventory-item-card {
@@ -7618,6 +7815,230 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 @supports (clip-path: path("M0 0 L1 0 L1 1 L0 1 Z")) {
   .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__card,
   .spaceholder .sheet-header.sh-character-header .sh-character-header__card {
+    clip-path: path("M 0 6px A 6px 6px 0 0 1 6px 0 L 84% 0 L 100% 100% L 6px 100% A 6px 6px 0 0 1 0 calc(100% - 6px) L 0 6px Z");
+  }
+}
+.window-app.spaceholder .sheet-header.sh-item-header,
+.spaceholder .sheet-header.sh-item-header {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  padding: 0 0 10px 0;
+  margin: 0 0 10px 0;
+  background: transparent;
+  border-bottom: 1px solid var(--sh-border);
+  min-height: 0;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__card,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__card {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 100%;
+  min-width: calc(150px + 75px + 8px + 12px);
+  padding: 8px 12px 8px 8px;
+  border-radius: 0;
+  border: 1px solid color-mix(in srgb, var(--sh-item-header-accent, #3d4a5c) 50%, var(--sh-border));
+  background: linear-gradient(155deg, color-mix(in srgb, var(--sh-item-header-accent, #3d4a5c) 38%, #0e1014) 0%, color-mix(in srgb, var(--sh-item-header-accent, #3d4a5c) 20%, #12151c) 100%);
+  color: rgba(255, 255, 255, 0.95);
+  box-sizing: border-box;
+  clip-path: polygon(0% 0%, 84% 0%, 100% 100%, 0% 100%);
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__top,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__top {
+  display: grid;
+  grid-template-columns: 150px 75px;
+  grid-template-rows: 150px;
+  column-gap: 0;
+  align-items: end;
+  position: relative;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__portrait.sh-portrait,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__portrait.sh-portrait {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 150px;
+  width: 150px;
+  height: 150px;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__portrait.sh-portrait .profile-img,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__portrait.sh-portrait .profile-img {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  object-fit: cover;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__typeIconWrap,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__typeIconWrap {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 75px;
+  height: 75px;
+  min-width: 0;
+  min-height: 0;
+  flex-shrink: 0;
+  justify-self: start;
+  align-self: end;
+  margin-left: -40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  overflow: hidden;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__typeIconPh,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__typeIconPh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.85);
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__typeIconPh i,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__typeIconPh i {
+  font-size: 28px;
+  line-height: 1;
+  pointer-events: none;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__caption,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__caption {
+  margin-top: 4px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 2px;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__typeLabel,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__typeLabel {
+  font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.74);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: scaleX(1.045);
+  transform-origin: center;
+  font-stretch: semi-expanded;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+}
+.window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__aside,
+.spaceholder .sheet-header.sh-item-header .sh-item-header__aside {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0;
+}
+.window-app.spaceholder .sheet-header.sh-item-header h1.charname,
+.spaceholder .sheet-header.sh-item-header h1.charname {
+  position: absolute;
+  z-index: 3;
+  left: 169px;
+  right: 0;
+  top: 8px;
+  margin: 0;
+  align-self: stretch;
+  border: none;
+  box-sizing: border-box;
+}
+.window-app.spaceholder .sheet-header.sh-item-header h1.charname > input,
+.spaceholder .sheet-header.sh-item-header h1.charname > input {
+  width: 100%;
+  height: 42px;
+  padding: 4px 10px;
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  box-sizing: border-box;
+  background: var(--sh-surface-1);
+  border: 1px solid var(--sh-border);
+  color: var(--sh-text);
+}
+.window-app.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__titleRow,
+.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__titleRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.window-app.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__qtySep,
+.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__qtySep {
+  flex: 0 0 auto;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--sh-text-muted);
+  user-select: none;
+}
+.window-app.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__nameField,
+.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__nameField {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: 42px;
+  padding: 4px 10px;
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  box-sizing: border-box;
+  background: var(--sh-surface-1);
+  border: 1px solid var(--sh-border);
+  color: var(--sh-text);
+}
+.window-app.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__qtyField,
+.spaceholder .sheet-header.sh-item-header h1.charname .sh-item-header__qtyField {
+  flex: 0 0 auto;
+  width: 4.25rem;
+  min-width: 3.25rem;
+  height: 42px;
+  padding: 4px 6px;
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  text-align: center;
+  box-sizing: border-box;
+  background: var(--sh-surface-1);
+  border: 1px solid var(--sh-border);
+  color: var(--sh-text);
+}
+.window-app.spaceholder.sheet.item .sheet-header.sh-item-header,
+.spaceholder.sheet.item .sheet-header.sh-item-header {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+@supports (clip-path: path("M0 0 L1 0 L1 1 L0 1 Z")) {
+  .window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__card,
+  .spaceholder .sheet-header.sh-item-header .sh-item-header__card {
     clip-path: path("M 0 6px A 6px 6px 0 0 1 6px 0 L 84% 0 L 100% 100% L 6px 100% A 6px 6px 0 0 1 0 calc(100% - 6px) L 0 6px Z");
   }
 }

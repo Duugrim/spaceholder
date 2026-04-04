@@ -26,14 +26,20 @@
       "Attributes": "Attributes",
       "Coverage": "Coverage",
       "Modifiers": "Modifiers",
-      "Tags": "Tags"
+      "Tags": "Tags",
+      "Settings": "Settings"
     },
     "ItemTags": {
       "SectionTitle": "Feature groups",
-      "Hint": "Enable groups to show related tabs and apply mechanics. Disabled groups keep their data but do not apply.",
+      "Hint": "Select groups below, then click Apply to update tabs and mechanics. Until then, changes here are not saved. Disabled groups keep their data but do not apply.",
       "Armor": "Armor (coverage, equip/unequip)",
       "Actions": "Actions (custom item actions)",
       "Modifiers": "Modifiers (character stats)"
+    },
+    "ItemTypes": {
+      "Item": "Equipment",
+      "Feature": "Feature",
+      "Spell": "Spell"
     },
     "Placeholder": {
       "Name": "Name"

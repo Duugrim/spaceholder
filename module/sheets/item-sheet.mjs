@@ -4,6 +4,7 @@ import {
 } from '../helpers/effects.mjs';
 import { enrichHTMLWithFactionIcons } from '../helpers/faction-display.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
+import { pickIcon } from '../helpers/icon-picker/icon-picker.mjs';
 
 const ITEM_SHEET_TAB_META = Object.freeze({
   description: { icon: 'fas fa-file-lines', labelKey: 'SPACEHOLDER.Tabs.Description' },
@@ -26,6 +27,18 @@ function buildItemSheetPrimaryTabs(tabIds, overrides = {}) {
   }
   return Object.freeze(out);
 }
+
+const ITEM_TYPE_LABEL_KEYS = Object.freeze({
+  item: 'SPACEHOLDER.ItemTypes.Item',
+  feature: 'SPACEHOLDER.ItemTypes.Feature',
+  spell: 'SPACEHOLDER.ItemTypes.Spell',
+});
+
+const ITEM_TYPE_ICON_CLASS = Object.freeze({
+  item: 'fa-solid fa-box',
+  feature: 'fa-solid fa-star',
+  spell: 'fa-solid fa-wand-magic-sparkles',
+});
 
 // Base V2 Item Sheet with Handlebars rendering
 export class SpaceHolderBaseItemSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -187,6 +200,13 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     const rawImg = this.item?.img ?? '';
     context.itemImgSrc = String(rawImg ?? '').trim() ? rawImg : defIcon;
 
+    const itemType = String(this.item?.type ?? 'item');
+    context.itemHeaderAccent = this._resolveItemHeaderAccentHex(itemType);
+    const typeLabelKey = ITEM_TYPE_LABEL_KEYS[itemType] || ITEM_TYPE_LABEL_KEYS.item;
+    context.itemTypeLabel = game.i18n?.localize?.(typeLabelKey) ?? itemType;
+    context.itemTypeIconClass = ITEM_TYPE_ICON_CLASS[itemType] || ITEM_TYPE_ICON_CLASS.item;
+    context.itemHeaderInlineQuantity = false;
+
     context.config = CONFIG.SPACEHOLDER;
 
     context.effects = prepareActiveEffectCategories(this.item.effects);
@@ -243,6 +263,77 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     fp.render(true);
   }
 
+  /**
+   * Иконка из библиотеки SVG (только поле `img` предмета).
+   * @private
+   */
+  async _onItemIconPickClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.isEditable) return;
+
+    const initialPath = String(this.item?.img ?? '').trim() || null;
+    const title = game.i18n?.localize?.('SPACEHOLDER.IconPicker.Title') ?? null;
+    const path = await pickIcon({ initialPath, defaultColor: '#ffffff', title: title || undefined });
+    if (!path) return;
+
+    try {
+      await this.item.update({ img: path });
+    } catch (e) {
+      console.error('SpaceHolder | item icon pick update failed', e);
+    }
+    try {
+      this.render(false);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  /**
+   * Акцент шапки предмета по типу документа (детерминированный оттенок).
+   * @param {string} itemType
+   * @returns {string}
+   * @protected
+   */
+  _resolveItemHeaderAccentHex(itemType) {
+    const hue = this._hashStringToHue(String(itemType ?? 'item'));
+    const hex = this._hslToHex(hue, 52, 44);
+    return `#${hex.toString(16).padStart(6, '0')}`;
+  }
+
+  /** @private */
+  _hashStringToHue(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash) % 360;
+  }
+
+  /** @private */
+  _hslToHex(h, s, l) {
+    const sat = (s ?? 0) / 100;
+    const lig = (l ?? 0) / 100;
+    const c = (1 - Math.abs(2 * lig - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = lig - c / 2;
+
+    let r = 0; let g = 0; let b = 0;
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+
+    const to255 = (v) => Math.max(0, Math.min(255, Math.round((v + m) * 255)));
+    const rr = to255(r);
+    const gg = to255(g);
+    const bb = to255(b);
+    return (rr << 16) + (gg << 8) + bb;
+  }
+
   /* -------------------------------------------- */
 
   /** @inheritDoc */
@@ -253,6 +344,11 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     const profileHandler = (this._onProfileImageClickBound ??= this._onProfileImageClick.bind(this));
     this.element?.querySelectorAll('img.profile-img[data-edit], img.profile-img').forEach((img) => {
       img.addEventListener('click', profileHandler);
+    });
+
+    const iconPickHandler = this._onItemIconPickClickBound ??= this._onItemIconPickClick.bind(this);
+    this.element?.querySelectorAll('[data-action="sh-icon-pick"]').forEach((btn) => {
+      btn.addEventListener('click', iconPickHandler);
     });
 
     // Повторно применяем активную вкладку после каждого рендера (как в листе персонажа)
@@ -373,8 +469,9 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-wearable-sheet.hbs' } };
 
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
-    position: { width: 720, height: 560 },
-    window: { resizable: true }
+    // Шапка + полоса вкладок + баннер + строка управления + фиксированный ряд 420px (покрытие)
+    position: { width: 720, height: 860 },
+    window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: true }),
   });
 
   // Вкладки: описание, теги; остальные — по system.itemTags.
@@ -564,42 +661,242 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     if (context.hasModifiersTag) wearableTabIds.push('modifiers');
     context.sheetPrimaryTabs = buildItemSheetPrimaryTabs(wearableTabIds, {
       attributes: { icon: 'fas fa-shield-halved', labelKey: 'SPACEHOLDER.Tabs.Coverage' },
+      tags: { icon: 'fas fa-gear', labelKey: 'SPACEHOLDER.Tabs.Settings' },
     });
+
+    context.itemHeaderInlineQuantity = true;
 
     return context;
   }
 
-  /** @inheritDoc — привязка кнопки и полей защиты выполняется через хук renderItemSheet в spaceholder.mjs */
+  /**
+   * Поля без привязки к FormData (теги — `data-sh-item-tag`; анатомия/покрытие — диалог и PIXI-редактор):
+   * при submitOnChange вложенный `system` приходит без них → DataModel подставляет дефолты и затирает данные.
+   * Подмешиваем снимок с документа, как для `itemTags`.
+   * @param {object} [data]
+   */
+  _preserveWearableGearSubmitFields(data) {
+    if (!data || typeof data !== 'object') return;
+
+    const hasNestedSystem =
+      data.system && typeof data.system === 'object' && !Array.isArray(data.system);
+    const hasFlatSystem = Object.keys(data).some(
+      (k) => typeof k === 'string' && k.startsWith('system.')
+    );
+    if (!hasNestedSystem && !hasFlatSystem) return;
+
+    const itemSys = this.item?.system ?? {};
+    const src = itemSys.itemTags;
+    const tagSnap = {
+      isArmor: !!(src && src.isArmor),
+      isActions: !!(src && src.isActions),
+      isModifiers: !!(src && src.isModifiers),
+    };
+
+    const anatomyId = itemSys.anatomyId ?? null;
+    const anatomyGroup = itemSys.anatomyGroup ?? null;
+    const coveredParts = Array.isArray(itemSys.coveredParts)
+      ? foundry.utils.duplicate(itemSys.coveredParts)
+      : [];
+
+    if (hasNestedSystem) {
+      data.system.itemTags = { ...tagSnap };
+      data.system.anatomyId = anatomyId;
+      data.system.anatomyGroup = anatomyGroup;
+      data.system.coveredParts = coveredParts;
+    }
+    data['system.itemTags'] = { ...tagSnap };
+    data['system.anatomyId'] = anatomyId;
+    data['system.anatomyGroup'] = anatomyGroup;
+    data['system.coveredParts'] = coveredParts;
+  }
+
+  /**
+   * @inheritDoc
+   */
+  async _prepareSubmitData(event, form, formData) {
+    const data = await super._prepareSubmitData(event, form, formData);
+    this._preserveWearableGearSubmitFields(data);
+    return data;
+  }
+
+  /**
+   * Теги правятся локально; одна кнопка «Применить» пишет `system.itemTags` и перерисовывает вкладки.
+   * @inheritDoc
+   */
   async _onRender(context, options) {
     await super._onRender(context, options);
 
     if (!this.isEditable) return;
 
-    const el = this.element;
-    const tagRe = /^system\.itemTags\.(isArmor|isActions|isModifiers)$/;
-    el.querySelectorAll('input[type="checkbox"][name^="system.itemTags."]').forEach((input) => {
-      const name = String(input.getAttribute('name') ?? '');
-      const m = name.match(tagRe);
-      if (!m) return;
-      const field = m[1];
-      input.addEventListener('change', async () => {
-        const next = !!input.checked;
-        const patch = { [`system.itemTags.${field}`]: next };
+    const btn = this.element?.querySelector?.('[data-action="sh-item-tags-apply"]');
+    if (btn && !btn.dataset.spaceholderTagsApplyBound) {
+      btn.dataset.spaceholderTagsApplyBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const root = this.element;
+        const readTag = (key) => {
+          const input = root.querySelector(`input[type="checkbox"][data-sh-item-tag="${key}"]`);
+          return !!input?.checked;
+        };
+        const itemTags = {
+          isArmor: readTag('isArmor'),
+          isActions: readTag('isActions'),
+          isModifiers: readTag('isModifiers'),
+        };
+        const patch = { 'system.itemTags': itemTags };
         const pending = this._getPendingNameFromForm();
         if (pending && pending !== String(this.item.name ?? '').trim()) {
           patch.name = pending;
         }
+        this._wearableApplyingItemTags = true;
         try {
           await this.item.update(patch);
         } catch (e) {
-          console.error('SpaceHolder | itemTags update failed:', e);
-          input.checked = !next;
+          console.error('SpaceHolder | itemTags apply failed:', e);
           return;
+        } finally {
+          this._wearableApplyingItemTags = false;
         }
         this._activeTabPrimary = 'tags';
         await this.render(false);
       });
-    });
+    }
   }
 
+}
+
+/**
+ * Submit формы (submitOnChange) иногда присылает вложенный `change.system` с `itemTags: все false`, хотя в документе
+ * теги включены; чекбоксы тегов не в FormData. Пока лист выставляет `_wearableApplyingItemTags` (кнопка «Применить» тегов),
+ * восстановление не делаем — иначе сброс тегов через «Применить» откатывается.
+ * @param {Item} item
+ * @param {object} change
+ * @returns {boolean}
+ */
+function fixSpuriousWearableItemTagsWipe(item, change) {
+  if (item?.type !== 'item' || !change) return false;
+  if (item.sheet?._wearableApplyingItemTags) return false;
+  const cur = item.system?.itemTags;
+  const curAny = cur && (cur.isArmor || cur.isActions || cur.isModifiers);
+  if (!curAny) return false;
+
+  if (change.system && typeof change.system === 'object' && !Array.isArray(change.system)) {
+    const inc = change.system.itemTags;
+    if (!inc || typeof inc !== 'object') return false;
+    const incAllFalse = !inc.isArmor && !inc.isActions && !inc.isModifiers;
+    if (!incAllFalse) return false;
+    const sysKeys = Object.keys(change.system);
+    const onlyItemTags = sysKeys.length === 1 && sysKeys[0] === 'itemTags';
+    if (onlyItemTags) return false;
+    change.system.itemTags = foundry.utils.duplicate(cur);
+    return true;
+  }
+
+  const flatIt = change['system.itemTags'];
+  if (flatIt && typeof flatIt === 'object') {
+    const incAllFalse = !flatIt.isArmor && !flatIt.isActions && !flatIt.isModifiers;
+    if (!incAllFalse) return false;
+    const flatSys = Object.keys(change).filter(
+      (k) => typeof k === 'string' && k.startsWith('system.') && k !== 'system.itemTags'
+    );
+    if (flatSys.length === 0) return false;
+    change['system.itemTags'] = foundry.utils.duplicate(cur);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Те же «полные» diff по system, что и для тегов: в форме нет анатомии/coveredParts, в change приходит null/[].
+ * Явные апдейты только из диалога/редактора покрытия не трогаем.
+ * @param {Item} item
+ * @param {object} change
+ * @returns {boolean}
+ */
+function fixSpuriousWearableCoverageWipe(item, change) {
+  if (item?.type !== 'item' || !change) return false;
+
+  const doc = item.system ?? {};
+  const docAidRaw = doc.anatomyId;
+  const docAidStr = docAidRaw != null ? String(docAidRaw).trim() : '';
+  const docHasAnatomy = docAidStr.length > 0;
+  const docParts = Array.isArray(doc.coveredParts) ? doc.coveredParts : [];
+  const docHasParts = docParts.length > 0;
+  if (!docHasAnatomy && !docHasParts) return false;
+
+  const isCoverageOnlyKeys = (keys) => {
+    if (!keys.length) return false;
+    const allowed = new Set(['anatomyId', 'anatomyGroup', 'coveredParts']);
+    return keys.every((k) => allowed.has(k));
+  };
+
+  let fixed = false;
+
+  if (change.system && typeof change.system === 'object' && !Array.isArray(change.system)) {
+    const inc = change.system;
+    const keys = Object.keys(inc);
+    if (keys.length === 0) return false;
+    if (keys.length <= 3 && isCoverageOnlyKeys(keys)) return false;
+
+    const incAidRaw = inc.anatomyId;
+    const incAidStr = incAidRaw != null ? String(incAidRaw).trim() : '';
+    const wipesAnatomy = Object.prototype.hasOwnProperty.call(inc, 'anatomyId') && !incAidStr;
+    const incCp = inc.coveredParts;
+    const wipesParts =
+      Object.prototype.hasOwnProperty.call(inc, 'coveredParts') &&
+      Array.isArray(incCp) &&
+      incCp.length === 0 &&
+      docHasParts;
+
+    if (wipesAnatomy && docHasAnatomy) {
+      change.system.anatomyId = docAidRaw;
+      change.system.anatomyGroup = doc.anatomyGroup ?? null;
+      fixed = true;
+    }
+    if (wipesParts && docHasParts) {
+      change.system.coveredParts = foundry.utils.duplicate(docParts);
+      fixed = true;
+    }
+    return fixed;
+  }
+
+  const flatSys = Object.keys(change).filter((k) => typeof k === 'string' && k.startsWith('system.'));
+  if (!flatSys.length) return false;
+  const coverageFlat = new Set(['system.anatomyId', 'system.anatomyGroup', 'system.coveredParts']);
+  const nonCoverageFlat = flatSys.filter((k) => !coverageFlat.has(k));
+  if (nonCoverageFlat.length === 0) return false;
+
+  const flatAid = change['system.anatomyId'];
+  const wipesFlatAnatomy =
+    Object.prototype.hasOwnProperty.call(change, 'system.anatomyId') &&
+    (flatAid == null || String(flatAid).trim() === '');
+  const flatCp = change['system.coveredParts'];
+  const wipesFlatParts =
+    Object.prototype.hasOwnProperty.call(change, 'system.coveredParts') &&
+    Array.isArray(flatCp) &&
+    flatCp.length === 0 &&
+    docHasParts;
+
+  if (wipesFlatAnatomy && docHasAnatomy) {
+    change['system.anatomyId'] = docAidRaw;
+    change['system.anatomyGroup'] = doc.anatomyGroup ?? null;
+    fixed = true;
+  }
+  if (wipesFlatParts && docHasParts) {
+    change['system.coveredParts'] = foundry.utils.duplicate(docParts);
+    fixed = true;
+  }
+  return fixed;
+}
+
+if (!globalThis.__spaceholderWearableItemPreUpdate) {
+  globalThis.__spaceholderWearableItemPreUpdate = true;
+  Hooks.on('preUpdateItem', (item, change, _options, _userId) => {
+    if (item?.type !== 'item') return;
+    fixSpuriousWearableItemTagsWipe(item, change);
+    fixSpuriousWearableCoverageWipe(item, change);
+  });
 }

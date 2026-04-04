@@ -421,6 +421,7 @@
   // Wearable Coverage tab: верхняя строка + две колонки (как анатомия/травмы)
   .wearable-coverage-management-container {
     margin: 0 0 12px 0;
+    flex: 0 0 auto;
   }
 
   .wearable-coverage-management-row {
@@ -445,25 +446,40 @@
     gap: 6px;
   }
 
+  // Фиксированная высота ряда (как здоровье персонажа); окно предмета подобрано по высоте, анатомию не сжимаем
   .wearable-coverage-main-layout {
     display: flex;
     gap: 15px;
     align-items: stretch;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    height: 420px;
     min-height: 420px;
+    max-height: 420px;
     width: 100%;
     min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .wearable-coverage-left-column {
     flex: 0 0 378px;
     width: 378px;
+    height: 420px;
+    min-height: 420px;
+    max-height: 420px;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
+    align-self: stretch;
   }
 
   .wearable-coverage-editor-wrap {
     width: 100%;
     height: 420px;
+    min-height: 420px;
+    max-height: 420px;
+    flex: 0 0 auto;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--sh-border);
     border-radius: var(--sh-radius-lg);
@@ -477,7 +493,10 @@
 
   .wearable-coverage-placeholder {
     width: 100%;
-    min-height: 200px;
+    height: 420px;
+    min-height: 420px;
+    max-height: 420px;
+    flex: 0 0 auto;
     padding: 24px;
     background: rgba(0, 0, 0, 0.15);
     border: 1px dashed var(--sh-border);
@@ -495,9 +514,14 @@
 
   .wearable-coverage-right-column {
     flex: 1 1 0;
-    min-width: 220px;
+    min-width: 180px;
+    height: 420px;
+    min-height: 420px;
+    max-height: 420px;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
+    align-self: stretch;
   }
 
   .wearable-coverage-panel {

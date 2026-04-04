@@ -1,32 +1,57 @@
 // Health tab + anatomy management (Character sheet)
 
+// Скролл оверфлоу только в панели просмотра части, не на всей вкладке (перебивает overflow-y вкладки в _spaceholder-sheet-stack)
+.window-app.spaceholder.sheet
+  .spaceholder-sheet-stack
+  > .sheet-body.sheet-body--character-primary
+  > .tab.health.active,
+.spaceholder.sheet
+  .spaceholder-sheet-stack
+  > .sheet-body.sheet-body--character-primary
+  > .tab.health.active {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
 .window-app.spaceholder,
 .spaceholder {
   .tab.health {
-    min-height: 560px;
-    min-width: 838px;
+    min-height: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
+
+    > .sh-tab-banner {
+      flex: 0 0 auto;
+    }
   }
 
+  // Заполняет высоту вкладки под баннером; остаток уходит в панель выбранной части со скроллом
   .health-container {
     width: 100%;
-    min-width: 838px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    min-height: 0;
     flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
   }
 
+  // Фиксированная высота ряда: визуализатор 378×420 и соседи — без вертикального сжатия и без скролла в этом ряду
   .health-main-layout {
     position: relative;
     display: flex;
-    flex: 1 1 0;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    height: 420px;
     min-height: 420px;
-    gap: 15px;
+    max-height: 420px;
+    gap: 0;
     align-items: stretch;
     width: 100%;
     min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .health-anatomy-pointer-overlay {
@@ -55,11 +80,13 @@
 
   .health-equipment-column {
     flex: 1 1 0;
-    min-width: 200px;
+    min-width: 160px;
     display: flex;
     flex-direction: column;
     height: 420px;
+    min-height: 420px;
     flex-shrink: 0;
+    align-self: stretch;
   }
 
   .health-equipment-placeholder {
@@ -68,7 +95,7 @@
     min-height: 0;
     background: rgba(0, 0, 0, 0.25);
     border: 1px dashed var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
     padding: 12px;
     display: flex;
     flex-direction: column;
@@ -90,11 +117,13 @@
 
   .health-bodyparts-column {
     flex: 1 1 0;
-    min-width: 240px;
+    min-width: 200px;
     display: flex;
     flex-direction: column;
     height: 420px;
+    min-height: 420px;
     flex-shrink: 0;
+    align-self: stretch;
   }
 
   .body-parts-hierarchy {
@@ -106,7 +135,7 @@
     flex-direction: column;
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
     padding: 12px;
   }
 
@@ -233,11 +262,11 @@
   // Anatomy management: сверху вкладки «Здоровье»
   .anatomy-management-container {
     flex: 0 0 auto;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     padding: 12px 14px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-md);
+    border-radius: 0;
   }
 
   .anatomy-management-row {
@@ -340,28 +369,34 @@
     background: rgba(143, 185, 143, 0.2);
   }
 
-  // Anatomy visual editor: фиксированный размер блока (сетка 9×10 по умолчанию, клетка масштабируется)
+  // Anatomy visual editor: фиксированный блок 378×420 (масштаб сетки внутри JS)
   .health-anatomy-editor-column {
     flex: 0 0 auto;
-    height: 420px;
+    width: 378px;
+    min-width: 378px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    height: 420px;
+    min-height: 420px;
+    max-height: 420px;
+    align-self: stretch;
   }
 
   .anatomy-editor-wrap {
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
     padding: 10px;
   }
 
   .anatomy-editor-wrap--fixed {
     width: 378px;
     height: 420px;
+    min-height: 420px;
+    max-height: 420px;
+    flex: 0 0 auto;
     padding: 0;
-    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -480,18 +515,22 @@
   }
 
   .anatomy-editor-selected-panel {
-    margin-top: 10px;
+    margin-top: 0;
     padding: 12px 14px;
     min-height: 80px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-sm);
+    border-radius: 0;
     font-size: 12px;
 
     &.anatomy-editor-selected-panel--fullwidth {
       width: 100%;
       min-width: 0;
       box-sizing: border-box;
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     .anatomy-editor-panel-cols {

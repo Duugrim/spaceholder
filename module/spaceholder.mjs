@@ -311,6 +311,7 @@ Hooks.once('init', function () {
       btn.dataset.spaceholderBound = '1';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         openWearableAnatomyDialog(doc);
       });
     }
@@ -441,9 +442,15 @@ Hooks.once('init', function () {
  * Открыть диалог выбора анатомии для предмета Wearable (системные + мировые). Сохраняет anatomyId и anatomyGroup.
  * @param {Item} item - документ предмета типа item (gear)
  */
+const SH_WEARABLE_ANATOMY_REOPEN_GUARD_MS = 450;
+
 async function openWearableAnatomyDialog(item) {
   if (!item || item.type !== 'item') return;
   if (!item.system?.itemTags?.isArmor) return;
+  const lastApply = globalThis.__shWearableAnatomyJustAppliedAt;
+  if (typeof lastApply === 'number' && Date.now() - lastApply < SH_WEARABLE_ANATOMY_REOPEN_GUARD_MS) {
+    return;
+  }
   await anatomyManager.loadWorldPresets();
   const availableAnatomies = anatomyManager.getAvailableAnatomies();
   const worldPresets = anatomyManager.getWorldPresets();
@@ -516,6 +523,7 @@ async function openWearableAnatomyDialog(item) {
           'system.anatomyId': anatomyId,
           'system.anatomyGroup': anatomyGroup
         });
+        globalThis.__shWearableAnatomyJustAppliedAt = Date.now();
         await item.sheet?.render?.();
         try {
           item.sheet?.changeTab?.('attributes', 'primary', { updatePosition: false });

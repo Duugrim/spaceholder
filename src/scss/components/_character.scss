@@ -8,7 +8,7 @@
     padding: 0 12px;
     background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
   }
 
@@ -16,8 +16,9 @@
   .sh-stats-columns {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    gap: 0;
     align-items: stretch;
+    flex: 0 0 auto;
   }
 
   .sh-stats-column {
@@ -160,11 +161,16 @@
 
   // Actions panel (Character sheet)
   .sh-actions-panel {
-    margin-top: 12px;
+    margin-top: 0;
     padding: 12px;
     background: rgba(0, 0, 0, 0.28);
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: min(48vh, 560px);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .sh-actions-subheader {
@@ -184,7 +190,7 @@
 
   .sh-actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 8px;
   }
 

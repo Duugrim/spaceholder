@@ -1,43 +1,6 @@
 <form class="{{cssClass}} flexcol" autocomplete="off">
   <div class="spaceholder-sheet-stack flexcol">
-  <header class="sheet-header">
-    <img
-      class="profile-img"
-      src="{{itemImgSrc}}"
-      data-edit="img"
-      title="{{item.name}}"
-    />
-    <div class="header-fields">
-      <h1 class="charname">
-        <input
-          name="name"
-          type="text"
-          value="{{item.name}}"
-          placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"
-        />
-      </h1>
-      <div class="grid grid-2col">
-        <div class="resource">
-          <label class="resource-label">{{localize 'SPACEHOLDER.Resources.Quantity'}}</label>
-          <input
-            type="text"
-            name="system.quantity"
-            value="{{system.quantity}}"
-            data-dtype="Number"
-          />
-        </div>
-        <div class="resource">
-          <label class="resource-label">{{localize 'SPACEHOLDER.Resources.Weight'}}</label>
-          <input
-            type="text"
-            name="system.weight"
-            value="{{system.weight}}"
-            data-dtype="Number"
-          />
-        </div>
-      </div>
-    </div>
-  </header>
+  {{> "systems/spaceholder/templates/item/parts/item-sheet-header.hbs"}}
 
   <section class="sheet-body sheet-body--item-primary">
     <nav class="sheet-tabs tabs sheet-tabs--item-primary" data-group="primary" data-tooltip-direction="UP">
@@ -62,13 +25,25 @@
       }}
     </div>
 
-    {{!-- Tags Tab: включаем группы механик --}}
+    {{!-- Settings tab (id tags): вес, группы механик --}}
     <div class="tab tags" data-group="primary" data-tab="tags">
       {{#each sheetPrimaryTabs}}
         {{#if (eq id "tags")}}
           {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
         {{/if}}
       {{/each}}
+      <div class="form-group sh-item-settings-weight">
+        <label for="sh-item-settings-weight-input">{{localize 'SPACEHOLDER.Resources.Weight'}}</label>
+        <div class="form-fields">
+          <input
+            id="sh-item-settings-weight-input"
+            type="text"
+            name="system.weight"
+            value="{{system.weight}}"
+            data-dtype="Number"
+          />
+        </div>
+      </div>
       <div class="section-header">
         <i class="fas fa-tags"></i>
         {{localize 'SPACEHOLDER.ItemTags.SectionTitle'}}
@@ -76,18 +51,26 @@
       <p class="sh-item-tags-hint"><em>{{localize 'SPACEHOLDER.ItemTags.Hint'}}</em></p>
       <div class="sh-item-tags-list">
         <label class="sh-item-tag-row">
-          <input type="checkbox" name="system.itemTags.isArmor" data-dtype="Boolean" {{#if system.itemTags.isArmor}}checked{{/if}} />
+          <input type="checkbox" data-sh-item-tag="isArmor" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isArmor}}checked{{/if}} />
           <span>{{localize 'SPACEHOLDER.ItemTags.Armor'}}</span>
         </label>
         <label class="sh-item-tag-row">
-          <input type="checkbox" name="system.itemTags.isActions" data-dtype="Boolean" {{#if system.itemTags.isActions}}checked{{/if}} />
+          <input type="checkbox" data-sh-item-tag="isActions" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isActions}}checked{{/if}} />
           <span>{{localize 'SPACEHOLDER.ItemTags.Actions'}}</span>
         </label>
         <label class="sh-item-tag-row">
-          <input type="checkbox" name="system.itemTags.isModifiers" data-dtype="Boolean" {{#if system.itemTags.isModifiers}}checked{{/if}} />
+          <input type="checkbox" data-sh-item-tag="isModifiers" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isModifiers}}checked{{/if}} />
           <span>{{localize 'SPACEHOLDER.ItemTags.Modifiers'}}</span>
         </label>
       </div>
+      {{#if editable}}
+      <div class="sh-item-tags-apply-row">
+        <button type="button" class="sh-item-tags-apply-btn" data-action="sh-item-tags-apply">
+          <i class="fas fa-check" aria-hidden="true"></i>
+          {{localize 'SPACEHOLDER.Actions.Apply'}}
+        </button>
+      </div>
+      {{/if}}
       {{#if hasArmorTag}}
       <div class="sh-item-tags-wearable-defaults">
         <div class="sh-actions-subheader">{{localize 'SPACEHOLDER.ActionsSystem.UI.WearableDefaults'}}</div>

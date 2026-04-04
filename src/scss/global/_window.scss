@@ -51,7 +51,8 @@
   // Secondary / de-emphasized copy (Exo 2; Cyrillic-capable). Use .sh-font-secondary for ad-hoc blocks.
   :where(.sh-font-secondary),
   :where(.sh-derived-hint),
-  :where(.sh-character-header__caption) {
+  :where(.sh-character-header__caption),
+  :where(.sh-item-header__caption) {
     font-family: #{$font-secondary};
   }
 
@@ -103,6 +104,21 @@
   // Тест: убрать padding ядра у контента листов (V2: contentClasses standard-form на .window-content)
   .window-content.standard-form {
     padding: 0;
+  }
+
+  // Листы: передать высоту окна вниз по flex-цепочке (вкладки со скроллом внутри .tab.active)
+  &.sheet .window-content.standard-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  &.sheet .window-content.standard-form > form {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   // Scrollbars (Chromium)

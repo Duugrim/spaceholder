@@ -1,0 +1,253 @@
+// Item sheet: шапка в стиле листа персонажа (карточка портрет + тип, имя справа)
+
+$sh-item-portrait-size: 150px;
+$sh-item-type-icon: 75px;
+$sh-item-type-overlap: 40px;
+$sh-item-card-border-left: 1px;
+$sh-item-card-pad-left: 8px;
+$sh-item-name-offset-after-portrait: 10px;
+$sh-item-name-left: $sh-item-card-border-left + $sh-item-card-pad-left + $sh-item-portrait-size +
+  $sh-item-name-offset-after-portrait;
+$sh-item-card-trapeze-top-right-x: 84%;
+$sh-item-name-input-height: 42px;
+
+.window-app.spaceholder,
+.spaceholder {
+  .sheet-header.sh-item-header {
+    position: relative;
+    z-index: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 0 10px 0;
+    margin: 0 0 10px 0;
+    background: transparent;
+    border-bottom: 1px solid var(--sh-border);
+    min-height: 0;
+
+    .sh-item-header__card {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: max-content;
+      max-width: 100%;
+      min-width: calc(#{$sh-item-portrait-size} + #{$sh-item-type-icon} + 8px + 12px);
+      padding: 8px 12px 8px 8px;
+      border-radius: 0;
+      border: 1px solid color-mix(in srgb, var(--sh-item-header-accent, #3d4a5c) 50%, var(--sh-border));
+      background: linear-gradient(
+        155deg,
+        color-mix(in srgb, var(--sh-item-header-accent, #3d4a5c) 38%, #0e1014) 0%,
+        color-mix(in srgb, var(--sh-item-header-accent, #3d4a5c) 20%, #12151c) 100%
+      );
+      color: rgba(255, 255, 255, 0.95);
+      box-sizing: border-box;
+      clip-path: polygon(
+        0% 0%,
+        $sh-item-card-trapeze-top-right-x 0%,
+        100% 100%,
+        0% 100%
+      );
+    }
+
+    .sh-item-header__top {
+      display: grid;
+      grid-template-columns: $sh-item-portrait-size $sh-item-type-icon;
+      grid-template-rows: $sh-item-portrait-size;
+      column-gap: 0;
+      align-items: end;
+      position: relative;
+    }
+
+    .sh-item-header__portrait.sh-portrait {
+      position: relative;
+      z-index: 1;
+      flex: 0 0 $sh-item-portrait-size;
+      width: $sh-item-portrait-size;
+      height: $sh-item-portrait-size;
+
+      .profile-img {
+        flex: 0 0 auto;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        border: none;
+        background: transparent;
+        object-fit: cover;
+      }
+    }
+
+    .sh-item-header__typeIconWrap {
+      position: relative;
+      z-index: 2;
+      box-sizing: border-box;
+      width: $sh-item-type-icon;
+      height: $sh-item-type-icon;
+      min-width: 0;
+      min-height: 0;
+      flex-shrink: 0;
+      justify-self: start;
+      align-self: end;
+      margin-left: -$sh-item-type-overlap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0;
+      border: none;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .sh-item-header__typeIconPh {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      color: rgba(255, 255, 255, 0.85);
+
+      i {
+        font-size: 28px;
+        line-height: 1;
+        pointer-events: none;
+      }
+    }
+
+    .sh-item-header__caption {
+      margin-top: 4px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      align-self: stretch;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      gap: 2px;
+    }
+
+    .sh-item-header__typeLabel {
+      font-family: #{$font-secondary};
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.74);
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transform: scaleX(1.045);
+      transform-origin: center;
+      font-stretch: semi-expanded;
+      box-sizing: border-box;
+      display: block;
+      width: 100%;
+    }
+
+    .sh-item-header__aside {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: 0;
+    }
+
+    h1.charname {
+      position: absolute;
+      z-index: 3;
+      left: $sh-item-name-left;
+      right: 0;
+      top: $sh-item-card-pad-left;
+      margin: 0;
+      align-self: stretch;
+      border: none;
+      box-sizing: border-box;
+
+      > input {
+        width: 100%;
+        height: $sh-item-name-input-height;
+        padding: 4px 10px;
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.1;
+        box-sizing: border-box;
+        background: var(--sh-surface-1);
+        border: 1px solid var(--sh-border);
+        color: var(--sh-text);
+      }
+
+      .sh-item-header__titleRow {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .sh-item-header__qtySep {
+        flex: 0 0 auto;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--sh-text-muted);
+        user-select: none;
+      }
+
+      .sh-item-header__nameField {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+        height: $sh-item-name-input-height;
+        padding: 4px 10px;
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.1;
+        box-sizing: border-box;
+        background: var(--sh-surface-1);
+        border: 1px solid var(--sh-border);
+        color: var(--sh-text);
+      }
+
+      .sh-item-header__qtyField {
+        flex: 0 0 auto;
+        width: 4.25rem;
+        min-width: 3.25rem;
+        height: $sh-item-name-input-height;
+        padding: 4px 6px;
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.1;
+        font-family: $font-mono;
+        text-align: center;
+        box-sizing: border-box;
+        background: var(--sh-surface-1);
+        border: 1px solid var(--sh-border);
+        color: var(--sh-text);
+      }
+    }
+  }
+
+  &.sheet.item .sheet-header.sh-item-header {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+}
+
+@supports (clip-path: path('M0 0 L1 0 L1 1 L0 1 Z')) {
+  $sh-tr: $sh-item-card-trapeze-top-right-x;
+  $sh-r: $sh-radius-md;
+
+  .window-app.spaceholder .sheet-header.sh-item-header .sh-item-header__card,
+  .spaceholder .sheet-header.sh-item-header .sh-item-header__card {
+    clip-path: path(
+      'M 0 #{$sh-r} A #{$sh-r} #{$sh-r} 0 0 1 #{$sh-r} 0 L #{$sh-tr} 0 L 100% 100% L #{$sh-r} 100% A #{$sh-r} #{$sh-r} 0 0 1 0 calc(100% - #{$sh-r}) L 0 #{$sh-r} Z'
+    );
+  }
+}

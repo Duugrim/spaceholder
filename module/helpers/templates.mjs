@@ -17,6 +17,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/actor/parts/actor-character-header.hbs',
     'systems/spaceholder/templates/partials/sh-tab-banner.hbs',
     // Item partials
+    'systems/spaceholder/templates/item/parts/item-sheet-header.hbs',
     'systems/spaceholder/templates/item/parts/item-effects.hbs',
     'systems/spaceholder/templates/item/parts/item-actions.hbs',
     // Icon picker (ApplicationV2)

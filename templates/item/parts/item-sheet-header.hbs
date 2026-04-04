@@ -1,0 +1,55 @@
+{{!-- Item sheet: карточка портрет + тип; подпись — локализованный тип предмета (как у персонажа фракция/диспозиция) --}}
+<header class="sheet-header sh-item-header">
+  <div
+    class="sh-item-header__card"
+    style="--sh-item-header-accent: {{#if itemHeaderAccent}}{{itemHeaderAccent}}{{else}}#3d4a5c{{/if}};"
+  >
+    <div class="sh-item-header__top">
+      <div class="sh-portrait sh-item-header__portrait">
+        <img class="profile-img" src="{{itemImgSrc}}" data-edit="img" title="{{item.name}}" height="150" width="150" alt=""/>
+        {{#if editable}}
+          <button
+            type="button"
+            class="icon-btn sh-portrait__pick"
+            data-action="sh-icon-pick"
+            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+          ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
+        {{/if}}
+      </div>
+      <div class="sh-item-header__typeIconWrap">
+        <span class="sh-item-header__typeIconPh" aria-hidden="true"><i class="{{itemTypeIconClass}}"></i></span>
+      </div>
+    </div>
+    <div class="sh-item-header__caption">
+      <span class="sh-item-header__typeLabel">{{itemTypeLabel}}</span>
+    </div>
+  </div>
+  <div class="sh-item-header__aside">
+    <h1 class="charname">
+      {{#if itemHeaderInlineQuantity}}
+        <span class="sh-item-header__titleRow">
+          <input
+            class="sh-item-header__nameField"
+            name="name"
+            type="text"
+            value="{{item.name}}"
+            placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"
+          />
+          <span class="sh-item-header__qtySep" aria-hidden="true">×</span>
+          <input
+            class="sh-item-header__qtyField"
+            type="text"
+            inputmode="numeric"
+            name="system.quantity"
+            value="{{system.quantity}}"
+            data-dtype="Number"
+            aria-label="{{localize 'SPACEHOLDER.Resources.Quantity'}}"
+          />
+        </span>
+      {{else}}
+        <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/>
+      {{/if}}
+    </h1>
+  </div>
+</header>

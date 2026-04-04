@@ -592,7 +592,13 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           this._onCharacterFactionFormDragOverBound = (e) => {
             e.preventDefault();
             try {
-              e.dataTransfer.dropEffect = 'copy';
+              const ea = String(e.dataTransfer?.effectAllowed ?? '').toLowerCase();
+              // Anatomy editor repositions parts with effectAllowed "move". Forcing "copy" here breaks drops in Chromium/Electron.
+              if (ea === 'move' || ea === 'linkmove') {
+                e.dataTransfer.dropEffect = 'move';
+              } else {
+                e.dataTransfer.dropEffect = 'copy';
+              }
             } catch (_) {
               /* ignore */
             }
@@ -973,7 +979,12 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         {
           action: 'create', label: L('SPACEHOLDER.Actions.Add'), icon: 'fa-solid fa-check', default: true,
           callback: async (dlgEvent) => {
-            const root = dlgEvent.currentTarget;
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
             const partRef = root.querySelector('#inj-part')?.value;
             const amountStr = root.querySelector('#inj-amount')?.value ?? '0';
             const type = root.querySelector('#inj-type')?.value ?? '';
@@ -985,8 +996,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
               return;
             }
             const amount = Math.max(0, Math.floor(parsed * 100));
-            // Считаем, что селект возвращает uuid, если он есть; actor.addInjury разберётся.
-            await this.actor.addInjury({ partUuid: partRef, amount, type, status, source });
+            // partRef может быть как uuid, так и slotRef — передаём оба для обратной совместимости.
+            await this.actor.addInjury({ partUuid: partRef, partId: partRef, amount, type, status, source });
             this.render(false);
           }
         },
@@ -1046,7 +1057,12 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           icon: 'fa-solid fa-check',
           default: true,
           callback: async (dlgEvent) => {
-            const root = dlgEvent.currentTarget;
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
             const amountStr = root.querySelector('#inj-amount')?.value ?? '0';
             const type = root.querySelector('#inj-type')?.value ?? '';
             const status = root.querySelector('#inj-status')?.value ?? '';
@@ -1656,6 +1672,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
     position: { width: 950, height: 950 },
+    window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: false }),
   }, { inplace: false });
 
   // Native tabs for character sheet: stats (Характеристики) and health (Здоровье)
@@ -1674,7 +1691,7 @@ export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
     await super._onFirstRender(context, options);
     const hasAnyParts = !!(this.actor.system?.health?.bodyParts && Object.keys(this.actor.system.health.bodyParts).length);
     const tabId = this._activeTabPrimary ?? (hasAnyParts ? 'stats' : 'health');
-    try { this.changeTab(tabId, 'primary', { updatePosition: true }); } catch (e) { /* ignore */ }
+    try { this.changeTab(tabId, 'primary', { updatePosition: false }); } catch (e) { /* ignore */ }
   }
 
   // Persist active tab whenever it changes

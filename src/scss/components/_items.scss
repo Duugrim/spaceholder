@@ -1,6 +1,12 @@
 // Items/Effects lists (legacy layout used by NPC + item sheets)
 
-.window-app.spaceholder {
+.window-app.spaceholder,
+.spaceholder {
+  .sheet-body .tab.active > .items-list {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
   .items-list {
     list-style: none;
     margin: 0;
@@ -98,6 +104,10 @@
   // Item actions (Actions tab)
   .sh-item-actions {
     padding: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .sh-wearable-default-actions {
@@ -129,6 +139,11 @@
     padding: 12px;
   }
 
+  .sh-item-settings-weight {
+    margin: 0 0 16px 0;
+    max-width: 220px;
+  }
+
   .sh-item-tags-hint {
     margin: 0 0 12px 0;
     font-size: 12px;
@@ -151,6 +166,37 @@
 
     input {
       flex: 0 0 auto;
+    }
+  }
+
+  .sh-item-tags-apply-row {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .sh-item-tags-apply-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-weight: 700;
+    font-size: 12px;
+    border-radius: var(--sh-radius-sm);
+    border: 1px solid var(--sh-border-strong);
+    background: color-mix(in srgb, var(--sh-accent) 22%, var(--sh-surface-2));
+    color: var(--sh-text);
+    cursor: pointer;
+
+    &:hover {
+      background: color-mix(in srgb, var(--sh-accent) 32%, var(--sh-surface-3));
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--sh-accent-strong);
+      outline-offset: 2px;
     }
   }
 
