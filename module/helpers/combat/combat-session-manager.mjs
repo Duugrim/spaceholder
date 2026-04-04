@@ -1,5 +1,6 @@
 import { getEffectiveActionCost } from "../actions/action-service.mjs";
 import { getStoredActionPoints, refreshApPool } from "../actions/transaction-ledger.mjs";
+import { ensureCombatActionJournalMessage } from "../actions/action-chat-journal.mjs";
 
 const MODULE_NS = "spaceholder";
 const SOCKET_TYPE = `${MODULE_NS}.combatLog`;
@@ -68,11 +69,13 @@ export class CombatSessionManager {
     this._manualUndoMarker = null;
     this._outboxTimer = null;
     this._uiSelectedCombatantByCombat = new Map();
+    this._registeredContextHooks = [];
     this._bound = {
       onCombatStart: this._onCombatStart.bind(this),
       onUpdateCombat: this._onUpdateCombat.bind(this),
       onDeleteCombat: this._onDeleteCombat.bind(this),
       onRenderCombatTracker: this._onRenderCombatTracker.bind(this),
+      onGetCombatTrackerEntryContext: this._onGetCombatTrackerEntryContext.bind(this),
       onSocketMessage: this._onSocketMessage.bind(this),
       onHistoryUndo: this._onHistoryUndo.bind(this),
       onHistoryRedo: this._onHistoryRedo.bind(this),
@@ -88,6 +91,7 @@ export class CombatSessionManager {
     Hooks.on("updateCombat", this._bound.onUpdateCombat);
     Hooks.on("deleteCombat", this._bound.onDeleteCombat);
     Hooks.on("renderCombatTracker", this._bound.onRenderCombatTracker);
+    this._registerCombatContextHooks();
     Hooks.on("historyUndo", this._bound.onHistoryUndo);
     Hooks.on("historyRedo", this._bound.onHistoryRedo);
     Hooks.on("undoOperation", this._bound.onUndoOperation);
@@ -104,6 +108,8 @@ export class CombatSessionManager {
     Hooks.off("updateCombat", this._bound.onUpdateCombat);
     Hooks.off("deleteCombat", this._bound.onDeleteCombat);
     Hooks.off("renderCombatTracker", this._bound.onRenderCombatTracker);
+    for (const h of this._registeredContextHooks) Hooks.off(h, this._bound.onGetCombatTrackerEntryContext);
+    this._registeredContextHooks = [];
     Hooks.off("historyUndo", this._bound.onHistoryUndo);
     Hooks.off("historyRedo", this._bound.onHistoryRedo);
     Hooks.off("undoOperation", this._bound.onUndoOperation);
@@ -304,6 +310,12 @@ export class CombatSessionManager {
         const data = await this._applyJournalUndoAsGM(msg.payload || {}, userId);
         if (data?.ok) reply(true, data);
         else reply(false, null, data?.error || "journalUndo failed");
+        return;
+      }
+      if (action === "journalUndoPreview") {
+        const data = await this._computeJournalUndoPreviewAsGM(msg.payload || {}, userId);
+        if (data?.ok) reply(true, data);
+        else reply(false, null, data?.error || "journalUndoPreview failed");
         return;
       }
       reply(false, null, `Unknown combat action: ${action}`);
@@ -643,6 +655,13 @@ export class CombatSessionManager {
     return this._requestViaSocket("journalUndo", payload, { timeoutMs: 12000 });
   }
 
+  async requestJournalUndoPreviewFromClient(payload) {
+    if (game.user?.isGM) {
+      return this._computeJournalUndoPreviewAsGM(payload, game.user.id);
+    }
+    return this._requestViaSocket("journalUndoPreview", payload, { timeoutMs: 12000 });
+  }
+
   /**
    * Logical round from `flags.spaceholder.combatState.round` (not core Combat.round).
    * @param {Combat} combat
@@ -689,45 +708,85 @@ export class CombatSessionManager {
     const hasEvt = !!combatEventId;
     if (!hasMove && !hasTx && !hasEvt) return { ok: false, error: "Nothing to undo" };
 
-    if (hasMove) {
-      let tokenDoc = null;
-      try {
-        tokenDoc = await fromUuid(tokenUuid);
-      } catch (_) {
-        tokenDoc = null;
-      }
-      if (!tokenDoc || tokenDoc.documentName !== "Token") {
-        return { ok: false, error: "Token not found" };
-      }
-      if (typeof tokenDoc.revertRecordedMovement !== "function") {
-        return { ok: false, error: "revertRecordedMovement not available" };
-      }
-      try {
-        await tokenDoc.revertRecordedMovement(movementId);
-      } catch (e) {
-        console.error("SpaceHolder | revertRecordedMovement failed", e);
-        return { ok: false, error: String(e?.message || e) };
+    if (!hasEvt) return { ok: false, error: "Missing target event" };
+    return this._undoActionByEventIdAsGM({
+      combat,
+      targetEventId: combatEventId,
+      transactionId: hasTx ? transactionId : null,
+      movementId: hasMove ? movementId : null,
+      tokenUuid: hasMove ? tokenUuid : null,
+      source: "chatJournal",
+      skipMovementRevert: false,
+    });
+  }
+
+  _collectUndoImpactFromTables(combat, targetEventId, { tokenUuid = null } = {}) {
+    if (!combat || !targetEventId) return { affectedCount: 0, cascadeMoveEventIds: [] };
+    const tables = _clone(combat.getFlag(MODULE_NS, FLAG_TABLES) || {});
+    const hit = this._findActionWithContext(combat, targetEventId);
+    if (!hit?.combatantId) return { affectedCount: 0, cascadeMoveEventIds: [] };
+    const list = Array.isArray(tables?.[hit.combatantId]) ? tables[hit.combatantId].slice() : [];
+    list.sort((a, b) => {
+      const ra = _num(a?.round, 0);
+      const rb = _num(b?.round, 0);
+      if (ra !== rb) return ra - rb;
+      const sa = _num(a?.turnStartIndex, 0);
+      const sb = _num(b?.turnStartIndex, 0);
+      if (sa !== sb) return sa - sb;
+      return String(a?.openedAt || "").localeCompare(String(b?.openedAt || ""));
+    });
+    const all = [];
+    for (const table of list) {
+      const actions = Array.isArray(table?.actions) ? table.actions : [];
+      for (const a of actions) {
+        if (!a || a.ignored || a.replacedBy) continue;
+        all.push(a);
       }
     }
+    const idx = all.findIndex((a) => String(a?.id) === String(targetEventId));
+    if (idx < 0) return { affectedCount: 0, cascadeMoveEventIds: [] };
+    const impacted = all.slice(idx + 1);
+    const wantedToken = String(tokenUuid || hit?.action?.payload?.tokenUuid || "").trim();
+    const cascadeMoveEventIds = impacted
+      .filter((a) => String(a?.type) === "move")
+      .filter((a) => {
+        if (!wantedToken) return true;
+        return String(a?.payload?.tokenUuid || "").trim() === wantedToken;
+      })
+      .map((a) => String(a?.id || ""))
+      .filter(Boolean);
+    return {
+      affectedCount: impacted.length,
+      cascadeMoveEventIds,
+    };
+  }
 
-    if (hasTx) {
-      const { undoTransaction } = await import("../actions/transaction-ledger.mjs");
-      const r = await undoTransaction({ transactionId, combat });
-      if (!r.ok) return r;
+  async _computeJournalUndoPreviewAsGM(payload, userId) {
+    const requester = game.users?.get(String(userId || "")) || null;
+    if (!requester) return { ok: false, error: "Unknown user" };
+    const combatId = String(payload?.combatId || "").trim();
+    const targetEventId = String(payload?.targetEventId || "").trim();
+    const combat = combatId ? game.combats?.get(combatId) : null;
+    if (!combat?.started || !targetEventId) return { ok: false, error: "Missing combat or target" };
+
+    const hit = this._findActionWithContext(combat, targetEventId);
+    if (!hit?.action) return { ok: false, error: "Action not found" };
+    const actorId = String(hit?.action?.payload?.actorId || hit?.action?.payload?.actor?.id || "").trim();
+    const actor = actorId ? game.actors?.get(actorId) : (combat.combatants?.get(hit.combatantId)?.actor || null);
+    const ownerLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+    if (actor && !requester.isGM && !actor.testUserPermission(requester, ownerLevel)) {
+      return { ok: false, error: "Owner permission required" };
     }
 
-    if (hasEvt) {
-      await this.appendEvent({
-        eventId: _randomId(),
-        combatId: combat.id,
-        type: "action.undo",
-        data: { targetEventId: combatEventId, source: "chatJournal" },
-        effects: [],
-        inverse: [],
-      });
-    }
-
-    return { ok: true };
+    const impact = this._collectUndoImpactFromTables(combat, targetEventId, {
+      tokenUuid: payload?.tokenUuid || null,
+    });
+    return {
+      ok: true,
+      targetEventId,
+      affectedCount: Math.max(0, _num(impact.affectedCount, 0)),
+      cascadeMoveEventIds: Array.isArray(impact.cascadeMoveEventIds) ? impact.cascadeMoveEventIds : [],
+    };
   }
 
   async setCombatantSide({ combatId, combatantId, sideId, viaSocket = false } = {}) {
@@ -882,6 +941,12 @@ export class CombatSessionManager {
           combatId: combat.id,
           combatantId,
           source: { type: "officialTurnPick" },
+        });
+        await ensureCombatActionJournalMessage({
+          actor: picked.actor,
+          combat,
+          combatant: picked,
+          withStartLine: true,
         });
       } catch (e) {
         console.error("SpaceHolder | refreshApPool on turn pick failed", e);
@@ -1082,6 +1147,9 @@ export class CombatSessionManager {
     from = null,
     to = null,
     transactionId = null,
+    isReaction = false,
+    anchorCombatantId = null,
+    reactionOfEventId = null,
   } = {}) {
     const effects = [];
     const inverse = [];
@@ -1106,7 +1174,18 @@ export class CombatSessionManager {
       type: "move",
       baseApCost,
       apCost,
-      data: { movementId, distance, forced: false, tokenUuid: tokenDoc?.uuid || null, from, to, transactionId },
+      data: {
+        movementId,
+        distance,
+        forced: false,
+        tokenUuid: tokenDoc?.uuid || null,
+        from,
+        to,
+        transactionId,
+        isReaction: !!isReaction,
+        anchorCombatantId: anchorCombatantId ? String(anchorCombatantId) : null,
+        reactionOfEventId: reactionOfEventId ? String(reactionOfEventId) : null,
+      },
       effects,
       inverse,
     });
@@ -1149,6 +1228,77 @@ export class CombatSessionManager {
     return true;
   }
 
+  _findActionWithContext(combat, targetEventId) {
+    if (!combat || !targetEventId) return null;
+    const tables = _clone(combat.getFlag(MODULE_NS, FLAG_TABLES) || {});
+    for (const combatantId of Object.keys(tables)) {
+      for (const table of tables[combatantId] || []) {
+        const idx = (table.actions || []).findIndex((a) => String(a?.id) === String(targetEventId));
+        if (idx < 0) continue;
+        const action = table.actions[idx];
+        return { action, table, combatantId, index: idx };
+      }
+    }
+    return null;
+  }
+
+  async _undoActionByEventIdAsGM({
+    combat,
+    targetEventId,
+    transactionId = null,
+    movementId = null,
+    tokenUuid = null,
+    source = "combat",
+    skipMovementRevert = false,
+  } = {}) {
+    if (!combat?.started || !targetEventId) return { ok: false, error: "Missing target" };
+    const hit = this._findActionWithContext(combat, targetEventId);
+    if (!hit?.action || hit.action.ignored || hit.action.replacedBy) {
+      return { ok: false, error: "Action not found" };
+    }
+    const action = hit.action;
+    const payload = action?.payload && typeof action.payload === "object" ? action.payload : {};
+    const txId = String(transactionId || payload.transactionId || "").trim();
+    const moveId = String(movementId || action.movementId || payload.movementId || "").trim();
+    const tokUuid = String(tokenUuid || payload.tokenUuid || "").trim();
+
+    if (!skipMovementRevert && String(action.type || "") === "move" && moveId && tokUuid) {
+      let tokenDoc = null;
+      try {
+        tokenDoc = await fromUuid(tokUuid);
+      } catch (_) {
+        tokenDoc = null;
+      }
+      if (tokenDoc?.documentName === "Token" && typeof tokenDoc.revertRecordedMovement === "function") {
+        await tokenDoc.revertRecordedMovement(moveId);
+      }
+    }
+
+    if (txId) {
+      const { undoTransaction } = await import("../actions/transaction-ledger.mjs");
+      const r = await undoTransaction({ transactionId: txId, combat });
+      if (!r.ok && String(r?.error || "") !== "Already undone") {
+        return r;
+      }
+    }
+
+    await this.appendEvent({
+      eventId: _randomId(),
+      combatId: combat.id,
+      type: "action.undo",
+      data: {
+        targetEventId: String(targetEventId),
+        source: String(source || "combat"),
+        transactionId: txId || null,
+        movementId: moveId || null,
+        tokenUuid: tokUuid || null,
+      },
+      effects: [],
+      inverse: [],
+    });
+    return { ok: true, targetEventId: String(targetEventId) };
+  }
+
   async undoLastAction({ combatId, combatantId, viaSocket = false } = {}) {
     const combat = game.combats?.get(combatId || game.combat?.id) || null;
     if (!combat) return { ok: false };
@@ -1174,35 +1324,11 @@ export class CombatSessionManager {
       if (target) break;
     }
     if (!target) return { ok: false };
-
-    // Prefer core history undo for movement actions.
-    if (target.type === "move") {
-      const tokenUuid = target?.payload?.tokenUuid || null;
-      this._manualUndoMarker = { at: Date.now(), targetEventId: target.id };
-      const invoked = await this._invokeCoreUndoForMovement(tokenUuid);
-      if (!invoked) {
-        this._manualUndoMarker = null;
-        await this.appendEvent({
-          eventId: _randomId(),
-          combatId: combat.id,
-          type: "action.undo",
-          data: { targetEventId: target.id, source: "manual-fallback" },
-          effects: [],
-          inverse: [],
-        });
-      }
-      return { ok: true, targetEventId: target.id };
-    }
-
-    await this.appendEvent({
-      eventId: _randomId(),
-      combatId: combat.id,
-      type: "action.undo",
-      data: { targetEventId: target.id },
-      effects: [],
-      inverse: [],
+    return this._undoActionByEventIdAsGM({
+      combat,
+      targetEventId: target.id,
+      source: "undoLastAction",
     });
-    return { ok: true, targetEventId: target.id };
   }
 
   async _onHistoryUndo() {
@@ -1245,13 +1371,11 @@ export class CombatSessionManager {
         if (targetEventId) break;
       }
       if (!targetEventId) return;
-      await this.appendEvent({
-        eventId: _randomId(),
-        combatId: combat.id,
-        type: 'action.undo',
-        data: { targetEventId, source: 'historyUndo' },
-        effects: [],
-        inverse: [],
+      await this._undoActionByEventIdAsGM({
+        combat,
+        targetEventId,
+        source: "historyUndo",
+        skipMovementRevert: true,
       });
     } catch (e) {
       console.error('SpaceHolder | historyUndo sync failed', e);
@@ -1305,13 +1429,13 @@ export class CombatSessionManager {
         if (targetEventId) break;
       }
       if (!targetEventId) return false;
-      await this.appendEvent({
-        eventId: _randomId(),
-        combatId: combat.id,
-        type: "action.undo",
-        data: { targetEventId, source: "token-update-undo", movementId: movementId || null, tokenUuid },
-        effects: [],
-        inverse: [],
+      await this._undoActionByEventIdAsGM({
+        combat,
+        targetEventId,
+        tokenUuid,
+        movementId: movementId || null,
+        source: "token-update-undo",
+        skipMovementRevert: true,
       });
       return true;
     } catch (_) {
@@ -1366,11 +1490,57 @@ export class CombatSessionManager {
       this._injectCombatControls(host, combat.id);
       await this._groupCombatantsIntoSideFolders(host, combat, state);
       await this._decorateCombatantRows(host, combat, state);
-      this._injectCombatantRowButtons(host, combat.id);
       this._injectActionTable(host, combat, state);
       this._syncCombatTrackerCoreActiveRow(host, state);
     } catch (e) {
       console.error("SpaceHolder | renderCombatTracker panel failed", e);
+    }
+  }
+
+  _onGetCombatTrackerEntryContext(_html, options) {
+    if (!Array.isArray(options)) return;
+    const readCombatantId = (li) => {
+      const el = li?.jquery ? li[0] : li;
+      const fromDataset = String(el?.dataset?.combatantId || "").trim();
+      if (fromDataset) return fromDataset;
+      const fromAttr = String(li?.attr?.("data-combatant-id") || "").trim();
+      return fromAttr;
+    };
+    const title = game.i18n?.localize?.("SPACEHOLDER.Combat.ChangeSide") || "Change side";
+    options.push({
+      name: title,
+      icon: '<i class="fa-solid fa-people-arrows"></i>',
+      condition: (li) => {
+        const cId = readCombatantId(li);
+        return !!cId;
+      },
+      callback: async (li) => {
+        const combatantId = readCombatantId(li);
+        if (!combatantId) return;
+        const combatId = String(game.combat?.id || "").trim();
+        if (!combatId) return;
+        await this.openChangeSideDialog({ combatId, combatantId });
+      },
+    });
+  }
+
+  _registerCombatContextHooks() {
+    const candidates = [
+      "getCombatTrackerEntryContext",
+      "getCombatTrackerEntryContextOptions",
+      "getCombatTrackerContextOptions",
+      "getCombatantEntryContext",
+      "getCombatantEntryContextOptions",
+    ];
+    this._registeredContextHooks = [];
+    for (const hookName of candidates) {
+      const fn = (...args) => {
+        const options = args.find((a) => Array.isArray(a));
+        const htmlLike = args.find((a) => a && !Array.isArray(a));
+        return this._onGetCombatTrackerEntryContext(htmlLike, options);
+      };
+      Hooks.on(hookName, fn);
+      this._registeredContextHooks.push(hookName);
     }
   }
 
@@ -1415,7 +1585,7 @@ export class CombatSessionManager {
       row.addEventListener("click", (ev) => {
         // Avoid hijacking core controls and custom buttons.
         const target = ev.target;
-        if (target?.closest?.("button,a,.combatant-control,.inline-control,.spaceholder-combatant-tools")) return;
+        if (target?.closest?.("button,a,.combatant-control,.inline-control")) return;
         const id = String(row.dataset.combatantId || "").trim();
         if (!id) return;
         this._setUiSelectedCombatantId(combat.id, id);
@@ -1767,35 +1937,9 @@ export class CombatSessionManager {
   }
 
   _injectCombatantRowButtons(html, combatId) {
-    const rows = html?.querySelectorAll?.(".combatant");
-    if (!rows?.length) return;
-    rows.forEach((row) => {
-      row.querySelector(".spaceholder-combatant-tools")?.remove();
-      const combatantId = String(row.dataset.combatantId || "").trim();
-      if (!combatantId) return;
-      const controls = document.createElement("div");
-      controls.className = "spaceholder-combatant-tools";
-      controls.innerHTML = `
-        <button type="button" class="icon-btn" data-action="sh-combat-change-side" data-combat-id="${combatId}" data-combatant-id="${combatantId}" title="${game.i18n?.localize?.("SPACEHOLDER.Combat.ChangeSide") || "Change side"}">
-          <i class="fa-solid fa-people-arrows"></i>
-        </button>
-        <button type="button" class="icon-btn" data-action="sh-combat-force-last-move" data-combat-id="${combatId}" data-combatant-id="${combatantId}" title="${game.i18n?.localize?.("SPACEHOLDER.Combat.ForceMove") || "Forced movement"}">
-          <i class="fa-solid fa-person-running"></i>
-        </button>
-      `;
-      row.appendChild(controls);
-      controls.querySelector('[data-action="sh-combat-change-side"]')?.addEventListener("click", async (ev) => {
-        ev.preventDefault();
-        await this.openChangeSideDialog({ combatId, combatantId });
-      });
-      controls.querySelector('[data-action="sh-combat-force-last-move"]')?.addEventListener("click", async (ev) => {
-        ev.preventDefault();
-        const targetEventId = this._findLatestMovementEventId(combatId, combatantId);
-        if (!targetEventId) return;
-        await this.markMovementForced({ combatId, targetEventId });
-      });
-      // Keep native Foundry context menu behavior unchanged.
-    });
+    void html;
+    void combatId;
+    // Row buttons were intentionally removed to keep combat tracker clean.
   }
 
   _findLatestMovementEventId(combatId, combatantId) {

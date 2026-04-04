@@ -236,6 +236,15 @@
       "Movement": {
         "Move": "Move"
       },
+      "FreeAction": {
+        "Label": "Free",
+        "DialogTitle": "Free action",
+        "FieldName": "Action name",
+        "FieldDescription": "Description",
+        "FieldApCost": "Action Points cost (base)",
+        "NameRequired": "Enter an action name.",
+        "DialogUnavailable": "Dialog is not available in this environment."
+      },
       "Errors": {
         "NotEnoughAP": "Not enough Action Points (need {need}, have {have})",
         "ApSpendFailed": "Could not apply Action Point spend"
@@ -245,7 +254,17 @@
       "Title": "Round {round} — Actions",
       "Undo": "Undo",
       "Undone": "Undone",
-      "UndoFailed": "Could not undo action"
+      "UndoFailed": "Could not undo action",
+      "StartTurn": "Started turn",
+      "StartTurnHint": "Subsequent reactions are attached to this turn.",
+      "ShowDetails": "Details",
+      "ReactionBadge": "Reaction",
+      "ConfirmBulkUndoTitle": "Confirm undo",
+      "ConfirmBulkUndoBody": "This undo will affect {count} subsequent actions. Continue?",
+      "ConfirmUndo": "Undo anyway",
+      "MoveGroupSummary": "{count} moves",
+      "ExpandMoveGroup": "Show each move",
+      "CollapseMoveGroup": "Collapse moves"
     },
     "Combat": {
       "PanelTitle": "Combat actions",

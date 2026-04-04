@@ -131,6 +131,17 @@ body.game {
         border-bottom-color: rgba(255, 255, 255, 0.12);
       }
     }
+
+    /* Action journal: reserve left strip inside the card for reaction tokens (horizontal bleed past scrollport is not reliable). */
+    &:has(.spaceholder-action-journal) {
+      overflow: visible;
+
+      .message-content {
+        overflow: visible !important;
+        padding-left: 28px;
+        box-sizing: border-box;
+      }
+    }
   }
 
   // Context menu (global `#context-menu`): unify chat vs sidebar. Chat inherits theme-light beige

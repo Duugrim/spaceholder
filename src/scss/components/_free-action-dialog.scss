@@ -1,0 +1,71 @@
+// Free-form combat action (DialogV2). Content is injected into a dialog body — avoid `.form-group`
+// there, because core `.standard-form` lays out `.form-group` as label + control in one row.
+
+.spaceholder-free-action-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 2px 2px;
+  min-width: 0;
+  max-width: 100%;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    margin: 0;
+    min-width: 0;
+  }
+
+  &__field--ap {
+    max-width: 160px;
+  }
+
+  &__label {
+    display: block;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    color: var(--sh-text-muted, rgba(240, 240, 245, 0.72));
+  }
+
+  &__input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin: 0;
+    background: var(--sh-surface-1, rgba(0, 0, 0, 0.28));
+    color: var(--sh-text, #e8e8ee);
+    border: 1px solid var(--sh-border, rgba(255, 255, 255, 0.12));
+    border-radius: var(--sh-radius-sm, 4px);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.4;
+
+    &:focus {
+      outline: none;
+      border-color: var(--sh-border-focus, rgba(143, 185, 143, 0.65));
+      box-shadow: 0 0 0 2px var(--sh-focus-ring, rgba(143, 185, 143, 0.28));
+    }
+  }
+
+  textarea.spaceholder-free-action-dialog__input {
+    min-height: 100px;
+    resize: vertical;
+    line-height: 1.45;
+  }
+
+  input.spaceholder-free-action-dialog__input[type='number'] {
+    height: $sh-control-height;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input.spaceholder-free-action-dialog__input[type='text'] {
+    height: $sh-control-height;
+  }
+}

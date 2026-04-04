@@ -185,10 +185,20 @@ export class MovementManager {
       this._tokenPrevPos.delete(String(tokenDocument?.id || ''));
 
       const combat = game?.combat?.started ? game.combat : null;
-      const combatant = combat?.combatants?.contents?.find((c) => {
+      let combatant = combat?.combatants?.contents?.find((c) => {
         const tokenId = String(c.tokenId ?? c.token?.id ?? '');
         return tokenId === String(tokenDocument.id ?? '');
       }) || null;
+      const mgr = game.spaceholder?.combatSessionManager;
+      if (combat && combatant && !combat.getFlag?.("spaceholder", "combatState")?.activeTurn?.combatantId && mgr?.pickTurn) {
+        await mgr.pickTurn({ combatId: combat.id, combatantId: combatant.id });
+      }
+      const activeTurnId = String(combat?.getFlag?.("spaceholder", "combatState")?.activeTurn?.combatantId || "").trim();
+      const anchorCombatant = activeTurnId && combat?.combatants?.get?.(activeTurnId)
+        ? combat.combatants.get(activeTurnId)
+        : combatant;
+      const anchorActor = anchorCombatant?.actor || actor;
+      const isReaction = !!(combat && combatant && activeTurnId && activeTurnId !== combatant.id);
 
       let moveTransactionId = null;
       if (cost > 0) {
@@ -222,6 +232,9 @@ export class MovementManager {
           from,
           to,
           transactionId: moveTransactionId,
+          isReaction,
+          anchorCombatantId: anchorCombatant?.id ?? null,
+          reactionOfEventId: null,
         });
         moveCombatEventId = logRes?.eventId ?? null;
       }
@@ -233,9 +246,14 @@ export class MovementManager {
           actor,
           combat,
           combatant,
+          anchorActor,
+          anchorCombatant,
           label: moveLabel,
+          description: `${Math.max(0, _num(dist, 0)).toFixed(1)} u`,
           apCost: cost,
           kind: 'move',
+          isReaction,
+          actorName: actor?.name || "",
           transactionId: moveTransactionId,
           combatEventId: moveCombatEventId,
           movementId: moveId,

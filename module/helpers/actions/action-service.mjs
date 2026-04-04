@@ -22,12 +22,14 @@
  * @property {string} label - Localized label
  * @property {string} [icon] - FontAwesome class, e.g. "fa-solid fa-person-walking"
  * @property {number} [apCost] - Action Points cost, evaluated at runtime if needed
+ * @property {string} [description] - Optional detail text for compact chat log
  * @property {boolean} [showInCombat]
  * @property {boolean} [showInQuickbar]
  * @property {(ctx: ActionContext)=>boolean} [visible]
  * @property {(ctx: ActionContext)=>boolean} [enabled]
  * @property {(ctx: ActionContext)=>string|null} [disabledReason]
- * @property {(ctx: ActionContext)=>Promise<void>|void} run
+ * @property {(ctx: ActionContext)=>Promise<boolean|void>|boolean|void} run
+ * @property {boolean} [skipPostCombatLog] - if true, `executeActorAction` skips AP log + combat journal after `run` (run handles it)
  */
  
 /**
@@ -65,6 +67,250 @@ function _getCombatantForActor(actor, tokenDoc = null, combat = _activeCombat())
     if (byToken) return byToken;
   }
   return list.find((c) => String(c.actorId ?? c.actor?.id ?? '') === String(actor.id)) || null;
+}
+
+const SYSTEM_FREE_ACTION_ID = 'system.freeAction';
+
+/**
+ * Combat session log + per-actor chat journal line (after AP spend).
+ * @param {object} p
+ * @param {Actor} p.actor
+ * @param {ActionContext} p.ctx
+ * @param {string} p.actionId
+ * @param {string} p.label
+ * @param {string} p.description
+ * @param {number} p.baseCost
+ * @param {number} p.cost
+ * @param {string|null} p.transactionId
+ * @param {object|null} [p.combatantHint]
+ */
+async function _postRunCombatActionLogging({
+  actor,
+  ctx,
+  actionId,
+  label,
+  description,
+  baseCost,
+  cost,
+  transactionId,
+  combatantHint = null,
+}) {
+  const combat = _activeCombat();
+  const combatant = combatantHint || _getCombatantForActor(actor, ctx.tokenDoc ?? null, combat);
+  const activeTurnId = String(combat?.getFlag?.("spaceholder", "combatState")?.activeTurn?.combatantId || "").trim();
+  const anchorCombatant = activeTurnId && combat?.combatants?.get?.(activeTurnId)
+    ? combat.combatants.get(activeTurnId)
+    : combatant;
+  const anchorActor = anchorCombatant?.actor || actor;
+  const isReaction = !!(combat && combatant && activeTurnId && activeTurnId !== combatant.id);
+
+  let combatEventId = null;
+  if (combat && combatant && game.spaceholder?.combatSessionManager?.logAction) {
+    const logResult = await game.spaceholder.combatSessionManager.logAction({
+      combat,
+      actor,
+      combatant,
+      type: 'action',
+      baseApCost: baseCost,
+      apCost: cost,
+      data: {
+        actionId,
+        label,
+        description: String(description || "").trim() || null,
+        tokenUuid: ctx.tokenDoc?.uuid ?? null,
+        transactionId,
+        isReaction,
+        anchorCombatantId: anchorCombatant?.id ?? null,
+        reactionOfEventId: null,
+      },
+      effects: [],
+      inverse: [],
+    });
+    combatEventId = logResult?.eventId ?? null;
+  }
+
+  if (combat && combatant) {
+    await appendCombatActionJournalLine({
+      actor,
+      combat,
+      combatant,
+      anchorActor,
+      anchorCombatant,
+      label,
+      description: String(description || "").trim(),
+      apCost: cost,
+      kind: 'action',
+      isReaction,
+      actorName: actor?.name || "",
+      transactionId,
+      combatEventId,
+      tokenUuid: ctx.tokenDoc?.uuid ?? null,
+    });
+  }
+}
+
+/**
+ * @param {ActionContext} ctx
+ * @returns {ActionDescriptor}
+ */
+function _buildSystemFreeAction(ctx) {
+  return {
+    id: SYSTEM_FREE_ACTION_ID,
+    source: 'system',
+    label: _t('SPACEHOLDER.ActionsSystem.FreeAction.Label'),
+    icon: 'fa-solid fa-pen-to-square',
+    apCost: 0,
+    description: '',
+    showInCombat: true,
+    showInQuickbar: true,
+    skipPostCombatLog: true,
+    visible: () => true,
+    enabled: () => !!ctx.actor && ctx.actor.type === 'character',
+    run: async (runCtx) => {
+      const actor = runCtx.actor;
+      if (!actor || actor.type !== 'character') return false;
+
+      const DialogV2 = foundry?.applications?.api?.DialogV2;
+      if (!DialogV2?.wait) {
+        ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable'));
+        return false;
+      }
+
+      const uid = foundry.utils.randomID?.() ?? `sh-free-${Date.now()}`;
+      const idName = `sh-free-act-name-${uid}`;
+      const idDesc = `sh-free-act-desc-${uid}`;
+      const idAp = `sh-free-act-ap-${uid}`;
+
+      const title = _t('SPACEHOLDER.ActionsSystem.FreeAction.DialogTitle');
+      const lblName = _t('SPACEHOLDER.ActionsSystem.FreeAction.FieldName');
+      const lblDesc = _t('SPACEHOLDER.ActionsSystem.FreeAction.FieldDescription');
+      const lblAp = _t('SPACEHOLDER.ActionsSystem.FreeAction.FieldApCost');
+      const okLabel = _t('SPACEHOLDER.Actions.Apply');
+      const cancelLabel = _t('SPACEHOLDER.Actions.Cancel');
+
+      const content = `
+        <div class="spaceholder-free-action-dialog">
+          <div class="spaceholder-free-action-dialog__field">
+            <label class="spaceholder-free-action-dialog__label" for="${idName}">${foundry.utils.escapeHTML(lblName)}</label>
+            <input class="spaceholder-free-action-dialog__input" id="${idName}" type="text" autocomplete="off" />
+          </div>
+          <div class="spaceholder-free-action-dialog__field">
+            <label class="spaceholder-free-action-dialog__label" for="${idDesc}">${foundry.utils.escapeHTML(lblDesc)}</label>
+            <textarea class="spaceholder-free-action-dialog__input" id="${idDesc}" rows="5"></textarea>
+          </div>
+          <div class="spaceholder-free-action-dialog__field spaceholder-free-action-dialog__field--ap">
+            <label class="spaceholder-free-action-dialog__label" for="${idAp}">${foundry.utils.escapeHTML(lblAp)}</label>
+            <input class="spaceholder-free-action-dialog__input" id="${idAp}" type="number" step="1" min="0" value="0" />
+          </div>
+        </div>`;
+
+      const _formRoot = (dlgEvent) =>
+        dlgEvent?.currentTarget?.form ||
+        dlgEvent?.target?.form ||
+        dlgEvent?.currentTarget?.closest?.('form') ||
+        dlgEvent?.target?.closest?.('form') ||
+        dlgEvent?.currentTarget;
+
+      /** @type {{ ok: true, name: string, description: string, baseCost: number } | { ok: false } | null} */
+      let outcome = null;
+
+      await DialogV2.wait({
+        window: {
+          title,
+          icon: 'fa-solid fa-pen-to-square',
+          classes: ['spaceholder'],
+        },
+        position: { width: 480 },
+        content,
+        buttons: [
+          {
+            action: 'ok',
+            label: okLabel,
+            icon: 'fa-solid fa-check',
+            default: true,
+            callback: (dlgEvent) => {
+              const root = _formRoot(dlgEvent);
+              const name = String(root?.querySelector?.(`#${idName}`)?.value ?? '').trim();
+              if (!name) {
+                ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.FreeAction.NameRequired'));
+                return;
+              }
+              const description = String(root?.querySelector?.(`#${idDesc}`)?.value ?? '').trim();
+              const apRaw = String(root?.querySelector?.(`#${idAp}`)?.value ?? '0').trim().replace(',', '.');
+              const baseCost = Math.max(0, Math.floor(Number.parseFloat(apRaw) || 0));
+              outcome = { ok: true, name, description, baseCost };
+            },
+          },
+          {
+            action: 'cancel',
+            label: cancelLabel,
+            icon: 'fa-solid fa-times',
+            callback: () => {
+              outcome = { ok: false };
+            },
+          },
+        ],
+      });
+
+      if (!outcome || !outcome.ok) return false;
+
+      const { name, description, baseCost } = outcome;
+      const cost = getEffectiveActionCost(actor, baseCost);
+      await ensureCharacterApSynced(actor);
+
+      let combat = _activeCombat();
+      let combatant = _getCombatantForActor(actor, runCtx.tokenDoc ?? null, combat);
+      const mgr = game.spaceholder?.combatSessionManager;
+      if (combat && combatant && !combat.getFlag?.("spaceholder", "combatState")?.activeTurn?.combatantId && mgr?.pickTurn) {
+        await mgr.pickTurn({ combatId: combat.id, combatantId: combatant.id });
+        combat = _activeCombat();
+        combatant = _getCombatantForActor(actor, runCtx.tokenDoc ?? null, combat);
+      }
+
+      let transactionId = null;
+      if (cost > 0) {
+        let spend = null;
+        try {
+          spend = await spendAp(actor, cost, {
+            combatantId: combatant?.id ?? null,
+            source: { type: 'action', actionId: SYSTEM_FREE_ACTION_ID, label: name },
+          });
+        } catch (e) {
+          ui.notifications?.warn?.(String(e?.message || e) || _t('SPACEHOLDER.ActionsSystem.Errors.ApSpendFailed'));
+          return false;
+        }
+        if (!spend?.ok) {
+          ui.notifications?.warn?.(spend?.error || _t('SPACEHOLDER.ActionsSystem.Errors.ApSpendFailed'));
+          return false;
+        }
+        transactionId = spend.transactionId ?? null;
+      }
+
+      if (combat && combatant) {
+        await _postRunCombatActionLogging({
+          actor,
+          ctx: runCtx,
+          actionId: SYSTEM_FREE_ACTION_ID,
+          label: name,
+          description,
+          baseCost,
+          cost,
+          transactionId,
+          combatantHint: combatant,
+        });
+      } else if (!combat) {
+        const descHtml = description
+          ? `<div>${foundry.utils.escapeHTML(description)}</div>`
+          : '';
+        await ChatMessage.create({
+          speaker: ChatMessage.getSpeaker({ actor }),
+          content: `<div><strong>${foundry.utils.escapeHTML(name)}</strong></div>${descHtml}`,
+        });
+      }
+
+      return true;
+    },
+  };
 }
 
 function _coordinationValue(actor) {
@@ -131,6 +377,7 @@ function _normalizeCustomActions(raw) {
       return {
         id,
         name,
+        description: String(a.description ?? "").trim(),
         apCost: _num(a.apCost, 0),
         mode: String(a.mode ?? 'chat').trim() || 'chat', // 'chat' | 'itemRoll' | 'macro'
         macro: String(a.macro ?? '').trim() || '',
@@ -209,6 +456,7 @@ function _collectCustomActions(actor, ctx) {
       label: a.name,
       icon: 'fa-solid fa-bolt',
       apCost: a.apCost ?? 0,
+      description: a.description || "",
       showInCombat: a.showInCombat,
       showInQuickbar: a.showInQuickbar,
       visible: () => true,
@@ -221,6 +469,8 @@ function _collectCustomActions(actor, ctx) {
           await fn.call(globalThis);
           return;
         }
+        // In active combat actions are logged into the combat journal only.
+        if (_activeCombat()) return;
         // default: chat message
         ChatMessage.create({
           speaker: ChatMessage.getSpeaker({ actor }),
@@ -241,12 +491,14 @@ function _collectCustomActions(actor, ctx) {
         label: `${item.name}: ${a.name}`,
         icon: 'fa-solid fa-bolt',
         apCost: a.apCost ?? 0,
+        description: a.description || "",
         showInCombat: a.showInCombat,
         showInQuickbar: a.showInQuickbar,
         visible: () => true,
         enabled: () => true,
         run: async () => {
           if (a.mode === 'itemRoll') {
+            if (_activeCombat()) return;
             return item.roll?.();
           }
           if (a.mode === 'macro' && a.macro) {
@@ -255,6 +507,7 @@ function _collectCustomActions(actor, ctx) {
             await fn.call(globalThis);
             return;
           }
+          if (_activeCombat()) return;
           ChatMessage.create({
             speaker: ChatMessage.getSpeaker({ actor }),
             content: `<div><strong>${foundry.utils.escapeHTML(item.name)}</strong>: ${foundry.utils.escapeHTML(a.name)}</div>`,
@@ -301,7 +554,10 @@ export function collectActorActions(actor, partialCtx = {}) {
   let list = [];
   list = list.concat(_collectWearableToggleActions(actor, ctx));
   list = list.concat(_collectCustomActions(actor, ctx));
- 
+  if (actor?.type === 'character') {
+    list.push(_buildSystemFreeAction(ctx));
+  }
+
   // ensure stable deterministic ordering (grouping later by UI)
   list.sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), game.i18n?.lang || 'en'));
  
@@ -333,14 +589,22 @@ export async function executeActorAction(actor, action, partialCtx = {}) {
   const cost = getEffectiveActionCost(actor, baseCost);
   await ensureCharacterApSynced(actor);
 
+  let combat = _activeCombat();
+  let combatant = _getCombatantForActor(actor, ctx.tokenDoc ?? null, combat);
+  const mgr = game.spaceholder?.combatSessionManager;
+  if (combat && combatant && !combat.getFlag?.("spaceholder", "combatState")?.activeTurn?.combatantId && mgr?.pickTurn) {
+    // Corner case: first action in combat can start the actor's official turn.
+    await mgr.pickTurn({ combatId: combat.id, combatantId: combatant.id });
+    combat = _activeCombat();
+    combatant = _getCombatantForActor(actor, ctx.tokenDoc ?? null, combat);
+  }
+
   let transactionId = null;
   if (cost > 0 && actor.type === "character") {
-    const combatPre = _activeCombat();
-    const combatantPre = _getCombatantForActor(actor, ctx.tokenDoc ?? null, combatPre);
     let spend = null;
     try {
       spend = await spendAp(actor, cost, {
-        combatantId: combatantPre?.id ?? null,
+        combatantId: combatant?.id ?? null,
         source: { type: "action", actionId: action.id, label: action.label },
       });
     } catch (e) {
@@ -354,44 +618,22 @@ export async function executeActorAction(actor, action, partialCtx = {}) {
     transactionId = spend.transactionId ?? null;
   }
 
-  await action.run(ctx);
-
-  const combat = _activeCombat();
-  const combatant = _getCombatantForActor(actor, ctx.tokenDoc ?? null, combat);
-  let combatEventId = null;
-  if (combat && combatant && game.spaceholder?.combatSessionManager?.logAction) {
-    const logResult = await game.spaceholder.combatSessionManager.logAction({
-      combat,
-      actor,
-      combatant,
-      type: 'action',
-      baseApCost: baseCost,
-      apCost: cost,
-      data: {
-        actionId: action.id,
-        label: action.label,
-        tokenUuid: ctx.tokenDoc?.uuid ?? null,
-        transactionId,
-      },
-      effects: [],
-      inverse: [],
-    });
-    combatEventId = logResult?.eventId ?? null;
+  const runOutcome = await action.run(ctx);
+  if (action.skipPostCombatLog) {
+    return runOutcome !== false;
   }
 
-  if (combat && combatant) {
-    await appendCombatActionJournalLine({
-      actor,
-      combat,
-      combatant,
-      label: action.label,
-      apCost: cost,
-      kind: 'action',
-      transactionId,
-      combatEventId,
-      tokenUuid: ctx.tokenDoc?.uuid ?? null,
-    });
-  }
+  await _postRunCombatActionLogging({
+    actor,
+    ctx,
+    actionId: action.id,
+    label: action.label,
+    description: String(action.description || "").trim(),
+    baseCost,
+    cost,
+    transactionId,
+    combatantHint: combatant,
+  });
 
   return true;
 }

@@ -1,69 +1,279 @@
-/* Chat: per-round action journal (SpaceHolder) */
+/* Chat: compact per-turn action journal */
 .message-content .spaceholder-action-journal {
-  margin: 0.35em 0;
-  padding: 0.5em 0.65em;
-  border: 1px solid var(--color-border-light-primary, rgba(255, 255, 255, 0.15));
-  border-radius: 4px;
-  background: var(--color-bg-tint, rgba(0, 0, 0, 0.12));
+  margin: 0 0 0 -28px;
+  width: calc(100% + 28px);
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .spaceholder-action-journal__title {
   font-weight: 600;
-  font-size: 0.95em;
-  margin-bottom: 0.35em;
-  opacity: 0.95;
+  font-size: 13px;
+  margin: 0 0 4px;
+  padding: 0 1px;
+  opacity: 0.9;
 }
 
 .spaceholder-action-journal__list {
+  list-style: none;
   margin: 0;
-  padding-left: 1.25em;
-}
-
-.spaceholder-action-journal__row {
+  padding: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 1px;
+  overflow: visible;
+}
+
+/* One line per entry; description opens on second row only when toggled */
+.spaceholder-action-journal__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main tools"
+    "desc desc";
+  gap: 0 6px;
   align-items: center;
-  gap: 0.35em 0.5em;
-  margin: 0.2em 0;
+  min-height: 26px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.035);
+  box-sizing: border-box;
 }
 
-.spaceholder-action-journal__row--undone .spaceholder-action-journal__text {
-  text-decoration: line-through;
-  opacity: 0.65;
-}
+.spaceholder-action-journal__row--action { border-left: 3px solid rgba(210, 175, 95, 0.8); padding-left: 3px; }
+.spaceholder-action-journal__row--move { border-left: 3px solid rgba(120, 175, 210, 0.78); padding-left: 3px; }
+.spaceholder-action-journal__row--system { border-left: 3px solid rgba(134, 196, 134, 0.78); padding-left: 3px; }
+.spaceholder-action-journal__row--reaction {
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(196, 153, 231, 0.22);
 
-.spaceholder-action-journal__text {
-  flex: 1 1 auto;
-  min-width: 40%;
-}
+  .spaceholder-action-journal__main {
+    padding-left: 28px;
+    box-sizing: border-box;
+  }
 
-/* Button: explicit light-on-dark (chat message inherits dark card; core button defaults are illegible). */
-body.game #chat .chat-message .message-content .spaceholder-action-journal__undo,
-body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__undo,
-body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__undo {
-  color: #f2f2f2;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 3px;
-  font-weight: 500;
-  cursor: pointer;
+  .spaceholder-action-journal__desc {
+    padding-left: 28px;
+    box-sizing: border-box;
+  }
 
-  &:hover,
-  &:focus-visible {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.22);
-    border-color: rgba(255, 255, 255, 0.4);
+  .spaceholder-action-journal__tools {
+    position: relative;
+    z-index: 2;
   }
 }
+.spaceholder-action-journal__row--cascade-preview { outline: 1px dashed rgba(210, 180, 245, 0.75); outline-offset: 1px; }
 
-.spaceholder-action-journal__undo {
-  flex: 0 0 auto;
-  font-size: 0.85em;
-  padding: 0.2em 0.55em;
+.spaceholder-action-journal__reaction-gutter {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+
+.spaceholder-action-journal__reaction-token {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.spaceholder-action-journal__reaction-token-fallback {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(130, 95, 165, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+.spaceholder-action-journal__main { grid-area: main; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.spaceholder-action-journal__kind {
+  width: 14px;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.88;
+  flex-shrink: 0;
+}
+.spaceholder-action-journal__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.spaceholder-action-journal__tools { grid-area: tools; display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; flex-shrink: 0; }
+
+.spaceholder-action-journal__desc {
+  grid-area: desc;
+  margin: 2px 0 0 0;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+.spaceholder-action-journal__desc:not([data-collapsed="0"]) {
+  display: none !important;
+}
+.spaceholder-action-journal__desc[data-collapsed="0"] {
+  display: block !important;
+}
+
+.spaceholder-action-journal__row--undone { opacity: 0.72; }
+.spaceholder-action-journal__row--undone .spaceholder-action-journal__text { text-decoration: line-through; }
+
+body.game #chat .chat-message .message-content .spaceholder-action-journal__undo,
+body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__undo,
+body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__undo,
+body.game #chat .chat-message .message-content .spaceholder-action-journal__toggle,
+body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__toggle,
+body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__toggle {
+  color: #f2f2f2;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  min-height: 22px;
+  min-width: 22px;
+  padding: 2px;
   cursor: pointer;
 }
 
-.spaceholder-action-journal__undone {
-  font-size: 0.8em;
-  opacity: 0.7;
+body.game #chat .chat-message .message-content .spaceholder-action-journal__undo:hover,
+body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__undo:hover,
+body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__undo:hover,
+body.game #chat .chat-message .message-content .spaceholder-action-journal__toggle:hover,
+body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__toggle:hover,
+body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__toggle:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+.spaceholder-action-journal__toggle[aria-expanded="true"] {
+  background: rgba(145, 168, 215, 0.34);
+  border-color: rgba(180, 205, 245, 0.45);
+}
+
+.spaceholder-action-journal__toggle i,
+.spaceholder-action-journal__undo i {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.spaceholder-action-journal__undone { font-size: 12px; opacity: 0.78; white-space: nowrap; }
+
+/* Move group: several main-turn moves in one chat row */
+.spaceholder-action-journal__row--movegroup,
+.spaceholder-action-journal__movegroup {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main tools"
+    "body body";
+}
+
+.spaceholder-action-journal__movegroup .spaceholder-action-journal__main {
+  grid-area: main;
+}
+
+.spaceholder-action-journal__movegroup .spaceholder-action-journal__tools {
+  grid-area: tools;
+}
+
+.spaceholder-action-journal__movegroup-body {
+  grid-area: body;
+  margin: 2px 0 0 0;
+  padding: 0;
+  min-width: 0;
+  overflow: visible;
+}
+
+.spaceholder-action-journal__movegroup-segments {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-left: 2px solid rgba(120, 175, 210, 0.35);
+  overflow: visible;
+}
+
+.spaceholder-action-journal__movegroup-react-flat {
+  list-style: none;
+  margin: 2px 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: visible;
+}
+
+.spaceholder-action-journal__row--nested {
+  padding: 1px 3px;
+}
+
+.spaceholder-action-journal__row--nested .spaceholder-action-journal__text {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.spaceholder-action-journal__row--nested .spaceholder-action-journal__kind {
+  width: 14px;
+  font-size: 13px;
+}
+
+/* One leg inside an expanded move group (no meta row) */
+.spaceholder-action-journal__row--move-segment {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main tools"
+    "desc desc"
+    "sub sub";
+}
+
+.spaceholder-action-journal__sublist {
+  list-style: none;
+  margin: 1px 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  grid-area: sub;
+  overflow: visible;
+}
+
+body.game #chat .chat-message .message-content .spaceholder-action-journal__toggle--chevron,
+body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__toggle--chevron,
+body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__toggle--chevron {
+  min-width: 22px;
 }

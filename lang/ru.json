@@ -236,6 +236,15 @@
       "Movement": {
         "Move": "Движение"
       },
+      "FreeAction": {
+        "Label": "Свободное",
+        "DialogTitle": "Свободное действие",
+        "FieldName": "Название действия",
+        "FieldDescription": "Описание",
+        "FieldApCost": "Стоимость ОД (база)",
+        "NameRequired": "Укажите название действия.",
+        "DialogUnavailable": "Диалог недоступен в этой среде."
+      },
       "Errors": {
         "NotEnoughAP": "Недостаточно Очков Действия (нужно {need}, есть {have})",
         "ApSpendFailed": "Не удалось списать очки действия"
@@ -245,7 +254,17 @@
       "Title": "Раунд {round} — действия",
       "Undo": "Отменить",
       "Undone": "Отменено",
-      "UndoFailed": "Не удалось отменить действие"
+      "UndoFailed": "Не удалось отменить действие",
+      "StartTurn": "Начал ход",
+      "StartTurnHint": "Последующие реакции прикрепляются к этому ходу.",
+      "ShowDetails": "Описание",
+      "ReactionBadge": "Реакция",
+      "ConfirmBulkUndoTitle": "Подтвердите отмену",
+      "ConfirmBulkUndoBody": "Эта отмена затронет {count} последующих действий. Продолжить?",
+      "ConfirmUndo": "Все равно отменить",
+      "MoveGroupSummary": "{count} перемещений",
+      "ExpandMoveGroup": "Показать каждое перемещение",
+      "CollapseMoveGroup": "Свернуть перемещения"
     },
     "Combat": {
       "PanelTitle": "Боевые действия",
