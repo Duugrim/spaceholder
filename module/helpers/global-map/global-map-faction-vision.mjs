@@ -80,10 +80,11 @@ function refreshFactionVision() {
 function patchIsVisionSource() {
   if (_originalIsVisionSource) return;
 
-  const proto = globalThis?.Token?.prototype;
+  const TokenClass = foundry?.canvas?.placeables?.Token;
+  const proto = TokenClass?.prototype;
   const original = proto?._isVisionSource;
   if (typeof original !== 'function') {
-    console.warn('SpaceHolder | GlobalMapFactionVision: Token.prototype._isVisionSource not found');
+    console.warn('SpaceHolder | GlobalMapFactionVision: foundry.canvas.placeables.Token.prototype._isVisionSource not found');
     return;
   }
 

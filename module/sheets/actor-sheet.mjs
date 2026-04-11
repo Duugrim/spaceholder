@@ -13,6 +13,7 @@ import {
 import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
 import { collectActorActions, executeActorAction, getActorActionPoints } from '../helpers/actions/action-service.mjs';
 import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
+import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/held-drop-resolve.mjs';
 
 /** Навигация и баннеры вкладок: один источник id / иконка / ключ i18n */
 const CHARACTER_SHEET_PRIMARY_TABS = Object.freeze([
@@ -872,31 +873,62 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         if (!this.isEditable) return;
         const item = getHeldItemFromControl(ev.currentTarget);
         if (!item) return;
+
+        const L = (k) => game.i18n?.localize?.(k) ?? k;
+        if (!game.settings.get('spaceholder', 'itemPilesShEnabled')) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropItemPilesDisabled'));
+          return;
+        }
+        const pilesApi = game.spaceholder?.itemPilesSh?.api;
+        if (!pilesApi?.dropData) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropItemPilesDisabled'));
+          return;
+        }
+        const scene = canvas?.scene;
+        if (!scene) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropNoToken'));
+          return;
+        }
+        const controlled = (canvas.tokens?.controlled ?? []).filter((t) => t.actor?.id === this.actor.id);
+        const actorToken = controlled[0] ?? this.actor.getActiveTokens()?.[0];
+        if (!actorToken?.center) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropNoToken'));
+          return;
+        }
+
+        const gridSize = canvas.grid.size;
+        const cx = actorToken.center.x;
+        const cy = actorToken.center.y;
+        const dirDeg = Number(actorToken.document.getFlag('spaceholder', 'tokenpointerDirection') ?? 90);
+        const rad = (dirDeg * Math.PI) / 180;
+        const step = gridSize / 2;
+        const targetX = cx + Math.cos(rad) * step;
+        const targetY = cy + Math.sin(rad) * step;
+        const mergeCenter = findNearestPileDropPointWithinCells(scene, cx, cy, 2, gridSize);
+        let dropX;
+        let dropY;
+        if (mergeCenter) {
+          dropX = mergeCenter.x;
+          dropY = mergeCenter.y;
+        } else {
+          dropX = targetX - gridSize / 2;
+          dropY = targetY - gridSize / 2;
+        }
+
         try {
-          const droppedData = {
-            name: item.name,
-            type: item.type,
-            img: item.img,
-            system: foundry.utils.duplicate(item.system ?? {}),
-            flags: foundry.utils.duplicate(item.flags ?? {}),
-          };
-          const qty = Math.max(1, Number(item.system?.quantity) || 1);
-          droppedData.system.quantity = 1;
-          droppedData.system.held = false;
-          droppedData.system.equipped = false;
-          await Item.create(droppedData, { renderSheet: false });
-          if (qty > 1) {
-            await item.update({
-              'system.quantity': qty - 1,
-              'system.equipped': false,
-              'system.held': false,
-            });
-          } else {
-            await item.delete();
-          }
+          await pilesApi.dropData({
+            dropData: {
+              type: 'Item',
+              uuid: item.uuid,
+              x: dropX,
+              y: dropY,
+              quantity: 1,
+            },
+            sceneId: scene.id,
+          });
         } catch (e) {
-          console.error('SpaceHolder | failed to drop held item to world:', e);
-          ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.Inventory.HeldActions.DropFailed') ?? 'Could not drop item');
+          console.error('SpaceHolder | failed to drop held item via item-piles-sh:', e);
+          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropFailed'));
         }
         this.render(false);
       });

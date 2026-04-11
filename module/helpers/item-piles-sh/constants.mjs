@@ -18,6 +18,8 @@ export const ITEM_PILES_SH = {
   PILE_DEFAULT_ACTOR_TYPE: 'loot',
   PILE_DEFAULT_TOKEN_TEXTURE: 'icons/svg/chest.svg',
   PILE_MERGE_DISTANCE_MULTIPLIER: 0.5,
+  /** Cached stack identity hash under `flags.spaceholder.itemPilesSh` */
+  STACK_FINGERPRINT_KEY: 'stackFingerprint',
 };
 
 export function getSystemSocketName() {

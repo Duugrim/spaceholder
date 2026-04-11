@@ -1,6 +1,12 @@
 import { ITEM_PILES_SH, getPileFlagPath } from './constants.mjs';
 import { executeItemPilesShAsGm } from './socket-adapter.mjs';
 import { getUserFactionUuids, normalizeUuid } from '../user-factions.mjs';
+import {
+  computeFingerprintForPendingItem,
+  computeItemStackFingerprint,
+  getCachedStackFingerprint,
+  isPileLootActor,
+} from './stack-fingerprint.mjs';
 
 let _initialized = false;
 let _pileTechFolderId = null;
@@ -304,6 +310,8 @@ function _normalizeItemDataForPile(itemData, quantity) {
   const normalized = foundry.utils.deepClone(itemData ?? {});
   delete normalized._id;
   normalized.system = normalized.system ?? {};
+  normalized.system.held = false;
+  normalized.system.equipped = false;
   normalized.system.quantity = Math.max(1, _safeNumber(quantity, 1));
   normalized.flags = normalized.flags ?? {};
   normalized.flags[ITEM_PILES_SH.FLAG_SCOPE] = normalized.flags[ITEM_PILES_SH.FLAG_SCOPE] ?? {};
@@ -313,19 +321,63 @@ function _normalizeItemDataForPile(itemData, quantity) {
   return normalized;
 }
 
-function _findExistingItem(actor, incoming) {
-  if (!actor || !incoming) return null;
-  const sourceId = String(incoming?.flags?.core?.sourceId || '').trim();
-  if (sourceId) {
-    const bySource = actor.items.find((it) => String(it?.flags?.core?.sourceId || '').trim() === sourceId);
-    if (bySource) return bySource;
+function _findExistingItemByFingerprint(actor, incomingFp) {
+  if (!actor || !incomingFp) return null;
+  for (const it of actor.items ?? []) {
+    const cached = getCachedStackFingerprint(it);
+    if (cached === incomingFp) return it;
+    try {
+      const lazy = computeItemStackFingerprint(it.toObject(false));
+      if (lazy === incomingFp) return it;
+    } catch (_) {
+      /* ignore */
+    }
   }
-  return actor.items.find((it) => it.name === incoming.name && it.type === incoming.type) ?? null;
+  return null;
+}
+
+function _registerItemStackFingerprintHooks() {
+  Hooks.on('preCreateItem', (item, data, _options, _userId) => {
+    try {
+      if (!isPileLootActor(item.parent)) return;
+      const fpPath = `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`;
+      const existing = foundry.utils.getProperty(data, fpPath);
+      if (typeof existing === 'string' && existing.length) return;
+      const fp = computeFingerprintForPendingItem(item, data);
+      foundry.utils.setProperty(data, fpPath, fp);
+    } catch (error) {
+      console.error('SpaceHolder | item-piles-sh stackFingerprint preCreateItem', error);
+    }
+  });
+
+  Hooks.on('preUpdateItem', (item, changes, _options, _userId) => {
+    try {
+      if (!isPileLootActor(item.parent)) return;
+      if (!changes || typeof changes !== 'object') return;
+      const merged = foundry.utils.mergeObject(item.toObject(false), changes, { inplace: false });
+      const fp = computeItemStackFingerprint(merged);
+      const cur = getCachedStackFingerprint(item);
+      if (fp === cur) return;
+      foundry.utils.setProperty(
+        changes,
+        `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`,
+        fp,
+      );
+    } catch (error) {
+      console.error('SpaceHolder | item-piles-sh stackFingerprint preUpdateItem', error);
+    }
+  });
 }
 
 async function _addItemToPileActor(actor, itemData, quantity) {
   const normalized = _normalizeItemDataForPile(itemData, quantity);
-  const existing = _findExistingItem(actor, normalized);
+  const incomingFp = computeItemStackFingerprint(normalized);
+  foundry.utils.setProperty(
+    normalized,
+    `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`,
+    incomingFp,
+  );
+  const existing = _findExistingItemByFingerprint(actor, incomingFp);
   if (!existing) {
     await actor.createEmbeddedDocuments('Item', [normalized]);
     return;
@@ -671,6 +723,7 @@ export const ItemPilesShPrivateApi = {
   initialize() {
     if (_initialized) return;
     _initialized = true;
+    _registerItemStackFingerprintHooks();
     Hooks.on('dropCanvasData', _onDropCanvasData);
     if (game.user?.isGM) {
       // Pre-create technical folder + generic pile actor once per world session.

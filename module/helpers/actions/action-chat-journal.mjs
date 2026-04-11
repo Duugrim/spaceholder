@@ -37,8 +37,11 @@ function _chatMessageCreatePayloadFromExisting(message, { content, moduleFlags }
     Object.assign(sh, moduleFlags);
   }
   flags[MODULE_NS] = sh;
+  const msgAuthor = message?.author;
+  const msgAuthorId = typeof msgAuthor === "string" ? msgAuthor : msgAuthor?.id ?? null;
+  const authorId = raw?.author ?? raw?.user ?? msgAuthorId ?? game.user?.id ?? null;
   return {
-    user: raw?.user || message?.user?.id || game.user?.id || null,
+    author: authorId,
     speaker: _dup(raw?.speaker || message?.speaker || {}),
     style: raw?.style ?? message?.style ?? CONST.CHAT_MESSAGE_STYLES?.OTHER,
     content: String(content ?? raw?.content ?? message?.content ?? ""),
@@ -323,7 +326,7 @@ function _queryDescPanelByTargetId(root, targetId) {
   return root.querySelector(`#${_safeCssId(id)}`);
 }
 
-/** @param {unknown} html - HTMLElement or jQuery from renderChatMessage */
+/** @param {unknown} html - HTMLElement (or legacy jQuery wrapper) */
 function _resolveActionJournalRoot(html) {
   const wrap = html?.jquery ? html[0] : html;
   if (!wrap?.querySelector) return null;
@@ -618,7 +621,7 @@ export async function ensureCombatActionJournalMessage({
   const lines = withStartLine ? [_buildStartTurnLine({ actor, combat, combatant })] : [];
   const content = buildActionJournalHtml(lines, round, title);
   const msg = await ChatMessage.create({
-    user: game.user.id,
+    author: game.user.id,
     speaker: ChatMessage.getSpeaker({ actor }),
     content,
     flags: {
@@ -1066,5 +1069,4 @@ export function installActionChatJournalHooks() {
     }
   };
   Hooks.on("renderChatMessageHTML", onRender);
-  Hooks.on("renderChatMessage", onRender);
 }

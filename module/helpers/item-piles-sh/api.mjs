@@ -1,7 +1,9 @@
 import { ITEM_PILES_SH } from './constants.mjs';
 import { executeItemPilesShAsGm } from './socket-adapter.mjs';
+import { findNearestPileDropPointWithinCells } from './held-drop-resolve.mjs';
 
 export const ItemPilesShApi = {
+  findNearestPileDropPointWithinCells,
   /**
    * Create a new pile token with supplied item data.
    * @param {object} params

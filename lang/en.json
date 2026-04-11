@@ -360,6 +360,8 @@
         "ShowTooltip": "Show in chat",
         "NotImplemented": "This action will be added later.",
         "DropFailed": "Could not drop item.",
+        "DropNoToken": "No token for this actor on the current scene.",
+        "DropItemPilesDisabled": "Canvas item piles are disabled in world settings (item-piles-sh).",
         "WearOnlyArmor": "Only items with armor tag can be equipped.",
         "WearNeedsHeld": "Item must be held before equipping."
       }

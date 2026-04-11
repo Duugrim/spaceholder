@@ -16,6 +16,7 @@
 - Runtime entry: `module/helpers/item-piles-sh/index.mjs`
 - Public API: `module/helpers/item-piles-sh/api.mjs`
 - Internal drop logic: `module/helpers/item-piles-sh/private-api.mjs`
+- Stack merge identity hash: `module/helpers/item-piles-sh/stack-fingerprint.mjs`
 - GM execution/socket adapter: `module/helpers/item-piles-sh/socket-adapter.mjs`
 - Optional wrapper adapter: `module/helpers/item-piles-sh/wrapper-adapter.mjs`
 
@@ -30,10 +31,20 @@
 
 - Pile marker flag:
   - `flags.spaceholder.itemPilesSh.isPile = true`
+- Per-item stack cache (pile `loot` actors only):
+  - `flags.spaceholder.itemPilesSh.stackFingerprint` — hex string; maintained by `preCreateItem` / `preUpdateItem` hooks when the parent actor is a pile (`type === loot` and `isPile`).
 - A pile is represented as:
   - Actor (`loot` by default)
   - Token on current scene linked by `actorId`
   - Embedded item documents with `system.quantity`
+
+## Stack identity
+
+When an item is dropped or transferred into a pile, the subsystem looks for an existing embedded item with the **same stack fingerprint** and, if found, increases `system.quantity` instead of creating a new item.
+
+- **Fingerprint input** (canonical JSON + FNV-1a 32-bit hex): `type`, `name`, `img`, `system` with `quantity`, `held`, and `equipped` removed, sorted `effects`, and `flags` with `flags.spaceholder.itemPilesSh` removed entirely (so `droppedAt` and the cache field do not affect identity). `flags.core.sourceId` is also omitted so compendium linkage does not force incorrect merges.
+- **Lazy match**: if an older pile item has no `stackFingerprint` flag yet, the fingerprint is computed from `item.toObject(false)` on demand when searching (no automatic DB write until the next update hook runs).
+- **New creates** from `item-piles-sh` set `stackFingerprint` on the create payload before `preCreateItem`; the hook skips recomputation when the field is already present so the hash stays aligned with the merge logic.
 
 ## Settings
 
