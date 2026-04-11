@@ -1,0 +1,55 @@
+<div class="sh-actor-action-dialog" data-sh-actor-action-dialog="{{dialogUid}}">
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActionName'}}</label>
+    <div class="form-fields">
+      <input
+        type="text"
+        name="name"
+        value="{{action.name}}"
+        placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActionName'}}"
+        autocomplete="off"
+      />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}</label>
+    <div class="form-fields">
+      <input type="number" name="apCost" min="0" step="1" value="{{action.apCost}}" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.Mode'}}</label>
+    <div class="form-fields">
+      <select name="mode" data-sh-mode-select>
+        {{#each modeOptions as |opt|}}
+          <option value="{{opt.id}}" {{#if (eq ../action.mode opt.id)}}selected{{/if}}>{{localize opt.labelKey}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group" data-sh-mode-block="macro">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeMacro'}}</label>
+    <div class="form-fields">
+      <textarea
+        name="macro"
+        rows="5"
+        class="sh-actor-action-dialog__macro"
+        placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.MacroPlaceholder'}}"
+      >{{action.macro}}</textarea>
+    </div>
+  </div>
+
+  <div class="sh-actor-action-dialog__flags">
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="showInCombat" {{#if action.showInCombat}}checked{{/if}} />
+      <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+    </label>
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="showInQuickbar" {{#if action.showInQuickbar}}checked{{/if}} />
+      <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+    </label>
+  </div>
+</div>

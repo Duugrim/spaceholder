@@ -126,4 +126,9 @@
     overflow-x: hidden;
     overflow-y: auto;
   }
+
+  // Лист персонажа: без бокового/нижнего зазора от общего padding .tab.active (все primary-вкладки)
+  > .sheet-body.sheet-body--character-primary > .tab.active {
+    padding: 0;
+  }
 }

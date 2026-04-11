@@ -2,6 +2,37 @@
 
 .window-app.spaceholder,
 .spaceholder {
+  .sh-loot-header {
+    .sh-loot-header__card {
+      --sh-character-header-accent: #7d71af;
+    }
+  }
+
+  .sh-loot-container-settings {
+    margin: 10px 0 0 0;
+    padding: 12px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    background: rgba(0, 0, 0, 0.28);
+
+    h3 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .form-group {
+      margin: 0 0 8px 0;
+    }
+  }
+
+  .sh-loot-items {
+    .inventory-item-card {
+      border-left: 3px solid rgba(125, 113, 175, 0.45);
+    }
+  }
+
   .sheet-body .tab.active > .items-list {
     flex: 1 1 auto;
     min-height: 0;
@@ -110,6 +141,99 @@
     overflow-y: auto;
   }
 
+  .sh-item-action-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sh-item-action-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .sh-item-action-card__main {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .sh-item-action-card__title {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sh-text);
+  }
+
+  .sh-item-action-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sh-item-action-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 8px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--sh-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .sh-item-action-card__controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+
+  .sh-item-actions-empty {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 10px;
+    border: 1px dashed var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    color: var(--sh-text-muted);
+
+    i {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .sh-item-action-dialog {
+    .form-group {
+      margin: 0 0 10px 0;
+    }
+  }
+
+  .sh-item-action-dialog__macro {
+    font-family: $font-mono;
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .sh-item-action-dialog__flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 8px;
+  }
+
   .sh-wearable-default-actions {
     display: flex;
     flex-direction: column;
@@ -137,6 +261,19 @@
   // Item tags tab (system.itemTags)
   .tab.tags {
     padding: 12px;
+  }
+
+  .sh-item-settings-panels {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sh-item-settings-panel {
+    padding: 10px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
   }
 
   .sh-item-settings-weight {

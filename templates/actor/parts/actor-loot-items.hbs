@@ -1,0 +1,52 @@
+<section class="inventory-panel sh-loot-items">
+  <header class="inventory-stats sh-loot-items__header">
+    <div class="inventory-stat sh-loot-items__summary">
+      <i class="fas fa-box-open"></i>
+      <span class="stat-label">{{localize "SPACEHOLDER.ItemPilesSh.Container.LootTitle"}}</span>
+      <span class="stat-value">{{localize "SPACEHOLDER.ItemPilesSh.Container.LootHint"}}</span>
+    </div>
+    <div class="inventory-controls sh-loot-items__controls">
+      {{#if editable}}
+      <button type="button" class="icon-btn" data-action="sh-loot-put-dialog" data-tooltip="{{localize 'SPACEHOLDER.ItemPilesSh.Actions.Put'}}">
+        <i class="fa-solid fa-box-open"></i>
+      </button>
+      <button type="button" class="icon-btn" data-action="sh-loot-take-all" data-tooltip="{{localize 'SPACEHOLDER.ItemPilesSh.Actions.TakeAll'}}">
+        <i class="fa-solid fa-down-to-bracket"></i>
+      </button>
+      {{/if}}
+    </div>
+  </header>
+
+  <div class="inventory-list sh-loot-items__list">
+    {{#if gear.length}}
+      {{#each gear as |item|}}
+      <div class="inventory-item-card" data-item-id="{{item._id}}">
+        <div class="item-main">
+          <div class="item-image">
+            <a class="rollable" data-roll-type="item">
+              <img src="{{item.img}}" title="{{item.name}}" width="32" height="32" />
+            </a>
+          </div>
+          <div class="item-info">
+            <div class="item-name">{{item.name}}</div>
+            <div class="item-details">
+              <span class="item-quantity">{{localize "SPACEHOLDER.Resources.Quantity"}}: {{item.system.quantity}}</span>
+            </div>
+          </div>
+        </div>
+        <div class="item-controls">
+          <button type="button" class="icon-btn" data-action="sh-loot-take" data-item-id="{{item._id}}" data-tooltip="{{localize 'SPACEHOLDER.ItemPilesSh.Actions.Take'}}"><i class="fa-solid fa-hand"></i></button>
+          <button type="button" class="icon-btn" data-action="sh-loot-take-half" data-item-id="{{item._id}}" data-tooltip="{{localize 'SPACEHOLDER.ItemPilesSh.Actions.TakeHalf'}}"><i class="fa-solid fa-divide"></i></button>
+          <button type="button" class="icon-btn" data-action="sh-loot-split" data-item-id="{{item._id}}" data-tooltip="{{localize 'SPACEHOLDER.ItemPilesSh.Actions.Split'}}"><i class="fa-solid fa-code-branch"></i></button>
+          <button type="button" class="icon-btn item-edit" data-item-id="{{item._id}}" data-tooltip="{{localize 'SPACEHOLDER.Inventory.EditItem'}}"><i class="fa-solid fa-pen"></i></button>
+        </div>
+      </div>
+      {{/each}}
+    {{else}}
+      <div class="empty-inventory">
+        <i class="fas fa-box-open"></i>
+        <p><em>{{localize "SPACEHOLDER.ItemPilesSh.Container.Empty"}}</em></p>
+      </div>
+    {{/if}}
+  </div>
+</section>

@@ -1,6 +1,6 @@
 {
   "Actor": {
-    "types": ["globalobject", "character", "npc", "faction"],
+    "types": ["globalobject", "character", "npc", "loot", "faction"],
     "templates": {
       "base": {
         "anatomy": {
@@ -47,6 +47,15 @@
       "templates": ["base"],
       "cr": 0
     },
+    "loot": {
+      "templates": ["base"],
+      "isContainer": true,
+      "isLocked": false,
+      "keyId": "",
+      "visibilityMode": "owner",
+      "interactionDistance": 2,
+      "autoLoot": false
+    },
     "globalobject": {
       "gRange": 0,
       "gPower": 0,
@@ -80,6 +89,7 @@
       "weight": 0,
       "formula": "d20 + @str.mod + ceil(@lvl / 2)",
       "equipped": false,
+      "held": false,
       "anatomyId": null,
       "anatomyGroup": null,
       "coveredParts": [],
@@ -91,6 +101,26 @@
         "unequip": {
           "showInCombat": false,
           "showInQuickbar": true
+        },
+        "hold": {
+          "showInCombat": false,
+          "showInQuickbar": true
+        },
+        "stow": {
+          "showInCombat": false,
+          "showInQuickbar": true
+        },
+        "drop": {
+          "showInCombat": false,
+          "showInQuickbar": false
+        },
+        "wear": {
+          "showInCombat": false,
+          "showInQuickbar": false
+        },
+        "show": {
+          "showInCombat": false,
+          "showInQuickbar": false
         }
       },
       "modifiers": {

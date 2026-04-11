@@ -54,6 +54,15 @@
           </div>
         </div>
         <div class='item-controls'>
+          <button
+            type="button"
+            class="icon-btn item-held-toggle {{#if item.system.held}}active{{/if}}"
+            title="{{#if item.system.held}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}{{/if}}"
+            data-item-id="{{item._id}}"
+            data-action="item-held-toggle"
+          >
+            <i class="fa-solid fa-hand"></i>
+          </button>
           {{#if item.system.itemTags}}
           {{#if item.system.itemTags.isArmor}}
           <button

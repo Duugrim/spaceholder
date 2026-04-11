@@ -33,7 +33,8 @@
     "module/spaceholder.mjs"
   ],
   "styles": [
-    "css/spaceholder.css"
+    "css/spaceholder.css",
+    "css/item-piles-sh.css"
   ],
   "languages": [
     {

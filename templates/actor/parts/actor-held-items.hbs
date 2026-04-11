@@ -1,0 +1,36 @@
+<section class="sh-held-items-panel">
+  <p class="sh-held-items-summary">{{heldItemsSummary}}</p>
+
+  {{#if heldItems.length}}
+    <div class="sh-held-items-list">
+      {{#each heldItems as |entry|}}
+        <article
+          class="sh-held-item-card"
+          data-item-id="{{entry.id}}"
+          data-action="sh-held-item-open"
+          role="button"
+          tabindex="0"
+          title="{{entry.name}}"
+        >
+          <div class="sh-held-item-card__main">
+            <div class="sh-held-item-card__image">
+              <img src="{{entry.img}}" alt="{{entry.name}}" width="32" height="32" />
+            </div>
+            <div class="sh-held-item-card__info">
+              <button type="button" class="sh-held-item-card__name" data-item-id="{{entry.id}}" data-action="sh-held-item-open">{{entry.name}}</button>
+              <div class="sh-held-item-card__meta">{{entry.typeLabel}}</div>
+            </div>
+          </div>
+
+          <div class="sh-held-item-card__controls">
+            <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-stow" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.StowTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.StowTooltip'}}"><i class="fa-solid fa-box-open"></i></button>
+            <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-drop" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.DropTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.DropTooltip'}}"><i class="fa-solid fa-arrow-down"></i></button>
+            <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-throw" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.ThrowTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.ThrowTooltip'}}"><i class="fa-solid fa-hand-back-fist"></i></button>
+            <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-wear" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.WearTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.WearTooltip'}}"><i class="fa-solid fa-shield-halved"></i></button>
+            <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-show" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.ShowTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.ShowTooltip'}}"><i class="fa-solid fa-comment-dots"></i></button>
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{/if}}
+</section>

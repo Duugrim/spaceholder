@@ -7,67 +7,84 @@
   <div class="sh-actions-subheader sh-actions-subheader--row">
     <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActions'}}</span>
     {{#if editable}}
-      <button type="button" class="icon-btn" data-action="sh-item-custom-action-add" title="{{localize 'SPACEHOLDER.Actions.Add'}}">
+      <button
+        type="button"
+        class="icon-btn"
+        data-action="sh-item-custom-action-add"
+        title="{{localize 'SPACEHOLDER.ActionsSystem.UI.AddAction'}}"
+      >
         <i class="fas fa-plus"></i>
       </button>
     {{/if}}
   </div>
 
   {{#if system.actions.length}}
-    <div class="sh-custom-actions-list">
+    <div class="sh-item-action-list">
       {{#each system.actions as |ca|}}
-        <div class="sh-custom-action-row" data-id="{{ca.id}}">
-          <input
-            type="text"
-            value="{{ca.name}}"
-            placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActionName'}}"
-            data-action="sh-item-custom-action-edit"
-            data-id="{{ca.id}}"
-            data-field="name"
-          />
-          <input
-            type="number"
-            value="{{ca.apCost}}"
-            data-action="sh-item-custom-action-edit"
-            data-id="{{ca.id}}"
-            data-field="apCost"
-            title="{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}"
-          />
-          <select data-action="sh-item-custom-action-edit" data-id="{{ca.id}}" data-field="mode">
-            <option value="chat" {{#if (eq ca.mode "chat")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeChat'}}</option>
-            <option value="itemRoll" {{#if (eq ca.mode "itemRoll")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeItemRoll'}}</option>
-            <option value="macro" {{#if (eq ca.mode "macro")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeMacro'}}</option>
-          </select>
-          <label class="sh-custom-action-flag">
-            <input type="checkbox" {{#if ca.showInCombat}}checked{{/if}} data-action="sh-item-custom-action-edit" data-id="{{ca.id}}" data-field="showInCombat"/>
-            <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
-          </label>
-          <label class="sh-custom-action-flag">
-            <input type="checkbox" {{#if ca.showInQuickbar}}checked{{/if}} data-action="sh-item-custom-action-edit" data-id="{{ca.id}}" data-field="showInQuickbar"/>
-            <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
-          </label>
-
-          {{#if (eq ca.mode "macro")}}
-            <textarea
-              class="sh-custom-action-macro"
-              rows="3"
-              placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.MacroPlaceholder'}}"
-              data-action="sh-item-custom-action-edit"
-              data-id="{{ca.id}}"
-              data-field="macro"
-            >{{ca.macro}}</textarea>
-          {{/if}}
-
+        <article class="sh-item-action-card" data-id="{{ca.id}}">
+          <div class="sh-item-action-card__main">
+            <div class="sh-item-action-card__title">{{#if ca.name}}{{ca.name}}{{else}}<em>{{localize 'SPACEHOLDER.ActionsSystem.UI.UntitledAction'}}</em>{{/if}}</div>
+            <div class="sh-item-action-card__meta">
+              <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}: {{ca.apCost}}</span>
+              <span class="sh-item-action-pill">{{localize ca.modeLabelKey}}</span>
+              {{#if ca.requiresHolding}}
+                <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.RequiresHolding'}}</span>
+              {{/if}}
+              {{#if ca.showInCombat}}
+                <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombatShort'}}</span>
+              {{/if}}
+              {{#if ca.showInQuickbar}}
+                <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbarShort'}}</span>
+              {{/if}}
+              {{#if ca.macro}}
+                <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeMacro'}}</span>
+              {{/if}}
+              {{#if (eq ca.mode "aimShot")}}
+                <span class="sh-item-action-pill">
+                  {{#if ca.payloadId}}{{localize 'SPACEHOLDER.ActionsSystem.UI.Payload'}}: {{ca.payloadId}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.PayloadNotSelected'}}{{/if}}
+                </span>
+                <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.Damage'}}: {{ca.damage}}</span>
+              {{/if}}
+            </div>
+          </div>
           {{#if @root.editable}}
-            <button type="button" class="icon-btn" data-action="sh-item-custom-action-remove" data-id="{{ca.id}}" title="{{localize 'SPACEHOLDER.Actions.Delete'}}">
+            <div class="sh-item-action-card__controls">
+              <button
+                type="button"
+                class="icon-btn"
+                data-action="sh-item-custom-action-edit-open"
+                data-id="{{ca.id}}"
+                title="{{localize 'SPACEHOLDER.Actions.Edit'}}"
+              >
+                <i class="fas fa-pen"></i>
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                data-action="sh-item-custom-action-duplicate"
+                data-id="{{ca.id}}"
+                title="{{localize 'SPACEHOLDER.ActionsSystem.UI.DuplicateAction'}}"
+              >
+                <i class="fas fa-copy"></i>
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                data-action="sh-item-custom-action-remove"
+                data-id="{{ca.id}}"
+                title="{{localize 'SPACEHOLDER.Actions.Delete'}}"
+              >
               <i class="fas fa-trash"></i>
-            </button>
+              </button>
+            </div>
           {{/if}}
-        </div>
+        </article>
       {{/each}}
     </div>
   {{else}}
-    <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomEmpty'}}</em></p>
+    <div class="sh-item-actions-empty">
+      <i class="fa-solid fa-bolt"></i>
+      <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomEmpty'}}</em></p>
+    </div>
   {{/if}}
 </div>
-

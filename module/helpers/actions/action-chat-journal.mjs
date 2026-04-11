@@ -29,6 +29,101 @@ function _dup(obj) {
   }
 }
 
+function _chatMessageCreatePayloadFromExisting(message, { content, moduleFlags } = {}) {
+  const raw = typeof message?.toObject === "function" ? message.toObject() : {};
+  const flags = _dup(raw?.flags || message?.flags || {});
+  const sh = { ...(flags?.[MODULE_NS] || {}) };
+  if (moduleFlags && typeof moduleFlags === "object") {
+    Object.assign(sh, moduleFlags);
+  }
+  flags[MODULE_NS] = sh;
+  return {
+    user: raw?.user || message?.user?.id || game.user?.id || null,
+    speaker: _dup(raw?.speaker || message?.speaker || {}),
+    style: raw?.style ?? message?.style ?? CONST.CHAT_MESSAGE_STYLES?.OTHER,
+    content: String(content ?? raw?.content ?? message?.content ?? ""),
+    whisper: Array.isArray(raw?.whisper) ? raw.whisper.slice() : [],
+    blind: !!(raw?.blind ?? message?.blind),
+    emote: !!(raw?.emote ?? message?.emote),
+    flavor: String(raw?.flavor ?? message?.flavor ?? ""),
+    rolls: Array.isArray(raw?.rolls) ? _dup(raw.rolls) : [],
+    flags,
+  };
+}
+
+function _extractActorUuidFromJournalLines(lines) {
+  const list = Array.isArray(lines) ? lines : [];
+  for (const line of list) {
+    const top = String(line?.actorUuid || "").trim();
+    if (top) return top;
+    if (line?.kind !== "moveGroup") continue;
+    for (const seg of line?.segments || []) {
+      const segActor = String(seg?.actorUuid || "").trim();
+      if (segActor) return segActor;
+      for (const reaction of seg?.reactions || []) {
+        const reactionActor = String(reaction?.actorUuid || "").trim();
+        if (reactionActor) return reactionActor;
+      }
+    }
+  }
+  return "";
+}
+
+async function _syncRoundChatMessagePointer(message, explicitActor = null) {
+  if (!message?.id) return;
+  const fj = message.flags?.[MODULE_NS]?.[FLAG_JOURNAL];
+  const round = Math.max(1, Number(fj?.round) || 1);
+  let actor = explicitActor && explicitActor.documentName === "Actor" ? explicitActor : null;
+  if (!actor) {
+    const actorUuid = _extractActorUuidFromJournalLines(fj?.lines);
+    if (!actorUuid) return;
+    try {
+      actor = await fromUuid(actorUuid);
+    } catch (_) {
+      actor = null;
+    }
+  }
+  if (!actor || actor.documentName !== "Actor") return;
+  await actor.setFlag(MODULE_NS, FLAG_ROUND_CHAT, { round, messageId: message.id });
+}
+
+async function _replaceJournalMessage(message, { content, journalFlags, anchorActor = null } = {}) {
+  if (!message?.id) return message ?? null;
+  const createData = _chatMessageCreatePayloadFromExisting(message, {
+    content,
+    moduleFlags: {
+      [FLAG_JOURNAL]: journalFlags,
+    },
+  });
+  const fresh = await ChatMessage.create(createData);
+  if (!fresh?.id) return message;
+  try {
+    await _syncRoundChatMessagePointer(fresh, anchorActor);
+  } catch (err) {
+    console.warn("SpaceHolder | failed to sync round chat message pointer", err);
+  }
+  try {
+    _removeChatMessageDomNow(message.id);
+    await message.delete();
+  } catch (err) {
+    console.warn("SpaceHolder | failed to delete replaced journal message", err);
+  }
+  return fresh;
+}
+
+function _removeChatMessageDomNow(messageId) {
+  const id = String(messageId || "").trim();
+  if (!id || typeof document === "undefined") return;
+  const rows = document.querySelectorAll(".chat-message[data-message-id]");
+  for (const row of rows) {
+    const rowId = String(row?.getAttribute?.("data-message-id") || row?.dataset?.messageId || "").trim();
+    if (rowId !== id) continue;
+    row.style.transition = "none";
+    row.style.animation = "none";
+    row.remove();
+  }
+}
+
 function _lineIconClass(line) {
   if (line?.icon) return String(line.icon);
   const kind = String(line?.kind || "action");
@@ -620,7 +715,11 @@ export async function appendCombatActionJournalLine({
     const content = buildActionJournalHtml(lines, round, title);
     const sh = { ...(msg.flags?.[MODULE_NS] || {}) };
     sh[FLAG_JOURNAL] = { ...prev, schema: JOURNAL_SCHEMA, round, lines };
-    await msg.update({ content, flags: { [MODULE_NS]: sh } });
+    await _replaceJournalMessage(msg, {
+      content,
+      journalFlags: sh[FLAG_JOURNAL],
+      anchorActor: anchorA,
+    });
   } catch (e) {
     console.error("SpaceHolder | appendCombatActionJournalLine failed", e);
   }
@@ -645,7 +744,10 @@ async function _toggleMoveGroupExpandedInMessage(message, groupId) {
   const content = buildActionJournalHtml(lines, round, title);
   const sh = { ...(message.flags?.[MODULE_NS] || {}) };
   sh[FLAG_JOURNAL] = { ...fj, schema: JOURNAL_SCHEMA, round, lines };
-  await message.update({ content, flags: { [MODULE_NS]: sh } });
+  await _replaceJournalMessage(message, {
+    content,
+    journalFlags: sh[FLAG_JOURNAL],
+  });
 }
 
 /**
@@ -707,7 +809,10 @@ export async function markJournalLineUndoneInMessage(message, lineId, opts = {})
   const content = buildActionJournalHtml(lines, round, title);
   const sh = { ...(message.flags?.[MODULE_NS] || {}) };
   sh[FLAG_JOURNAL] = { ...fj, schema: JOURNAL_SCHEMA, round, lines };
-  await message.update({ content, flags: { [MODULE_NS]: sh } });
+  await _replaceJournalMessage(message, {
+    content,
+    journalFlags: sh[FLAG_JOURNAL],
+  });
 }
 
 function _removeCascadePreview(root) {

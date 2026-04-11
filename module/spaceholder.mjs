@@ -2,7 +2,7 @@
 import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
 // Import sheet classes (Application V2)
-import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderGlobalObjectSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
+import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderLootSheet, SpaceHolderGlobalObjectSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
 import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
@@ -43,6 +43,7 @@ import { openEventsApp } from './helpers/events-app.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
+import { AimingManager } from './helpers/aiming-manager.mjs';
 // Draw manager for shot visualization
 import { DrawManager } from './helpers/draw-manager.mjs';
 // Shot manager for shot calculation
@@ -76,6 +77,8 @@ import { installActionChatJournalHooks } from './helpers/actions/action-chat-jou
 import { MovementManager } from './helpers/actions/movement-manager.mjs';
 import { CombatSessionManager } from './helpers/combat/combat-session-manager.mjs';
 import { installTurnPickOverlay } from './helpers/combat/turn-pick-overlay.mjs';
+import { registerItemPilesShSettings, initializeItemPilesSh } from './helpers/item-piles-sh/index.mjs';
+import { ITEM_PILES_SH } from './helpers/item-piles-sh/constants.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -92,6 +95,7 @@ Hooks.once('init', function () {
   registerJournalCheckSettings();
   registerProgressionPointsSettings();
   registerTimelineV2Settings();
+  registerItemPilesShSettings();
   installTokenPointerTabs();
   // Legacy world anatomy keys: used only for one-time migration into world folder files
   // World anatomies live in: worlds/<worldId>/spaceholder/anatomy/*.json (FilePicker upload/browse)
@@ -151,6 +155,7 @@ Hooks.once('init', function () {
     
     // DEPRECATED: Old height/biome map helpers - no longer used
     // (kept structure for reference during migration)
+    // item-piles-sh API is attached in ready hook after bootstrap.
   };
 
   // Initialize Token Pointer and expose
@@ -172,6 +177,9 @@ Hooks.once('init', function () {
   
   // Initialize Shot Manager
   game.spaceholder.shotManager = new ShotManager();
+
+  // Initialize Aiming Manager singleton for actions + token controls
+  game.spaceholder.aimingManager = new AimingManager();
   
   // Initialize Influence Manager
   game.spaceholder.influenceManager = new InfluenceManager();
@@ -265,6 +273,11 @@ Hooks.once('init', function () {
     types: ['npc'],
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.Actor',
+  });
+  foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderLootSheet, {
+    types: ['loot'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Loot',
   });
   foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderGlobalObjectSheet, {
     types: ['globalobject'],
@@ -436,6 +449,26 @@ Hooks.once('init', function () {
 
   // Preload Handlebars templates.
   return preloadHandlebarsTemplates();
+});
+
+Hooks.on('preCreateActor', (_actor, data) => {
+  try {
+    const type = String(data?.type ?? '').trim();
+    if (type !== 'loot') return;
+
+    const fallbackImg = ITEM_PILES_SH.PILE_DEFAULT_TOKEN_TEXTURE;
+    const actorImg = String(data?.img ?? '').trim();
+    if (!actorImg || actorImg === 'icons/svg/mystery-man.svg') {
+      foundry.utils.setProperty(data, 'img', fallbackImg);
+    }
+
+    const tokenImg = String(foundry.utils.getProperty(data, 'prototypeToken.texture.src') ?? '').trim();
+    if (!tokenImg) {
+      foundry.utils.setProperty(data, 'prototypeToken.texture.src', fallbackImg);
+    }
+  } catch (e) {
+    console.error('SpaceHolder | Failed to apply default loot icon', e);
+  }
 });
 
 /**
@@ -713,6 +746,8 @@ Hooks.once('ready', async function () {
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
   Hooks.on('hotbarDrop', (bar, data, slot) => createItemMacro(data, slot));
+  // item-piles-sh: primary item drop-on-canvas path for SpaceHolder
+  initializeItemPilesSh();
 
   installTransactionLedgerHooks();
   installActionChatJournalHooks();

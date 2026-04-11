@@ -11,15 +11,18 @@
     },
     "SheetLabels": {
       "Actor": "Лист актора SpaceHolder",
+      "Loot": "Лист добычи SpaceHolder",
       "GlobalObject": "Лист глобального объекта SpaceHolder",
       "Faction": "Лист фракции SpaceHolder",
       "Item": "Лист предмета SpaceHolder"
     },
     "Tabs": {
       "Stats": "Характеристики",
+      "Overview": "Обзор",
       "Health": "Здоровье",
       "Injuries": "Травмы",
       "Inventory": "Инвентарь",
+      "Actions": "Действия",
       "Description": "Описание",
       "Items": "Предметы",
       "Effects": "Эффекты",
@@ -212,15 +215,46 @@
         "Faction": "Фракция (UUID)",
         "AvailableActions": "Доступные действия",
         "NoActions": "Нет доступных действий",
+        "FavoriteActions": "Избранные действия",
+        "NoFavoriteActions": "Нет избранных действий",
         "CustomActions": "Кастомные действия",
         "CustomEmpty": "Пока нет кастомных действий",
         "CustomActionName": "Название действия",
+        "UntitledAction": "Без названия",
         "APCost": "ОД",
+        "Mode": "Режим",
         "ModeChat": "Чат",
         "ModeMacro": "Макрос",
         "ModeItemRoll": "Бросок предмета",
+        "ModeAimShot": "Прицельный выстрел",
+        "AddAction": "Добавить действие",
+        "EditAction": "Редактировать действие",
+        "DuplicateAction": "Дублировать действие",
+        "DeleteActionTitle": "Удалить действие",
+        "DeleteActionConfirm": "Удалить это действие?",
+        "NameRequired": "Укажите название действия.",
+        "DuplicateSuffix": "Копия",
+        "Payload": "Траектория (payload)",
+        "PayloadSelect": "Выберите payload",
+        "PayloadNotSelected": "Payload не выбран",
+        "AimingType": "Тип прицеливания",
+        "AimingTypeSimple": "Простой",
+        "Damage": "Урон",
         "ShowInCombat": "Показывать в бою",
         "ShowInQuickbar": "Показывать в быстрых",
+        "RequiresHolding": "Требует удержания",
+        "ShowInCombatShort": "Бой",
+        "ShowInQuickbarShort": "Быстрые",
+        "ModeUse": "Режим применения",
+        "ModeInspect": "Режим просмотра",
+        "ShowMainActions": "Показать все действия",
+        "ShowCustomActions": "Показать кастомные действия",
+        "Source": "Источник",
+        "SourceActor": "Актёр",
+        "SourceItem": "Предмет",
+        "SourceSystem": "Система",
+        "NoDescription": "Описание отсутствует",
+        "NoPreviewAction": "Выберите действие для предпросмотра",
         "MacroPlaceholder": "Тело JS-макроса (для продвинутых)",
         "WearableDefaults": "Стандартные действия wearable"
       },
@@ -230,8 +264,12 @@
       "Wearable": {
         "Equip": "Надеть: {item}",
         "Unequip": "Снять: {item}",
+        "Hold": "Взять в руки: {item}",
+        "Stow": "Убрать: {item}",
         "EquipShort": "Надеть",
-        "UnequipShort": "Снять"
+        "UnequipShort": "Снять",
+        "HoldShort": "Взять",
+        "StowShort": "Убрать"
       },
       "Movement": {
         "Move": "Движение"
@@ -247,7 +285,14 @@
       },
       "Errors": {
         "NotEnoughAP": "Недостаточно Очков Действия (нужно {need}, есть {have})",
-        "ApSpendFailed": "Не удалось списать очки действия"
+        "ApSpendFailed": "Не удалось списать очки действия",
+        "NoTokenForAiming": "Не найден токен для режима прицеливания",
+        "MissingActionPayload": "Сначала выберите payload для этого действия",
+        "AimingUnavailable": "Менеджер прицеливания недоступен",
+        "AimingStartFailed": "Не удалось запустить режим прицеливания"
+      },
+      "AimShot": {
+        "HitApplied": "{shooter} попадает по {target} в {part} на {damage} урона"
       }
     },
     "ActionChatJournal": {
@@ -304,7 +349,20 @@
       "ItemTotalWeight": "Общий вес:",
       "EditItem": "Редактировать предмет",
       "DeleteItem": "Удалить предмет",
-      "Empty": "Инвентарь пуст. Добавьте новый предмет, нажав кнопку \"Новый предмет\" выше."
+      "Empty": "Инвентарь пуст. Добавьте новый предмет, нажав кнопку \"Новый предмет\" выше.",
+      "HeldSummaryWithItems": "{name} держит {items}.",
+      "HeldSummaryEmpty": "{name} ничего не держит.",
+      "HeldActions": {
+        "StowTooltip": "Убрать в рюкзак",
+        "DropTooltip": "Отпустить на землю",
+        "ThrowTooltip": "Бросить",
+        "WearTooltip": "Надеть",
+        "ShowTooltip": "Показать в чате",
+        "NotImplemented": "Это действие будет добавлено позже.",
+        "DropFailed": "Не удалось отпустить предмет.",
+        "WearOnlyArmor": "Надеть можно только предмет с тегом брони.",
+        "WearNeedsHeld": "Чтобы надеть предмет, его нужно держать в руках."
+      }
     },
     "Injuries": {
       "Add": "Добавить травму",
@@ -371,6 +429,7 @@
       "Abilities": "Основные характеристики",
       "Derived": "Производные характеристики",
       "Params": "Параметры персонажа",
+      "Empty": "Модификаторы не настроены",
       "Target": "Цель",
       "Value": "Значение",
       "Mode": "Режим",
@@ -1153,12 +1212,57 @@
       "Messages": {
         "InvalidType": "Ожидался Actor типа \"faction\""
       }
+    },
+    "ItemPilesSh": {
+      "DropFailed": "Не удалось выбросить предмет на канвас",
+      "Actions": {
+        "Take": "Взять",
+        "TakeHalf": "Взять половину",
+        "TakeAll": "Забрать всё",
+        "Put": "Положить в контейнер",
+        "Split": "Разделить в цель"
+      },
+      "Container": {
+        "LootTitle": "Контейнер добычи",
+        "LootHint": "Выберите свой токен, затем переносите предметы из контейнера.",
+        "Empty": "Контейнер пуст",
+        "SettingsTitle": "Настройки контейнера",
+        "IsContainer": "Работает как контейнер",
+        "IsLocked": "Заперт",
+        "KeyId": "Ключ (id/имя/uuid предмета)",
+        "VisibilityMode": "Режим видимости",
+        "VisibilityOwner": "Только владелец",
+        "VisibilityFaction": "Доступ фракции",
+        "VisibilityAll": "Публично",
+        "InteractionDistance": "Дистанция взаимодействия (клетки)",
+        "AutoLoot": "Автолут при открытии",
+        "SelectSourceItem": "Исходный предмет",
+        "OpenFromToken": "Открыть от выбранного токена",
+        "OpenSuccess": "Доступ к контейнеру разрешён"
+      },
+      "Errors": {
+        "TargetActorRequired": "Сначала выберите токен актёра.",
+        "NoItemsToPut": "Нет предметов для переноса в контейнер.",
+        "SourceTokenRequired": "Сначала выберите токен (не контейнер) как источник.",
+        "PileTokenMissing": "Не удалось определить токен контейнера на текущей сцене."
+      },
+      "Settings": {
+        "Enabled": {
+          "Name": "Включить item-piles-sh для дропа на канвас",
+          "Hint": "Обрабатывает дроп предметов на канвас через внутреннюю подсистему item-piles-sh."
+        },
+        "Debug": {
+          "Name": "Включить отладочные логи item-piles-sh",
+          "Hint": "Пишет диагностические сообщения item-piles-sh в консоль."
+        }
+      }
     }
   },
   "TYPES": {
     "Actor": {
       "character": "Персонаж",
       "npc": "НПС",
+      "loot": "Добыча",
       "globalobject": "Глобальный объект",
       "faction": "Фракция"
     },

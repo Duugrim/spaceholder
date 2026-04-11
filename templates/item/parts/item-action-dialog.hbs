@@ -1,0 +1,87 @@
+<div class="sh-item-action-dialog" data-sh-item-action-dialog="{{dialogUid}}">
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActionName'}}</label>
+    <div class="form-fields">
+      <input
+        type="text"
+        name="name"
+        value="{{action.name}}"
+        placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActionName'}}"
+        autocomplete="off"
+      />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}</label>
+    <div class="form-fields">
+      <input type="number" name="apCost" min="0" step="1" value="{{action.apCost}}" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.Mode'}}</label>
+    <div class="form-fields">
+      <select name="mode" data-sh-mode-select>
+        {{#each modeOptions as |opt|}}
+          <option value="{{opt.id}}" {{#if (eq ../action.mode opt.id)}}selected{{/if}}>{{localize opt.labelKey}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group" data-sh-mode-block="macro">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeMacro'}}</label>
+    <div class="form-fields">
+      <textarea
+        name="macro"
+        rows="5"
+        class="sh-item-action-dialog__macro"
+        placeholder="{{localize 'SPACEHOLDER.ActionsSystem.UI.MacroPlaceholder'}}"
+      >{{action.macro}}</textarea>
+    </div>
+  </div>
+
+  <div class="form-group" data-sh-mode-block="aimShot">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.Payload'}}</label>
+    <div class="form-fields">
+      <select name="payloadId">
+        <option value="">{{localize 'SPACEHOLDER.ActionsSystem.UI.PayloadSelect'}}</option>
+        {{#each payloadOptions as |p|}}
+          <option value="{{p.id}}" {{#if (eq ../action.payloadId p.id)}}selected{{/if}}>{{p.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group" data-sh-mode-block="aimShot">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.AimingType'}}</label>
+    <div class="form-fields">
+      <select name="aimingType">
+        <option value="simple" {{#if (eq action.aimingType "simple")}}selected{{/if}}>{{localize 'SPACEHOLDER.ActionsSystem.UI.AimingTypeSimple'}}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group" data-sh-mode-block="aimShot">
+    <label>{{localize 'SPACEHOLDER.ActionsSystem.UI.Damage'}}</label>
+    <div class="form-fields">
+      <input type="number" name="damage" min="0" step="0.1" value="{{action.damage}}" />
+    </div>
+  </div>
+
+  <div class="sh-item-action-dialog__flags">
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="requiresHolding" {{#if action.requiresHolding}}checked{{/if}} />
+      <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.RequiresHolding'}}</span>
+    </label>
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="showInCombat" {{#if action.showInCombat}}checked{{/if}} />
+      <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+    </label>
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="showInQuickbar" {{#if action.showInQuickbar}}checked{{/if}} />
+      <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+    </label>
+  </div>
+</div>

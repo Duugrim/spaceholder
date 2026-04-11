@@ -8,6 +8,45 @@
         <a class="item" data-action="tab" data-group="primary" data-tab="{{t.id}}" data-tooltip="{{localize t.labelKey}}" aria-label="{{localize t.labelKey}}"><i class="{{t.icon}}" aria-hidden="true"></i></a>
       {{/each}}
     </nav>
+    <div class="tab overview" data-group="primary" data-tab="overview">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "overview")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      <div class="sh-stats-columns">
+        <div class="sh-stats-column sh-stats-column--overview-1">
+          <div class="stats-panel stats-panel--overview-placeholder" aria-hidden="true"></div>
+        </div>
+        <div class="sh-stats-column sh-stats-column--overview-2">
+          <div class="stats-panel stats-panel--overview-placeholder" aria-hidden="true"></div>
+        </div>
+        <div class="sh-stats-column sh-stats-column--overview-3">
+          <div class="stats-panel stats-panel--overview-placeholder" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      {{> "systems/spaceholder/templates/actor/parts/actor-held-items.hbs"}}
+      {{> "systems/spaceholder/templates/actor/parts/actor-actions.hbs"
+          actions=favoriteActions
+          emptyLabelKey="SPACEHOLDER.ActionsSystem.UI.NoFavoriteActions"
+          showActionsUi=false}}
+    </div>
+
+    <div class="tab actions flexcol" data-group="primary" data-tab="actions">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "actions")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/actor/parts/actor-actions.hbs"
+          actions=availableActions
+          panelClass="sh-actions-panel sh-actions-panel--full"
+          showCustomEditor=true
+          actionsUi=actionsUi
+          showActionsUi=true}}
+    </div>
+
     <div class="tab stats" data-group="primary" data-tab="stats">
       {{#each sheetPrimaryTabs}}
         {{#if (eq id "stats")}}
@@ -40,8 +79,6 @@
           <div class="stats-panel stats-panel--skills-reserved" aria-hidden="true"></div>
         </div>
       </div>
-
-      {{> "systems/spaceholder/templates/actor/parts/actor-actions.hbs"}}
     </div>
 
     <div class="tab health flexcol" data-group="primary" data-tab="health">

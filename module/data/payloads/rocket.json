@@ -13,7 +13,7 @@
         "collision": {
           "walls": true,
           "tokens": {
-            "owner": false,
+            "owner": true,
             "ally": true,
             "other": true
           }
@@ -27,7 +27,7 @@
         "collision": {
           "walls": true,
           "tokens": {
-            "owner": false,
+            "owner": true,
             "ally": true,
             "other": true
           }

@@ -15,6 +15,8 @@ export class SpaceHolderItem extends Item {
     if (source.type === 'item' && source.system && typeof source.system === 'object') {
       const s = source.system;
       if (s.equipped === undefined) s.equipped = false;
+      if (s.held === undefined) s.held = false;
+      if (s.equipped) s.held = false;
       if (s.anatomyId === undefined) s.anatomyId = null;
       if (s.anatomyGroup === undefined) s.anatomyGroup = null;
       if (!Array.isArray(s.coveredParts)) s.coveredParts = [];
@@ -22,10 +24,20 @@ export class SpaceHolderItem extends Item {
         s.defaultActions = {
           equip: { showInCombat: false, showInQuickbar: true },
           unequip: { showInCombat: false, showInQuickbar: true },
+          hold: { showInCombat: false, showInQuickbar: true },
+          stow: { showInCombat: false, showInQuickbar: true },
+          drop: { showInCombat: false, showInQuickbar: false },
+          wear: { showInCombat: false, showInQuickbar: false },
+          show: { showInCombat: false, showInQuickbar: false },
         };
       } else {
         s.defaultActions.equip = s.defaultActions.equip || { showInCombat: false, showInQuickbar: true };
         s.defaultActions.unequip = s.defaultActions.unequip || { showInCombat: false, showInQuickbar: true };
+        s.defaultActions.hold = s.defaultActions.hold || { showInCombat: false, showInQuickbar: true };
+        s.defaultActions.stow = s.defaultActions.stow || { showInCombat: false, showInQuickbar: true };
+        s.defaultActions.drop = s.defaultActions.drop || { showInCombat: false, showInQuickbar: false };
+        s.defaultActions.wear = s.defaultActions.wear || { showInCombat: false, showInQuickbar: false };
+        s.defaultActions.show = s.defaultActions.show || { showInCombat: false, showInQuickbar: false };
       }
       if (!s.modifiers || typeof s.modifiers !== 'object') {
         s.modifiers = { abilities: [], derived: [], params: [] };

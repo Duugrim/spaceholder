@@ -1,23 +1,176 @@
-<div class="sh-actions-panel">
-  <div class="sh-actions-available">
-    {{#if availableActions.length}}
-      <div class="sh-actions-grid">
-        {{#each availableActions as |a|}}
+<div class="{{#if panelClass}}{{panelClass}}{{else}}sh-actions-panel{{/if}} {{#if showActionsUi}}sh-actions-layout{{/if}}" {{#if showActionsUi}}data-actions-pane="{{actionsUi.rightPane}}"{{/if}}>
+{{#if showActionsUi}}
+  <div class="sh-actions-columns">
+    <aside class="sh-actions-preview-column">
+      <div class="sh-actions-preview-shell">
+        {{#if actionsUi.previewAction}}
+          <div class="sh-actions-preview-card">
+            <div class="sh-actions-preview-header">
+              <div class="sh-actions-preview-card__title">{{actionsUi.previewAction.name}}</div>
+              <div class="sh-actions-mode-toggle" role="group" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.Mode'}}">
+                <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'use')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="use" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}"><i class="fa-solid fa-play"></i></button>
+                <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'inspect')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="inspect" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}"><i class="fa-solid fa-magnifying-glass"></i></button>
+              </div>
+            </div>
+            <div class="sh-actions-preview-card__meta">
+              <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}: {{actionsUi.previewAction.apCost}}</span>
+              <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.Source'}}: {{localize actionsUi.previewAction.sourceLabelKey}}</span>
+            </div>
+            {{#if actionsUi.previewAction.description}}
+              <p class="sh-actions-preview-card__description">{{actionsUi.previewAction.description}}</p>
+            {{else}}
+              <p class="sh-actions-preview-card__description"><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.NoDescription'}}</em></p>
+            {{/if}}
+          </div>
+        {{else}}
+          <div class="sh-actions-preview-empty">
+            <div class="sh-actions-preview-header">
+              <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.NoPreviewAction'}}</em></p>
+              <div class="sh-actions-mode-toggle" role="group" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.Mode'}}">
+                <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'use')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="use" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}"><i class="fa-solid fa-play"></i></button>
+                <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'inspect')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="inspect" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}"><i class="fa-solid fa-magnifying-glass"></i></button>
+              </div>
+            </div>
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+        {{/if}}
+      </div>
+    </aside>
+
+    <section class="sh-actions-content-column">
+      <div class="sh-actions-main-block">
+        <div class="sh-actions-main-body">
+          <div class="sh-actions-available">
+            {{#if actions}}
+              {{#if actions.length}}
+                <div class="sh-actions-grid">
+                  {{#each actions as |a|}}
+                    <button type="button" class="sh-action-btn" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
+                      {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+                      <span class="sh-action-btn__label">{{a.label}}</span>
+                      {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+                    </button>
+                  {{/each}}
+                </div>
+              {{else}}
+                <p><em>{{#if emptyLabelKey}}{{localize emptyLabelKey}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.NoActions'}}{{/if}}</em></p>
+              {{/if}}
+            {{else}}
+              {{#if availableActions.length}}
+                <div class="sh-actions-grid">
+                  {{#each availableActions as |a|}}
+                    <button type="button" class="sh-action-btn" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
+                      {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+                      <span class="sh-action-btn__label">{{a.label}}</span>
+                      {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+                    </button>
+                  {{/each}}
+                </div>
+              {{else}}
+                <p><em>{{#if emptyLabelKey}}{{localize emptyLabelKey}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.NoActions'}}{{/if}}</em></p>
+              {{/if}}
+            {{/if}}
+          </div>
+        </div>
+      </div>
+
+      <div class="sh-actions-custom-block {{#if (eq actionsUi.rightPane 'custom')}}is-open{{/if}}">
+        <div class="sh-actions-custom-header">
           <button
             type="button"
-            class="sh-action-btn"
-            data-action="sh-action-run"
-            data-action-id="{{a.id}}"
-            title="{{a.label}}"
+            class="sh-actions-custom-handle {{#if (eq actionsUi.rightPane 'custom')}}active{{/if}}"
+            data-action="sh-actions-custom-toggle"
+            title="{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActions'}}"
           >
-            {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
-            <span class="sh-action-btn__label">{{a.label}}</span>
-            {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+            <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomActions'}}</span>
+            <i class="fa-solid fa-chevron-up"></i>
           </button>
-        {{/each}}
+          {{#if @root.editable}}
+            <button
+              type="button"
+              class="icon-btn sh-actions-custom-add-btn"
+              data-action="sh-custom-action-add"
+              title="{{localize 'SPACEHOLDER.Actions.Add'}}"
+            ><i class="fas fa-plus"></i></button>
+          {{/if}}
+        </div>
+
+        <div class="sh-actions-custom-body">
+          {{#if showCustomEditor}}
+            <div class="sh-actions-subheader sh-actions-subheader--row">
+              <span></span>
+            </div>
+            <div class="sh-actions-custom-scroll">
+              {{#if @root.system.actions.length}}
+                <div class="sh-item-action-list">
+                  {{#each @root.system.actions as |ca|}}
+                    <article class="sh-item-action-card" data-id="{{ca.id}}">
+                      <div class="sh-item-action-card__main">
+                        <button type="button" class="sh-item-action-card__title sh-item-action-card__title-btn" data-action="sh-actions-open-preview" data-action-id="actor.custom.{{ca.id}}" title="{{ca.name}}">{{#if ca.name}}{{ca.name}}{{else}}<em>{{localize 'SPACEHOLDER.ActionsSystem.UI.UntitledAction'}}</em>{{/if}}</button>
+                        <div class="sh-item-action-card__meta">
+                          <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}: {{ca.apCost}}</span>
+                          <span class="sh-item-action-pill">{{localize ca.modeLabelKey}}</span>
+                          {{#if ca.showInCombat}}<span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombatShort'}}</span>{{/if}}
+                          {{#if ca.showInQuickbar}}<span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbarShort'}}</span>{{/if}}
+                          {{#if ca.macro}}<span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeMacro'}}</span>{{/if}}
+                        </div>
+                      </div>
+                      {{#if @root.editable}}
+                        <div class="sh-item-action-card__controls">
+                          <button type="button" class="icon-btn" data-action="sh-custom-action-edit-open" data-id="{{ca.id}}" title="{{localize 'SPACEHOLDER.Actions.Edit'}}"><i class="fas fa-pen"></i></button>
+                          <button type="button" class="icon-btn" data-action="sh-custom-action-duplicate" data-id="{{ca.id}}" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.DuplicateAction'}}"><i class="fas fa-copy"></i></button>
+                          <button type="button" class="icon-btn" data-action="sh-custom-action-remove" data-id="{{ca.id}}" title="{{localize 'SPACEHOLDER.Actions.Delete'}}"><i class="fas fa-trash"></i></button>
+                        </div>
+                      {{/if}}
+                    </article>
+                  {{/each}}
+                </div>
+              {{else}}
+                <div class="sh-item-actions-empty">
+                  <i class="fa-solid fa-bolt"></i>
+                  <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.CustomEmpty'}}</em></p>
+                </div>
+              {{/if}}
+            </div>
+          {{/if}}
+        </div>
       </div>
+    </section>
+  </div>
+{{else}}
+  {{#if titleKey}}
+    <div class="sh-actions-subheader">{{localize titleKey}}</div>
+  {{/if}}
+  <div class="sh-actions-available">
+    {{#if actions}}
+      {{#if actions.length}}
+        <div class="sh-actions-grid">
+          {{#each actions as |a|}}
+            <button type="button" class="sh-action-btn" data-action="sh-action-run" data-action-id="{{a.id}}" title="{{a.label}}">
+              {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+              <span class="sh-action-btn__label">{{a.label}}</span>
+              {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+            </button>
+          {{/each}}
+        </div>
+      {{else}}
+        <p><em>{{#if emptyLabelKey}}{{localize emptyLabelKey}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.NoActions'}}{{/if}}</em></p>
+      {{/if}}
     {{else}}
-      <p><em>{{localize 'SPACEHOLDER.ActionsSystem.UI.NoActions'}}</em></p>
+      {{#if availableActions.length}}
+        <div class="sh-actions-grid">
+          {{#each availableActions as |a|}}
+            <button type="button" class="sh-action-btn" data-action="sh-action-run" data-action-id="{{a.id}}" title="{{a.label}}">
+              {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+              <span class="sh-action-btn__label">{{a.label}}</span>
+              {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+            </button>
+          {{/each}}
+        </div>
+      {{else}}
+        <p><em>{{#if emptyLabelKey}}{{localize emptyLabelKey}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.NoActions'}}{{/if}}</em></p>
+      {{/if}}
     {{/if}}
   </div>
+{{/if}}
 </div>

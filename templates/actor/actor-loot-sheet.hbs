@@ -1,0 +1,92 @@
+<form class="{{cssClass}} {{actor.type}} flexcol" autocomplete="off">
+  <div class="spaceholder-sheet-stack flexcol">
+  <header class="sheet-header sh-character-header sh-loot-header">
+    <div class="sh-character-header__card sh-loot-header__card" style="--sh-character-header-accent: #7d71af;">
+      <div class="sh-character-header__top">
+        <div class="sh-portrait sh-character-header__portrait">
+          <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="150" width="150" alt=""/>
+          {{#if editable}}
+            <button
+              type="button"
+              class="icon-btn sh-portrait__pick"
+              data-action="sh-icon-pick"
+              data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+              aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
+            ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
+          {{/if}}
+        </div>
+        <div class="sh-character-header__factionIconWrap" aria-hidden="true">
+          <span class="sh-character-header__factionIconPh"><i class="fa-solid fa-box-open"></i></span>
+        </div>
+      </div>
+      <div class="sh-character-header__caption">
+        <span class="sh-character-header__captionFactionName">{{localize "SPACEHOLDER.ItemPilesSh.Container.LootTitle"}}</span>
+      </div>
+    </div>
+    <div class="sh-character-header__aside">
+      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
+    </div>
+  </header>
+
+  <section class="sheet-body sheet-body--character-primary">
+    <nav class="sheet-tabs tabs sheet-tabs--character-primary" data-group="primary" data-tooltip-direction="UP">
+      {{#each sheetPrimaryTabs as |t|}}
+      <a class="item" data-action="tab" data-group="primary" data-tab="{{t.id}}" data-tooltip="{{localize t.labelKey}}" aria-label="{{localize t.labelKey}}"><i class="{{t.icon}}" aria-hidden="true"></i></a>
+      {{/each}}
+    </nav>
+    <div class="tab items" data-group="primary" data-tab="items">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "items")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/actor/parts/actor-loot-items.hbs"}}
+    </div>
+
+    <div class="tab settings flexcol" data-group="primary" data-tab="settings">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "settings")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      <section class="sh-loot-container-settings">
+        <h3>{{localize "SPACEHOLDER.ItemPilesSh.Container.SettingsTitle"}}</h3>
+        <div class="form-group">
+          <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.IsContainer"}}</label>
+          <input type="checkbox" name="system.isContainer" {{checked system.isContainer}} />
+        </div>
+        <div class="form-group">
+          <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.IsLocked"}}</label>
+          <input type="checkbox" name="system.isLocked" {{checked system.isLocked}} />
+        </div>
+        <div class="form-group">
+          <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.KeyId"}}</label>
+          <input type="text" name="system.keyId" value="{{system.keyId}}" placeholder="item:bronze-key" />
+        </div>
+        <div class="form-group">
+          <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.VisibilityMode"}}</label>
+          <select name="system.visibilityMode">
+            <option value="owner" {{#if (eq system.visibilityMode "owner")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemPilesSh.Container.VisibilityOwner"}}</option>
+            <option value="faction" {{#if (eq system.visibilityMode "faction")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemPilesSh.Container.VisibilityFaction"}}</option>
+            <option value="all" {{#if (eq system.visibilityMode "all")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemPilesSh.Container.VisibilityAll"}}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.InteractionDistance"}}</label>
+          <input type="number" min="0" step="1" name="system.interactionDistance" value="{{system.interactionDistance}}" />
+        </div>
+        <div class="form-group">
+          <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.AutoLoot"}}</label>
+          <input type="checkbox" name="system.autoLoot" {{checked system.autoLoot}} />
+        </div>
+        <div class="form-group">
+          <button type="button" class="icon-btn" data-action="sh-loot-open-from-token">
+            <i class="fa-solid fa-box-open"></i>
+            {{localize "SPACEHOLDER.ItemPilesSh.Container.OpenFromToken"}}
+          </button>
+        </div>
+      </section>
+    </div>
+  </section>
+  </div>
+</form>

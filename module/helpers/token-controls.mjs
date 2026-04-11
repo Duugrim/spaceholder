@@ -136,7 +136,10 @@ function showAimingDialog() {
   // Ленивая загрузка менеджера прицеливания
   import('./aiming-manager.mjs')
     .then(({ AimingManager }) => {
-      const manager = new AimingManager();
+      const manager = game.spaceholder?.aimingManager || new AimingManager();
+      if (game.spaceholder && !game.spaceholder.aimingManager) {
+        game.spaceholder.aimingManager = manager;
+      }
       manager.showAimingDialog(token).finally(() => {
         // Не держим ссылку, менеджер сам повесит события при старте
         deactivateAimingTool();

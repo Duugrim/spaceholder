@@ -40,6 +40,13 @@ const ITEM_TYPE_ICON_CLASS = Object.freeze({
   spell: 'fa-solid fa-wand-magic-sparkles',
 });
 
+const ITEM_ACTION_MODE_LABEL_KEYS = Object.freeze({
+  chat: 'SPACEHOLDER.ActionsSystem.UI.ModeChat',
+  itemRoll: 'SPACEHOLDER.ActionsSystem.UI.ModeItemRoll',
+  macro: 'SPACEHOLDER.ActionsSystem.UI.ModeMacro',
+  aimShot: 'SPACEHOLDER.ActionsSystem.UI.ModeAimShot',
+});
+
 // Base V2 Item Sheet with Handlebars rendering
 export class SpaceHolderBaseItemSheet extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.sheets.ItemSheet
@@ -212,11 +219,17 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     context.effects = prepareActiveEffectCategories(this.item.effects);
 
     // Defaults for older items
-    context.system.actions = Array.isArray(context.system.actions) ? context.system.actions : [];
+    context.system.actions = this._normalizeItemActions(context.system.actions);
+    context.actionPayloadOptions = await this._getActionPayloadOptions();
     if (this.item.type === 'item') {
       context.system.defaultActions = context.system.defaultActions || {};
       context.system.defaultActions.equip = context.system.defaultActions.equip || { showInCombat: false, showInQuickbar: true };
       context.system.defaultActions.unequip = context.system.defaultActions.unequip || { showInCombat: false, showInQuickbar: true };
+      context.system.defaultActions.hold = context.system.defaultActions.hold || { showInCombat: false, showInQuickbar: true };
+      context.system.defaultActions.stow = context.system.defaultActions.stow || { showInCombat: false, showInQuickbar: true };
+      context.system.defaultActions.drop = context.system.defaultActions.drop || { showInCombat: false, showInQuickbar: false };
+      context.system.defaultActions.wear = context.system.defaultActions.wear || { showInCombat: false, showInQuickbar: false };
+      context.system.defaultActions.show = context.system.defaultActions.show || { showInCombat: false, showInQuickbar: false };
     }
 
     const primaryTabDefs = this.constructor.TABS?.primary?.tabs ?? [];
@@ -224,6 +237,168 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     context.sheetPrimaryTabs = buildItemSheetPrimaryTabs(primaryTabIds);
 
     return context;
+  }
+
+  async _getActionPayloadOptions() {
+    try {
+      let manager = game.spaceholder?.aimingManager ?? null;
+      if (!manager) {
+        const mod = await import('../helpers/aiming-manager.mjs');
+        const Ctor = mod?.AimingManager;
+        if (typeof Ctor === 'function') manager = new Ctor();
+        if (manager && game.spaceholder) game.spaceholder.aimingManager = manager;
+      }
+      const payloads = await manager?.getPayloadLibrary?.();
+      if (!Array.isArray(payloads)) return [];
+      return payloads
+        .map((p) => ({
+          id: String(p?.id ?? '').trim(),
+          name: String(p?.name ?? p?.id ?? '').trim(),
+        }))
+        .filter((p) => p.id);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  _newActionId() {
+    try { return foundry.utils.randomID?.(); } catch (_) { /* ignore */ }
+    try { return globalThis.randomID?.(); } catch (_) { /* ignore */ }
+    try { return globalThis.crypto?.randomUUID?.(); } catch (_) { /* ignore */ }
+    return String(Date.now());
+  }
+
+  _normalizeItemAction(action = {}, { keepId = true } = {}) {
+    const modeRaw = String(action?.mode ?? 'chat').trim();
+    const mode = Object.prototype.hasOwnProperty.call(ITEM_ACTION_MODE_LABEL_KEYS, modeRaw) ? modeRaw : 'chat';
+    const normalized = {
+      id: keepId ? String(action?.id ?? '').trim() : '',
+      name: String(action?.name ?? '').trim(),
+      apCost: Math.max(0, Math.floor(Number(action?.apCost) || 0)),
+      mode,
+      macro: String(action?.macro ?? ''),
+      aimingType: String(action?.aimingType ?? 'simple').trim() || 'simple',
+      payloadId: String(action?.payloadId ?? '').trim(),
+      damage: Math.max(0, Number(action?.damage) || 0),
+      requiresHolding: !!action?.requiresHolding,
+      showInCombat: action?.showInCombat !== false,
+      showInQuickbar: action?.showInQuickbar !== false,
+      modeLabelKey: ITEM_ACTION_MODE_LABEL_KEYS[mode] || ITEM_ACTION_MODE_LABEL_KEYS.chat,
+    };
+    if (!keepId) normalized.id = '';
+    return normalized;
+  }
+
+  _normalizeItemActions(actions) {
+    const list = Array.isArray(actions) ? actions : [];
+    return list.map((a) => this._normalizeItemAction(a, { keepId: true }));
+  }
+
+  _readActionDialogForm(root, baseAction = null) {
+    const read = (selector) => root?.querySelector?.(selector);
+    const actionId = String(baseAction?.id ?? '').trim() || this._newActionId();
+    const next = this._normalizeItemAction({
+      id: actionId,
+      name: read('[name="name"]')?.value ?? '',
+      apCost: read('[name="apCost"]')?.value ?? 0,
+      mode: read('[name="mode"]')?.value ?? 'chat',
+      macro: read('[name="macro"]')?.value ?? '',
+      payloadId: read('[name="payloadId"]')?.value ?? '',
+      aimingType: read('[name="aimingType"]')?.value ?? 'simple',
+      damage: read('[name="damage"]')?.value ?? 0,
+      requiresHolding: !!read('[name="requiresHolding"]')?.checked,
+      showInCombat: !!read('[name="showInCombat"]')?.checked,
+      showInQuickbar: !!read('[name="showInQuickbar"]')?.checked,
+    }, { keepId: true });
+
+    if (!next.name) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.NameRequired') ?? 'Action name is required');
+      return null;
+    }
+    return next;
+  }
+
+  _bindActionDialogModeVisibility(dialogUid) {
+    const root = document.querySelector(`[data-sh-item-action-dialog="${dialogUid}"]`);
+    if (!root) return false;
+    if (root.dataset.spaceholderModeBound) return true;
+    root.dataset.spaceholderModeBound = '1';
+
+    const modeSelect = root.querySelector('[data-sh-mode-select]');
+    if (!(modeSelect instanceof HTMLSelectElement)) return true;
+    const refresh = () => {
+      const mode = String(modeSelect.value ?? 'chat').trim() || 'chat';
+      root.querySelectorAll('[data-sh-mode-block]').forEach((block) => {
+        const blockMode = String(block.getAttribute('data-sh-mode-block') ?? '').trim();
+        block.hidden = !!blockMode && blockMode !== mode;
+      });
+    };
+    modeSelect.addEventListener('change', refresh);
+    refresh();
+    return true;
+  }
+
+  async _openItemActionDialog({ title, action = null } = {}) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable');
+      return null;
+    }
+
+    const dialogUid = this._newActionId();
+    const draftAction = this._normalizeItemAction(action, { keepId: true });
+    const content = await renderTemplate('systems/spaceholder/templates/item/parts/item-action-dialog.hbs', {
+      dialogUid,
+      action: draftAction,
+      modeOptions: Object.entries(ITEM_ACTION_MODE_LABEL_KEYS).map(([id, labelKey]) => ({ id, labelKey })),
+      payloadOptions: Array.isArray(this._context?.actionPayloadOptions) ? this._context.actionPayloadOptions : [],
+    });
+
+    let outcome = null;
+    const bindTimer = globalThis.setInterval?.(() => {
+      if (this._bindActionDialogModeVisibility(dialogUid)) {
+        globalThis.clearInterval?.(bindTimer);
+      }
+    }, 40);
+    globalThis.setTimeout?.(() => globalThis.clearInterval?.(bindTimer), 2500);
+
+    const titleText = title || game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.EditAction') || 'Edit action';
+    await DialogV2.wait({
+      window: { title: titleText, icon: 'fa-solid fa-bolt', classes: ['spaceholder'] },
+      position: { width: 520 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            outcome = this._readActionDialogForm(root, draftAction);
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+
+    return outcome;
+  }
+
+  async _setItemActions(nextActions) {
+    const patch = { 'system.actions': this._normalizeItemActions(nextActions) };
+    const pending = this._getPendingNameFromForm();
+    if (pending && pending !== String(this.item.name ?? '').trim()) patch.name = pending;
+    await this.item.update(patch);
   }
 
   /**
@@ -385,35 +560,69 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
       btn.addEventListener('click', (ev) => onManageActiveEffect(ev, this.item))
     );
 
-    // Custom actions editor (item.system.actions)
+    // Custom actions editor (item.system.actions): compact list + modal edit
     const el = this.element;
-    const randomId = () => {
-      try { return foundry.utils.randomID?.(); } catch (_) {}
-      try { return globalThis.randomID?.(); } catch (_) {}
-      try { return globalThis.crypto?.randomUUID?.(); } catch (_) {}
-      return String(Date.now());
-    };
-
-    const getActions = () => {
-      const raw = this.item?.system?.actions;
-      return Array.isArray(raw) ? raw : [];
-    };
-
-    const setActions = async (next) => {
-      const patch = { 'system.actions': Array.isArray(next) ? next : [] };
-      const pending = this._getPendingNameFromForm();
-      if (pending && pending !== String(this.item.name ?? '').trim()) {
-        patch.name = pending;
-      }
-      await this.item.update(patch);
-      this.render(false);
-    };
+    const getActions = () => this._normalizeItemActions(this.item?.system?.actions);
 
     el.querySelectorAll('[data-action="sh-item-custom-action-add"]').forEach((btn) => {
       btn.addEventListener('click', async (ev) => {
         ev.preventDefault();
-        const next = [...getActions(), { id: randomId(), name: '', apCost: 0, mode: 'chat', macro: '', showInCombat: true, showInQuickbar: true }];
-        await setActions(next);
+        const created = await this._openItemActionDialog({
+          title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.AddAction') ?? 'Add action',
+          action: {
+            id: this._newActionId(),
+            name: '',
+            apCost: 0,
+            mode: 'chat',
+            macro: '',
+            aimingType: 'simple',
+            payloadId: '',
+            damage: 0,
+            requiresHolding: false,
+            showInCombat: true,
+            showInQuickbar: true,
+          },
+        });
+        if (!created) return;
+        await this._setItemActions([...getActions(), created]);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-custom-action-edit-open"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const id = String(btn.dataset.id ?? '').trim();
+        if (!id) return;
+        const source = getActions().find((a) => String(a?.id ?? '') === id);
+        if (!source) return;
+        const edited = await this._openItemActionDialog({
+          title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.EditAction') ?? 'Edit action',
+          action: source,
+        });
+        if (!edited) return;
+        const next = getActions().map((a) => (String(a?.id ?? '') === id ? edited : a));
+        await this._setItemActions(next);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-custom-action-duplicate"]').forEach((btn) => {
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const id = String(btn.dataset.id ?? '').trim();
+        if (!id) return;
+        const source = getActions().find((a) => String(a?.id ?? '') === id);
+        if (!source) return;
+        const duplicateSuffix = game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DuplicateSuffix') ?? 'Copy';
+        const cloned = await this._openItemActionDialog({
+          title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DuplicateAction') ?? 'Duplicate action',
+          action: {
+            ...source,
+            id: this._newActionId(),
+            name: source.name ? `${source.name} (${duplicateSuffix})` : '',
+          },
+        });
+        if (!cloned) return;
+        await this._setItemActions([...getActions(), cloned]);
       });
     });
 
@@ -422,30 +631,19 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
         ev.preventDefault();
         const id = String(btn.dataset.id ?? '').trim();
         if (!id) return;
-        const next = getActions().filter((a) => String(a?.id ?? '') !== id);
-        await setActions(next);
-      });
-    });
-
-    el.querySelectorAll('[data-action="sh-item-custom-action-edit"]').forEach((input) => {
-      input.addEventListener('change', async (ev) => {
-        const id = String(input.dataset.id ?? '').trim();
-        const field = String(input.dataset.field ?? '').trim();
-        if (!id || !field) return;
-
-        const next = getActions().map((a) => {
-          if (String(a?.id ?? '') !== id) return a;
-          const copy = { ...(a || {}), id };
-          if (field === 'name') copy.name = String(input.value ?? '').trim();
-          if (field === 'apCost') copy.apCost = Number(input.value) || 0;
-          if (field === 'mode') copy.mode = String(input.value ?? '').trim() || 'chat';
-          if (field === 'macro') copy.macro = String(input.value ?? '');
-          if (field === 'showInCombat') copy.showInCombat = !!input.checked;
-          if (field === 'showInQuickbar') copy.showInQuickbar = !!input.checked;
-          return copy;
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+          window: {
+            title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionTitle') ?? 'Delete action',
+            icon: 'fa-solid fa-trash',
+            classes: ['spaceholder'],
+          },
+          content: `<p>${game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionConfirm') ?? 'Delete this action?'}</p>`,
+          yes: { label: game.i18n?.localize?.('SPACEHOLDER.Actions.Delete') ?? 'Delete', icon: 'fa-solid fa-trash' },
+          no: { label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel', icon: 'fa-solid fa-times' },
         });
-
-        await setActions(next);
+        if (!confirmed) return;
+        const next = getActions().filter((a) => String(a?.id ?? '') !== id);
+        await this._setItemActions(next);
       });
     });
   }

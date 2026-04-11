@@ -7,12 +7,15 @@ export const preloadHandlebarsTemplates = async function () {
     // Actor partials.
     'systems/spaceholder/templates/actor/parts/actor-features.hbs',
     'systems/spaceholder/templates/actor/parts/actor-items.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-loot-items.hbs',
     'systems/spaceholder/templates/actor/parts/actor-spells.hbs',
     'systems/spaceholder/templates/actor/parts/actor-health.hbs',
     'systems/spaceholder/templates/actor/parts/actor-injuries.hbs',
     'systems/spaceholder/templates/actor/parts/actor-inventory.hbs',
     'systems/spaceholder/templates/actor/parts/actor-effects.hbs',
     'systems/spaceholder/templates/actor/parts/actor-actions.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-action-dialog.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-held-items.hbs',
     'systems/spaceholder/templates/actor/parts/actor-stats-derived.hbs',
     'systems/spaceholder/templates/actor/parts/actor-character-header.hbs',
     'systems/spaceholder/templates/partials/sh-tab-banner.hbs',
@@ -20,6 +23,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/item/parts/item-sheet-header.hbs',
     'systems/spaceholder/templates/item/parts/item-effects.hbs',
     'systems/spaceholder/templates/item/parts/item-actions.hbs',
+    'systems/spaceholder/templates/item/parts/item-action-dialog.hbs',
     // Icon picker (ApplicationV2)
     'systems/spaceholder/templates/icon-picker/icon-picker.hbs',
     // HUD: Hotbar faction selector

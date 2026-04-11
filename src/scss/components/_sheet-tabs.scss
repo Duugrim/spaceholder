@@ -5,6 +5,7 @@ $sh-sheet-tabs-item-gap: 6px;
 
 // Акценты вкладок: середина между яркой палитрой и сильно приглушённой
 $sh-tab-accents: (
+  'overview': #5c8f7a,
   'stats': #5385ab,
   'health': #b65360,
   'injuries': #b68c3c,
@@ -13,6 +14,7 @@ $sh-tab-accents: (
   'attributes': #926aaf,
   'actions': #b29e55,
   'effects': #5b7fb8,
+  'settings': #8a6fb1,
   'tags': #aa7658,
   'modifiers': #5890a6,
   'items': #6890c1,
@@ -278,8 +280,28 @@ $sh-tab-accents: (
     }
   }
 
-  // Лист персонажа / предмета: стык с активной вкладкой (nav поверх панели — иначе баннер перекрывает саму активную кнопку)
-  .sheet-body.sheet-body--character-primary .tab.active .sh-tab-banner,
+  // Loot sheet: keep inventory tab accent aligned with character inventory.
+  form.loot:has(.sheet-body .tab.active[data-tab='items']) {
+    --sh-sheet-tab-accent: #7d71af;
+  }
+
+  form.loot nav.sheet-tabs.tabs .item[data-tab='items'] {
+    --tab-accent: #7d71af;
+  }
+
+  form.loot .sheet-body .tab .sh-tab-banner[data-tab='items'] {
+    --banner-accent: #7d71af;
+  }
+
+  // Лист персонажа: баннер на всю ширину (padding вкладки 0 — см. _spaceholder-sheet-stack.scss)
+  .sheet-body.sheet-body--character-primary .tab.active .sh-tab-banner {
+    border-radius: 0;
+    margin-top: -3px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  // Лист предмета: стык с активной вкладкой (nav поверх панели)
   .sheet-body.sheet-body--item-primary .tab.active .sh-tab-banner {
     border-radius: 0;
     margin-top: -3px;

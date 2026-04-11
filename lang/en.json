@@ -11,15 +11,18 @@
     },
     "SheetLabels": {
       "Actor": "SpaceHolder Actor Sheet",
+      "Loot": "SpaceHolder Loot Sheet",
       "GlobalObject": "SpaceHolder Global Object Sheet",
       "Faction": "SpaceHolder Faction Sheet",
       "Item": "SpaceHolder Item Sheet"
     },
     "Tabs": {
       "Stats": "Stats",
+      "Overview": "Overview",
       "Health": "Health",
       "Injuries": "Injuries",
       "Inventory": "Inventory",
+      "Actions": "Actions",
       "Description": "Description",
       "Items": "Items",
       "Effects": "Effects",
@@ -212,15 +215,46 @@
         "Faction": "Faction (UUID)",
         "AvailableActions": "Available actions",
         "NoActions": "No actions available",
+        "FavoriteActions": "Favorite actions",
+        "NoFavoriteActions": "No favorite actions",
         "CustomActions": "Custom actions",
         "CustomEmpty": "No custom actions yet",
         "CustomActionName": "Action name",
+        "UntitledAction": "Untitled action",
         "APCost": "AP",
+        "Mode": "Mode",
         "ModeChat": "Chat",
         "ModeMacro": "Macro",
         "ModeItemRoll": "Item roll",
+        "ModeAimShot": "Aimed shot",
+        "AddAction": "Add action",
+        "EditAction": "Edit action",
+        "DuplicateAction": "Duplicate action",
+        "DeleteActionTitle": "Delete action",
+        "DeleteActionConfirm": "Delete this action?",
+        "NameRequired": "Enter an action name.",
+        "DuplicateSuffix": "Copy",
+        "Payload": "Trajectory payload",
+        "PayloadSelect": "Select payload",
+        "PayloadNotSelected": "Payload is not selected",
+        "AimingType": "Aiming type",
+        "AimingTypeSimple": "Simple",
+        "Damage": "Damage",
         "ShowInCombat": "Show in combat",
         "ShowInQuickbar": "Show in quickbar",
+        "RequiresHolding": "Requires holding",
+        "ShowInCombatShort": "Combat",
+        "ShowInQuickbarShort": "Quickbar",
+        "ModeUse": "Use mode",
+        "ModeInspect": "Inspect mode",
+        "ShowMainActions": "Show all actions",
+        "ShowCustomActions": "Show custom actions",
+        "Source": "Source",
+        "SourceActor": "Actor",
+        "SourceItem": "Item",
+        "SourceSystem": "System",
+        "NoDescription": "No description",
+        "NoPreviewAction": "Select an action to inspect",
         "MacroPlaceholder": "JavaScript macro body (advanced)",
         "WearableDefaults": "Wearable default actions"
       },
@@ -230,8 +264,12 @@
       "Wearable": {
         "Equip": "Equip: {item}",
         "Unequip": "Unequip: {item}",
+        "Hold": "Hold: {item}",
+        "Stow": "Stow: {item}",
         "EquipShort": "Equip",
-        "UnequipShort": "Unequip"
+        "UnequipShort": "Unequip",
+        "HoldShort": "Hold",
+        "StowShort": "Stow"
       },
       "Movement": {
         "Move": "Move"
@@ -247,7 +285,14 @@
       },
       "Errors": {
         "NotEnoughAP": "Not enough Action Points (need {need}, have {have})",
-        "ApSpendFailed": "Could not apply Action Point spend"
+        "ApSpendFailed": "Could not apply Action Point spend",
+        "NoTokenForAiming": "No token found for aiming action",
+        "MissingActionPayload": "Select a payload for this action first",
+        "AimingUnavailable": "Aiming manager is unavailable",
+        "AimingStartFailed": "Could not start aiming mode"
+      },
+      "AimShot": {
+        "HitApplied": "{shooter} hits {target} in {part} for {damage} damage"
       }
     },
     "ActionChatJournal": {
@@ -304,7 +349,20 @@
       "ItemTotalWeight": "Total weight:",
       "EditItem": "Edit item",
       "DeleteItem": "Delete item",
-      "Empty": "Inventory is empty. Add a new item by clicking the \"New item\" button above."
+      "Empty": "Inventory is empty. Add a new item by clicking the \"New item\" button above.",
+      "HeldSummaryWithItems": "{name} holds {items}.",
+      "HeldSummaryEmpty": "{name} holds nothing.",
+      "HeldActions": {
+        "StowTooltip": "Stow in backpack",
+        "DropTooltip": "Drop on the ground",
+        "ThrowTooltip": "Throw",
+        "WearTooltip": "Equip",
+        "ShowTooltip": "Show in chat",
+        "NotImplemented": "This action will be added later.",
+        "DropFailed": "Could not drop item.",
+        "WearOnlyArmor": "Only items with armor tag can be equipped.",
+        "WearNeedsHeld": "Item must be held before equipping."
+      }
     },
     "Injuries": {
       "Add": "Add injury",
@@ -371,6 +429,7 @@
       "Abilities": "Core abilities",
       "Derived": "Derived stats",
       "Params": "Character parameters",
+      "Empty": "No modifiers configured",
       "Target": "Target",
       "Value": "Value",
       "Mode": "Mode",
@@ -1153,12 +1212,57 @@
           "OpenInfluenceJournal": "Open influence journal"
         }
       }
+    },
+    "ItemPilesSh": {
+      "DropFailed": "Failed to drop item onto canvas",
+      "Actions": {
+        "Take": "Take",
+        "TakeHalf": "Take half",
+        "TakeAll": "Take all",
+        "Put": "Put into container",
+        "Split": "Split to target"
+      },
+      "Container": {
+        "LootTitle": "Loot container",
+        "LootHint": "Select your token, then transfer items from this container.",
+        "Empty": "Container is empty",
+        "SettingsTitle": "Container settings",
+        "IsContainer": "Acts as container",
+        "IsLocked": "Locked",
+        "KeyId": "Key (item id/name/uuid)",
+        "VisibilityMode": "Visibility mode",
+        "VisibilityOwner": "Owner only",
+        "VisibilityFaction": "Faction access",
+        "VisibilityAll": "Public",
+        "InteractionDistance": "Interaction distance (cells)",
+        "AutoLoot": "Auto-loot when opened",
+        "SelectSourceItem": "Source item",
+        "OpenFromToken": "Open from selected token",
+        "OpenSuccess": "Container access granted"
+      },
+      "Errors": {
+        "TargetActorRequired": "Select an actor token first.",
+        "NoItemsToPut": "No items available to put into container.",
+        "SourceTokenRequired": "Select a non-loot token first.",
+        "PileTokenMissing": "Could not resolve pile token on current scene."
+      },
+      "Settings": {
+        "Enabled": {
+          "Name": "Enable item-piles-sh canvas drop",
+          "Hint": "Handles item drops on canvas via internal item-piles-sh subsystem."
+        },
+        "Debug": {
+          "Name": "Enable item-piles-sh debug logs",
+          "Hint": "Prints item-piles-sh diagnostics to console."
+        }
+      }
     }
   },
   "TYPES": {
     "Actor": {
       "character": "Character",
       "npc": "NPC",
+      "loot": "Loot",
       "globalobject": "Global Object",
       "faction": "Faction"
     },

@@ -3,6 +3,8 @@
  * Управляет процессом прицеливания и создаёт выстрелы через shot-manager
  */
 
+let _payloadLibraryCache = null;
+
 /**
  * AimingManager - главный класс для управления прицеливанием
  */
@@ -24,6 +26,61 @@ export class AimingManager {
       onKeyDown: this._onKeyDown.bind(this)
     };
   }
+
+  _normalizePayloadId(id) {
+    return String(id ?? '').trim().toLowerCase();
+  }
+
+  /**
+   * Получить кэшированную библиотеку payload.
+   * Возвращает глубокую копию, чтобы UI/действия не мутировали кэш.
+   * @returns {Promise<Array<object>>}
+   */
+  async getPayloadLibrary() {
+    if (!_payloadLibraryCache) {
+      _payloadLibraryCache = await this._loadPayloads();
+    }
+    return foundry.utils.deepClone(_payloadLibraryCache || []);
+  }
+
+  /**
+   * Найти payload по id из библиотеки.
+   * @param {string} payloadId
+   * @returns {Promise<object|null>}
+   */
+  async getPayloadById(payloadId) {
+    const wanted = this._normalizePayloadId(payloadId);
+    if (!wanted) return null;
+    const library = await this.getPayloadLibrary();
+    const found = library.find((p) => this._normalizePayloadId(p?.id) === wanted);
+    return found || null;
+  }
+
+  /**
+   * Программный старт прицеливания из action-service.
+   * @param {object} cfg
+   * @returns {Promise<boolean>}
+   */
+  async startAimingFromActionConfig(cfg = {}) {
+    const token = cfg?.token ?? null;
+    if (!token) return false;
+    const payloadId = String(cfg?.payloadId ?? '').trim();
+    if (!payloadId) return false;
+    const payload = await this.getPayloadById(payloadId);
+    if (!payload) return false;
+
+    const options = {
+      type: String(cfg?.aimingType ?? 'simple').trim() || 'simple',
+      autoRender: cfg?.autoRender !== false,
+      damage: Math.max(0, Number(cfg?.damage) || 0),
+      actorUuid: String(cfg?.actor?.uuid ?? token?.actor?.uuid ?? '').trim() || null,
+      itemUuid: String(cfg?.item?.uuid ?? '').trim() || null,
+      actionName: String(cfg?.actionName ?? '').trim() || null,
+    };
+
+    this.startAiming(token, payload, options);
+    return true;
+  }
   
   /**
    * Показать диалог настройки прицеливания
@@ -36,7 +93,7 @@ export class AimingManager {
     }
     
     // Загружаем список доступных payloads
-    const payloads = await this._loadPayloads();
+    const payloads = await this.getPayloadLibrary();
     
     // Создаём HTML для диалога
     const payloadOptions = payloads.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
@@ -271,7 +328,7 @@ export class AimingManager {
    * Выполнить выстрел
    * @private
    */
-  _fire() {
+  async _fire() {
     if (!this.isAiming || !this.currentToken || !this.currentPayload) return;
     
     // Получаем глобальный shotManager
@@ -304,8 +361,61 @@ export class AimingManager {
         console.warn('AimingManager: drawManager not available');
       }
     }
+
+    await this._applyFirstTokenHitDamage(uid);
     
     // Не останавливаем прицеливание автоматически - пользователь может продолжить
+  }
+
+  /**
+   * Применить урон первой задетой цели в случайную часть тела.
+   * @private
+   * @param {string} shotUid
+   */
+  async _applyFirstTokenHitDamage(shotUid) {
+    const shotManager = game.spaceholder?.shotManager;
+    if (!shotManager || !shotUid) return;
+    const shotResult = shotManager.getShotResult(shotUid);
+    const hits = Array.isArray(shotResult?.shotHits) ? shotResult.shotHits : [];
+    const firstTokenHit = hits.find((h) => h?.type === 'token' && h?.object?.actor);
+    if (!firstTokenHit) return;
+
+    const targetToken = firstTokenHit.object;
+    const targetActor = targetToken?.actor ?? null;
+    if (!targetActor) return;
+
+    const bodyParts = targetActor.system?.health?.bodyParts ?? {};
+    const bodyPartIds = Object.keys(bodyParts);
+    if (!bodyPartIds.length) return;
+
+    const randomIdx = Math.floor(Math.random() * bodyPartIds.length);
+    const partId = bodyPartIds[randomIdx];
+    const partName = String(bodyParts?.[partId]?.name ?? partId);
+    const damage = Math.max(0, Number(this.currentOptions?.damage) || 0);
+    if (!damage) return;
+
+    if (typeof targetActor.applyBodyPartDamage !== 'function') return;
+    const applied = await targetActor.applyBodyPartDamage(partId, damage, 'pierce');
+    if (!applied) return;
+
+    const shooterName = String(this.currentToken?.name ?? '');
+    const targetName = String(targetToken?.name ?? targetActor?.name ?? '');
+    const content = game.i18n?.format?.('SPACEHOLDER.ActionsSystem.AimShot.HitApplied', {
+      shooter: shooterName,
+      target: targetName,
+      part: partName,
+      damage: String(damage),
+    }) || `${shooterName} hits ${targetName} (${partName}) for ${damage}`;
+
+    ui.notifications?.info?.(content);
+    try {
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.currentToken?.actor ?? null }),
+        content: `<div>${foundry.utils.escapeHTML(content)}</div>`,
+      });
+    } catch (_) {
+      /* ignore chat errors */
+    }
   }
   
   /**
@@ -348,7 +458,7 @@ export class AimingManager {
     
     if (event.data.button === 0) { // ЛКМ
       event.stopPropagation();
-      this._fire();
+      void this._fire();
     }
   }
   

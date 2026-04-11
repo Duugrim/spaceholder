@@ -51,9 +51,44 @@ function _num(v, fallback = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
+
+function _normalizeAimingType(v) {
+  const raw = String(v ?? "simple").trim().toLowerCase();
+  return raw || "simple";
+}
  
 import { ensureCharacterApSynced, getStoredActionPoints, spendAp } from './transaction-ledger.mjs';
 import { appendCombatActionJournalLine } from './action-chat-journal.mjs';
+
+async function _ensureAimingManager() {
+  let mgr = game.spaceholder?.aimingManager || null;
+  if (mgr) return mgr;
+  try {
+    const mod = await import("../aiming-manager.mjs");
+    const Ctor = mod?.AimingManager;
+    if (typeof Ctor !== "function") return null;
+    mgr = new Ctor();
+    if (game.spaceholder) game.spaceholder.aimingManager = mgr;
+    return mgr;
+  } catch (e) {
+    console.error("SpaceHolder | Failed to initialize AimingManager", e);
+    return null;
+  }
+}
+
+function _resolveActionToken(ctx, actor) {
+  const direct = ctx?.tokenDoc?.object ?? null;
+  if (direct) return direct;
+  const controlled = canvas?.tokens?.controlled || [];
+  const fromControlled = controlled.find((t) => String(t?.actor?.id || "") === String(actor?.id || ""));
+  if (fromControlled) return fromControlled;
+  try {
+    const active = actor?.getActiveTokens?.(true, true) || [];
+    return active[0] || null;
+  } catch (_) {
+    return null;
+  }
+}
 
 function _activeCombat() {
   return game?.combat?.started ? game.combat : null;
@@ -379,8 +414,12 @@ function _normalizeCustomActions(raw) {
         name,
         description: String(a.description ?? "").trim(),
         apCost: _num(a.apCost, 0),
-        mode: String(a.mode ?? 'chat').trim() || 'chat', // 'chat' | 'itemRoll' | 'macro'
+        mode: String(a.mode ?? "chat").trim() || "chat", // 'chat' | 'itemRoll' | 'macro' | 'aimShot'
         macro: String(a.macro ?? '').trim() || '',
+        aimingType: _normalizeAimingType(a.aimingType),
+        payloadId: String(a.payloadId ?? "").trim(),
+        damage: Math.max(0, _num(a.damage, 1)),
+        requiresHolding: !!a.requiresHolding,
         showInCombat: a.showInCombat !== undefined ? !!a.showInCombat : true,
         showInQuickbar: a.showInQuickbar !== undefined ? !!a.showInQuickbar : true,
       };
@@ -389,7 +428,11 @@ function _normalizeCustomActions(raw) {
 }
  
 /**
- * Collect standard wearable actions: equip/unequip.
+ * Collect standard wearable/holding actions for gear items.
+ * State machine:
+ * - bag: equipped=false, held=false
+ * - held: equipped=false, held=true
+ * - equipped: equipped=true, held=false
  * @param {Actor} actor
  * @param {ActionContext} ctx
  */
@@ -398,29 +441,16 @@ function _collectWearableToggleActions(actor, ctx) {
   const items = actor?.items ? Array.from(actor.items) : [];
   for (const item of items) {
     if (!item || item.type !== 'item') continue;
-    if (!item.system?.itemTags?.isArmor) continue;
+    const isArmor = !!item.system?.itemTags?.isArmor;
     const equipped = !!item.system?.equipped;
+    const held = !!item.system?.held;
     const defaults = item.system?.defaultActions ?? {};
     const equipDefaults = defaults?.equip ?? {};
     const unequipDefaults = defaults?.unequip ?? {};
+    const holdDefaults = defaults?.hold ?? {};
+    const stowDefaults = defaults?.stow ?? {};
  
-    if (!equipped) {
-      actions.push({
-        id: `item.${item.uuid}.equip`,
-        source: 'item',
-        label: _t('SPACEHOLDER.ActionsSystem.Wearable.Equip', { item: item.name }),
-        icon: 'fa-solid fa-shield-halved',
-        apCost: 0,
-        showInCombat: equipDefaults.showInCombat ?? false,
-        showInQuickbar: equipDefaults.showInQuickbar ?? true,
-        visible: () => true,
-        enabled: () => !!ctx.editable,
-        disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
-        run: async () => {
-          await item.update({ 'system.equipped': true });
-        }
-      });
-    } else {
+    if (equipped && isArmor) {
       actions.push({
         id: `item.${item.uuid}.unequip`,
         source: 'item',
@@ -433,10 +463,63 @@ function _collectWearableToggleActions(actor, ctx) {
         enabled: () => !!ctx.editable,
         disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
         run: async () => {
-          await item.update({ 'system.equipped': false });
+          await item.update({ 'system.equipped': false, 'system.held': true });
         }
       });
+      continue;
     }
+
+    if (held) {
+      if (isArmor) {
+        actions.push({
+          id: `item.${item.uuid}.equip`,
+          source: 'item',
+          label: _t('SPACEHOLDER.ActionsSystem.Wearable.Equip', { item: item.name }),
+          icon: 'fa-solid fa-shield-halved',
+          apCost: 0,
+          showInCombat: equipDefaults.showInCombat ?? false,
+          showInQuickbar: equipDefaults.showInQuickbar ?? true,
+          visible: () => true,
+          enabled: () => !!ctx.editable,
+          disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
+          run: async () => {
+            await item.update({ 'system.equipped': true, 'system.held': false });
+          }
+        });
+      }
+      actions.push({
+        id: `item.${item.uuid}.stow`,
+        source: 'item',
+        label: _t('SPACEHOLDER.ActionsSystem.Wearable.Stow', { item: item.name }),
+        icon: 'fa-solid fa-box-open',
+        apCost: 0,
+        showInCombat: stowDefaults.showInCombat ?? false,
+        showInQuickbar: stowDefaults.showInQuickbar ?? true,
+        visible: () => true,
+        enabled: () => !!ctx.editable,
+        disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
+        run: async () => {
+          await item.update({ 'system.equipped': false, 'system.held': false });
+        }
+      });
+      continue;
+    }
+
+    actions.push({
+      id: `item.${item.uuid}.hold`,
+      source: 'item',
+      label: _t('SPACEHOLDER.ActionsSystem.Wearable.Hold', { item: item.name }),
+      icon: 'fa-solid fa-hand',
+      apCost: 0,
+      showInCombat: holdDefaults.showInCombat ?? false,
+      showInQuickbar: holdDefaults.showInQuickbar ?? true,
+      visible: () => true,
+      enabled: () => !!ctx.editable,
+      disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
+      run: async () => {
+        await item.update({ 'system.equipped': false, 'system.held': true });
+      }
+    });
   }
   return actions;
 }
@@ -459,6 +542,7 @@ function _collectCustomActions(actor, ctx) {
       description: a.description || "",
       showInCombat: a.showInCombat,
       showInQuickbar: a.showInQuickbar,
+      requiresHolding: false,
       visible: () => true,
       enabled: () => true,
       run: async () => {
@@ -494,12 +578,44 @@ function _collectCustomActions(actor, ctx) {
         description: a.description || "",
         showInCombat: a.showInCombat,
         showInQuickbar: a.showInQuickbar,
+        requiresHolding: !!a.requiresHolding,
         visible: () => true,
         enabled: () => true,
         run: async () => {
           if (a.mode === 'itemRoll') {
             if (_activeCombat()) return;
             return item.roll?.();
+          }
+          if (a.mode === "aimShot") {
+            const token = _resolveActionToken(ctx, actor);
+            if (!token) {
+              ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming"));
+              return false;
+            }
+            const payloadId = String(a.payloadId || "").trim();
+            if (!payloadId) {
+              ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.MissingActionPayload"));
+              return false;
+            }
+            const aimingManager = await _ensureAimingManager();
+            if (!aimingManager?.startAimingFromActionConfig) {
+              ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.AimingUnavailable"));
+              return false;
+            }
+            const started = await aimingManager.startAimingFromActionConfig({
+              token,
+              payloadId,
+              aimingType: _normalizeAimingType(a.aimingType),
+              damage: Math.max(0, _num(a.damage, 1)),
+              actor,
+              item,
+              actionName: a.name,
+            });
+            if (!started) {
+              ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.AimingStartFailed"));
+              return false;
+            }
+            return true;
           }
           if (a.mode === 'macro' && a.macro) {
             // eslint-disable-next-line no-new-func
