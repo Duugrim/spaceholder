@@ -121,6 +121,33 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
   }
 
   /**
+   * Количество из поля шапки (ещё не ушедшее в документ) — для частичного submit и programmatic update.
+   * @param {HTMLFormElement|HTMLElement|null} [formOverride]
+   * @returns {number|null} целое ≥ 0 или null, если поля нет / пусто / не число
+   */
+  _getPendingQuantityFromForm(formOverride = null) {
+    const roots = [];
+    const add = (r) => {
+      if (r instanceof HTMLElement && !roots.includes(r)) roots.push(r);
+    };
+    add(formOverride);
+    add(this.form);
+    add(this.element?.querySelector?.('form'));
+    add(this.element);
+
+    for (const root of roots) {
+      const input = root?.querySelector?.('input[name="system.quantity"]');
+      if (!input) continue;
+      const s = String(input.value ?? '').trim();
+      if (s === '') return null;
+      const n = Number(s);
+      if (!Number.isFinite(n)) return null;
+      return Math.max(0, Math.floor(n));
+    }
+    return null;
+  }
+
+  /**
    * Собрать валидное имя до вызова super: внутри `super._prepareSubmitData` Foundry валидирует diff
    * до возврата — постобработка после super не успевает исправить `name: undefined`.
    */
@@ -139,6 +166,27 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
       resolved = game.i18n?.localize?.('SPACEHOLDER.Inventory.NewItem') ?? 'New item';
     }
     return String(resolved);
+  }
+
+  /**
+   * Валидное количество до merge в diff: DOM / FormData, иначе значение с документа.
+   * @param {HTMLFormElement|null} form
+   * @param {FormData} formData
+   * @returns {number}
+   */
+  _resolveSubmitQuantity(form, formData) {
+    const docRaw = Number(this.item?.system?.quantity);
+    const docFallback = Number.isFinite(docRaw) ? Math.max(0, Math.floor(docRaw)) : 1;
+
+    let pending = this._getPendingQuantityFromForm(form);
+    if (pending === null && formData && typeof formData.get === 'function') {
+      const raw = formData.get('system.quantity');
+      if (raw != null && String(raw).trim() !== '') {
+        const n = Number(String(raw).trim());
+        if (Number.isFinite(n)) pending = Math.max(0, Math.floor(n));
+      }
+    }
+    return pending !== null ? pending : docFallback;
   }
 
   /**
@@ -174,6 +222,14 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
       data.name = resolvedName;
     } else {
       data.name = String(n).trim();
+    }
+
+    if (this.item?.type === 'item') {
+      const resolvedQty = this._resolveSubmitQuantity(form, formData);
+      data['system.quantity'] = resolvedQty;
+      if (data.system && typeof data.system === 'object' && !Array.isArray(data.system)) {
+        data.system.quantity = resolvedQty;
+      }
     }
 
     return data;
@@ -398,6 +454,11 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     const patch = { 'system.actions': this._normalizeItemActions(nextActions) };
     const pending = this._getPendingNameFromForm();
     if (pending && pending !== String(this.item.name ?? '').trim()) patch.name = pending;
+    const pendingQty = this._getPendingQuantityFromForm();
+    if (pendingQty !== null) {
+      const cur = Math.max(0, Math.floor(Number(this.item.system?.quantity ?? 1)));
+      if (pendingQty !== cur) patch['system.quantity'] = pendingQty;
+    }
     await this.item.update(patch);
   }
 
@@ -553,6 +614,26 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
       input.addEventListener('blur', () => {
         syncName();
       });
+    });
+
+    this.element.querySelectorAll('input[name="system.quantity"]').forEach((input) => {
+      if (input.dataset.spaceholderQtyBound) return;
+      input.dataset.spaceholderQtyBound = '1';
+      const syncQty = async () => {
+        const s = String(input.value ?? '').trim();
+        if (s === '') return;
+        const n = Math.max(0, Math.floor(Number(s)));
+        if (!Number.isFinite(n)) return;
+        const cur = Math.max(0, Math.floor(Number(this.item.system?.quantity ?? 1)));
+        if (n === cur) return;
+        try {
+          await this.item.update({ 'system.quantity': n });
+        } catch (e) {
+          console.error('SpaceHolder | item quantity sync failed:', e);
+        }
+      };
+      input.addEventListener('change', syncQty);
+      input.addEventListener('blur', syncQty);
     });
 
     // Active Effect management
@@ -947,6 +1028,11 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         const pending = this._getPendingNameFromForm();
         if (pending && pending !== String(this.item.name ?? '').trim()) {
           patch.name = pending;
+        }
+        const pendingQty = this._getPendingQuantityFromForm();
+        if (pendingQty !== null) {
+          const cur = Math.max(0, Math.floor(Number(this.item.system?.quantity ?? 1)));
+          if (pendingQty !== cur) patch['system.quantity'] = pendingQty;
         }
         this._wearableApplyingItemTags = true;
         try {
