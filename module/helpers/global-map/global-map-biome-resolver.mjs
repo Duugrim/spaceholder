@@ -370,6 +370,40 @@ export class BiomeResolver {
     return `${dir}/biome-overrides.json`;
   }
 
+  /**
+   * True if `fileName` appears in server listing for `data` path `dir`.
+   * Used to skip fetch() when optional world files are absent — avoids browser console 404 noise.
+   * @param {string} dir e.g. worlds/{worldId}/global-maps
+   * @param {string} fileName e.g. biome-overrides.json
+   * @returns {Promise<boolean>}
+   */
+  async _dataDirContainsFile(dir, fileName) {
+    if (!dir || !fileName) return false;
+    const FP = foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
+    if (!FP?.browse) return true;
+    try {
+      const result = await FP.browse('data', dir);
+      const files = Array.isArray(result?.files) ? result.files : [];
+      const needle = String(fileName).toLowerCase();
+      return files.some((f) => {
+        const s = String(f).replace(/\\/g, '/');
+        const base = s.includes('/') ? s.split('/').pop() : s;
+        return String(base).toLowerCase() === needle;
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  _getWorldOverridesDirAndFile(path) {
+    const p = path || this.getWorldOverridesPath();
+    if (!p) return { dir: null, fileName: null, fullPath: null };
+    const fileName = p.split('/').pop() || 'biome-overrides.json';
+    const idx = p.lastIndexOf('/');
+    const dir = idx > 0 ? p.slice(0, idx) : this._getWorldOverridesDirectory();
+    return { dir, fileName, fullPath: p };
+  }
+
   _normalizeHexColorToInt(value) {
     if (value === null || value === undefined) return null;
 
@@ -448,13 +482,17 @@ export class BiomeResolver {
   }
 
   async loadOverridesFromWorldFile(path = null) {
-    const p = path || this.getWorldOverridesPath();
+    const { dir, fileName, fullPath: p } = this._getWorldOverridesDirAndFile(path);
     if (!p) return null;
+
+    if (dir && fileName) {
+      const present = await this._dataDirContainsFile(dir, fileName);
+      if (!present) return null;
+    }
 
     try {
       const response = await fetch(p);
       if (!response.ok) {
-        // Not found is OK: no overrides.
         if (response.status === 404) return null;
         console.warn(`BiomeResolver | Failed to load world biome overrides (${response.status} ${response.statusText})`);
         return null;
