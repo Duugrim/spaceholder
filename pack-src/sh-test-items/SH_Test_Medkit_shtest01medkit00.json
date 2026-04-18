@@ -1,0 +1,54 @@
+{
+  "name": "SH Test Medkit",
+  "type": "item",
+  "_id": "shtest01medkit00",
+  "img": "icons/svg/item-bag.svg",
+  "system": {
+    "description": "<p>Test compendium item: stackable gear with quantity &gt; 1. Safe to import and delete.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 3,
+    "weight": 0.4,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": null,
+  "sort": 100000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.175",
+    "createdTime": 1776279800001,
+    "modifiedTime": 1776279800001,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtest01medkit00"
+}

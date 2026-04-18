@@ -1,0 +1,63 @@
+{
+  "name": "SH Test Flak Vest",
+  "type": "item",
+  "_id": "shtest03flakvest00",
+  "img": "icons/equipment/chest/breastplate-banded-steel.webp",
+  "system": {
+    "description": "<p>Test armor for <strong>humanoid</strong> anatomy: coverage on chest/abdomen + small <code>abilities.cor</code> modifier when equipped (<code>isModifiers</code> + mode <code>add</code>).</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 4.5,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      { "slotRef": "chest", "value": 3 },
+      { "slotRef": "abdomen", "value": 2 }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [
+        {
+          "targetId": "abilities.cor",
+          "value": 1,
+          "mode": "add"
+        }
+      ],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": true
+    }
+  },
+  "effects": [],
+  "folder": null,
+  "sort": 300000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.175",
+    "createdTime": 1776279800003,
+    "modifiedTime": 1776279800003,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtest03flakvest00"
+}

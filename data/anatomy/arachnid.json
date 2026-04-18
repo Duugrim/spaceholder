@@ -3,7 +3,10 @@
   "name": "Arachnid",
   "description": "Eight-legged spider-like creature anatomy",
   "version": "2.0.0",
-  "grid": { "width": 9, "height": 7 },
+  "grid": {
+    "width": 9,
+    "height": 7
+  },
   "bodyParts": {
     "cephalothorax": {
       "id": "cephalothorax",
@@ -11,18 +14,55 @@
       "maxHp": 55,
       "x": 4,
       "y": 3,
-      "tags": ["core", "vital", "armor_body"],
-      "links": [
-        "abdomenSegment",
-        "leftLeg1",
-        "leftLeg2",
-        "leftLeg3",
-        "leftLeg4",
-        "rightLeg1",
-        "rightLeg2",
-        "rightLeg3",
-        "rightLeg4"
-      ]
+      "tags": [
+        "core",
+        "vital",
+        "armor_body"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "abdomenSegment"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftLeg1"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftLeg2"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftLeg3"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftLeg4"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightLeg1"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightLeg2"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightLeg3"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightLeg4"
+        }
+      ],
+      "exposure": {
+        "front": 100,
+        "right": 90,
+        "back": 80,
+        "left": 90
+      }
     },
     "abdomenSegment": {
       "id": "abdomenSegment",
@@ -30,8 +70,26 @@
       "maxHp": 45,
       "x": 4,
       "y": 4,
-      "tags": ["core", "armor_body"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "core",
+        "armor_body"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 50,
+        "right": 90,
+        "back": 100,
+        "left": 90
+      }
     },
     "leftLeg1": {
       "id": "leftLeg",
@@ -39,8 +97,28 @@
       "maxHp": 18,
       "x": 2,
       "y": 2,
-      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "left_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 0,
+        "back": 40,
+        "left": 100
+      }
     },
     "leftLeg2": {
       "id": "leftLeg",
@@ -48,8 +126,28 @@
       "maxHp": 18,
       "x": 2,
       "y": 3,
-      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "left_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 0,
+        "back": 40,
+        "left": 100
+      }
     },
     "leftLeg3": {
       "id": "leftLeg",
@@ -57,8 +155,28 @@
       "maxHp": 18,
       "x": 2,
       "y": 4,
-      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "left_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 0,
+        "back": 40,
+        "left": 100
+      }
     },
     "leftLeg4": {
       "id": "leftLeg",
@@ -66,8 +184,28 @@
       "maxHp": 18,
       "x": 2,
       "y": 5,
-      "tags": ["limb", "left_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "left_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 0,
+        "back": 40,
+        "left": 100
+      }
     },
     "rightLeg1": {
       "id": "rightLeg",
@@ -75,8 +213,28 @@
       "maxHp": 18,
       "x": 6,
       "y": 2,
-      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "right_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 100,
+        "back": 40,
+        "left": 0
+      }
     },
     "rightLeg2": {
       "id": "rightLeg",
@@ -84,8 +242,28 @@
       "maxHp": 18,
       "x": 6,
       "y": 3,
-      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "right_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 100,
+        "back": 40,
+        "left": 0
+      }
     },
     "rightLeg3": {
       "id": "rightLeg",
@@ -93,8 +271,28 @@
       "maxHp": 18,
       "x": 6,
       "y": 4,
-      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "right_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 100,
+        "back": 40,
+        "left": 0
+      }
     },
     "rightLeg4": {
       "id": "rightLeg",
@@ -102,19 +300,66 @@
       "maxHp": 18,
       "x": 6,
       "y": 5,
-      "tags": ["limb", "right_side", "locomotion", "armor_leg"],
-      "links": ["cephalothorax"]
+      "tags": [
+        "limb",
+        "right_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "cephalothorax"
+        },
+        {
+          "kind": "parent",
+          "target": "cephalothorax"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 100,
+        "back": 40,
+        "left": 0
+      }
     }
   },
   "links": [
-    { "from": "cephalothorax", "to": "abdomenSegment" },
-    { "from": "cephalothorax", "to": "leftLeg1" },
-    { "from": "cephalothorax", "to": "leftLeg2" },
-    { "from": "cephalothorax", "to": "leftLeg3" },
-    { "from": "cephalothorax", "to": "leftLeg4" },
-    { "from": "cephalothorax", "to": "rightLeg1" },
-    { "from": "cephalothorax", "to": "rightLeg2" },
-    { "from": "cephalothorax", "to": "rightLeg3" },
-    { "from": "cephalothorax", "to": "rightLeg4" }
+    {
+      "from": "abdomenSegment",
+      "to": "cephalothorax"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "leftLeg1"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "leftLeg2"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "leftLeg3"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "leftLeg4"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "rightLeg1"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "rightLeg2"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "rightLeg3"
+    },
+    {
+      "from": "cephalothorax",
+      "to": "rightLeg4"
+    }
   ]
 }

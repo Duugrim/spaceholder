@@ -1,0 +1,71 @@
+<div class="sh-item-action-dialog sh-weapon-edit-dialog" data-sh-weapon-base-dialog="{{dialogUid}}">
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ApCost"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wb_apCost" min="0" step="1" value="{{base.apCost}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.Accuracy"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wb_accuracy" step="any" value="{{base.accuracy}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.Recoil"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wb_recoil" step="any" value="{{base.recoil}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ProjectilesPerUse"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wb_projectilesPerUse" min="1" step="1" value="{{base.projectilesPerUse}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.Damage"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wb_damage" step="any" value="{{base.damage}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.DamageType"}}</label>
+    <div class="form-fields">
+      <input type="text" name="wb_damageType" value="{{base.damageType}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ArmorPen"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wb_armorPen" step="any" value="{{base.armorPen}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ArmorDamageFactor"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wb_armorDamageFactor" step="any" value="{{base.armorDamageFactor}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.PayloadId"}}</label>
+    <div class="form-fields">
+      <input type="text" name="wb_payloadId" value="{{base.payloadId}}" placeholder='{{localize "SPACEHOLDER.ItemWeapon.PayloadIdHint"}}' />
+    </div>
+  </div>
+
+  <div class="sh-item-action-dialog__flags">
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="wb_requiresHolding" {{#if base.requiresHolding}}checked{{/if}} />
+      <span>{{localize "SPACEHOLDER.ItemWeapon.RequiresHolding"}}</span>
+    </label>
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="wb_requiresReadyState" {{#if base.requiresReadyState}}checked{{/if}} />
+      <span>{{localize "SPACEHOLDER.ItemWeapon.RequiresReadyState"}}</span>
+    </label>
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="wb_requiresAimState" {{#if base.requiresAimState}}checked{{/if}} />
+      <span>{{localize "SPACEHOLDER.ItemWeapon.RequiresAimState"}}</span>
+    </label>
+  </div>
+</div>

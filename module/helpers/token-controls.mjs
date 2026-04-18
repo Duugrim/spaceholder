@@ -2,6 +2,10 @@
  * Token Controls Helper
  * Добавляет пользовательские кнопки в панель Token Controls
  */
+import { clearAimingArcOverlays, refreshHoveredAimingArcOverlays } from './aiming-arc-overlay.mjs';
+
+const MODULE_NS = 'spaceholder';
+const AIMING_ARC_SETTING = 'aimingArc.showOnHover';
 
 // OLD SYSTEM DISABLED 2025-10-28
 // import { AimingDialog } from './old-aiming-dialog.mjs';
@@ -11,6 +15,18 @@
  */
 export function registerTokenControlButtons() {
   console.log('SpaceHolder | Registering custom Token Control buttons');
+  game.settings.register(MODULE_NS, AIMING_ARC_SETTING, {
+    name: 'SPACEHOLDER.TokenControls.AimingArcHoverTool.Title',
+    hint: 'SPACEHOLDER.TokenControls.AimingArcHoverTool.Hint',
+    scope: 'client',
+    config: false,
+    type: Boolean,
+    default: false,
+    onChange: (v) => {
+      if (v) refreshHoveredAimingArcOverlays();
+      else clearAimingArcOverlays();
+    },
+  });
 }
 
 /**
@@ -62,12 +78,21 @@ function addCustomButtons(tokenControls) {
     name: 'aiming-tool',
     title: game.i18n.localize('SPACEHOLDER.TokenControls.AimingTool.Title'),
     icon: 'fas fa-bullseye',
-    onChange: (isActive) => handleAimingToolChange(isActive),
+    onChange: (event, isActive) => handleAimingToolChange(resolveToolActive(event, isActive)),
     button: true,
     order: 10,
   });
+  const addedAimingArcHover = upsertTool(tokenControls, {
+    name: 'aiming-arc-hover',
+    title: game.i18n.localize('SPACEHOLDER.TokenControls.AimingArcHoverTool.Title'),
+    icon: 'fas fa-draw-polygon',
+    toggle: true,
+    active: isAimingArcHoverEnabled(),
+    onChange: (event, isActive) => handleAimingArcHoverToolChange(resolveToolActive(event, isActive)),
+    order: 11,
+  });
 
-  if (addedAiming) {
+  if (addedAiming || addedAimingArcHover) {
     console.log('SpaceHolder | Added custom Token Control buttons');
   }
 }
@@ -111,6 +136,28 @@ function handleAimingToolChange(isActive) {
     showAimingDialog();
   }
   // При деактивации ничего не делаем
+}
+
+function handleAimingArcHoverToolChange(isActive) {
+  const next = !!isActive;
+  game.settings.set(MODULE_NS, AIMING_ARC_SETTING, next).catch((err) => {
+    console.error('SpaceHolder | Failed to update aiming arc hover setting:', err);
+    ui.notifications?.error?.(game.i18n.localize('SPACEHOLDER.TokenControls.Messages.ToggleAimingArcHoverFailed'));
+  });
+}
+
+function isAimingArcHoverEnabled() {
+  try {
+    return !!game.settings.get(MODULE_NS, AIMING_ARC_SETTING);
+  } catch (_) {
+    return false;
+  }
+}
+
+function resolveToolActive(eventMaybe, activeMaybe) {
+  if (typeof activeMaybe === 'boolean') return activeMaybe;
+  if (typeof eventMaybe === 'boolean') return eventMaybe;
+  return false;
 }
 
 /**

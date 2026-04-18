@@ -14,6 +14,33 @@ SPACEHOLDER.abilities = {
   luc: 'SPACEHOLDER.Ability.Luc.long',
 };
 
+/**
+ * ОД за фиксированный отрезок времени в бою (~1 с): за него считается «базовая» дистанция движения;
+ * затем `system.speed` = этот отрезок / дистанция (ОД за 1 единицу дистанции для movement-manager).
+ * @type {number}
+ */
+SPACEHOLDER.movementApTimeSlice = 10;
+
+/**
+ * Нижняя граница дистанции за отрезок (чтобы не делить на ноль при очень низкой подвижности).
+ * @type {number}
+ */
+SPACEHOLDER.movementMinDistancePerSlice = 0.25;
+
+/**
+ * Конфигурация углов наводки персонажа и штрафов стандартного прицеливания.
+ */
+SPACEHOLDER.aimingArc = {
+  segmentCount: 5,
+  maxHalfAngleDeg: 90,
+  defaultZoneHalfDegrees: [1, 5, 15, 25, 30],
+  defaultDeviationBaseDeg: 1,
+  deviationMultipliers: [0, 0, 1, 2, 4],
+  overlayThicknessPx: 44,
+  overlayColors: [0x9b59ff, 0x46d36a, 0xf0d04a, 0xf39c3d, 0xe05252],
+  overlayAlpha: 0.56,
+};
+
 SPACEHOLDER.abilityAbbreviations = {
   end: 'SPACEHOLDER.Ability.End.abbr',
   str: 'SPACEHOLDER.Ability.Str.abbr',
@@ -41,4 +68,38 @@ SPACEHOLDER.characterModifierTargets = {
   derived: [],
   params: []
 };
+
+/**
+ * Canonical body-part IDs used by armor coverage and localization dictionary.
+ * Keep in sync with SPACEHOLDER.BodyParts.* localization keys.
+ */
+SPACEHOLDER.bodyPartDictionary = [
+  'head',
+  'neck',
+  'back',
+  'chest',
+  'abdomen',
+  'groin',
+  'leftShoulder',
+  'rightShoulder',
+  'leftArm',
+  'rightArm',
+  'leftHand',
+  'rightHand',
+  'leftThigh',
+  'rightThigh',
+  'leftShin',
+  'rightShin',
+  'leftFoot',
+  'rightFoot',
+  'cephalothorax',
+  'abdomenSegment',
+  'leftLeg',
+  'rightLeg'
+];
+
+/**
+ * Fallback anatomy for wearable coverage editor when item has no anatomy selected.
+ */
+SPACEHOLDER.wearableCoverageReferenceAnatomyId = 'humanoid';
 

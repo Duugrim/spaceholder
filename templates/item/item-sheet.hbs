@@ -16,13 +16,7 @@
           {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
         {{/if}}
       {{/each}}
-      {{editor
-        enrichedDescription
-        target='system.description'
-        engine='prosemirror'
-        button=true
-        editable=editable
-      }}
+      {{> "systems/spaceholder/templates/item/parts/item-description-prosemirror.hbs"}}
     </div>
 
     <div class='tab attributes' data-group='primary' data-tab='attributes'>

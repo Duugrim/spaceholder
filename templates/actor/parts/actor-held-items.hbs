@@ -12,13 +12,13 @@
           tabindex="0"
           title="{{entry.name}}"
         >
-          <div class="sh-held-item-card__main">
+          <div class="sh-held-item-card__header">
             <div class="sh-held-item-card__image">
-              <img src="{{entry.img}}" alt="{{entry.name}}" width="32" height="32" />
+              <img src="{{entry.img}}" alt="" width="42" height="42" />
             </div>
             <div class="sh-held-item-card__info">
               <button type="button" class="sh-held-item-card__name" data-item-id="{{entry.id}}" data-action="sh-held-item-open">{{entry.name}}</button>
-              <div class="sh-held-item-card__meta">{{entry.typeLabel}}</div>
+              {{#if entry.typeLabel}}<div class="sh-held-item-card__meta">{{entry.typeLabel}}</div>{{/if}}
             </div>
           </div>
 

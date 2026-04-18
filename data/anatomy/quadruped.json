@@ -1,8 +1,8 @@
 {
-  "id":"quadruped",
-  "name":"Quadruped",
-  "description":"Four-legged creature anatomy",
-  "version":"2.0.0",
+  "id": "quadruped",
+  "name": "Quadruped",
+  "description": "Four-legged creature anatomy",
+  "version": "2.0.0",
   "grid": {
     "width": 9,
     "height": 7
@@ -22,24 +22,39 @@
         "vital",
         "armor_body"
       ],
-      "links": [
-        "neck",
-        "frontLeftShoulder",
-        "frontRightShoulder",
-        "backLeftHip",
-        "backRightHip",
-        "tail"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "neck",
-        "frontLeftShoulder",
-        "frontRightShoulder",
-        "backLeftHip",
-        "backRightHip",
-        "tail"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "neck"
+        },
+        {
+          "kind": "adjacent",
+          "target": "frontLeftShoulder"
+        },
+        {
+          "kind": "adjacent",
+          "target": "frontRightShoulder"
+        },
+        {
+          "kind": "adjacent",
+          "target": "backLeftHip"
+        },
+        {
+          "kind": "adjacent",
+          "target": "backRightHip"
+        },
+        {
+          "kind": "adjacent",
+          "target": "tail"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 40,
+        "right": 100,
+        "back": 90,
+        "left": 100
+      }
     },
     "neck": {
       "id": "neck",
@@ -54,16 +69,27 @@
         "vital",
         "armor_neck"
       ],
-      "links": [
-        "torso",
-        "head"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "torso",
-        "head"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "torso"
+        },
+        {
+          "kind": "adjacent",
+          "target": "head"
+        },
+        {
+          "kind": "parent",
+          "target": "torso"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 50,
+        "back": 100,
+        "left": 50
+      }
     },
     "head": {
       "id": "head",
@@ -80,14 +106,23 @@
         "sensory",
         "armor_head"
       ],
-      "links": [
-        "neck"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "neck"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "neck"
+        },
+        {
+          "kind": "parent",
+          "target": "neck"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 100,
+        "back": 100,
+        "left": 100
+      }
     },
     "frontLeftShoulder": {
       "id": "frontLeftShoulder",
@@ -104,16 +139,27 @@
         "front",
         "armor_shoulder"
       ],
-      "links": [
-        "torso",
-        "frontLeftLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "torso",
-        "frontLeftLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "torso"
+        },
+        {
+          "kind": "adjacent",
+          "target": "frontLeftLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "torso"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 0,
+        "back": 60,
+        "left": 100
+      }
     },
     "frontLeftLeg": {
       "id": "frontLeftLeg",
@@ -131,16 +177,27 @@
         "locomotion",
         "armor_leg"
       ],
-      "links": [
-        "frontLeftShoulder",
-        "frontLeftPaw"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "frontLeftShoulder",
-        "frontLeftPaw"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "frontLeftShoulder"
+        },
+        {
+          "kind": "adjacent",
+          "target": "frontLeftPaw"
+        },
+        {
+          "kind": "parent",
+          "target": "frontLeftShoulder"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 30,
+        "back": 0,
+        "left": 90
+      }
     },
     "frontLeftPaw": {
       "id": "frontLeftPaw",
@@ -158,14 +215,23 @@
         "locomotion",
         "armor_paw"
       ],
-      "links": [
-        "frontLeftLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "frontLeftLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "frontLeftLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "frontLeftLeg"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 20,
+        "back": 0,
+        "left": 80
+      }
     },
     "frontRightShoulder": {
       "id": "frontRightShoulder",
@@ -182,16 +248,27 @@
         "front",
         "armor_shoulder"
       ],
-      "links": [
-        "torso",
-        "frontRightLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "torso",
-        "frontRightLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "torso"
+        },
+        {
+          "kind": "adjacent",
+          "target": "frontRightLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "torso"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 100,
+        "back": 60,
+        "left": 0
+      }
     },
     "frontRightLeg": {
       "id": "frontRightLeg",
@@ -209,16 +286,27 @@
         "locomotion",
         "armor_leg"
       ],
-      "links": [
-        "frontRightShoulder",
-        "frontRightPaw"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "frontRightShoulder",
-        "frontRightPaw"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "frontRightShoulder"
+        },
+        {
+          "kind": "adjacent",
+          "target": "frontRightPaw"
+        },
+        {
+          "kind": "parent",
+          "target": "frontRightShoulder"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 90,
+        "back": 30,
+        "left": 0
+      }
     },
     "frontRightPaw": {
       "id": "frontRightPaw",
@@ -236,14 +324,23 @@
         "locomotion",
         "armor_paw"
       ],
-      "links": [
-        "frontRightLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "frontRightLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "frontRightLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "frontRightLeg"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 100,
+        "right": 80,
+        "back": 20,
+        "left": 0
+      }
     },
     "backLeftHip": {
       "id": "backLeftHip",
@@ -260,16 +357,27 @@
         "back",
         "armor_hip"
       ],
-      "links": [
-        "torso",
-        "backLeftLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "torso",
-        "backLeftLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "torso"
+        },
+        {
+          "kind": "adjacent",
+          "target": "backLeftLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "torso"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 0,
+        "right": 40,
+        "back": 100,
+        "left": 100
+      }
     },
     "backLeftLeg": {
       "id": "backLeftLeg",
@@ -287,16 +395,27 @@
         "locomotion",
         "armor_leg"
       ],
-      "links": [
-        "backLeftHip",
-        "backLeftPaw"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "backLeftHip",
-        "backLeftPaw"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "backLeftHip"
+        },
+        {
+          "kind": "adjacent",
+          "target": "backLeftPaw"
+        },
+        {
+          "kind": "parent",
+          "target": "backLeftHip"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 40,
+        "right": 30,
+        "back": 100,
+        "left": 90
+      }
     },
     "backLeftPaw": {
       "id": "backLeftPaw",
@@ -314,14 +433,23 @@
         "locomotion",
         "armor_paw"
       ],
-      "links": [
-        "backLeftLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "backLeftLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "backLeftLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "backLeftLeg"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 30,
+        "right": 20,
+        "back": 90,
+        "left": 80
+      }
     },
     "backRightHip": {
       "id": "backRightHip",
@@ -338,16 +466,27 @@
         "back",
         "armor_hip"
       ],
-      "links": [
-        "torso",
-        "backRightLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "torso",
-        "backRightLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "torso"
+        },
+        {
+          "kind": "adjacent",
+          "target": "backRightLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "torso"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 0,
+        "right": 100,
+        "back": 100,
+        "left": 40
+      }
     },
     "backRightLeg": {
       "id": "backRightLeg",
@@ -365,16 +504,27 @@
         "locomotion",
         "armor_leg"
       ],
-      "links": [
-        "backRightHip",
-        "backRightPaw"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "backRightHip",
-        "backRightPaw"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "backRightHip"
+        },
+        {
+          "kind": "adjacent",
+          "target": "backRightPaw"
+        },
+        {
+          "kind": "parent",
+          "target": "backRightHip"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 40,
+        "right": 90,
+        "back": 100,
+        "left": 30
+      }
     },
     "backRightPaw": {
       "id": "backRightPaw",
@@ -392,14 +542,23 @@
         "locomotion",
         "armor_paw"
       ],
-      "links": [
-        "backRightLeg"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "backRightLeg"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "backRightLeg"
+        },
+        {
+          "kind": "parent",
+          "target": "backRightLeg"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 30,
+        "right": 80,
+        "back": 90,
+        "left": 20
+      }
     },
     "tail": {
       "id": "tail",
@@ -415,56 +574,65 @@
         "balance",
         "armor_tail"
       ],
-      "links": [
-        "torso"
-      ],
       "organs": [],
-      "linkedPartIds": [
-        "torso"
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "torso"
+        },
+        {
+          "kind": "parent",
+          "target": "torso"
+        }
       ],
-      "healthPercentage": 100
+      "exposure": {
+        "front": 0,
+        "right": 50,
+        "back": 100,
+        "left": 50
+      }
     }
   },
   "links": [
     {
-      "from": "torso",
-      "to": "neck"
-    },
-    {
-      "from": "torso",
-      "to": "frontLeftShoulder"
-    },
-    {
-      "from": "torso",
-      "to": "frontRightShoulder"
-    },
-    {
-      "from": "torso",
-      "to": "backLeftHip"
-    },
-    {
-      "from": "torso",
-      "to": "backRightHip"
-    },
-    {
-      "from": "torso",
-      "to": "tail"
-    },
-    {
       "from": "neck",
-      "to": "head"
+      "to": "torso"
     },
     {
       "from": "frontLeftShoulder",
-      "to": "frontLeftLeg"
+      "to": "torso"
+    },
+    {
+      "from": "frontRightShoulder",
+      "to": "torso"
+    },
+    {
+      "from": "backLeftHip",
+      "to": "torso"
+    },
+    {
+      "from": "backRightHip",
+      "to": "torso"
+    },
+    {
+      "from": "tail",
+      "to": "torso"
+    },
+    {
+      "from": "head",
+      "to": "neck"
+    },
+    {
+      "from": "frontLeftLeg",
+      "to": "frontLeftShoulder"
     },
     {
       "from": "frontLeftLeg",
       "to": "frontLeftPaw"
     },
     {
-      "from": "frontRightShoulder",
-      "to": "frontRightLeg"
+      "from": "frontRightLeg",
+      "to": "frontRightShoulder"
     },
     {
       "from": "frontRightLeg",

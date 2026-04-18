@@ -16,7 +16,7 @@
     </div>
     <div class="header-fields">
       <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
-      <div class="resources grid grid-3col">
+      <div class="resources grid grid-2col">
 
         <div class="resource flex-group-center">
           <label for="system.health.value" class="resource-label">{{localize 'SPACEHOLDER.Resources.Health'}}</label>
@@ -24,15 +24,6 @@
             <input type="text" name="system.health.value" value="{{system.health.value}}" data-dtype="Number"/>
             <span> / </span>
             <input type="text" name="system.health.max" value="{{system.health.max}}" data-dtype="Number"/>
-          </div>
-        </div>
-
-        <div class="resource flex-group-center">
-          <label for="system.power.value" class="resource-label">{{localize 'SPACEHOLDER.Resources.Power'}}</label>
-          <div class="resource-content flexrow flex-center flex-between">
-            <input type="text" name="system.power.value" value="{{system.power.value}}" data-dtype="Number"/>
-            <span> / </span>
-            <input type="text" name="system.power.max" value="{{system.power.max}}" data-dtype="Number"/>
           </div>
         </div>
 

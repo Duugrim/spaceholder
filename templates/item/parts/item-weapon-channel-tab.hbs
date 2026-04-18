@@ -1,0 +1,123 @@
+<div class="spaceholder-weapon-tab-layout" data-sh-weapon-channel="{{channelKey}}">
+  <div class="spaceholder-weapon-tab-layout__stats flexcol">
+    <div class="stats-panel spaceholder-aiming-arc-panel sh-weapon-channel-panel">
+      <h3 class="spaceholder-aiming-arc-panel__title">{{localize "SPACEHOLDER.ItemWeapon.BaseStats"}}</h3>
+      <div class="spaceholder-aiming-arc-grid">
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.ApCost"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{ch.base.apCost}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.Accuracy"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{numberFormat ch.base.accuracy decimals=2}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.Recoil"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{numberFormat ch.base.recoil decimals=2}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.ProjectilesPerUse"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{ch.base.projectilesPerUse}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.Damage"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{numberFormat ch.base.damage decimals=2}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.DamageType"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{#if ch.base.damageType}}{{ch.base.damageType}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.ArmorPen"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{numberFormat ch.base.armorPen decimals=2}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.ArmorDamageFactor"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{numberFormat ch.base.armorDamageFactor decimals=2}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.PayloadId"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{#if ch.base.payloadId}}{{ch.base.payloadId}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.RequiresHolding"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{#if ch.base.requiresHolding}}{{localize "SPACEHOLDER.ItemWeapon.Yes"}}{{else}}{{localize "SPACEHOLDER.ItemWeapon.No"}}{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.RequiresReadyState"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{#if ch.base.requiresReadyState}}{{localize "SPACEHOLDER.ItemWeapon.Yes"}}{{else}}{{localize "SPACEHOLDER.ItemWeapon.No"}}{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.RequiresAimState"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{#if ch.base.requiresAimState}}{{localize "SPACEHOLDER.ItemWeapon.Yes"}}{{else}}{{localize "SPACEHOLDER.ItemWeapon.No"}}{{/if}}</span>
+        </div>
+      </div>
+      {{#if @root.editable}}
+      <button type="button" class="icon-btn spaceholder-aiming-arc-panel__edit" data-action="sh-weapon-edit-base" data-channel="{{channelKey}}">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+        <span>{{localize "SPACEHOLDER.ItemWeapon.EditBase"}}</span>
+      </button>
+      {{/if}}
+    </div>
+
+    <div class="stats-panel spaceholder-aiming-arc-panel sh-weapon-channel-panel">
+      <h3 class="spaceholder-aiming-arc-panel__title">{{localize "SPACEHOLDER.ItemWeapon.ChannelOptions"}}</h3>
+      <div class="spaceholder-aiming-arc-grid">
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.DefaultAttackId"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{#if ch.defaultAttackId}}{{ch.defaultAttackId}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AutoGenerateDefault"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{#if ch.autoGenerateDefault}}{{localize "SPACEHOLDER.ItemWeapon.Yes"}}{{else}}{{localize "SPACEHOLDER.ItemWeapon.No"}}{{/if}}</span>
+        </div>
+      </div>
+      {{#if @root.editable}}
+      <button type="button" class="icon-btn spaceholder-aiming-arc-panel__edit" data-action="sh-weapon-edit-channel-options" data-channel="{{channelKey}}">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+        <span>{{localize "SPACEHOLDER.ItemWeapon.EditChannelOptions"}}</span>
+      </button>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="spaceholder-weapon-tab-layout__attacks flexcol">
+    <div class="stats-panel spaceholder-aiming-arc-panel sh-weapon-attacks-panel">
+      <div class="sh-weapon-attacks-toolbar">
+        <h3 class="spaceholder-aiming-arc-panel__title sh-weapon-attacks-panel__title">{{localize "SPACEHOLDER.ItemWeapon.Attacks"}}</h3>
+        {{#if @root.editable}}
+        <button type="button" class="icon-btn" data-action="sh-weapon-attack-add" data-channel="{{channelKey}}" title='{{localize "SPACEHOLDER.ItemWeapon.AddAttack"}}'>
+          <i class="fas fa-plus" aria-hidden="true"></i>
+        </button>
+        {{/if}}
+      </div>
+      <div class="spaceholder-aiming-arc-grid sh-weapon-attacks-grid">
+        {{#if ch.attacks.length}}
+          {{#each ch.attacks as |atk|}}
+            <div class="sh-weapon-attack-summary">
+              <div class="sh-weapon-attack-summary__text">
+                <div class="sh-weapon-attack-summary__name">{{#if atk.name}}{{atk.name}}{{else}}<em>{{localize "SPACEHOLDER.ItemWeapon.UntitledAttack"}}</em>{{/if}}</div>
+                <div class="sh-weapon-attack-summary__meta">{{atk.mode}} · {{atk.origin}}{{#if atk.isDefault}} · {{localize "SPACEHOLDER.ItemWeapon.Default"}}{{/if}}{{#unless atk.enabled}} · {{localize "SPACEHOLDER.ItemWeapon.Disabled"}}{{/unless}}</div>
+              </div>
+              {{#if @root.editable}}
+              <div class="sh-weapon-attack-summary__actions">
+                <button type="button" class="icon-btn" data-action="sh-weapon-attack-edit" data-channel="{{../channelKey}}" data-attack-id="{{atk.id}}" title='{{localize "SPACEHOLDER.Actions.Edit"}}'>
+                  <i class="fas fa-pen" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="icon-btn" data-action="sh-weapon-attack-duplicate" data-channel="{{../channelKey}}" data-attack-id="{{atk.id}}" title='{{localize "SPACEHOLDER.ActionsSystem.UI.DuplicateAction"}}'>
+                  <i class="fas fa-copy" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="icon-btn" data-action="sh-weapon-attack-remove" data-channel="{{../channelKey}}" data-attack-id="{{atk.id}}" title='{{localize "SPACEHOLDER.Actions.Delete"}}'>
+                  <i class="fas fa-trash" aria-hidden="true"></i>
+                </button>
+              </div>
+              {{/if}}
+            </div>
+          {{/each}}
+        {{else}}
+          <p class="spaceholder-aiming-arc-panel__hint sh-weapon-attacks-empty">{{localize "SPACEHOLDER.ItemWeapon.AttacksEmpty"}}</p>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+</div>

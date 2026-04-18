@@ -17,6 +17,7 @@
 
 /* Components (each partial is responsible for scoping to .window-app.spaceholder) */
 @import 'components/forms';
+@import 'components/weapon-tab';
 @import 'components/spaceholder-sheet-stack';
 @import 'components/sheet-tabs';
 @import 'components/resource';

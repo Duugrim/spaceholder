@@ -5,6 +5,12 @@ import {
 import { enrichHTMLWithFactionIcons } from '../helpers/faction-display.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
 import { pickIcon } from '../helpers/icon-picker/icon-picker.mjs';
+import { migrateItemWeaponData } from '../documents/item.mjs';
+
+/**
+ * Вкладки оружия на листе предмета правят только `system.weapon` (авторинг данных).
+ * Подсистемы стрельбы / боя / `action-service` на этом этапе эти поля не используют.
+ */
 
 const ITEM_SHEET_TAB_META = Object.freeze({
   description: { icon: 'fas fa-file-lines', labelKey: 'SPACEHOLDER.Tabs.Description' },
@@ -13,6 +19,10 @@ const ITEM_SHEET_TAB_META = Object.freeze({
   effects: { icon: 'fas fa-wand-magic-sparkles', labelKey: 'SPACEHOLDER.Tabs.Effects' },
   tags: { icon: 'fas fa-tags', labelKey: 'SPACEHOLDER.Tabs.Tags' },
   modifiers: { icon: 'fas fa-dumbbell', labelKey: 'SPACEHOLDER.Tabs.Modifiers' },
+  melee: { icon: 'fas fa-hand-fist', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Melee' },
+  ranged: { icon: 'fas fa-crosshairs', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Ranged' },
+  thrown: { icon: 'fas fa-baseball', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Thrown' },
+  ammo: { icon: 'fas fa-bullseye', labelKey: 'SPACEHOLDER.Tabs.Ammo' },
 });
 
 /**
@@ -403,7 +413,7 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
 
     const dialogUid = this._newActionId();
     const draftAction = this._normalizeItemAction(action, { keepId: true });
-    const content = await renderTemplate('systems/spaceholder/templates/item/parts/item-action-dialog.hbs', {
+    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/item/parts/item-action-dialog.hbs', {
       dialogUid,
       action: draftAction,
       modeOptions: Object.entries(ITEM_ACTION_MODE_LABEL_KEYS).map(([id, labelKey]) => ({ id, labelKey })),
@@ -420,7 +430,8 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
 
     const titleText = title || game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.EditAction') || 'Edit action';
     await DialogV2.wait({
-      window: { title: titleText, icon: 'fa-solid fa-bolt', classes: ['spaceholder'] },
+      classes: ['spaceholder'],
+      window: { title: titleText, icon: 'fa-solid fa-bolt' },
       position: { width: 520 },
       content,
       buttons: [
@@ -570,6 +581,34 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     return (rr << 16) + (gg << 8) + bb;
   }
 
+  /**
+   * У `<prose-mirror toggled>` превью строится из `enrichedDescription` при рендере.
+   * В App V2 после `save` поле формы не всегда успевает попасть в документ до `_prepareContext`;
+   * синхронизируем `system.description` из `el.value` и перерисовываем лист.
+   */
+  _bindDescriptionProseMirrorRefresh() {
+    const el = this.element?.querySelector?.('prose-mirror[name="system.description"]');
+    if (!el || el.dataset.spaceholderDescSaveBound === '1') return;
+    el.dataset.spaceholderDescSaveBound = '1';
+
+    el.addEventListener('save', async () => {
+      let raw = '';
+      try {
+        const v = el.value;
+        raw = typeof v === 'string' ? v : (v != null ? String(v) : '');
+      } catch (_) {
+        raw = '';
+      }
+      try {
+        await this.item.update({ 'system.description': raw });
+      } catch (e) {
+        console.error('SpaceHolder | item description sync failed:', e);
+        return;
+      }
+      await this.render(false);
+    });
+  }
+
   /* -------------------------------------------- */
 
   /** @inheritDoc */
@@ -590,6 +629,8 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     // Повторно применяем активную вкладку после каждого рендера (как в листе персонажа)
     const desiredTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? 'description';
     try { this.changeTab(desiredTab, 'primary', { updatePosition: false, force: true }); } catch (e) { /* ignore */ }
+
+    this._bindDescriptionProseMirrorRefresh();
 
     if (!this.isEditable) return;
 
@@ -713,10 +754,10 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
         const id = String(btn.dataset.id ?? '').trim();
         if (!id) return;
         const confirmed = await foundry.applications.api.DialogV2.confirm({
+          classes: ['spaceholder'],
           window: {
             title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionTitle') ?? 'Delete action',
             icon: 'fa-solid fa-trash',
-            classes: ['spaceholder'],
           },
           content: `<p>${game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionConfirm') ?? 'Delete this action?'}</p>`,
           yes: { label: game.i18n?.localize?.('SPACEHOLDER.Actions.Delete') ?? 'Delete', icon: 'fa-solid fa-trash' },
@@ -753,18 +794,22 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: true }),
   });
 
-  // Вкладки: описание, теги; остальные — по system.itemTags.
+  // Вкладки: описание → ближнее / дальнее / метательное / боеприпас (по тегам) → прочее → настройки последние.
   static TABS = {
     primary: {
       tabs: [
         { id: 'description' },
-        { id: 'tags' },
+        { id: 'melee' },
+        { id: 'ranged' },
+        { id: 'thrown' },
+        { id: 'ammo' },
         { id: 'attributes' },
         { id: 'actions' },
         { id: 'modifiers' },
+        { id: 'tags' },
       ],
-      initial: 'description'
-    }
+      initial: 'description',
+    },
   };
 
   /** @inheritDoc */
@@ -774,37 +819,69 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     const system = context.system || {};
 
     // itemTags: булевы флаги групп механик (см. template.json / migrateData)
+    const rawTags = system.itemTags && typeof system.itemTags === 'object' ? system.itemTags : {};
+    const legacyWeapon = !!rawTags.isWeapon;
+    const hadAnyWeaponKind = !!(rawTags.isMelee || rawTags.isRanged || rawTags.isThrown);
     if (!system.itemTags || typeof system.itemTags !== 'object') {
-      system.itemTags = { isArmor: false, isActions: false, isModifiers: false };
+      system.itemTags = {
+        isArmor: false,
+        isActions: false,
+        isModifiers: false,
+        isMelee: false,
+        isRanged: false,
+        isThrown: false,
+        isAmmo: false,
+      };
     } else {
       system.itemTags = {
-        isArmor: !!system.itemTags.isArmor,
-        isActions: !!system.itemTags.isActions,
-        isModifiers: !!system.itemTags.isModifiers,
+        isArmor: !!rawTags.isArmor,
+        isActions: !!rawTags.isActions,
+        isModifiers: !!rawTags.isModifiers,
+        isMelee: !!(rawTags.isMelee || (legacyWeapon && !hadAnyWeaponKind)),
+        isRanged: !!rawTags.isRanged,
+        isThrown: !!rawTags.isThrown,
+        isAmmo: !!rawTags.isAmmo,
       };
     }
     context.hasArmorTag = system.itemTags.isArmor;
     context.hasActionsTag = system.itemTags.isActions;
     context.hasModifiersTag = system.itemTags.isModifiers;
+    context.hasMeleeTag = system.itemTags.isMelee;
+    context.hasRangedTag = system.itemTags.isRanged;
+    context.hasThrownTag = system.itemTags.isThrown;
+    context.hasAmmoTag = system.itemTags.isAmmo;
 
     const allowedTabs = new Set(['description', 'tags']);
     if (system.itemTags.isArmor) allowedTabs.add('attributes');
     if (system.itemTags.isActions) allowedTabs.add('actions');
     if (system.itemTags.isModifiers) allowedTabs.add('modifiers');
-    const currentTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? 'description';
+    if (system.itemTags.isMelee) allowedTabs.add('melee');
+    if (system.itemTags.isRanged) allowedTabs.add('ranged');
+    if (system.itemTags.isThrown) allowedTabs.add('thrown');
+    if (system.itemTags.isAmmo) allowedTabs.add('ammo');
+    let currentTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? 'description';
+    if (currentTab === 'weapon') {
+      if (system.itemTags.isMelee) currentTab = 'melee';
+      else if (system.itemTags.isRanged) currentTab = 'ranged';
+      else if (system.itemTags.isThrown) currentTab = 'thrown';
+      else currentTab = 'description';
+      this._activeTabPrimary = currentTab;
+    }
     if (!allowedTabs.has(currentTab)) {
       this._activeTabPrimary = 'tags';
     }
 
-    let selectedAnatomyId = String(system.anatomyId ?? '').trim() || null;
-    if (!selectedAnatomyId && system.anatomyGroup) {
-      selectedAnatomyId = anatomyManager.getRepresentativeAnatomyForGroup(system.anatomyGroup);
-    }
+    const selectedAnatomyId = String(system.anatomyId ?? '').trim() || null;
     context.selectedAnatomyId = selectedAnatomyId;
+    const fallbackAnatomyId = String(CONFIG?.SPACEHOLDER?.wearableCoverageReferenceAnatomyId ?? '').trim() || null;
+    let editorAnatomyId = selectedAnatomyId || fallbackAnatomyId;
+    if (!editorAnatomyId) {
+      const availableIds = Object.keys(anatomyManager.getAvailableAnatomies() ?? {});
+      if (availableIds.length) editorAnatomyId = availableIds[0];
+    }
 
-    // Название анатомии и теги групп для отображения «Для {anatomy}» + теги
+    // Название анатомии + список частей для выбранного эталона предмета
     context.anatomyDisplayName = null;
-    context.anatomyGroupTags = system.anatomyGroup ? [system.anatomyGroup] : [];
     context.bodyPartsForGroup = [];
 
     const coveredParts = Array.isArray(system.coveredParts) ? system.coveredParts : [];
@@ -816,26 +893,26 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       }).filter(Boolean)
     );
 
-    if (selectedAnatomyId) {
+    if (editorAnatomyId) {
       try {
         let anatomyData = null;
-        const registryInfo = anatomyManager.getAnatomyInfo(selectedAnatomyId);
+        const registryInfo = anatomyManager.getAnatomyInfo(editorAnatomyId);
         if (registryInfo) {
-          anatomyData = await anatomyManager.loadAnatomy(selectedAnatomyId);
-          context.anatomyDisplayName = anatomyManager.getAnatomyDisplayName(selectedAnatomyId);
+          anatomyData = await anatomyManager.loadAnatomy(editorAnatomyId);
+          if (selectedAnatomyId) {
+            context.anatomyDisplayName = anatomyManager.getAnatomyDisplayName(selectedAnatomyId);
+          }
         } else {
           await anatomyManager.loadWorldPresets();
           const worldPresets = anatomyManager.getWorldPresets();
-          const preset = worldPresets.find((p) => p.id === selectedAnatomyId);
+          const preset = worldPresets.find((p) => p.id === editorAnatomyId);
           if (preset) {
             anatomyData = preset;
-            context.anatomyDisplayName = preset.name || preset.id;
+            if (selectedAnatomyId) {
+              context.anatomyDisplayName = preset.name || preset.id;
+            }
           }
         }
-
-        const groupId = anatomyManager.getAnatomyGroupId(selectedAnatomyId);
-        if (groupId) context.anatomyGroupTags = [groupId];
-        else if (system.anatomyGroup) context.anatomyGroupTags = [system.anatomyGroup];
 
         const parts = anatomyData?.bodyParts ?? {};
         if (Object.keys(parts).length) {
@@ -899,12 +976,21 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       if (!typeId) continue;
       countByTypeId[typeId] = (countByTypeId[typeId] || 0) + 1;
     }
+    const localizePartName = (partId, fallback) => {
+      const key = `SPACEHOLDER.BodyParts.${partId}`;
+      const localized = game.i18n?.localize?.(key);
+      if (localized && localized !== key) return localized;
+      return fallback;
+    };
+
     context.coveredList = coveredParts
       .map((entry) => {
         const slotRef = String(entry.slotRef ?? entry.partId ?? "").trim();
         if (!slotRef) return null;
         const part = partsForNames[slotRef];
-        const baseName = part?.displayName || part?.name || part?.id || slotRef;
+        const canonicalId = String(part?.id ?? slotRef).trim() || slotRef;
+        const baseNameRaw = part?.displayName || part?.name || canonicalId || slotRef;
+        const baseName = localizePartName(canonicalId, baseNameRaw);
         const typeId = String(part?.id ?? "").trim();
         const hasDup = !!typeId && (countByTypeId[typeId] || 0) > 1;
         const m = String(slotRef).match(/#(\d+)$/);
@@ -932,20 +1018,680 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     system.modifiers.abilities = Array.isArray(system.modifiers.abilities) ? system.modifiers.abilities : [];
     system.modifiers.derived = Array.isArray(system.modifiers.derived) ? system.modifiers.derived : [];
     system.modifiers.params = Array.isArray(system.modifiers.params) ? system.modifiers.params : [];
+
+    // Оружейные вкладки: нормализованные данные (без подключения к стрельбе — только авторинг в предмете).
+    system.weapon = migrateItemWeaponData(system.weapon, system.itemTags);
+    const ammo = system.weapon?.ammo;
+    if (ammo && typeof ammo === 'object') {
+      ammo.feedFilterTagsText = Array.isArray(ammo.feedFilterTags) ? ammo.feedFilterTags.join(', ') : '';
+    }
+
     context.system = system;
 
-    const wearableTabIds = ['description', 'tags'];
+    const wearableTabIds = ['description'];
+    if (context.hasMeleeTag) wearableTabIds.push('melee');
+    if (context.hasRangedTag) wearableTabIds.push('ranged');
+    if (context.hasThrownTag) wearableTabIds.push('thrown');
+    if (context.hasAmmoTag) wearableTabIds.push('ammo');
     if (context.hasArmorTag) wearableTabIds.push('attributes');
     if (context.hasActionsTag) wearableTabIds.push('actions');
     if (context.hasModifiersTag) wearableTabIds.push('modifiers');
+    wearableTabIds.push('tags');
     context.sheetPrimaryTabs = buildItemSheetPrimaryTabs(wearableTabIds, {
       attributes: { icon: 'fas fa-shield-halved', labelKey: 'SPACEHOLDER.Tabs.Coverage' },
       tags: { icon: 'fas fa-gear', labelKey: 'SPACEHOLDER.Tabs.Settings' },
     });
-
     context.itemHeaderInlineQuantity = true;
 
     return context;
+  }
+
+  /**
+   * Черновик для диалога варианта атаки (плоские поля для input).
+   * @param {object} atk
+   * @param {'melee'|'ranged'|'thrown'} channelKey
+   * @returns {object}
+   */
+  _weaponAttackDialogDraft(atk, channelKey) {
+    const a = atk && typeof atk === 'object' ? atk : {};
+    const m = a.modifiers && typeof a.modifiers === 'object' ? a.modifiers : {};
+    const o = a.overrides && typeof a.overrides === 'object' ? a.overrides : {};
+    const numStr = (v) => (v === null || v === undefined ? '' : v);
+    const triSel = (v) => (v === null || v === undefined ? '' : v ? '1' : '0');
+    return {
+      id: String(a.id ?? '').trim(),
+      name: String(a.name ?? '').trim(),
+      mode: String(a.mode ?? 'single').trim() || 'single',
+      description: String(a.description ?? '').trim(),
+      enabled: a.enabled !== false,
+      isDefault: !!a.isDefault,
+      origin: String(a.origin ?? 'manual').trim() || 'manual',
+      channel: channelKey,
+      m_apCostAdd: numStr(m.apCostAdd),
+      m_accuracyAdd: numStr(m.accuracyAdd),
+      m_recoilAdd: numStr(m.recoilAdd),
+      m_damageAdd: numStr(m.damageAdd),
+      m_projectilesPerUseAdd: numStr(m.projectilesPerUseAdd),
+      m_damageMult: numStr(m.damageMult ?? 1),
+      m_armorPenAdd: numStr(m.armorPenAdd),
+      m_armorDamageFactorMult: numStr(m.armorDamageFactorMult ?? 1),
+      o_apCost: numStr(o.apCost),
+      o_accuracy: numStr(o.accuracy),
+      o_recoil: numStr(o.recoil),
+      o_projectilesPerUse: numStr(o.projectilesPerUse),
+      o_damage: numStr(o.damage),
+      o_damageType: o.damageType === null || o.damageType === undefined ? '' : String(o.damageType),
+      o_armorPen: numStr(o.armorPen),
+      o_armorDamageFactor: numStr(o.armorDamageFactor),
+      o_payloadId: o.payloadId === null || o.payloadId === undefined ? '' : String(o.payloadId),
+      o_requiresReadyStateSel: triSel(o.requiresReadyState),
+      o_requiresAimStateSel: triSel(o.requiresAimState),
+    };
+  }
+
+  /**
+   * @param {HTMLElement|null} root
+   * @param {'melee'|'ranged'|'thrown'} channelKey
+   * @param {string} [fallbackId]
+   * @returns {object|null}
+   */
+  _readWeaponAttackDialogForm(root, channelKey, fallbackId = '') {
+    const read = (name) => root?.querySelector?.(`[name="${name}"]`);
+    const readVal = (name) => read(name)?.value;
+    const readChecked = (name) => !!read(name)?.checked;
+    const parseNum = (raw) => {
+      const s = String(raw ?? '').trim();
+      if (s === '') return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    };
+    const parseTri = (raw) => {
+      const s = String(raw ?? '').trim();
+      if (s === '') return null;
+      if (s === '0') return false;
+      if (s === '1') return true;
+      return null;
+    };
+
+    let id = String(readVal('atkId') ?? '').trim() || String(fallbackId ?? '').trim();
+    if (!id) id = this._newActionId();
+    const name = String(readVal('atkName') ?? '').trim();
+    if (!name) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.AttackNameRequired') ?? 'Attack name is required'
+      );
+      return null;
+    }
+
+    return {
+      id,
+      name,
+      channel: channelKey,
+      mode: String(readVal('atkMode') ?? 'single').trim() || 'single',
+      description: String(readVal('atkDescription') ?? '').trim(),
+      enabled: readChecked('atkEnabled'),
+      isDefault: readChecked('atkIsDefault'),
+      origin: String(readVal('atkOrigin') ?? 'manual').trim() || 'manual',
+      modifiers: {
+        apCostAdd: Number(readVal('m_apCostAdd') ?? 0) || 0,
+        accuracyAdd: Number(readVal('m_accuracyAdd') ?? 0) || 0,
+        recoilAdd: Number(readVal('m_recoilAdd') ?? 0) || 0,
+        damageAdd: Number(readVal('m_damageAdd') ?? 0) || 0,
+        projectilesPerUseAdd: Number(readVal('m_projectilesPerUseAdd') ?? 0) || 0,
+        damageMult: Number(readVal('m_damageMult') ?? 1) || 1,
+        armorPenAdd: Number(readVal('m_armorPenAdd') ?? 0) || 0,
+        armorDamageFactorMult: Number(readVal('m_armorDamageFactorMult') ?? 1) || 1,
+      },
+      overrides: {
+        apCost: parseNum(readVal('o_apCost')),
+        accuracy: parseNum(readVal('o_accuracy')),
+        recoil: parseNum(readVal('o_recoil')),
+        projectilesPerUse: parseNum(readVal('o_projectilesPerUse')),
+        damage: parseNum(readVal('o_damage')),
+        damageType: (() => {
+          const s = String(readVal('o_damageType') ?? '').trim();
+          return s === '' ? null : s;
+        })(),
+        armorPen: parseNum(readVal('o_armorPen')),
+        armorDamageFactor: parseNum(readVal('o_armorDamageFactor')),
+        payloadId: (() => {
+          const s = String(readVal('o_payloadId') ?? '').trim();
+          return s === '' ? null : s;
+        })(),
+        requiresReadyState: parseTri(readVal('o_requiresReadyState')),
+        requiresAimState: parseTri(readVal('o_requiresAimState')),
+      },
+    };
+  }
+
+  /**
+   * @param {object} opts
+   * @param {string} opts.title
+   * @param {'melee'|'ranged'|'thrown'} opts.channelKey
+   * @param {object|null} [opts.action]
+   * @returns {Promise<object|null>}
+   */
+  async _openWeaponAttackDialog({ title, channelKey, action = null } = {}) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
+      );
+      return null;
+    }
+
+    const dialogUid = this._newActionId();
+    const draft = this._weaponAttackDialogDraft(action, channelKey);
+    const payloadOptions = await this._getActionPayloadOptions();
+    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/item/parts/item-weapon-attack-dialog.hbs', {
+      dialogUid,
+      attack: draft,
+      payloadOptions,
+    });
+
+    let outcome = null;
+    const titleText =
+      title ||
+      (game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.AddAttack') ?? 'Attack variant');
+
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: { title: titleText, icon: 'fa-solid fa-crosshairs' },
+      position: { width: 560 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            outcome = this._readWeaponAttackDialogForm(root, channelKey, draft.id);
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+
+    return outcome;
+  }
+
+  /**
+   * @param {HTMLElement|null} root
+   * @returns {object}
+   */
+  _readWeaponBaseDialogForm(root) {
+    const q = (n) => root?.querySelector?.(`[name="${n}"]`);
+    return {
+      apCost: Math.max(0, Math.floor(Number(q('wb_apCost')?.value ?? 0) || 0)),
+      accuracy: Number(q('wb_accuracy')?.value ?? 0) || 0,
+      recoil: Number(q('wb_recoil')?.value ?? 0) || 0,
+      projectilesPerUse: Math.max(1, Math.floor(Number(q('wb_projectilesPerUse')?.value ?? 1) || 1)),
+      damage: Number(q('wb_damage')?.value ?? 0) || 0,
+      damageType: String(q('wb_damageType')?.value ?? '').trim(),
+      armorPen: Number(q('wb_armorPen')?.value ?? 0) || 0,
+      armorDamageFactor: Number(q('wb_armorDamageFactor')?.value ?? 0) || 0,
+      requiresHolding: !!q('wb_requiresHolding')?.checked,
+      requiresReadyState: !!q('wb_requiresReadyState')?.checked,
+      requiresAimState: !!q('wb_requiresAimState')?.checked,
+      payloadId: String(q('wb_payloadId')?.value ?? '').trim(),
+    };
+  }
+
+  /**
+   * @param {HTMLElement|null} root
+   * @returns {object}
+   */
+  _readWeaponChannelOptionsDialogForm(root) {
+    const q = (n) => root?.querySelector?.(`[name="${n}"]`);
+    const idRaw = String(q('wo_defaultAttackId')?.value ?? '').trim();
+    return {
+      defaultAttackId: idRaw.length ? idRaw : null,
+      autoGenerateDefault: !!q('wo_autoGenerateDefault')?.checked,
+    };
+  }
+
+  /**
+   * @param {HTMLElement|null} root
+   * @returns {object}
+   */
+  _readWeaponAmmoDialogForm(root) {
+    const q = (n) => root?.querySelector?.(`[name="${n}"]`);
+    const parseTags = (text) =>
+      String(text ?? '')
+        .split(/[,\n\r]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    const tagsText = String(q('wa_feedFilterTagsText')?.value ?? '');
+    return {
+      resourceType: String(q('wa_resourceType')?.value ?? '').trim() || 'cartridge',
+      consumePerUse: Math.max(0, Number(q('wa_consumePerUse')?.value ?? 0) || 0),
+      chamberEnabled: !!q('wa_chamberEnabled')?.checked,
+      chamberCurrentId: String(q('wa_chamberCurrentId')?.value ?? '').trim(),
+      feedSource: String(q('wa_feedSource')?.value ?? '').trim() || 'attachedContainer',
+      feedFilterTags: parseTags(tagsText),
+      reloadApCost: Math.max(0, Math.floor(Number(q('wa_reloadApCost')?.value ?? 0) || 0)),
+      reloadRule: String(q('wa_reloadRule')?.value ?? '').trim() || 'full',
+      canKeepChamberOnReload: !!q('wa_canKeepChamberOnReload')?.checked,
+    };
+  }
+
+  /**
+   * @param {'melee'|'ranged'|'thrown'} channelKey
+   */
+  async _openWeaponBaseDialog(channelKey) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
+      );
+      return;
+    }
+    const ch = this.item.system.weapon?.[channelKey];
+    const base = foundry.utils.duplicate(ch?.base ?? {});
+    const dialogUid = this._newActionId();
+    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/item/parts/item-weapon-base-dialog.hbs', {
+      dialogUid,
+      base,
+      channelKey,
+    });
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title:
+          game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.DialogBaseTitle') ?? 'Weapon base stats',
+        icon: 'fa-solid fa-crosshairs',
+      },
+      position: { width: 440 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget?.closest?.('.window-content') ||
+              (typeof document !== 'undefined'
+                ? document.querySelector(`[data-sh-weapon-base-dialog="${dialogUid}"]`)
+                : null);
+            const nextBase = this._readWeaponBaseDialogForm(root);
+            const w = this._getWeaponData();
+            if (!w[channelKey] || typeof w[channelKey] !== 'object') w[channelKey] = {};
+            w[channelKey].base = { ...w[channelKey].base, ...nextBase };
+            await this._setWeaponData(w);
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+  }
+
+  /**
+   * @param {'melee'|'ranged'|'thrown'} channelKey
+   */
+  async _openWeaponChannelOptionsDialog(channelKey) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
+      );
+      return;
+    }
+    const raw = this.item.system.weapon?.[channelKey];
+    const ch = foundry.utils.duplicate(raw ?? {});
+    ch.defaultAttackId = ch.defaultAttackId ?? '';
+    ch.autoGenerateDefault = ch.autoGenerateDefault !== false;
+    const dialogUid = this._newActionId();
+    const content = await foundry.applications.handlebars.renderTemplate(
+      'systems/spaceholder/templates/item/parts/item-weapon-channel-options-dialog.hbs',
+      { dialogUid, ch, channelKey }
+    );
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title:
+          game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.DialogChannelOptionsTitle') ??
+          'Channel options',
+        icon: 'fa-solid fa-sliders',
+      },
+      position: { width: 420 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget?.closest?.('.window-content') ||
+              (typeof document !== 'undefined'
+                ? document.querySelector(`[data-sh-weapon-channel-options-dialog="${dialogUid}"]`)
+                : null);
+            const opts = this._readWeaponChannelOptionsDialogForm(root);
+            const w = this._getWeaponData();
+            if (!w[channelKey] || typeof w[channelKey] !== 'object') w[channelKey] = {};
+            w[channelKey].defaultAttackId = opts.defaultAttackId;
+            w[channelKey].autoGenerateDefault = opts.autoGenerateDefault;
+            await this._setWeaponData(w);
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+  }
+
+  async _openWeaponAmmoDialog() {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
+      );
+      return;
+    }
+    const ammo = foundry.utils.duplicate(this.item.system.weapon?.ammo ?? {});
+    if (ammo.canKeepChamberOnReload === undefined) ammo.canKeepChamberOnReload = true;
+    ammo.feedFilterTagsText = Array.isArray(ammo.feedFilterTags) ? ammo.feedFilterTags.join(', ') : '';
+    const dialogUid = this._newActionId();
+    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/item/parts/item-weapon-ammo-dialog.hbs', {
+      dialogUid,
+      ammo,
+    });
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.DialogAmmoTitle') ?? 'Ammunition',
+        icon: 'fa-solid fa-box',
+      },
+      position: { width: 440 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget?.closest?.('.window-content') ||
+              (typeof document !== 'undefined'
+                ? document.querySelector(`[data-sh-weapon-ammo-dialog="${dialogUid}"]`)
+                : null);
+            const nextAmmo = this._readWeaponAmmoDialogForm(root);
+            const w = this._getWeaponData();
+            w.ammo = { ...w.ammo, ...nextAmmo };
+            await this._setWeaponData(w);
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+  }
+
+  /**
+   * @returns {object}
+   */
+  _getWeaponData() {
+    return foundry.utils.duplicate(this.item?.system?.weapon ?? {});
+  }
+
+  /**
+   * @param {object} nextWeapon
+   */
+  async _setWeaponData(nextWeapon) {
+    const merged = migrateItemWeaponData(nextWeapon, this.item.system.itemTags);
+    const patch = { 'system.weapon': merged };
+    const pending = this._getPendingNameFromForm();
+    if (pending && pending !== String(this.item.name ?? '').trim()) {
+      patch.name = pending;
+    }
+    const pendingQty = this._getPendingQuantityFromForm();
+    if (pendingQty !== null) {
+      const cur = Math.max(0, Math.floor(Number(this.item.system?.quantity ?? 1)));
+      if (pendingQty !== cur) patch['system.quantity'] = pendingQty;
+    }
+    await this.item.update(patch);
+  }
+
+  /**
+   * Кнопки CRUD вариантов атаки (только лист предмета type=item).
+   */
+  _bindWeaponAttackListeners() {
+    const el = this.element;
+    if (!el || !this.isEditable) return;
+
+    const bindBtn = (selector, handler) => {
+      el.querySelectorAll(selector).forEach((btn) => {
+        if (btn.dataset.shWeaponAtkBound === '1') return;
+        btn.dataset.shWeaponAtkBound = '1';
+        btn.addEventListener('click', handler);
+      });
+    };
+
+    bindBtn('[data-action="sh-weapon-attack-add"]', async (ev) => {
+      ev.preventDefault();
+      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
+      if (!channelKey) return;
+      const created = await this._openWeaponAttackDialog({
+        title: game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.AddAttack') ?? 'Add attack',
+        channelKey,
+        action: {
+          id: this._newActionId(),
+          name: '',
+          channel: channelKey,
+          mode: 'single',
+          origin: 'manual',
+          enabled: true,
+          isDefault: false,
+          description: '',
+          modifiers: {},
+          overrides: {},
+        },
+      });
+      if (!created) return;
+      const w = this._getWeaponData();
+      if (!w[channelKey] || typeof w[channelKey] !== 'object') return;
+      w[channelKey].attacks = Array.isArray(w[channelKey].attacks) ? w[channelKey].attacks : [];
+      w[channelKey].attacks.push(created);
+      await this._setWeaponData(w);
+      await this.render(false);
+    });
+
+    bindBtn('[data-action="sh-weapon-attack-edit"]', async (ev) => {
+      ev.preventDefault();
+      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
+      const id = String(ev.currentTarget?.dataset?.attackId ?? '').trim();
+      if (!channelKey || !id) return;
+      const w = this._getWeaponData();
+      const list = w[channelKey]?.attacks;
+      const source = Array.isArray(list) ? list.find((a) => String(a?.id ?? '') === id) : null;
+      if (!source) return;
+      const edited = await this._openWeaponAttackDialog({
+        title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.EditAction') ?? 'Edit attack',
+        channelKey,
+        action: source,
+      });
+      if (!edited) return;
+      const nextList = (Array.isArray(list) ? list : []).map((a) =>
+        String(a?.id ?? '') === id ? edited : a
+      );
+      w[channelKey].attacks = nextList;
+      await this._setWeaponData(w);
+      await this.render(false);
+    });
+
+    bindBtn('[data-action="sh-weapon-attack-duplicate"]', async (ev) => {
+      ev.preventDefault();
+      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
+      const id = String(ev.currentTarget?.dataset?.attackId ?? '').trim();
+      if (!channelKey || !id) return;
+      const w = this._getWeaponData();
+      const list = w[channelKey]?.attacks;
+      const source = Array.isArray(list) ? list.find((a) => String(a?.id ?? '') === id) : null;
+      if (!source) return;
+      const duplicateSuffix =
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DuplicateSuffix') ?? 'Copy';
+      const cloned = await this._openWeaponAttackDialog({
+        title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DuplicateAction') ?? 'Duplicate attack',
+        channelKey,
+        action: {
+          ...foundry.utils.duplicate(source),
+          id: this._newActionId(),
+          name: source.name ? `${source.name} (${duplicateSuffix})` : '',
+          isDefault: false,
+          origin: 'manual',
+        },
+      });
+      if (!cloned) return;
+      w[channelKey].attacks = [...(Array.isArray(list) ? list : []), cloned];
+      await this._setWeaponData(w);
+      await this.render(false);
+    });
+
+    bindBtn('[data-action="sh-weapon-attack-remove"]', async (ev) => {
+      ev.preventDefault();
+      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
+      const id = String(ev.currentTarget?.dataset?.attackId ?? '').trim();
+      if (!channelKey || !id) return;
+      const confirmed = await foundry.applications.api.DialogV2.confirm({
+        classes: ['spaceholder'],
+        window: {
+          title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionTitle') ?? 'Delete',
+          icon: 'fa-solid fa-trash',
+        },
+        content: `<p>${foundry.utils.escapeHTML(
+          game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionConfirm') ?? 'Delete this attack?'
+        )}</p>`,
+        yes: {
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Delete') ?? 'Delete',
+          icon: 'fa-solid fa-trash',
+        },
+        no: {
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      });
+      if (!confirmed) return;
+      const w = this._getWeaponData();
+      const list = w[channelKey]?.attacks;
+      w[channelKey].attacks = (Array.isArray(list) ? list : []).filter((a) => String(a?.id ?? '') !== id);
+      await this._setWeaponData(w);
+      await this.render(false);
+    });
+
+    const bindDlg = (selector, handler) => {
+      el.querySelectorAll(selector).forEach((btn) => {
+        if (btn.dataset.shWeaponDlgBound === '1') return;
+        btn.dataset.shWeaponDlgBound = '1';
+        btn.addEventListener('click', handler);
+      });
+    };
+
+    bindDlg('[data-action="sh-weapon-edit-base"]', async (ev) => {
+      ev.preventDefault();
+      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
+      if (!channelKey) return;
+      await this._openWeaponBaseDialog(channelKey);
+      await this.render(false);
+    });
+
+    bindDlg('[data-action="sh-weapon-edit-channel-options"]', async (ev) => {
+      ev.preventDefault();
+      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
+      if (!channelKey) return;
+      await this._openWeaponChannelOptionsDialog(channelKey);
+      await this.render(false);
+    });
+
+    bindDlg('[data-action="sh-weapon-edit-ammo"]', async (ev) => {
+      ev.preventDefault();
+      await this._openWeaponAmmoDialog();
+      await this.render(false);
+    });
+  }
+
+  /**
+   * Привести поля weapon после FormData (теги textarea, пустые id).
+   * Частичный submit мержим с документом, чтобы не потерять соседние ветки `weapon.*`.
+   * @param {object} [data]
+   */
+  _postProcessWeaponSubmitData(data) {
+    if (!data || typeof data !== 'object') return;
+    if (!data.system || typeof data.system !== 'object') return;
+    if (!Object.prototype.hasOwnProperty.call(data.system, 'weapon')) return;
+
+    const incoming = data.system.weapon;
+    if (!incoming || typeof incoming !== 'object') return;
+
+    const docW =
+      this.item?.system?.weapon && typeof this.item.system.weapon === 'object'
+        ? foundry.utils.duplicate(this.item.system.weapon)
+        : {};
+    const merged = foundry.utils.mergeObject(docW, incoming, { inplace: false, recursive: true });
+
+    const parseTags = (text) =>
+      String(text ?? '')
+        .split(/[,\n\r]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    if (
+      merged.ammo &&
+      typeof merged.ammo === 'object' &&
+      Object.prototype.hasOwnProperty.call(merged.ammo, 'feedFilterTagsText')
+    ) {
+      merged.ammo.feedFilterTags = parseTags(merged.ammo.feedFilterTagsText);
+      delete merged.ammo.feedFilterTagsText;
+    }
+
+    for (const key of ['melee', 'ranged', 'thrown']) {
+      const ch = merged[key];
+      if (!ch || typeof ch !== 'object') continue;
+      if (ch.defaultAttackId === '' || ch.defaultAttackId === undefined) {
+        ch.defaultAttackId = null;
+      } else if (typeof ch.defaultAttackId === 'string') {
+        const t = ch.defaultAttackId.trim();
+        ch.defaultAttackId = t.length ? t : null;
+      }
+    }
+
+    data.system.weapon = migrateItemWeaponData(merged, this.item.system.itemTags);
   }
 
   /**
@@ -970,23 +1716,32 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       isArmor: !!(src && src.isArmor),
       isActions: !!(src && src.isActions),
       isModifiers: !!(src && src.isModifiers),
+      isMelee: !!(src && src.isMelee),
+      isRanged: !!(src && src.isRanged),
+      isThrown: !!(src && src.isThrown),
+      isAmmo: !!(src && src.isAmmo),
     };
 
     const anatomyId = itemSys.anatomyId ?? null;
-    const anatomyGroup = itemSys.anatomyGroup ?? null;
     const coveredParts = Array.isArray(itemSys.coveredParts)
       ? foundry.utils.duplicate(itemSys.coveredParts)
       : [];
 
+    const weaponSnap =
+      itemSys.weapon && typeof itemSys.weapon === 'object'
+        ? foundry.utils.duplicate(itemSys.weapon)
+        : null;
+
     if (hasNestedSystem) {
       data.system.itemTags = { ...tagSnap };
       data.system.anatomyId = anatomyId;
-      data.system.anatomyGroup = anatomyGroup;
       data.system.coveredParts = coveredParts;
+      if (weaponSnap && !Object.prototype.hasOwnProperty.call(data.system, 'weapon')) {
+        data.system.weapon = weaponSnap;
+      }
     }
     data['system.itemTags'] = { ...tagSnap };
     data['system.anatomyId'] = anatomyId;
-    data['system.anatomyGroup'] = anatomyGroup;
     data['system.coveredParts'] = coveredParts;
   }
 
@@ -996,6 +1751,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   async _prepareSubmitData(event, form, formData) {
     const data = await super._prepareSubmitData(event, form, formData);
     this._preserveWearableGearSubmitFields(data);
+    this._postProcessWeaponSubmitData(data);
     return data;
   }
 
@@ -1005,6 +1761,8 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
    */
   async _onRender(context, options) {
     await super._onRender(context, options);
+
+    this._bindWeaponAttackListeners();
 
     if (!this.isEditable) return;
 
@@ -1023,6 +1781,10 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
           isArmor: readTag('isArmor'),
           isActions: readTag('isActions'),
           isModifiers: readTag('isModifiers'),
+          isMelee: readTag('isMelee'),
+          isRanged: readTag('isRanged'),
+          isThrown: readTag('isThrown'),
+          isAmmo: readTag('isAmmo'),
         };
         const patch = { 'system.itemTags': itemTags };
         const pending = this._getPendingNameFromForm();
@@ -1063,13 +1825,28 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
   if (item?.type !== 'item' || !change) return false;
   if (item.sheet?._wearableApplyingItemTags) return false;
   const cur = item.system?.itemTags;
-  const curAny = cur && (cur.isArmor || cur.isActions || cur.isModifiers);
+  const curAny = cur && (
+    cur.isArmor ||
+    cur.isActions ||
+    cur.isModifiers ||
+    cur.isMelee ||
+    cur.isRanged ||
+    cur.isThrown ||
+    cur.isAmmo
+  );
   if (!curAny) return false;
 
   if (change.system && typeof change.system === 'object' && !Array.isArray(change.system)) {
     const inc = change.system.itemTags;
     if (!inc || typeof inc !== 'object') return false;
-    const incAllFalse = !inc.isArmor && !inc.isActions && !inc.isModifiers;
+    const incAllFalse =
+      !inc.isArmor &&
+      !inc.isActions &&
+      !inc.isModifiers &&
+      !inc.isMelee &&
+      !inc.isRanged &&
+      !inc.isThrown &&
+      !inc.isAmmo;
     if (!incAllFalse) return false;
     const sysKeys = Object.keys(change.system);
     const onlyItemTags = sysKeys.length === 1 && sysKeys[0] === 'itemTags';
@@ -1080,7 +1857,14 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
 
   const flatIt = change['system.itemTags'];
   if (flatIt && typeof flatIt === 'object') {
-    const incAllFalse = !flatIt.isArmor && !flatIt.isActions && !flatIt.isModifiers;
+    const incAllFalse =
+      !flatIt.isArmor &&
+      !flatIt.isActions &&
+      !flatIt.isModifiers &&
+      !flatIt.isMelee &&
+      !flatIt.isRanged &&
+      !flatIt.isThrown &&
+      !flatIt.isAmmo;
     if (!incAllFalse) return false;
     const flatSys = Object.keys(change).filter(
       (k) => typeof k === 'string' && k.startsWith('system.') && k !== 'system.itemTags'
@@ -1094,7 +1878,7 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
 }
 
 /**
- * Те же «полные» diff по system, что и для тегов: в форме нет анатомии/coveredParts, в change приходит null/[].
+ * Те же «полные» diff по system, что и для тегов: в форме нет anatomyId/coveredParts, в change приходит null/[].
  * Явные апдейты только из диалога/редактора покрытия не трогаем.
  * @param {Item} item
  * @param {object} change
@@ -1113,7 +1897,7 @@ function fixSpuriousWearableCoverageWipe(item, change) {
 
   const isCoverageOnlyKeys = (keys) => {
     if (!keys.length) return false;
-    const allowed = new Set(['anatomyId', 'anatomyGroup', 'coveredParts']);
+    const allowed = new Set(['anatomyId', 'coveredParts']);
     return keys.every((k) => allowed.has(k));
   };
 
@@ -1137,7 +1921,6 @@ function fixSpuriousWearableCoverageWipe(item, change) {
 
     if (wipesAnatomy && docHasAnatomy) {
       change.system.anatomyId = docAidRaw;
-      change.system.anatomyGroup = doc.anatomyGroup ?? null;
       fixed = true;
     }
     if (wipesParts && docHasParts) {
@@ -1149,7 +1932,7 @@ function fixSpuriousWearableCoverageWipe(item, change) {
 
   const flatSys = Object.keys(change).filter((k) => typeof k === 'string' && k.startsWith('system.'));
   if (!flatSys.length) return false;
-  const coverageFlat = new Set(['system.anatomyId', 'system.anatomyGroup', 'system.coveredParts']);
+  const coverageFlat = new Set(['system.anatomyId', 'system.coveredParts']);
   const nonCoverageFlat = flatSys.filter((k) => !coverageFlat.has(k));
   if (nonCoverageFlat.length === 0) return false;
 
@@ -1166,7 +1949,6 @@ function fixSpuriousWearableCoverageWipe(item, change) {
 
   if (wipesFlatAnatomy && docHasAnatomy) {
     change['system.anatomyId'] = docAidRaw;
-    change['system.anatomyGroup'] = doc.anatomyGroup ?? null;
     fixed = true;
   }
   if (wipesFlatParts && docHasParts) {

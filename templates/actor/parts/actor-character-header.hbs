@@ -1,8 +1,10 @@
 {{!-- Character sheet: портрет + иконка фракции (клик — открыть лист фракции); подпись — имя фракции / диспозиция / UUID --}}
-<header class="sheet-header sh-character-header">
+<header
+  class="sheet-header sh-character-header"
+  style="--sh-character-header-accent: {{#if characterHeaderAccent}}{{characterHeaderAccent}}{{else}}#3d4a5c{{/if}};{{#if factionColor}} --faction-color: {{factionColor}};{{/if}}"
+>
   <div
     class="sh-character-header__card{{#if editable}}{{#unless system.gFaction}} sh-character-header__card--factionDrop{{/unless}}{{/if}}"
-    style="--sh-character-header-accent: {{#if characterHeaderAccent}}{{characterHeaderAccent}}{{else}}#3d4a5c{{/if}};{{#if factionColor}} --faction-color: {{factionColor}};{{/if}}"
   >
     <div class="sh-character-header__top">
       <div class="sh-portrait sh-character-header__portrait">
@@ -56,5 +58,17 @@
   </div>
   <div class="sh-character-header__aside">
     <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
+    {{#if actionPointsCurrent}}
+      <div
+        class="sh-character-header__ap"
+        data-tooltip="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}}: {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
+        aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}} {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
+      >
+        <span class="sh-character-header__ap-inner">
+          <span class="sh-character-header__ap-label">{{localize 'SPACEHOLDER.ActionsSystem.UI.APHeaderLabel'}}</span>
+          <span class="sh-character-header__ap-value">{{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}</span>
+        </span>
+      </div>
+    {{/if}}
   </div>
 </header>

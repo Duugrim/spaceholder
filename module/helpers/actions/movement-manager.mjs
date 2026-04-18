@@ -2,7 +2,8 @@
  * Movement Manager (v13 integration)
  * - Не включает режимы вручную
  * - Слушает завершённые движения токенов (TokenDocument.movement)
- * - В бою пишет `move` в таблицу: база ОД = ceil(дистанция × system.speed), затем модификатор координации (getEffectiveActionCost)
+ * - В бою пишет `move` в таблицу: база ОД = ceil(дистанция × system.speed), затем модификатор координации (getEffectiveActionCost).
+ *   У персонажей `system.speed` производный: movementApTimeSlice / дистанция за этот бюджет (см. Actor `_prepareDerivedCharacterStats`).
  */
 
 import { getEffectiveActionCost, getMovementDistanceApBase } from './action-service.mjs';

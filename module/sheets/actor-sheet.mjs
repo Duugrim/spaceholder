@@ -14,6 +14,7 @@ import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/fa
 import { collectActorActions, executeActorAction, getActorActionPoints } from '../helpers/actions/action-service.mjs';
 import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
 import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/held-drop-resolve.mjs';
+import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
 
 /** Навигация и баннеры вкладок: один источник id / иконка / ключ i18n */
 const CHARACTER_SHEET_PRIMARY_TABS = Object.freeze([
@@ -222,22 +223,16 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         context.system.actionPoints.max = context.system.actionPoints.value ?? 100;
       }
       if (context.system.speed === undefined || context.system.speed === null) context.system.speed = 1;
-      if (context.system.turnStarts === undefined || context.system.turnStarts === null) context.system.turnStarts = 1;
       if (!Array.isArray(context.system.actions)) context.system.actions = [];
       context.system.actions = this._normalizeActorCustomActions(context.system.actions);
 
       const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
       const collected = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
-      context.availableActions = collected.actions;
-      context.favoriteActions = collected.actions.filter((a) => a?.showInQuickbar !== false);
-      context.availableActions = context.availableActions.map((a) => ({
-        ...a,
-        preview: this._buildActionsPreview(a),
-      }));
-      context.favoriteActions = context.favoriteActions.map((a) => ({
-        ...a,
-        preview: this._buildActionsPreview(a),
-      }));
+      const favoriteIds = this._getFavoriteActionIdSet();
+      context.availableActions = collected.actions.map((a) => this._enrichActionForSheet(a, favoriteIds));
+      context.favoriteActions = collected.actions
+        .filter((a) => favoriteIds.has(String(a?.id ?? '').trim()))
+        .map((a) => this._enrichActionForSheet(a, favoriteIds));
 
       const uiMode = await this._readActionsUiModeForUser();
       const uiPane = this._normalizeActionsUiPane(this._actionsUiPaneState ?? 'main');
@@ -269,6 +264,101 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     
     // Prepare health data for UI
     this._prepareHealthData(context);
+    const aimingArcCfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
+    const defaults = Array.isArray(aimingArcCfg.defaultZoneHalfDegrees) ? aimingArcCfg.defaultZoneHalfDegrees : [1, 5, 15, 25, 30];
+    const srcAimingArc = (context.system.aimingArc && typeof context.system.aimingArc === 'object') ? context.system.aimingArc : {};
+    if (!Array.isArray(srcAimingArc.zoneHalfDegrees)) srcAimingArc.zoneHalfDegrees = [...defaults];
+    srcAimingArc.zoneHalfDegrees = defaults.map((fallback, idx) => {
+      const n = Number(srcAimingArc.zoneHalfDegrees?.[idx] ?? fallback);
+      return Number.isFinite(n) && n >= 0 ? n : Number(fallback) || 0;
+    });
+    if (!Number.isFinite(Number(srcAimingArc.deviationBaseDeg))) {
+      srcAimingArc.deviationBaseDeg = Math.max(0, Number(aimingArcCfg.defaultDeviationBaseDeg) || 1);
+    }
+    context.system.aimingArc = srcAimingArc;
+  }
+
+  /**
+   * Open explicit editor dialog for aiming arc settings.
+   */
+  async _openAimingArcDialog() {
+    if (this.actor?.type !== 'character' || !this.isEditable) return;
+    const cfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
+    const defaults = Array.isArray(cfg.defaultZoneHalfDegrees) ? cfg.defaultZoneHalfDegrees : [1, 5, 15, 25, 30];
+    const zones = defaults.map((fallback, idx) => {
+      const n = Number(this.actor?.system?.aimingArc?.zoneHalfDegrees?.[idx] ?? fallback);
+      return Number.isFinite(n) ? Math.max(0, n) : Math.max(0, Number(fallback) || 0);
+    });
+    const defaultBaseRaw = Number(cfg.defaultDeviationBaseDeg);
+    const fallbackBase = Number.isFinite(defaultBaseRaw) ? defaultBaseRaw : 1;
+    const baseRaw = Number(this.actor?.system?.aimingArc?.deviationBaseDeg ?? fallbackBase);
+    const base = Number.isFinite(baseRaw) ? Math.max(0, baseRaw) : 1;
+
+    const zoneLabelKeys = [
+      'SPACEHOLDER.AimingArc.Zones.Purple',
+      'SPACEHOLDER.AimingArc.Zones.Green',
+      'SPACEHOLDER.AimingArc.Zones.Yellow',
+      'SPACEHOLDER.AimingArc.Zones.Orange',
+      'SPACEHOLDER.AimingArc.Zones.Red',
+    ];
+    const zoneRows = zoneLabelKeys.map((labelKey, idx) => `
+      <div class="form-group">
+        <label for="sh-aiming-zone-${idx}">${game.i18n.localize(labelKey)}</label>
+        <input id="sh-aiming-zone-${idx}" type="number" min="0" step="0.5" value="${zones[idx]}">
+      </div>
+    `).join('');
+
+    await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: game.i18n.localize('SPACEHOLDER.AimingArc.DialogTitle'),
+        icon: 'fa-solid fa-draw-polygon',
+      },
+      position: { width: 420 },
+      content: `
+        <div class="spaceholder-aiming-arc-dialog">
+          ${zoneRows}
+          <div class="form-group">
+            <label for="sh-aiming-base-dev">${game.i18n.localize('SPACEHOLDER.AimingArc.BaseDeviation')}</label>
+            <input id="sh-aiming-base-dev" type="number" min="0" step="0.1" value="${base}">
+          </div>
+          <p class="hint">${game.i18n.localize('SPACEHOLDER.AimingArc.DeviationHint')}</p>
+        </div>
+      `,
+      buttons: [
+        {
+          action: 'apply',
+          label: game.i18n.localize('SPACEHOLDER.AimingArc.ApplyButton'),
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const nextZones = defaults.map((fallback, idx) => {
+              const raw = root?.querySelector?.(`#sh-aiming-zone-${idx}`)?.value ?? fallback;
+              const n = Number(raw);
+              return Number.isFinite(n) ? Math.max(0, n) : Math.max(0, Number(fallback) || 0);
+            });
+            const rawBase = root?.querySelector?.('#sh-aiming-base-dev')?.value ?? base;
+            const nBase = Number(rawBase);
+            const nextBase = Number.isFinite(nBase) ? Math.max(0, nBase) : base;
+            await this.actor.update({
+              'system.aimingArc.zoneHalfDegrees': nextZones,
+              'system.aimingArc.deviationBaseDeg': nextBase,
+            });
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n.localize('SPACEHOLDER.Actions.Cancel'),
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
   }
 
   /**
@@ -316,6 +406,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     if (!bodyParts) {
       context.hierarchicalBodyParts = [];
       context.injuredParts = null;
+      this._prepareHealthEquippedGear(context, null);
       return;
     }
 
@@ -345,6 +436,88 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     
     // Flat list of body parts by graph (links); sort by weight descending, then id
     context.hierarchicalBodyParts = this._buildBodyPartsList(bodyParts, currentHpMap);
+
+    this._prepareHealthEquippedGear(context, bodyParts);
+  }
+
+  /**
+   * Подпись слота части тела для UI (дубликаты типа — с индексом из #n в slotRef).
+   * @param {Record<string, object>|null|undefined} bodyParts
+   * @param {string} slotRef
+   * @returns {string}
+   */
+  _bodyPartSlotLabel(bodyParts, slotRef) {
+    const ref = String(slotRef ?? '').trim();
+    if (!ref) return '';
+    if (!bodyParts?.[ref]) return ref;
+    const part = bodyParts[ref];
+    const countByTypeId = {};
+    for (const p of Object.values(bodyParts)) {
+      const typeId = String(p?.id ?? '').trim();
+      if (typeId) countByTypeId[typeId] = (countByTypeId[typeId] || 0) + 1;
+    }
+    const baseName = part.displayName || part.name || part.id || ref;
+    const typeId = String(part.id ?? '').trim();
+    const hasDup = !!typeId && (countByTypeId[typeId] || 0) > 1;
+    const m = String(ref).match(/#(\d+)$/);
+    const dupIndex = hasDup && m ? Number(m[1]) : null;
+    return dupIndex ? `${baseName} (${dupIndex})` : baseName;
+  }
+
+  /**
+   * Экипированные предметы и покрытие частей тела для колонки вкладки «Анатомия».
+   * @param {object} context
+   * @param {Record<string, object>|null|undefined} bodyParts
+   */
+  _prepareHealthEquippedGear(context, bodyParts) {
+    const wearables = this.actor.items.filter((i) => i.type === 'item' && i.system?.equipped);
+    const rows = [];
+
+    for (const item of wearables) {
+      const tags = item.system?.itemTags || {};
+      const isArmor = !!tags.isArmor;
+      const isModifiers = !!tags.isModifiers;
+
+      const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
+      const bySlotRef = new Map();
+      let matchedCoverageCount = 0;
+      for (const entry of coveredParts) {
+        const val = Number(entry?.value ?? 0);
+        const safeValue = Number.isFinite(val) ? val : 0;
+        const { slotRefs } = resolveCoverageEntryToActorSlots(bodyParts, entry);
+        if (!slotRefs.length) continue;
+        matchedCoverageCount += 1;
+        for (const slotRef of slotRefs) {
+          const prev = bySlotRef.get(slotRef) || {
+            partName: this._bodyPartSlotLabel(bodyParts, slotRef),
+            armorValue: 0
+          };
+          prev.armorValue += safeValue;
+          bySlotRef.set(slotRef, prev);
+        }
+      }
+      const coverageLines = Array.from(bySlotRef.values());
+      coverageLines.sort((a, b) =>
+        a.partName.localeCompare(b.partName, game.i18n?.lang || 'en')
+      );
+
+      rows.push({
+        id: item.id,
+        name: item.name,
+        img: item.img || Item.DEFAULT_ICON,
+        isArmor,
+        isModifiers,
+        coverageLines,
+        showNoCoverageHint: isArmor && coveredParts.length === 0,
+        showNoMatchingPartsHint: isArmor && coveredParts.length > 0 && matchedCoverageCount === 0
+      });
+    }
+
+    rows.sort((a, b) => a.name.localeCompare(b.name, game.i18n?.lang || 'en'));
+    context.healthEquipped = {
+      rows,
+      hasRows: rows.length > 0
+    };
   }
 
   /**
@@ -381,7 +554,11 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         name: uiName,
         currentHp,
         treePrefix: "",
-        hasChildren: Array.isArray(part.links) && part.links.length > 0,
+        hasChildren: Object.values(bodyParts).some(
+          (p) =>
+            Array.isArray(p.relations) &&
+            p.relations.some((r) => r && r.kind === "parent" && r.target === partId)
+        ),
         isInjured: currentHp < part.maxHp
       });
     }
@@ -635,15 +812,52 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     return '';
   }
 
-  _buildActionsPreview(action) {
+  _normalizeFavoriteActionIds(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.map((id) => String(id ?? '').trim()).filter(Boolean);
+  }
+
+  _getFavoriteActionIdSet() {
+    const raw = this.actor?.getFlag?.('spaceholder', 'favoriteActionIds');
+    return new Set(this._normalizeFavoriteActionIds(raw));
+  }
+
+  async _toggleFavoriteActionId(actionId) {
+    const id = String(actionId ?? '').trim();
+    if (!id) return;
+    const next = new Set(this._getFavoriteActionIdSet());
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    try {
+      await this.actor?.setFlag?.('spaceholder', 'favoriteActionIds', [...next]);
+    } catch (e) {
+      console.warn('SpaceHolder | failed to persist favorite actions', e);
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.FavoritePersistFailed') ?? 'Could not update favorites'
+      );
+    }
+  }
+
+  _enrichActionForSheet(action, favoriteIds) {
+    if (!action) return action;
+    const isFavorite = favoriteIds.has(String(action.id ?? '').trim());
+    return { ...action, isFavorite, preview: this._buildActionsPreview(action, isFavorite) };
+  }
+
+  _buildActionsPreview(action, isFavorite = false) {
     if (!action) return null;
+    const source = String(action.source ?? 'system').trim();
+    const sourceItemName =
+      source === 'item' ? String(action.sourceItemName ?? '').trim() || null : null;
     return {
       id: String(action.id ?? '').trim(),
       name: String(action.label ?? action.name ?? '').trim(),
       apCost: Math.max(0, Number(action.apCost) || 0),
-      source: String(action.source ?? 'system').trim(),
-      sourceLabelKey: this._previewSourceLabelKey(action.source),
+      source,
+      sourceItemName,
+      sourceLabelKey: this._previewSourceLabelKey(source),
       description: this._extractActionDescription(action),
+      isFavorite: !!isFavorite,
     };
   }
 
@@ -737,7 +951,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     const dialogUid = this._newActorActionId();
     const draftAction = this._normalizeActorCustomAction(action, { keepId: true });
-    const content = await renderTemplate('systems/spaceholder/templates/actor/parts/actor-action-dialog.hbs', {
+    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/actor/parts/actor-action-dialog.hbs', {
       dialogUid,
       action: draftAction,
       modeOptions: Object.entries(ACTOR_ACTION_MODE_LABEL_KEYS).map(([id, labelKey]) => ({ id, labelKey })),
@@ -753,7 +967,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     const titleText = title || game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.EditAction') || 'Edit action';
     await DialogV2.wait({
-      window: { title: titleText, icon: 'fa-solid fa-bolt', classes: ['spaceholder'] },
+      classes: ['spaceholder'],
+      window: { title: titleText, icon: 'fa-solid fa-bolt' },
       position: { width: 520 },
       content,
       buttons: [
@@ -850,6 +1065,29 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           if (ev.key !== 'Enter' && ev.key !== ' ') return;
           ev.preventDefault();
           openHeldItem(ev.currentTarget);
+        });
+      }
+    });
+
+    const openHealthEquippedItem = (sourceEl) => {
+      const card = sourceEl?.closest?.('.health-equipment-card');
+      const itemId = card?.dataset?.itemId || sourceEl?.dataset?.itemId;
+      if (!itemId) return;
+      const item = this.actor.items.get(itemId);
+      item?.sheet?.render(true);
+    };
+
+    el.querySelectorAll('[data-action="sh-health-equipped-open"]').forEach((node) => {
+      node.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openHealthEquippedItem(ev.currentTarget);
+      });
+      if (node instanceof HTMLElement && node.matches('.health-equipment-card')) {
+        node.addEventListener('keydown', (ev) => {
+          if (ev.key !== 'Enter' && ev.key !== ' ') return;
+          ev.preventDefault();
+          openHealthEquippedItem(ev.currentTarget);
         });
       }
     });
@@ -1102,6 +1340,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           }
           const optionsHtml = sourceItems.map((it) => `<option value="${it.id}">${foundry.utils.escapeHTML(it.name)} (${Math.max(1, Number(it.system?.quantity) || 1)})</option>`).join('');
           await foundry.applications.api.DialogV2.wait({
+            classes: ['spaceholder'],
             window: { title: game.i18n?.localize?.('SPACEHOLDER.ItemPilesSh.Actions.Put') ?? 'Put item', icon: 'fa-solid fa-box-open' },
             content: `
               <div class="form-group">
@@ -1147,48 +1386,85 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       });
     }
 
+    // Character actions UI: works for owners even when the sheet is not editable (favorites, preview, overview run).
+    if (this.actor?.type === 'character') {
+      el.querySelectorAll('[data-action="sh-aiming-arc-edit"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          await this._openAimingArcDialog();
+          this.render(false);
+        });
+      });
+
+      el.querySelectorAll('[data-action="sh-actions-mode-set"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          const mode = this._normalizeActionsUiMode(btn.dataset.mode ?? ACTIONS_UI_MODES.inspect);
+          await this._writeActionsUiModeForUser(mode);
+          this.render(false);
+        });
+      });
+
+      el.querySelectorAll('[data-action="sh-actions-custom-toggle"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          this._actionsUiPaneState = this._toggleActionsUiPane(this._actionsUiPaneState ?? 'main');
+          this.render(false);
+        });
+      });
+
+      el.querySelectorAll('[data-action="sh-actions-open-preview"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          const actionId = String(btn.dataset.actionId ?? '').trim();
+          if (!actionId) return;
+          await this._writeLastSelectedActionIdForActor(actionId);
+          const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+          const { actions } = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
+          const action = actions.find((a) => a.id === actionId);
+          if (!action) {
+            this.render(false);
+            return;
+          }
+          const mode = await this._readActionsUiModeForUser();
+          if (mode === ACTIONS_UI_MODES.use) {
+            await executeActorAction(this.actor, action, { tokenDoc, editable: this.isEditable });
+          }
+          this.render(false);
+        });
+      });
+
+      el.querySelectorAll('[data-action="sh-action-run"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          const actionId = String(btn.dataset.actionId ?? '').trim();
+          if (!actionId) return;
+          const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+          const { actions } = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
+          const action = actions.find((a) => a.id === actionId);
+          if (!action) {
+            this.render(false);
+            return;
+          }
+          await executeActorAction(this.actor, action, { tokenDoc, editable: this.isEditable });
+          this.render(false);
+        });
+      });
+
+      el.querySelectorAll('[data-action="sh-action-favorite-toggle"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const actionId = String(btn.dataset.actionId ?? '').trim();
+          if (!actionId) return;
+          await this._toggleFavoriteActionId(actionId);
+          this.render(false);
+        });
+      });
+    }
+
     // Everything below here is only needed if the sheet is editable
     if (!this.isEditable) return;
-
-    // Actions: mode/pane controls
-    el.querySelectorAll('[data-action="sh-actions-mode-set"]').forEach((btn) => {
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        const mode = this._normalizeActionsUiMode(btn.dataset.mode ?? ACTIONS_UI_MODES.inspect);
-        await this._writeActionsUiModeForUser(mode);
-        this.render(false);
-      });
-    });
-
-    el.querySelectorAll('[data-action="sh-actions-custom-toggle"]').forEach((btn) => {
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        this._actionsUiPaneState = this._toggleActionsUiPane(this._actionsUiPaneState ?? 'main');
-        this.render(false);
-      });
-    });
-
-    // Actions: preview + optional run
-    el.querySelectorAll('[data-action="sh-actions-open-preview"]').forEach((btn) => {
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        const actionId = String(btn.dataset.actionId ?? '').trim();
-        if (!actionId) return;
-        await this._writeLastSelectedActionIdForActor(actionId);
-        const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
-        const { actions } = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
-        const action = actions.find((a) => a.id === actionId);
-        if (!action) {
-          this.render(false);
-          return;
-        }
-        const mode = await this._readActionsUiModeForUser();
-        if (mode === ACTIONS_UI_MODES.use) {
-          await executeActorAction(this.actor, action, { tokenDoc, editable: this.isEditable });
-        }
-        this.render(false);
-      });
-    });
 
     // Character: фракция — дроп Actor(faction) куда угодно по листу (form + capture dragover)
     if (this.actor?.type === 'character') {
@@ -1293,10 +1569,10 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         const id = String(btn.dataset.id ?? '').trim();
         if (!id) return;
         const confirmed = await foundry.applications.api.DialogV2.confirm({
+          classes: ['spaceholder'],
           window: {
             title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionTitle') ?? 'Delete action',
             icon: 'fa-solid fa-trash',
-            classes: ['spaceholder'],
           },
           content: `<p>${game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionConfirm') ?? 'Delete this action?'}</p>`,
           yes: { label: game.i18n?.localize?.('SPACEHOLDER.Actions.Delete') ?? 'Delete', icon: 'fa-solid fa-trash' },
@@ -1655,6 +1931,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       </div>`;
 
     await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
       window: { title, icon: 'fa-solid fa-plus' },
       position: { width: 420 },
       content,
@@ -1730,6 +2007,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     `;
 
     await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
       window: { title, icon: 'fa-solid fa-bandage' },
       position: { width: 400 },
       content,
@@ -1777,6 +2055,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         <div class="form-group"><label>Высота (ячеек)</label><input type="number" id="ag-height" value="${h}" min="1" max="99" style="width:100%;"/></div>
       </div>`;
     await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
       window: { title: "Размер сетки анатомии", icon: "fa-solid fa-th-large" },
       position: { width: 260 },
       content,
@@ -1912,6 +2191,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     ];
 
     await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
       window: { title, icon: 'fa-solid fa-dna' },
       position: { width: 420 },
       content,
@@ -1962,6 +2242,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     `;
 
     await foundry.applications.api.DialogV2.confirm({
+      classes: ['spaceholder'],
       window: { title: 'Сброс анатомии', icon: 'fa-solid fa-trash' },
       content,
       yes: {
@@ -2100,6 +2381,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * @private
    */
   _onRoll(event) {
+    const tgt = event.target;
+    if (tgt && typeof tgt.closest === 'function' && tgt.closest('input, textarea, select, button, a')) return;
     event.preventDefault();
     const element = event.currentTarget;
     if (!(element instanceof HTMLElement)) return;

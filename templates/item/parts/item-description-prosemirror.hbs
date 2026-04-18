@@ -1,0 +1,10 @@
+{{!-- App V2: {{editor}} не активируется; см. HTMLProseMirrorElement (Foundry v13). --}}
+<prose-mirror
+  class="editor"
+  name="system.description"
+  value="{{system.description}}"
+  toggled
+  {{#unless editable}}disabled{{/unless}}
+>
+  {{{enrichedDescription}}}
+</prose-mirror>

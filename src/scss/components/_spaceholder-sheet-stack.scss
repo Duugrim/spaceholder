@@ -127,8 +127,24 @@
     overflow-y: auto;
   }
 
-  // Лист персонажа: без бокового/нижнего зазора от общего padding .tab.active (все primary-вкладки)
-  > .sheet-body.sheet-body--character-primary > .tab.active {
+  // Оружейные вкладки предмета: высота до низа окна, вертикальный скролл в колонках (не на всей .tab)
+  > .sheet-body.sheet-body--item-primary > .tab.active:has(.spaceholder-weapon-tab-layout) {
+    overflow: hidden;
+    min-height: 0;
+
+    > .sh-tab-banner {
+      flex: 0 0 auto;
+    }
+
+    > .spaceholder-weapon-tab-layout {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+
+  // Primary-вкладки (персонаж и предмет): контент идёт во всю ширину, без локальных исключений по data-tab
+  > .sheet-body.sheet-body--character-primary > .tab.active,
+  > .sheet-body.sheet-body--item-primary > .tab.active {
     padding: 0;
   }
 }

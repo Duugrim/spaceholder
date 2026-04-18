@@ -64,6 +64,7 @@ import { installHotbarFactionUiHooks } from './helpers/hotbar-faction-ui.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
+import { installAimingArcOverlayHooks } from './helpers/aiming-arc-overlay.mjs';
 // Actions system (MVP)
 import { collectActorActions, executeActorAction } from './helpers/actions/action-service.mjs';
 import {
@@ -236,6 +237,7 @@ Hooks.once('init', function () {
   // installAimingSystemHooks();
   // Install Token Controls hooks
   installTokenControlsHooks();
+  installAimingArcOverlayHooks();
 
   // Add custom constants for configuration.
   CONFIG.SPACEHOLDER = SPACEHOLDER;
@@ -319,7 +321,7 @@ Hooks.once('init', function () {
     if (!(element instanceof HTMLElement)) return;
     if (!doc.system?.itemTags?.isArmor) return;
 
-    const btn = element.querySelector('[data-action="wearable-select-anatomy-group"]');
+    const btn = element.querySelector('[data-action="wearable-select-anatomy"]');
     if (btn && !btn.dataset.spaceholderBound) {
       btn.dataset.spaceholderBound = '1';
       btn.addEventListener('click', (e) => {
@@ -351,17 +353,8 @@ Hooks.once('init', function () {
 
     // Визуализатор: в режиме редактирования — все части + голубая пометка выбранных; без редактирования — только выбранные части
     const editorContainer = element.querySelector('[data-wearable-coverage-editor="container"]');
-    if (editorContainer && doc.system?.anatomyId) {
-      let anatomyData = null;
-      try {
-        if (anatomyManager.getAnatomyInfo(doc.system.anatomyId)) {
-          anatomyData = await anatomyManager.loadAnatomy(doc.system.anatomyId);
-        } else {
-          await anatomyManager.loadWorldPresets();
-          const preset = anatomyManager.getWorldPresets().find((p) => p.id === doc.system.anatomyId);
-          if (preset) anatomyData = preset;
-        }
-      } catch (_) { /* ignore */ }
+    if (editorContainer) {
+      const anatomyData = await loadWearableReferenceAnatomy(doc.system?.anatomyId);
       if (anatomyData?.bodyParts) {
         const coveredParts = Array.isArray(doc.system?.coveredParts) ? doc.system.coveredParts : [];
         const armorByPart = Object.fromEntries(
@@ -382,12 +375,10 @@ Hooks.once('init', function () {
               value: Number(data?.value) || 0
             }));
             const keepAnatomyId = doc.system?.anatomyId ?? null;
-            const keepAnatomyGroup = doc.system?.anatomyGroup ?? null;
-            // Item DataModel: обновление только coveredParts сбрасывает anatomyId/anatomyGroup — явно сохраняем.
+            // Item DataModel: обновление только coveredParts может сбросить anatomyId — явно сохраняем.
             await doc.update({
               'system.coveredParts': nextCoveredParts,
               'system.anatomyId': keepAnatomyId,
-              'system.anatomyGroup': keepAnatomyGroup,
             });
             await renderAndStayOnCoverage();
           }
@@ -425,11 +416,9 @@ Hooks.once('init', function () {
           if (nextCoveredParts.length === prev.length) return;
 
           const keepAid = doc.system?.anatomyId ?? null;
-          const keepGrp = doc.system?.anatomyGroup ?? null;
           await doc.update({
             'system.coveredParts': nextCoveredParts,
             'system.anatomyId': keepAid,
-            'system.anatomyGroup': keepGrp,
           });
           await renderAndStayOnCoverage();
         });
@@ -439,7 +428,7 @@ Hooks.once('init', function () {
 
   // Делегирование клика: кнопка «Выбрать анатомию» работает даже если хук renderItemSheetV2 не сработал
   document.body.addEventListener('click', async (e) => {
-    const btn = e.target.closest?.('[data-action="wearable-select-anatomy-group"]');
+    const btn = e.target.closest?.('[data-action="wearable-select-anatomy"]');
     if (!btn?.dataset?.itemUuid) return;
     e.preventDefault();
     e.stopPropagation();
@@ -472,7 +461,8 @@ Hooks.on('preCreateActor', (_actor, data) => {
 });
 
 /**
- * Открыть диалог выбора анатомии для предмета Wearable (системные + мировые). Сохраняет anatomyId и anatomyGroup.
+ * Открыть диалог выбора эталонной анатомии для Wearable (системные + мировые).
+ * Сохраняет только anatomyId; механика брони не привязана к анатомии актёра.
  * @param {Item} item - документ предмета типа item (gear)
  */
 const SH_WEARABLE_ANATOMY_REOPEN_GUARD_MS = 450;
@@ -543,18 +533,13 @@ async function openWearableAnatomyDialog(item) {
         const root = dlgEvent.currentTarget;
         const raw = (root.querySelector('#wearable-anatomy-select')?.value ?? '').trim();
         let anatomyId = null;
-        let anatomyGroup = null;
         if (raw && raw.startsWith('world:')) {
           anatomyId = raw.slice(6);
-          const preset = worldPresets.find((p) => p.id === anatomyId);
-          anatomyGroup = preset?.meta?.group ?? anatomyManager.getAnatomyGroupId(anatomyId) ?? null;
         } else if (raw) {
           anatomyId = raw;
-          anatomyGroup = anatomyManager.getAnatomyGroupId(anatomyId);
         }
         await item.update({
-          'system.anatomyId': anatomyId,
-          'system.anatomyGroup': anatomyGroup
+          'system.anatomyId': anatomyId
         });
         globalThis.__shWearableAnatomyJustAppliedAt = Date.now();
         await item.sheet?.render?.();
@@ -567,6 +552,7 @@ async function openWearableAnatomyDialog(item) {
   ];
 
   await foundry.applications.api.DialogV2.wait({
+    classes: ['spaceholder'],
     window: { title: L('SPACEHOLDER.Wearable.SelectAnatomy'), icon: 'fa-solid fa-list' },
     position: { width: 400 },
     content,
@@ -604,6 +590,7 @@ async function openWearableCoverageEditDialog(item, partRef, partName) {
   `;
 
   await foundry.applications.api.DialogV2.wait({
+    classes: ['spaceholder'],
     window: { title: L('SPACEHOLDER.Actions.Edit'), icon: 'fa-solid fa-shield-alt' },
     position: { width: 280 },
     content,
@@ -628,17 +615,38 @@ async function openWearableCoverageEditDialog(item, partRef, partName) {
               ? prev.map((c, i) => (i === idx ? nextEntry : c))
               : [...prev, nextEntry];
           const keepAid = item.system?.anatomyId ?? null;
-          const keepGrp = item.system?.anatomyGroup ?? null;
           await item.update({
             'system.coveredParts': nextCoveredParts,
             'system.anatomyId': keepAid,
-            'system.anatomyGroup': keepGrp,
           });
         }
       },
       { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
     ]
   });
+}
+
+async function loadWearableReferenceAnatomy(preferredAnatomyId) {
+  const requestedId = String(preferredAnatomyId ?? '').trim();
+  const fallbackId = String(CONFIG?.SPACEHOLDER?.wearableCoverageReferenceAnatomyId ?? '').trim();
+  const availableIds = Object.keys(anatomyManager.getAvailableAnatomies?.() ?? {});
+  const candidateIds = [];
+  if (requestedId) candidateIds.push(requestedId);
+  if (fallbackId && !candidateIds.includes(fallbackId)) candidateIds.push(fallbackId);
+  if (!candidateIds.length && availableIds.length) candidateIds.push(availableIds[0]);
+
+  await anatomyManager.loadWorldPresets();
+  for (const anatomyId of candidateIds) {
+    if (!anatomyId) continue;
+    try {
+      if (anatomyManager.getAnatomyInfo(anatomyId)) {
+        return await anatomyManager.loadAnatomy(anatomyId);
+      }
+      const preset = anatomyManager.getWorldPresets().find((p) => p.id === anatomyId);
+      if (preset) return preset;
+    } catch (_) { /* ignore */ }
+  }
+  return null;
 }
 
 /* -------------------------------------------- */

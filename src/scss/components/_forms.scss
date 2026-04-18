@@ -4,7 +4,7 @@
 .spaceholder {
   // ===== Forms =====
   .form-group {
-    margin: 0 0 10px 0;
+    margin: 0;
 
     > label {
       display: block;
@@ -22,33 +22,34 @@
   }
 
   // ===== Inputs =====
-  input[type='text'],
-  input[type='number'],
-  input[type='password'],
-  textarea,
-  select {
+  // Scope to .window-content so we win over Foundry application styles (often transparent border until :focus).
+  .window-content input[type='text'],
+  .window-content input[type='number'],
+  .window-content input[type='password'],
+  .window-content textarea,
+  .window-content select {
     background: var(--sh-surface-1);
     color: var(--sh-text);
-    border: 1px solid var(--sh-border);
+    border: 1px solid var(--sh-border-input);
     border-radius: var(--sh-radius-sm);
     padding: 6px 8px;
   }
 
-  input[type='text'],
-  input[type='number'],
-  input[type='password'],
-  select {
+  .window-content input[type='text'],
+  .window-content input[type='number'],
+  .window-content input[type='password'],
+  .window-content select {
     height: $sh-control-height;
   }
 
-  textarea {
+  .window-content textarea {
     resize: vertical;
     min-height: 60px;
   }
 
-  input:focus,
-  textarea:focus,
-  select:focus {
+  .window-content input:focus,
+  .window-content textarea:focus,
+  .window-content select:focus {
     @include sh-focus-ring;
   }
 
@@ -189,6 +190,47 @@
       background: transparent;
       color: inherit;
     }
+  }
+
+  // Лист предмета, вкладка «Описание»: блок на всю ширину панели (как баннер), текст не вплотную к краю
+  .sheet-body.sheet-body--item-primary .tab[data-tab='description'] {
+    > prose-mirror.editor {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      max-width: none;
+      box-sizing: border-box;
+      border-radius: 0;
+    }
+
+    > prose-mirror.editor .editor {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    > prose-mirror.editor .editor-container {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    > prose-mirror.editor .editor-content {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 12px 14px;
+      box-sizing: border-box;
+    }
+  }
+
+  .sh-item-tab-placeholder {
+    margin: 0;
+    padding: 14px 16px;
+    color: var(--sh-text-muted);
+    border-top: 1px solid var(--sh-border);
+    background: rgba(255, 255, 255, 0.03);
   }
 
   // Item sheet: заголовки секций (как в листе персонажа)
@@ -418,10 +460,14 @@
     }
   }
 
-  // Wearable Coverage tab: верхняя строка + две колонки (как анатомия/травмы)
+  // Wearable Coverage tab: та же геометрия, что у Anatomy, без локальных скруглённых "островков"
   .wearable-coverage-management-container {
-    margin: 0 0 12px 0;
+    margin: 0;
     flex: 0 0 auto;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--sh-border);
+    border-radius: 0;
   }
 
   .wearable-coverage-management-row {
@@ -449,7 +495,7 @@
   // Фиксированная высота ряда (как здоровье персонажа); окно предмета подобрано по высоте, анатомию не сжимаем
   .wearable-coverage-main-layout {
     display: flex;
-    gap: 15px;
+    gap: 0;
     align-items: stretch;
     flex: 0 0 auto;
     flex-shrink: 0;
@@ -480,9 +526,9 @@
     min-height: 420px;
     max-height: 420px;
     flex: 0 0 auto;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
     overflow: hidden;
   }
 
@@ -498,9 +544,9 @@
     max-height: 420px;
     flex: 0 0 auto;
     padding: 24px;
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(0, 0, 0, 0.35);
     border: 1px dashed var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -527,19 +573,21 @@
   .wearable-coverage-panel {
     flex: 1 1 0;
     min-height: 0;
-    padding: 12px;
-    background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
+    padding: 10px 10px 8px;
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--sh-border);
-    border-radius: var(--sh-radius-lg);
+    border-radius: 0;
     display: flex;
     flex-direction: column;
   }
 
   .wearable-coverage-panel-header {
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--sh-text);
-    margin: 0 0 10px 0;
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: var(--sh-text-muted);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    margin: 0 0 8px 0;
     padding: 0;
   }
 

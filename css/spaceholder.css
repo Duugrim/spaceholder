@@ -1,3 +1,4 @@
+@charset "UTF-8";
 @import url("https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap");
 /* Global styles */
 body.game {
@@ -298,6 +299,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   --sh-text-dim: #9a9a9a;
   --sh-border: rgba(255, 255, 255, 0.12);
   --sh-border-strong: rgba(255, 255, 255, 0.2);
+  --sh-border-input: rgba(255, 255, 255, 0.18);
   --sh-accent: #4a6e4a;
   --sh-accent-strong: #8fb98f;
   --sh-accent-blue: #1d4ed8;
@@ -619,7 +621,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 /* Components (each partial is responsible for scoping to .window-app.spaceholder) */
 .window-app.spaceholder .form-group,
 .spaceholder .form-group {
-  margin: 0 0 10px 0;
+  margin: 0;
 }
 .window-app.spaceholder .form-group > label,
 .spaceholder .form-group > label {
@@ -635,43 +637,43 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   align-items: center;
   flex-wrap: wrap;
 }
-.window-app.spaceholder input[type=text],
-.window-app.spaceholder input[type=number],
-.window-app.spaceholder input[type=password],
-.window-app.spaceholder textarea,
-.window-app.spaceholder select,
-.spaceholder input[type=text],
-.spaceholder input[type=number],
-.spaceholder input[type=password],
-.spaceholder textarea,
-.spaceholder select {
+.window-app.spaceholder .window-content input[type=text],
+.window-app.spaceholder .window-content input[type=number],
+.window-app.spaceholder .window-content input[type=password],
+.window-app.spaceholder .window-content textarea,
+.window-app.spaceholder .window-content select,
+.spaceholder .window-content input[type=text],
+.spaceholder .window-content input[type=number],
+.spaceholder .window-content input[type=password],
+.spaceholder .window-content textarea,
+.spaceholder .window-content select {
   background: var(--sh-surface-1);
   color: var(--sh-text);
-  border: 1px solid var(--sh-border);
+  border: 1px solid var(--sh-border-input);
   border-radius: var(--sh-radius-sm);
   padding: 6px 8px;
 }
-.window-app.spaceholder input[type=text],
-.window-app.spaceholder input[type=number],
-.window-app.spaceholder input[type=password],
-.window-app.spaceholder select,
-.spaceholder input[type=text],
-.spaceholder input[type=number],
-.spaceholder input[type=password],
-.spaceholder select {
+.window-app.spaceholder .window-content input[type=text],
+.window-app.spaceholder .window-content input[type=number],
+.window-app.spaceholder .window-content input[type=password],
+.window-app.spaceholder .window-content select,
+.spaceholder .window-content input[type=text],
+.spaceholder .window-content input[type=number],
+.spaceholder .window-content input[type=password],
+.spaceholder .window-content select {
   height: 32px;
 }
-.window-app.spaceholder textarea,
-.spaceholder textarea {
+.window-app.spaceholder .window-content textarea,
+.spaceholder .window-content textarea {
   resize: vertical;
   min-height: 60px;
 }
-.window-app.spaceholder input:focus,
-.window-app.spaceholder textarea:focus,
-.window-app.spaceholder select:focus,
-.spaceholder input:focus,
-.spaceholder textarea:focus,
-.spaceholder select:focus {
+.window-app.spaceholder .window-content input:focus,
+.window-app.spaceholder .window-content textarea:focus,
+.window-app.spaceholder .window-content select:focus,
+.spaceholder .window-content input:focus,
+.spaceholder .window-content textarea:focus,
+.spaceholder .window-content select:focus {
   outline: none;
   border-color: var(--sh-border-focus);
   box-shadow: 0 0 0 2px var(--sh-focus-ring);
@@ -802,6 +804,44 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .editor .editor-content {
   background: transparent;
   color: inherit;
+}
+.window-app.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor,
+.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  border-radius: 0;
+}
+.window-app.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor .editor,
+.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor .editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.window-app.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor .editor-container,
+.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor .editor-container {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.window-app.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor .editor-content,
+.spaceholder .sheet-body.sheet-body--item-primary .tab[data-tab=description] > prose-mirror.editor .editor-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+.window-app.spaceholder .sh-item-tab-placeholder,
+.spaceholder .sh-item-tab-placeholder {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--sh-text-muted);
+  border-top: 1px solid var(--sh-border);
+  background: rgba(255, 255, 255, 0.03);
 }
 .window-app.spaceholder .spaceholder.sheet.item .tab .section-header,
 .spaceholder .spaceholder.sheet.item .tab .section-header {
@@ -1028,8 +1068,12 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .wearable-coverage-management-container,
 .spaceholder .wearable-coverage-management-container {
-  margin: 0 0 12px 0;
+  margin: 0;
   flex: 0 0 auto;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sh-border);
+  border-radius: 0;
 }
 .window-app.spaceholder .wearable-coverage-management-row,
 .spaceholder .wearable-coverage-management-row {
@@ -1056,7 +1100,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .wearable-coverage-main-layout,
 .spaceholder .wearable-coverage-main-layout {
   display: flex;
-  gap: 15px;
+  gap: 0;
   align-items: stretch;
   flex: 0 0 auto;
   flex-shrink: 0;
@@ -1087,9 +1131,9 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   min-height: 420px;
   max-height: 420px;
   flex: 0 0 auto;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
   overflow: hidden;
 }
 .window-app.spaceholder .wearable-coverage-editor-container,
@@ -1105,9 +1149,9 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   max-height: 420px;
   flex: 0 0 auto;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.35);
   border: 1px dashed var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1134,19 +1178,21 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .wearable-coverage-panel {
   flex: 1 1 0;
   min-height: 0;
-  padding: 12px;
-  background: linear-gradient(135deg, var(--sh-surface-1), var(--sh-surface-2));
+  padding: 10px 10px 8px;
+  background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-lg);
+  border-radius: 0;
   display: flex;
   flex-direction: column;
 }
 .window-app.spaceholder .wearable-coverage-panel-header,
 .spaceholder .wearable-coverage-panel-header {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--sh-text);
-  margin: 0 0 10px 0;
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--sh-text-muted);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px 0;
   padding: 0;
 }
 .window-app.spaceholder .wearable-coverage-list,
@@ -1191,6 +1237,151 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .wearable-coverage-part--covered {
   --part-fill: #5eb8c4;
   box-shadow: 0 0 0 2px rgba(94, 184, 196, 0.8);
+}
+
+/* Оружейные вкладки: две колонки (grid) + панели как у дуги прицеливания / stats-panel. */
+.window-app.spaceholder .spaceholder-weapon-tab-layout,
+.spaceholder .spaceholder-weapon-tab-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  min-height: 0;
+  width: 100%;
+}
+.window-app.spaceholder .spaceholder-weapon-tab-layout__stats,
+.spaceholder .spaceholder-weapon-tab-layout__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.window-app.spaceholder .spaceholder-weapon-tab-layout__attacks,
+.spaceholder .spaceholder-weapon-tab-layout__attacks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.window-app.spaceholder .sh-weapon-channel-panel.spaceholder-aiming-arc-panel,
+.spaceholder .sh-weapon-channel-panel.spaceholder-aiming-arc-panel {
+  flex: 0 0 auto;
+  margin: 0;
+  min-height: 0;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-row__value.sh-weapon-value--text,
+.spaceholder .spaceholder-aiming-arc-row__value.sh-weapon-value--text {
+  font-family: inherit;
+  font-weight: 600;
+  white-space: normal;
+  text-align: right;
+  word-break: break-word;
+  line-height: 1.25;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-row__value.sh-weapon-value--multiline,
+.spaceholder .spaceholder-aiming-arc-row__value.sh-weapon-value--multiline {
+  white-space: pre-wrap;
+  justify-self: stretch;
+  text-align: left;
+}
+.window-app.spaceholder .sh-weapon-attacks-panel .sh-weapon-attacks-toolbar,
+.spaceholder .sh-weapon-attacks-panel .sh-weapon-attacks-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px 0;
+  padding: 0;
+  position: static;
+  background: transparent;
+}
+.window-app.spaceholder .sh-weapon-attacks-panel .sh-weapon-attacks-panel__title,
+.spaceholder .sh-weapon-attacks-panel .sh-weapon-attacks-panel__title {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 13px;
+}
+.window-app.spaceholder .sh-weapon-attacks-panel .sh-weapon-attacks-grid,
+.spaceholder .sh-weapon-attacks-panel .sh-weapon-attacks-grid {
+  gap: 4px;
+}
+.window-app.spaceholder .sh-weapon-attack-summary,
+.spaceholder .sh-weapon-attack-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.window-app.spaceholder .sh-weapon-attack-summary:last-child,
+.spaceholder .sh-weapon-attack-summary:last-child {
+  border-bottom: none;
+}
+.window-app.spaceholder .sh-weapon-attack-summary__name,
+.spaceholder .sh-weapon-attack-summary__name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sh-text);
+  line-height: 1.2;
+}
+.window-app.spaceholder .sh-weapon-attack-summary__meta,
+.spaceholder .sh-weapon-attack-summary__meta {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sh-text-muted);
+  line-height: 1.2;
+}
+.window-app.spaceholder .sh-weapon-attack-summary__actions,
+.spaceholder .sh-weapon-attack-summary__actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: center;
+}
+.window-app.spaceholder .sh-weapon-attacks-empty,
+.spaceholder .sh-weapon-attacks-empty {
+  margin: 4px 0 0 0;
+  font-size: 11px;
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .sh-weapon-tags-textarea,
+.spaceholder .sh-weapon-tags-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+.window-app.spaceholder .sh-weapon-attack-dialog__section-title,
+.spaceholder .sh-weapon-attack-dialog__section-title {
+  font-weight: 600;
+  margin: 12px 0 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 4px;
+}
+.window-app.spaceholder .sh-weapon-attack-dialog__hint,
+.spaceholder .sh-weapon-attack-dialog__hint {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+@media (max-width: 560px) {
+  .window-app.spaceholder .spaceholder-weapon-tab-layout,
+  .spaceholder .spaceholder-weapon-tab-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .window-app.spaceholder .spaceholder-sheet-stack,
@@ -1296,8 +1487,24 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   overflow-x: hidden;
   overflow-y: auto;
 }
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active:has(.spaceholder-weapon-tab-layout),
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active:has(.spaceholder-weapon-tab-layout) {
+  overflow: hidden;
+  min-height: 0;
+}
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active:has(.spaceholder-weapon-tab-layout) > .sh-tab-banner,
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active:has(.spaceholder-weapon-tab-layout) > .sh-tab-banner {
+  flex: 0 0 auto;
+}
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active:has(.spaceholder-weapon-tab-layout) > .spaceholder-weapon-tab-layout,
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active:has(.spaceholder-weapon-tab-layout) > .spaceholder-weapon-tab-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--character-primary > .tab.active,
-.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--character-primary > .tab.active {
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active,
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--character-primary > .tab.active,
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body.sheet-body--item-primary > .tab.active {
   padding: 0;
 }
 
@@ -1425,6 +1632,42 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=biography]),
 .spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=biography]) {
   --sh-sheet-frame-accent: #469588;
+}
+
+.window-app.spaceholder form:has(.sheet-body .tab[data-tab=melee].active),
+.spaceholder form:has(.sheet-body .tab[data-tab=melee].active) {
+  --sh-sheet-tab-accent: #b05a52;
+}
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=melee]),
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=melee]) {
+  --sh-sheet-frame-accent: #b05a52;
+}
+
+.window-app.spaceholder form:has(.sheet-body .tab[data-tab=ranged].active),
+.spaceholder form:has(.sheet-body .tab[data-tab=ranged].active) {
+  --sh-sheet-tab-accent: #4f7a9e;
+}
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=ranged]),
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=ranged]) {
+  --sh-sheet-frame-accent: #4f7a9e;
+}
+
+.window-app.spaceholder form:has(.sheet-body .tab[data-tab=thrown].active),
+.spaceholder form:has(.sheet-body .tab[data-tab=thrown].active) {
+  --sh-sheet-tab-accent: #5f8f6a;
+}
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=thrown]),
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=thrown]) {
+  --sh-sheet-frame-accent: #5f8f6a;
+}
+
+.window-app.spaceholder form:has(.sheet-body .tab[data-tab=ammo].active),
+.spaceholder form:has(.sheet-body .tab[data-tab=ammo].active) {
+  --sh-sheet-tab-accent: #8f7a45;
+}
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=ammo]),
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=ammo]) {
+  --sh-sheet-frame-accent: #8f7a45;
 }
 
 .window-app.spaceholder .sh-character-faction-bar,
@@ -1607,6 +1850,22 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder nav.sheet-tabs.tabs .item[data-tab=biography] {
   --tab-accent: #469588;
 }
+.window-app.spaceholder nav.sheet-tabs.tabs .item[data-tab=melee],
+.spaceholder nav.sheet-tabs.tabs .item[data-tab=melee] {
+  --tab-accent: #b05a52;
+}
+.window-app.spaceholder nav.sheet-tabs.tabs .item[data-tab=ranged],
+.spaceholder nav.sheet-tabs.tabs .item[data-tab=ranged] {
+  --tab-accent: #4f7a9e;
+}
+.window-app.spaceholder nav.sheet-tabs.tabs .item[data-tab=thrown],
+.spaceholder nav.sheet-tabs.tabs .item[data-tab=thrown] {
+  --tab-accent: #5f8f6a;
+}
+.window-app.spaceholder nav.sheet-tabs.tabs .item[data-tab=ammo],
+.spaceholder nav.sheet-tabs.tabs .item[data-tab=ammo] {
+  --tab-accent: #8f7a45;
+}
 .window-app.spaceholder .sheet-body.sheet-body--character-primary,
 .window-app.spaceholder .sheet-body.sheet-body--item-primary,
 .spaceholder .sheet-body.sheet-body--character-primary,
@@ -1759,6 +2018,22 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .sheet-body .tab .sh-tab-banner[data-tab=biography] {
   --banner-accent: #469588;
 }
+.window-app.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=melee],
+.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=melee] {
+  --banner-accent: #b05a52;
+}
+.window-app.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=ranged],
+.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=ranged] {
+  --banner-accent: #4f7a9e;
+}
+.window-app.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=thrown],
+.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=thrown] {
+  --banner-accent: #5f8f6a;
+}
+.window-app.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=ammo],
+.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=ammo] {
+  --banner-accent: #8f7a45;
+}
 .window-app.spaceholder form.loot:has(.sheet-body .tab.active[data-tab=items]),
 .spaceholder form.loot:has(.sheet-body .tab.active[data-tab=items]) {
   --sh-sheet-tab-accent: #7d71af;
@@ -1817,10 +2092,6 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   font-size: 13px;
   font-weight: 700;
   color: #fff;
-}
-.window-app.spaceholder .sh-loot-container-settings .form-group,
-.spaceholder .sh-loot-container-settings .form-group {
-  margin: 0 0 8px 0;
 }
 .window-app.spaceholder .sh-loot-items .inventory-item-card,
 .spaceholder .sh-loot-items .inventory-item-card {
@@ -2008,10 +2279,6 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .sh-item-actions-empty p {
   margin: 0;
 }
-.window-app.spaceholder .sh-item-action-dialog .form-group,
-.spaceholder .sh-item-action-dialog .form-group {
-  margin: 0 0 10px 0;
-}
 .window-app.spaceholder .sh-item-action-dialog__macro,
 .spaceholder .sh-item-action-dialog__macro {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -2167,9 +2434,40 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   align-items: stretch;
   flex: 0 0 auto;
 }
+.window-app.spaceholder .tab.stats .sh-stats-columns,
+.spaceholder .tab.stats .sh-stats-columns {
+  grid-template-columns: minmax(0, 0.41fr) minmax(0, 1fr) minmax(0, 1fr);
+}
 .window-app.spaceholder .sh-stats-column,
 .spaceholder .sh-stats-column {
   min-width: 0;
+}
+.window-app.spaceholder .tab.stats,
+.spaceholder .tab.stats {
+  min-height: 0;
+}
+.window-app.spaceholder .tab.stats .sh-stats-columns,
+.spaceholder .tab.stats .sh-stats-columns {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.window-app.spaceholder .tab.stats .sh-stats-column,
+.spaceholder .tab.stats .sh-stats-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.window-app.spaceholder .tab.stats .stats-panel,
+.spaceholder .tab.stats .stats-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.window-app.spaceholder .sh-stats-column--derived-col-b .stats-panel,
+.window-app.spaceholder .sh-stats-column--derived-col-c .stats-panel,
+.spaceholder .sh-stats-column--derived-col-b .stats-panel,
+.spaceholder .sh-stats-column--derived-col-c .stats-panel {
+  padding-left: 0;
+  padding-right: 0;
 }
 @media (max-width: 560px) {
   .window-app.spaceholder .tab.stats .sh-stats-columns,
@@ -2178,6 +2476,42 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   .spaceholder .tab.overview .sh-stats-columns {
     grid-template-columns: 1fr;
   }
+}
+.window-app.spaceholder .tab.overview > .sh-tab-banner,
+.spaceholder .tab.overview > .sh-tab-banner {
+  flex: 0 0 auto;
+}
+.window-app.spaceholder .tab.overview > .sh-stats-columns,
+.spaceholder .tab.overview > .sh-stats-columns {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.window-app.spaceholder .tab.overview > .sh-actions-panel:not(.sh-actions-panel--full),
+.spaceholder .tab.overview > .sh-actions-panel:not(.sh-actions-panel--full) {
+  flex: 0 0 auto;
+  margin-top: auto;
+  height: var(--sh-overview-favorites-height, 220px);
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.window-app.spaceholder .tab.overview .sh-stats-column,
+.spaceholder .tab.overview .sh-stats-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.window-app.spaceholder .tab.overview .sh-stats-column--overview-1 .sh-held-items-panel,
+.spaceholder .tab.overview .sh-stats-column--overview-1 .sh-held-items-panel {
+  margin-top: 0;
+  margin-bottom: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.window-app.spaceholder .tab.overview .sh-stats-column--overview-3 > .stats-panel,
+.spaceholder .tab.overview .sh-stats-column--overview-3 > .stats-panel {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .window-app.spaceholder .stats-panel--skills-reserved,
 .window-app.spaceholder .stats-panel--overview-placeholder,
@@ -2194,10 +2528,75 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .sh-derived-ap > .capacity-line {
   border-bottom: none;
 }
+.window-app.spaceholder .sh-derived-ap--in-group,
+.spaceholder .sh-derived-ap--in-group {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+.window-app.spaceholder .sh-derived-ap--in-group > .capacity-line,
+.spaceholder .sh-derived-ap--in-group > .capacity-line {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.window-app.spaceholder .sh-derived-mvp-block,
+.spaceholder .sh-derived-mvp-block {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.window-app.spaceholder .sh-derived-groups,
+.spaceholder .sh-derived-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.window-app.spaceholder .spaceholder-derived-group,
+.spaceholder .spaceholder-derived-group {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-sm, 4px);
+  background: rgba(0, 0, 0, 0.12);
+}
+.window-app.spaceholder .spaceholder-derived-group .spaceholder-derived-group__heading,
+.spaceholder .spaceholder-derived-group .spaceholder-derived-group__heading {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .spaceholder-derived-group > .spaceholder-derived-group__body,
+.spaceholder .spaceholder-derived-group > .spaceholder-derived-group__body {
+  padding: 0;
+}
+.window-app.spaceholder .spaceholder-derived-group .spaceholder-derived-group__body-inner,
+.spaceholder .spaceholder-derived-group .spaceholder-derived-group__body-inner {
+  padding: 0 8px 6px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
 .window-app.spaceholder .sh-derived-hint,
 .spaceholder .sh-derived-hint {
   margin: 0 0 6px 0;
   padding: 0 0 2px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .sh-derived-movement,
+.spaceholder .sh-derived-movement {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+  line-height: 1.25;
+}
+.window-app.spaceholder .sh-derived-movement .sh-derived-movement__slice,
+.window-app.spaceholder .sh-derived-movement .sh-derived-movement__cost,
+.spaceholder .sh-derived-movement .sh-derived-movement__slice,
+.spaceholder .sh-derived-movement .sh-derived-movement__cost {
   font-size: 11px;
   font-weight: 600;
   color: var(--sh-text-muted);
@@ -2250,6 +2649,139 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .capacity-line:last-child,
 .spaceholder .capacity-line:last-child {
   border-bottom: none;
+}
+.window-app.spaceholder .capacity-line--ability,
+.spaceholder .capacity-line--ability {
+  justify-content: center;
+  padding: 8px 0;
+}
+.window-app.spaceholder .sh-ability-block,
+.spaceholder .sh-ability-block {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  cursor: pointer;
+}
+.window-app.spaceholder .sh-ability-block__chip,
+.spaceholder .sh-ability-block__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  padding: 3px 12px;
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--sh-border);
+  font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--sh-text-muted);
+  align-self: center;
+}
+.window-app.spaceholder .sh-ability-block__abbr,
+.spaceholder .sh-ability-block__abbr {
+  text-align: center;
+}
+.window-app.spaceholder .sh-ability-block__sep,
+.spaceholder .sh-ability-block__sep {
+  opacity: 0.55;
+  user-select: none;
+}
+.window-app.spaceholder .sh-ability-block__val,
+.spaceholder .sh-ability-block__val {
+  min-width: 1.25em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.window-app.spaceholder .sh-ability-block__name,
+.spaceholder .sh-ability-block__name {
+  font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .sh-ability-block--end > .sh-ability-block__chip,
+.spaceholder .sh-ability-block--end > .sh-ability-block__chip {
+  border-color: rgba(229, 115, 115, 0.85);
+  background: rgba(229, 115, 115, 0.14);
+  color: #ffcccb;
+}
+.window-app.spaceholder .sh-ability-block--end > .sh-ability-block__name,
+.spaceholder .sh-ability-block--end > .sh-ability-block__name {
+  color: #ef9a9a;
+}
+.window-app.spaceholder .sh-ability-block--str > .sh-ability-block__chip,
+.spaceholder .sh-ability-block--str > .sh-ability-block__chip {
+  border-color: rgba(255, 167, 38, 0.85);
+  background: rgba(255, 167, 38, 0.14);
+  color: #ffe0b2;
+}
+.window-app.spaceholder .sh-ability-block--str > .sh-ability-block__name,
+.spaceholder .sh-ability-block--str > .sh-ability-block__name {
+  color: #ffcc80;
+}
+.window-app.spaceholder .sh-ability-block--dex > .sh-ability-block__chip,
+.spaceholder .sh-ability-block--dex > .sh-ability-block__chip {
+  border-color: rgba(255, 238, 88, 0.9);
+  background: rgba(255, 238, 88, 0.12);
+  color: #fff9c4;
+}
+.window-app.spaceholder .sh-ability-block--dex > .sh-ability-block__name,
+.spaceholder .sh-ability-block--dex > .sh-ability-block__name {
+  color: #fff59d;
+}
+.window-app.spaceholder .sh-ability-block--cor > .sh-ability-block__chip,
+.spaceholder .sh-ability-block--cor > .sh-ability-block__chip {
+  border-color: rgba(102, 187, 106, 0.85);
+  background: rgba(102, 187, 106, 0.14);
+  color: #c8e6c9;
+}
+.window-app.spaceholder .sh-ability-block--cor > .sh-ability-block__name,
+.spaceholder .sh-ability-block--cor > .sh-ability-block__name {
+  color: #a5d6a7;
+}
+.window-app.spaceholder .sh-ability-block--per > .sh-ability-block__chip,
+.spaceholder .sh-ability-block--per > .sh-ability-block__chip {
+  border-color: rgba(38, 198, 218, 0.85);
+  background: rgba(38, 198, 218, 0.14);
+  color: #b2ebf2;
+}
+.window-app.spaceholder .sh-ability-block--per > .sh-ability-block__name,
+.spaceholder .sh-ability-block--per > .sh-ability-block__name {
+  color: #4dd0e1;
+}
+.window-app.spaceholder .sh-ability-block--int > .sh-ability-block__chip,
+.spaceholder .sh-ability-block--int > .sh-ability-block__chip {
+  border-color: rgba(66, 165, 245, 0.85);
+  background: rgba(66, 165, 245, 0.14);
+  color: #bbdefb;
+}
+.window-app.spaceholder .sh-ability-block--int > .sh-ability-block__name,
+.spaceholder .sh-ability-block--int > .sh-ability-block__name {
+  color: #64b5f6;
+}
+.window-app.spaceholder .sh-ability-block--luc > .sh-ability-block__chip,
+.spaceholder .sh-ability-block--luc > .sh-ability-block__chip {
+  border-color: rgba(171, 71, 188, 0.85);
+  background: rgba(171, 71, 188, 0.14);
+  color: #e1bee7;
+}
+.window-app.spaceholder .sh-ability-block--luc > .sh-ability-block__name,
+.spaceholder .sh-ability-block--luc > .sh-ability-block__name {
+  color: #ce93d8;
+}
+.window-app.spaceholder .sh-ability-block[class*=sh-ability-block--] > .sh-ability-block__chip .sh-ability-block__sep,
+.spaceholder .sh-ability-block[class*=sh-ability-block--] > .sh-ability-block__chip .sh-ability-block__sep {
+  opacity: 0.82;
 }
 .window-app.spaceholder .capacity-name,
 .spaceholder .capacity-name {
@@ -2315,33 +2847,108 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .sh-held-items-panel,
 .spaceholder .sh-held-items-panel {
   margin: 10px 0 10px 0;
-  padding: 10px;
+  padding: 5px 5px 5px 0;
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-md);
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.24);
+}
+.window-app.spaceholder .spaceholder-aiming-arc-panel,
+.spaceholder .spaceholder-aiming-arc-panel {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-panel__title,
+.spaceholder .spaceholder-aiming-arc-panel__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--sh-text);
+}
+.window-app.spaceholder .spaceholder-aiming-arc-panel__hint,
+.spaceholder .spaceholder-aiming-arc-panel__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--sh-text-muted);
+  line-height: 1.3;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-panel__hint--small,
+.spaceholder .spaceholder-aiming-arc-panel__hint--small {
+  font-size: 10px;
+  opacity: 0.9;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-grid,
+.spaceholder .spaceholder-aiming-arc-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-row,
+.spaceholder .spaceholder-aiming-arc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px;
+  align-items: center;
+  gap: 8px;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-row__label,
+.spaceholder .spaceholder-aiming-arc-row__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sh-text);
+}
+.window-app.spaceholder .spaceholder-aiming-arc-row__value,
+.spaceholder .spaceholder-aiming-arc-row__value {
+  justify-self: end;
+  min-width: 78px;
+  padding: 4px 8px;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sh-text);
+  text-align: right;
+}
+.window-app.spaceholder .spaceholder-aiming-arc-row--deviation,
+.spaceholder .spaceholder-aiming-arc-row--deviation {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.window-app.spaceholder .spaceholder-aiming-arc-panel__edit,
+.spaceholder .spaceholder-aiming-arc-panel__edit {
+  width: 100%;
+  justify-content: center;
+  gap: 6px;
 }
 .window-app.spaceholder .sh-held-items-summary,
 .spaceholder .sh-held-items-summary {
   margin: 0;
+  padding-left: 8px;
   font-size: 12px;
   color: var(--sh-text-muted);
 }
 .window-app.spaceholder .sh-held-items-list,
 .spaceholder .sh-held-items-list {
-  margin-top: 8px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 .window-app.spaceholder .sh-held-item-card,
 .spaceholder .sh-held-item-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px 5px 4px 8px;
   border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius-md);
+  border-radius: 0 var(--sh-radius-md) var(--sh-radius-md) 0;
+  border-left: none;
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
 }
@@ -2356,13 +2963,12 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border-color: var(--sh-border-focus);
   box-shadow: 0 0 0 2px var(--sh-focus-ring);
 }
-.window-app.spaceholder .sh-held-item-card__main,
-.spaceholder .sh-held-item-card__main {
+.window-app.spaceholder .sh-held-item-card__header,
+.spaceholder .sh-held-item-card__header {
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: 4px;
 }
 .window-app.spaceholder .sh-held-item-card__image,
 .spaceholder .sh-held-item-card__image {
@@ -2370,16 +2976,20 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .sh-held-item-card__image img,
 .spaceholder .sh-held-item-card__image img {
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--sh-radius-sm);
   border: 1px solid var(--sh-border);
+  display: block;
 }
 .window-app.spaceholder .sh-held-item-card__info,
 .spaceholder .sh-held-item-card__info {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 2px;
 }
 .window-app.spaceholder .sh-held-item-card__name,
@@ -2389,30 +2999,62 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border: none;
   background: transparent;
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1.25;
   text-align: left;
   cursor: pointer;
   max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
 }
-.window-app.spaceholder .sh-held-item-card__name:hover,
-.spaceholder .sh-held-item-card__name:hover {
-  color: var(--sh-accent-strong);
+.window-app.spaceholder .sh-held-item-card__name:hover, .window-app.spaceholder .sh-held-item-card__name:focus,
+.spaceholder .sh-held-item-card__name:hover,
+.spaceholder .sh-held-item-card__name:focus {
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
 }
 .window-app.spaceholder .sh-held-item-card__meta,
 .spaceholder .sh-held-item-card__meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--sh-text-dim);
+  line-height: 1.2;
 }
 .window-app.spaceholder .sh-held-item-card__controls,
 .spaceholder .sh-held-item-card__controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.window-app.spaceholder .sh-held-item-card__controls .icon-btn,
+.spaceholder .sh-held-item-card__controls .icon-btn {
   flex: 0 0 auto;
+  align-self: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  padding: 0;
+  line-height: 1;
+}
+.window-app.spaceholder .sh-held-item-card__controls .icon-btn i,
+.spaceholder .sh-held-item-card__controls .icon-btn i {
+  font-size: 12px;
+  line-height: 1;
 }
 .window-app.spaceholder .sh-actions-panel--full,
 .spaceholder .sh-actions-panel--full {
@@ -2525,11 +3167,19 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .sh-actions-preview-header,
 .spaceholder .sh-actions-preview-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+}
+.window-app.spaceholder .sh-actions-preview-header__end,
+.spaceholder .sh-actions-preview-header__end {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
 }
 .window-app.spaceholder .sh-actions-preview-card__title,
 .spaceholder .sh-actions-preview-card__title {
@@ -2537,10 +3187,11 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   font-size: 13px;
   font-weight: 700;
   color: var(--sh-text);
+  flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 .window-app.spaceholder .sh-actions-preview-card__meta,
 .spaceholder .sh-actions-preview-card__meta {
@@ -2762,16 +3413,112 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .sh-actions-grid,
 .spaceholder .sh-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  align-items: stretch;
+}
+.window-app.spaceholder .sh-action-chip,
+.spaceholder .sh-action-chip {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  vertical-align: top;
+}
+.window-app.spaceholder .sh-action-chip.is-favorite .sh-action-chip__main,
+.spaceholder .sh-action-chip.is-favorite .sh-action-chip__main {
+  border-color: rgba(218, 165, 32, 0.92);
+  box-shadow: 0 0 0 1px rgba(218, 165, 32, 0.5), inset 0 0 0 1px rgba(218, 165, 32, 0.18);
+}
+.window-app.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main,
+.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main {
+  position: relative;
+  z-index: 0;
+  padding-right: 30px;
+}
+.window-app.spaceholder .sh-action-chip__fav,
+.spaceholder .sh-action-chip__fav {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0;
+  z-index: 4;
+  border-radius: var(--sh-radius-sm);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: rgba(255, 210, 120, 0.98);
+  opacity: 0;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.window-app.spaceholder .sh-action-chip__fav i,
+.spaceholder .sh-action-chip__fav i {
+  font-size: 12px;
+}
+.window-app.spaceholder .sh-action-chip__fav:hover,
+.spaceholder .sh-action-chip__fav:hover {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #fff;
+}
+.window-app.spaceholder .sh-action-chip__fav:focus-visible,
+.spaceholder .sh-action-chip__fav:focus-visible {
+  outline: none;
+  border-color: var(--sh-border-focus);
+  box-shadow: 0 0 0 2px var(--sh-focus-ring);
+}
+.window-app.spaceholder .sh-action-chip--fav-toggle:hover .sh-action-chip__fav,
+.window-app.spaceholder .sh-action-chip--fav-toggle:focus-within .sh-action-chip__fav,
+.window-app.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main:hover + .sh-action-chip__fav,
+.window-app.spaceholder .sh-action-chip__fav:focus-visible,
+.spaceholder .sh-action-chip--fav-toggle:hover .sh-action-chip__fav,
+.spaceholder .sh-action-chip--fav-toggle:focus-within .sh-action-chip__fav,
+.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main:hover + .sh-action-chip__fav,
+.spaceholder .sh-action-chip__fav:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.window-app.spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill,
+.spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill {
+  position: static;
+  width: auto;
+  min-width: 30px;
+  height: auto;
+  margin: 0;
+  padding: 2px 10px;
+  opacity: 1;
+  pointer-events: auto;
+  cursor: pointer;
+  color: rgba(255, 210, 120, 0.98);
+  border-color: rgba(218, 165, 32, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+.window-app.spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill i,
+.spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill i {
+  font-size: 12px;
+}
+.window-app.spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill:hover,
+.spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill:hover {
+  border-color: rgba(218, 165, 32, 0.85);
+  background: rgba(218, 165, 32, 0.14);
+  color: #fff;
 }
 .window-app.spaceholder .sh-action-btn,
 .spaceholder .sh-action-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   padding: 8px 10px;
   border-radius: var(--sh-radius-md);
   border: 1px solid rgba(74, 110, 74, 0.6);
@@ -2790,7 +3537,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .sh-action-btn__label,
 .spaceholder .sh-action-btn__label {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   text-align: left;
   font-weight: 700;
   font-size: 12px;
@@ -2905,10 +3652,6 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .sh-item-actions-empty p {
   margin: 0;
 }
-.window-app.spaceholder .sh-actor-action-dialog .form-group,
-.spaceholder .sh-actor-action-dialog .form-group {
-  margin: 0 0 10px 0;
-}
 .window-app.spaceholder .sh-actor-action-dialog__macro,
 .spaceholder .sh-actor-action-dialog__macro {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -3007,31 +3750,181 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   flex-shrink: 0;
   align-self: stretch;
 }
-.window-app.spaceholder .health-equipment-placeholder,
-.spaceholder .health-equipment-placeholder {
+.window-app.spaceholder .health-equipment-panel,
+.spaceholder .health-equipment-panel {
   width: 100%;
   height: 100%;
   min-height: 0;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px dashed var(--sh-border);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--sh-border);
   border-radius: 0;
-  padding: 12px;
+  padding: 10px 10px 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow: hidden;
 }
-.window-app.spaceholder .health-equipment-placeholder-label,
-.spaceholder .health-equipment-placeholder-label {
+.window-app.spaceholder .health-equipment-panel-title,
+.spaceholder .health-equipment-panel-title {
+  flex: 0 0 auto;
   font-weight: 600;
   color: var(--sh-text-muted);
   font-size: 12px;
+  letter-spacing: 0.02em;
 }
-.window-app.spaceholder .health-equipment-placeholder-hint,
-.spaceholder .health-equipment-placeholder-hint {
+.window-app.spaceholder .health-equipment-list,
+.spaceholder .health-equipment-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 2px;
+}
+.window-app.spaceholder .health-equipment-empty,
+.spaceholder .health-equipment-empty {
   margin: 0;
+  flex: 1;
   color: var(--sh-text-dim);
   font-size: 11px;
-  flex: 1;
+  line-height: 1.35;
+}
+.window-app.spaceholder .health-equipment-card,
+.spaceholder .health-equipment-card {
+  flex: 0 0 auto;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--sh-border);
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.window-app.spaceholder .health-equipment-card:hover, .window-app.spaceholder .health-equipment-card:focus-visible,
+.spaceholder .health-equipment-card:hover,
+.spaceholder .health-equipment-card:focus-visible {
+  border-color: var(--color-border-highlight, var(--sh-border));
+  outline: none;
+}
+.window-app.spaceholder .health-equipment-card.health-equipment-card--mismatch,
+.spaceholder .health-equipment-card.health-equipment-card--mismatch {
+  border-color: rgba(180, 120, 60, 0.55);
+}
+.window-app.spaceholder .health-equipment-card__head,
+.spaceholder .health-equipment-card__head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.window-app.spaceholder .health-equipment-card__image,
+.spaceholder .health-equipment-card__image {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .health-equipment-card__image img,
+.spaceholder .health-equipment-card__image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.window-app.spaceholder .health-equipment-card__titles,
+.spaceholder .health-equipment-card__titles {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.window-app.spaceholder .health-equipment-card__name,
+.spaceholder .health-equipment-card__name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--sh-text);
+  line-height: 1.25;
+  word-break: break-word;
+}
+.window-app.spaceholder .health-equipment-card__tags,
+.spaceholder .health-equipment-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.window-app.spaceholder .health-equipment-tag,
+.spaceholder .health-equipment-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--sh-text-muted);
+  border: 1px solid var(--sh-border);
+}
+.window-app.spaceholder .health-equipment-tag--armor,
+.spaceholder .health-equipment-tag--armor {
+  color: rgba(140, 180, 220, 0.95);
+}
+.window-app.spaceholder .health-equipment-tag--modifiers,
+.spaceholder .health-equipment-tag--modifiers {
+  color: rgba(200, 180, 120, 0.95);
+}
+.window-app.spaceholder .health-equipment-hint,
+.spaceholder .health-equipment-hint {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .health-equipment-hint.health-equipment-hint--warn,
+.spaceholder .health-equipment-hint.health-equipment-hint--warn {
+  color: rgba(220, 170, 120, 0.95);
+}
+.window-app.spaceholder .health-equipment-coverage,
+.spaceholder .health-equipment-coverage {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+}
+.window-app.spaceholder .health-equipment-coverage__row,
+.spaceholder .health-equipment-coverage__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--sh-text-muted);
+  line-height: 1.3;
+}
+.window-app.spaceholder .health-equipment-coverage__part,
+.spaceholder .health-equipment-coverage__part {
+  flex: 1 1 0;
+  min-width: 0;
+  word-break: break-word;
+}
+.window-app.spaceholder .health-equipment-coverage__val,
+.spaceholder .health-equipment-coverage__val {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--sh-text);
+}
+.window-app.spaceholder .health-equipment-coverage__val i,
+.spaceholder .health-equipment-coverage__val i {
+  margin-right: 4px;
+  opacity: 0.75;
+  font-size: 10px;
 }
 .window-app.spaceholder .health-bodyparts-column,
 .spaceholder .health-bodyparts-column {
@@ -3361,6 +4254,16 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .spaceholder-anatomy-editor .anatomy-editor-links .anatomy-editor-link[data-selected=true] {
   stroke: rgb(255, 255, 255);
 }
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-links .anatomy-editor-link.anatomy-editor-link--behind,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-links .anatomy-editor-link.anatomy-editor-link--behind {
+  stroke: rgba(180, 200, 255, 0.75);
+  stroke-width: 2px;
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-links .anatomy-editor-link.anatomy-editor-link--parent,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-links .anatomy-editor-link.anatomy-editor-link--parent {
+  stroke: rgba(255, 200, 120, 0.85);
+  stroke-width: 2px;
+}
 .window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part,
 .spaceholder .spaceholder-anatomy-editor .anatomy-editor-part {
   position: absolute;
@@ -3376,10 +4279,56 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   cursor: pointer;
   background: var(--part-fill, transparent);
   border: 3px solid rgba(255, 255, 255, 0.5);
+  overflow: visible;
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz {
+  display: block;
+  box-sizing: border-box;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz[data-material=none],
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz[data-material=none] {
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz.selected,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz.selected {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring .anatomy-exposure-ring__segment,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring .anatomy-exposure-ring__segment {
+  fill: #ffffff;
+  stroke: #0d0d0d;
+  stroke-width: 1px;
+  paint-order: stroke fill;
+  vector-effect: non-scaling-stroke;
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring--selected .anatomy-exposure-ring__segment,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring--selected .anatomy-exposure-ring__segment {
+  stroke-width: 1.5px;
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring--neighbor .anatomy-exposure-ring__segment,
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.anatomy-editor-part-circle--exposure-viz .anatomy-exposure-ring--neighbor .anatomy-exposure-ring__segment {
+  stroke: #141414;
 }
 .window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle[data-material=none],
 .spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle[data-material=none] {
   background: transparent;
+}
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle[data-material=none]:not(.anatomy-editor-part-circle--exposure-viz),
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle[data-material=none]:not(.anatomy-editor-part-circle--exposure-viz) {
   border-width: 4px;
   border-color: rgba(255, 255, 255, 0.85);
 }
@@ -3391,8 +4340,8 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.selected {
   border-color: rgb(255, 255, 255);
 }
-.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.selected[data-material=none],
-.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.selected[data-material=none] {
+.window-app.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.selected[data-material=none]:not(.anatomy-editor-part-circle--exposure-viz),
+.spaceholder .spaceholder-anatomy-editor .anatomy-editor-part-circle.selected[data-material=none]:not(.anatomy-editor-part-circle--exposure-viz) {
   border-width: 4px;
   border-color: rgb(255, 255, 255);
 }
@@ -8516,6 +9465,51 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   background: var(--sh-surface-1);
   border: 1px solid var(--sh-border);
   color: var(--sh-text);
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__ap,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__ap {
+  position: absolute;
+  z-index: 3;
+  left: 169px;
+  right: 0;
+  top: calc(8px + 42px + 6px);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__ap-inner,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__ap-inner {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  max-width: 100%;
+  padding: 5px 12px;
+  border-radius: var(--sh-radius-sm);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 22%, rgba(14, 16, 20, 0.92)) 0%, rgba(10, 12, 16, 0.88) 100%);
+  border: 1px solid color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 35%, var(--sh-border));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__ap-label,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__ap-label {
+  font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__ap-value,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__ap-value {
+  font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.02em;
 }
 .window-app.spaceholder.sheet.actor .sheet-header.sh-character-header,
 .spaceholder.sheet.actor .sheet-header.sh-character-header {

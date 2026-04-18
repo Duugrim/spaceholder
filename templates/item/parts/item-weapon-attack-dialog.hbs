@@ -1,0 +1,148 @@
+<div class="sh-item-action-dialog sh-weapon-attack-dialog" data-sh-weapon-attack-dialog="{{dialogUid}}">
+  <input type="hidden" name="atkId" value="{{attack.id}}" />
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AttackName"}}</label>
+    <div class="form-fields">
+      <input type="text" name="atkName" value="{{attack.name}}" autocomplete="off" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.Mode"}}</label>
+    <div class="form-fields">
+      <input type="text" name="atkMode" value="{{attack.mode}}" placeholder="single / burst / …" autocomplete="off" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AttackOrigin"}}</label>
+    <div class="form-fields">
+      <select name="atkOrigin">
+        <option value="manual" {{#if (eq attack.origin "manual")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OriginManual"}}</option>
+        <option value="auto" {{#if (eq attack.origin "auto")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OriginAuto"}}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AttackDescription"}}</label>
+    <div class="form-fields">
+      <textarea name="atkDescription" rows="3">{{attack.description}}</textarea>
+    </div>
+  </div>
+
+  <div class="sh-item-action-dialog__flags">
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="atkEnabled" {{#if attack.enabled}}checked{{/if}} />
+      <span>{{localize "SPACEHOLDER.ItemWeapon.AttackEnabled"}}</span>
+    </label>
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="atkIsDefault" {{#if attack.isDefault}}checked{{/if}} />
+      <span>{{localize "SPACEHOLDER.ItemWeapon.AttackIsDefault"}}</span>
+    </label>
+  </div>
+
+  <div class="sh-weapon-attack-dialog__section-title">{{localize "SPACEHOLDER.ItemWeapon.ModifiersSection"}}</div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModApCostAdd"}}</label>
+    <div class="form-fields"><input type="number" name="m_apCostAdd" step="any" value="{{attack.m_apCostAdd}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModAccuracyAdd"}}</label>
+    <div class="form-fields"><input type="number" name="m_accuracyAdd" step="any" value="{{attack.m_accuracyAdd}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModRecoilAdd"}}</label>
+    <div class="form-fields"><input type="number" name="m_recoilAdd" step="any" value="{{attack.m_recoilAdd}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModDamageAdd"}}</label>
+    <div class="form-fields"><input type="number" name="m_damageAdd" step="any" value="{{attack.m_damageAdd}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModProjectilesPerUseAdd"}}</label>
+    <div class="form-fields"><input type="number" name="m_projectilesPerUseAdd" step="any" value="{{attack.m_projectilesPerUseAdd}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModDamageMult"}}</label>
+    <div class="form-fields"><input type="number" name="m_damageMult" step="any" value="{{attack.m_damageMult}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModArmorPenAdd"}}</label>
+    <div class="form-fields"><input type="number" name="m_armorPenAdd" step="any" value="{{attack.m_armorPenAdd}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.ModArmorDamageFactorMult"}}</label>
+    <div class="form-fields"><input type="number" name="m_armorDamageFactorMult" step="any" value="{{attack.m_armorDamageFactorMult}}" /></div>
+  </div>
+
+  <div class="sh-weapon-attack-dialog__section-title">{{localize "SPACEHOLDER.ItemWeapon.OverridesSection"}}</div>
+  <p class="sh-weapon-attack-dialog__hint"><em>{{localize "SPACEHOLDER.ItemWeapon.OverridesHint"}}</em></p>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvApCost"}}</label>
+    <div class="form-fields"><input type="number" name="o_apCost" step="any" value="{{attack.o_apCost}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvAccuracy"}}</label>
+    <div class="form-fields"><input type="number" name="o_accuracy" step="any" value="{{attack.o_accuracy}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvRecoil"}}</label>
+    <div class="form-fields"><input type="number" name="o_recoil" step="any" value="{{attack.o_recoil}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvProjectilesPerUse"}}</label>
+    <div class="form-fields"><input type="number" name="o_projectilesPerUse" step="any" value="{{attack.o_projectilesPerUse}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvDamage"}}</label>
+    <div class="form-fields"><input type="number" name="o_damage" step="any" value="{{attack.o_damage}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvDamageType"}}</label>
+    <div class="form-fields"><input type="text" name="o_damageType" value="{{attack.o_damageType}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvArmorPen"}}</label>
+    <div class="form-fields"><input type="number" name="o_armorPen" step="any" value="{{attack.o_armorPen}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvArmorDamageFactor"}}</label>
+    <div class="form-fields"><input type="number" name="o_armorDamageFactor" step="any" value="{{attack.o_armorDamageFactor}}" /></div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvPayloadId"}}</label>
+    <div class="form-fields">
+      <select name="o_payloadId">
+        <option value="">{{localize "SPACEHOLDER.ActionsSystem.UI.PayloadSelect"}}</option>
+        {{#each payloadOptions as |p|}}
+          <option value="{{p.id}}" {{#if (eq ../attack.o_payloadId p.id)}}selected{{/if}}>{{p.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvRequiresReadyState"}}</label>
+    <div class="form-fields">
+      <select name="o_requiresReadyState">
+        <option value="" {{#if (eq attack.o_requiresReadyStateSel "")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OvInherit"}}</option>
+        <option value="0" {{#if (eq attack.o_requiresReadyStateSel "0")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OvNo"}}</option>
+        <option value="1" {{#if (eq attack.o_requiresReadyStateSel "1")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OvYes"}}</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.OvRequiresAimState"}}</label>
+    <div class="form-fields">
+      <select name="o_requiresAimState">
+        <option value="" {{#if (eq attack.o_requiresAimStateSel "")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OvInherit"}}</option>
+        <option value="0" {{#if (eq attack.o_requiresAimStateSel "0")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OvNo"}}</option>
+        <option value="1" {{#if (eq attack.o_requiresAimStateSel "1")}}selected{{/if}}>{{localize "SPACEHOLDER.ItemWeapon.OvYes"}}</option>
+      </select>
+    </div>
+  </div>
+</div>

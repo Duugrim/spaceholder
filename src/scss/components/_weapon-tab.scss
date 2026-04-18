@@ -1,0 +1,148 @@
+/* Оружейные вкладки: две колонки (grid) + панели как у дуги прицеливания / stats-panel. */
+.window-app.spaceholder,
+.spaceholder {
+  .spaceholder-weapon-tab-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 10px;
+    align-items: stretch;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .spaceholder-weapon-tab-layout__stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .spaceholder-weapon-tab-layout__attacks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .sh-weapon-channel-panel.spaceholder-aiming-arc-panel {
+    flex: 0 0 auto;
+    margin: 0;
+    min-height: 0;
+  }
+
+  .spaceholder-aiming-arc-row__value.sh-weapon-value--text {
+    font-family: inherit;
+    font-weight: 600;
+    white-space: normal;
+    text-align: right;
+    word-break: break-word;
+    line-height: 1.25;
+  }
+
+  .spaceholder-aiming-arc-row__value.sh-weapon-value--multiline {
+    white-space: pre-wrap;
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .sh-weapon-attacks-panel {
+    .sh-weapon-attacks-toolbar {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 0 4px 0;
+      padding: 0;
+      position: static;
+      background: transparent;
+    }
+
+    .sh-weapon-attacks-panel__title {
+      margin: 0;
+      flex: 1 1 auto;
+      font-size: 13px;
+    }
+
+    .sh-weapon-attacks-grid {
+      gap: 4px;
+    }
+  }
+
+  .sh-weapon-attack-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .sh-weapon-attack-summary:last-child {
+    border-bottom: none;
+  }
+
+  .sh-weapon-attack-summary__name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sh-text);
+    line-height: 1.2;
+  }
+
+  .sh-weapon-attack-summary__meta {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--sh-text-muted);
+    line-height: 1.2;
+  }
+
+  .sh-weapon-attack-summary__actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0;
+    align-items: center;
+  }
+
+  .sh-weapon-attacks-empty {
+    margin: 4px 0 0 0;
+    font-size: 11px;
+    color: var(--sh-text-muted);
+  }
+
+  .sh-weapon-tags-textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 4.5rem;
+  }
+
+  .sh-weapon-attack-dialog__section-title {
+    font-weight: 600;
+    margin: 12px 0 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    padding-bottom: 4px;
+  }
+
+  .sh-weapon-attack-dialog__hint {
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+    opacity: 0.9;
+  }
+
+  @media (max-width: 560px) {
+    .spaceholder-weapon-tab-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+}

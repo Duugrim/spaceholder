@@ -1,0 +1,55 @@
+<div class="stats-panel">
+  <div class="capacities-list">
+    <div class="sh-derived-groups">
+      {{#if system.derivedStats}}
+      <div class="spaceholder-derived-group">
+        <div class="spaceholder-derived-group__heading">{{localize 'SPACEHOLDER.Derived.Groups.Coordination'}}</div>
+        <div class="spaceholder-derived-group__body">
+          <div class="spaceholder-derived-group__body-inner">
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Agility'}}">{{localize 'SPACEHOLDER.Derived.Agility'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.agilityScore}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.ActionSpeed'}}">{{localize 'SPACEHOLDER.Derived.ActionSpeed'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.actionSpeed}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Reaction'}}">{{localize 'SPACEHOLDER.Derived.Reaction'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.reactionScore}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Accuracy'}}">{{localize 'SPACEHOLDER.Derived.Accuracy'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.accuracyScore}}</span></div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spaceholder-derived-group">
+        <div class="spaceholder-derived-group__heading">{{localize 'SPACEHOLDER.Derived.Groups.Mental'}}</div>
+        <div class="spaceholder-derived-group__body">
+          <div class="spaceholder-derived-group__body-inner">
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Awareness'}}">{{localize 'SPACEHOLDER.Derived.Awareness'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.awarenessScore}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.LearnRate'}}">{{localize 'SPACEHOLDER.Derived.LearnRate'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.learnRateScore}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Will'}}">{{localize 'SPACEHOLDER.Derived.Will'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.willScore}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Intuition'}}">{{localize 'SPACEHOLDER.Derived.Intuition'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{system.derivedStats.intuitionScore}}</span></div>
+          </div>
+          </div>
+        </div>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+</div>

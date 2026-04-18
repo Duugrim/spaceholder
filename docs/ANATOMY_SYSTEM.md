@@ -1,131 +1,121 @@
 # Динамическая система анатомий SpaceHolder
 
 ## Обзор
-Система позволяет использовать различные типы анатомий для актёров вместо жёстко прописанной человекоподобной структуры.
 
-## Структура файлов
+Система позволяет использовать различные типы анатомий для актёров вместо жёстко прописанной структуры. У каждой части тела задаются **экспозиция по направлениям** (взвешенная) и **типизированные связи** (`relations`): рядом (`adjacent`), за (`behind`), родитель (`parent`).
 
-```
-module/data/anatomy/
-├── registry.json          # Реестр всех доступных анатомий
-├── humanoid.json          # Человекоподобная анатомия
-├── quadruped.json         # Четвероногие существа
-└── ...                    # Дополнительные анатомии
-```
+## Где лежат файлы
+
+- **Рантайм (реестр и системные пресеты):** `data/anatomy/` в корне системы (`systems/spaceholder/data/anatomy/`). Тот же набор дублируется в `module/data/anatomy/` для удобства в репозитории.
+- **Мировые пресеты:** `worlds/<worldId>/spaceholder/anatomy/<id>.json` (тот же формат JSON).
 
 ## Основные компоненты
 
 ### 1. AnatomyManager (`module/anatomy-manager.mjs`)
-Центральный класс для управления анатомиями:
-- Загрузка и кэширование анатомий
-- Валидация структуры
-- Создание экземпляров для актёров
-- API для получения информации
 
-### 2. Модифицированный Actor (`module/documents/actor.mjs`)
-Обновлённый класс актёра:
-- Динамическая загрузка анатомий
-- Совместимость со старой системой
-- Новый метод `changeAnatomyType()`
+- Загрузка и кэширование анатомий из `data/anatomy/`
+- Валидация структуры (`validateAnatomyStructure`)
+- Нормализация для актёра: ключи слотов `typeId#N`, `uuid`, ремап целей `relations` и производное поле `links` (только `adjacent`)
 
-### 3. Обновлённый ActorSheet (`module/sheets/actor-sheet.mjs`)
-Интерфейс с поддержкой выбора анатомии:
-- Выпадающий список типов анатомий
-- Подтверждение смены типа
-- Автоматическое обновление UI
+### 2. Anatomy relations helper (`module/helpers/anatomy-relations.mjs`)
 
-## Структура анатомии
+- Константы направлений экспозиции и видов связей
+- Санитизация, дедупликация, миграция legacy-`links` → `relations`
+- `ensureActorPartRelationsSynced` для актёров со старыми данными
 
-### Registry.json
+### 3. Actor (`module/documents/actor.mjs`)
+
+- В `prepareDerivedData` синхронизируются `relations`/`links`, выставляются производные `linkedPartIds`, `parentRef`
+
+### 4. Anatomy Editor (`module/helpers/anatomy-editor.mjs`)
+
+- Редактирование `exposure` и `relations` на листе (режим правки)
+- Режим связи перетаскиванием добавляет только **`adjacent`** (в обе стороны)
+
+### 5. ActorSheet (`module/sheets/actor-sheet.mjs`)
+
+- `hasChildren` в списке частей тела: есть ли у кого-то `parent` на эту часть
+
+## Структура файла анатомии
+
+Корень:
+
+| Поле | Описание |
+|------|-----------|
+| `id`, `name`, `description`, `version` | Идентификация |
+| `grid` | `{ width, height }` сетки редактора |
+| `bodyParts` | Объект частей; **ключи** — стабильные id в пресете (до применения к актёру) |
+| `links` | Опционально: массив `{ from, to }` только по **`adjacent`** (дубль для экспорта/чтения; источник истины — `bodyParts[].relations`) |
+
+### Часть тела (`bodyParts.<key>`)
+
+Обязательные поля: `id`, `weight`, `maxHp`. Частые: `name`, `x`, `y`, `status`, `internal`, `tags`, `organs`, `material`.
+
+**Экспозиция (направления «куда обращена» зона):**
+
 ```json
-{
-  "anatomies": {
-    "humanoid": {
-      "name": "Humanoid",
-      "nameLocalized": "SPACEHOLDER.Anatomy.Humanoid",
-      "file": "humanoid.json",
-      "description": "Standard human-like anatomy",
-      "category": "basic",
-      "icon": "fas fa-male"
-    }
-  }
+"exposure": {
+  "front": 100,
+  "back": 0,
+  "left": 0,
+  "right": 0
 }
 ```
 
-### Файл анатомии
+Ключи: только `front` | `back` | `left` | `right` (азимут в плоскости боя). Значения — неотрицательные числа (веса; не обязаны суммироваться в 100). Пустой объект `{}` — нейтральная / не заданная экспозиция.
+
+**Визуализация на сетке (2D):** круг части тела делится на 4 квадранта — **перед**, **право**, **зад**, **лево**. Толщина «ободка» в каждом квадранте по радиусу пропорциональна весу; при весе 0 сегмент не рисуется.
+
+**Авторинг сетки (`x`, `y`):** не размещайте **разные** части тела в **одной и той же** клетке `(x, y)`, если это можно избежать — так проще читать схему и редактор. Это рекомендация по данным; движок **не** валидирует уникальность координат.
+
+**Legacy:** в старых JSON могли быть `top` / `bottom`. При загрузке `sanitizeExposure` прибавляет `top` к `front`, `bottom` к `back` и дальше работает только с четырьмя осями.
+
+**Связи:**
+
 ```json
-{
-  "id": "humanoid",
-  "name": "Humanoid",
-  "bodyParts": {
-    "torso": {
-      "id": "torso",
-      "maxHp": 50,
-      "weight": 1400,
-      "status": "healthy",
-      "internal": false,
-      "tags": ["core", "vital", "armor_chest"]
-    }
-  }
-}
+"relations": [
+  { "kind": "adjacent", "target": "abdomen" },
+  { "kind": "behind", "target": "back", "chance": 80, "direction": "front" },
+  { "kind": "parent", "target": "chest" }
+]
 ```
 
-Примечание: currentHp и uuid/slotRef не хранятся в файлах анатомии. Они инициализируются автоматически при применении анатомии к актёру. Контейнер system.health.bodyParts является единственным источником правды для текущего состояния частей тела.
+| `kind` | Смысл |
+|--------|--------|
+| `adjacent` | «Рядом» на поверхности: распространение взрыва, соседи на схеме. Рёбра **двунаправленные** в редакторе (добавляются с двух сторон). |
+| `behind` | «За» для пробития и т.п. Опционально **`chance`** 0–100. Опционально **`direction`**: `front` \| `back` \| `left` \| `right` — азимут, с которого связь применяется (согласован с осями экспозиции). Односторонняя связь от источника к цели. |
+| `parent` | Указательная иерархия: у части не более **одного** родителя. Ребро **от потомка к родителю**. |
 
-### Новые поля частей тела
-- **status** (string): Текущее состояние ("healthy", "bruised", "injured", "badly_injured", "destroyed", "missing")
-- **internal** (bool): Является ли часть внутренней
-- **tags** (array): Теги для категоризации и поиска
+`target` в файле пресета — **ключ** другой части в том же `bodyParts` (не slotRef).
 
-## Использование
+### Legacy: только `links`
 
-### В коде
-```javascript
-// Получить менеджер анатомий
-const manager = game.spaceholder.anatomyManager;
+Массив строк `links` по-прежнему поддерживается **только если** нет `relations`: каждая строка становится `{ "kind": "adjacent", "target": "..." }`. После загрузки в кэш менеджер выставляет производный `links` из `adjacent`.
 
-// Загрузить анатомию
-const anatomy = await manager.loadAnatomy('humanoid');
+## Нормализация на актёре
 
-// Создать анатомию для актёра с модификаторами
-const actorAnatomy = await manager.createActorAnatomy('quadruped', {
-  healthMultiplier: 1.5,
-  overrides: {
-    torso: { maxHp: 100, currentHp: 100 }
-  }
-});
+`AnatomyManager` / `_buildNormalizedActorBodyParts`:
 
-// Сменить тип анатомии у актёра
-await actor.changeAnatomyType('quadruped');
-```
+1. Ключи слотов: `head#1`, …; в каждой части `slotRef`, `uuid`, `displayName`.
+2. Цели в `relations` ремапятся с ключей пресета на `slotRef`.
+3. `links` = уникальные цели всех `adjacent` у этой части (для старых визуализаторов и кода, который ждёт список соседей).
 
-### В интерфейсе
-1. Откройте лист персонажа
-2. Перейдите на вкладку "Health"
-3. Используйте выпадающий список "Anatomy Type" 
-4. Подтвердите смену (все текущие части тела будут заменены)
+## Registry.json
 
-## Тестирование
+Без изменений: реестр указывает `file` для каждой анатомии.
 
-Запустите скрипт `test-anatomy.js` в консоли FoundryVTT для проверки всех функций системы.
+## Миграция старых JSON
 
-## Добавление новых анатомий
-
-1. Создайте JSON файл в `module/data/anatomy/`
-2. Добавьте запись в `registry.json`
-3. Система автоматически подхватит новую анатомию
-
-## Совместимость
-
-Система полностью совместима со старой системой здоровья. Старые актёры автоматически получат анатомию "humanoid" при первом открытии.
+В репозитории есть одноразовый скрипт `scripts/migrate-anatomy-relations.mjs` (уже применён к встроенным пресетам). Для мировых файлов можно использовать его как образец или прогнать вручную под свои пути.
 
 ## API AnatomyManager
 
-- `initialize()` - Инициализация менеджера
-- `getAvailableAnatomies()` - Список доступных анатомий
-- `loadAnatomy(id)` - Загрузка анатомии
-- `createActorAnatomy(id, options)` - Создание экземпляра для актёра
-- `getAnatomyDisplayName(id)` - Локализованное название
-- `getStats()` - Статистика использования
-- `clearCache()` - Очистка кэша
-- `reload()` - Перезагрузка системы
+- `initialize()`, `getAvailableAnatomies()`, `loadAnatomy(id)`, `createActorAnatomy(id, options)`
+- `saveToWorld(data)`, `loadWorldPresets()`, `applyPresetToActor(actor, presetId)`
+- `validateAnatomyStructure(anatomyData)`
+- `getAnatomyDisplayName(id)`, `getStats()`, `clearCache()`, `reload()`
+
+## Совместимость
+
+- Старые актёры с только `links`: при `prepareDerivedData` поднимаются `relations` и обратно синхронизируется `links`.
+- Боевая логика попаданий в этой итерации **не** использует `exposure`/`behind` автоматически — данные готовятся для следующих шагов.

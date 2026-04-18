@@ -89,30 +89,180 @@
     align-self: stretch;
   }
 
-  .health-equipment-placeholder {
+  .health-equipment-panel {
     width: 100%;
     height: 100%;
     min-height: 0;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px dashed var(--sh-border);
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--sh-border);
     border-radius: 0;
-    padding: 12px;
+    padding: 10px 10px 8px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    overflow: hidden;
   }
 
-  .health-equipment-placeholder-label {
+  .health-equipment-panel-title {
+    flex: 0 0 auto;
     font-weight: 600;
     color: var(--sh-text-muted);
     font-size: 12px;
+    letter-spacing: 0.02em;
   }
 
-  .health-equipment-placeholder-hint {
+  .health-equipment-list {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 2px;
+  }
+
+  .health-equipment-empty {
     margin: 0;
+    flex: 1;
     color: var(--sh-text-dim);
     font-size: 11px;
-    flex: 1;
+    line-height: 1.35;
+  }
+
+  .health-equipment-card {
+    flex: 0 0 auto;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid var(--sh-border);
+    border-radius: 4px;
+    padding: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.12s ease, background 0.12s ease;
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--color-border-highlight, var(--sh-border));
+      outline: none;
+    }
+
+    &.health-equipment-card--mismatch {
+      border-color: rgba(180, 120, 60, 0.55);
+    }
+  }
+
+  .health-equipment-card__head {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .health-equipment-card__image {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--sh-border);
+
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .health-equipment-card__titles {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .health-equipment-card__name {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--sh-text);
+    line-height: 1.25;
+    word-break: break-word;
+  }
+
+  .health-equipment-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .health-equipment-tag {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--sh-text-muted);
+    border: 1px solid var(--sh-border);
+  }
+
+  .health-equipment-tag--armor {
+    color: rgba(140, 180, 220, 0.95);
+  }
+
+  .health-equipment-tag--modifiers {
+    color: rgba(200, 180, 120, 0.95);
+  }
+
+  .health-equipment-hint {
+    margin: 6px 0 0;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--sh-text-dim);
+
+    &.health-equipment-hint--warn {
+      color: rgba(220, 170, 120, 0.95);
+    }
+  }
+
+  .health-equipment-coverage {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 11px;
+  }
+
+  .health-equipment-coverage__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--sh-text-muted);
+    line-height: 1.3;
+  }
+
+  .health-equipment-coverage__part {
+    flex: 1 1 0;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .health-equipment-coverage__val {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--sh-text);
+
+    i {
+      margin-right: 4px;
+      opacity: 0.75;
+      font-size: 10px;
+    }
   }
 
   .health-bodyparts-column {
@@ -452,6 +602,16 @@
         &[data-selected="true"] {
           stroke: rgba(255, 255, 255, 1);
         }
+
+        &.anatomy-editor-link--behind {
+          stroke: rgba(180, 200, 255, 0.75);
+          stroke-width: 2px;
+        }
+
+        &.anatomy-editor-link--parent {
+          stroke: rgba(255, 200, 120, 0.85);
+          stroke-width: 2px;
+        }
       }
     }
 
@@ -469,11 +629,59 @@
       cursor: pointer;
       background: var(--part-fill, transparent);
       border: 3px solid rgba(255, 255, 255, 0.5);
+      // Не задавать position здесь: .anatomy-editor-part уже position:absolute для сетки.
+      // position:relative перекрывал бы его и ломал left/top (визуально «разброс»).
+      overflow: visible;
+
+      &.anatomy-editor-part-circle--exposure-viz {
+        display: block;
+        box-sizing: border-box;
+        border-width: 1px;
+        border-color: rgba(255, 255, 255, 0.28);
+
+        &[data-material="none"] {
+          border-width: 1px;
+          border-color: rgba(255, 255, 255, 0.45);
+        }
+
+        &.selected {
+          border-color: rgba(255, 255, 255, 0.55);
+        }
+
+        .anatomy-exposure-ring {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+          z-index: 1;
+          overflow: visible;
+
+          .anatomy-exposure-ring__segment {
+            fill: #ffffff;
+            stroke: #0d0d0d;
+            stroke-width: 1px;
+            paint-order: stroke fill;
+            vector-effect: non-scaling-stroke;
+          }
+
+          &--selected .anatomy-exposure-ring__segment {
+            stroke-width: 1.5px;
+          }
+
+          &--neighbor .anatomy-exposure-ring__segment {
+            stroke: #141414;
+          }
+        }
+      }
 
       &[data-material="none"] {
         background: transparent;
-        border-width: 4px;
-        border-color: rgba(255, 255, 255, 0.85);
+
+        &:not(.anatomy-editor-part-circle--exposure-viz) {
+          border-width: 4px;
+          border-color: rgba(255, 255, 255, 0.85);
+        }
       }
 
       &.anatomy-editor-part--linked-neighbor {
@@ -483,7 +691,7 @@
       &.selected {
         border-color: rgba(255, 255, 255, 1);
 
-        &[data-material="none"] {
+        &[data-material="none"]:not(.anatomy-editor-part-circle--exposure-viz) {
           border-width: 4px;
           border-color: rgba(255, 255, 255, 1);
         }

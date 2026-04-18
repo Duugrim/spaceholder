@@ -15,11 +15,11 @@
 - `system.json`:
   - `id: spaceholder`, `styles: css/spaceholder.css`, `esmodules: module/spaceholder.mjs`.
   - Foundry compatibility: `minimum: 13`, `verified: "13"`.
-  - Grid defaults и token-атрибуты: `primaryTokenAttribute: "health"`, `secondaryTokenAttribute: "power"`.
+  - Grid defaults в `grid`. **`primaryTokenAttribute` и `secondaryTokenAttribute` явно `null`** (заглушки в `system.json`): в core ожидается путь к объекту с `value` и `max`; `system.health` у нас — части тела и травмы, не одна шкала. Когда появится подходящий ресурс (например агрегированное HP или `actionPoints`), сюда можно подставить строку пути. Пока баров по умолчанию нет — при необходимости настраиваются на токене вручную.
   - Языки: `en` (`lang/en.json`). URL/manifest/download — заглушки (для релизов потребуют обновления).
 - `template.json`:
-  - Определяет базовые схемы данных для Actor (`types: character, npc`) и Item (`types: item, feature, spell`).
-  - Блок `system.health/power/physicalCapacities` задаёт структуру для дальнейших вычислений на уровне Actor.
+  - Определяет схемы данных для Actor (`globalobject`, `character`, `npc`, `loot`, `faction`) и Item (`item`, `feature`, `spell`).
+  - Блок `system.health` (и прочие поля веток типов) задаёт структуру для вычислений на уровне Actor; актуальный состав ключей — по файлу в репозитории.
 - `package.json`:
   - Dev-инфраструктура только для стилей: `sass` компилирует `src/scss/spaceholder.scss` → `css/spaceholder.css`.
   - Версии: `package.json@2.1.0`, `system.json@1.0` (нормально: `package.json` служит для дев-сборки и не обязан совпадать).
@@ -55,12 +55,13 @@
 
 ## Сервис управления анатомиями
 - `module/anatomy-manager.mjs`:
-  - `initialize()` загружает реестр `module/data/anatomy/registry.json` (через `fetch`), кэширует, выставляет `initialized`.
+  - `initialize()` загружает реестр из `systems/spaceholder/data/anatomy/registry.json` (через `fetch`), кэширует, выставляет `initialized`.
   - `getAvailableAnatomies()` — фильтрует отключённые и служебные ключи.
-  - `loadAnatomy(id)` — загрузка JSON файла анатомии, валидация структуры, кэширование.
-  - `createActorAnatomy(id, { healthMultiplier, overrides })` — готовит копию для актёра, устанавливая `maxHp` (с учётом множителя/оверрайдов). Текущее hp не сохраняется.
-  - `validateAnatomyStructure` — простая валидация полей (id, name, bodyParts, обязательные поля части, наличие корневой части).
+  - `loadAnatomy(id)` — загрузка JSON из `data/anatomy/`, валидация структуры, кэширование.
+  - `createActorAnatomy(id, { healthMultiplier, overrides })` — готовит копию для актёра, нормализует слоты (`slotRef`), `relations` и производные `links` (см. `docs/ANATOMY_SYSTEM.md`).
+  - `validateAnatomyStructure` — id, `bodyParts`, обязательные поля части, `exposure`, типизированные `relations` (или legacy только `links`), корневой массив `links` опционален.
   - API утилиты: `getAnatomyInfo`, `getAnatomyDisplayName` (через i18n ключ), `clearCache`, `reload`, `getStats`.
+- `module/helpers/anatomy-relations.mjs` — константы, санитизация, миграция legacy-`links`, синхронизация на актёре.
 
 ## UI слой: листы и шаблоны
 - Листы (Application V2 + Handlebars):
@@ -70,7 +71,7 @@
     - Анатомия: извлечение доступных типов из `anatomyManager`, диалоги на переключение/сброс анатомии, toggle-кнопка в UI.
     - Здоровье: построение иерархии частей для отображения, маркировка повреждённых частей, синхронизация `blood/pain/physicalCapacities`. Текущее hp частей выводится как производное из травм.
     - Обработчики: создание/удаление предметов, клик по броскам, управление `Active Effects`, drag-and-drop в хотбар.
-    - Табы: primary: `stats/health` (для персонажа), для NPC — свой шаблон и вкладки.
+    - Табы: primary: `stats/health` (для персонажа); для NPC — отдельный шаблон (наследие форка, низкий приоритет — см. `AGENTS.md`).
   - Item: `module/sheets/item-sheet.mjs`
     - Базовый класс `SpaceHolderBaseItemSheet`: вкладки `description/attributes/effects`, обогащение описания, управление эффектами.
     - Частные классы по типам — под разные шаблоны (`item`, `feature`, `spell`, `generic`).
@@ -90,7 +91,7 @@
   - Примечание: сборка SCSS не выполнялась в рамках данного документа.
 
 ## Данные и ресурсы
-- Анатомии: `module/data/anatomy/{humanoid.json, quadruped.json, registry.json}`.
+- Анатомии (рантайм): `data/anatomy/*.json` + зеркало в `module/data/anatomy/` в репозитории; подробности — `docs/ANATOMY_SYSTEM.md`.
 - Компендии: `packs/` (пока пусто, только `.gitattributes`).
 - Медиа: `assets/anvil-impact.png`; background/thumbnail/media — используются в манифесте.
 - Внешняя библиотека: `lib/some-lib/*` (подключения в коде на момент написания не обнаружено).
@@ -115,6 +116,7 @@
   - Handlebars helpers уже подготовлены, можно добавлять новые.
 
 ## Замеченные моменты внимания
+- Лист NPC и Item-типы `feature` / `spell`: наследие форка; не рассчитывать на актуальность UI и данных — правки только по явному запросу (подробнее в `AGENTS.md`).
 - `system.json`: поля `url/bugs/manifest/download` — заглушки, для публикации их нужно заполнить.
 - Версии: `system.json` и `package.json` различаются — это нормально (см. выше).
 - `lib/some-lib` не подключён в манифесте/esmodules/styles; если планируется использование — потребуется добавить.

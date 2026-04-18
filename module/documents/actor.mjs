@@ -1,4 +1,34 @@
-import { anatomyManager } from '../anatomy-manager.mjs';
+import { anatomyManager, resolveBodyPartDisplayName } from '../anatomy-manager.mjs';
+import { getMaxApFromAbilities } from '../helpers/actions/transaction-ledger.mjs';
+import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
+import { ensureActorPartRelationsSynced } from '../helpers/anatomy-relations.mjs';
+
+function _sanitizeAimingArcSystemData(systemData) {
+  if (!systemData || typeof systemData !== 'object') return;
+  const cfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
+  const segmentCount = Math.max(1, Number(cfg.segmentCount) || 5);
+  const maxHalfAngleDeg = Math.max(1, Number(cfg.maxHalfAngleDeg) || 90);
+  const defaults = Array.isArray(cfg.defaultZoneHalfDegrees) ? cfg.defaultZoneHalfDegrees : [1, 5, 15, 25, 30];
+  const defaultBaseDev = Math.max(0, Number(cfg.defaultDeviationBaseDeg) || 1);
+
+  const aimingArc = (systemData.aimingArc && typeof systemData.aimingArc === 'object') ? systemData.aimingArc : {};
+  const raw = Array.isArray(aimingArc.zoneHalfDegrees) ? aimingArc.zoneHalfDegrees : [];
+  const zones = [];
+  let remaining = maxHalfAngleDeg;
+  for (let i = 0; i < segmentCount; i += 1) {
+    const fallback = Number(defaults[i] ?? 0);
+    const baseValue = Number(raw[i] ?? fallback);
+    const safe = Number.isFinite(baseValue) ? Math.max(0, baseValue) : 0;
+    const clipped = Math.min(remaining, safe);
+    zones.push(clipped);
+    remaining = Math.max(0, remaining - clipped);
+  }
+
+  const baseDev = Number(aimingArc.deviationBaseDeg);
+  aimingArc.zoneHalfDegrees = zones;
+  aimingArc.deviationBaseDeg = Number.isFinite(baseDev) ? Math.max(0, baseDev) : defaultBaseDev;
+  systemData.aimingArc = aimingArc;
+}
 
 /**
  * Extend the base Actor document by defining a custom roll data structure which is ideal for the Simple system.
@@ -57,11 +87,80 @@ export class SpaceHolderActor extends Actor {
       ability.mod = Math.floor((ability.value - 10) / 2);
     }
 
+    this._prepareDerivedCharacterStats(systemData);
+    _sanitizeAimingArcSystemData(systemData);
+
     // Process body parts health system (always based on health)
     this._prepareBodyParts(systemData);
     // Применяем защиту по частям тела от надетых предметов
     this._prepareWearableDefense(systemData);
     
+  }
+
+  /**
+   * MVP производные величины с листа персонажа (формулы можно заменить позже).
+   * Пишет в `systemData.derivedStats` только в рантайме (не в template.json).
+   * @param {object} systemData
+   */
+  _prepareDerivedCharacterStats(systemData) {
+    const abs = systemData.abilities || {};
+    const val = (k) => {
+      const n = Number(abs[k]?.value);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const mod = (k) => {
+      const n = Number(abs[k]?.mod);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const endM = mod('end');
+    const strM = mod('str');
+    const strV = val('str');
+    const dexM = mod('dex');
+    const dexV = val('dex');
+    const corM = mod('cor');
+    const perM = mod('per');
+    const intM = mod('int');
+    const intV = val('int');
+    const lucM = mod('luc');
+
+    // Прыжки (м): грубая линейная связь от STR+DEX
+    const jumpHigh = Math.max(0, 0.25 + (strV + dexV - 20) * 0.04);
+    const jumpLong = Math.max(0, 1.8 + (strV + dexV - 20) * 0.15);
+
+    const apSlice = Math.max(1, Number(CONFIG.SPACEHOLDER?.movementApTimeSlice) || 10);
+    const minDistPerSlice = Math.max(
+      Number.EPSILON,
+      Number(CONFIG.SPACEHOLDER?.movementMinDistancePerSlice) || 0.25
+    );
+    const travelDistPerSlice = Math.max(0, 5 + dexM);
+    const distPerSliceForCost = Math.max(minDistPerSlice, travelDistPerSlice);
+    systemData.speed = apSlice / distPerSliceForCost;
+
+    systemData.derivedStats = {
+      healthBonus: endM,
+      carryWeight: Math.floor(15 + strV * 6 + val('end') * 5),
+      liftWeight: Math.floor(strV * 12),
+      meleeDamageBonus: strM,
+      jumpHigh,
+      jumpLong,
+      travelSpeed: travelDistPerSlice,
+      movementTimeSliceAp: apSlice,
+      /** MVP: ходов за раунд (боёвка), не хранится в документе. */
+      turnsPerRound: Math.max(1, Math.floor((dexV * intV) / 100)),
+      agilityScore: 10 + dexM + corM,
+      actionSpeed: Math.max(0, 8 + corM * 2),
+      reactionScore: 10 + dexM + perM,
+      accuracyScore: 10 + corM + perM,
+      awarenessScore: 10 + perM * 2,
+      learnRateScore: 10 + perM + intM,
+      willScore: 10 + intM * 2,
+      intuitionScore: 10 + lucM + intM,
+      heroismPoints: Math.max(0, 1 + lucM),
+      secondWindBonus: 1 + endM + lucM,
+      /** Совпадает с `getMaxApFromAbilities` / макс. ОД в бою. */
+      maxApFromAbilities: getMaxApFromAbilities(this),
+    };
   }
 
   /**
@@ -117,9 +216,18 @@ export class SpaceHolderActor extends Actor {
       sumDamageByPart[key] = (sumDamageByPart[key] || 0) + Math.max(0, inj.amount | 0);
     }
 
-    // Обновляем производные поля частей тела (граф связей по links; попадания — в shot-manager)
+    // Обновляем производные поля частей тела (typed relations + производные links; попадания — в shot-manager)
     for (const [partId, bodyPart] of Object.entries(bodyParts)) {
+      ensureActorPartRelationsSynced(bodyPart);
+      const typeId = String(bodyPart?.id ?? "").trim();
+      if (typeId) {
+        bodyPart.displayName = resolveBodyPartDisplayName(typeId, bodyPart.name);
+      }
       bodyPart.linkedPartIds = Array.isArray(bodyPart.links) ? [...bodyPart.links] : [];
+      const parentRel = Array.isArray(bodyPart.relations)
+        ? bodyPart.relations.find((r) => r && r.kind === "parent")
+        : null;
+      bodyPart.parentRef = parentRel?.target ?? null;
 
       // Вычисляем текущее здоровье из травм: current = maxHp - floor(sum(amount)/100)
       const sumAmt = sumDamageByPart[partId] || 0;
@@ -147,37 +255,22 @@ export class SpaceHolderActor extends Actor {
       part.armor = 0;
     }
 
-    const anatomy = systemData.anatomy || {};
-    const anatomyType = anatomy.id || anatomy.type || null;
-    if (!anatomyType) return;
-
-    const groupId = anatomyManager.getAnatomyGroupId(anatomyType);
-    if (!groupId) return;
-
     const wearables = this.items.filter((i) => i.type === 'item' && i.system?.equipped);
     if (!wearables.length) return;
 
     for (const item of wearables) {
       if (!item.system?.itemTags?.isArmor) continue;
-      // Resolve wearable group:
-      // - Prefer explicit system.anatomyGroup
-      // - Fallback to anatomyId -> groupId (older items / incomplete config)
-      let itemGroup = String(item.system?.anatomyGroup ?? '').trim();
-      if (!itemGroup) {
-        const anatomyId = String(item.system?.anatomyId ?? '').trim();
-        if (anatomyId) itemGroup = String(anatomyManager.getAnatomyGroupId(anatomyId) ?? '').trim();
-      }
-      if (!itemGroup || itemGroup !== groupId) continue;
       const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
       for (const entry of coveredParts) {
-        // Новый формат: slotRef; legacy: partId
-        const slotRef = String(entry?.slotRef ?? entry?.partId ?? '').trim();
-        if (!slotRef) continue;
-        const part = bodyParts[slotRef];
-        if (!part) continue;
         const val = Number(entry?.value ?? 0);
         if (!Number.isFinite(val) || val <= 0) continue;
-        part.armor = (part.armor ?? 0) + val;
+        const { slotRefs } = resolveCoverageEntryToActorSlots(bodyParts, entry);
+        if (!slotRefs.length) continue;
+        for (const slotRef of slotRefs) {
+          const part = bodyParts[slotRef];
+          if (!part) continue;
+          part.armor = (part.armor ?? 0) + val;
+        }
       }
     }
   }
@@ -458,7 +551,11 @@ export class SpaceHolderActor extends Actor {
           ...Object.keys(currentDeltaParts),
           ...Object.keys(currentMergedParts)
         ]);
+        const newSlotKeySet = new Set(Object.keys(anatomy.bodyParts ?? {}));
+        // ActorDelta: в одном update нельзя совмещать `-=slot` и запись того же `slot` —
+        // иначе для совпадающих слотов (например head#1) в дельте оказываются пустые объекты.
         for (const id of keysToDelete) {
+          if (newSlotKeySet.has(id)) continue;
           delUpdate[`delta.system.health.bodyParts.-=${id}`] = null;
         }
         delUpdate['delta.system.anatomy.id'] = anatomyId;
@@ -599,6 +696,10 @@ export class SpaceHolderActor extends Actor {
     // Add level for easier access, or fall back to 0.
     if (data.attributes.level) {
       data.lvl = data.attributes.level.value ?? 0;
+    }
+
+    if (data.derivedStats) {
+      data.derived = foundry.utils.deepClone(data.derivedStats);
     }
   }
 

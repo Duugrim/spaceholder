@@ -1,0 +1,54 @@
+<div class="sh-item-action-dialog sh-weapon-edit-dialog" data-sh-weapon-ammo-dialog="{{dialogUid}}">
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AmmoResourceType"}}</label>
+    <div class="form-fields">
+      <input type="text" name="wa_resourceType" value="{{ammo.resourceType}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AmmoConsumePerUse"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wa_consumePerUse" min="0" step="any" value="{{ammo.consumePerUse}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AmmoChamberCurrentId"}}</label>
+    <div class="form-fields">
+      <input type="text" name="wa_chamberCurrentId" value="{{ammo.chamberCurrentId}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AmmoFeedSource"}}</label>
+    <div class="form-fields">
+      <input type="text" name="wa_feedSource" value="{{ammo.feedSource}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AmmoFeedFilterTags"}}</label>
+    <div class="form-fields">
+      <textarea name="wa_feedFilterTagsText" rows="3" class="sh-weapon-tags-textarea">{{ammo.feedFilterTagsText}}</textarea>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AmmoReloadApCost"}}</label>
+    <div class="form-fields">
+      <input type="number" name="wa_reloadApCost" min="0" step="1" value="{{ammo.reloadApCost}}" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.ItemWeapon.AmmoReloadRule"}}</label>
+    <div class="form-fields">
+      <input type="text" name="wa_reloadRule" value="{{ammo.reloadRule}}" />
+    </div>
+  </div>
+  <div class="sh-item-action-dialog__flags">
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="wa_chamberEnabled" {{#if ammo.chamberEnabled}}checked{{/if}} />
+      <span>{{localize "SPACEHOLDER.ItemWeapon.AmmoChamberEnabled"}}</span>
+    </label>
+    <label class="sh-custom-action-flag">
+      <input type="checkbox" name="wa_canKeepChamberOnReload" {{#if ammo.canKeepChamberOnReload}}checked{{/if}} />
+      <span>{{localize "SPACEHOLDER.ItemWeapon.AmmoKeepChamberOnReload"}}</span>
+    </label>
+  </div>
+</div>

@@ -2,6 +2,12 @@
  * Визуализатор анатомии для предмета Wearable: круги частей тела, клик переключает «покрыто/не покрыто».
  * Не редактирует структуру анатомии — только выбор зон покрытия.
  */
+import { coerceAnatomyGridCoord } from "../anatomy-manager.mjs";
+import { getExposurePlanar4 } from "./anatomy-relations.mjs";
+import { createExposureRingSvg } from "./anatomy-exposure-ring.mjs";
+
+const EXPOSURE_RING_OUTER_SCALE = 1.32;
+
 const DEFAULT_CELL_SIZE = 42;
 const DEFAULT_CIRCLE_RADIUS = 15;
 const FIXED_DISPLAY_WIDTH = 378;
@@ -49,8 +55,8 @@ export class WearableCoverageEditor {
 
     const partsById = {};
     for (const [slotRef, part] of Object.entries(bodyParts)) {
-      const x = Number(part.x ?? 0);
-      const y = Number(part.y ?? 0);
+      const x = coerceAnatomyGridCoord(part.x ?? 0);
+      const y = coerceAnatomyGridCoord(part.y ?? 0);
       partsById[slotRef] = { ...part, id: slotRef, x, y };
     }
 
@@ -147,6 +153,19 @@ export class WearableCoverageEditor {
       node.style.width = `${circleRadius * 2}px`;
       node.style.height = `${circleRadius * 2}px`;
       node.title = part.displayName || part.name || partId;
+      node.classList.add("anatomy-editor-part-circle--exposure-viz");
+      const planar = getExposurePlanar4(part.exposure);
+      const ringVariant =
+        !this.showOnlyCovered && Object.prototype.hasOwnProperty.call(this.armorByPart, partId)
+          ? "neighbor"
+          : "default";
+      const innerD = circleRadius * 2;
+      const outerD = Math.round(innerD * EXPOSURE_RING_OUTER_SCALE);
+      const ringSvg = createExposureRingSvg(outerD, planar, {
+        innerDiameterPx: innerD,
+        variant: ringVariant
+      });
+      if (ringSvg) node.appendChild(ringSvg);
       inner.appendChild(node);
 
       if (!this.showOnlyCovered) {

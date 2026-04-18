@@ -1822,8 +1822,11 @@ export class CombatSessionManager {
   }
 
   _getMaxTurnStarts(actor) {
-    const raw = _num(actor?.system?.turnStarts, 1);
-    return Math.max(1, Math.floor(raw));
+    const fromDerived = _num(actor?.system?.derivedStats?.turnsPerRound, NaN);
+    if (Number.isFinite(fromDerived)) return Math.max(1, Math.floor(fromDerived));
+    const dex = _num(actor?.system?.abilities?.dex?.value, 0);
+    const intel = _num(actor?.system?.abilities?.int?.value, 0);
+    return Math.max(1, Math.floor((dex * intel) / 100));
   }
 
   _getStartedTurnsForCombatant(state, combatantId) {

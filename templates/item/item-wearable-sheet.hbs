@@ -16,119 +16,52 @@
           {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
         {{/if}}
       {{/each}}
-      {{editor
-        enrichedDescription
-        target="system.description"
-        engine="prosemirror"
-        button=true
-        editable=editable
-      }}
+      {{> "systems/spaceholder/templates/item/parts/item-description-prosemirror.hbs"}}
     </div>
 
-    {{!-- Settings tab (id tags): вес, группы механик --}}
-    <div class="tab tags" data-group="primary" data-tab="tags">
+    {{#if hasMeleeTag}}
+    <div class="tab" data-group="primary" data-tab="melee">
       {{#each sheetPrimaryTabs}}
-        {{#if (eq id "tags")}}
+        {{#if (eq id "melee")}}
           {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
         {{/if}}
       {{/each}}
-      <div class="sh-item-settings-panels">
-        <div class="sh-item-settings-panel">
-          <div class="form-group sh-item-settings-weight">
-            <label for="sh-item-settings-weight-input">{{localize 'SPACEHOLDER.Resources.Weight'}}</label>
-            <div class="form-fields">
-              <input
-                id="sh-item-settings-weight-input"
-                type="text"
-                name="system.weight"
-                value="{{system.weight}}"
-                data-dtype="Number"
-              />
-            </div>
-          </div>
-        </div>
-        <div class="sh-item-settings-panel">
-          <div class="section-header">
-            <i class="fas fa-tags"></i>
-            {{localize 'SPACEHOLDER.ItemTags.SectionTitle'}}
-          </div>
-          <p class="sh-item-tags-hint"><em>{{localize 'SPACEHOLDER.ItemTags.Hint'}}</em></p>
-          <div class="sh-item-tags-list">
-            <label class="sh-item-tag-row">
-              <input type="checkbox" data-sh-item-tag="isArmor" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isArmor}}checked{{/if}} />
-              <span>{{localize 'SPACEHOLDER.ItemTags.Armor'}}</span>
-            </label>
-            <label class="sh-item-tag-row">
-              <input type="checkbox" data-sh-item-tag="isActions" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isActions}}checked{{/if}} />
-              <span>{{localize 'SPACEHOLDER.ItemTags.Actions'}}</span>
-            </label>
-            <label class="sh-item-tag-row">
-              <input type="checkbox" data-sh-item-tag="isModifiers" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isModifiers}}checked{{/if}} />
-              <span>{{localize 'SPACEHOLDER.ItemTags.Modifiers'}}</span>
-            </label>
-          </div>
-          {{#if editable}}
-          <div class="sh-item-tags-apply-row">
-            <button type="button" class="sh-item-tags-apply-btn" data-action="sh-item-tags-apply">
-              <i class="fas fa-check" aria-hidden="true"></i>
-              {{localize 'SPACEHOLDER.Actions.Apply'}}
-            </button>
-          </div>
-          {{/if}}
-          {{#if hasArmorTag}}
-          <div class="sh-item-tags-wearable-defaults">
-            <div class="sh-actions-subheader">{{localize 'SPACEHOLDER.ActionsSystem.UI.WearableDefaults'}}</div>
-            <div class="sh-wearable-default-actions">
-              <div class="sh-wearable-default-actions__row">
-                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.EquipShort'}}</div>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.equip.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.equip.showInCombat}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
-                </label>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.equip.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.equip.showInQuickbar}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
-                </label>
-              </div>
-              <div class="sh-wearable-default-actions__row">
-                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.UnequipShort'}}</div>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.unequip.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.unequip.showInCombat}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
-                </label>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.unequip.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.unequip.showInQuickbar}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
-                </label>
-              </div>
-              <div class="sh-wearable-default-actions__row">
-                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}</div>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.hold.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.hold.showInCombat}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
-                </label>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.hold.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.hold.showInQuickbar}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
-                </label>
-              </div>
-              <div class="sh-wearable-default-actions__row">
-                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}</div>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.stow.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.stow.showInCombat}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
-                </label>
-                <label class="sh-custom-action-flag">
-                  <input type="checkbox" name="system.defaultActions.stow.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.stow.showInQuickbar}}checked{{/if}} />
-                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-          {{/if}}
-        </div>
-      </div>
+      {{> "systems/spaceholder/templates/item/parts/item-weapon-channel-tab.hbs" channelKey="melee" ch=system.weapon.melee}}
     </div>
+    {{/if}}
+
+    {{#if hasRangedTag}}
+    <div class="tab" data-group="primary" data-tab="ranged">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "ranged")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-weapon-channel-tab.hbs" channelKey="ranged" ch=system.weapon.ranged}}
+    </div>
+    {{/if}}
+
+    {{#if hasThrownTag}}
+    <div class="tab" data-group="primary" data-tab="thrown">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "thrown")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-weapon-channel-tab.hbs" channelKey="thrown" ch=system.weapon.thrown}}
+    </div>
+    {{/if}}
+
+    {{#if hasAmmoTag}}
+    <div class="tab" data-group="primary" data-tab="ammo">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "ammo")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-weapon-ammo-tab.hbs" ammo=system.weapon.ammo}}
+    </div>
+    {{/if}}
 
     {{#if hasArmorTag}}
     {{!-- Coverage Tab --}}
@@ -140,16 +73,9 @@
       {{/each}}
       <div class="wearable-coverage-management-container">
         <div class="wearable-coverage-management-row">
-          <button type="button" class="wearable-anatomy-current-btn {{#unless selectedAnatomyId}}wearable-anatomy-current-btn--empty{{/unless}}" data-action="wearable-select-anatomy-group" data-item-uuid="{{item.uuid}}" title="{{localize 'SPACEHOLDER.Wearable.SelectAnatomy'}}">
+          <button type="button" class="wearable-anatomy-current-btn {{#unless selectedAnatomyId}}wearable-anatomy-current-btn--empty{{/unless}}" data-action="wearable-select-anatomy" data-item-uuid="{{item.uuid}}" title="{{localize 'SPACEHOLDER.Wearable.SelectAnatomy'}}">
             {{anatomyDisplayName}}
           </button>
-          {{#if anatomyGroupTags.length}}
-            <div class="wearable-anatomy-tags wearable-coverage-tags-inline">
-              {{#each anatomyGroupTags as |tag|}}
-                <span class="wearable-anatomy-tag">{{tag}}</span>
-              {{/each}}
-            </div>
-          {{/if}}
           <span class="wearable-coverage-spacer"></span>
           <div class="wearable-coverage-actions">
             <button type="button" class="anatomy-icon-btn wearable-coverage-edit-mode-btn {{#if wearableCoverageEditMode}}active{{/if}}" data-action="wearable-coverage-edit-mode" title="{{localize 'SPACEHOLDER.Wearable.CoverageEditMode'}}">
@@ -341,6 +267,127 @@
       </div>
     </div>
     {{/if}}
+
+    {{!-- Settings tab (id tags): вес, группы механик — всегда последняя вкладка --}}
+    <div class="tab tags" data-group="primary" data-tab="tags">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "tags")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      <div class="sh-item-settings-panels">
+        <div class="sh-item-settings-panel">
+          <div class="form-group sh-item-settings-weight">
+            <label for="sh-item-settings-weight-input">{{localize 'SPACEHOLDER.Resources.Weight'}}</label>
+            <div class="form-fields">
+              <input
+                id="sh-item-settings-weight-input"
+                type="text"
+                name="system.weight"
+                value="{{system.weight}}"
+                data-dtype="Number"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="sh-item-settings-panel">
+          <div class="section-header">
+            <i class="fas fa-tags"></i>
+            {{localize 'SPACEHOLDER.ItemTags.SectionTitle'}}
+          </div>
+          <p class="sh-item-tags-hint"><em>{{localize 'SPACEHOLDER.ItemTags.Hint'}}</em></p>
+          <div class="sh-item-tags-list">
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isArmor" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isArmor}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemTags.Armor'}}</span>
+            </label>
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isActions" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isActions}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemTags.Actions'}}</span>
+            </label>
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isModifiers" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isModifiers}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemTags.Modifiers'}}</span>
+            </label>
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isMelee" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isMelee}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemWeapon.Inner.Melee'}}</span>
+            </label>
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isRanged" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isRanged}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemWeapon.Inner.Ranged'}}</span>
+            </label>
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isThrown" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isThrown}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemWeapon.Inner.Thrown'}}</span>
+            </label>
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isAmmo" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isAmmo}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemTags.Ammo'}}</span>
+            </label>
+          </div>
+          {{#if editable}}
+          <div class="sh-item-tags-apply-row">
+            <button type="button" class="sh-item-tags-apply-btn" data-action="sh-item-tags-apply">
+              <i class="fas fa-check" aria-hidden="true"></i>
+              {{localize 'SPACEHOLDER.Actions.Apply'}}
+            </button>
+          </div>
+          {{/if}}
+          {{#if hasArmorTag}}
+          <div class="sh-item-tags-wearable-defaults">
+            <div class="sh-actions-subheader">{{localize 'SPACEHOLDER.ActionsSystem.UI.WearableDefaults'}}</div>
+            <div class="sh-wearable-default-actions">
+              <div class="sh-wearable-default-actions__row">
+                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.EquipShort'}}</div>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.equip.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.equip.showInCombat}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+                </label>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.equip.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.equip.showInQuickbar}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+                </label>
+              </div>
+              <div class="sh-wearable-default-actions__row">
+                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.UnequipShort'}}</div>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.unequip.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.unequip.showInCombat}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+                </label>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.unequip.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.unequip.showInQuickbar}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+                </label>
+              </div>
+              <div class="sh-wearable-default-actions__row">
+                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}</div>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.hold.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.hold.showInCombat}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+                </label>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.hold.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.hold.showInQuickbar}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+                </label>
+              </div>
+              <div class="sh-wearable-default-actions__row">
+                <div class="sh-wearable-default-actions__title">{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}</div>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.stow.showInCombat" data-dtype="Boolean" {{#if system.defaultActions.stow.showInCombat}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInCombat'}}</span>
+                </label>
+                <label class="sh-custom-action-flag">
+                  <input type="checkbox" name="system.defaultActions.stow.showInQuickbar" data-dtype="Boolean" {{#if system.defaultActions.stow.showInQuickbar}}checked{{/if}} />
+                  <span>{{localize 'SPACEHOLDER.ActionsSystem.UI.ShowInQuickbar'}}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+    </div>
   </section>
   </div>
 </form>

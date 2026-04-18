@@ -19,6 +19,10 @@ $sh-tab-accents: (
   'modifiers': #5890a6,
   'items': #6890c1,
   'biography': #469588,
+  'melee': #b05a52,
+  'ranged': #4f7a9e,
+  'thrown': #5f8f6a,
+  'ammo': #8f7a45,
 );
 
 .window-app.spaceholder,
@@ -199,7 +203,6 @@ $sh-tab-accents: (
     width: 100%;
     box-sizing: border-box;
     min-height: var(--sh-character-primary-tab-strip-height);
-
     .item {
       min-width: 48px;
       height: 40px;

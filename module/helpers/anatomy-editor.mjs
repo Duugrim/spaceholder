@@ -3,7 +3,18 @@
  * Центрирование по bounding box, Drag&Drop позиции в режиме редактирования.
  * Под сеткой — панель выбранной части (органы, импланты) без всплывающих окон.
  */
-import { anatomyManager } from '../anatomy-manager.mjs';
+import { anatomyManager, coerceAnatomyGridCoord } from '../anatomy-manager.mjs';
+import {
+  sanitizeExposure,
+  sanitizeRelation,
+  dedupeRelations,
+  deriveAdjacentLinksFromRelations,
+  enforceSingleParentRelation,
+  legacyLinksToAdjacentRelations,
+  getExposurePlanar4,
+  ANATOMY_EXPOSURE_DIRECTIONS
+} from './anatomy-relations.mjs';
+import { createExposureRingSvg } from './anatomy-exposure-ring.mjs';
 
 const DEFAULT_CELL_SIZE = 42;
 const DEFAULT_CIRCLE_RADIUS = 15;
@@ -11,6 +22,8 @@ const DEFAULT_CIRCLE_RADIUS = 15;
 const FIXED_DISPLAY_WIDTH = 378;
 const FIXED_DISPLAY_HEIGHT = 420;
 const PADDING = 1;
+/** Множитель: SVG экспозиции крупнее тела, дуги снаружи основного круга */
+const EXPOSURE_RING_OUTER_SCALE = 1.32;
 
 /** MVP: варианты материала части тела */
 const MATERIAL_OPTIONS = [
@@ -26,6 +39,12 @@ const MATERIAL_COLORS = {
   cybernetic: "#5eb8c4",
   armor: "#94a3b8",
   other: "#b8a3c4"
+};
+
+const RELATION_KIND_LABELS = {
+  adjacent: "Рядом",
+  behind: "За",
+  parent: "Родитель"
 };
 
 export class AnatomyEditor {
@@ -67,11 +86,56 @@ export class AnatomyEditor {
     const bodyParts = this.actor?.system?.health?.bodyParts ?? {};
     const partsById = {};
     for (const [partId, part] of Object.entries(bodyParts)) {
-      const x = Number(part.x ?? 0);
-      const y = Number(part.y ?? 0);
+      const x = coerceAnatomyGridCoord(part.x ?? 0);
+      const y = coerceAnatomyGridCoord(part.y ?? 0);
       partsById[partId] = { ...part, id: partId, x, y };
     }
     return partsById;
+  }
+
+  /**
+   * @param {object|null} part
+   * @returns {object[]}
+   */
+  _getRelationsForPart(part) {
+    if (!part) return [];
+    if (Array.isArray(part.relations) && part.relations.length) {
+      return part.relations.map(sanitizeRelation).filter(Boolean);
+    }
+    return legacyLinksToAdjacentRelations(Array.isArray(part.links) ? part.links : []);
+  }
+
+  /** Синхронизировать `links` (только adjacent) и нормализовать relations у всех частей. */
+  _normalizeAllBodyPartRelations(bodyParts) {
+    const bp = bodyParts && typeof bodyParts === "object" ? bodyParts : {};
+    for (const p of Object.values(bp)) {
+      if (!p || typeof p !== "object") continue;
+      if (!Array.isArray(p.relations)) p.relations = [];
+      p.relations = p.relations.map(sanitizeRelation).filter(Boolean);
+      p.relations = dedupeRelations(enforceSingleParentRelation(p.relations));
+      p.links = deriveAdjacentLinksFromRelations(p.relations);
+    }
+    return bp;
+  }
+
+  _scrubRelationsToDeletedPart(bodyParts, deletedId) {
+    for (const p of Object.values(bodyParts)) {
+      if (!p || !Array.isArray(p.relations)) continue;
+      p.relations = p.relations.filter((r) => r && r.target !== deletedId);
+      p.relations = dedupeRelations(enforceSingleParentRelation(p.relations));
+      p.links = deriveAdjacentLinksFromRelations(p.relations);
+    }
+  }
+
+  _remapRelationTargetsInAll(bodyParts, oldId, newId) {
+    for (const p of Object.values(bodyParts)) {
+      if (!p || !Array.isArray(p.relations)) continue;
+      for (const r of p.relations) {
+        if (r && r.target === oldId) r.target = newId;
+      }
+      p.relations = dedupeRelations(enforceSingleParentRelation(p.relations));
+      p.links = deriveAdjacentLinksFromRelations(p.relations);
+    }
   }
 
   _bbox(partsById) {
@@ -166,17 +230,16 @@ export class AnatomyEditor {
     const svgG = document.createElementNS("http://www.w3.org/2000/svg", "g");
     svg.appendChild(svgG);
 
-    const linkSet = new Set();
+    const undirectedSeen = new Set();
+    const directedSeen = new Set();
     for (const [partId, part] of Object.entries(bodyParts)) {
-      const links = Array.isArray(part.links) ? part.links : [];
+      const rels = this._getRelationsForPart(part);
       const from = partsById[partId];
       if (!from) continue;
-      for (const toId of links) {
+      for (const rel of rels) {
+        const toId = rel.target;
         const to = partsById[toId];
         if (!to) continue;
-        const key = [partId, toId].sort().join("--");
-        if (linkSet.has(key)) continue;
-        linkSet.add(key);
         const fromPx = this._toPx(from.x, from.y, wrapW, wrapH, centerX, centerY, cellSize, circleRadius);
         const toPx = this._toPx(to.x, to.y, wrapW, wrapH, centerX, centerY, cellSize, circleRadius);
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -184,7 +247,23 @@ export class AnatomyEditor {
         line.setAttribute("y1", fromPx.centerY);
         line.setAttribute("x2", toPx.centerX);
         line.setAttribute("y2", toPx.centerY);
-        line.setAttribute("class", "anatomy-editor-link");
+        let lineClass = "anatomy-editor-link";
+        if (rel.kind === "behind") {
+          lineClass += " anatomy-editor-link--behind";
+          line.setAttribute("stroke-dasharray", "6 4");
+        } else if (rel.kind === "parent") {
+          lineClass += " anatomy-editor-link--parent";
+        }
+        line.setAttribute("class", lineClass);
+        if (rel.kind === "adjacent") {
+          const key = [partId, toId].sort().join("--");
+          if (undirectedSeen.has(key)) continue;
+          undirectedSeen.add(key);
+        } else {
+          const dkey = `${partId}=>${toId}:${rel.kind}`;
+          if (directedSeen.has(dkey)) continue;
+          directedSeen.add(dkey);
+        }
         if (this.selectedPartId && (partId === this.selectedPartId || toId === this.selectedPartId)) {
           line.setAttribute("data-selected", "true");
         }
@@ -193,8 +272,9 @@ export class AnatomyEditor {
     }
     inner.appendChild(svg);
 
-    const selectedLinks = this.selectedPartId && bodyParts[this.selectedPartId]
-      ? (Array.isArray(bodyParts[this.selectedPartId].links) ? bodyParts[this.selectedPartId].links : [])
+    const selectedPart = this.selectedPartId ? bodyParts[this.selectedPartId] : null;
+    const selectedLinks = selectedPart
+      ? deriveAdjacentLinksFromRelations(this._getRelationsForPart(selectedPart))
       : [];
     for (const [partId, part] of Object.entries(partsById)) {
       const px = this._toPx(part.x, part.y, wrapW, wrapH, centerX, centerY, cellSize, circleRadius);
@@ -215,6 +295,17 @@ export class AnatomyEditor {
       node.title = this.linkMode ? `Связь: перетащите на другую часть (${part.name || partId})` : (part.name || partId);
       node.draggable = this.editMode && this.editable;
       if (this.linkMode) node.classList.add("anatomy-editor-part--link-mode");
+      node.classList.add("anatomy-editor-part-circle--exposure-viz");
+      const ringVariant =
+        this.selectedPartId === partId ? "selected" : selectedLinks.includes(partId) ? "neighbor" : "default";
+      const planar = getExposurePlanar4(bodyParts[partId]?.exposure);
+      const innerD = circleRadius * 2;
+      const outerD = Math.round(innerD * EXPOSURE_RING_OUTER_SCALE);
+      const ringSvg = createExposureRingSvg(outerD, planar, {
+        innerDiameterPx: innerD,
+        variant: ringVariant
+      });
+      if (ringSvg) node.appendChild(ringSvg);
       inner.appendChild(node);
 
       node.addEventListener("click", (e) => {
@@ -248,7 +339,7 @@ export class AnatomyEditor {
             e.currentTarget.classList.remove("anatomy-editor-part--drop-target");
             const linkFrom = e.dataTransfer.getData("link-from");
             if (!linkFrom || linkFrom === partId) return;
-            this._addLinkBidirectional(linkFrom, partId);
+            this._addAdjacentBidirectional(linkFrom, partId);
           });
         }
       }
@@ -293,11 +384,16 @@ export class AnatomyEditor {
     if (!bodyPart) return;
 
     const bodyParts = this.actor?.system?.health?.bodyParts ?? {};
-    const links = Array.isArray(bodyPart.links) ? bodyPart.links : [];
+    const rels = this._getRelationsForPart(bodyPart);
     const organs = Array.isArray(bodyPart.organs) ? bodyPart.organs : [];
     const materialId = bodyPart.material ?? "";
     const materialLabel = MATERIAL_OPTIONS.find((m) => m.id === materialId)?.label ?? "—";
-    const linksStr = links.length ? links.join(", ") : "—";
+    const exposure = sanitizeExposure(bodyPart.exposure);
+    const exposureStr = Object.keys(exposure).length
+      ? Object.entries(exposure)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ")
+      : "—";
 
     const cols = document.createElement("div");
     cols.className = "anatomy-editor-panel-cols";
@@ -341,56 +437,66 @@ export class AnatomyEditor {
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Max HP</span><span class="anatomy-editor-panel-value">${bodyPart.maxHp ?? 0}</span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Координаты</span><span class="anatomy-editor-panel-value">(${bodyPart.x ?? 0}, ${bodyPart.y ?? 0})</span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Материал</span><span class="anatomy-editor-panel-value">${materialLabel}</span></div>
-      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Связи</span><span class="anatomy-editor-panel-value">${linksStr}</span></div>`;
+      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Экспозиция</span><span class="anatomy-editor-panel-value">${exposureStr}</span></div>`;
     colCenter.appendChild(props);
 
-    const linksSection = document.createElement("div");
-    linksSection.className = "anatomy-editor-panel-block";
-    const linksHead = document.createElement("div");
-    linksHead.className = "anatomy-editor-panel-section-title";
-    linksHead.textContent = "Связи с другими частями";
-    linksSection.appendChild(linksHead);
+    const relationsSection = document.createElement("div");
+    relationsSection.className = "anatomy-editor-panel-block";
+    const relationsHead = document.createElement("div");
+    relationsHead.className = "anatomy-editor-panel-section-title";
+    relationsHead.textContent = "Связи и иерархия";
+    relationsSection.appendChild(relationsHead);
     if (this.editMode && this.editable) {
-      const linksList = document.createElement("div");
-      linksList.className = "anatomy-editor-panel-links-list";
-      for (const linkId of links) {
-        const other = bodyParts[linkId];
-        const name = other?.name || linkId;
+      const relList = document.createElement("div");
+      relList.className = "anatomy-editor-panel-links-list";
+      rels.forEach((rel, idx) => {
+        const other = bodyParts[rel.target];
+        const name = other?.displayName || other?.name || rel.target;
+        const kindLabel = RELATION_KIND_LABELS[rel.kind] || rel.kind;
+        const behindExtra =
+          rel.kind === "behind"
+            ? `${rel.chance !== undefined ? ` (${rel.chance}%)` : ""}${rel.direction ? ` · ${rel.direction}` : ""}`
+            : "";
         const row = document.createElement("div");
         row.className = "anatomy-editor-panel-link-row";
         const nameSpan = document.createElement("span");
         nameSpan.className = "anatomy-editor-panel-link-name";
-        nameSpan.textContent = name;
+        nameSpan.textContent = `${kindLabel} → ${name}${behindExtra}`;
         row.appendChild(nameSpan);
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
         removeBtn.className = "anatomy-editor-panel-link-remove";
-        removeBtn.title = "Удалить связь";
+        removeBtn.title = "Удалить";
         removeBtn.innerHTML = "<i class=\"fas fa-minus\"></i>";
-        removeBtn.addEventListener("click", () => this._removeLink(partId, linkId));
+        removeBtn.addEventListener("click", () => this._removeRelation(partId, idx));
         row.appendChild(removeBtn);
-        linksList.appendChild(row);
-      }
-      linksSection.appendChild(linksList);
-      const addLinkBtn = document.createElement("button");
-      addLinkBtn.type = "button";
-      addLinkBtn.className = "anatomy-editor-panel-add-link";
-      addLinkBtn.innerHTML = "<i class=\"fas fa-plus\"></i> Добавить связь";
-      addLinkBtn.addEventListener("click", () => this._addLink(partId));
-      linksSection.appendChild(addLinkBtn);
+        relList.appendChild(row);
+      });
+      relationsSection.appendChild(relList);
+      const addRelBtn = document.createElement("button");
+      addRelBtn.type = "button";
+      addRelBtn.className = "anatomy-editor-panel-add-link";
+      addRelBtn.innerHTML = "<i class=\"fas fa-plus\"></i> Добавить связь";
+      addRelBtn.addEventListener("click", () => this._openAddRelationDialog(partId));
+      relationsSection.appendChild(addRelBtn);
     } else {
-      const linksList = document.createElement("ul");
-      linksList.className = "anatomy-editor-panel-list";
-      for (const linkId of links) {
-        const other = bodyParts[linkId];
+      const list = document.createElement("ul");
+      list.className = "anatomy-editor-panel-list";
+      for (const rel of rels) {
+        const other = bodyParts[rel.target];
         const li = document.createElement("li");
-        li.textContent = other?.name || linkId;
-        linksList.appendChild(li);
+        const kindLabel = RELATION_KIND_LABELS[rel.kind] || rel.kind;
+        const behindExtra =
+          rel.kind === "behind"
+            ? `${rel.chance !== undefined ? ` (${rel.chance}%)` : ""}${rel.direction ? ` · ${rel.direction}` : ""}`
+            : "";
+        li.textContent = `${kindLabel}: ${other?.displayName || other?.name || rel.target}${behindExtra}`;
+        list.appendChild(li);
       }
-      if (links.length === 0) linksList.innerHTML = "<li class=\"anatomy-editor-panel-empty-hint\">—</li>";
-      linksSection.appendChild(linksList);
+      if (rels.length === 0) list.innerHTML = "<li class=\"anatomy-editor-panel-empty-hint\">—</li>";
+      relationsSection.appendChild(list);
     }
-    colCenter.appendChild(linksSection);
+    colCenter.appendChild(relationsSection);
 
     const itemCollection = this.actor?.items;
     const implantItems = itemCollection
@@ -483,7 +589,13 @@ export class AnatomyEditor {
     const bodyParts = this.actor?.system?.health?.bodyParts ?? {};
     const part = bodyParts[partId];
     if (!part) return;
-    const links = Array.isArray(part.links) ? part.links : [];
+    const exp = sanitizeExposure(part.exposure);
+    const expRows = ["front", "back", "left", "right"]
+      .map(
+        (dir) =>
+          `<div class="form-group anatomy-editor-exp-row"><label>${dir}</label><input type="number" id="ep-exp-${dir}" min="0" step="1" value="${exp[dir] ?? ""}" placeholder="—" style="width:100%;"/></div>`
+      )
+      .join("");
     const materialVal = part.material ?? "";
     const materialOptionsHtml = MATERIAL_OPTIONS.map(
       (m) => `<option value="${m.id}" ${m.id === materialVal ? "selected" : ""}>${m.label}</option>`
@@ -497,7 +609,8 @@ export class AnatomyEditor {
         <div class="form-group"><label>Материал</label><select id="ep-material" style="width:100%;"><option value="">—</option>${materialOptionsHtml}</select></div>
         <div class="form-group"><label>X</label><input type="number" id="ep-x" value="${part.x ?? 0}" style="width:100%;"/></div>
         <div class="form-group"><label>Y</label><input type="number" id="ep-y" value="${part.y ?? 0}" style="width:100%;"/></div>
-        <div class="form-group"><label>Связи (ID через запятую)</label><input type="text" id="ep-links" value="${links.join(", ").replace(/"/g, "&quot;")}" placeholder="id1, id2" style="width:100%;"/></div>
+        <div class="anatomy-editor-panel-section-title" style="margin-top:8px;">Экспозиция (веса по направлениям)</div>
+        ${expRows}
       </div>`;
     await foundry.applications.api.DialogV2.wait({
       window: { title: "Редактировать часть тела", icon: "fa-solid fa-pencil-alt" },
@@ -517,8 +630,14 @@ export class AnatomyEditor {
             const material = (document.querySelector("#ep-material")?.value ?? "").trim() || null;
             const x = parseInt(document.querySelector("#ep-x")?.value ?? "0", 10) || 0;
             const y = parseInt(document.querySelector("#ep-y")?.value ?? "0", 10) || 0;
-            const linksInput = (document.querySelector("#ep-links")?.value ?? "").trim();
-            const newLinks = linksInput ? linksInput.split(",").map((s) => s.trim()).filter(Boolean) : [];
+            /** @type {Record<string, number>} */
+            const newExposure = {};
+            for (const dir of ["front", "back", "left", "right"]) {
+              const raw = document.querySelector(`#ep-exp-${dir}`)?.value;
+              if (raw === undefined || String(raw).trim() === "") continue;
+              const n = Number(raw);
+              if (Number.isFinite(n) && n >= 0) newExposure[dir] = n;
+            }
 
             const updated = foundry.utils.deepClone(bodyParts);
             if (newId !== partId) {
@@ -534,11 +653,10 @@ export class AnatomyEditor {
               partData.material = material;
               partData.x = x;
               partData.y = y;
-              partData.links = newLinks;
+              partData.exposure = sanitizeExposure(newExposure);
+              partData.slotRef = newId;
               updated[newId] = partData;
-              for (const p of Object.values(updated)) {
-                if (Array.isArray(p.links)) p.links = p.links.map((id) => (id === partId ? newId : id));
-              }
+              this._remapRelationTargetsInAll(updated, partId, newId);
               this.selectedPartId = newId;
             } else {
               updated[partId].name = name;
@@ -547,8 +665,9 @@ export class AnatomyEditor {
               updated[partId].material = material;
               updated[partId].x = x;
               updated[partId].y = y;
-              updated[partId].links = newLinks;
+              updated[partId].exposure = sanitizeExposure(newExposure);
             }
+            this._normalizeAllBodyPartRelations(updated);
             await this.actor.update({ "system.health.bodyParts": updated });
             this.render();
           }
@@ -558,49 +677,66 @@ export class AnatomyEditor {
     });
   }
 
-  _addLinkBidirectional(fromId, toId) {
+  _addAdjacentBidirectional(fromId, toId) {
     const bodyParts = foundry.utils.deepClone(this.actor?.system?.health?.bodyParts ?? {});
     if (!bodyParts[fromId] || !bodyParts[toId]) return;
-    if (!Array.isArray(bodyParts[fromId].links)) bodyParts[fromId].links = [];
-    if (!Array.isArray(bodyParts[toId].links)) bodyParts[toId].links = [];
-    if (!bodyParts[fromId].links.includes(toId)) bodyParts[fromId].links.push(toId);
-    if (!bodyParts[toId].links.includes(fromId)) bodyParts[toId].links.push(fromId);
+    if (!Array.isArray(bodyParts[fromId].relations)) bodyParts[fromId].relations = [];
+    if (!Array.isArray(bodyParts[toId].relations)) bodyParts[toId].relations = [];
+    const hasA = bodyParts[fromId].relations.some((r) => r.kind === "adjacent" && r.target === toId);
+    const hasB = bodyParts[toId].relations.some((r) => r.kind === "adjacent" && r.target === fromId);
+    if (!hasA) bodyParts[fromId].relations.push({ kind: "adjacent", target: toId });
+    if (!hasB) bodyParts[toId].relations.push({ kind: "adjacent", target: fromId });
+    this._normalizeAllBodyPartRelations(bodyParts);
     this.actor.update({ "system.health.bodyParts": bodyParts }).then(() => this.render());
   }
 
-  async _removeLink(partId, linkId) {
+  async _removeRelation(partId, relIndex) {
     const bodyParts = foundry.utils.deepClone(this.actor?.system?.health?.bodyParts ?? {});
     const part = bodyParts[partId];
-    const other = bodyParts[linkId];
-    if (!part || !Array.isArray(part.links)) return;
-    part.links = part.links.filter((id) => id !== linkId);
-    if (other && Array.isArray(other.links)) other.links = other.links.filter((id) => id !== partId);
+    if (!part || !Array.isArray(part.relations) || relIndex < 0 || relIndex >= part.relations.length) return;
+    const removed = sanitizeRelation(part.relations[relIndex]);
+    part.relations.splice(relIndex, 1);
+    if (removed?.kind === "adjacent" && removed.target) {
+      const other = bodyParts[removed.target];
+      if (other && Array.isArray(other.relations)) {
+        other.relations = other.relations.filter((r) => !(r.kind === "adjacent" && r.target === partId));
+      }
+    }
+    this._normalizeAllBodyPartRelations(bodyParts);
     await this.actor.update({ "system.health.bodyParts": bodyParts });
     this.render();
   }
 
-  async _addLink(partId) {
+  async _openAddRelationDialog(partId) {
     const bodyParts = this.actor?.system?.health?.bodyParts ?? {};
-    const part = bodyParts[partId];
-    const currentLinks = Array.isArray(part?.links) ? part.links : [];
-    const otherIds = Object.keys(bodyParts).filter((id) => id !== partId && !currentLinks.includes(id));
+    const otherIds = Object.keys(bodyParts).filter((id) => id !== partId);
     if (otherIds.length === 0) {
-      ui.notifications.info("Нет других частей тела для добавления связи");
+      ui.notifications.info("Нет других частей тела");
       return;
     }
     const optionsHtml = otherIds
       .map((id) => {
-        const name = bodyParts[id]?.name || id;
+        const p = bodyParts[id];
+        const name = p?.displayName || p?.name || id;
         return `<option value="${id}">${name}</option>`;
       })
       .join("");
+    const kindOptions = ["adjacent", "behind", "parent"]
+      .map((k) => `<option value="${k}">${RELATION_KIND_LABELS[k] || k}</option>`)
+      .join("");
+    const dirOptions = ANATOMY_EXPOSURE_DIRECTIONS.map(
+      (d) => `<option value="${d}">${d}</option>`
+    ).join("");
     const content = `
-      <div class="anatomy-add-link-dialog">
-        <div class="form-group"><label>Часть тела</label><select id="al-target" style="width:100%;">${optionsHtml}</select></div>
+      <div class="anatomy-add-relation-dialog">
+        <div class="form-group"><label>Тип</label><select id="ar-kind" style="width:100%;">${kindOptions}</select></div>
+        <div class="form-group"><label>Целевая часть</label><select id="ar-target" style="width:100%;">${optionsHtml}</select></div>
+        <div class="form-group"><label>Вероятность для «За» (%)</label><input type="number" id="ar-chance" min="0" max="100" value="70" style="width:100%;"/></div>
+        <div class="form-group"><label>Направление для «За»</label><select id="ar-direction" style="width:100%;">${dirOptions}</select><p class="notes">Сторона атаки/прострела, с которой действует связь (только для «За»).</p></div>
       </div>`;
     await foundry.applications.api.DialogV2.wait({
       window: { title: "Добавить связь", icon: "fa-solid fa-link" },
-      position: { width: 280 },
+      position: { width: 320 },
       content,
       buttons: [
         {
@@ -609,11 +745,35 @@ export class AnatomyEditor {
           icon: "fa-solid fa-check",
           default: true,
           callback: async () => {
-            const targetId = document.querySelector("#al-target")?.value;
-            if (!targetId || currentLinks.includes(targetId)) return;
+            const kind = document.querySelector("#ar-kind")?.value;
+            const targetId = document.querySelector("#ar-target")?.value;
+            if (!kind || !targetId || targetId === partId) return;
+            const chanceRaw = document.querySelector("#ar-chance")?.value;
+            const directionRaw = document.querySelector("#ar-direction")?.value;
             const updated = foundry.utils.deepClone(bodyParts);
-            if (!Array.isArray(updated[partId].links)) updated[partId].links = [];
-            updated[partId].links.push(targetId);
+            if (!updated[partId]) return;
+            if (!Array.isArray(updated[partId].relations)) updated[partId].relations = [];
+            if (kind === "parent") {
+              updated[partId].relations = updated[partId].relations.filter((r) => r.kind !== "parent");
+            }
+            const rel =
+              kind === "behind"
+                ? sanitizeRelation({
+                    kind: "behind",
+                    target: targetId,
+                    chance: chanceRaw !== undefined && String(chanceRaw).trim() !== "" ? Number(chanceRaw) : 70,
+                    direction: directionRaw
+                  })
+                : sanitizeRelation({ kind, target: targetId });
+            if (!rel) return;
+            updated[partId].relations.push(rel);
+            if (kind === "adjacent") {
+              if (!Array.isArray(updated[targetId].relations)) updated[targetId].relations = [];
+              if (!updated[targetId].relations.some((r) => r.kind === "adjacent" && r.target === partId)) {
+                updated[targetId].relations.push({ kind: "adjacent", target: partId });
+              }
+            }
+            this._normalizeAllBodyPartRelations(updated);
             await this.actor.update({ "system.health.bodyParts": updated });
             this.render();
           }
@@ -677,9 +837,7 @@ export class AnatomyEditor {
         icon: "fa-solid fa-trash",
         callback: async () => {
           delete bodyParts[partId];
-          for (const p of Object.values(bodyParts)) {
-            if (Array.isArray(p.links)) p.links = p.links.filter((id) => id !== partId);
-          }
+          this._scrubRelationsToDeletedPart(bodyParts, partId);
           await this.actor.update({ "system.health.bodyParts": bodyParts });
           this.selectedPartId = null;
           this.render();
@@ -744,6 +902,8 @@ export class AnatomyEditor {
               status: "healthy",
               internal: false,
               tags: [],
+              exposure: {},
+              relations: [],
               links: [],
               organs: []
             };

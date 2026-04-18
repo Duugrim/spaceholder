@@ -16,21 +16,20 @@
       {{/each}}
       <div class="sh-stats-columns">
         <div class="sh-stats-column sh-stats-column--overview-1">
-          <div class="stats-panel stats-panel--overview-placeholder" aria-hidden="true"></div>
+          {{> "systems/spaceholder/templates/actor/parts/actor-held-items.hbs"}}
         </div>
         <div class="sh-stats-column sh-stats-column--overview-2">
           <div class="stats-panel stats-panel--overview-placeholder" aria-hidden="true"></div>
         </div>
         <div class="sh-stats-column sh-stats-column--overview-3">
-          <div class="stats-panel stats-panel--overview-placeholder" aria-hidden="true"></div>
+          {{> "systems/spaceholder/templates/actor/parts/actor-aiming-arc.hbs"}}
         </div>
       </div>
-
-      {{> "systems/spaceholder/templates/actor/parts/actor-held-items.hbs"}}
       {{> "systems/spaceholder/templates/actor/parts/actor-actions.hbs"
           actions=favoriteActions
           emptyLabelKey="SPACEHOLDER.ActionsSystem.UI.NoFavoriteActions"
-          showActionsUi=false}}
+          showActionsUi=false
+          showActionFavoriteToggle=false}}
     </div>
 
     <div class="tab actions flexcol" data-group="primary" data-tab="actions">
@@ -44,7 +43,8 @@
           panelClass="sh-actions-panel sh-actions-panel--full"
           showCustomEditor=true
           actionsUi=actionsUi
-          showActionsUi=true}}
+          showActionsUi=true
+          showActionFavoriteToggle=true}}
     </div>
 
     <div class="tab stats" data-group="primary" data-tab="stats">
@@ -58,25 +58,25 @@
           <div class="stats-panel">
             <div class="capacities-list">
               {{#each system.abilities as |ability key|}}
-              <div class="capacity-line">
-                <div class="capacity-name rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">
-                  <span class="abbr">{{localize (lookup @root.config.abilityAbbreviations key)}}</span>
-                  {{localize (lookup @root.config.abilities key)}}
-                </div>
-                <div class="capacity-value flexrow flex-center flex-between">
-                  <input type="text" name="system.abilities.{{key}}.value" value="{{ability.value}}" data-dtype="Number"/>
-                  <span class="ability-mod rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">{{numberFormat ability.mod decimals=0 sign=true}}</span>
+              <div class="capacity-line capacity-line--ability">
+                <div class="sh-ability-block sh-ability-block--{{key}} rollable" data-roll="d20+@abilities.{{key}}.mod" data-label="{{localize (lookup @root.config.abilities key)}}">
+                  <div class="sh-ability-block__chip">
+                    <span class="sh-ability-block__abbr">{{localize (lookup @root.config.abilityAbbreviations key)}}</span>
+                    <span class="sh-ability-block__sep" aria-hidden="true">|</span>
+                    <span class="sh-ability-block__val">{{ability.value}}</span>
+                  </div>
+                  <div class="sh-ability-block__name">{{localize (lookup @root.config.abilities key)}}</div>
                 </div>
               </div>
               {{/each}}
             </div>
           </div>
         </div>
-        <div class="sh-stats-column sh-stats-column--derived">
-          {{> "systems/spaceholder/templates/actor/parts/actor-stats-derived.hbs"}}
+        <div class="sh-stats-column sh-stats-column--derived-col-b">
+          {{> "systems/spaceholder/templates/actor/parts/actor-stats-derived-physical-resources.hbs"}}
         </div>
-        <div class="sh-stats-column sh-stats-column--skills">
-          <div class="stats-panel stats-panel--skills-reserved" aria-hidden="true"></div>
+        <div class="sh-stats-column sh-stats-column--derived-col-c">
+          {{> "systems/spaceholder/templates/actor/parts/actor-stats-derived-coordination-mental.hbs"}}
         </div>
       </div>
     </div>

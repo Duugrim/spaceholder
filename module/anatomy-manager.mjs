@@ -2,6 +2,18 @@
  * Anatomy Manager - система управления анатомиями существ
  * Отвечает за загрузку, кэширование и предоставление данных анатомий
  */
+import {
+  sanitizeExposure,
+  sanitizeRelation,
+  mergeLegacyLinksIntoRelations,
+  dedupeRelations,
+  remapRelationTargets,
+  deriveAdjacentLinksFromRelations,
+  enforceSingleParentRelation,
+  validateRelationsTargets,
+  legacyLinksToAdjacentRelations
+} from "./helpers/anatomy-relations.mjs";
+
 /** Путь к папке анатомий мира: worlds/<worldId>/spaceholder/anatomy */
 function _getWorldAnatomyDir() {
   const wid = String(game?.world?.id ?? "").trim();
@@ -28,6 +40,18 @@ function _resolveBodyPartName(id, explicitName) {
   }
   if (explicit) return explicit;
   return cleanId || "-";
+}
+
+/** Публично: пересчёт подписи части (после загрузки из БД / смены языка). */
+export function resolveBodyPartDisplayName(typeId, explicitName) {
+  return _resolveBodyPartName(typeId, explicitName);
+}
+
+/** Координата на сетке анатомии: число или строка из JSON/Foundry → целое, иначе 0. */
+export function coerceAnatomyGridCoord(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.trunc(n);
 }
 
 /**
@@ -73,31 +97,30 @@ function _buildNormalizedActorBodyParts(rawBodyParts) {
 
     if (!Array.isArray(part.organs)) part.organs = [];
     if (!Array.isArray(part.tags)) part.tags = Array.isArray(rawPart.tags) ? rawPart.tags : [];
-    if (typeof part.x !== "number") part.x = Number(rawPart.x ?? 0) || 0;
-    if (typeof part.y !== "number") part.y = Number(rawPart.y ?? 0) || 0;
-    if (!Array.isArray(part.links)) part.links = Array.isArray(rawPart.links) ? rawPart.links : [];
+    part.x = coerceAnatomyGridCoord(rawPart.x ?? part.x ?? 0);
+    part.y = coerceAnatomyGridCoord(rawPart.y ?? part.y ?? 0);
     if (!("status" in part)) part.status = "healthy";
     if (!("internal" in part)) part.internal = false;
+
+    part.exposure = sanitizeExposure(rawPart.exposure);
+    let relsFromFile = Array.isArray(rawPart.relations)
+      ? rawPart.relations.map(sanitizeRelation).filter(Boolean)
+      : [];
+    const legacyLinkStrings =
+      !relsFromFile.length && Array.isArray(rawPart.links)
+        ? rawPart.links.map((t) => String(t ?? "").trim()).filter(Boolean)
+        : [];
+    part.relations = mergeLegacyLinksIntoRelations(relsFromFile, legacyLinkStrings);
+    delete part.links;
 
     result[slotRef] = part;
   }
 
-  // Второй проход: ремапим links из исходных ключей anatomy JSON -> slotRef.
-  // Это нужно, чтобы визуализаторы (actor anatomy editor / wearable coverage editor) видели связи.
+  // Второй проход: ремапим targets relations (и производные links) -> slotRef.
   for (const part of Object.values(result)) {
-    const links = Array.isArray(part.links) ? part.links : [];
-    part.links = links
-      .map((to) => {
-        const key = String(to ?? "").trim();
-        if (!key) return null;
-        // Если уже slotRef и существует — оставляем.
-        if (result[key]) return key;
-        // Иначе пробуем как исходный ключ из JSON.
-        const mapped = rawKeyToSlotRef[key];
-        if (mapped && result[mapped]) return mapped;
-        return null;
-      })
-      .filter(Boolean);
+    const remapped = remapRelationTargets(part.relations, result, rawKeyToSlotRef);
+    part.relations = dedupeRelations(enforceSingleParentRelation(remapped));
+    part.links = deriveAdjacentLinksFromRelations(part.relations);
   }
 
   return result;
@@ -480,7 +503,7 @@ export class AnatomyManager {
   }
   
   /**
-   * Валидация структуры анатомии (внешняя: weight, links, x/y; без parent и coverage).
+   * Валидация структуры анатомии (внешняя: weight, relations/links legacy, x/y, exposure).
    * @param {Object} anatomyData - Данные анатомии
    * @returns {boolean} Результат валидации
    */
@@ -515,9 +538,20 @@ export class AnatomyManager {
       if (!('status' in part)) part.status = 'healthy';
       if (!('internal' in part)) part.internal = false;
       if (!('tags' in part)) part.tags = [];
-      if (typeof part.x !== 'number') part.x = 0;
-      if (typeof part.y !== 'number') part.y = 0;
-      if (!Array.isArray(part.links)) part.links = [];
+      part.x = coerceAnatomyGridCoord(part.x);
+      part.y = coerceAnatomyGridCoord(part.y);
+
+      part.exposure = sanitizeExposure(part.exposure);
+      let partRels = Array.isArray(part.relations) ? part.relations.map(sanitizeRelation).filter(Boolean) : [];
+      const legacyLinks = Array.isArray(part.links)
+        ? part.links.map((t) => String(t ?? "").trim()).filter(Boolean)
+        : [];
+      if (!partRels.length && legacyLinks.length) {
+        partRels = legacyLinksToAdjacentRelations(legacyLinks);
+      }
+      part.relations = dedupeRelations(enforceSingleParentRelation(partRels));
+      if (!validateRelationsTargets(bodyParts, part.relations, partId)) return false;
+      part.links = deriveAdjacentLinksFromRelations(part.relations);
     }
 
     if (anatomyData.links !== undefined && !Array.isArray(anatomyData.links)) {

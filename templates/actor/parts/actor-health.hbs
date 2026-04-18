@@ -31,11 +31,65 @@
   </div>
 
   <div class="health-main-layout">
-    {{!-- Колонка 1: список экипировки (плейсхолдер) --}}
+    {{!-- Колонка 1: экипированные предметы и покрытие частей тела --}}
     <div class="health-equipment-column">
-      <div class="health-equipment-placeholder">
-        <span class="health-equipment-placeholder-label">Экипировка по зонам</span>
-        <p class="health-equipment-placeholder-hint"><em>Список экипировки по частям тела (скоро)</em></p>
+      <div class="health-equipment-panel">
+        <div class="health-equipment-panel-title">{{localize "SPACEHOLDER.Health.EquippedColumn.Title"}}</div>
+        {{#if healthEquipped.hasRows}}
+          <div class="health-equipment-list">
+            {{#each healthEquipped.rows as |gear|}}
+              <article
+                class="health-equipment-card"
+                data-item-id="{{gear.id}}"
+                data-action="sh-health-equipped-open"
+                role="button"
+                tabindex="0"
+                title="{{gear.name}}"
+              >
+                <div class="health-equipment-card__head">
+                  <div class="health-equipment-card__image">
+                    <img src="{{gear.img}}" alt="" width="36" height="36" />
+                  </div>
+                  <div class="health-equipment-card__titles">
+                    <span class="health-equipment-card__name">{{gear.name}}</span>
+                    <div class="health-equipment-card__tags">
+                      {{#if gear.isArmor}}
+                        <span class="health-equipment-tag health-equipment-tag--armor">{{localize "SPACEHOLDER.Health.EquippedColumn.TagArmor"}}</span>
+                      {{/if}}
+                      {{#if gear.isModifiers}}
+                        <span class="health-equipment-tag health-equipment-tag--modifiers">{{localize "SPACEHOLDER.Health.EquippedColumn.TagModifiers"}}</span>
+                      {{/if}}
+                    </div>
+                  </div>
+                </div>
+                {{#if gear.showNoMatchingPartsHint}}
+                  <p class="health-equipment-hint health-equipment-hint--warn">{{localize "SPACEHOLDER.Health.EquippedColumn.NoMatchingParts"}}</p>
+                {{/if}}
+                {{#if gear.coverageLines.length}}
+                  <ul class="health-equipment-coverage">
+                    {{#each gear.coverageLines as |line|}}
+                      <li class="health-equipment-coverage__row">
+                        <span class="health-equipment-coverage__part">{{line.partName}}</span>
+                        {{#if ../isArmor}}
+                          <span class="health-equipment-coverage__val">
+                            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                            {{line.armorValue}}
+                          </span>
+                        {{/if}}
+                      </li>
+                    {{/each}}
+                  </ul>
+                {{else}}
+                  {{#if gear.showNoCoverageHint}}
+                    <p class="health-equipment-hint">{{localize "SPACEHOLDER.Health.EquippedColumn.NoCoverage"}}</p>
+                  {{/if}}
+                {{/if}}
+              </article>
+            {{/each}}
+          </div>
+        {{else}}
+          <p class="health-equipment-empty">{{localize "SPACEHOLDER.Health.EquippedColumn.NoGear"}}</p>
+        {{/if}}
       </div>
     </div>
 

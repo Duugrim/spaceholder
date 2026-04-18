@@ -14,6 +14,8 @@ $sh-text-dim: #9a9a9a;
 
 $sh-border: rgba(255, 255, 255, 0.12);
 $sh-border-strong: rgba(255, 255, 255, 0.20);
+// Slightly stronger than $sh-border so field edges read at rest (core often uses transparent until :focus)
+$sh-border-input: rgba(255, 255, 255, 0.18);
 
 $sh-accent: #4a6e4a;
 $sh-accent-strong: #8fb98f;

@@ -7,14 +7,27 @@
           <div class="sh-actions-preview-card">
             <div class="sh-actions-preview-header">
               <div class="sh-actions-preview-card__title">{{actionsUi.previewAction.name}}</div>
-              <div class="sh-actions-mode-toggle" role="group" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.Mode'}}">
-                <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'use')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="use" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}"><i class="fa-solid fa-play"></i></button>
-                <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'inspect')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="inspect" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}"><i class="fa-solid fa-magnifying-glass"></i></button>
+              <div class="sh-actions-preview-header__end">
+                <div class="sh-actions-mode-toggle" role="group" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.Mode'}}">
+                  <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'use')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="use" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeUse'}}"><i class="fa-solid fa-play"></i></button>
+                  <button type="button" class="icon-btn {{#if (eq actionsUi.mode 'inspect')}}active{{/if}}" data-action="sh-actions-mode-set" data-mode="inspect" title="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}" aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.ModeInspect'}}"><i class="fa-solid fa-magnifying-glass"></i></button>
+                </div>
               </div>
             </div>
             <div class="sh-actions-preview-card__meta">
               <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.APCost'}}: {{actionsUi.previewAction.apCost}}</span>
-              <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.Source'}}: {{localize actionsUi.previewAction.sourceLabelKey}}</span>
+              <span class="sh-item-action-pill">{{localize 'SPACEHOLDER.ActionsSystem.UI.Source'}}: {{#if actionsUi.previewAction.sourceItemName}}{{actionsUi.previewAction.sourceItemName}}{{else}}{{localize actionsUi.previewAction.sourceLabelKey}}{{/if}}</span>
+              {{#if showActionFavoriteToggle}}
+                <button
+                  type="button"
+                  class="sh-actions-preview-fav sh-item-action-pill icon-btn"
+                  data-action="sh-action-favorite-toggle"
+                  data-action-id="{{actionsUi.previewAction.id}}"
+                  aria-pressed="{{#if actionsUi.previewAction.isFavorite}}true{{else}}false{{/if}}"
+                  title="{{#if actionsUi.previewAction.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+                  aria-label="{{#if actionsUi.previewAction.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+                ><i class="{{#if actionsUi.previewAction.isFavorite}}fa-solid fa-star{{else}}fa-regular fa-star{{/if}}" aria-hidden="true"></i></button>
+              {{/if}}
             </div>
             {{#if actionsUi.previewAction.description}}
               <p class="sh-actions-preview-card__description">{{actionsUi.previewAction.description}}</p>
@@ -45,11 +58,24 @@
               {{#if actions.length}}
                 <div class="sh-actions-grid">
                   {{#each actions as |a|}}
-                    <button type="button" class="sh-action-btn" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
-                      {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
-                      <span class="sh-action-btn__label">{{a.label}}</span>
-                      {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
-                    </button>
+                    <div class="sh-action-chip {{#if a.isFavorite}}is-favorite{{/if}}{{#if ../showActionFavoriteToggle}} sh-action-chip--fav-toggle{{/if}}">
+                      <button type="button" class="sh-action-btn sh-action-chip__main" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
+                        {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+                        <span class="sh-action-btn__label">{{a.label}}</span>
+                        {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+                      </button>
+                      {{#if ../showActionFavoriteToggle}}
+                        <button
+                          type="button"
+                          class="sh-action-chip__fav icon-btn"
+                          data-action="sh-action-favorite-toggle"
+                          data-action-id="{{a.id}}"
+                          aria-pressed="{{#if a.isFavorite}}true{{else}}false{{/if}}"
+                          title="{{#if a.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+                          aria-label="{{#if a.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+                        ><i class="{{#if a.isFavorite}}fa-solid fa-star{{else}}fa-regular fa-star{{/if}}" aria-hidden="true"></i></button>
+                      {{/if}}
+                    </div>
                   {{/each}}
                 </div>
               {{else}}
@@ -59,11 +85,24 @@
               {{#if availableActions.length}}
                 <div class="sh-actions-grid">
                   {{#each availableActions as |a|}}
-                    <button type="button" class="sh-action-btn" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
-                      {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
-                      <span class="sh-action-btn__label">{{a.label}}</span>
-                      {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
-                    </button>
+                    <div class="sh-action-chip {{#if a.isFavorite}}is-favorite{{/if}}{{#if ../showActionFavoriteToggle}} sh-action-chip--fav-toggle{{/if}}">
+                      <button type="button" class="sh-action-btn sh-action-chip__main" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
+                        {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+                        <span class="sh-action-btn__label">{{a.label}}</span>
+                        {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+                      </button>
+                      {{#if ../showActionFavoriteToggle}}
+                        <button
+                          type="button"
+                          class="sh-action-chip__fav icon-btn"
+                          data-action="sh-action-favorite-toggle"
+                          data-action-id="{{a.id}}"
+                          aria-pressed="{{#if a.isFavorite}}true{{else}}false{{/if}}"
+                          title="{{#if a.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+                          aria-label="{{#if a.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+                        ><i class="{{#if a.isFavorite}}fa-solid fa-star{{else}}fa-regular fa-star{{/if}}" aria-hidden="true"></i></button>
+                      {{/if}}
+                    </div>
                   {{/each}}
                 </div>
               {{else}}

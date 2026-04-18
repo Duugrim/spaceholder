@@ -1,0 +1,58 @@
+<div class="spaceholder-weapon-tab-layout spaceholder-weapon-tab-layout--ammo" data-sh-weapon-ammo="1">
+  <div class="spaceholder-weapon-tab-layout__stats flexcol">
+    <div class="stats-panel spaceholder-aiming-arc-panel sh-weapon-channel-panel">
+      <h3 class="spaceholder-aiming-arc-panel__title">{{localize "SPACEHOLDER.ItemWeapon.AmmoConfig"}}</h3>
+      <div class="spaceholder-aiming-arc-grid">
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoResourceType"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{#if ammo.resourceType}}{{ammo.resourceType}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoConsumePerUse"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{numberFormat ammo.consumePerUse decimals=2}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoChamberEnabled"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{#if ammo.chamberEnabled}}{{localize "SPACEHOLDER.ItemWeapon.Yes"}}{{else}}{{localize "SPACEHOLDER.ItemWeapon.No"}}{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoChamberCurrentId"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{#if ammo.chamberCurrentId}}{{ammo.chamberCurrentId}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoFeedSource"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{#if ammo.feedSource}}{{ammo.feedSource}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row spaceholder-aiming-arc-row--deviation">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoFeedFilterTags"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text sh-weapon-value--multiline">{{#if ammo.feedFilterTagsText}}{{ammo.feedFilterTagsText}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoReloadApCost"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{ammo.reloadApCost}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoReloadRule"}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{#if ammo.reloadRule}}{{ammo.reloadRule}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.ItemWeapon.AmmoKeepChamberOnReload"}}</span>
+          <span class="spaceholder-aiming-arc-row__value">{{#if ammo.canKeepChamberOnReload}}{{localize "SPACEHOLDER.ItemWeapon.Yes"}}{{else}}{{localize "SPACEHOLDER.ItemWeapon.No"}}{{/if}}</span>
+        </div>
+      </div>
+      {{#if @root.editable}}
+      <button type="button" class="icon-btn spaceholder-aiming-arc-panel__edit" data-action="sh-weapon-edit-ammo">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+        <span>{{localize "SPACEHOLDER.ItemWeapon.EditAmmo"}}</span>
+      </button>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="spaceholder-weapon-tab-layout__attacks flexcol">
+    <div class="stats-panel spaceholder-aiming-arc-panel sh-weapon-channel-panel">
+      <h3 class="spaceholder-aiming-arc-panel__title">{{localize "SPACEHOLDER.ItemWeapon.AmmoSideTitle"}}</h3>
+      <p class="spaceholder-aiming-arc-panel__hint">{{localize "SPACEHOLDER.ItemWeapon.AmmoSideHint"}}</p>
+    </div>
+  </div>
+</div>

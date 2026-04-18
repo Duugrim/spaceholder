@@ -24,7 +24,7 @@
       "thumbnail": "systems/spaceholder/assets/anvil-impact.png"
     }
   ],
-  "version": "0.175",
+  "version": "0.178",
   "compatibility": {
     "minimum": 13,
     "verified": "13"
@@ -48,8 +48,25 @@
       "path": "lang/ru.json"
     }
   ],
-  "packs": [],
-  "packFolders": [],
+  "packs": [
+    {
+      "name": "sh-test-items",
+      "label": "SpaceHolder Test Items",
+      "path": "packs/sh-test-items",
+      "type": "Item",
+      "system": "spaceholder"
+    }
+  ],
+  "packFolders": [
+    {
+      "name": "Testing",
+      "sorting": "m",
+      "color": "#6e8fb3",
+      "packs": [
+        "sh-test-items"
+      ]
+    }
+  ],
   "socket": true,
   "manifest": "https://github.com/Duugrim/spaceholder/releases/latest/download/system.json",
   "download": "https://github.com/Duugrim/spaceholder/releases/latest/download/spaceholder.zip",
@@ -58,6 +75,6 @@
     "distance": 1,
     "units": "m"
   },
-  "primaryTokenAttribute": "health",
-  "secondaryTokenAttribute": "power"
+  "primaryTokenAttribute": null,
+  "secondaryTokenAttribute": null
 }

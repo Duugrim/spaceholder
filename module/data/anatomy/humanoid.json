@@ -3,51 +3,784 @@
   "name": "Humanoid",
   "description": "Standard human-like anatomy: head, neck, back, shoulders, arms, hands, chest, abdomen, groin, thighs, shins, feet",
   "version": "2.0.0",
-  "grid": { "width": 9, "height": 10 },
+  "grid": {
+    "width": 9,
+    "height": 10
+  },
   "bodyParts": {
-    "head": { "id": "head", "name": "Head", "weight": 750, "maxHp": 25, "x": 4, "y": 1, "status": "healthy", "internal": false, "tags": ["vital", "brain", "sensory", "armor_head"], "links": ["neck"] },
-    "neck": { "id": "neck", "name": "Neck", "weight": 180, "maxHp": 15, "x": 4, "y": 2, "status": "healthy", "internal": false, "tags": ["vital", "vulnerable", "armor_neck"], "links": ["head", "chest", "back"] },
-    "back": { "id": "back", "name": "Back", "weight": 1100, "maxHp": 35, "x": 4, "y": 3, "status": "healthy", "internal": false, "tags": ["core", "armor_chest"], "links": ["neck", "chest", "abdomen"] },
-    "chest": { "id": "chest", "name": "Chest", "weight": 1400, "maxHp": 45, "x": 4, "y": 3, "status": "healthy", "internal": false, "tags": ["core", "vital", "armor_chest"], "links": ["neck", "back", "abdomen", "leftShoulder", "rightShoulder"] },
-    "abdomen": { "id": "abdomen", "name": "Abdomen", "weight": 1100, "maxHp": 40, "x": 4, "y": 4, "status": "healthy", "internal": false, "tags": ["core", "armor_chest"], "links": ["back", "chest", "groin"] },
-    "groin": { "id": "groin", "name": "Groin", "weight": 350, "maxHp": 20, "x": 4, "y": 5, "status": "healthy", "internal": false, "tags": ["vital", "armor_hip"], "links": ["abdomen", "leftThigh", "rightThigh"] },
-    "leftShoulder": { "id": "leftShoulder", "name": "Left Shoulder", "weight": 320, "maxHp": 20, "x": 3, "y": 3, "status": "healthy", "internal": false, "tags": ["joint", "left_side", "armor_shoulder"], "links": ["chest", "leftArm"] },
-    "rightShoulder": { "id": "rightShoulder", "name": "Right Shoulder", "weight": 320, "maxHp": 20, "x": 5, "y": 3, "status": "healthy", "internal": false, "tags": ["joint", "right_side", "armor_shoulder"], "links": ["chest", "rightArm"] },
-    "leftArm": { "id": "leftArm", "name": "Left Arm", "weight": 800, "maxHp": 30, "x": 2, "y": 3, "status": "healthy", "internal": false, "tags": ["limb", "left_side", "manipulator", "armor_arm"], "links": ["leftShoulder", "leftHand"] },
-    "rightArm": { "id": "rightArm", "name": "Right Arm", "weight": 800, "maxHp": 30, "x": 6, "y": 3, "status": "healthy", "internal": false, "tags": ["limb", "right_side", "manipulator", "armor_arm"], "links": ["rightShoulder", "rightHand"] },
-    "leftHand": { "id": "leftHand", "name": "Left Hand", "weight": 180, "maxHp": 15, "x": 1, "y": 3, "status": "healthy", "internal": false, "tags": ["extremity", "left_side", "manipulator", "dexterous", "armor_hand"], "links": ["leftArm"] },
-    "rightHand": { "id": "rightHand", "name": "Right Hand", "weight": 180, "maxHp": 15, "x": 7, "y": 3, "status": "healthy", "internal": false, "tags": ["extremity", "right_side", "manipulator", "dexterous", "armor_hand"], "links": ["rightArm"] },
-    "leftThigh": { "id": "leftThigh", "name": "Left Thigh", "weight": 800, "maxHp": 35, "x": 3, "y": 6, "status": "healthy", "internal": false, "tags": ["limb", "left_side", "locomotion", "armor_leg"], "links": ["groin", "leftShin"] },
-    "rightThigh": { "id": "rightThigh", "name": "Right Thigh", "weight": 800, "maxHp": 35, "x": 5, "y": 6, "status": "healthy", "internal": false, "tags": ["limb", "right_side", "locomotion", "armor_leg"], "links": ["groin", "rightShin"] },
-    "leftShin": { "id": "leftShin", "name": "Left Shin", "weight": 600, "maxHp": 28, "x": 3, "y": 7, "status": "healthy", "internal": false, "tags": ["limb", "left_side", "locomotion", "armor_leg"], "links": ["leftThigh", "leftFoot"] },
-    "rightShin": { "id": "rightShin", "name": "Right Shin", "weight": 600, "maxHp": 28, "x": 5, "y": 7, "status": "healthy", "internal": false, "tags": ["limb", "right_side", "locomotion", "armor_leg"], "links": ["rightThigh", "rightFoot"] },
-    "leftFoot": { "id": "leftFoot", "name": "Left Foot", "weight": 250, "maxHp": 12, "x": 3, "y": 8, "status": "healthy", "internal": false, "tags": ["extremity", "left_side", "locomotion", "armor_foot"], "links": ["leftShin"] },
-    "rightFoot": { "id": "rightFoot", "name": "Right Foot", "weight": 250, "maxHp": 12, "x": 5, "y": 8, "status": "healthy", "internal": false, "tags": ["extremity", "right_side", "locomotion", "armor_foot"], "links": ["rightShin"] }
+    "head": {
+      "id": "head",
+      "name": "Head",
+      "weight": 750,
+      "maxHp": 25,
+      "x": 4,
+      "y": 1,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "vital",
+        "brain",
+        "sensory",
+        "armor_head"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "neck"
+        },
+        {
+          "kind": "parent",
+          "target": "neck"
+        }
+      ],
+      "exposure": {
+        "front": 100,
+        "right": 100,
+        "back": 100,
+        "left": 100
+      }
+    },
+    "neck": {
+      "id": "neck",
+      "name": "Neck",
+      "weight": 180,
+      "maxHp": 15,
+      "x": 4,
+      "y": 2,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "vital",
+        "vulnerable",
+        "armor_neck"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "head"
+        },
+        {
+          "kind": "adjacent",
+          "target": "chest"
+        },
+        {
+          "kind": "adjacent",
+          "target": "back"
+        },
+        {
+          "kind": "parent",
+          "target": "chest"
+        }
+      ],
+      "exposure": {
+        "front": 100,
+        "right": 50,
+        "back": 100,
+        "left": 50
+      }
+    },
+    "back": {
+      "id": "back",
+      "name": "Back",
+      "weight": 1100,
+      "maxHp": 35,
+      "x": 5,
+      "y": 4,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "core",
+        "armor_chest"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "neck"
+        },
+        {
+          "kind": "adjacent",
+          "target": "abdomen"
+        },
+        {
+          "kind": "behind",
+          "target": "chest",
+          "chance": 40,
+          "direction": "back"
+        },
+        {
+          "kind": "behind",
+          "target": "abdomen",
+          "chance": 40,
+          "direction": "back"
+        }
+      ],
+      "exposure": {
+        "front": 0,
+        "right": 50,
+        "back": 100,
+        "left": 50
+      }
+    },
+    "chest": {
+      "id": "chest",
+      "name": "Chest",
+      "weight": 1400,
+      "maxHp": 45,
+      "x": 4,
+      "y": 3,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "core",
+        "vital",
+        "armor_chest"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "neck"
+        },
+        {
+          "kind": "adjacent",
+          "target": "abdomen"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftShoulder"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightShoulder"
+        },
+        {
+          "kind": "behind",
+          "target": "back",
+          "chance": 80,
+          "direction": "front"
+        }
+      ],
+      "exposure": {
+        "front": 100,
+        "right": 70,
+        "back": 0,
+        "left": 70
+      }
+    },
+    "abdomen": {
+      "id": "abdomen",
+      "name": "Abdomen",
+      "weight": 1100,
+      "maxHp": 40,
+      "x": 4,
+      "y": 4,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "core",
+        "armor_chest"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "back"
+        },
+        {
+          "kind": "adjacent",
+          "target": "chest"
+        },
+        {
+          "kind": "adjacent",
+          "target": "groin"
+        },
+        {
+          "kind": "behind",
+          "target": "back",
+          "chance": 80,
+          "direction": "front"
+        },
+        {
+          "kind": "parent",
+          "target": "chest"
+        }
+      ],
+      "exposure": {
+        "front": 100,
+        "right": 65,
+        "back": 0,
+        "left": 65
+      }
+    },
+    "groin": {
+      "id": "groin",
+      "name": "Groin",
+      "weight": 350,
+      "maxHp": 20,
+      "x": 4,
+      "y": 5,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "vital",
+        "armor_hip"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "abdomen"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftThigh"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightThigh"
+        },
+        {
+          "kind": "parent",
+          "target": "abdomen"
+        }
+      ],
+      "exposure": {
+        "front": 70,
+        "right": 50,
+        "back": 50,
+        "left": 50
+      }
+    },
+    "leftShoulder": {
+      "id": "leftShoulder",
+      "name": "Left Shoulder",
+      "weight": 320,
+      "maxHp": 20,
+      "x": 3,
+      "y": 3,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "joint",
+        "left_side",
+        "armor_shoulder"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "chest"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftArm"
+        },
+        {
+          "kind": "parent",
+          "target": "chest"
+        }
+      ],
+      "exposure": {
+        "front": 100,
+        "right": 0,
+        "back": 50,
+        "left": 100
+      }
+    },
+    "rightShoulder": {
+      "id": "rightShoulder",
+      "name": "Right Shoulder",
+      "weight": 320,
+      "maxHp": 20,
+      "x": 5,
+      "y": 3,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "joint",
+        "right_side",
+        "armor_shoulder"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "chest"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightArm"
+        },
+        {
+          "kind": "parent",
+          "target": "chest"
+        }
+      ],
+      "exposure": {
+        "front": 100,
+        "right": 100,
+        "back": 50,
+        "left": 0
+      }
+    },
+    "leftArm": {
+      "id": "leftArm",
+      "name": "Left Arm",
+      "weight": 800,
+      "maxHp": 30,
+      "x": 2,
+      "y": 3,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "limb",
+        "left_side",
+        "manipulator",
+        "armor_arm"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "leftShoulder"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftHand"
+        },
+        {
+          "kind": "parent",
+          "target": "leftShoulder"
+        }
+      ],
+      "exposure": {
+        "front": 50,
+        "right": 40,
+        "back": 0,
+        "left": 100
+      }
+    },
+    "rightArm": {
+      "id": "rightArm",
+      "name": "Right Arm",
+      "weight": 800,
+      "maxHp": 30,
+      "x": 6,
+      "y": 3,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "limb",
+        "right_side",
+        "manipulator",
+        "armor_arm"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "rightShoulder"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightHand"
+        },
+        {
+          "kind": "parent",
+          "target": "rightShoulder"
+        }
+      ],
+      "exposure": {
+        "front": 50,
+        "right": 100,
+        "back": 40,
+        "left": 0
+      }
+    },
+    "leftHand": {
+      "id": "leftHand",
+      "name": "Left Hand",
+      "weight": 180,
+      "maxHp": 15,
+      "x": 1,
+      "y": 3,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "extremity",
+        "left_side",
+        "manipulator",
+        "dexterous",
+        "armor_hand"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "leftArm"
+        },
+        {
+          "kind": "parent",
+          "target": "leftArm"
+        }
+      ],
+      "exposure": {
+        "front": 40,
+        "right": 30,
+        "back": 0,
+        "left": 100
+      }
+    },
+    "rightHand": {
+      "id": "rightHand",
+      "name": "Right Hand",
+      "weight": 180,
+      "maxHp": 15,
+      "x": 7,
+      "y": 3,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "extremity",
+        "right_side",
+        "manipulator",
+        "dexterous",
+        "armor_hand"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "rightArm"
+        },
+        {
+          "kind": "parent",
+          "target": "rightArm"
+        }
+      ],
+      "exposure": {
+        "front": 40,
+        "right": 100,
+        "back": 30,
+        "left": 0
+      }
+    },
+    "leftThigh": {
+      "id": "leftThigh",
+      "name": "Left Thigh",
+      "weight": 800,
+      "maxHp": 35,
+      "x": 3,
+      "y": 6,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "limb",
+        "left_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "groin"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftShin"
+        },
+        {
+          "kind": "parent",
+          "target": "groin"
+        }
+      ],
+      "exposure": {
+        "front": 50,
+        "right": 40,
+        "back": 0,
+        "left": 100
+      }
+    },
+    "rightThigh": {
+      "id": "rightThigh",
+      "name": "Right Thigh",
+      "weight": 800,
+      "maxHp": 35,
+      "x": 5,
+      "y": 6,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "limb",
+        "right_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "groin"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightShin"
+        },
+        {
+          "kind": "parent",
+          "target": "groin"
+        }
+      ],
+      "exposure": {
+        "front": 50,
+        "right": 100,
+        "back": 40,
+        "left": 0
+      }
+    },
+    "leftShin": {
+      "id": "leftShin",
+      "name": "Left Shin",
+      "weight": 600,
+      "maxHp": 28,
+      "x": 3,
+      "y": 7,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "limb",
+        "left_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "leftThigh"
+        },
+        {
+          "kind": "adjacent",
+          "target": "leftFoot"
+        },
+        {
+          "kind": "parent",
+          "target": "leftThigh"
+        }
+      ],
+      "exposure": {
+        "front": 40,
+        "right": 30,
+        "back": 0,
+        "left": 100
+      }
+    },
+    "rightShin": {
+      "id": "rightShin",
+      "name": "Right Shin",
+      "weight": 600,
+      "maxHp": 28,
+      "x": 5,
+      "y": 7,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "limb",
+        "right_side",
+        "locomotion",
+        "armor_leg"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "rightThigh"
+        },
+        {
+          "kind": "adjacent",
+          "target": "rightFoot"
+        },
+        {
+          "kind": "parent",
+          "target": "rightThigh"
+        }
+      ],
+      "exposure": {
+        "front": 40,
+        "right": 100,
+        "back": 30,
+        "left": 0
+      }
+    },
+    "leftFoot": {
+      "id": "leftFoot",
+      "name": "Left Foot",
+      "weight": 250,
+      "maxHp": 12,
+      "x": 3,
+      "y": 8,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "extremity",
+        "left_side",
+        "locomotion",
+        "armor_foot"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "leftShin"
+        },
+        {
+          "kind": "parent",
+          "target": "leftShin"
+        }
+      ],
+      "exposure": {
+        "front": 40,
+        "right": 20,
+        "back": 30,
+        "left": 100
+      }
+    },
+    "rightFoot": {
+      "id": "rightFoot",
+      "name": "Right Foot",
+      "weight": 250,
+      "maxHp": 12,
+      "x": 5,
+      "y": 8,
+      "status": "healthy",
+      "internal": false,
+      "tags": [
+        "extremity",
+        "right_side",
+        "locomotion",
+        "armor_foot"
+      ],
+      "relations": [
+        {
+          "kind": "adjacent",
+          "target": "rightShin"
+        },
+        {
+          "kind": "parent",
+          "target": "rightShin"
+        }
+      ],
+      "exposure": {
+        "front": 40,
+        "right": 100,
+        "back": 30,
+        "left": 20
+      }
+    }
   },
   "links": [
-    { "from": "head", "to": "neck" },
-    { "from": "neck", "to": "chest" },
-    { "from": "neck", "to": "back" },
-    { "from": "back", "to": "chest" },
-    { "from": "back", "to": "abdomen" },
-    { "from": "chest", "to": "abdomen" },
-    { "from": "chest", "to": "leftShoulder" },
-    { "from": "chest", "to": "rightShoulder" },
-    { "from": "abdomen", "to": "groin" },
-    { "from": "groin", "to": "leftThigh" },
-    { "from": "groin", "to": "rightThigh" },
-    { "from": "leftShoulder", "to": "leftArm" },
-    { "from": "leftArm", "to": "leftHand" },
-    { "from": "rightShoulder", "to": "rightArm" },
-    { "from": "rightArm", "to": "rightHand" },
-    { "from": "leftThigh", "to": "leftShin" },
-    { "from": "leftShin", "to": "leftFoot" },
-    { "from": "rightThigh", "to": "rightShin" },
-    { "from": "rightShin", "to": "rightFoot" }
+    {
+      "from": "head",
+      "to": "neck"
+    },
+    {
+      "from": "chest",
+      "to": "neck"
+    },
+    {
+      "from": "back",
+      "to": "neck"
+    },
+    {
+      "from": "abdomen",
+      "to": "back"
+    },
+    {
+      "from": "abdomen",
+      "to": "chest"
+    },
+    {
+      "from": "chest",
+      "to": "leftShoulder"
+    },
+    {
+      "from": "chest",
+      "to": "rightShoulder"
+    },
+    {
+      "from": "abdomen",
+      "to": "groin"
+    },
+    {
+      "from": "groin",
+      "to": "leftThigh"
+    },
+    {
+      "from": "groin",
+      "to": "rightThigh"
+    },
+    {
+      "from": "leftArm",
+      "to": "leftShoulder"
+    },
+    {
+      "from": "rightArm",
+      "to": "rightShoulder"
+    },
+    {
+      "from": "leftArm",
+      "to": "leftHand"
+    },
+    {
+      "from": "rightArm",
+      "to": "rightHand"
+    },
+    {
+      "from": "leftShin",
+      "to": "leftThigh"
+    },
+    {
+      "from": "rightShin",
+      "to": "rightThigh"
+    },
+    {
+      "from": "leftFoot",
+      "to": "leftShin"
+    },
+    {
+      "from": "rightFoot",
+      "to": "rightShin"
+    }
   ],
   "meta": {
     "totalBodyParts": 18,
-    "supportedStatuses": ["healthy", "bruised", "injured", "badly_injured", "destroyed", "missing"],
-    "commonTags": { "functionality": ["vital", "core", "limb", "extremity", "joint", "manipulator", "locomotion", "sensory"], "position": ["left_side", "right_side", "center"], "armor_locations": ["armor_head", "armor_neck", "armor_chest", "armor_shoulder", "armor_arm", "armor_hand", "armor_hip", "armor_leg", "armor_foot"], "special": ["brain", "dexterous", "internal"] }
+    "supportedStatuses": [
+      "healthy",
+      "bruised",
+      "injured",
+      "badly_injured",
+      "destroyed",
+      "missing"
+    ],
+    "commonTags": {
+      "functionality": [
+        "vital",
+        "core",
+        "limb",
+        "extremity",
+        "joint",
+        "manipulator",
+        "locomotion",
+        "sensory"
+      ],
+      "position": [
+        "left_side",
+        "right_side",
+        "center"
+      ],
+      "armor_locations": [
+        "armor_head",
+        "armor_neck",
+        "armor_chest",
+        "armor_shoulder",
+        "armor_arm",
+        "armor_hand",
+        "armor_hip",
+        "armor_leg",
+        "armor_foot"
+      ],
+      "special": [
+        "brain",
+        "dexterous",
+        "internal"
+      ]
+    }
   }
 }

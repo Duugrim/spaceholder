@@ -19,6 +19,7 @@
  * @typedef {object} ActionDescriptor
  * @property {string} id - Stable id, e.g. "item.<uuid>.equip"
  * @property {string} source - "actor" | "item" | "system"
+ * @property {string} [sourceItemName] - Owning item name when source === "item" (preview/UI)
  * @property {string} label - Localized label
  * @property {string} [icon] - FontAwesome class, e.g. "fa-solid fa-person-walking"
  * @property {number} [apCost] - Action Points cost, evaluated at runtime if needed
@@ -54,7 +55,7 @@ function _num(v, fallback = 0) {
 
 function _normalizeAimingType(v) {
   const raw = String(v ?? "simple").trim().toLowerCase();
-  return raw || "simple";
+  return raw === "standard" ? "standard" : "simple";
 }
  
 import { ensureCharacterApSynced, getStoredActionPoints, spendAp } from './transaction-ledger.mjs';
@@ -250,10 +251,10 @@ function _buildSystemFreeAction(ctx) {
       let outcome = null;
 
       await DialogV2.wait({
+        classes: ['spaceholder'],
         window: {
           title,
           icon: 'fa-solid fa-pen-to-square',
-          classes: ['spaceholder'],
         },
         position: { width: 480 },
         content,
@@ -355,6 +356,7 @@ function _coordinationValue(actor) {
 /**
  * Raw AP for movement from scene distance: AP per 1 grid-agnostic distance unit × distance, rounded up.
  * `actor.system.speed` = AP spent per 1 unit of distance (not per cell).
+ * Для персонажей задаётся в `prepareDerivedData`: бюджет `CONFIG.SPACEHOLDER.movementApTimeSlice` ОД / дистанция за этот бюджет (от DEX).
  * If speed is not set (<= 0), falls back to the cost/distance reported by core (e.g. grid steps), then ceil.
  *
  * @param {Actor|null|undefined} actor
@@ -454,6 +456,7 @@ function _collectWearableToggleActions(actor, ctx) {
       actions.push({
         id: `item.${item.uuid}.unequip`,
         source: 'item',
+        sourceItemName: item.name,
         label: _t('SPACEHOLDER.ActionsSystem.Wearable.Unequip', { item: item.name }),
         icon: 'fa-solid fa-shield',
         apCost: 0,
@@ -474,6 +477,7 @@ function _collectWearableToggleActions(actor, ctx) {
         actions.push({
           id: `item.${item.uuid}.equip`,
           source: 'item',
+          sourceItemName: item.name,
           label: _t('SPACEHOLDER.ActionsSystem.Wearable.Equip', { item: item.name }),
           icon: 'fa-solid fa-shield-halved',
           apCost: 0,
@@ -490,6 +494,7 @@ function _collectWearableToggleActions(actor, ctx) {
       actions.push({
         id: `item.${item.uuid}.stow`,
         source: 'item',
+        sourceItemName: item.name,
         label: _t('SPACEHOLDER.ActionsSystem.Wearable.Stow', { item: item.name }),
         icon: 'fa-solid fa-box-open',
         apCost: 0,
@@ -508,6 +513,7 @@ function _collectWearableToggleActions(actor, ctx) {
     actions.push({
       id: `item.${item.uuid}.hold`,
       source: 'item',
+      sourceItemName: item.name,
       label: _t('SPACEHOLDER.ActionsSystem.Wearable.Hold', { item: item.name }),
       icon: 'fa-solid fa-hand',
       apCost: 0,
@@ -572,6 +578,7 @@ function _collectCustomActions(actor, ctx) {
       out.push({
         id: `item.${item.uuid}.custom.${a.id}`,
         source: 'item',
+        sourceItemName: item.name,
         label: `${item.name}: ${a.name}`,
         icon: 'fa-solid fa-bolt',
         apCost: a.apCost ?? 0,
