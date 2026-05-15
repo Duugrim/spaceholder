@@ -1,0 +1,161 @@
+<div class="inventory-panel spaceholder-item-container-panel" data-sh-item-container-drop="1" data-container-host-id="{{item._id}}">
+  {{#if containerWorldMode}}
+  <p class="spaceholder-item-container-hint"><em>{{localize 'SPACEHOLDER.ItemContainer.WorldModeHint'}}</em></p>
+  <div class="inventory-stats">
+    <div class="inventory-stat">
+      <i class="fas fa-weight-hanging"></i>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalWeight'}}</span>
+      <span class="stat-value">{{containerTotalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+    </div>
+    <div class="inventory-stat">
+      <i class="fas fa-boxes"></i>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalItems'}}</span>
+      <span class="stat-value">{{containerTotalItems}}</span>
+    </div>
+  </div>
+
+  <div class="inventory-controls spaceholder-item-container-controls">
+    {{#unless containerReadOnly}}
+    <button type="button" class="item-create-btn spaceholder-item-container-refresh-btn" data-action="sh-item-container-refresh" title="{{localize 'SPACEHOLDER.ItemContainer.WorldRefreshHint'}}">
+      <i class="fas fa-rotate"></i>
+      <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.Refresh'}}</span>
+    </button>
+    {{/unless}}
+  </div>
+
+  <div class="inventory-list spaceholder-item-container-list">
+    {{#each containerGear as |citem|}}
+      <div class="inventory-item-card item-container-item-card {{#if citem.broken}}spaceholder-item-container-broken{{/if}}" data-entry-kind="world" data-world-uuid="{{citem.worldUuid}}" draggable="{{#if ../containerReadOnly}}false{{else}}true{{/if}}">
+        <div class="item-main">
+          <div class="item-image">
+            <img src="{{citem.img}}" title="{{citem.name}}" width="32" height="32" alt="" />
+          </div>
+          <div class="item-info">
+            <div class="item-name">{{citem.name}}</div>
+            {{#if citem.system.description}}
+              <div class="item-description">{{citem.system.description}}</div>
+            {{/if}}
+            <div class="item-details">
+              {{#if citem.system.quantity}}
+                <span class="item-quantity">{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{citem.system.quantity}}</span>
+              {{/if}}
+              {{#if citem.system.weight}}
+                <span class="item-weight">{{localize 'SPACEHOLDER.Inventory.ItemTotalWeight'}} {{numberFormat (multiply citem.system.weight citem.system.quantity) decimals=2}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+              {{/if}}
+            </div>
+          </div>
+        </div>
+        <div class="item-controls">
+          {{#unless ../containerReadOnly}}
+          {{#unless citem.broken}}
+          <button type="button" class="icon-btn item-edit" title="{{localize 'SPACEHOLDER.Inventory.EditItem'}}" data-action="sh-item-container-edit-world" data-world-uuid="{{citem.worldUuid}}">
+            <i class="fas fa-edit"></i>
+          </button>
+          {{/unless}}
+          <button type="button" class="icon-btn" title="{{localize 'SPACEHOLDER.ItemContainer.WorldExtractHint'}}" disabled aria-disabled="true">
+            <i class="fas fa-box-open"></i>
+          </button>
+          <button type="button" class="icon-btn item-delete" title="{{localize 'SPACEHOLDER.ItemContainer.Unlink'}}" data-action="sh-item-container-unlink" data-world-uuid="{{citem.worldUuid}}">
+            <i class="fas fa-unlink"></i>
+          </button>
+          {{else}}
+          {{#unless citem.broken}}
+          <button type="button" class="icon-btn item-edit" title="{{localize 'SPACEHOLDER.Inventory.EditItem'}}" data-action="sh-item-container-edit-world" data-world-uuid="{{citem.worldUuid}}">
+            <i class="fas fa-edit"></i>
+          </button>
+          {{/unless}}
+          {{/unless}}
+        </div>
+      </div>
+    {{/each}}
+    {{#unless containerGear.length}}
+      <div class="empty-inventory spaceholder-item-container-empty">
+        <i class="fas fa-box-open"></i>
+        <p><em>{{localize 'SPACEHOLDER.ItemContainer.Empty'}}</em></p>
+        {{#unless containerReadOnly}}
+        <p class="spaceholder-item-container-drop-hint"><em>{{localize 'SPACEHOLDER.ItemContainer.WorldDropHint'}}</em></p>
+        {{/unless}}
+      </div>
+    {{/unless}}
+  </div>
+
+  {{else if containerOnActor}}
+  <div class="inventory-stats">
+    <div class="inventory-stat">
+      <i class="fas fa-weight-hanging"></i>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalWeight'}}</span>
+      <span class="stat-value">{{containerTotalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+    </div>
+    <div class="inventory-stat">
+      <i class="fas fa-boxes"></i>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalItems'}}</span>
+      <span class="stat-value">{{containerTotalItems}}</span>
+    </div>
+  </div>
+
+  <div class="inventory-controls spaceholder-item-container-controls">
+    {{#unless containerReadOnly}}
+    <button type="button" class="item-create-btn" data-action="sh-item-container-create" title="{{localize 'SPACEHOLDER.ItemContainer.CreateInside'}}">
+      <i class="fas fa-plus"></i>
+      <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.NewInside'}}</span>
+    </button>
+    <button type="button" class="item-create-btn spaceholder-item-container-refresh-btn" data-action="sh-item-container-refresh" title="{{localize 'SPACEHOLDER.ItemContainer.RefreshHint'}}">
+      <i class="fas fa-rotate"></i>
+      <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.Refresh'}}</span>
+    </button>
+    {{/unless}}
+  </div>
+
+  <div class="inventory-list spaceholder-item-container-list">
+    {{#each containerGear as |citem|}}
+      <div class="inventory-item-card item-container-item-card" data-entry-kind="actor" data-item-id="{{citem._id}}" draggable="{{#if ../containerReadOnly}}false{{else}}true{{/if}}">
+        <div class="item-main">
+          <div class="item-image">
+            <img src="{{citem.img}}" title="{{citem.name}}" width="32" height="32" alt="" />
+          </div>
+          <div class="item-info">
+            <div class="item-name">{{citem.name}}</div>
+            {{#if citem.system.description}}
+              <div class="item-description">{{citem.system.description}}</div>
+            {{/if}}
+            <div class="item-details">
+              {{#if citem.system.quantity}}
+                <span class="item-quantity">{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{citem.system.quantity}}</span>
+              {{/if}}
+              {{#if citem.system.weight}}
+                <span class="item-weight">{{localize 'SPACEHOLDER.Inventory.ItemTotalWeight'}} {{numberFormat (multiply citem.system.weight citem.system.quantity) decimals=2}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+              {{/if}}
+            </div>
+          </div>
+        </div>
+        <div class="item-controls">
+          {{#unless ../containerReadOnly}}
+          <button type="button" class="icon-btn item-edit" title="{{localize 'SPACEHOLDER.Inventory.EditItem'}}" data-action="sh-item-container-edit" data-item-id="{{citem._id}}">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button type="button" class="icon-btn" title="{{localize 'SPACEHOLDER.ItemContainer.Extract'}}" data-action="sh-item-container-extract" data-item-id="{{citem._id}}">
+            <i class="fas fa-box-open"></i>
+          </button>
+          <button type="button" class="icon-btn item-delete" title="{{localize 'SPACEHOLDER.Inventory.DeleteItem'}}" data-action="sh-item-container-delete" data-item-id="{{citem._id}}">
+            <i class="fas fa-trash"></i>
+          </button>
+          {{else}}
+          <button type="button" class="icon-btn item-edit" title="{{localize 'SPACEHOLDER.Inventory.EditItem'}}" data-action="sh-item-container-edit" data-item-id="{{citem._id}}">
+            <i class="fas fa-edit"></i>
+          </button>
+          {{/unless}}
+        </div>
+      </div>
+    {{/each}}
+    {{#unless containerGear.length}}
+      <div class="empty-inventory spaceholder-item-container-empty">
+        <i class="fas fa-box-open"></i>
+        <p><em>{{localize 'SPACEHOLDER.ItemContainer.Empty'}}</em></p>
+        {{#unless containerReadOnly}}
+        <p class="spaceholder-item-container-drop-hint"><em>{{localize 'SPACEHOLDER.ItemContainer.DropHint'}}</em></p>
+        {{/unless}}
+      </div>
+    {{/unless}}
+  </div>
+  {{/if}}
+</div>

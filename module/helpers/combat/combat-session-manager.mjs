@@ -69,6 +69,8 @@ export class CombatSessionManager {
     this._manualUndoMarker = null;
     this._outboxTimer = null;
     this._uiSelectedCombatantByCombat = new Map();
+    this._uiExpandedActionGroupsByCombat = new Map();
+    this._uiActionTableCollapsedByCombat = new Map();
     this._registeredContextHooks = [];
     this._bound = {
       onCombatStart: this._onCombatStart.bind(this),
@@ -577,11 +579,12 @@ export class CombatSessionManager {
     await this._applyTurnPickForCurrentSide(combat, state);
     if (game.user?.isGM) {
       await combat.setFlag(MODULE_NS, FLAG_STATE, state);
-      // Foundry can merge nested flag objects so `{}` does not drop old keys; force-clear like pre-refactor flush.
+      // Foundry merges nested flag objects, so `{}` alone does not drop old keys.
+      // Use ForcedReplacement to atomically replace the field with an empty object
+      // without inner recursion/merge (v14 API; legacy `-=key` is deprecated).
       const base = `flags.${MODULE_NS}.${FLAG_STATE}`;
       await combat.update({
-        [`${base}.-=startedTurnsByCombatant`]: null,
-        [`${base}.startedTurnsByCombatant`]: {},
+        [`${base}.startedTurnsByCombatant`]: foundry.data.operators.ForcedReplacement.create({}),
       });
     }
     const payload = {
@@ -1142,6 +1145,7 @@ export class CombatSessionManager {
     tokenDoc,
     movementId,
     distance = 0,
+    units = "",
     apCost = 0,
     baseApCost = 0,
     from = null,
@@ -1177,6 +1181,7 @@ export class CombatSessionManager {
       data: {
         movementId,
         distance,
+        units: String(units || ""),
         forced: false,
         tokenUuid: tokenDoc?.uuid || null,
         from,
@@ -1508,9 +1513,9 @@ export class CombatSessionManager {
     };
     const title = game.i18n?.localize?.("SPACEHOLDER.Combat.ChangeSide") || "Change side";
     options.push({
-      name: title,
+      label: title,
       icon: '<i class="fa-solid fa-people-arrows"></i>',
-      condition: (li) => {
+      visible: (li) => {
         const cId = readCombatantId(li);
         return !!cId;
       },
@@ -1573,6 +1578,39 @@ export class CombatSessionManager {
     else this._uiSelectedCombatantByCombat.set(cid, bid);
   }
 
+  _getExpandedActionGroupSet(combatId) {
+    const key = String(combatId || "").trim();
+    if (!key) return new Set();
+    let set = this._uiExpandedActionGroupsByCombat.get(key);
+    if (!set) {
+      set = new Set();
+      this._uiExpandedActionGroupsByCombat.set(key, set);
+    }
+    return set;
+  }
+
+  _isActionGroupExpanded(combatId, groupId) {
+    return this._getExpandedActionGroupSet(combatId).has(String(groupId || ""));
+  }
+
+  _toggleActionGroupExpanded(combatId, groupId) {
+    const set = this._getExpandedActionGroupSet(combatId);
+    const key = String(groupId || "");
+    if (!key) return;
+    if (set.has(key)) set.delete(key);
+    else set.add(key);
+  }
+
+  _isActionTableCollapsed(combatId) {
+    return !!this._uiActionTableCollapsedByCombat.get(String(combatId || ""));
+  }
+
+  _toggleActionTableCollapsed(combatId) {
+    const key = String(combatId || "").trim();
+    if (!key) return;
+    this._uiActionTableCollapsedByCombat.set(key, !this._isActionTableCollapsed(key));
+  }
+
   _injectActionTable(host, combat, state) {
     const list = host.querySelector('ol.combat-tracker[data-application-part="tracker"]') || host.querySelector("ol.combat-tracker");
     if (!list) return;
@@ -1617,15 +1655,31 @@ export class CombatSessionManager {
         await this.toggleMovementForced({ combatId: combat.id, targetEventId });
       });
     });
+
+    box.querySelectorAll('[data-action="sh-table-toggle-collapse"]').forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        this._toggleActionTableCollapsed(combat.id);
+        ui.combat?.render?.(false);
+      });
+    });
+
+    box.querySelectorAll('[data-action="sh-table-toggle-group"]').forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const groupId = String(btn.dataset.groupId || "").trim();
+        if (!groupId) return;
+        this._toggleActionGroupExpanded(combat.id, groupId);
+        ui.combat?.render?.(false);
+      });
+    });
   }
 
   _renderActionTableHtml({ combat, state, combatantId } = {}) {
     const actionTableFallback = game.i18n?.localize?.("SPACEHOLDER.Combat.ActionTable") || "Action table";
     const none = game.i18n?.localize?.("SPACEHOLDER.Combat.NoActions") || "No actions";
-    const rowMoveLabel = game.i18n?.localize?.("SPACEHOLDER.Combat.RowMove") || "Move";
-    const rowActionLabel = game.i18n?.localize?.("SPACEHOLDER.Combat.RowAction") || "Action";
-    const forceTitleOff = game.i18n?.localize?.("SPACEHOLDER.Combat.ForceMoveToggleOn") || "Forced movement — does not spend AP";
-    const forceTitleOn = game.i18n?.localize?.("SPACEHOLDER.Combat.ForceMoveToggleOff") || "Cancel forced — restore AP cost";
+    const collapseTitle = game.i18n?.localize?.("SPACEHOLDER.Combat.CollapseTable") || "Collapse";
+    const expandTitle = game.i18n?.localize?.("SPACEHOLDER.Combat.ExpandTable") || "Expand";
     const round = this._displayRound(combat, state);
 
     const combatant = combatantId ? combat?.combatants?.get?.(combatantId) : null;
@@ -1640,6 +1694,9 @@ export class CombatSessionManager {
     const maxAp = this._computeMaxAp(combatant?.actor);
     const spent = _num(table?.spent, this._sumTableSpent(table));
     const remain = maxAp - spent;
+    const isCollapsed = this._isActionTableCollapsed(combat.id);
+    const collapseIcon = isCollapsed ? "fa-chevron-down" : "fa-chevron-up";
+    const collapseLabel = isCollapsed ? expandTitle : collapseTitle;
 
     const header = `
       <div class="spaceholder-action-table__header">
@@ -1650,11 +1707,13 @@ export class CombatSessionManager {
         <div class="spaceholder-action-table__meta">
           <span class="spaceholder-badge">R${round}</span>
           <span class="spaceholder-badge ap">AP ${remain}/${maxAp}</span>
+          <button type="button" class="spaceholder-action-table__collapse" data-action="sh-table-toggle-collapse" title="${foundry.utils.escapeHTML(collapseLabel)}" aria-expanded="${isCollapsed ? "false" : "true"}"><i class="fa-solid ${collapseIcon}" aria-hidden="true"></i></button>
         </div>
       </div>
     `;
 
-    const wrap = (bodyHtml) => `<div class="spaceholder-action-table">${header}<div class="spaceholder-action-table__body">${bodyHtml}</div></div>`;
+    const wrapperClass = `spaceholder-action-table${isCollapsed ? " is-collapsed" : ""}`;
+    const wrap = (bodyHtml) => `<div class="${wrapperClass}">${header}<div class="spaceholder-action-table__body">${bodyHtml}</div></div>`;
 
     if (!combatantId || !combatant) {
       return wrap(`<div class="spaceholder-action-table__empty"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>${foundry.utils.escapeHTML(none)}</span></div>`);
@@ -1664,36 +1723,112 @@ export class CombatSessionManager {
       return wrap(`<div class="spaceholder-action-table__empty"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>${foundry.utils.escapeHTML(none)}</span></div>`);
     }
 
-    const rows = visible.map((a) => {
-      const type = String(a.type || "action");
-      const isMove = type === "move";
-      const ap = _num(a.apCost, 0);
-      const base = _num(a.baseApCost, ap);
-      const pl = a.payload && typeof a.payload === "object" ? a.payload : {};
-      const actionName = String(pl.label ?? "").trim();
-      const label = isMove ? rowMoveLabel : (actionName || rowActionLabel);
-      const rowMod = isMove ? "move" : "action";
-      const kindIcon = isMove ? "fa-shoe-prints" : "fa-bolt";
-      const forced = !!a.forced;
-      const forcedRowClass = isMove && forced ? " spaceholder-action-table__row--forced" : "";
-      const toggleTitle = foundry.utils.escapeHTML(forced ? forceTitleOn : forceTitleOff);
-      const toggleBtn = isMove
-        ? `<button type="button" class="spaceholder-action-table__force-toggle${forced ? " is-forced" : ""}" data-action="sh-combat-toggle-forced" data-event-id="${foundry.utils.escapeHTML(String(a.id))}" title="${toggleTitle}" aria-pressed="${forced ? "true" : "false"}"><i class="fa-solid ${forced ? "fa-plus" : "fa-minus"}" aria-hidden="true"></i></button>`
-        : "";
+    // Group consecutive moves into collapsible groups; standalone moves stay as plain rows.
+    const groups = [];
+    let pendingMoves = [];
+    const flushPending = () => {
+      if (!pendingMoves.length) return;
+      if (pendingMoves.length === 1) groups.push({ kind: "single", action: pendingMoves[0] });
+      else groups.push({ kind: "moveGroup", actions: pendingMoves.slice() });
+      pendingMoves = [];
+    };
+    for (const a of visible) {
+      if (String(a.type || "") === "move") pendingMoves.push(a);
+      else {
+        flushPending();
+        groups.push({ kind: "single", action: a });
+      }
+    }
+    flushPending();
 
-      return `
-        <li class="spaceholder-action-table__row spaceholder-action-table__row--${rowMod}${forcedRowClass}">
-          <span class="spaceholder-action-table__kind">
-            <i class="fa-solid ${kindIcon} spaceholder-action-table__kind-icon" aria-hidden="true"></i>
-            <span class="spaceholder-action-table__kind-text">${foundry.utils.escapeHTML(label)}</span>
-          </span>
-          <span class="spaceholder-action-table__cost" title="base ${base}"><span class="spaceholder-action-table__ap-chip">${ap}</span></span>
-          <span class="spaceholder-action-table__tools">${toggleBtn}</span>
-        </li>
-      `;
-    }).join("");
+    const rowsHtml = groups
+      .map((g) => {
+        if (g.kind === "moveGroup") return this._renderActionTableMoveGroupHtml(combat, g.actions);
+        return this._renderActionTableSingleRowHtml(g.action);
+      })
+      .join("");
 
-    return wrap(`<ol class="spaceholder-action-table__rows">${rows}</ol>`);
+    return wrap(`<ol class="spaceholder-action-table__rows">${rowsHtml}</ol>`);
+  }
+
+  _renderActionTableSingleRowHtml(a, { nested = false } = {}) {
+    const rowActionLabel = game.i18n?.localize?.("SPACEHOLDER.Combat.RowAction") || "Action";
+    const forceTitleOff = game.i18n?.localize?.("SPACEHOLDER.Combat.ForceMoveToggleOn") || "Forced movement — does not spend AP";
+    const forceTitleOn = game.i18n?.localize?.("SPACEHOLDER.Combat.ForceMoveToggleOff") || "Cancel forced — restore AP cost";
+
+    const type = String(a.type || "action");
+    const isMove = type === "move";
+    const ap = _num(a.apCost, 0);
+    const base = _num(a.baseApCost, ap);
+    const pl = a.payload && typeof a.payload === "object" ? a.payload : {};
+    const actionName = String(pl.label ?? "").trim();
+    const moveDistance = isMove ? Math.max(0, _num(pl.distance, 0)) : 0;
+    const moveUnits = isMove
+      ? String(pl.units || canvas?.scene?.grid?.units || "").trim()
+      : "";
+    const label = isMove
+      ? (moveUnits ? `${moveDistance.toFixed(1)} ${moveUnits}` : moveDistance.toFixed(1))
+      : (actionName || rowActionLabel);
+    const rowMod = isMove ? "move" : "action";
+    const kindIcon = isMove ? "fa-shoe-prints" : "fa-bolt";
+    const forced = !!a.forced;
+    const forcedRowClass = isMove && forced ? " spaceholder-action-table__row--forced" : "";
+    const nestedClass = nested ? " spaceholder-action-table__row--move-segment" : "";
+    const toggleTitle = foundry.utils.escapeHTML(forced ? forceTitleOn : forceTitleOff);
+    const toggleBtn = isMove
+      ? `<button type="button" class="spaceholder-action-table__force-toggle${forced ? " is-forced" : ""}" data-action="sh-combat-toggle-forced" data-event-id="${foundry.utils.escapeHTML(String(a.id))}" title="${toggleTitle}" aria-pressed="${forced ? "true" : "false"}"><i class="fa-solid ${forced ? "fa-plus" : "fa-minus"}" aria-hidden="true"></i></button>`
+      : "";
+
+    return `
+      <li class="spaceholder-action-table__row spaceholder-action-table__row--${rowMod}${forcedRowClass}${nestedClass}">
+        <span class="spaceholder-action-table__kind">
+          <i class="fa-solid ${kindIcon} spaceholder-action-table__kind-icon" aria-hidden="true"></i>
+          <span class="spaceholder-action-table__kind-text">${foundry.utils.escapeHTML(label)}</span>
+        </span>
+        <span class="spaceholder-action-table__tools">${toggleBtn}</span>
+        <span class="spaceholder-action-table__cost" title="base ${base}"><span class="spaceholder-action-table__ap-chip">${ap}</span></span>
+      </li>
+    `;
+  }
+
+  _renderActionTableMoveGroupHtml(combat, actions) {
+    const expandLabel = game.i18n?.localize?.("SPACEHOLDER.ActionChatJournal.ExpandMoveGroup") || "Show each move";
+    const collapseLabel = game.i18n?.localize?.("SPACEHOLDER.ActionChatJournal.CollapseMoveGroup") || "Collapse moves";
+
+    const groupId = `mg:${actions[0]?.id || ""}`;
+    const expanded = this._isActionGroupExpanded(combat.id, groupId);
+    const apSum = actions.reduce((sum, a) => sum + Math.max(0, _num(a.apCost, 0)), 0);
+    const baseSum = actions.reduce((sum, a) => sum + Math.max(0, _num(a.baseApCost, _num(a.apCost, 0))), 0);
+    const distSum = actions.reduce((sum, a) => sum + Math.max(0, _num(a?.payload?.distance, 0)), 0);
+    const groupUnits = String(actions[0]?.payload?.units || canvas?.scene?.grid?.units || "").trim();
+    const distText = groupUnits ? `${distSum.toFixed(1)} ${groupUnits}` : distSum.toFixed(1);
+    const summaryFmt = actions.length > 1 ? `×${actions.length} · ${distText}` : distText;
+    const chevron = expanded ? "fa-chevron-down" : "fa-chevron-right";
+    const toggleTitle = foundry.utils.escapeHTML(expanded ? collapseLabel : expandLabel);
+
+    const segments = expanded
+      ? actions.map((a) => this._renderActionTableSingleRowHtml(a, { nested: true })).join("")
+      : "";
+    const segmentsHtml = expanded
+      ? `<ol class="spaceholder-action-table__group-segments">${segments}</ol>`
+      : "";
+    const chevronBtn = actions.length > 1
+      ? `<button type="button" class="spaceholder-action-table__group-toggle" data-action="sh-table-toggle-group" data-group-id="${foundry.utils.escapeHTML(groupId)}" aria-expanded="${expanded ? "true" : "false"}" title="${toggleTitle}"><i class="fa-solid ${chevron}" aria-hidden="true"></i></button>`
+      : "";
+
+    return `
+      <li class="spaceholder-action-table__row spaceholder-action-table__row--move spaceholder-action-table__row--movegroup">
+        <span class="spaceholder-action-table__kind">
+          <i class="fa-solid fa-shoe-prints spaceholder-action-table__kind-icon" aria-hidden="true"></i>
+          <span class="spaceholder-action-table__kind-text">${foundry.utils.escapeHTML(summaryFmt)}</span>
+        </span>
+        <span class="spaceholder-action-table__tools">
+          ${chevronBtn}
+        </span>
+        <span class="spaceholder-action-table__cost" title="base ${baseSum}"><span class="spaceholder-action-table__ap-chip">${apSum}</span></span>
+        ${segmentsHtml}
+      </li>
+    `;
   }
 
   _hideInitiativeControls(host) {

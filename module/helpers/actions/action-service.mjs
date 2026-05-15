@@ -599,7 +599,7 @@ function _collectCustomActions(actor, ctx) {
               ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming"));
               return false;
             }
-            const payloadId = String(a.payloadId || "").trim();
+            const payloadId = String(a.payloadId || item?.system?.weapon?.ranged?.projectile?.payloadId || "").trim();
             if (!payloadId) {
               ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.MissingActionPayload"));
               return false;
@@ -616,6 +616,9 @@ function _collectCustomActions(actor, ctx) {
               damage: Math.max(0, _num(a.damage, 1)),
               actor,
               item,
+              weaponItem: item?.system?.itemTags?.isRanged ? item : null,
+              weaponItemUuid: item?.system?.itemTags?.isRanged ? item.uuid : '',
+              useWeaponAmmo: !!item?.system?.itemTags?.isRanged,
               actionName: a.name,
             });
             if (!started) {

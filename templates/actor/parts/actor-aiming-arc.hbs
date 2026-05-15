@@ -4,24 +4,32 @@
 
   <div class="spaceholder-aiming-arc-grid">
     <div class="spaceholder-aiming-arc-row">
-      <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.Zones.Purple"}}</span>
-      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneHalfDegrees.[0] decimals=1}}&deg;</span>
+      <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.PurpleArc"}}</span>
+      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.purpleZoneDeg decimals=1}}&deg;</span>
+    </div>
+    <div class="spaceholder-aiming-arc-row">
+      <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.TotalArc"}}</span>
+      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.totalArcDeg decimals=1}}&deg;</span>
+    </div>
+    <div class="spaceholder-aiming-arc-row">
+      <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.DeadZone"}}</span>
+      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.deadZoneDeg decimals=1}}&deg;</span>
     </div>
     <div class="spaceholder-aiming-arc-row">
       <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.Zones.Green"}}</span>
-      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneHalfDegrees.[1] decimals=1}}&deg;</span>
+      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneWeights.[0] decimals=1}}</span>
     </div>
     <div class="spaceholder-aiming-arc-row">
       <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.Zones.Yellow"}}</span>
-      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneHalfDegrees.[2] decimals=1}}&deg;</span>
+      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneWeights.[1] decimals=1}}</span>
     </div>
     <div class="spaceholder-aiming-arc-row">
       <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.Zones.Orange"}}</span>
-      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneHalfDegrees.[3] decimals=1}}&deg;</span>
+      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneWeights.[2] decimals=1}}</span>
     </div>
     <div class="spaceholder-aiming-arc-row">
       <span class="spaceholder-aiming-arc-row__label">{{localize "SPACEHOLDER.AimingArc.Zones.Red"}}</span>
-      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneHalfDegrees.[4] decimals=1}}&deg;</span>
+      <span class="spaceholder-aiming-arc-row__value">{{numberFormat system.aimingArc.zoneWeights.[3] decimals=1}}</span>
     </div>
   </div>
 

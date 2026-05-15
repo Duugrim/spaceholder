@@ -1,0 +1,66 @@
+{
+  "name": "Steel Plate",
+  "type": "material",
+  "_id": "shtestmatsteel000",
+  "img": "systems/spaceholder/assets/icons/metal.svg/metal-plate.svg",
+  "system": {
+    "description": "<p>Hardened steel armour plate. Solid all-rounder against ballistics and impacts; vulnerable to thermal and chemical attack. Default <em>bastion</em> degradation against ballistic hits.</p>",
+    "materialId": "steel-plate",
+    "category": "metal",
+    "hardness": 10,
+    "integrityPerThickness": 50,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 7.85,
+    "resistance": {
+      "ballistic": 100, "concussive": 90, "piercing": 90, "cutting": 120,
+      "thermal": 45, "laser": 40, "plasma": 65, "electric": 20,
+      "sonic": 90, "radiation": 60, "chemical": 25
+    },
+    "wear": {
+      "ballistic": 40, "concussive": 30, "piercing": 40, "cutting": 20,
+      "thermal": 50, "laser": 40, "plasma": 150, "electric": 5,
+      "sonic": 5, "radiation": 0, "chemical": 100
+    },
+    "conductance": {
+      "electric": [
+        { "type": "electric", "fraction": 0.9 }
+      ]
+    },
+    "selfInduction": {
+      "ballistic": [
+        { "type": "thermal", "fraction": 0.2 },
+        { "type": "concussive", "fraction": 0.3 }
+      ],
+      "piercing": [
+        { "type": "thermal", "fraction": 0.1 },
+        { "type": "concussive", "fraction": 0.3 }
+      ],
+      "laser": [
+        { "type": "thermal", "fraction": 0.6 }
+      ],
+      "plasma": [
+        { "type": "thermal", "fraction": 0.4 }
+      ]
+    },
+    "degradation": {
+      "ballistic": "bastion"
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 400000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800010,
+    "modifiedTime": 1776279800010,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatsteel000"
+}

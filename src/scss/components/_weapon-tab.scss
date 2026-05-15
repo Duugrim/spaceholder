@@ -133,6 +133,15 @@
     padding-bottom: 4px;
   }
 
+  .sh-weapon-attack-dialog__subgroup-title {
+    font-weight: 500;
+    margin: 8px 0 4px;
+    font-size: 0.85rem;
+    color: var(--sh-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
   .sh-weapon-attack-dialog__hint {
     margin: 0 0 8px;
     font-size: 0.85rem;

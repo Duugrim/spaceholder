@@ -1,4 +1,57 @@
+import { buildDamageTypeConfig, DEGRADATION_MODES, DAMAGE_TYPE_CATEGORIES } from './damage/damage-types.mjs';
+import { INJURY_DESCRIPTORS } from './damage/injury-descriptors.mjs';
+import { defaultDescriptor } from './damage/injury-description.mjs';
+
 export const SPACEHOLDER = {};
+
+/**
+ * Damage-type registry. See module/helpers/damage/damage-types.mjs for the
+ * authoritative source. The values here are deep-cloned so consumers may
+ * safely mutate them (e.g. cache localized labels) without corrupting the
+ * compile-time defaults.
+ *
+ * Materials override `transmission[T]` / `degradation[T]` per damage type;
+ * see module/helpers/damage/materials-manager.mjs.
+ * @type {Object<string, Object>}
+ */
+SPACEHOLDER.damageTypes = buildDamageTypeConfig();
+
+/**
+ * Available layer-degradation modes. Aligned with damage-resolver behaviour.
+ * @type {Object<string, string>}
+ */
+SPACEHOLDER.degradationModes = { ...DEGRADATION_MODES };
+
+/**
+ * UI ordering for damage-type categories.
+ * @type {string[]}
+ */
+SPACEHOLDER.damageTypeCategories = [...DAMAGE_TYPE_CATEGORIES];
+
+/**
+ * Registry of optional projectile builders. Each builder is a function
+ *   `(ctx) => ApplicationsPackage`
+ * where `ctx` includes `{ weapon, ammo, attacker, target, channel }` and the
+ * returned package follows the structure defined in
+ * `damage-resolver.normalizeApplications`.
+ *
+ * The resolver consults this registry only when an item declares
+ * `projectile.builderId`; otherwise it uses the static `projectile.applications`.
+ * @type {Object<string, Function>}
+ */
+SPACEHOLDER.applicationBuilders = {};
+
+/**
+ * Registry of injury descriptors keyed by damage-type id. Each entry is a
+ * pure function `(ctx) => { segments, tooltipSegments }` that builds a
+ * structured description of an injury for the actor sheet. `__default` is
+ * the fallback used for unknown damage types and legacy data.
+ * @type {Object<string, Function>}
+ */
+SPACEHOLDER.injuryDescriptors = {
+  ...INJURY_DESCRIPTORS,
+  __default: defaultDescriptor,
+};
 
 /**
  * The set of Ability Scores used within the system.
@@ -32,8 +85,11 @@ SPACEHOLDER.movementMinDistancePerSlice = 0.25;
  */
 SPACEHOLDER.aimingArc = {
   segmentCount: 5,
-  maxHalfAngleDeg: 90,
-  defaultZoneHalfDegrees: [1, 5, 15, 25, 30],
+  standardZoneCount: 4,
+  defaultPurpleZoneDeg: 1,
+  defaultTotalArcDeg: 90,
+  defaultZoneWeights: [5, 15, 25, 30],
+  defaultDeadZoneDeg: 0,
   defaultDeviationBaseDeg: 1,
   deviationMultipliers: [0, 0, 1, 2, 4],
   overlayThicknessPx: 44,
@@ -102,4 +158,14 @@ SPACEHOLDER.bodyPartDictionary = [
  * Fallback anatomy for wearable coverage editor when item has no anatomy selected.
  */
 SPACEHOLDER.wearableCoverageReferenceAnatomyId = 'humanoid';
+
+/**
+ * When `true`, each body part’s tissue stack (`bodyLayers` / defaults for
+ * `part.id`) participates in {@link resolveBodyTraversal} together with
+ * worn armour. When `false`, tissue layers are skipped — only armour items
+ * resolve structurally; unarmoured hits apply straight to the part centre.
+ * Temporary toggle: set back to `true` to restore full body-layer simulation.
+ * @type {boolean}
+ */
+SPACEHOLDER.anatomyBodyLayersInDamage = false;
 

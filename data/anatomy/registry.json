@@ -7,8 +7,7 @@
       "description": "Standard human-like anatomy with head, torso, arms and legs",
       "descriptionLocalized": "SPACEHOLDER.Anatomy.Humanoid.Desc",
       "category": "basic",
-      "icon": "fas fa-male",
-      "group": "humanoid"
+      "icon": "fas fa-male"
     },
     "quadruped": {
       "name": "Quadruped",
@@ -17,8 +16,7 @@
       "description": "Four-legged creature anatomy",
       "descriptionLocalized": "SPACEHOLDER.Anatomy.Quadruped.Desc",
       "category": "basic",
-      "icon": "fas fa-horse",
-      "group": "quadruped"
+      "icon": "fas fa-horse"
     },
     "arachnid": {
       "name": "Arachnid",
@@ -27,8 +25,7 @@
       "description": "Eight-legged spider-like creature",
       "descriptionLocalized": "SPACEHOLDER.Anatomy.Arachnid.Desc",
       "category": "basic",
-      "icon": "fas fa-spider",
-      "group": "arachnid"
+      "icon": "fas fa-spider"
     },
     "_serpentine": {
       "name": "Serpentine",
@@ -38,8 +35,7 @@
       "descriptionLocalized": "SPACEHOLDER.Anatomy.Serpentine.Desc",
       "category": "basic",
       "icon": "fas fa-snake",
-      "disabled": true,
-      "group": "serpentine"
+      "disabled": true
     },
     "_arachnid": {
       "name": "Arachnid",
@@ -49,8 +45,7 @@
       "descriptionLocalized": "SPACEHOLDER.Anatomy.Arachnid.Desc",
       "category": "basic",
       "icon": "fas fa-spider",
-      "disabled": true,
-      "group": "arachnid"
+      "disabled": true
     }
   },
   "version": "1.0.0",

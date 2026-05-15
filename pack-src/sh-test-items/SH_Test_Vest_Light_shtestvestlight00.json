@@ -1,0 +1,73 @@
+{
+  "name": "Бронежилет (лёгкий)",
+  "type": "item",
+  "_id": "shtestvestlight00",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar-vest.svg",
+  "system": {
+    "description": "<p>«Дипломатический» мягкий бронежилет: тонкая кевларовая жилетка, которую можно надеть под пиджак. Покрывает грудь, живот и спину.</p><p>Тестовый спектр: уверенно держит обычный пистолетный патрон; бронебойный пистолетный — уже пробивает.</p><ul><li>kevlar 1 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 1.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "kevlar", "thickness": 1 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "kevlar", "thickness": 1 }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          { "material": "kevlar", "thickness": 1 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 520000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800040,
+    "modifiedTime": 1776279800040,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestvestlight00"
+}

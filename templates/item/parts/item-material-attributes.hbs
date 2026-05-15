@@ -1,0 +1,107 @@
+<div class="sh-material-attributes flexcol">
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Materials.Sheet.MaterialId'}}</label>
+    <input type="text" name="system.materialId" value="{{system.materialId}}" placeholder="steel-plate"/>
+    <p class="hint">{{localize 'SPACEHOLDER.Materials.Sheet.MaterialIdHint'}}</p>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Materials.Sheet.Category'}}</label>
+    <select name="system.category">
+      {{#each materialCategoryOptions as |opt|}}
+        <option value="{{opt.id}}" {{#if opt.selected}}selected{{/if}}>{{localize opt.labelKey}}</option>
+      {{/each}}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Materials.Sheet.Hardness'}}</label>
+    <input type="number" step="any" min="0" name="system.hardness" value="{{system.hardness}}" data-dtype="Number"/>
+    <p class="hint">{{localize 'SPACEHOLDER.Materials.Sheet.HardnessHint'}}</p>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Materials.Sheet.IntegrityPerThickness'}}</label>
+    <input type="number" step="any" min="0" name="system.integrityPerThickness" value="{{system.integrityPerThickness}}" data-dtype="Number"/>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Materials.Sheet.BreachCapacityPerThickness'}}</label>
+    <input type="number" step="any" min="0" name="system.breachCapacityPerThickness" value="{{system.breachCapacityPerThickness}}" data-dtype="Number"/>
+    <p class="hint">{{localize 'SPACEHOLDER.Materials.Sheet.BreachCapacityHint'}}</p>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Materials.Sheet.WeightPerThickness'}}</label>
+    <input type="number" step="any" min="0" name="system.weightPerThickness" value="{{system.weightPerThickness}}" data-dtype="Number"/>
+  </div>
+
+  <h3>{{localize 'SPACEHOLDER.Materials.Sheet.ResistanceTable'}}</h3>
+  <table class="sh-material-table">
+    <thead>
+      <tr>
+        <th>{{localize 'SPACEHOLDER.ItemWeapon.DamageType'}}</th>
+        <th>{{localize 'SPACEHOLDER.Materials.Sheet.ResistanceTable'}}</th>
+        <th>{{localize 'SPACEHOLDER.Materials.Sheet.WearTable'}}</th>
+        <th>{{localize 'SPACEHOLDER.Materials.Sheet.DegradationTable'}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each materialDamageRows as |row|}}
+        <tr>
+          <td title="{{localize row.descriptionKey}}">{{localize row.labelKey}}</td>
+          <td><input type="number" step="any" min="0" name="system.resistance.{{row.id}}" value="{{row.resistance}}" data-dtype="Number"/></td>
+          <td><input type="number" step="any" min="0" name="system.wear.{{row.id}}" value="{{row.wear}}" data-dtype="Number"/></td>
+          <td>
+            <select name="system.degradation.{{row.id}}">
+              <option value="" {{#unless row.degradation}}selected{{/unless}}>—</option>
+              {{#each ../degradationOptions as |dopt|}}
+                <option value="{{dopt.id}}" {{#if (eq dopt.id ../row.degradation)}}selected{{/if}}>{{localize dopt.labelKey}}</option>
+              {{/each}}
+            </select>
+          </td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h3>{{localize 'SPACEHOLDER.Materials.Sheet.ConductanceTable'}}</h3>
+  <p class="hint">{{localize 'SPACEHOLDER.Materials.Sheet.ConductanceHint'}}</p>
+  <table class="sh-material-table">
+    <thead>
+      <tr>
+        <th>{{localize 'SPACEHOLDER.ItemWeapon.DamageType'}}</th>
+        <th>{{localize 'SPACEHOLDER.Materials.Sheet.ConductanceTable'}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each materialDamageRows as |row|}}
+        <tr>
+          <td>{{localize row.labelKey}}</td>
+          <td><input type="text" name="system.conductance.{{row.id}}" value="{{row.conductanceJson}}" data-dtype="String" placeholder='[{"type":"concussive","fraction":0.3}]'/></td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h3>{{localize 'SPACEHOLDER.Materials.Sheet.SelfInductionTable'}}</h3>
+  <p class="hint">{{localize 'SPACEHOLDER.Materials.Sheet.SelfInductionHint'}}</p>
+  <table class="sh-material-table">
+    <thead>
+      <tr>
+        <th>{{localize 'SPACEHOLDER.ItemWeapon.DamageType'}}</th>
+        <th>{{localize 'SPACEHOLDER.Materials.Sheet.SelfInductionTable'}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each materialDamageRows as |row|}}
+        <tr>
+          <td>{{localize row.labelKey}}</td>
+          <td><input type="text" name="system.selfInduction.{{row.id}}" value="{{row.selfInductionJson}}" data-dtype="String" placeholder='[{"type":"thermal","fraction":0.2}]'/></td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+</div>

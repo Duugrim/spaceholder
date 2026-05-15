@@ -1,0 +1,76 @@
+{
+  "name": "Рельса (рейлган)",
+  "type": "item",
+  "_id": "shtestammorail000",
+  "img": "systems/spaceholder/assets/icons/weapon.svg/supersonic-bullet.svg",
+  "system": {
+    "description": "<p>Гиперскоростной кинетический болванчик. Верхняя планка кинетики в наборе: максимальный `damage`, огромный `armorPen`, высокий `hardness` и `adf`. Должен прошивать ткань, любой жилет (включая тяжёлый и боевую броню), и ТКТБ-сталь любой толщины из §5.7.1. На ТКТБ-композите 100 мм — вязнет или проходит с большой потерей. Служит «потолком» формулы.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 3,
+    "weight": 0.25,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": false },
+      "unequip": { "showInCombat": false, "showInQuickbar": false },
+      "hold": { "showInCombat": false, "showInQuickbar": false },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": { "abilities": [], "derived": [], "params": [] },
+    "itemTags": { "isArmor": false, "isActions": false, "isModifiers": false, "isAmmo": true },
+    "weapon": {
+      "version": 2,
+      "ammo": {
+        "projectile": {
+          "damage": 0,
+          "damageType": "",
+          "armorPen": 5,
+          "armorDamageFactor": 1,
+          "hardness": 1,
+          "projectilesPerUse": 1,
+          "payloadId": "",
+          "applications": [
+            {
+              "mode": "sequential",
+              "items": [
+                { "type": "ballistic", "damage": 250, "armorPen": 5, "armorDamageFactor": 2.0, "hardness": 15 }
+              ]
+            }
+          ],
+          "builderId": ""
+        },
+        "resource": {
+          "resourceType": "shell",
+          "caliberTag": "rail-slug",
+          "compatibilityTags": ["rail-slug"],
+          "stackMax": 3
+        }
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldammo000",
+  "sort": 650000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800143,
+    "modifiedTime": 1776279800143,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestammorail000"
+}
+

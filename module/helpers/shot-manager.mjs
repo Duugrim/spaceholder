@@ -3,6 +3,8 @@
  * Преобразует payload (инструкции) в shotResult (координаты для визуализации)
  */
 
+import { composeProjectileApplications } from '../documents/item.mjs';
+
 /**
  * ShotSystem - центральное хранилище выстрелов
  */
@@ -91,6 +93,119 @@ class ShotSystem {
 export class ShotManager {
   constructor() {
     this.shotSystem = new ShotSystem();
+  }
+
+  /**
+   * Route every actor hit recorded for `shot` through the damage / armour
+   * resolver. Call this after the shot's geometry has been processed and
+   * `shot.actualHits` is final.
+   *
+   * The resolver consumes a phased application package; this helper builds
+   * it from `projectile` (`{ damage, damageType, applications, builderId, …}`)
+   * via `buildProjectileApplications`. If the projectile carries no usable
+   * damage spec the call is a no-op.
+   *
+   * @param {Object} shot - shot object (as returned by shotSystem.registerShot)
+   * @param {Object} projectile - the resolved projectile payload (after ammo
+   *   substitution etc.)
+   * @param {Object} [options]
+   * @param {string} [options.partId] - body slot to target; if omitted, the
+   *   per-hit `details.partId` is used (or fallback `'core'`).
+   * @param {Object} [options.builderContext] - extra context forwarded to
+   *   `applyDamagePackage` when the projectile uses a builderId.
+   * @param {string|Object} [options.source] - либо строка-легаси, либо
+   *   частично заполненный snapshot источника. Отсутствующие поля
+   *   (`attackerName`, `weaponName`, `ammoName`, `verbKey`, `shotUid` и uuid'ы)
+   *   дополняются автоматически из `shot` / `builderContext` / `projectile`.
+   * @param {() => number} [options.random]
+   * @returns {Promise<Array<{actorId: string, slotRef: string|null, bodyDamage: Array<{type:string, amount:number}>}>>}
+   */
+  async applyImpactsToActors(shot, projectile, options = {}) {
+    if (!shot || !Array.isArray(shot.actualHits) || !shot.actualHits.length) return [];
+    if (!projectile || typeof projectile !== 'object') return [];
+    const phases = composeProjectileApplications(projectile, options.builderContext ?? {});
+    if (!phases.length) return [];
+
+    const sourceSnapshot = await this._buildInjurySourceSnapshot({
+      shot, projectile, builderContext: options.builderContext, override: options.source
+    });
+
+    const results = [];
+    for (const hit of shot.actualHits) {
+      const token = hit?.object?.document ? hit.object : hit?.token ?? hit?.target ?? null;
+      const actor = token?.actor ?? hit?.actor ?? null;
+      if (!actor || typeof actor.applyDamagePackage !== 'function') continue;
+      const partId = options.partId ?? hit?.details?.partId ?? hit?.partId ?? 'core';
+      try {
+        const out = await actor.applyDamagePackage({
+          partId,
+          applications: phases,
+          builderContext: options.builderContext,
+          source: sourceSnapshot,
+          random: options.random,
+        });
+        results.push({ actorId: actor.id, slotRef: out.slotRef, bodyDamage: out.bodyDamage });
+      } catch (e) {
+        console.error('SpaceHolder | ShotManager: failed to apply impact', e);
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Собрать snapshot источника травмы: имена атакующего/оружия/аммо + их
+   * uuid'ы + id выстрела + глагол. Каждое поле опционально; если что-то
+   * определить нельзя — поле просто не попадает в объект.
+   * @private
+   * @param {Object} args
+   * @param {Object} args.shot
+   * @param {Object} args.projectile
+   * @param {Object} [args.builderContext]
+   * @param {string|Object} [args.override]
+   * @returns {Promise<Object>}
+   */
+  async _buildInjurySourceSnapshot({ shot, projectile, builderContext, override }) {
+    const snap = {};
+    if (shot?.uid) snap.shotUid = String(shot.uid);
+
+    const ctx = builderContext && typeof builderContext === 'object' ? builderContext : {};
+    const attackerUuid = ctx.shooterActorUuid ?? ctx.attackerUuid ?? ctx.attacker?.uuid ?? null;
+    const weaponUuid = ctx.weaponItemUuid ?? ctx.weaponUuid ?? ctx.weapon?.uuid ?? null;
+    const ammoUuid = ctx.ammoItemUuid ?? ctx.ammoUuid ?? ctx.ammo?.uuid ?? null;
+
+    if (attackerUuid) snap.attackerUuid = String(attackerUuid);
+    if (weaponUuid) snap.weaponUuid = String(weaponUuid);
+    if (ammoUuid) snap.ammoUuid = String(ammoUuid);
+
+    const resolveName = async (uuid, directName) => {
+      if (directName) return String(directName);
+      if (!uuid) return null;
+      try {
+        const doc = await fromUuid(uuid);
+        return doc?.name ? String(doc.name) : null;
+      } catch (_) { return null; }
+    };
+
+    const attackerName = await resolveName(attackerUuid, ctx.attackerName ?? ctx.attacker?.name);
+    const weaponName = await resolveName(weaponUuid, ctx.weaponName ?? ctx.weapon?.name);
+    const ammoName = await resolveName(ammoUuid, ctx.ammoName ?? ctx.ammo?.name ?? projectile?.name);
+
+    if (attackerName) snap.attackerName = attackerName;
+    if (weaponName) snap.weaponName = weaponName;
+    if (ammoName) snap.ammoName = ammoName;
+
+    const verb = ctx.verbKey ?? ctx.verb ?? (weaponUuid || weaponName ? 'fire' : (ammoUuid || ammoName ? 'fire' : null));
+    if (verb) snap.verbKey = String(verb);
+
+    if (typeof override === 'string' && override) {
+      snap.legacyLabel = override;
+    } else if (override && typeof override === 'object') {
+      for (const [k, v] of Object.entries(override)) {
+        if (v != null && v !== '') snap[k] = typeof v === 'string' ? v : String(v);
+      }
+    }
+
+    return snap;
   }
 
   /**

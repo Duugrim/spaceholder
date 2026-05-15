@@ -13,7 +13,7 @@ todos:
   - id: hide-round-ui
     content: "Скрыть кнопки смены раунда в renderCombatTracker +/или SCSS (селекторы проверить на v13.350)"
   - id: docs-combat
-    content: "docs/COMBAT_SYSTEM_V1.md: логический раунд, отказ от инкремента Combat.round"
+    content: "docs/code/reference/COMBAT_SYSTEM_V1.md: логический раунд, отказ от инкремента Combat.round"
   - id: gm-wait-queue
     content: "Очередь/ретраи для действий через сокет: при отсутствии ответа ГМа не проваливать — ждать активного ГМа и переотправлять"
 ---
@@ -26,7 +26,7 @@ todos:
 - `_onUpdateCombat` не реагировать на `changes.round` для flush.
 - `_displayRound` и связанная логика AP — опираться на **`state.round`**, не на `combat.round`.
 - Скрыть штатные кнопки смены раунда в трекере (расширить `_hideInitiativeControls` / SCSS).
-- Документация в `docs/COMBAT_SYSTEM_V1.md`.
+- Документация в `docs/code/reference/COMBAT_SYSTEM_V1.md`.
 
 Детали и риски — как в обсуждении (миграция старых боёв, опционально `turn: 0` без `round`).
 

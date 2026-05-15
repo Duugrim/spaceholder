@@ -1,0 +1,14 @@
+{
+	"nodes":[
+		{"id":"50cabe8a71319bc8","type":"text","text":"Аро-5","x":-1320,"y":-60,"width":250,"height":60},
+		{"id":"634448fe6a897f21","type":"text","text":"Федерация Терры","x":-220,"y":-880,"width":250,"height":60,"color":"4"},
+		{"id":"785f646f7482066f","type":"text","text":"Империя Каусилон","x":360,"y":-880,"width":250,"height":60,"color":"2"},
+		{"id":"b37fe7c9b478b14b","type":"text","text":"","x":360,"y":-1000,"width":250,"height":60},
+		{"id":"a162b2eab0ef9388","type":"text","text":"","x":360,"y":-760,"width":250,"height":60},
+		{"id":"28928a0427d68530","type":"text","text":"","x":360,"y":-640,"width":250,"height":60},
+		{"id":"719a5ba4cf4a33d5","type":"text","text":"","x":360,"y":-520,"width":250,"height":60},
+		{"id":"b0bd1e9982152027","type":"text","text":"","x":360,"y":-1120,"width":250,"height":60},
+		{"id":"959da19add5cf812","type":"text","text":"","x":360,"y":-1240,"width":250,"height":60}
+	],
+	"edges":[]
+}

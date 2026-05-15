@@ -2,7 +2,7 @@
  * Token Controls Helper
  * Добавляет пользовательские кнопки в панель Token Controls
  */
-import { clearAimingArcOverlays, refreshHoveredAimingArcOverlays } from './aiming-arc-overlay.mjs';
+import { refreshAimingArcOverlays } from './aiming-arc-overlay.mjs';
 
 const MODULE_NS = 'spaceholder';
 const AIMING_ARC_SETTING = 'aimingArc.showOnHover';
@@ -22,9 +22,8 @@ export function registerTokenControlButtons() {
     config: false,
     type: Boolean,
     default: false,
-    onChange: (v) => {
-      if (v) refreshHoveredAimingArcOverlays();
-      else clearAimingArcOverlays();
+    onChange: () => {
+      refreshAimingArcOverlays();
     },
   });
 }
@@ -91,8 +90,16 @@ function addCustomButtons(tokenControls) {
     onChange: (event, isActive) => handleAimingArcHoverToolChange(resolveToolActive(event, isActive)),
     order: 11,
   });
+  const addedArmorTester = game.user?.isGM ? upsertTool(tokenControls, {
+    name: 'armor-penetration-tester',
+    title: game.i18n.localize('SPACEHOLDER.ArmorTester.Tabs.Projectiles'),
+    icon: 'fas fa-shield-halved',
+    onChange: () => openArmorTester(),
+    button: true,
+    order: 12,
+  }) : false;
 
-  if (addedAiming || addedAimingArcHover) {
+  if (addedAiming || addedAimingArcHover || addedArmorTester) {
     console.log('SpaceHolder | Added custom Token Control buttons');
   }
 }
@@ -196,6 +203,17 @@ function showAimingDialog() {
       console.error('SpaceHolder | Failed to load AimingManager:', err);
       ui.notifications.error(game.i18n.localize('SPACEHOLDER.TokenControls.Messages.LoadError'));
       deactivateAimingTool();
+    });
+}
+
+function openArmorTester() {
+  import('./damage/armor-penetration-tester-app.mjs')
+    .then(({ openArmorPenetrationTesterApp }) => {
+      openArmorPenetrationTesterApp();
+    })
+    .catch((err) => {
+      console.error('SpaceHolder | Failed to load Armor Penetration Tester:', err);
+      ui.notifications?.error?.(game.i18n.localize('SPACEHOLDER.ArmorTester.Messages.OpenFailed'));
     });
 }
 

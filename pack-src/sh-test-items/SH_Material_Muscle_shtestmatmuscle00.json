@@ -1,0 +1,56 @@
+{
+  "name": "Muscle",
+  "type": "material",
+  "_id": "shtestmatmuscle00",
+  "img": "systems/spaceholder/assets/icons/anatomy.svg/muscular-torso.svg",
+  "system": {
+    "description": "<p>Soft tissue bulk. Moderate resistance to blunt and piercing impulses; when torn up it partially redistributes damage past itself (distribution) and hands part of the impulse off as concussive trauma.</p>",
+    "materialId": "muscle",
+    "category": "biological",
+    "hardness": 2,
+    "integrityPerThickness": 8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.06,
+    "resistance": {
+      "ballistic": 35, "concussive": 100, "piercing": 70, "cutting": 70,
+      "thermal": 70, "laser": 55, "plasma": 35, "electric": 35,
+      "sonic": 70, "radiation": 0, "chemical": 55
+    },
+    "wear": {
+      "ballistic": 80, "concussive": 40, "piercing": 90, "cutting": 100,
+      "thermal": 100, "laser": 120, "plasma": 150, "electric": 5,
+      "sonic": 10, "radiation": 0, "chemical": 200
+    },
+    "conductance": {},
+    "selfInduction": {
+      "ballistic": [
+        { "type": "concussive", "fraction": 0.3 }
+      ],
+      "piercing": [
+        { "type": "concussive", "fraction": 0.3 }
+      ]
+    },
+    "degradation": {
+      "ballistic": "distribution",
+      "concussive": "reduction",
+      "piercing": "distribution"
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 510000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800021,
+    "modifiedTime": 1776279800021,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatmuscle00"
+}

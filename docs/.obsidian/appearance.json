@@ -1,0 +1,11 @@
+{
+  "accentColor": "",
+  "cssTheme": "Things",
+  "theme": "obsidian",
+  "baseFontSize": 15,
+  "textFontFamily": "Rubik",
+  "interfaceFontFamily": "Rubik",
+  "enabledCssSnippets": [
+    "things-bold-obsidianite-gradient"
+  ]
+}

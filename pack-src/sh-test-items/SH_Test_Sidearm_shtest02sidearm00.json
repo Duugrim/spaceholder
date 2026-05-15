@@ -1,5 +1,5 @@
 {
-  "name": "SH Test Sidearm",
+  "name": "Sidearm",
   "type": "item",
   "_id": "shtest02sidearm00",
   "img": "icons/svg/target.svg",
@@ -50,7 +50,7 @@
     }
   },
   "effects": [],
-  "folder": null,
+  "folder": "shtestfldmisc000",
   "sort": 200000,
   "ownership": { "default": 0 },
   "flags": {},

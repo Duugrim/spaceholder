@@ -1,0 +1,53 @@
+{
+  "name": "ТКТБ-К 50мм",
+  "type": "item",
+  "_id": "shtesttktbk050000",
+  "img": "systems/spaceholder/assets/icons/armor.svg/breastplate.svg",
+  "system": {
+    "description": "<p>Тотемный Кусок Танковой Брони (композит). 50 мм `tank-composite`. На такой толщине всё кинетическое ниже рельсы должно утыкаться; HEAT пробивает, но с большой потерей.</p><ul><li>tank-composite 50 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 275.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "tank-composite", "thickness": 50 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": { "abilities": [], "derived": [], "params": [] },
+    "itemTags": { "isArmor": true, "isActions": false, "isModifiers": false }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 534000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800124,
+    "modifiedTime": 1776279800124,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtesttktbk050000"
+}

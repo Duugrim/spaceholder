@@ -1,6 +1,6 @@
 /**
  * Typed relations and directional exposure for anatomy body parts.
- * @see docs/ANATOMY_SYSTEM.md
+ * @see docs/code/reference/ANATOMY_SYSTEM.md
  */
 
 /** @typedef {{ kind: string, target: string, chance?: number, direction?: string }} AnatomyRelation */

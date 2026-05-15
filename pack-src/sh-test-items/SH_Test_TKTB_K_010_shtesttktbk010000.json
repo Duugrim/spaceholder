@@ -1,0 +1,53 @@
+{
+  "name": "ТКТБ-К 10мм",
+  "type": "item",
+  "_id": "shtesttktbk010000",
+  "img": "systems/spaceholder/assets/icons/armor.svg/breastplate.svg",
+  "system": {
+    "description": "<p>Тотемный Кусок Танковой Брони (композит). 10 мм `tank-composite`. При равной толщине заметно лучше стального ТКТБ против пробивающих и термических ударов — именно тот самый «шаг» между материалами, который надо видеть глазами.</p><ul><li>tank-composite 10 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 55.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "tank-composite", "thickness": 10 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": { "abilities": [], "derived": [], "params": [] },
+    "itemTags": { "isArmor": true, "isActions": false, "isModifiers": false }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 533000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800123,
+    "modifiedTime": 1776279800123,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtesttktbk010000"
+}

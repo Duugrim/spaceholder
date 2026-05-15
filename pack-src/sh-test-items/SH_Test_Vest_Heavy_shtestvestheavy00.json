@@ -1,0 +1,79 @@
+{
+  "name": "Бронежилет (тяжёлый)",
+  "type": "item",
+  "_id": "shtestvestheavy00",
+  "img": "systems/spaceholder/assets/icons/armor.svg/layered-armor.svg",
+  "system": {
+    "description": "<p>«Сапёрно-боевой» тяжёлый жилет: очень толстая стальная пластина снаружи, кевлар-спаллкетчер под ней, импакт-пена внутри. Тяжёлый, неуклюжий, но держит даже крупный калибр. Покрывает грудь, живот и спину.</p><p>Тестовый спектр: уверенно держит обычный патрон тяжёлой снайперской винтовки; бронебойный — пробивает.</p><ul><li>steel-plate 6 mm (снаружи)</li><li>kevlar 1 mm</li><li>foam 5 mm (внутри)</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 18.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "steel-plate", "thickness": 6 },
+          { "material": "kevlar", "thickness": 1 },
+          { "material": "foam", "thickness": 5 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "steel-plate", "thickness": 6 },
+          { "material": "kevlar", "thickness": 1 },
+          { "material": "foam", "thickness": 5 }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          { "material": "steel-plate", "thickness": 6 },
+          { "material": "kevlar", "thickness": 1 },
+          { "material": "foam", "thickness": 5 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 522000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800042,
+    "modifiedTime": 1776279800042,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestvestheavy00"
+}

@@ -118,8 +118,8 @@ defenseResolver --> actorUi["Actor and Wearable UI labels"]
 
 ### 6) Документация и обратная совместимость
 
-- Обновить [E:/FoundryVTT/Data/systems/spaceholder/docs/ANATOMY_SYSTEM.md](E:/FoundryVTT/Data/systems/spaceholder/docs/ANATOMY_SYSTEM.md) под новую модель.
-- Добавить миграционные заметки в [E:/FoundryVTT/Data/systems/spaceholder/docs/APP_V2_SHEET_PATTERNS.md](E:/FoundryVTT/Data/systems/spaceholder/docs/APP_V2_SHEET_PATTERNS.md), если появятся новые устойчивые паттерны для V2 (dataset с `slotRef`/`partUuid`).
+- Обновить [E:/FoundryVTT/Data/systems/spaceholder/docs/code/reference/ANATOMY_SYSTEM.md](E:/FoundryVTT/Data/systems/spaceholder/docs/code/reference/ANATOMY_SYSTEM.md) под новую модель.
+- Добавить миграционные заметки в [E:/FoundryVTT/Data/systems/spaceholder/docs/code/guides/APP_V2_SHEET_PATTERNS.md](E:/FoundryVTT/Data/systems/spaceholder/docs/code/guides/APP_V2_SHEET_PATTERNS.md), если появятся новые устойчивые паттерны для V2 (dataset с `slotRef`/`partUuid`).
 
 ## Проверки
 

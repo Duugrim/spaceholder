@@ -50,11 +50,25 @@
         }
       ],
       "exposure": {
-        "front": 40,
-        "right": 100,
+        "front": 100,
+        "right": 90,
         "back": 90,
-        "left": 100
-      }
+        "left": 90
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 4
+        },
+        {
+          "material": "bone",
+          "thickness": 2
+        }
+      ]
     },
     "neck": {
       "id": "neck",
@@ -86,10 +100,24 @@
       ],
       "exposure": {
         "front": 100,
-        "right": 50,
+        "right": 85,
         "back": 100,
-        "left": 50
-      }
+        "left": 85
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 2
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "head": {
       "id": "head",
@@ -122,7 +150,21 @@
         "right": 100,
         "back": 100,
         "left": 100
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 1
+        },
+        {
+          "material": "bone",
+          "thickness": 3
+        }
+      ]
     },
     "frontLeftShoulder": {
       "id": "frontLeftShoulder",
@@ -156,10 +198,24 @@
       ],
       "exposure": {
         "front": 100,
-        "right": 0,
-        "back": 60,
+        "right": 30,
+        "back": 50,
         "left": 100
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 2
+        },
+        {
+          "material": "bone",
+          "thickness": 2
+        }
+      ]
     },
     "frontLeftLeg": {
       "id": "frontLeftLeg",
@@ -195,9 +251,23 @@
       "exposure": {
         "front": 100,
         "right": 30,
-        "back": 0,
-        "left": 90
-      }
+        "back": 30,
+        "left": 100
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 3
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "frontLeftPaw": {
       "id": "frontLeftPaw",
@@ -230,8 +300,22 @@
         "front": 100,
         "right": 20,
         "back": 0,
-        "left": 80
-      }
+        "left": 100
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 1
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "frontRightShoulder": {
       "id": "frontRightShoulder",
@@ -266,9 +350,23 @@
       "exposure": {
         "front": 100,
         "right": 100,
-        "back": 60,
-        "left": 0
-      }
+        "back": 50,
+        "left": 30
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 2
+        },
+        {
+          "material": "bone",
+          "thickness": 2
+        }
+      ]
     },
     "frontRightLeg": {
       "id": "frontRightLeg",
@@ -303,10 +401,24 @@
       ],
       "exposure": {
         "front": 100,
-        "right": 90,
+        "right": 100,
         "back": 30,
-        "left": 0
-      }
+        "left": 30
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 3
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "frontRightPaw": {
       "id": "frontRightPaw",
@@ -337,10 +449,24 @@
       ],
       "exposure": {
         "front": 100,
-        "right": 80,
-        "back": 20,
-        "left": 0
-      }
+        "right": 100,
+        "back": 0,
+        "left": 20
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 1
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "backLeftHip": {
       "id": "backLeftHip",
@@ -377,7 +503,21 @@
         "right": 40,
         "back": 100,
         "left": 100
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 2
+        },
+        {
+          "material": "bone",
+          "thickness": 2
+        }
+      ]
     },
     "backLeftLeg": {
       "id": "backLeftLeg",
@@ -415,7 +555,21 @@
         "right": 30,
         "back": 100,
         "left": 90
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 3
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "backLeftPaw": {
       "id": "backLeftPaw",
@@ -449,7 +603,21 @@
         "right": 20,
         "back": 90,
         "left": 80
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 1
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "backRightHip": {
       "id": "backRightHip",
@@ -486,7 +654,21 @@
         "right": 100,
         "back": 100,
         "left": 40
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 2
+        },
+        {
+          "material": "bone",
+          "thickness": 2
+        }
+      ]
     },
     "backRightLeg": {
       "id": "backRightLeg",
@@ -524,7 +706,21 @@
         "right": 90,
         "back": 100,
         "left": 30
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 3
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "backRightPaw": {
       "id": "backRightPaw",
@@ -558,7 +754,21 @@
         "right": 80,
         "back": 90,
         "left": 20
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 1
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     },
     "tail": {
       "id": "tail",
@@ -590,7 +800,21 @@
         "right": 50,
         "back": 100,
         "left": 50
-      }
+      },
+      "bodyLayers": [
+        {
+          "material": "skin",
+          "thickness": 1
+        },
+        {
+          "material": "muscle",
+          "thickness": 1
+        },
+        {
+          "material": "bone",
+          "thickness": 1
+        }
+      ]
     }
   },
   "links": [

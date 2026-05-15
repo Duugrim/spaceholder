@@ -1,0 +1,71 @@
+{
+  "name": "Layered Combat Vest",
+  "type": "item",
+  "_id": "shtestvestlayer00",
+  "img": "systems/spaceholder/assets/icons/armor.svg/layered-armor.svg",
+  "system": {
+    "description": "<p>Multi-layer torso armour for damage-resolver smoke tests.</p><ul><li>3 mm steel plate (outer)</li><li>5 mm kevlar weave</li><li>10 mm impact foam (inner)</li></ul><p>Covers chest + abdomen on the <em>humanoid</em> anatomy.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 7.2,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "steel-plate", "thickness": 3 },
+          { "material": "kevlar", "thickness": 5 },
+          { "material": "foam", "thickness": 10 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "steel-plate", "thickness": 3 },
+          { "material": "kevlar", "thickness": 5 },
+          { "material": "foam", "thickness": 10 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 500000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800020,
+    "modifiedTime": 1776279800020,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestvestlayer00"
+}

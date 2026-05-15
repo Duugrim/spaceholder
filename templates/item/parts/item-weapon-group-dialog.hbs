@@ -1,0 +1,49 @@
+<div class="sh-item-action-dialog sh-weapon-edit-dialog" data-sh-weapon-group-dialog="{{dialogUid}}">
+  {{#if hint}}
+  <p class="sh-weapon-attack-dialog__hint"><em>{{hint}}</em></p>
+  {{/if}}
+
+  {{#each fields as |field|}}
+    {{#if (eq field.kind "bool")}}
+      <div class="form-group">
+        <label class="sh-custom-action-flag">
+          <input type="checkbox" name="{{field.name}}" data-sh-kind="bool" {{#if field.value}}checked{{/if}} />
+          <span>{{field.label}}</span>
+        </label>
+        {{#if field.hint}}<p class="sh-weapon-attack-dialog__hint"><em>{{field.hint}}</em></p>{{/if}}
+      </div>
+    {{else if (eq field.kind "tags")}}
+      <div class="form-group">
+        <label>{{field.label}}</label>
+        <div class="form-fields">
+          <textarea name="{{field.name}}" data-sh-kind="tags" rows="3" class="sh-weapon-tags-textarea" placeholder="{{field.placeholder}}">{{field.value}}</textarea>
+        </div>
+        {{#if field.hint}}<p class="sh-weapon-attack-dialog__hint"><em>{{field.hint}}</em></p>{{/if}}
+      </div>
+    {{else if (eq field.kind "text")}}
+      <div class="form-group">
+        <label>{{field.label}}</label>
+        <div class="form-fields">
+          <input type="text" name="{{field.name}}" data-sh-kind="text" value="{{field.value}}" placeholder="{{field.placeholder}}" />
+        </div>
+        {{#if field.hint}}<p class="sh-weapon-attack-dialog__hint"><em>{{field.hint}}</em></p>{{/if}}
+      </div>
+    {{else if (eq field.kind "int")}}
+      <div class="form-group">
+        <label>{{field.label}}</label>
+        <div class="form-fields">
+          <input type="number" name="{{field.name}}" data-sh-kind="int" min="{{field.min}}" step="1" value="{{field.value}}" />
+        </div>
+        {{#if field.hint}}<p class="sh-weapon-attack-dialog__hint"><em>{{field.hint}}</em></p>{{/if}}
+      </div>
+    {{else}}
+      <div class="form-group">
+        <label>{{field.label}}</label>
+        <div class="form-fields">
+          <input type="number" name="{{field.name}}" data-sh-kind="number" step="any" value="{{field.value}}" />
+        </div>
+        {{#if field.hint}}<p class="sh-weapon-attack-dialog__hint"><em>{{field.hint}}</em></p>{{/if}}
+      </div>
+    {{/if}}
+  {{/each}}
+</div>

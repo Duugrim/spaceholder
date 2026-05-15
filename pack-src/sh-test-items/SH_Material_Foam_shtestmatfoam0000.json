@@ -1,0 +1,54 @@
+{
+  "name": "Impact Foam",
+  "type": "material",
+  "_id": "shtestmatfoam0000",
+  "img": "systems/spaceholder/assets/icons/chemical.svg/foam.svg",
+  "system": {
+    "description": "<p>Closed-cell shock-absorbing foam liner. Reduces residual concussive energy after a hit; modest direct protection.</p>",
+    "materialId": "foam",
+    "category": "fabric",
+    "hardness": 6,
+    "integrityPerThickness": 10,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.05,
+    "resistance": {
+      "ballistic": 25, "concussive": 300, "piercing": 20, "cutting": 20,
+      "thermal": 50, "laser": 15, "plasma": 25, "electric": 100,
+      "sonic": 150, "radiation": 0, "chemical": 10
+    },
+    "wear": {
+      "ballistic": 50, "concussive": 30, "piercing": 40, "cutting": 60,
+      "thermal": 100, "laser": 150, "plasma": 200, "electric": 5,
+      "sonic": 5, "radiation": 0, "chemical": 150
+    },
+    "conductance": {},
+    "selfInduction": {
+      "concussive": [
+        { "type": "thermal", "fraction": 0.1 }
+      ],
+      "ballistic": [
+        { "type": "concussive", "fraction": 0.4 }
+      ]
+    },
+    "degradation": {
+      "concussive": "reduction"
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 420000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800012,
+    "modifiedTime": 1776279800012,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatfoam0000"
+}

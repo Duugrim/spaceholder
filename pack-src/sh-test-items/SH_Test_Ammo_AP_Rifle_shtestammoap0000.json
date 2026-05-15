@@ -1,0 +1,85 @@
+{
+  "name": "AP Rifle",
+  "type": "item",
+  "_id": "shtestammoap00000",
+  "img": "systems/spaceholder/assets/icons/weapon.svg/heavy-bullets.svg",
+  "system": {
+    "description": "<p>Armour-piercing rifle round. Ballistic application with significant <code>armorPen</code>; useful for testing R_eff reduction against steel layers.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 20,
+    "weight": 0.025,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": false },
+      "unequip": { "showInCombat": false, "showInQuickbar": false },
+      "hold": { "showInCombat": false, "showInQuickbar": false },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isAmmo": true
+    },
+    "weapon": {
+      "version": 2,
+      "ammo": {
+        "projectile": {
+          "damage": 60,
+          "damageType": "ballistic",
+          "armorPen": 2,
+          "armorDamageFactor": 1.2,
+          "hardness": 6,
+          "projectilesPerUse": 1,
+          "payloadId": "",
+          "applications": [
+            {
+              "mode": "sequential",
+              "items": [
+                { "type": "ballistic", "damage": 60, "armorPen": 2, "armorDamageFactor": 1.2, "hardness": 6 }
+              ]
+            }
+          ],
+          "builderId": ""
+        },
+        "resource": {
+          "resourceType": "cartridge",
+          "caliberTag": "7.62x51",
+          "compatibilityTags": ["7.62x51"],
+          "stackMax": 20
+        }
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldammo000",
+  "sort": 610000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800031,
+    "modifiedTime": 1776279800031,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestammoap00000"
+}
+

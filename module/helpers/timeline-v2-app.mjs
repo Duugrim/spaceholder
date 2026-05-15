@@ -1119,7 +1119,7 @@ export function openTimelineV2App() {
 
   if (_singleton) {
     _singleton.render(true);
-    _singleton.bringToTop?.();
+    _singleton.bringToFront?.();
     return _singleton;
   }
 

@@ -107,6 +107,13 @@
     }
   }
 
+  .inventory-item-card--nested {
+    margin-left: calc(var(--sh-inv-depth, 0) * 14px);
+    border-style: dashed;
+    border-color: rgba(74, 110, 74, 0.45);
+    background: linear-gradient(135deg, rgba(28, 32, 28, 0.95) 0%, rgba(36, 40, 36, 0.95) 100%);
+  }
+
   .inventory-item-card .item-main {
     display: flex;
     align-items: center;
@@ -187,5 +194,21 @@
     p {
       margin: 0;
     }
+  }
+
+  .spaceholder-item-container-controls {
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .spaceholder-item-container-hint,
+  .spaceholder-item-container-drop-hint {
+    color: var(--sh-text-muted);
+    margin: 0 0 8px 0;
+  }
+
+  .spaceholder-item-container-panel[data-sh-item-container-drop] {
+    min-height: 120px;
   }
 }

@@ -106,10 +106,15 @@
                 {{#each coveredList as |entry|}}
                   <div class="wearable-coverage-card" data-coverage-part-id="{{entry.partId}}">
                     <div class="wearable-coverage-card-main">
-                      <span class="wearable-coverage-card-line">{{entry.partName}}, {{localize 'SPACEHOLDER.Wearable.ArmorValue'}}: {{entry.armorValue}}</span>
+                      <span class="wearable-coverage-card-line"><strong>{{entry.partName}}</strong></span>
+                      {{#if entry.layersSummary}}
+                        <span class="wearable-coverage-card-sub"><i class="fas fa-layer-group" aria-hidden="true"></i> {{entry.layersSummary}}</span>
+                      {{else}}
+                        <span class="wearable-coverage-card-sub wearable-coverage-card-sub--empty"><em>{{localize 'SPACEHOLDER.Wearable.Layers.Empty'}}</em></span>
+                      {{/if}}
                     </div>
                     <div class="wearable-coverage-card-actions">
-                      <button type="button" class="icon-btn wearable-coverage-edit-btn" data-action="wearable-coverage-edit" data-part-id="{{entry.partId}}" data-part-name="{{entry.partName}}" title="{{localize 'SPACEHOLDER.Actions.Edit'}}"><i class="fas fa-pen"></i></button>
+                      <button type="button" class="icon-btn wearable-coverage-layers-btn" data-action="wearable-coverage-layers" data-part-id="{{entry.partId}}" data-part-name="{{entry.partName}}" title="{{localize 'SPACEHOLDER.Wearable.Layers.Title'}}"><i class="fas fa-layer-group"></i></button>
                       <button type="button" class="icon-btn wearable-coverage-remove-btn" data-action="wearable-coverage-remove" data-part-id="{{entry.partId}}" title="{{localize 'SPACEHOLDER.Actions.Delete'}}"><i class="fas fa-trash"></i></button>
                     </div>
                   </div>
@@ -268,6 +273,17 @@
     </div>
     {{/if}}
 
+    {{#if hasContainerTag}}
+    <div class="tab" data-group="primary" data-tab="container">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "container")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-container.hbs"}}
+    </div>
+    {{/if}}
+
     {{!-- Settings tab (id tags): вес, группы механик — всегда последняя вкладка --}}
     <div class="tab tags" data-group="primary" data-tab="tags">
       {{#each sheetPrimaryTabs}}
@@ -324,6 +340,10 @@
             <label class="sh-item-tag-row">
               <input type="checkbox" data-sh-item-tag="isAmmo" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isAmmo}}checked{{/if}} />
               <span>{{localize 'SPACEHOLDER.ItemTags.Ammo'}}</span>
+            </label>
+            <label class="sh-item-tag-row">
+              <input type="checkbox" data-sh-item-tag="isContainer" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isContainer}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemTags.Container'}}</span>
             </label>
           </div>
           {{#if editable}}

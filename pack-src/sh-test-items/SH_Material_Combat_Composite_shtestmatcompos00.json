@@ -1,0 +1,67 @@
+{
+  "name": "Combat Composite",
+  "type": "material",
+  "_id": "shtestmatcompos00",
+  "img": "systems/spaceholder/assets/icons/armor.svg/plate-armor.svg",
+  "system": {
+    "description": "<p>Футуристичный боевой композит-амортизатор. По стойкости к пробитию чуть лучше стальной пластины; главная фишка — большой <code>selfInduction</code>: энергия гасится внутри слоя и не передаётся во внутренние материалы. За счёт этого держит больше попаданий подряд, чем эквивалентная по толщине сталь.</p>",
+    "materialId": "combat-composite",
+    "category": "composite",
+    "hardness": 12,
+    "integrityPerThickness": 60,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 4.0,
+    "resistance": {
+      "ballistic": 130, "concussive": 120, "piercing": 120, "cutting": 120,
+      "thermal": 70, "laser": 55, "plasma": 90, "electric": 35,
+      "sonic": 100, "radiation": 80, "chemical": 45
+    },
+    "wear": {
+      "ballistic": 20, "concussive": 15, "piercing": 25, "cutting": 15,
+      "thermal": 40, "laser": 30, "plasma": 100, "electric": 5,
+      "sonic": 5, "radiation": 0, "chemical": 80
+    },
+    "conductance": {},
+    "selfInduction": {
+      "ballistic": [
+        { "type": "concussive", "fraction": 0.5 },
+        { "type": "thermal", "fraction": 0.2 }
+      ],
+      "piercing": [
+        { "type": "concussive", "fraction": 0.5 },
+        { "type": "thermal", "fraction": 0.2 }
+      ],
+      "concussive": [
+        { "type": "thermal", "fraction": 0.2 }
+      ],
+      "laser": [
+        { "type": "thermal", "fraction": 0.5 }
+      ],
+      "plasma": [
+        { "type": "thermal", "fraction": 0.4 }
+      ]
+    },
+    "degradation": {
+      "ballistic": "bastion",
+      "piercing": "bastion",
+      "cutting": "bastion"
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 442000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800102,
+    "modifiedTime": 1776279800102,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatcompos00"
+}

@@ -1,0 +1,61 @@
+{
+  "name": "Ablative Hood",
+  "type": "item",
+  "_id": "shtestablativehd0",
+  "img": "systems/spaceholder/assets/icons/armor.svg/visored-helm.svg",
+  "system": {
+    "description": "<p>Sacrificial ablative film hood for testing the <em>reduction</em> degradation mode against laser/plasma. Single 4 mm ablative layer covering the head.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 0.6,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "head",
+        "layers": [
+          { "material": "ablative", "thickness": 4 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 520000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800022,
+    "modifiedTime": 1776279800022,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestablativehd0"
+}

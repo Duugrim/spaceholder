@@ -1,0 +1,59 @@
+{
+  "name": "Bone",
+  "type": "material",
+  "_id": "shtestmatbone0000",
+  "img": "systems/spaceholder/assets/icons/anatomy.svg/ribcage.svg",
+  "system": {
+    "description": "<p>Skeletal structure. Holds narrow piercing and cutting loads until cracked (bastion); when a hit is held it hands a lot of the impulse to the surrounding tissue as concussive trauma.</p>",
+    "materialId": "bone",
+    "category": "biological",
+    "hardness": 8,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 15,
+    "weightPerThickness": 1.8,
+    "resistance": {
+      "ballistic": 100, "concussive": 130, "piercing": 180, "cutting": 150,
+      "thermal": 75, "laser": 60, "plasma": 50, "electric": 35,
+      "sonic": 60, "radiation": 0, "chemical": 50
+    },
+    "wear": {
+      "ballistic": 40, "concussive": 30, "piercing": 35, "cutting": 40,
+      "thermal": 60, "laser": 80, "plasma": 100, "electric": 5,
+      "sonic": 10, "radiation": 0, "chemical": 100
+    },
+    "conductance": {},
+    "selfInduction": {
+      "ballistic": [
+        { "type": "concussive", "fraction": 0.5 }
+      ],
+      "piercing": [
+        { "type": "concussive", "fraction": 0.5 }
+      ],
+      "concussive": [
+        { "type": "concussive", "fraction": 0.3 }
+      ]
+    },
+    "degradation": {
+      "ballistic": "bastion",
+      "piercing": "bastion",
+      "cutting": "bastion"
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 520000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800022,
+    "modifiedTime": 1776279800022,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatbone0000"
+}

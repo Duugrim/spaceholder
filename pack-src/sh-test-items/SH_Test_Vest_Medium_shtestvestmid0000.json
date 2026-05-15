@@ -1,0 +1,76 @@
+{
+  "name": "Бронежилет (средний)",
+  "type": "item",
+  "_id": "shtestvestmid0000",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar-vest.svg",
+  "system": {
+    "description": "<p>«Боевой» бронежилет современного бойца: полноценная стальная бронеплита снаружи и кевларовая подкладка-спаллкетчер под ней. Покрывает грудь, живот и спину.</p><p>Тестовый спектр: уверенно держит обычный винтовочный патрон; бронебойный винтовочный — пробивает насквозь.</p><ul><li>steel-plate 4 mm (снаружи)</li><li>kevlar 1 mm (подкладка)</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 9.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "steel-plate", "thickness": 4 },
+          { "material": "kevlar", "thickness": 1 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "steel-plate", "thickness": 4 },
+          { "material": "kevlar", "thickness": 1 }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          { "material": "steel-plate", "thickness": 4 },
+          { "material": "kevlar", "thickness": 1 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 521000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800041,
+    "modifiedTime": 1776279800041,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestvestmid0000"
+}

@@ -3,6 +3,7 @@
  * Управляет процессом прицеливания и создаёт выстрелы через shot-manager
  */
 import { setForcedAimingArcOverlay } from './aiming-arc-overlay.mjs';
+import { resolveAndConsumeRangedAmmoForShot } from './item-nested-storage.mjs';
 
 let _payloadLibraryCache = null;
 
@@ -20,19 +21,38 @@ function _normalizeAngleDeltaDeg(a, b) {
 
 function _resolveAimingArcConfig(actor) {
   const cfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
-  const defaults = Array.isArray(cfg.defaultZoneHalfDegrees) ? cfg.defaultZoneHalfDegrees : [1, 5, 15, 25, 30];
-  const maxHalf = Math.max(1, Number(cfg.maxHalfAngleDeg) || 90);
-  const src = actor?.system?.aimingArc?.zoneHalfDegrees;
-  const raw = Array.isArray(src) ? src : defaults;
-  const zones = [];
-  let remaining = maxHalf;
-  for (let i = 0; i < 5; i += 1) {
-    const n = Number(raw[i] ?? defaults[i] ?? 0);
+  const standardZoneCount = Math.max(1, Number(cfg.standardZoneCount) || 4);
+  const defaults = Array.isArray(cfg.defaultZoneWeights) ? cfg.defaultZoneWeights : [5, 15, 25, 30];
+  const aimingArc = actor?.system?.aimingArc ?? {};
+  const legacyZones = Array.isArray(aimingArc.zoneHalfDegrees) ? aimingArc.zoneHalfDegrees : [];
+  const rawWeights = Array.isArray(aimingArc.zoneWeights) ? aimingArc.zoneWeights : [];
+  const purpleRaw = Number(aimingArc.purpleZoneDeg);
+  const defaultPurple = Math.max(0, Number(cfg.defaultPurpleZoneDeg) || 1);
+  const legacyPurple = Number(legacyZones[0]);
+  const purpleZoneDeg = Number.isFinite(purpleRaw)
+    ? Math.max(0, purpleRaw)
+    : (Number.isFinite(legacyPurple) ? Math.max(0, legacyPurple) : defaultPurple);
+  const totalArcRaw = Number(aimingArc.totalArcDeg);
+  const defaultTotalArc = Math.max(0, Number(cfg.defaultTotalArcDeg) || 90);
+  const totalArcFromLegacy = legacyZones.slice(1).reduce((sum, val) => sum + Math.max(0, Number(val) || 0), 0);
+  const totalArcDeg = Number.isFinite(totalArcRaw)
+    ? Math.max(0, totalArcRaw)
+    : (totalArcFromLegacy > 0 ? totalArcFromLegacy : defaultTotalArc);
+  const weights = [];
+  let weightSum = 0;
+  const weightOffset = rawWeights.length >= standardZoneCount + 1 ? 1 : 0;
+  for (let i = 0; i < standardZoneCount; i += 1) {
+    const n = Number(rawWeights[i + weightOffset] ?? legacyZones[i + 1] ?? defaults[i] ?? 0);
     const safe = Number.isFinite(n) ? Math.max(0, n) : 0;
-    const clipped = Math.min(remaining, safe);
-    zones.push(clipped);
-    remaining = Math.max(0, remaining - clipped);
+    weights.push(safe);
+    weightSum += safe;
   }
+  const standardZones = [];
+  for (let i = 0; i < standardZoneCount; i += 1) {
+    const zone = weightSum > 0 ? (totalArcDeg * weights[i]) / weightSum : 0;
+    standardZones.push(Math.max(0, Number(zone) || 0));
+  }
+  const zones = [purpleZoneDeg, ...standardZones];
   const baseDevRaw = Number(actor?.system?.aimingArc?.deviationBaseDeg);
   const defaultBase = Math.max(0, Number(cfg.defaultDeviationBaseDeg) || 1);
   const deviationBaseDeg = Number.isFinite(baseDevRaw) ? Math.max(0, baseDevRaw) : defaultBase;
@@ -42,12 +62,17 @@ function _resolveAimingArcConfig(actor) {
 
 function _resolveAimingArcZoneIndex(deltaDeg, zones) {
   const safeDelta = Math.max(0, Number(deltaDeg) || 0);
+  const safeZones = Array.isArray(zones)
+    ? zones.map((zone) => Math.max(0, Number(zone) || 0))
+    : [];
+  const hasAnyZone = safeZones.some((zone) => zone > 0);
+  if (!hasAnyZone) return 0;
   let cursor = 0;
-  for (let i = 0; i < zones.length; i += 1) {
-    cursor += Math.max(0, Number(zones[i]) || 0);
+  for (let i = 0; i < safeZones.length; i += 1) {
+    cursor += safeZones[i];
     if (safeDelta <= cursor) return i;
   }
-  return zones.length - 1;
+  return safeZones.length - 1;
 }
 
 function _zoneKeyByIndex(zoneIndex) {
@@ -137,7 +162,8 @@ export class AimingManager {
   async startAimingFromActionConfig(cfg = {}) {
     const token = cfg?.token ?? null;
     if (!token) return false;
-    const payloadId = String(cfg?.payloadId ?? '').trim();
+    const weaponItem = cfg?.weaponItem ?? cfg?.item ?? null;
+    const payloadId = String(cfg?.payloadId ?? weaponItem?.system?.weapon?.ranged?.projectile?.payloadId ?? '').trim();
     if (!payloadId) return false;
     const payload = await this.getPayloadById(payloadId);
     if (!payload) return false;
@@ -148,6 +174,8 @@ export class AimingManager {
       damage: Math.max(0, Number(cfg?.damage) || 0),
       actorUuid: String(cfg?.actor?.uuid ?? token?.actor?.uuid ?? '').trim() || null,
       itemUuid: String(cfg?.item?.uuid ?? '').trim() || null,
+      weaponItemUuid: String(cfg?.weaponItemUuid ?? weaponItem?.uuid ?? '').trim() || null,
+      useWeaponAmmo: !!(cfg?.useWeaponAmmo ?? weaponItem?.system?.itemTags?.isRanged),
       actionName: String(cfg?.actionName ?? '').trim() || null,
     };
 
@@ -160,51 +188,97 @@ export class AimingManager {
    * @param {Token} token - Токен, для которого настраивается прицеливание
    */
   async showAimingDialog(token) {
+    const L = (key) => game.i18n?.localize?.(key) ?? key;
     if (!token) {
-      ui.notifications.warn('Токен не выбран');
+      ui.notifications.warn(L('SPACEHOLDER.AimingManager.Messages.TokenNotSelected'));
       return;
     }
-    
-    // Загружаем список доступных payloads
+
     const payloads = await this.getPayloadLibrary();
-    
-    // Создаём HTML для диалога
-    const payloadOptions = payloads.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    
+    const payloadOptions = payloads
+      .map((p) => `<option value="${foundry.utils.escapeHTML(p.id)}">${foundry.utils.escapeHTML(p.name ?? p.id)}</option>`)
+      .join('');
+
+    const ammoItems = this._collectAmmoItemsForToken(token);
+    const rangedWeapons = this._collectRangedWeaponsForToken(token);
+    const weaponOptions = rangedWeapons
+      .map((it) => `<option value="${foundry.utils.escapeHTML(it.uuid)}">${foundry.utils.escapeHTML(it.name)}</option>`)
+      .join('');
+    const ammoOptions = ammoItems
+      .map((it) => {
+        const qty = Number(it.system?.quantity ?? 0);
+        const qtyLabel = Number.isFinite(qty) && qty > 1 ? ` (×${qty})` : '';
+        return `<option value="${foundry.utils.escapeHTML(it.uuid)}">${foundry.utils.escapeHTML(it.name)}${qtyLabel}</option>`;
+      })
+      .join('');
+    const noAmmo = ammoItems.length === 0;
+    const ammoSelectInner = noAmmo
+      ? `<option value="">${foundry.utils.escapeHTML(L('SPACEHOLDER.AimingManager.Dialog.NoAmmo'))}</option>`
+      : ammoOptions;
+
     const content = `
       <div class="aiming-dialog">
         <div class="form-group">
-          <label for="payload-select">Выберите payload:</label>
+          <label for="payload-select">${L('SPACEHOLDER.AimingManager.Dialog.SelectPayload')}</label>
           <select id="payload-select" style="width: 100%; padding: 6px; margin: 8px 0;">
             ${payloadOptions}
           </select>
         </div>
         <div class="form-group">
-          <label for="aiming-type">Тип прицеливания:</label>
+          <label for="aiming-type">${L('SPACEHOLDER.AimingManager.Dialog.AimingType')}</label>
           <select id="aiming-type" style="width: 100%; padding: 6px; margin: 8px 0;">
-            <option value="simple">${game.i18n.localize('SPACEHOLDER.AimingManager.AimingType.Simple')}</option>
-            <option value="standard">${game.i18n.localize('SPACEHOLDER.AimingManager.AimingType.Standard')}</option>
+            <option value="simple">${L('SPACEHOLDER.AimingManager.AimingType.Simple')}</option>
+            <option value="standard">${L('SPACEHOLDER.AimingManager.AimingType.Standard')}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="weapon-select">${L('SPACEHOLDER.AimingManager.Dialog.SelectWeapon')}</label>
+          <select id="weapon-select" style="width: 100%; padding: 6px; margin: 8px 0;">
+            <option value="">${foundry.utils.escapeHTML(L('SPACEHOLDER.AimingManager.Dialog.NoWeapon'))}</option>
+            ${weaponOptions}
           </select>
         </div>
         <div class="form-group" style="margin: 12px 0;">
           <label style="display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" id="auto-render" checked>
-            <span>Сразу отрисовать</span>
+            <span>${L('SPACEHOLDER.AimingManager.Dialog.AutoRender')}</span>
           </label>
+        </div>
+        <hr/>
+        <div class="form-group" style="margin: 8px 0;">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="use-ammo" ${noAmmo ? 'disabled' : ''}>
+            <span>${L('SPACEHOLDER.AimingManager.Dialog.UseAmmo')}</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="ammo-select">${L('SPACEHOLDER.AimingManager.Dialog.SelectAmmo')}</label>
+          <select id="ammo-select" style="width: 100%; padding: 6px; margin: 8px 0;" ${noAmmo ? 'disabled' : 'disabled'}>
+            ${ammoSelectInner}
+          </select>
         </div>
       </div>
     `;
-    
-    // Показываем диалог через DialogV2
+
     await foundry.applications.api.DialogV2.wait({
       classes: ['spaceholder'],
-      window: { title: 'Настройка прицеливания', icon: 'fa-solid fa-crosshairs' },
+      window: { title: L('SPACEHOLDER.AimingManager.Dialog.Title'), icon: 'fa-solid fa-crosshairs' },
       position: { width: 400 },
       content: content,
+      render: (_event, dialog) => {
+        const root = dialog?.element ?? null;
+        const useAmmo = root?.querySelector?.('#use-ammo');
+        const ammoSelect = root?.querySelector?.('#ammo-select');
+        if (useAmmo && ammoSelect) {
+          useAmmo.addEventListener('change', () => {
+            ammoSelect.disabled = !useAmmo.checked || noAmmo;
+          });
+        }
+      },
       buttons: [
         {
           action: 'start',
-          label: 'Начать',
+          label: L('SPACEHOLDER.AimingManager.Buttons.Start'),
           icon: 'fa-solid fa-bullseye',
           default: true,
           callback: (event) => {
@@ -212,20 +286,63 @@ export class AimingManager {
             const payloadId = root.querySelector('#payload-select')?.value;
             const aimingType = _normalizeAimingType(root.querySelector('#aiming-type')?.value || 'simple');
             const autoRender = root.querySelector('#auto-render')?.checked ?? true;
-            
-            const payload = payloads.find(p => p.id === payloadId);
+            const useAmmoChecked = !!root.querySelector('#use-ammo')?.checked;
+            const ammoUuid = String(root.querySelector('#ammo-select')?.value ?? '').trim();
+            const weaponItemUuid = String(root.querySelector('#weapon-select')?.value ?? '').trim();
+
+            const payload = payloads.find((p) => p.id === payloadId);
             if (payload) {
-              this.startAiming(token, payload, { type: aimingType, autoRender: autoRender });
+              this.startAiming(token, payload, {
+                type: aimingType,
+                autoRender,
+                useAmmo: useAmmoChecked && !!ammoUuid,
+                ammoUuid: useAmmoChecked ? ammoUuid : '',
+                weaponItemUuid: weaponItemUuid || null,
+                useWeaponAmmo: !!weaponItemUuid,
+              });
             }
           }
         },
         {
           action: 'cancel',
-          label: 'Отмена',
+          label: L('SPACEHOLDER.AimingManager.Buttons.Cancel'),
           icon: 'fa-solid fa-times'
         }
       ]
     });
+  }
+
+  /**
+   * Собрать предметы-боеприпасы из инвентаря актора, привязанного к токену.
+   * Возвращает массив отсортированных по имени items с `system.itemTags.isAmmo === true`.
+   * @param {Token} token
+   * @returns {Item[]}
+   * @private
+   */
+  _collectAmmoItemsForToken(token) {
+    const actor = token?.actor ?? null;
+    if (!actor || !actor.items) return [];
+    const out = [];
+    for (const it of actor.items) {
+      if (it?.type !== 'item') continue;
+      if (!it?.system?.itemTags?.isAmmo) continue;
+      out.push(it);
+    }
+    out.sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')));
+    return out;
+  }
+
+  _collectRangedWeaponsForToken(token) {
+    const actor = token?.actor ?? null;
+    if (!actor || !actor.items) return [];
+    const out = [];
+    for (const it of actor.items) {
+      if (it?.type !== 'item') continue;
+      if (!it?.system?.itemTags?.isRanged) continue;
+      out.push(it);
+    }
+    out.sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')));
+    return out;
   }
   
   /**
@@ -342,7 +459,8 @@ export class AimingManager {
     // Привязываем события
     this._bindEvents();
     
-    ui.notifications.info('Режим прицеливания активирован. ЛКМ - выстрел, ПКМ/ESC - отмена');
+    ui.notifications.info(game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.AimingActivated')
+      ?? 'Aiming mode activated. LMB - shoot, RMB/ESC - cancel');
   }
   
   /**
@@ -423,6 +541,10 @@ export class AimingManager {
       return;
     }
     
+    const shotContext = await this._resolveCurrentWeaponShotContext();
+    if (shotContext?.blocked) return;
+
+    const payload = shotContext?.payload ?? this.currentPayload;
     const baseDirection = this._getCurrentDirection();
     const aimingType = _normalizeAimingType(this.currentOptions?.type);
     const standardInfo = aimingType === 'standard'
@@ -435,7 +557,7 @@ export class AimingManager {
     // Создаём выстрел через глобальный shot-manager
     const uid = shotManager.createShot(
       this.currentToken,
-      this.currentPayload,
+      payload,
       direction
     );
     
@@ -468,9 +590,234 @@ export class AimingManager {
       }
     }
 
-    await this._applyFirstTokenHitDamage(uid);
+    if (shotContext?.projectile) {
+      await this._applyResolvedProjectileDamage(uid, shotContext);
+    } else if (this.currentOptions?.useAmmo && this.currentOptions?.ammoUuid) {
+      await this._applyAmmoDamage(uid);
+    } else {
+      await this._applyFirstTokenHitDamage(uid);
+    }
     
     // Не останавливаем прицеливание автоматически - пользователь может продолжить
+  }
+
+  async _resolveCurrentWeaponShotContext() {
+    const weaponUuid = String(this.currentOptions?.weaponItemUuid ?? '').trim();
+    if (!weaponUuid || !this.currentOptions?.useWeaponAmmo) return { payload: this.currentPayload };
+
+    let weaponItem = null;
+    try {
+      weaponItem = await fromUuid(weaponUuid);
+    } catch (_) {
+      weaponItem = null;
+    }
+    if (!weaponItem) {
+      ui.notifications?.warn?.(
+        game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.WeaponNotFound', { uuid: weaponUuid }) ??
+        `Weapon not found: ${weaponUuid}`
+      );
+      return { blocked: true };
+    }
+
+    const resolved = await resolveAndConsumeRangedAmmoForShot({
+      actor: this.currentToken?.actor ?? null,
+      weaponItem,
+    });
+    if (!resolved?.ok) {
+      const message = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.NoAmmoForWeapon', {
+        weapon: weaponItem.name ?? '',
+        reason: resolved?.reason ?? 'noAmmo',
+      }) || `${weaponItem.name}: no ammunition (${resolved?.reason ?? 'noAmmo'})`;
+      ui.notifications?.warn?.(message);
+      return { blocked: true };
+    }
+
+    let payload = this.currentPayload;
+    const payloadId = String(resolved.projectile?.payloadId ?? '').trim();
+    if (payloadId && this._normalizePayloadId(payloadId) !== this._normalizePayloadId(payload?.id)) {
+      payload = await this.getPayloadById(payloadId);
+      if (!payload) {
+        ui.notifications?.warn?.(
+          game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.PayloadNotFound', { payload: payloadId }) ??
+          `Payload not found: ${payloadId}`
+        );
+        return { blocked: true };
+      }
+    }
+
+    return {
+      payload,
+      projectile: resolved.projectile,
+      ammoItem: resolved.ammoItem,
+      weaponItem,
+      builderContext: resolved.builderContext,
+    };
+  }
+
+  async _applyResolvedProjectileDamage(shotUid, shotContext = {}) {
+    const shotManager = game.spaceholder?.shotManager;
+    if (!shotManager || !shotUid || !shotContext?.projectile) return;
+    const shot = shotManager.shotSystem?.getShot?.(shotUid);
+    if (!shot) return;
+
+    const builderContext = {
+      ...(shotContext.builderContext ?? {}),
+      shooterActorUuid: this.currentToken?.actor?.uuid ?? shotContext.builderContext?.shooterActorUuid ?? null,
+      weaponItemUuid: shotContext.weaponItem?.uuid ?? shotContext.builderContext?.weaponItemUuid ?? null,
+      ammoItemUuid: shotContext.ammoItem?.sourceUuid ?? shotContext.builderContext?.ammoItemUuid ?? null,
+      weaponName: shotContext.weaponItem?.name ?? shotContext.builderContext?.weaponName ?? null,
+      ammoName: shotContext.ammoItem?.name ?? shotContext.builderContext?.ammoName ?? null,
+    };
+    const results = await shotManager.applyImpactsToActors(shot, shotContext.projectile, {
+      builderContext,
+      source: {
+        attackerUuid: this.currentToken?.actor?.uuid ?? null,
+        attackerName: this.currentToken?.actor?.name ?? this.currentToken?.name ?? null,
+        weaponUuid: shotContext.weaponItem?.uuid ?? null,
+        weaponName: shotContext.weaponItem?.name ?? null,
+        ammoUuid: shotContext.ammoItem?.sourceUuid ?? null,
+        ammoName: shotContext.ammoItem?.name ?? null,
+        verbKey: 'fire',
+        shotUid,
+      },
+    });
+
+    const shooterName = String(this.currentToken?.name ?? '');
+    const weaponName = String(shotContext.weaponItem?.name ?? '');
+    const ammoName = String(shotContext.ammoItem?.name ?? '');
+    const count = Array.isArray(results) ? results.length : 0;
+    const content = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.ProjectileShotResolved', {
+      shooter: shooterName,
+      weapon: weaponName,
+      ammo: ammoName,
+      hits: String(count),
+    }) || `${shooterName} fires ${weaponName} (${ammoName}); impacts: ${count}`;
+    try {
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.currentToken?.actor ?? null }),
+        content: `<div>${foundry.utils.escapeHTML(content)}</div>`,
+      });
+    } catch (_) {
+      /* ignore chat errors */
+    }
+  }
+
+  /**
+   * Применить урон выбранного боеприпаса ко всем актёрам, попавшим под выстрел,
+   * через damage-resolver / armour pipeline.
+   * @private
+   * @param {string} shotUid
+   */
+  async _applyAmmoDamage(shotUid) {
+    const shotManager = game.spaceholder?.shotManager;
+    if (!shotManager || !shotUid) return;
+    const shot = shotManager.shotSystem?.getShot?.(shotUid);
+    if (!shot) return;
+
+    const ammoUuid = String(this.currentOptions?.ammoUuid ?? '').trim();
+    if (!ammoUuid) return;
+    let ammoItem = null;
+    try {
+      ammoItem = await fromUuid(ammoUuid);
+    } catch (_) {
+      ammoItem = null;
+    }
+    if (!ammoItem) {
+      ui.notifications?.warn?.(`Ammo not found: ${ammoUuid}`);
+      return;
+    }
+
+    const projectile = ammoItem?.system?.weapon?.ammo?.projectile;
+    if (!projectile || typeof projectile !== 'object') {
+      ui.notifications?.warn?.(`Item "${ammoItem.name}" has no ammo projectile`);
+      return;
+    }
+
+    const hits = Array.isArray(shot?.actualHits) ? shot.actualHits : [];
+    if (!hits.length) return;
+
+    // Pick a random body slot per actor hit (debug behaviour matches the
+    // legacy single-hit fallback). Using a Set per actor would also be valid
+    // but we want to demonstrate per-hit randomness.
+    const tokenHits = hits.filter((h) => h?.object?.actor);
+    if (!tokenHits.length) return;
+
+    const builderContext = {
+      shooterActorUuid: this.currentToken?.actor?.uuid ?? null,
+      ammoItemUuid: ammoItem.uuid,
+    };
+    const shooterActor = this.currentToken?.actor ?? null;
+    const injurySource = {
+      attackerUuid: shooterActor?.uuid ?? null,
+      attackerName: shooterActor?.name ?? this.currentToken?.name ?? null,
+      ammoUuid: ammoItem.uuid,
+      ammoName: ammoItem.name,
+      verbKey: 'fire',
+      shotUid,
+      legacyLabel: `aiming-ammo:${ammoItem.id}`,
+    };
+
+    const results = [];
+    for (const hit of tokenHits) {
+      const targetActor = hit.object.actor;
+      if (typeof targetActor.applyDamagePackage !== 'function') continue;
+      const bodyParts = targetActor.system?.health?.bodyParts ?? {};
+      const partIds = Object.keys(bodyParts);
+      if (!partIds.length) continue;
+      const partId = partIds[Math.floor(Math.random() * partIds.length)];
+      try {
+        const out = await targetActor.applyDamagePackage({
+          partId,
+          projectile,
+          builderContext,
+          source: injurySource,
+        });
+        results.push({ actor: targetActor, partId, out });
+      } catch (e) {
+        console.error('AimingManager: applyDamagePackage failed', e);
+      }
+    }
+    if (!results.length) return;
+
+    const shooterName = String(this.currentToken?.name ?? '');
+    const phaseSummary = this._formatApplicationsSummary(projectile);
+    const blocks = [];
+    for (const { actor: targetActor, partId, out } of results) {
+      const targetName = String(targetActor?.name ?? '');
+      const partLabel = String(targetActor.system?.health?.bodyParts?.[partId]?.name ?? out?.slotRef ?? partId);
+      const damageBits = (Array.isArray(out?.bodyDamage) ? out.bodyDamage : [])
+        .filter((d) => d && Number(d.amount) > 0)
+        .map((d) => `${d.type}=${this._fmt(d.amount)}`)
+        .join(', ');
+      // `bodyDamage` is only the residual that reaches the part "core" after
+      // the full armour + body layer stack. Held / fully converted hits can
+      // leave it empty even when the trace shows heavy layer wear — that is
+      // not the same as "stopped by worn armour" only.
+      const noCoreKey = 'SPACEHOLDER.ActionsSystem.AimShot.DebugNoCoreWound';
+      const noCore = game?.i18n?.localize?.(noCoreKey);
+      const summary = damageBits || (noCore && noCore !== noCoreKey ? noCore : 'no core wound (absorbed in layers)');
+      const traceHtml = this._formatTraceHtml(out?.trace);
+      blocks.push(
+        `<div style="margin: 4px 0; padding: 4px 6px; border-left: 2px solid #888;">`
+        + `<div><b>${foundry.utils.escapeHTML(targetName)}</b> [${foundry.utils.escapeHTML(partLabel)}]: ${foundry.utils.escapeHTML(summary)}</div>`
+        + traceHtml
+        + `</div>`
+      );
+    }
+    const content =
+      `<div>`
+      + `<div><b>${foundry.utils.escapeHTML(shooterName)}</b> · ${foundry.utils.escapeHTML(ammoItem.name)}</div>`
+      + (phaseSummary ? `<div style="font-size: 11px; color: #555; margin: 2px 0;">${phaseSummary}</div>` : '')
+      + blocks.join('')
+      + `</div>`;
+    try {
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.currentToken?.actor ?? null }),
+        content,
+      });
+    } catch (_) {
+      /* ignore chat errors */
+    }
   }
 
   /**
@@ -524,6 +871,130 @@ export class AimingManager {
     }
   }
   
+  /**
+   * Форматировать число для отладочного вывода (2 знака после запятой,
+   * без хвостовых нулей).
+   * @private
+   * @param {number} n
+   * @returns {string}
+   */
+  _fmt(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '?';
+    const r = Math.round(v * 100) / 100;
+    return String(r);
+  }
+
+  /**
+   * Краткая сводка применений снаряда (для шапки чат-сообщения).
+   * @private
+   * @param {Object} projectile
+   * @returns {string} безопасный HTML
+   */
+  _formatApplicationsSummary(projectile) {
+    const apps = projectile?.applications;
+    if (Array.isArray(apps) && apps.length) {
+      const parts = apps.map((phase, idx) => {
+        const mode = phase?.mode === 'parallel' ? '∥' : '→';
+        const items = Array.isArray(phase?.items) ? phase.items : [];
+        const itemBits = items
+          .map((it) => {
+            const dmg = `${this._fmt(it?.damage ?? 0)} ${String(it?.type ?? '?')}`;
+            const apBit = (it?.armorPen ?? 0) > 0 ? ` (AP ${this._fmt(it.armorPen)})` : '';
+            const h = Number(it?.hardness ?? 1);
+            const hBit = Number.isFinite(h) && h > 0 && Math.abs(h - 1) > 1e-6 ? ` (H ${this._fmt(h)})` : '';
+            return dmg + apBit + hBit;
+          })
+          .join(', ');
+        return `[${idx + 1} ${mode} ${foundry.utils.escapeHTML(itemBits)}]`;
+      });
+      return parts.join(' ');
+    }
+    const dt = String(projectile?.damageType ?? '').trim();
+    const dmg = Number(projectile?.damage ?? 0);
+    if (dt && dmg > 0) {
+      const apBit = (projectile?.armorPen ?? 0) > 0 ? ` (AP ${this._fmt(projectile.armorPen)})` : '';
+      const h = Number(projectile?.hardness ?? 1);
+      const hBit = Number.isFinite(h) && h > 0 && Math.abs(h - 1) > 1e-6 ? ` (H ${this._fmt(h)})` : '';
+      return `[${this._fmt(dmg)} ${foundry.utils.escapeHTML(dt)}${apBit}${hBit}]`;
+    }
+    return '';
+  }
+
+  /**
+   * Отрендерить трассировку damage-resolver в HTML-блок &lt;details&gt;
+   * для чат-сообщения. Каждое событие — одна строка с типом
+   * (penetrate/hold/bypass/body), индексом слоя, материалом и числами.
+   * @private
+   * @param {Array<Object>} trace
+   * @returns {string}
+   */
+  _formatTraceHtml(trace) {
+    const events = Array.isArray(trace) ? trace : [];
+    if (!events.length) return '';
+    const matName = (slug) => {
+      const id = String(slug ?? '').trim();
+      if (!id) return '?';
+      try {
+        const md = game.spaceholder?.materialsManager?.getMaterial?.(id);
+        return md?.name || id;
+      } catch (_) {
+        return id;
+      }
+    };
+    const E = foundry.utils.escapeHTML;
+    const rows = [];
+    for (const ev of events) {
+      switch (ev?.kind) {
+        case 'conduct': {
+          const parts = (Array.isArray(ev.items) ? ev.items : [])
+            .map((it) => `${E(it.type)} ${this._fmt(it.amount)}`).join(', ');
+          const txt = `↗ L${ev.layerIndex} <b>${E(matName(ev.material))}</b> · ${E(ev.fromType)} conducts [${parts}] · remaining ${this._fmt(ev.remaining)}`;
+          rows.push(`<li style="color:#448">${txt}</li>`);
+          break;
+        }
+        case 'penetrate': {
+          const txt = `▶ L${ev.layerIndex} <b>${E(matName(ev.material))}</b> · ${E(ev.type)} · `
+            + `incoming ${this._fmt(ev.incoming)} · E ${this._fmt(ev.energyBefore)} > eAR ${this._fmt(ev.eAR)} → residual ${this._fmt(ev.residual)} · `
+            + `wear ${this._fmt(ev.wear)} → integrity ${this._fmt(ev.integrityAfter)}, breach ${this._fmt(ev.breachAfter)} (${E(ev.mode)})`;
+          rows.push(`<li style="color:#a44">${txt}</li>`);
+          break;
+        }
+        case 'hold': {
+          const txt = `■ L${ev.layerIndex} <b>${E(matName(ev.material))}</b> · ${E(ev.type)} · `
+            + `incoming ${this._fmt(ev.incoming)} · E ${this._fmt(ev.energyBefore)} ≤ eAR ${this._fmt(ev.eAR)} (held) · `
+            + `wear ${this._fmt(ev.wear)} → integrity ${this._fmt(ev.integrityAfter)} (${E(ev.mode)})`;
+          rows.push(`<li style="color:#484">${txt}</li>`);
+          break;
+        }
+        case 'self-induce': {
+          const entries = (Array.isArray(ev.entries) ? ev.entries : [])
+            .map((e) => `${E(e.type)} ${this._fmt(e.absorbed)} absorbed / ${this._fmt(e.overflow)} overflow`)
+            .join(', ');
+          const txt = `⎈ L${ev.layerIndex} <b>${E(matName(ev.material))}</b> · ${E(ev.fromType)} induces [${entries}] · integrity ${this._fmt(ev.integrityAfter)}`;
+          rows.push(`<li style="color:#864">${txt}</li>`);
+          break;
+        }
+        case 'bypass': {
+          const txt = `↷ L${ev.layerIndex} <b>${E(matName(ev.material))}</b> · ${E(ev.type)} ${this._fmt(ev.amount)} bypass (${E(ev.mode)})`;
+          rows.push(`<li style="color:#888">${txt}</li>`);
+          break;
+        }
+        case 'body': {
+          const txt = `❤ body · ${E(ev.type)} ${this._fmt(ev.amount)}`;
+          rows.push(`<li style="color:#222"><b>${txt}</b></li>`);
+          break;
+        }
+        default:
+          break;
+      }
+    }
+    if (!rows.length) return '';
+    return `<details style="margin-top: 4px;"><summary style="cursor: pointer; font-size: 11px;">trace (${rows.length})</summary>`
+      + `<ul style="margin: 4px 0 0 16px; padding: 0; font-size: 11px; line-height: 1.4;">${rows.join('')}</ul>`
+      + `</details>`;
+  }
+
   /**
    * Привязать события
    * @private

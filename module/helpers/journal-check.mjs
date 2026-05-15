@@ -1331,7 +1331,7 @@ function _addEntryContextOptions(app, options) {
     const LVL_OBSERVER = _getOwnershipLevelConst('OBSERVER', 2);
     const LVL_OWNER = _getOwnershipLevelConst('OWNER', 3);
 
-    const make = ({ name, icon, condition, callback }) => ({ name, icon, condition, callback });
+    const make = ({ name, icon, condition, callback }) => ({ label: name, icon, visible: condition, callback });
 
     options.push(
       make({
@@ -1509,7 +1509,7 @@ function _addPageContextOptions(app, options) {
     const isGM = !!game.user?.isGM;
     const skip = !!(isGM && _getSetting(SETTING_GM_SKIP, false));
 
-    const make = ({ name, icon, condition, callback }) => ({ name, icon, condition, callback });
+    const make = ({ name, icon, condition, callback }) => ({ label: name, icon, visible: condition, callback });
 
     options.push(
       make({

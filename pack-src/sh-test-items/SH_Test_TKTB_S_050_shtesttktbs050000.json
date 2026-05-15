@@ -1,0 +1,53 @@
+{
+  "name": "ТКТБ-С 50мм",
+  "type": "item",
+  "_id": "shtesttktbs050000",
+  "img": "systems/spaceholder/assets/icons/armor.svg/breastplate.svg",
+  "system": {
+    "description": "<p>Тотемный Кусок Танковой Брони (сталь). Плита в 50 мм `steel-plate`. На этой толщине — на пределе для AP-снайперки; обычная винтовочная и ниже держатся уверенно. HEAT и рельса всё ещё прошивают.</p><ul><li>steel-plate 50 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 390.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "steel-plate", "thickness": 50 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": { "abilities": [], "derived": [], "params": [] },
+    "itemTags": { "isArmor": true, "isActions": false, "isModifiers": false }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 531000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800121,
+    "modifiedTime": 1776279800121,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtesttktbs050000"
+}

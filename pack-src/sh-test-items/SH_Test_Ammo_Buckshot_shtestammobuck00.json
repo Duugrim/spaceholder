@@ -1,0 +1,92 @@
+{
+  "name": "Buckshot Shell",
+  "type": "item",
+  "_id": "shtestammobuck000",
+  "img": "systems/spaceholder/assets/icons/explosion.svg/striking-balls.svg",
+  "system": {
+    "description": "<p>12-gauge buckshot shell. Demonstrates a single <em>parallel</em> phase splitting one trigger pull into 8 independent ballistic pellets, each running through the layer stack from scratch.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 12,
+    "weight": 0.05,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": false },
+      "unequip": { "showInCombat": false, "showInQuickbar": false },
+      "hold": { "showInCombat": false, "showInQuickbar": false },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isAmmo": true
+    },
+    "weapon": {
+      "version": 2,
+      "ammo": {
+        "projectile": {
+          "damage": 0,
+          "damageType": "",
+          "armorPen": 1,
+          "armorDamageFactor": 1,
+          "hardness": 1,
+          "projectilesPerUse": 1,
+          "payloadId": "",
+          "applications": [
+            {
+              "mode": "parallel",
+              "items": [
+                { "type": "ballistic", "damage": 12, "hardness": 1 },
+                { "type": "ballistic", "damage": 12, "hardness": 1 },
+                { "type": "ballistic", "damage": 12, "hardness": 1 },
+                { "type": "ballistic", "damage": 12, "hardness": 1 },
+                { "type": "ballistic", "damage": 12, "hardness": 1 },
+                { "type": "ballistic", "damage": 12, "hardness": 1 },
+                { "type": "ballistic", "damage": 12, "hardness": 1 },
+                { "type": "ballistic", "damage": 12, "hardness": 1 }
+              ]
+            }
+          ],
+          "builderId": ""
+        },
+        "resource": {
+          "resourceType": "shell",
+          "caliberTag": "12g",
+          "compatibilityTags": ["12g"],
+          "stackMax": 12
+        }
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldammo000",
+  "sort": 630000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800033,
+    "modifiedTime": 1776279800033,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestammobuck000"
+}
+

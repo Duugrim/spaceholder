@@ -1,0 +1,27 @@
+{{!-- Injury description partial.
+  Context:
+    segments         : Array<{ kind, text?, i18n?, tooltip?, uuid?, cssClass? }>
+    tooltipSegments  : Array of same shape (used for source tooltip)
+--}}
+<span class="inj-desc">
+  {{#each segments as |seg|}}
+    <span class="inj-seg inj-seg-{{seg.kind}}{{#if seg.cssClass}} {{seg.cssClass}}{{/if}}"
+          {{#if seg.uuid}}data-uuid="{{seg.uuid}}"{{/if}}
+          {{#if seg.tooltip}}data-tooltip="{{seg.tooltip}}"{{/if}}>
+      {{#if seg.text}}{{seg.text}}{{else}}{{#if seg.i18n}}{{localize seg.i18n}}{{/if}}{{/if}}
+    </span>
+  {{/each}}
+  {{#if tooltipSegments.length}}
+    <span class="inj-source-wrap" data-tooltip-direction="UP">
+      <i class="fas fa-circle-info inj-source-icon"></i>
+      <span class="inj-source-tip">
+        {{#each tooltipSegments as |seg|}}
+          <span class="inj-seg inj-seg-{{seg.kind}}{{#if seg.cssClass}} {{seg.cssClass}}{{/if}}"
+                {{#if seg.uuid}}data-uuid="{{seg.uuid}}"{{/if}}>
+            {{#if seg.text}}{{seg.text}}{{else}}{{#if seg.i18n}}{{localize seg.i18n}}{{/if}}{{/if}}
+          </span>
+        {{/each}}
+      </span>
+    </span>
+  {{/if}}
+</span>

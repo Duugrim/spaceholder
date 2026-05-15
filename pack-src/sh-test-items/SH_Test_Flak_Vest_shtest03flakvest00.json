@@ -1,8 +1,8 @@
 {
-  "name": "SH Test Flak Vest",
+  "name": "Flak Vest",
   "type": "item",
   "_id": "shtest03flakvest00",
-  "img": "icons/equipment/chest/breastplate-banded-steel.webp",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar-vest.svg",
   "system": {
     "description": "<p>Test armor for <strong>humanoid</strong> anatomy: coverage on chest/abdomen + small <code>abilities.cor</code> modifier when equipped (<code>isModifiers</code> + mode <code>add</code>).</p>",
     "implantReplaceOrgan": null,
@@ -14,8 +14,18 @@
     "held": false,
     "anatomyId": "humanoid",
     "coveredParts": [
-      { "slotRef": "chest", "value": 3 },
-      { "slotRef": "abdomen", "value": 2 }
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "kevlar", "thickness": 4 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "kevlar", "thickness": 3 }
+        ]
+      }
     ],
     "defaultActions": {
       "equip": { "showInCombat": false, "showInQuickbar": true },
@@ -44,7 +54,7 @@
     }
   },
   "effects": [],
-  "folder": null,
+  "folder": "shtestfldwear000",
   "sort": 300000,
   "ownership": { "default": 0 },
   "flags": {},

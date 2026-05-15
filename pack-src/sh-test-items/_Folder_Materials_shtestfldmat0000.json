@@ -1,0 +1,23 @@
+{
+  "name": "Materials",
+  "type": "Item",
+  "_id": "shtestfldmat0000",
+  "sorting": "a",
+  "folder": null,
+  "description": "",
+  "color": "#888888",
+  "sort": 0,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800100,
+    "modifiedTime": 1776279800100,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shtestfldmat0000"
+}

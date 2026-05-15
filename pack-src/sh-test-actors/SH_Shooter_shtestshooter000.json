@@ -1,0 +1,1556 @@
+{
+  "name": "Стрелок",
+  "type": "character",
+  "_id": "shtestshooter000",
+  "img": "systems/spaceholder/assets/icons/action.svg/bowman.svg",
+  "system": {
+    "anatomy": {
+      "type": "humanoid",
+      "id": "humanoid",
+      "name": "Humanoid",
+      "bodyParts": {}
+    },
+    "health": {
+      "injuries": [],
+      "bodyParts": {
+        "head#1": {
+          "id": "head",
+          "name": "Head",
+          "slotRef": "head#1",
+          "uuid": "shtestshooter000-bp-head-1",
+          "weight": 750,
+          "maxHp": 25,
+          "x": 4,
+          "y": 1,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "vital",
+            "brain",
+            "sensory",
+            "armor_head"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 100,
+            "right": 100,
+            "back": 100,
+            "left": 100
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "neck#1"
+            },
+            {
+              "kind": "parent",
+              "target": "neck#1"
+            }
+          ],
+          "links": [
+            "neck#1"
+          ]
+        },
+        "neck#1": {
+          "id": "neck",
+          "name": "Neck",
+          "slotRef": "neck#1",
+          "uuid": "shtestshooter000-bp-neck-1",
+          "weight": 180,
+          "maxHp": 15,
+          "x": 4,
+          "y": 2,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "vital",
+            "vulnerable",
+            "armor_neck"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 100,
+            "right": 50,
+            "back": 100,
+            "left": 50
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "head#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "chest#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "back#1"
+            },
+            {
+              "kind": "parent",
+              "target": "chest#1"
+            }
+          ],
+          "links": [
+            "head#1",
+            "chest#1",
+            "back#1"
+          ]
+        },
+        "back#1": {
+          "id": "back",
+          "name": "Back",
+          "slotRef": "back#1",
+          "uuid": "shtestshooter000-bp-back-1",
+          "weight": 1100,
+          "maxHp": 35,
+          "x": 5,
+          "y": 4,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "core",
+            "armor_chest"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 0,
+            "right": 50,
+            "back": 100,
+            "left": 50
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "neck#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "abdomen#1"
+            },
+            {
+              "kind": "behind",
+              "target": "chest#1",
+              "chance": 40,
+              "direction": "back"
+            },
+            {
+              "kind": "behind",
+              "target": "abdomen#1",
+              "chance": 40,
+              "direction": "back"
+            }
+          ],
+          "links": [
+            "neck#1",
+            "abdomen#1"
+          ]
+        },
+        "chest#1": {
+          "id": "chest",
+          "name": "Chest",
+          "slotRef": "chest#1",
+          "uuid": "shtestshooter000-bp-chest-1",
+          "weight": 1400,
+          "maxHp": 45,
+          "x": 4,
+          "y": 3,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "core",
+            "vital",
+            "armor_chest"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 100,
+            "right": 70,
+            "back": 0,
+            "left": 70
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "neck#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "abdomen#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftShoulder#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightShoulder#1"
+            },
+            {
+              "kind": "behind",
+              "target": "back#1",
+              "chance": 80,
+              "direction": "front"
+            }
+          ],
+          "links": [
+            "neck#1",
+            "abdomen#1",
+            "leftShoulder#1",
+            "rightShoulder#1"
+          ]
+        },
+        "abdomen#1": {
+          "id": "abdomen",
+          "name": "Abdomen",
+          "slotRef": "abdomen#1",
+          "uuid": "shtestshooter000-bp-abdomen-1",
+          "weight": 1100,
+          "maxHp": 40,
+          "x": 4,
+          "y": 4,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "core",
+            "armor_chest"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 100,
+            "right": 65,
+            "back": 0,
+            "left": 65
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "back#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "chest#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "groin#1"
+            },
+            {
+              "kind": "behind",
+              "target": "back#1",
+              "chance": 80,
+              "direction": "front"
+            },
+            {
+              "kind": "parent",
+              "target": "chest#1"
+            }
+          ],
+          "links": [
+            "back#1",
+            "chest#1",
+            "groin#1"
+          ]
+        },
+        "groin#1": {
+          "id": "groin",
+          "name": "Groin",
+          "slotRef": "groin#1",
+          "uuid": "shtestshooter000-bp-groin-1",
+          "weight": 350,
+          "maxHp": 20,
+          "x": 4,
+          "y": 5,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "vital",
+            "armor_hip"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 70,
+            "right": 50,
+            "back": 50,
+            "left": 50
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "abdomen#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftThigh#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightThigh#1"
+            },
+            {
+              "kind": "parent",
+              "target": "abdomen#1"
+            }
+          ],
+          "links": [
+            "abdomen#1",
+            "leftThigh#1",
+            "rightThigh#1"
+          ]
+        },
+        "leftShoulder#1": {
+          "id": "leftShoulder",
+          "name": "Left Shoulder",
+          "slotRef": "leftShoulder#1",
+          "uuid": "shtestshooter000-bp-leftShoulder-1",
+          "weight": 320,
+          "maxHp": 20,
+          "x": 3,
+          "y": 3,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "joint",
+            "left_side",
+            "armor_shoulder"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 100,
+            "right": 0,
+            "back": 50,
+            "left": 100
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "chest#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "chest#1"
+            }
+          ],
+          "links": [
+            "chest#1",
+            "leftArm#1"
+          ]
+        },
+        "rightShoulder#1": {
+          "id": "rightShoulder",
+          "name": "Right Shoulder",
+          "slotRef": "rightShoulder#1",
+          "uuid": "shtestshooter000-bp-rightShoulder-1",
+          "weight": 320,
+          "maxHp": 20,
+          "x": 5,
+          "y": 3,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "joint",
+            "right_side",
+            "armor_shoulder"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 100,
+            "right": 100,
+            "back": 50,
+            "left": 0
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "chest#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "chest#1"
+            }
+          ],
+          "links": [
+            "chest#1",
+            "rightArm#1"
+          ]
+        },
+        "leftArm#1": {
+          "id": "leftArm",
+          "name": "Left Arm",
+          "slotRef": "leftArm#1",
+          "uuid": "shtestshooter000-bp-leftArm-1",
+          "weight": 800,
+          "maxHp": 30,
+          "x": 2,
+          "y": 3,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "limb",
+            "left_side",
+            "manipulator",
+            "armor_arm"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 50,
+            "right": 40,
+            "back": 0,
+            "left": 100
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftShoulder#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftHand#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftShoulder#1"
+            }
+          ],
+          "links": [
+            "leftShoulder#1",
+            "leftHand#1"
+          ]
+        },
+        "rightArm#1": {
+          "id": "rightArm",
+          "name": "Right Arm",
+          "slotRef": "rightArm#1",
+          "uuid": "shtestshooter000-bp-rightArm-1",
+          "weight": 800,
+          "maxHp": 30,
+          "x": 6,
+          "y": 3,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "limb",
+            "right_side",
+            "manipulator",
+            "armor_arm"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 50,
+            "right": 100,
+            "back": 40,
+            "left": 0
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightShoulder#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightHand#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightShoulder#1"
+            }
+          ],
+          "links": [
+            "rightShoulder#1",
+            "rightHand#1"
+          ]
+        },
+        "leftHand#1": {
+          "id": "leftHand",
+          "name": "Left Hand",
+          "slotRef": "leftHand#1",
+          "uuid": "shtestshooter000-bp-leftHand-1",
+          "weight": 180,
+          "maxHp": 15,
+          "x": 1,
+          "y": 3,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "extremity",
+            "left_side",
+            "manipulator",
+            "dexterous",
+            "armor_hand"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 40,
+            "right": 30,
+            "back": 0,
+            "left": 100
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftArm#1"
+            }
+          ],
+          "links": [
+            "leftArm#1"
+          ]
+        },
+        "rightHand#1": {
+          "id": "rightHand",
+          "name": "Right Hand",
+          "slotRef": "rightHand#1",
+          "uuid": "shtestshooter000-bp-rightHand-1",
+          "weight": 180,
+          "maxHp": 15,
+          "x": 7,
+          "y": 3,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "extremity",
+            "right_side",
+            "manipulator",
+            "dexterous",
+            "armor_hand"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 40,
+            "right": 100,
+            "back": 30,
+            "left": 0
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightArm#1"
+            }
+          ],
+          "links": [
+            "rightArm#1"
+          ]
+        },
+        "leftThigh#1": {
+          "id": "leftThigh",
+          "name": "Left Thigh",
+          "slotRef": "leftThigh#1",
+          "uuid": "shtestshooter000-bp-leftThigh-1",
+          "weight": 800,
+          "maxHp": 35,
+          "x": 3,
+          "y": 6,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "limb",
+            "left_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 50,
+            "right": 40,
+            "back": 0,
+            "left": 100
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "groin#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "groin#1"
+            }
+          ],
+          "links": [
+            "groin#1",
+            "leftShin#1"
+          ]
+        },
+        "rightThigh#1": {
+          "id": "rightThigh",
+          "name": "Right Thigh",
+          "slotRef": "rightThigh#1",
+          "uuid": "shtestshooter000-bp-rightThigh-1",
+          "weight": 800,
+          "maxHp": 35,
+          "x": 5,
+          "y": 6,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "limb",
+            "right_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 50,
+            "right": 100,
+            "back": 40,
+            "left": 0
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "groin#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "groin#1"
+            }
+          ],
+          "links": [
+            "groin#1",
+            "rightShin#1"
+          ]
+        },
+        "leftShin#1": {
+          "id": "leftShin",
+          "name": "Left Shin",
+          "slotRef": "leftShin#1",
+          "uuid": "shtestshooter000-bp-leftShin-1",
+          "weight": 600,
+          "maxHp": 28,
+          "x": 3,
+          "y": 7,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "limb",
+            "left_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 40,
+            "right": 30,
+            "back": 0,
+            "left": 100
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftThigh#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftFoot#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftThigh#1"
+            }
+          ],
+          "links": [
+            "leftThigh#1",
+            "leftFoot#1"
+          ]
+        },
+        "rightShin#1": {
+          "id": "rightShin",
+          "name": "Right Shin",
+          "slotRef": "rightShin#1",
+          "uuid": "shtestshooter000-bp-rightShin-1",
+          "weight": 600,
+          "maxHp": 28,
+          "x": 5,
+          "y": 7,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "limb",
+            "right_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 40,
+            "right": 100,
+            "back": 30,
+            "left": 0
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightThigh#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightFoot#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightThigh#1"
+            }
+          ],
+          "links": [
+            "rightThigh#1",
+            "rightFoot#1"
+          ]
+        },
+        "leftFoot#1": {
+          "id": "leftFoot",
+          "name": "Left Foot",
+          "slotRef": "leftFoot#1",
+          "uuid": "shtestshooter000-bp-leftFoot-1",
+          "weight": 250,
+          "maxHp": 12,
+          "x": 3,
+          "y": 8,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "extremity",
+            "left_side",
+            "locomotion",
+            "armor_foot"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 40,
+            "right": 20,
+            "back": 30,
+            "left": 100
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftShin#1"
+            }
+          ],
+          "links": [
+            "leftShin#1"
+          ]
+        },
+        "rightFoot#1": {
+          "id": "rightFoot",
+          "name": "Right Foot",
+          "slotRef": "rightFoot#1",
+          "uuid": "shtestshooter000-bp-rightFoot-1",
+          "weight": 250,
+          "maxHp": 12,
+          "x": 5,
+          "y": 8,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "extremity",
+            "right_side",
+            "locomotion",
+            "armor_foot"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 40,
+            "right": 100,
+            "back": 30,
+            "left": 20
+          },
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightShin#1"
+            }
+          ],
+          "links": [
+            "rightShin#1"
+          ]
+        }
+      },
+      "anatomyGrid": {
+        "width": 9,
+        "height": 10
+      }
+    },
+    "biography": "<p>Тестовый стрелок: гуманоидная анатомия, в инвентаре по пачке всех существующих тестовых патронов. Используется для проверки боевых пайплайнов (payload/applications/etc.) до появления настоящего оружия.</p>",
+    "attributes": {
+      "level": {
+        "value": 1
+      }
+    },
+    "actionPoints": {
+      "value": 100
+    },
+    "speed": 1,
+    "gFaction": "",
+    "actions": [],
+    "aimingArc": {
+      "zoneHalfDegrees": [
+        1,
+        5,
+        15,
+        25,
+        30
+      ],
+      "deviationBaseDeg": 1
+    },
+    "abilities": {
+      "end": {
+        "value": 10
+      },
+      "str": {
+        "value": 10
+      },
+      "dex": {
+        "value": 10
+      },
+      "cor": {
+        "value": 10
+      },
+      "per": {
+        "value": 10
+      },
+      "int": {
+        "value": 10
+      },
+      "luc": {
+        "value": 10
+      }
+    }
+  },
+  "prototypeToken": {
+    "name": "Стрелок",
+    "displayName": 30,
+    "actorLink": false,
+    "appendNumber": false,
+    "prependAdjective": false,
+    "width": 1,
+    "height": 1,
+    "texture": {
+      "src": "systems/spaceholder/assets/icons/action.svg/bowman.svg",
+      "anchorX": 0.5,
+      "anchorY": 0.5,
+      "offsetX": 0,
+      "offsetY": 0,
+      "fit": "contain",
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": 0,
+      "tint": "#ffffff",
+      "alphaThreshold": 0.75
+    },
+    "hexagonalShape": 0,
+    "lockRotation": false,
+    "rotation": 0,
+    "alpha": 1,
+    "disposition": 1,
+    "displayBars": 0,
+    "bar1": {
+      "attribute": null
+    },
+    "bar2": {
+      "attribute": null
+    },
+    "light": {
+      "negative": false,
+      "priority": 0,
+      "alpha": 0.5,
+      "angle": 360,
+      "bright": 0,
+      "color": null,
+      "coloration": 1,
+      "dim": 0,
+      "attenuation": 0.5,
+      "luminosity": 0.5,
+      "saturation": 0,
+      "contrast": 0,
+      "shadows": 0,
+      "animation": {
+        "type": null,
+        "speed": 5,
+        "intensity": 5,
+        "reverse": false
+      }
+    },
+    "sight": {
+      "enabled": false,
+      "range": 0,
+      "angle": 360,
+      "visionMode": "basic",
+      "color": null,
+      "attenuation": 0.1,
+      "brightness": 0,
+      "saturation": 0,
+      "contrast": 0
+    },
+    "detectionModes": [],
+    "occludable": {
+      "radius": 0
+    },
+    "ring": {
+      "enabled": false,
+      "colors": {
+        "ring": null,
+        "background": null
+      },
+      "effects": 1,
+      "subject": {
+        "scale": 1,
+        "texture": null
+      }
+    },
+    "movementAction": null,
+    "flags": {},
+    "randomImg": false
+  },
+  "items": [
+    {
+      "name": "9mm Ball",
+      "type": "item",
+      "_id": "eshtestammo9mm00",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "system": {
+        "description": "<p>Generic 9 mm ball cartridge. Single ballistic application — exercises the simplest path through the damage resolver.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 30,
+        "weight": 0.012,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isAmmo": true
+        },
+        "weapon": {
+          "version": 2,
+          "ammo": {
+            "projectile": {
+              "damage": 25,
+              "damageType": "ballistic",
+              "armorPen": 0,
+              "armorDamageFactor": 1,
+              "projectilesPerUse": 1,
+              "payloadId": "",
+              "applications": [
+                {
+                  "mode": "sequential",
+                  "items": [
+                    {
+                      "type": "ballistic",
+                      "damage": 25
+                    }
+                  ]
+                }
+              ],
+              "builderId": ""
+            },
+            "resource": {
+              "resourceType": "cartridge",
+              "caliberTag": "9x19",
+              "compatibilityTags": [
+                "9x19"
+              ],
+              "stackMax": 30
+            }
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 100000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1776279800100,
+        "modifiedTime": 1776279800100,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eshtestammo9mm00"
+    },
+    {
+      "name": "AP Rifle",
+      "type": "item",
+      "_id": "eshtestammoap000",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/heavy-bullets.svg",
+      "system": {
+        "description": "<p>Armour-piercing rifle round. Ballistic application with significant <code>armorPen</code>; useful for testing R_eff reduction against steel layers.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 20,
+        "weight": 0.025,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isAmmo": true
+        },
+        "weapon": {
+          "version": 2,
+          "ammo": {
+            "projectile": {
+              "damage": 60,
+              "damageType": "ballistic",
+              "armorPen": 25,
+              "armorDamageFactor": 1.2,
+              "projectilesPerUse": 1,
+              "payloadId": "",
+              "applications": [
+                {
+                  "mode": "sequential",
+                  "items": [
+                    {
+                      "type": "ballistic",
+                      "damage": 60,
+                      "armorPen": 25,
+                      "armorDamageFactor": 1.2
+                    }
+                  ]
+                }
+              ],
+              "builderId": ""
+            },
+            "resource": {
+              "resourceType": "cartridge",
+              "caliberTag": "7.62x51",
+              "compatibilityTags": [
+                "7.62x51"
+              ],
+              "stackMax": 20
+            }
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 110000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1776279800100,
+        "modifiedTime": 1776279800100,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eshtestammoap000"
+    },
+    {
+      "name": "Buckshot Shell",
+      "type": "item",
+      "_id": "eshtestammobuck0",
+      "img": "systems/spaceholder/assets/icons/explosion.svg/striking-balls.svg",
+      "system": {
+        "description": "<p>12-gauge buckshot shell. Demonstrates a single <em>parallel</em> phase splitting one trigger pull into 8 independent ballistic pellets, each running through the layer stack from scratch.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 12,
+        "weight": 0.05,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isAmmo": true
+        },
+        "weapon": {
+          "version": 2,
+          "ammo": {
+            "projectile": {
+              "damage": 0,
+              "damageType": "",
+              "armorPen": 0,
+              "armorDamageFactor": 1,
+              "projectilesPerUse": 1,
+              "payloadId": "",
+              "applications": [
+                {
+                  "mode": "parallel",
+                  "items": [
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    },
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    },
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    },
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    },
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    },
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    },
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    },
+                    {
+                      "type": "ballistic",
+                      "damage": 12
+                    }
+                  ]
+                }
+              ],
+              "builderId": ""
+            },
+            "resource": {
+              "resourceType": "shell",
+              "caliberTag": "12g",
+              "compatibilityTags": [
+                "12g"
+              ],
+              "stackMax": 12
+            }
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 120000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1776279800100,
+        "modifiedTime": 1776279800100,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eshtestammobuck0"
+    },
+    {
+      "name": "HEAT Round",
+      "type": "item",
+      "_id": "eshtestammoheat0",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/grenade.svg",
+      "system": {
+        "description": "<p>Shaped-charge HEAT round. Demonstrates <em>sequential</em> application phases:</p><ol><li>Phase 1: high-armorPen piercing jet drills the layer stack.</li><li>Phase 2: residual thermal + concussive blast follow through the same hole.</li></ol>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 6,
+        "weight": 1.4,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isAmmo": true
+        },
+        "weapon": {
+          "version": 2,
+          "ammo": {
+            "projectile": {
+              "damage": 0,
+              "damageType": "",
+              "armorPen": 0,
+              "armorDamageFactor": 1,
+              "projectilesPerUse": 1,
+              "payloadId": "",
+              "applications": [
+                {
+                  "mode": "sequential",
+                  "items": [
+                    {
+                      "type": "piercing",
+                      "damage": 200,
+                      "armorPen": 60,
+                      "armorDamageFactor": 2
+                    }
+                  ]
+                },
+                {
+                  "mode": "sequential",
+                  "items": [
+                    {
+                      "type": "thermal",
+                      "damage": 80
+                    },
+                    {
+                      "type": "concussive",
+                      "damage": 50
+                    }
+                  ]
+                }
+              ],
+              "builderId": ""
+            },
+            "resource": {
+              "resourceType": "shell",
+              "caliberTag": "heat-66mm",
+              "compatibilityTags": [
+                "heat-66mm"
+              ],
+              "stackMax": 6
+            }
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 130000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1776279800100,
+        "modifiedTime": 1776279800100,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eshtestammoheat0"
+    },
+    {
+      "name": "Plasma Cell",
+      "type": "item",
+      "_id": "eshtestammoplasm",
+      "img": "systems/spaceholder/assets/icons/fire.svg/plasma-bolt.svg",
+      "system": {
+        "description": "<p>Single-shot plasma cell. Demonstrates a non-kinetic damage type — strong against steel, but quickly burns through ablative coatings (which fall back to <em>reduction</em> degradation).</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 10,
+        "weight": 0.2,
+        "formula": "d20 + @per.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isAmmo": true
+        },
+        "weapon": {
+          "version": 2,
+          "ammo": {
+            "projectile": {
+              "damage": 60,
+              "damageType": "plasma",
+              "armorPen": 0,
+              "armorDamageFactor": 1,
+              "projectilesPerUse": 1,
+              "payloadId": "",
+              "applications": [
+                {
+                  "mode": "sequential",
+                  "items": [
+                    {
+                      "type": "plasma",
+                      "damage": 60
+                    }
+                  ]
+                }
+              ],
+              "builderId": ""
+            },
+            "resource": {
+              "resourceType": "cell",
+              "caliberTag": "plasma-cell",
+              "compatibilityTags": [
+                "plasma-cell"
+              ],
+              "stackMax": 10
+            }
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 140000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1776279800100,
+        "modifiedTime": 1776279800100,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eshtestammoplasm"
+    }
+  ],
+  "effects": [],
+  "folder": null,
+  "sort": 100000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800100,
+    "modifiedTime": 1776279800100,
+    "lastModifiedBy": null
+  },
+  "_key": "!actors!shtestshooter000"
+}

@@ -26,8 +26,8 @@
   ],
   "version": "0.178",
   "compatibility": {
-    "minimum": 13,
-    "verified": "13"
+    "minimum": "14",
+    "verified": "14"
   },
   "esmodules": [
     "module/spaceholder.mjs"
@@ -55,6 +55,13 @@
       "path": "packs/sh-test-items",
       "type": "Item",
       "system": "spaceholder"
+    },
+    {
+      "name": "sh-test-actors",
+      "label": "SpaceHolder Test Actors",
+      "path": "packs/sh-test-actors",
+      "type": "Actor",
+      "system": "spaceholder"
     }
   ],
   "packFolders": [
@@ -63,7 +70,8 @@
       "sorting": "m",
       "color": "#6e8fb3",
       "packs": [
-        "sh-test-items"
+        "sh-test-items",
+        "sh-test-actors"
       ]
     }
   ],

@@ -69,7 +69,7 @@ isProject: false
     - Импортировать `SpaceHolderItemSheet_Wearable`.
     - При регистрации листов Items добавить запись с `types: ['wearable']`, `makeDefault: true`.
 - **Шаблон листа Wearable (UI по гайду)**
-  - Создать новый шаблон `[templates/item/item-wearable-sheet.hbs](e:/FoundryVTT/Data/systems/spaceholder/templates/item/item-wearable-sheet.hbs)`, ориентируясь на `item-item-sheet.hbs` и `docs/UI_DESIGN_GUIDE.md`:
+  - Создать новый шаблон `[templates/item/item-wearable-sheet.hbs](e:/FoundryVTT/Data/systems/spaceholder/templates/item/item-wearable-sheet.hbs)`, ориентируясь на `item-item-sheet.hbs` и `docs/code/guides/UI_DESIGN_GUIDE.md`:
     - **Хедер**: иконка, имя, `quantity`, `weight` в гриде 2 колонки, как у обычного `item`.
     - **Табы (native Application V2)**:
       - `description` — редактор описания (как сейчас).

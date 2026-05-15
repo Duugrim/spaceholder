@@ -1,0 +1,309 @@
+.spaceholder.armor-penetration-tester,
+#spaceholder-armor-penetration-tester {
+  // Override Foundry / theme defaults that can center app body content
+  .window-content,
+  .application,
+  .application-body,
+  [data-application-part="main"] {
+    text-align: left;
+  }
+
+  .sh-armor-tester {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+    text-align: left;
+    color: var(--sh-text);
+  }
+
+  .sh-armor-tester__header,
+  .sh-armor-tester__toolbar,
+  .sh-armor-tester__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .sh-armor-tester__tabs,
+  .sh-armor-tester__filters,
+  .sh-armor-tester__material {
+    display: flex;
+    align-items: end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .sh-armor-tester__tab,
+  .sh-armor-tester__toolbarBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .sh-armor-tester__tab.is-active {
+    font-weight: 700;
+    border-color: rgba(140, 180, 255, 0.75);
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.78rem;
+    color: var(--sh-text-muted);
+  }
+
+  input,
+  select {
+    min-height: 1.8rem;
+  }
+
+  .sh-armor-tester__summary {
+    justify-content: flex-start;
+    color: var(--sh-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .sh-armor-tester__projectileList,
+  .sh-armor-tester__armorList,
+  .sh-armor-tester__trace {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    text-align: left;
+    gap: 0.4rem;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .sh-armor-tester__projectile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 0.28fr);
+    align-items: start;
+    justify-items: start;
+    width: 100%;
+    max-width: 100%;
+    gap: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.14);
+    padding: 0.5rem 0.45rem;
+  }
+
+  .sh-armor-tester__projectileMain {
+    justify-self: stretch;
+  }
+
+  .sh-armor-tester__projectile.is-selected,
+  .sh-armor-tester__armorBtn.is-selected {
+    border-color: rgba(140, 180, 255, 0.75);
+    background: rgba(70, 110, 200, 0.2);
+  }
+
+  .sh-armor-tester__projectileMain,
+  .sh-armor-tester__armorBtn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+    border: none;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+  }
+
+  .sh-armor-tester__projectileMain img,
+  .sh-armor-tester__armorBtn img {
+    width: 2.4rem;
+    height: 2.4rem;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 5px;
+    flex: 0 0 auto;
+  }
+
+  .sh-armor-tester__projectileText,
+  .sh-armor-tester__armorBtn span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .sh-armor-tester__projectileTitleLine {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .sh-armor-tester__projectileName {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sh-text, #e8e8e8);
+    line-height: 1.3;
+    flex: 0 1 auto;
+    max-width: min(50%, 18rem);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-armor-tester__projectileMeta {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 0.78rem;
+    font-weight: 400;
+    line-height: 1.3;
+    color: var(--sh-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-armor-tester__armorBtn small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--sh-text-muted);
+    font-size: 0.78rem;
+  }
+
+  .sh-armor-tester__projectileSource {
+    font-size: 0.72rem;
+    line-height: 1.2;
+    color: var(--sh-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-armor-tester__residualLine {
+    font-size: 0.76rem;
+    color: var(--sh-text-muted);
+    font-family: inherit;
+    max-width: 16rem;
+    line-height: 1.25;
+  }
+
+  .sh-armor-tester__projectileResult {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    align-self: start;
+    justify-self: end;
+    min-width: 0;
+    text-align: right;
+    gap: 0.15rem;
+    font-family: $font-mono;
+  }
+
+  .sh-armor-tester__projectileResult.is-penetrates strong {
+    color: #ff9b8f;
+  }
+
+  .sh-armor-tester__projectileResult.is-stopped strong {
+    color: #a7e0a2;
+  }
+
+  .sh-armor-tester__previewGrid {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.35fr) minmax(420px, 1fr);
+    justify-items: stretch;
+    align-items: start;
+    width: 100%;
+    text-align: left;
+    gap: 0.65rem;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .sh-armor-tester__previewControls,
+  .sh-armor-tester__previewResult {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    gap: 0.55rem;
+    min-height: 0;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.12);
+    padding: 0.55rem;
+  }
+
+  .sh-armor-tester__previewResult {
+    overflow: hidden;
+  }
+
+  .sh-armor-tester__previewResult header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .sh-armor-tester__coverageNote {
+    font-size: 0.78rem;
+    color: var(--sh-text-muted);
+    line-height: 1.3;
+    max-width: 100%;
+  }
+
+  .sh-armor-tester__previewResult h3 {
+    margin: 0;
+  }
+
+  .sh-armor-tester__previewColumns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+  }
+
+  .sh-armor-tester__sectionTitle {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: var(--sh-text);
+  }
+
+  .sh-armor-tester__miniRow,
+  .sh-armor-tester__traceRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.10);
+    padding: 0.35rem 0.45rem;
+  }
+
+  .sh-armor-tester__traceRow {
+    grid-template-columns: 1.1fr 0.8fr 0.9fr 0.7fr 0.7fr 0.7fr;
+    font-family: $font-mono;
+    font-size: 0.76rem;
+  }
+
+  .sh-armor-tester__empty {
+    color: var(--sh-text-muted);
+    margin: 0.35rem 0;
+  }
+}

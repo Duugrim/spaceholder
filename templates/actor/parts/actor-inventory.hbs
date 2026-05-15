@@ -1,4 +1,4 @@
-<div class="inventory-panel">
+<div class="inventory-panel" data-sh-root-inventory-drop="1">
   <div class="inventory-stats">
     <div class="inventory-stat">
       <i class="fas fa-weight-hanging"></i>
@@ -25,30 +25,35 @@
   </div>
 
   <div class='inventory-list'>
-    {{#each gear as |item id|}}
-      <div class='inventory-item-card' data-item-id='{{item._id}}'>
+    {{#each inventoryRows as |row|}}
+      <div
+        class='inventory-item-card{{#if row.depth}} inventory-item-card--nested{{/if}}'
+        data-item-id='{{row.item._id}}'
+        {{#if row.item.system.itemTags.isContainer}}data-sh-inventory-container-drop="1"{{/if}}
+        style='--sh-inv-depth: {{row.depth}};'
+      >
         <div class='item-main'>
           <div class='item-image'>
             <a class='rollable' data-roll-type='item'>
               <img
-                src='{{item.img}}'
-                title='{{item.name}}'
+                src='{{row.item.img}}'
+                title='{{row.item.name}}'
                 width='32'
                 height='32'
               />
             </a>
           </div>
           <div class='item-info'>
-            <div class='item-name'>{{item.name}}</div>
-            {{#if item.system.description}}
-              <div class='item-description'>{{item.system.description}}</div>
+            <div class='item-name'>{{row.item.name}}</div>
+            {{#if row.item.system.description}}
+              <div class='item-description'>{{row.item.system.description}}</div>
             {{/if}}
             <div class='item-details'>
-              {{#if item.system.quantity}}
-                <span class='item-quantity'>{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{item.system.quantity}}</span>
+              {{#if row.item.system.quantity}}
+                <span class='item-quantity'>{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{row.item.system.quantity}}</span>
               {{/if}}
-              {{#if item.system.weight}}
-                <span class='item-weight'>{{localize 'SPACEHOLDER.Inventory.ItemTotalWeight'}} {{numberFormat (multiply item.system.weight item.system.quantity) decimals=2}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+              {{#if row.item.system.weight}}
+                <span class='item-weight'>{{localize 'SPACEHOLDER.Inventory.ItemTotalWeight'}} {{numberFormat (multiply row.item.system.weight row.item.system.quantity) decimals=2}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
               {{/if}}
             </div>
           </div>
@@ -56,20 +61,20 @@
         <div class='item-controls'>
           <button
             type="button"
-            class="icon-btn item-held-toggle {{#if item.system.held}}active{{/if}}"
-            title="{{#if item.system.held}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}{{/if}}"
-            data-item-id="{{item._id}}"
+            class="icon-btn item-held-toggle {{#if row.item.system.held}}active{{/if}}"
+            title="{{#if row.item.system.held}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}{{/if}}"
+            data-item-id="{{row.item._id}}"
             data-action="item-held-toggle"
           >
             <i class="fa-solid fa-hand"></i>
           </button>
-          {{#if item.system.itemTags}}
-          {{#if item.system.itemTags.isArmor}}
+          {{#if row.item.system.itemTags}}
+          {{#if row.item.system.itemTags.isArmor}}
           <button
             type="button"
-            class="icon-btn item-wearable-toggle {{#if item.system.equipped}}active{{/if}}"
+            class="icon-btn item-wearable-toggle {{#if row.item.system.equipped}}active{{/if}}"
             title="{{localize 'SPACEHOLDER.Wearable.EquipToggleTooltip'}}"
-            data-item-id="{{item._id}}"
+            data-item-id="{{row.item._id}}"
             data-action="wearable-toggle"
           >
             <i class="fas fa-shield-alt"></i>
@@ -80,7 +85,7 @@
             type="button"
             class='icon-btn item-edit'
             title='{{localize "SPACEHOLDER.Inventory.EditItem"}}'
-            data-item-id='{{item._id}}'
+            data-item-id='{{row.item._id}}'
           >
             <i class='fas fa-edit'></i>
           </button>
@@ -88,14 +93,14 @@
             type="button"
             class='icon-btn item-delete'
             title='{{localize "SPACEHOLDER.Inventory.DeleteItem"}}'
-            data-item-id='{{item._id}}'
+            data-item-id='{{row.item._id}}'
           >
             <i class='fas fa-trash'></i>
           </button>
         </div>
       </div>
     {{/each}}
-    {{#unless gear.length}}
+    {{#unless inventoryRows.length}}
       <div class='empty-inventory'>
         <i class='fas fa-box-open'></i>
         <p><em>{{localize 'SPACEHOLDER.Inventory.Empty'}}</em></p>

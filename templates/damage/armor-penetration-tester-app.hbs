@@ -1,0 +1,230 @@
+<div class="sh-armor-tester">
+  {{#unless isGM}}
+    <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Messages.GmOnly"}}</p>
+  {{else}}
+    <header class="sh-armor-tester__header">
+      <nav class="sh-armor-tester__tabs">
+        <button type="button" class="sh-armor-tester__tab {{#if tabProjectiles}}is-active{{/if}}" data-action="set-tab" data-tab="projectiles">
+          {{localize "SPACEHOLDER.ArmorTester.Tabs.Projectiles"}}
+        </button>
+        <button type="button" class="sh-armor-tester__tab {{#if tabArmor}}is-active{{/if}}" data-action="set-tab" data-tab="armor">
+          {{localize "SPACEHOLDER.ArmorTester.Tabs.ArmorPreview"}}
+        </button>
+      </nav>
+
+      <button type="button" class="sh-armor-tester__toolbarBtn" data-action="refresh-data">
+        <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+        <span>{{localize "SPACEHOLDER.ArmorTester.Actions.Refresh"}}</span>
+      </button>
+    </header>
+
+    {{#if tabProjectiles}}
+      <section class="sh-armor-tester__toolbar">
+        <div class="sh-armor-tester__filters">
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Filters.Search"}}</span>
+            <input type="search" value="{{state.search}}" data-state-field="search" placeholder="{{localize "SPACEHOLDER.ArmorTester.Filters.SearchPlaceholder"}}" />
+          </label>
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Filters.DamageType"}}</span>
+            <select data-state-field="damageType">
+              {{#each damageTypeOptions}}
+                <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Filters.Sort"}}</span>
+            <select data-state-field="sort">
+              {{#each sortOptions}}
+                <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Filters.Source"}}</span>
+            <select data-state-field="sourceFilter">
+              {{#each sourceFilterOptions}}
+                <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+        </div>
+
+        <div class="sh-armor-tester__material">
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Material.Material"}}</span>
+            <select data-state-field="materialId">
+              {{#each materials}}
+                <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Material.Mode"}}</span>
+            <select data-state-field="mode">
+              {{#each modeOptions}}
+                <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Material.Thickness"}}</span>
+            <input type="number" min="0" step="0.1" value="{{state.checkThickness}}" data-state-field="checkThickness" />
+          </label>
+        </div>
+      </section>
+
+      <section class="sh-armor-tester__summary">
+        <span>{{localize "SPACEHOLDER.ArmorTester.Summary.Projectiles"}}: {{projectileCount}}</span>
+        <span>{{localize "SPACEHOLDER.ArmorTester.Summary.Material"}}: {{materialName}}</span>
+      </section>
+
+      <section class="sh-armor-tester__projectileList">
+        {{#if projectiles.length}}
+          {{#each projectiles}}
+            <article class="sh-armor-tester__projectile {{#if this.selected}}is-selected{{/if}}">
+              <button type="button" class="sh-armor-tester__projectileMain" data-action="select-projectile" data-projectile-id="{{this.id}}">
+                <img src="{{this.img}}" alt="" />
+                <span class="sh-armor-tester__projectileText">
+                  <span class="sh-armor-tester__projectileTitleLine">
+                    <strong class="sh-armor-tester__projectileName">{{this.name}}</strong>
+                    <span class="sh-armor-tester__projectileMeta">· {{this.damageText}} · {{localize "SPACEHOLDER.ItemWeapon.Damage"}} {{this.damage}} · AP {{this.armorPen}} · H {{this.hardness}} · E {{this.energy}}</span>
+                  </span>
+                  <span class="sh-armor-tester__projectileSource">{{localize "SPACEHOLDER.ArmorTester.Projectile.ItemSource"}}: {{this.sourceLabel}}</span>
+                </span>
+              </button>
+              <div class="sh-armor-tester__projectileResult {{this.resultClass}}">
+                <strong>{{this.result}}</strong>
+                {{#if this.showCheckResidual}}
+                  <span
+                    class="sh-armor-tester__residualLine"
+                    title="{{localize "SPACEHOLDER.ArmorTester.Results.ResidualTitle"}}"
+                  >{{localize "SPACEHOLDER.ArmorTester.Results.ThroughPlateTotal"}}: {{this.residualDamageText}}</span>
+                {{/if}}
+              </div>
+            </article>
+          {{/each}}
+        {{else}}
+          <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Empty.Projectiles"}}</p>
+        {{/if}}
+      </section>
+    {{/if}}
+
+    {{#if tabArmor}}
+      <section class="sh-armor-tester__previewGrid">
+        <aside class="sh-armor-tester__previewControls">
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Preview.Projectile"}}</span>
+            <select data-state-field="selectedProjectileId">
+              {{#each projectileChoices}}
+                <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+              {{/each}}
+            </select>
+          </label>
+
+          <div class="sh-armor-tester__armorList">
+            <div class="sh-armor-tester__sectionTitle">{{localize "SPACEHOLDER.ArmorTester.Preview.ArmorItem"}}</div>
+            {{#if armors.length}}
+              {{#each armors}}
+                <button type="button" class="sh-armor-tester__armorBtn {{#if this.selected}}is-selected{{/if}}" data-action="select-armor" data-armor-id="{{this.id}}">
+                  <img src="{{this.img}}" alt="" />
+                  <span>
+                    <strong>{{this.name}}</strong>
+                    <small>{{this.sourceLabel}} · {{this.layerCount}} {{localize "SPACEHOLDER.ArmorTester.Preview.Layers"}}</small>
+                  </span>
+                </button>
+              {{/each}}
+            {{else}}
+              <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Empty.Armors"}}</p>
+            {{/if}}
+          </div>
+
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Preview.BodyPart"}}</span>
+            <select data-state-field="selectedSlotRef" {{#if noArmorCoverage}}disabled{{/if}}>
+              {{#if noArmorCoverage}}
+                <option value="">{{localize "SPACEHOLDER.ArmorTester.Preview.NoCoveredParts"}}</option>
+              {{else}}
+                {{#each bodyPartChoices}}
+                  <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+                {{/each}}
+              {{/if}}
+            </select>
+          </label>
+          <label>
+            <span>{{localize "SPACEHOLDER.ArmorTester.Preview.Direction"}}</span>
+            <select data-state-field="hitDirection">
+              {{#each directionOptions}}
+                <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+        </aside>
+
+        <section class="sh-armor-tester__previewResult">
+          <header>
+            <h3>{{localize "SPACEHOLDER.ArmorTester.Preview.Result"}}</h3>
+            {{#if coverageNote}}<span class="sh-armor-tester__coverageNote">{{coverageNote}}</span>{{/if}}
+          </header>
+
+          {{#if hasPreview}}
+            <div class="sh-armor-tester__previewColumns">
+              <div>
+                <div class="sh-armor-tester__sectionTitle">{{localize "SPACEHOLDER.ArmorTester.Preview.BodyDamage"}}</div>
+                {{#if bodyDamageRows.length}}
+                  {{#each bodyDamageRows}}
+                    <div class="sh-armor-tester__miniRow">
+                      <span>{{this.partName}}</span>
+                      <strong>{{this.type}}: {{this.amount}}</strong>
+                    </div>
+                  {{/each}}
+                {{else}}
+                  <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Preview.NoBodyDamage"}}</p>
+                {{/if}}
+              </div>
+
+              <div>
+                <div class="sh-armor-tester__sectionTitle">{{localize "SPACEHOLDER.ArmorTester.Preview.Path"}}</div>
+                {{#if pathRows.length}}
+                  {{#each pathRows}}
+                    <div class="sh-armor-tester__miniRow">
+                      <span>{{this.slotRef}}</span>
+                      <strong>{{this.entryKind}} / {{this.incomingDirection}}</strong>
+                    </div>
+                  {{/each}}
+                {{else}}
+                  <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Preview.NoPath"}}</p>
+                {{/if}}
+              </div>
+            </div>
+
+            <div class="sh-armor-tester__sectionTitle">{{localize "SPACEHOLDER.ArmorTester.Preview.Trace"}}</div>
+            {{#if traceRows.length}}
+              <div class="sh-armor-tester__trace">
+                {{#each traceRows}}
+                  <div class="sh-armor-tester__traceRow">
+                    <span>#{{this.idx}} {{this.kind}} {{this.phase}}</span>
+                    <span>{{this.slotRef}}</span>
+                    <span>{{this.material}}</span>
+                    <span>{{this.type}}</span>
+                    <span>eAR {{this.eAR}}</span>
+                    <span>{{this.residual}}</span>
+                  </div>
+                {{/each}}
+              </div>
+            {{else}}
+              <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Preview.NoTrace"}}</p>
+            {{/if}}
+          {{else}}
+            {{#if noArmorCoverage}}
+              <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Preview.NoCoveredPartsDetail"}}</p>
+            {{else}}
+              <p class="sh-armor-tester__empty">{{localize "SPACEHOLDER.ArmorTester.Preview.SelectInputs"}}</p>
+            {{/if}}
+          {{/if}}
+        </section>
+      </section>
+    {{/if}}
+  {{/unless}}
+</div>

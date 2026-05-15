@@ -1,0 +1,76 @@
+{
+  "name": "Дробь (обычная)",
+  "type": "item",
+  "_id": "shtestammoshotrg0",
+  "img": "systems/spaceholder/assets/icons/explosion.svg/striking-balls.svg",
+  "system": {
+    "description": "<p>Залп свинцовой дроби / картечи. В v2 моделируется как один `ballistic` снаряд с небольшим `damage`, низким `armorPen` и `adf = 1.0`: идея в том, что это массированный тупой толчок, а не одна концентрированная пуля. Кевлар держит полностью; через мягкую одежду и голую кожу даёт множественные неглубокие раны. Когда в движке появится «по-настоящему залповая» механика N независимых проекций — эту карточку и `Buckshot Shell` надо будет пересобрать.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 12,
+    "weight": 0.05,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": false },
+      "unequip": { "showInCombat": false, "showInQuickbar": false },
+      "hold": { "showInCombat": false, "showInQuickbar": false },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": { "abilities": [], "derived": [], "params": [] },
+    "itemTags": { "isArmor": false, "isActions": false, "isModifiers": false, "isAmmo": true },
+    "weapon": {
+      "version": 2,
+      "ammo": {
+        "projectile": {
+          "damage": 0,
+          "damageType": "",
+          "armorPen": 1,
+          "armorDamageFactor": 1,
+          "hardness": 1,
+          "projectilesPerUse": 1,
+          "payloadId": "",
+          "applications": [
+            {
+              "mode": "sequential",
+              "items": [
+                { "type": "ballistic", "damage": 18, "armorPen": 1, "armorDamageFactor": 1.0, "hardness": 1 }
+              ]
+            }
+          ],
+          "builderId": ""
+        },
+        "resource": {
+          "resourceType": "shell",
+          "caliberTag": "12g",
+          "compatibilityTags": ["12g"],
+          "stackMax": 12
+        }
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldammo000",
+  "sort": 631000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800140,
+    "modifiedTime": 1776279800140,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestammoshotrg0"
+}
+

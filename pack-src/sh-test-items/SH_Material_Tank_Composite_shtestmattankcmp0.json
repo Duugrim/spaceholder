@@ -1,0 +1,67 @@
+{
+  "name": "Tank Composite",
+  "type": "material",
+  "_id": "shtestmattankcmp0",
+  "img": "systems/spaceholder/assets/icons/armor.svg/reinforced.svg",
+  "system": {
+    "description": "<p>Танковый многослойный композит со стальным сердечником и керамикой/реактивными вставками. Верхняя планка защиты: кинетические AP-снайперки не пробивают на любой тестовой толщине; HEAT пробивает, но с заметной потерей.</p>",
+    "materialId": "tank-composite",
+    "category": "composite",
+    "hardness": 25,
+    "integrityPerThickness": 100,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 5.5,
+    "resistance": {
+      "ballistic": 160, "concussive": 140, "piercing": 160, "cutting": 140,
+      "thermal": 110, "laser": 90, "plasma": 140, "electric": 45,
+      "sonic": 120, "radiation": 110, "chemical": 70
+    },
+    "wear": {
+      "ballistic": 20, "concussive": 10, "piercing": 20, "cutting": 15,
+      "thermal": 30, "laser": 30, "plasma": 60, "electric": 5,
+      "sonic": 5, "radiation": 0, "chemical": 50
+    },
+    "conductance": {},
+    "selfInduction": {
+      "ballistic": [
+        { "type": "concussive", "fraction": 0.5 },
+        { "type": "thermal", "fraction": 0.3 }
+      ],
+      "piercing": [
+        { "type": "concussive", "fraction": 0.5 },
+        { "type": "thermal", "fraction": 0.3 }
+      ],
+      "concussive": [
+        { "type": "thermal", "fraction": 0.2 }
+      ],
+      "laser": [
+        { "type": "thermal", "fraction": 0.6 }
+      ],
+      "plasma": [
+        { "type": "thermal", "fraction": 0.5 }
+      ]
+    },
+    "degradation": {
+      "ballistic": "bastion",
+      "piercing": "bastion",
+      "cutting": "bastion"
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 443000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800103,
+    "modifiedTime": 1776279800103,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmattankcmp0"
+}

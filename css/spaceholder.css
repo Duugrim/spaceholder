@@ -1370,6 +1370,15 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   padding-bottom: 4px;
 }
+.window-app.spaceholder .sh-weapon-attack-dialog__subgroup-title,
+.spaceholder .sh-weapon-attack-dialog__subgroup-title {
+  font-weight: 500;
+  margin: 8px 0 4px;
+  font-size: 0.85rem;
+  color: var(--sh-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 .window-app.spaceholder .sh-weapon-attack-dialog__hint,
 .spaceholder .sh-weapon-attack-dialog__hint {
   margin: 0 0 8px;
@@ -1550,6 +1559,15 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=inventory]),
 .spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=inventory]) {
+  --sh-sheet-frame-accent: #7d71af;
+}
+
+.window-app.spaceholder form:has(.sheet-body .tab[data-tab=container].active),
+.spaceholder form:has(.sheet-body .tab[data-tab=container].active) {
+  --sh-sheet-tab-accent: #7d71af;
+}
+.window-app.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=container]),
+.spaceholder.sheet .spaceholder-sheet-stack > .sheet-body:has(> .tab.active[data-tab=container]) {
   --sh-sheet-frame-accent: #7d71af;
 }
 
@@ -1814,6 +1832,10 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder nav.sheet-tabs.tabs .item[data-tab=inventory] {
   --tab-accent: #7d71af;
 }
+.window-app.spaceholder nav.sheet-tabs.tabs .item[data-tab=container],
+.spaceholder nav.sheet-tabs.tabs .item[data-tab=container] {
+  --tab-accent: #7d71af;
+}
 .window-app.spaceholder nav.sheet-tabs.tabs .item[data-tab=description],
 .spaceholder nav.sheet-tabs.tabs .item[data-tab=description] {
   --tab-accent: #469588;
@@ -1980,6 +2002,10 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=inventory],
 .spaceholder .sheet-body .tab .sh-tab-banner[data-tab=inventory] {
+  --banner-accent: #7d71af;
+}
+.window-app.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=container],
+.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=container] {
   --banner-accent: #7d71af;
 }
 .window-app.spaceholder .sheet-body .tab .sh-tab-banner[data-tab=description],
@@ -4372,7 +4398,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .anatomy-editor-selected-panel,
 .spaceholder .anatomy-editor-selected-panel {
   margin-top: 0;
-  padding: 12px 14px;
+  padding: 8px 10px;
   min-height: 80px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--sh-border);
@@ -4392,7 +4418,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-cols,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-cols {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   width: 100%;
   min-width: 0;
 }
@@ -4401,13 +4427,13 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--protection,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--protection {
   flex: 0 0 auto;
-  width: 180px;
-  min-width: 180px;
+  width: 170px;
+  min-width: 170px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--protection .anatomy-editor-panel-placeholder-hint,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--protection .anatomy-editor-panel-placeholder-hint {
@@ -4421,11 +4447,89 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   flex: 1 1 0%;
   min-width: 200px;
 }
-.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--organs,
-.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--organs {
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-center-grid,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-center-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+  gap: 8px 14px;
+  align-items: start;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-center-props,
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-center-exposure,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-center-props,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-center-exposure {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-list,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-row,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-row .anatomy-editor-panel-label,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-row .anatomy-editor-panel-label {
   flex: 0 0 auto;
-  width: 220px;
-  min-width: 220px;
+  min-width: 60px;
+  color: var(--sh-text-muted);
+  font-size: 11px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-row .anatomy-editor-panel-value,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-exposure-row .anatomy-editor-panel-value {
+  color: var(--sh-text);
+  font-variant-numeric: tabular-nums;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--meta,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-col--meta {
+  flex: 0 0 auto;
+  width: 200px;
+  min-width: 200px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitabs,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--sh-border);
+  margin-bottom: 4px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab {
+  flex: 1 1 0;
+  padding: 3px 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--sh-text-muted);
+  cursor: pointer;
+  line-height: 1.2;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab:hover,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab:hover {
+  color: var(--sh-text);
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab.active,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab.active {
+  color: var(--sh-accent-strong);
+  border-bottom-color: var(--sh-accent-strong);
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab-content,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-minitab-content {
+  min-height: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel.anatomy-editor-panel-empty,
 .spaceholder .anatomy-editor-selected-panel.anatomy-editor-panel-empty {
@@ -4437,25 +4541,35 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-header,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-header {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
   border-bottom: 1px solid var(--sh-border);
+  min-height: 22px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-title,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-title {
   font-weight: 700;
   font-size: 13px;
   color: var(--sh-text);
+  text-align: center;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-edit-btn,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-edit-btn {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-55%);
+  width: 20px;
+  height: 20px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -4465,6 +4579,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   background: transparent;
   color: var(--sh-text);
   cursor: pointer;
+  font-size: 10px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-edit-btn:hover,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-edit-btn:hover {
@@ -4474,19 +4589,20 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-props {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 2px;
+  gap: 2px;
+  margin-bottom: 0;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-row,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-row {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-row .anatomy-editor-panel-label,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-row .anatomy-editor-panel-label {
-  flex: 0 0 80px;
+  flex: 0 0 auto;
+  min-width: 72px;
   color: var(--sh-text-muted);
   font-size: 11px;
 }
@@ -4499,13 +4615,13 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-row .anatomy-editor-panel-value code {
   font-size: 11px;
   background: rgba(0, 0, 0, 0.35);
-  padding: 2px 5px;
+  padding: 1px 4px;
   border-radius: 3px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-block,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-block {
-  margin-top: 10px;
-  padding-top: 8px;
+  margin-top: 4px;
+  padding-top: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-section-title,
@@ -4515,7 +4631,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   color: var(--sh-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-list,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-list {
@@ -4523,11 +4639,14 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   padding-left: 16px;
   font-size: 12px;
   color: var(--sh-text);
+  line-height: 1.3;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-empty-hint,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-empty-hint {
   color: var(--sh-text-dim);
   font-style: italic;
+  margin: 0;
+  font-size: 11px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-links-list,
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-organs-list,
@@ -4535,8 +4654,8 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-organs-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 6px;
+  gap: 1px;
+  margin-bottom: 2px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-link-row,
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-organ-row,
@@ -4546,7 +4665,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 2px 0;
+  padding: 1px 0;
   font-size: 12px;
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-link-name,
@@ -4557,13 +4676,64 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   flex: 1;
   min-width: 0;
 }
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-protection-items,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-protection-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-protection-items li,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-protection-items li {
+  padding: 1px 0;
+  color: var(--sh-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layers-list,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layer-row,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11px;
+  padding: 1px 0;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layer-name,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layer-name {
+  color: var(--sh-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layer-source,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-item-layer-source {
+  color: var(--sh-text-dim);
+  font-style: italic;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-link-remove,
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-organ-remove,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-link-remove,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-organ-remove {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -4586,7 +4756,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-add-organ,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-add-link,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-add-organ {
-  padding: 4px 8px;
+  padding: 3px 8px;
   font-size: 11px;
   border-radius: var(--sh-radius-sm);
   border: 1px solid var(--sh-border);
@@ -4603,9 +4773,62 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-add-organ:hover {
   background: rgba(255, 255, 255, 0.06);
 }
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layers-list,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 2px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 1px 0;
+  font-size: 12px;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-meta,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-name,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-name {
+  color: var(--sh-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-thickness,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-thickness {
+  color: var(--sh-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:not(:last-child):hover,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:not(:last-child):hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--sh-border);
+}
+.window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:disabled,
+.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-delete,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-delete {
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 6px 10px;
   font-size: 12px;
   border-radius: var(--sh-radius-sm);
@@ -4616,6 +4839,272 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-delete:hover,
 .spaceholder .anatomy-editor-selected-panel .anatomy-editor-panel-delete:hover {
+  background: rgba(204, 68, 68, 0.35);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 280px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tabs,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--sh-border);
+  flex-wrap: wrap;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tab,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tab {
+  padding: 4px 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--sh-text-muted);
+  cursor: pointer;
+  line-height: 1.2;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tab:hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tab:hover {
+  color: var(--sh-text);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tab.active,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-tab.active {
+  color: var(--sh-accent-strong);
+  border-bottom-color: var(--sh-accent-strong);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-body,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-body {
+  min-height: 180px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-section,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-section--danger,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-section--danger {
+  gap: 8px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form-grid,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form-grid--exposure,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form-grid--exposure {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 10px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group label,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group label {
+  font-size: 11px;
+  color: var(--sh-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group input,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group select,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group input,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .form-group select {
+  width: 100%;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .notes,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-edit-part-form .notes {
+  margin: 0;
+  font-size: 10px;
+  color: var(--sh-text-dim);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-empty-hint,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-empty-hint {
+  color: var(--sh-text-dim);
+  font-style: italic;
+  margin: 0;
+  font-size: 11px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-placeholder-hint,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-placeholder-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--sh-text-dim);
+  font-style: italic;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-links-list,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organs-list,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layers-list,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-links-list,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organs-list,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-row,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-row,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-row,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 1px 0;
+  font-size: 12px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-name,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-name,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-name,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-name {
+  color: var(--sh-text);
+  flex: 1;
+  min-width: 0;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-remove,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-remove,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-remove,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-remove {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: transparent;
+  color: var(--sh-text);
+  cursor: pointer;
+  font-size: 10px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-remove:hover,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-remove:hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-link-remove:hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-organ-remove:hover {
+  background: rgba(204, 68, 68, 0.2);
+  border-color: rgba(204, 68, 68, 0.5);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-link,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-organ,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-link,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-organ {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid var(--sh-border);
+  background: transparent;
+  color: var(--sh-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-link:hover,
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-organ:hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-link:hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-add-organ:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 1px 0;
+  font-size: 12px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-meta,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-name,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-name {
+  color: var(--sh-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-thickness,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-thickness {
+  color: var(--sh-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: transparent;
+  color: var(--sh-text);
+  cursor: pointer;
+  font-size: 10px;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:not(:last-child):hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:not(:last-child):hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--sh-border);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:last-child:hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:last-child:hover {
+  background: rgba(204, 68, 68, 0.2);
+  border-color: rgba(204, 68, 68, 0.5);
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:disabled,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-body-layer-row .anatomy-editor-panel-body-layer-controls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-delete,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-delete {
+  margin-top: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: var(--sh-radius-sm);
+  border: 1px solid var(--sh-border);
+  background: rgba(204, 68, 68, 0.2);
+  color: var(--sh-text);
+  cursor: pointer;
+  align-self: flex-start;
+}
+.window-app.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-delete:hover,
+.spaceholder .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed .anatomy-editor-panel-delete:hover {
   background: rgba(204, 68, 68, 0.35);
 }
 .window-app.spaceholder .anatomy-editor-toolbar,
@@ -4733,11 +5222,26 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.window-app.spaceholder .injury-line-fallback,
+.spaceholder .injury-line-fallback {
+  opacity: 0.75;
+  font-style: italic;
+}
 .window-app.spaceholder .injury-when,
 .spaceholder .injury-when {
   color: var(--sh-accent-strong);
   opacity: 0.9;
   flex: 0 0 auto;
+}
+.window-app.spaceholder .injury-amount-badge,
+.spaceholder .injury-amount-badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: var(--sh-radius-sm, 4px);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--sh-text);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
 }
 .window-app.spaceholder .injury-actions,
 .spaceholder .injury-actions {
@@ -4745,6 +5249,132 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
+}
+.window-app.spaceholder .inj-desc,
+.spaceholder .inj-desc {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--sh-text);
+  line-height: 1.35;
+  min-width: 0;
+}
+.window-app.spaceholder .inj-seg,
+.spaceholder .inj-seg {
+  display: inline;
+  padding: 0 3px;
+  border-radius: 3px;
+  color: inherit;
+}
+.window-app.spaceholder .inj-seg:empty,
+.spaceholder .inj-seg:empty {
+  display: none;
+}
+.window-app.spaceholder .inj-seg-damageType,
+.spaceholder .inj-seg-damageType {
+  color: #ffb36b;
+  font-weight: 600;
+}
+.window-app.spaceholder .inj-seg-bodyPart,
+.spaceholder .inj-seg-bodyPart {
+  color: #f4d27a;
+}
+.window-app.spaceholder .inj-seg-bleedState,
+.spaceholder .inj-seg-bleedState {
+  color: #e66a6a;
+  font-style: italic;
+}
+.window-app.spaceholder .inj-seg-woundState,
+.spaceholder .inj-seg-woundState {
+  color: #c9d6c9;
+  font-style: italic;
+}
+.window-app.spaceholder .inj-seg-statusPrefix,
+.spaceholder .inj-seg-statusPrefix {
+  color: #8fb98f;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+.window-app.spaceholder .inj-seg-statusPrefix::after,
+.spaceholder .inj-seg-statusPrefix::after {
+  content: ":";
+  margin-left: 1px;
+}
+.window-app.spaceholder .inj-seg-preposition,
+.window-app.spaceholder .inj-seg-connector,
+.window-app.spaceholder .inj-seg-verb,
+.spaceholder .inj-seg-preposition,
+.spaceholder .inj-seg-connector,
+.spaceholder .inj-seg-verb {
+  opacity: 0.75;
+}
+.window-app.spaceholder .inj-seg-attacker,
+.spaceholder .inj-seg-attacker {
+  color: #e0b8ff;
+  font-weight: 500;
+}
+.window-app.spaceholder .inj-seg-weapon,
+.spaceholder .inj-seg-weapon {
+  color: #9fd3ff;
+  font-weight: 500;
+}
+.window-app.spaceholder .inj-seg-ammo,
+.spaceholder .inj-seg-ammo {
+  color: #8ed0a0;
+  font-weight: 500;
+}
+.window-app.spaceholder .inj-seg-legacy,
+.spaceholder .inj-seg-legacy {
+  opacity: 0.6;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+.window-app.spaceholder .inj-source-wrap,
+.spaceholder .inj-source-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  flex: 0 0 auto;
+}
+.window-app.spaceholder .inj-source-icon,
+.spaceholder .inj-source-icon {
+  color: var(--sh-accent-strong);
+  opacity: 0.65;
+  font-size: 0.85em;
+  cursor: help;
+}
+.window-app.spaceholder .inj-source-icon:hover,
+.spaceholder .inj-source-icon:hover {
+  opacity: 1;
+}
+.window-app.spaceholder .inj-source-tip,
+.spaceholder .inj-source-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  display: none;
+  min-width: 180px;
+  max-width: 320px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  color: var(--sh-text);
+  white-space: normal;
+  z-index: 10;
+}
+.window-app.spaceholder .inj-source-tip .inj-seg,
+.spaceholder .inj-source-tip .inj-seg {
+  margin-right: 2px;
+}
+.window-app.spaceholder .inj-source-wrap:hover .inj-source-tip,
+.window-app.spaceholder .inj-source-wrap:focus-within .inj-source-tip,
+.spaceholder .inj-source-wrap:hover .inj-source-tip,
+.spaceholder .inj-source-wrap:focus-within .inj-source-tip {
+  display: inline-block;
 }
 
 .window-app.spaceholder .inventory-panel,
@@ -4846,6 +5476,13 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border-color: rgba(143, 185, 143, 0.7);
   background: linear-gradient(135deg, rgb(32, 32, 32) 0%, rgb(44, 44, 44) 100%);
 }
+.window-app.spaceholder .inventory-item-card--nested,
+.spaceholder .inventory-item-card--nested {
+  margin-left: calc(var(--sh-inv-depth, 0) * 14px);
+  border-style: dashed;
+  border-color: rgba(74, 110, 74, 0.45);
+  background: linear-gradient(135deg, rgba(28, 32, 28, 0.95) 0%, rgba(36, 40, 36, 0.95) 100%);
+}
 .window-app.spaceholder .inventory-item-card .item-main,
 .spaceholder .inventory-item-card .item-main {
   display: flex;
@@ -4921,6 +5558,23 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .empty-inventory p,
 .spaceholder .empty-inventory p {
   margin: 0;
+}
+.window-app.spaceholder .spaceholder-item-container-controls,
+.spaceholder .spaceholder-item-container-controls {
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.window-app.spaceholder .spaceholder-item-container-hint,
+.window-app.spaceholder .spaceholder-item-container-drop-hint,
+.spaceholder .spaceholder-item-container-hint,
+.spaceholder .spaceholder-item-container-drop-hint {
+  color: var(--sh-text-muted);
+  margin: 0 0 8px 0;
+}
+.window-app.spaceholder .spaceholder-item-container-panel[data-sh-item-container-drop],
+.spaceholder .spaceholder-item-container-panel[data-sh-item-container-drop] {
+  min-height: 120px;
 }
 
 .window-app.spaceholder .faction-color-swatch,
@@ -9914,8 +10568,8 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .combat-sidebar .spaceholder-action-table-host,
 .combat-tracker .spaceholder-action-table-host {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 .combat-sidebar .spaceholder-action-table,
@@ -9925,37 +10579,46 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   overflow: hidden;
   background: linear-gradient(145deg, rgba(0, 0, 0, 0.38) 0%, rgba(22, 28, 26, 0.55) 100%);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  max-height: 50vh;
+  min-height: 0;
+}
+.combat-sidebar .spaceholder-action-table.is-collapsed .spaceholder-action-table__body,
+.combat-tracker .spaceholder-action-table.is-collapsed .spaceholder-action-table__body {
+  display: none;
 }
 .combat-sidebar .spaceholder-action-table__header,
 .combat-tracker .spaceholder-action-table__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 4px 8px;
   flex-wrap: wrap;
   background: linear-gradient(135deg, rgba(44, 74, 45, 0.94) 0%, rgba(56, 88, 58, 0.94) 100%);
   border-bottom: 1px solid rgba(74, 110, 74, 0.55);
+  flex-shrink: 0;
 }
 .combat-sidebar .spaceholder-action-table__title-wrap,
 .combat-tracker .spaceholder-action-table__title-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
 .combat-sidebar .spaceholder-action-table__title-icon,
 .combat-tracker .spaceholder-action-table__title-icon {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(186, 228, 160, 0.95);
   opacity: 0.95;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
 }
 .combat-sidebar .spaceholder-action-table__title,
 .combat-tracker .spaceholder-action-table__title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: none;
   letter-spacing: 0.02em;
@@ -9969,7 +10632,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .combat-tracker .spaceholder-action-table__meta {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -9980,33 +10643,66 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   background: rgba(0, 0, 0, 0.22);
   color: rgba(255, 255, 255, 0.94);
   font-weight: 600;
-  font-size: 11px;
-  padding: 2px 6px;
+  font-size: 10px;
+  padding: 1px 5px;
 }
 .combat-sidebar .spaceholder-action-table__header .spaceholder-badge.ap,
 .combat-tracker .spaceholder-action-table__header .spaceholder-badge.ap {
   border-color: rgba(186, 228, 160, 0.35);
   background: rgba(0, 0, 0, 0.3);
 }
+.combat-sidebar .spaceholder-action-table__collapse,
+.combat-tracker .spaceholder-action-table__collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  aspect-ratio: 1/1;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.combat-sidebar .spaceholder-action-table__collapse:hover,
+.combat-tracker .spaceholder-action-table__collapse:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #fff;
+}
 .combat-sidebar .spaceholder-action-table__body,
 .combat-tracker .spaceholder-action-table__body {
-  padding: 6px 7px 8px;
+  padding: 3px 5px 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 .combat-sidebar .spaceholder-action-table__empty,
 .combat-tracker .spaceholder-action-table__empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px 12px;
-  font-size: 14px;
+  gap: 6px;
+  padding: 10px 10px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--sh-text-muted, rgba(255, 255, 255, 0.5));
   text-align: center;
 }
 .combat-sidebar .spaceholder-action-table__empty i,
 .combat-tracker .spaceholder-action-table__empty i {
-  font-size: 18px;
+  font-size: 16px;
   opacity: 0.55;
 }
 .combat-sidebar .spaceholder-action-table__rows,
@@ -10016,44 +10712,49 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 .combat-sidebar .spaceholder-action-table__row,
 .combat-tracker .spaceholder-action-table__row {
   display: grid;
-  grid-template-columns: 1fr auto 22px;
+  grid-template-columns: 1fr 22px 40px;
   align-items: center;
   gap: 6px;
-  padding: 4px 7px;
+  padding: 2px 7px 2px 10px;
   min-height: 0;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.035);
-  transition: background 0.12s ease, border-color 0.12s ease;
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
 }
 .combat-sidebar .spaceholder-action-table__row:hover,
 .combat-tracker .spaceholder-action-table__row:hover {
   background: rgba(255, 255, 255, 0.065);
   border-color: rgba(255, 255, 255, 0.11);
 }
+.combat-sidebar .spaceholder-action-table__row--move .spaceholder-action-table__kind-icon,
+.combat-tracker .spaceholder-action-table__row--move .spaceholder-action-table__kind-icon {
+  color: rgba(150, 200, 230, 0.95);
+}
 .combat-sidebar .spaceholder-action-table__row--move,
 .combat-tracker .spaceholder-action-table__row--move {
-  border-left: 3px solid rgba(120, 175, 210, 0.75);
-  padding-left: 5px;
+  box-shadow: inset 3px 0 0 rgba(150, 200, 230, 0.6);
+}
+.combat-sidebar .spaceholder-action-table__row--action .spaceholder-action-table__kind-icon,
+.combat-tracker .spaceholder-action-table__row--action .spaceholder-action-table__kind-icon {
+  color: rgba(230, 200, 120, 0.92);
 }
 .combat-sidebar .spaceholder-action-table__row--action,
 .combat-tracker .spaceholder-action-table__row--action {
-  border-left: 3px solid rgba(210, 175, 95, 0.8);
-  padding-left: 5px;
+  box-shadow: inset 3px 0 0 rgba(230, 200, 120, 0.6);
 }
 .combat-sidebar .spaceholder-action-table__row--forced,
 .combat-tracker .spaceholder-action-table__row--forced {
   background: rgba(88, 62, 108, 0.22);
   border-color: rgba(180, 150, 210, 0.28);
-}
-.combat-sidebar .spaceholder-action-table__row--forced.spaceholder-action-table__row--move,
-.combat-tracker .spaceholder-action-table__row--forced.spaceholder-action-table__row--move {
-  border-left-color: rgba(175, 140, 210, 0.95);
+  box-shadow: inset 3px 0 0 rgba(200, 175, 235, 0.7);
 }
 .combat-sidebar .spaceholder-action-table__row--forced .spaceholder-action-table__kind,
 .combat-sidebar .spaceholder-action-table__row--forced .spaceholder-action-table__kind-text,
@@ -10069,6 +10770,76 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .combat-sidebar .spaceholder-action-table__row--forced.spaceholder-action-table__row--move .spaceholder-action-table__kind-icon,
 .combat-tracker .spaceholder-action-table__row--forced.spaceholder-action-table__row--move .spaceholder-action-table__kind-icon {
   color: rgba(200, 175, 235, 0.95);
+}
+.combat-sidebar,
+.combat-tracker {
+  /* Move-group row inside the table (mirrors the chat journal pattern). */
+}
+.combat-sidebar .spaceholder-action-table__row--movegroup,
+.combat-tracker .spaceholder-action-table__row--movegroup {
+  grid-template-columns: 1fr auto 40px;
+  grid-template-areas: "kind tools cost" "segs segs segs";
+  gap: 2px 6px;
+}
+.combat-sidebar .spaceholder-action-table__row--movegroup > .spaceholder-action-table__kind,
+.combat-tracker .spaceholder-action-table__row--movegroup > .spaceholder-action-table__kind {
+  grid-area: kind;
+}
+.combat-sidebar .spaceholder-action-table__row--movegroup > .spaceholder-action-table__cost,
+.combat-tracker .spaceholder-action-table__row--movegroup > .spaceholder-action-table__cost {
+  grid-area: cost;
+}
+.combat-sidebar .spaceholder-action-table__row--movegroup > .spaceholder-action-table__tools,
+.combat-tracker .spaceholder-action-table__row--movegroup > .spaceholder-action-table__tools {
+  grid-area: tools;
+}
+.combat-sidebar .spaceholder-action-table__row--movegroup > .spaceholder-action-table__group-segments,
+.combat-tracker .spaceholder-action-table__row--movegroup > .spaceholder-action-table__group-segments {
+  grid-area: segs;
+}
+.combat-sidebar .spaceholder-action-table__group-toggle,
+.combat-tracker .spaceholder-action-table__group-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  aspect-ratio: 1/1;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(140, 185, 215, 0.45);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.combat-sidebar .spaceholder-action-table__group-toggle:hover,
+.combat-tracker .spaceholder-action-table__group-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(170, 210, 235, 0.65);
+  color: #fff;
+}
+.combat-sidebar .spaceholder-action-table__group-segments,
+.combat-tracker .spaceholder-action-table__group-segments {
+  list-style: none;
+  margin: 2px 0 0 0;
+  padding: 0 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.combat-sidebar .spaceholder-action-table__row--move-segment,
+.combat-tracker .spaceholder-action-table__row--move-segment {
+  grid-template-columns: 1fr 22px 40px;
+  padding: 1px 7px 1px 9px;
+  background: rgba(255, 255, 255, 0.025);
 }
 .combat-sidebar .spaceholder-action-table__kind,
 .combat-tracker .spaceholder-action-table__kind {
@@ -10105,25 +10876,37 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .combat-sidebar .spaceholder-action-table__cost,
 .combat-tracker .spaceholder-action-table__cost {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
-  text-align: right;
+  margin-right: -7px;
+  padding: 0 6px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.combat-sidebar .spaceholder-action-table__cost:not(:empty),
+.combat-tracker .spaceholder-action-table__cost:not(:empty) {
+  background: rgba(0, 0, 0, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 .combat-sidebar .spaceholder-action-table__ap-chip,
 .combat-tracker .spaceholder-action-table__ap-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-size: 12px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, ui-monospace, monospace;
+  font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
   color: rgba(255, 255, 255, 0.92);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 .combat-sidebar .spaceholder-action-table__tools,
 .combat-tracker .spaceholder-action-table__tools {
@@ -10225,9 +11008,10 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 
 .spaceholder-action-journal__title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
-  margin: 0 0 4px;
+  letter-spacing: 0.02em;
+  margin: 0 0 3px;
   padding: 0 1px;
   opacity: 0.9;
 }
@@ -10238,50 +11022,68 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   overflow: visible;
 }
 
 /* One line per entry; description opens on second row only when toggled */
 .spaceholder-action-journal__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "main tools" "desc desc";
+  grid-template-columns: minmax(0, 1fr) auto 40px;
+  grid-template-areas: "main tools cost" "desc desc desc";
   gap: 0 6px;
   align-items: center;
-  min-height: 26px;
-  padding: 2px 4px;
-  border: 0;
-  border-radius: 0;
+  min-height: 0;
+  padding: 2px 7px 2px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.07);
   box-sizing: border-box;
+  overflow: hidden;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.spaceholder-action-journal__row:hover {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.11);
+}
+
+/* Type-tinted icons + matching coloured left edge */
+.spaceholder-action-journal__row--action .spaceholder-action-journal__kind {
+  color: rgba(230, 200, 120, 0.92);
 }
 
 .spaceholder-action-journal__row--action {
-  border-left: 3px solid rgba(210, 175, 95, 0.8);
-  padding-left: 3px;
+  box-shadow: inset 3px 0 0 rgba(230, 200, 120, 0.6);
+}
+
+.spaceholder-action-journal__row--move .spaceholder-action-journal__kind {
+  color: rgba(150, 200, 230, 0.95);
 }
 
 .spaceholder-action-journal__row--move {
-  border-left: 3px solid rgba(120, 175, 210, 0.78);
-  padding-left: 3px;
+  box-shadow: inset 3px 0 0 rgba(150, 200, 230, 0.6);
+}
+
+.spaceholder-action-journal__row--system .spaceholder-action-journal__kind {
+  color: rgba(150, 210, 160, 0.95);
 }
 
 .spaceholder-action-journal__row--system {
-  border-left: 3px solid rgba(134, 196, 134, 0.78);
-  padding-left: 3px;
+  box-shadow: inset 3px 0 0 rgba(150, 210, 160, 0.55);
 }
 
 .spaceholder-action-journal__row--reaction {
   position: relative;
-  box-shadow: inset 0 0 0 1px rgba(196, 153, 231, 0.22);
+  border-color: rgba(196, 153, 231, 0.28);
+  box-shadow: inset 3px 0 0 rgba(196, 153, 231, 0.55);
 }
 .spaceholder-action-journal__row--reaction .spaceholder-action-journal__main {
-  padding-left: 28px;
+  padding-left: 26px;
   box-sizing: border-box;
 }
 .spaceholder-action-journal__row--reaction .spaceholder-action-journal__desc {
-  padding-left: 28px;
+  padding-left: 26px;
   box-sizing: border-box;
 }
 .spaceholder-action-journal__row--reaction .spaceholder-action-journal__tools {
@@ -10296,21 +11098,21 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 
 .spaceholder-action-journal__reaction-gutter {
   position: absolute;
-  left: 2px;
+  left: 6px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   pointer-events: none;
 }
 
 .spaceholder-action-journal__reaction-token {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.38);
@@ -10319,14 +11121,14 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 
 .spaceholder-action-journal__reaction-token-fallback {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.88);
   background: rgba(130, 95, 165, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.32);
@@ -10342,7 +11144,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 
 .spaceholder-action-journal__kind {
-  width: 14px;
+  width: 16px;
   text-align: center;
   font-size: 13px;
   opacity: 0.88;
@@ -10359,6 +11161,41 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   line-height: 1.2;
 }
 
+.spaceholder-action-journal__cost {
+  grid-area: cost;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin-right: -7px;
+  padding: 0 6px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.spaceholder-action-journal__cost:not(:empty) {
+  background: rgba(0, 0, 0, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.spaceholder-action-journal__ap-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .spaceholder-action-journal__tools {
   grid-area: tools;
   display: inline-flex;
@@ -10371,7 +11208,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder-action-journal__desc {
   grid-area: desc;
   margin: 2px 0 0 0;
-  padding: 4px 6px;
+  padding: 3px 6px;
   border: 0;
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.22);
@@ -10405,13 +11242,22 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   color: #f2f2f2;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 3px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  aspect-ratio: 1/1;
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
-  min-height: 22px;
-  min-width: 22px;
-  padding: 2px;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  min-width: 20px;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
@@ -10438,7 +11284,7 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 }
 
 .spaceholder-action-journal__undone {
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.78;
   white-space: nowrap;
 }
@@ -10446,12 +11292,16 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 /* Move group: several main-turn moves in one chat row */
 .spaceholder-action-journal__row--movegroup,
 .spaceholder-action-journal__movegroup {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "main tools" "body body";
+  grid-template-columns: minmax(0, 1fr) auto 40px;
+  grid-template-areas: "main tools cost" "body body body";
 }
 
 .spaceholder-action-journal__movegroup .spaceholder-action-journal__main {
   grid-area: main;
+}
+
+.spaceholder-action-journal__movegroup .spaceholder-action-journal__cost {
+  grid-area: cost;
 }
 
 .spaceholder-action-journal__movegroup .spaceholder-action-journal__tools {
@@ -10469,11 +11319,10 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 .spaceholder-action-journal__movegroup-segments {
   list-style: none;
   margin: 0;
-  padding: 0 0 0 8px;
+  padding: 0 0 0 10px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  border-left: 2px solid rgba(120, 175, 210, 0.35);
+  gap: 2px;
   overflow: visible;
 }
 
@@ -10483,28 +11332,32 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   overflow: visible;
 }
 
 .spaceholder-action-journal__row--nested {
-  padding: 1px 3px;
+  padding: 1px 7px 1px 9px;
+}
+
+.spaceholder-action-journal__row--nested .spaceholder-action-journal__cost {
+  margin-right: -7px;
 }
 
 .spaceholder-action-journal__row--nested .spaceholder-action-journal__text {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .spaceholder-action-journal__row--nested .spaceholder-action-journal__kind {
-  width: 14px;
+  width: 16px;
   font-size: 13px;
 }
 
 /* One leg inside an expanded move group (no meta row) */
 .spaceholder-action-journal__row--move-segment {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "main tools" "desc desc" "sub sub";
+  grid-template-columns: minmax(0, 1fr) auto 40px;
+  grid-template-areas: "main tools cost" "desc desc desc" "sub sub sub";
 }
 
 .spaceholder-action-journal__sublist {
@@ -10513,7 +11366,7 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   grid-area: sub;
   overflow: visible;
 }
@@ -10521,7 +11374,8 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 body.game #chat .chat-message .message-content .spaceholder-action-journal__toggle--chevron,
 body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__toggle--chevron,
 body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__toggle--chevron {
-  min-width: 22px;
+  width: 20px;
+  min-width: 20px;
 }
 
 .spaceholder-free-action-dialog {
@@ -10583,4 +11437,328 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 }
 .spaceholder-free-action-dialog input.spaceholder-free-action-dialog__input[type=text] {
   height: 32px;
+}
+
+.spaceholder.armor-penetration-tester .window-content,
+.spaceholder.armor-penetration-tester .application,
+.spaceholder.armor-penetration-tester .application-body,
+.spaceholder.armor-penetration-tester [data-application-part=main],
+#spaceholder-armor-penetration-tester .window-content,
+#spaceholder-armor-penetration-tester .application,
+#spaceholder-armor-penetration-tester .application-body,
+#spaceholder-armor-penetration-tester [data-application-part=main] {
+  text-align: left;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester,
+#spaceholder-armor-penetration-tester .sh-armor-tester {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  text-align: left;
+  color: var(--sh-text);
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__header,
+.spaceholder.armor-penetration-tester .sh-armor-tester__toolbar,
+.spaceholder.armor-penetration-tester .sh-armor-tester__summary,
+#spaceholder-armor-penetration-tester .sh-armor-tester__header,
+#spaceholder-armor-penetration-tester .sh-armor-tester__toolbar,
+#spaceholder-armor-penetration-tester .sh-armor-tester__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__tabs,
+.spaceholder.armor-penetration-tester .sh-armor-tester__filters,
+.spaceholder.armor-penetration-tester .sh-armor-tester__material,
+#spaceholder-armor-penetration-tester .sh-armor-tester__tabs,
+#spaceholder-armor-penetration-tester .sh-armor-tester__filters,
+#spaceholder-armor-penetration-tester .sh-armor-tester__material {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__tab,
+.spaceholder.armor-penetration-tester .sh-armor-tester__toolbarBtn,
+#spaceholder-armor-penetration-tester .sh-armor-tester__tab,
+#spaceholder-armor-penetration-tester .sh-armor-tester__toolbarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__tab.is-active,
+#spaceholder-armor-penetration-tester .sh-armor-tester__tab.is-active {
+  font-weight: 700;
+  border-color: rgba(140, 180, 255, 0.75);
+}
+.spaceholder.armor-penetration-tester label,
+#spaceholder-armor-penetration-tester label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--sh-text-muted);
+}
+.spaceholder.armor-penetration-tester input,
+.spaceholder.armor-penetration-tester select,
+#spaceholder-armor-penetration-tester input,
+#spaceholder-armor-penetration-tester select {
+  min-height: 1.8rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__summary,
+#spaceholder-armor-penetration-tester .sh-armor-tester__summary {
+  justify-content: flex-start;
+  color: var(--sh-text-muted);
+  font-size: 0.8rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileList,
+.spaceholder.armor-penetration-tester .sh-armor-tester__armorList,
+.spaceholder.armor-penetration-tester .sh-armor-tester__trace,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileList,
+#spaceholder-armor-penetration-tester .sh-armor-tester__armorList,
+#spaceholder-armor-penetration-tester .sh-armor-tester__trace {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  text-align: left;
+  gap: 0.4rem;
+  min-height: 0;
+  overflow: auto;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectile,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.28fr);
+  align-items: start;
+  justify-items: start;
+  width: 100%;
+  max-width: 100%;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.14);
+  padding: 0.5rem 0.45rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileMain,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileMain {
+  justify-self: stretch;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectile.is-selected,
+.spaceholder.armor-penetration-tester .sh-armor-tester__armorBtn.is-selected,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectile.is-selected,
+#spaceholder-armor-penetration-tester .sh-armor-tester__armorBtn.is-selected {
+  border-color: rgba(140, 180, 255, 0.75);
+  background: rgba(70, 110, 200, 0.2);
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileMain,
+.spaceholder.armor-penetration-tester .sh-armor-tester__armorBtn,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileMain,
+#spaceholder-armor-penetration-tester .sh-armor-tester__armorBtn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileMain img,
+.spaceholder.armor-penetration-tester .sh-armor-tester__armorBtn img,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileMain img,
+#spaceholder-armor-penetration-tester .sh-armor-tester__armorBtn img {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileText,
+.spaceholder.armor-penetration-tester .sh-armor-tester__armorBtn span,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileText,
+#spaceholder-armor-penetration-tester .sh-armor-tester__armorBtn span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileTitleLine,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileTitleLine {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileName,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileName {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sh-text, #e8e8e8);
+  line-height: 1.3;
+  flex: 0 1 auto;
+  max-width: min(50%, 18rem);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileMeta,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileMeta {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--sh-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__armorBtn small,
+#spaceholder-armor-penetration-tester .sh-armor-tester__armorBtn small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sh-text-muted);
+  font-size: 0.78rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileSource,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileSource {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--sh-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__residualLine,
+#spaceholder-armor-penetration-tester .sh-armor-tester__residualLine {
+  font-size: 0.76rem;
+  color: var(--sh-text-muted);
+  font-family: inherit;
+  max-width: 16rem;
+  line-height: 1.25;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileResult,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileResult {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: start;
+  justify-self: end;
+  min-width: 0;
+  text-align: right;
+  gap: 0.15rem;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileResult.is-penetrates strong,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileResult.is-penetrates strong {
+  color: #ff9b8f;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__projectileResult.is-stopped strong,
+#spaceholder-armor-penetration-tester .sh-armor-tester__projectileResult.is-stopped strong {
+  color: #a7e0a2;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__previewGrid,
+#spaceholder-armor-penetration-tester .sh-armor-tester__previewGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.35fr) minmax(420px, 1fr);
+  justify-items: stretch;
+  align-items: start;
+  width: 100%;
+  text-align: left;
+  gap: 0.65rem;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__previewControls,
+.spaceholder.armor-penetration-tester .sh-armor-tester__previewResult,
+#spaceholder-armor-penetration-tester .sh-armor-tester__previewControls,
+#spaceholder-armor-penetration-tester .sh-armor-tester__previewResult {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  gap: 0.55rem;
+  min-height: 0;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 0.55rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__previewResult,
+#spaceholder-armor-penetration-tester .sh-armor-tester__previewResult {
+  overflow: hidden;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__previewResult header,
+#spaceholder-armor-penetration-tester .sh-armor-tester__previewResult header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__coverageNote,
+#spaceholder-armor-penetration-tester .sh-armor-tester__coverageNote {
+  font-size: 0.78rem;
+  color: var(--sh-text-muted);
+  line-height: 1.3;
+  max-width: 100%;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__previewResult h3,
+#spaceholder-armor-penetration-tester .sh-armor-tester__previewResult h3 {
+  margin: 0;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__previewColumns,
+#spaceholder-armor-penetration-tester .sh-armor-tester__previewColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__sectionTitle,
+#spaceholder-armor-penetration-tester .sh-armor-tester__sectionTitle {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--sh-text);
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__miniRow,
+.spaceholder.armor-penetration-tester .sh-armor-tester__traceRow,
+#spaceholder-armor-penetration-tester .sh-armor-tester__miniRow,
+#spaceholder-armor-penetration-tester .sh-armor-tester__traceRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 0.35rem 0.45rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__traceRow,
+#spaceholder-armor-penetration-tester .sh-armor-tester__traceRow {
+  grid-template-columns: 1.1fr 0.8fr 0.9fr 0.7fr 0.7fr 0.7fr;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.76rem;
+}
+.spaceholder.armor-penetration-tester .sh-armor-tester__empty,
+#spaceholder-armor-penetration-tester .sh-armor-tester__empty {
+  color: var(--sh-text-muted);
+  margin: 0.35rem 0;
 }

@@ -40,7 +40,35 @@
       "Actions": "Actions (custom item actions)",
       "Modifiers": "Modifiers (character stats)",
       "Ammo": "Ammo",
+      "Container": "Container (nested inventory)",
       "EmptyTabPlaceholder": "This tab is empty for now."
+    },
+    "ItemContainer": {
+      "Tab": "Container",
+      "OnlyOnActor": "Container contents are available only when this item is on a character.",
+      "WorldModeHint": "World container: stores links (UUIDs) to Items. Drag rows onto a character sheet inventory to move them into that actor (recursive).",
+      "WorldDropHint": "Drag an Item here from the sidebar or compendium (not from a character sheet).",
+      "WorldRefreshHint": "Remove broken UUID links from this list",
+      "WorldPruned": "Removed {n} broken link(s).",
+      "BrokenLink": "(broken link)",
+      "DropEmbeddedNotAllowed": "Cannot link an item that is still on a character. Move it to the world/sidebar first, or drag from compendium.",
+      "MovedFromWorldContainer": "Moved from world container into this character.",
+      "Unlink": "Remove link",
+      "UnlinkConfirm": "Remove this link from the container? The Item itself is not deleted.",
+      "WorldExtractHint": "Drag this row onto a character inventory to move it (world mode).",
+      "CreateInside": "Create a new item inside this container",
+      "NewInside": "New item",
+      "Refresh": "Refresh",
+      "RefreshHint": "Rebuild the ordered list from items on the actor (fixes drift)",
+      "Refreshed": "Container list synchronized.",
+      "Empty": "This container is empty.",
+      "DropHint": "Drag an item from the same character here to store it.",
+      "Extract": "Move to character inventory",
+      "DeleteConfirm": "Delete this item permanently?",
+      "MoveFailed": "Could not place the item in this container.",
+      "DropNotAnItem": "That drop is not an item.",
+      "DropWrongActor": "The item must belong to the same character as this container.",
+      "CycleWarning": "That would create a nested container loop."
     },
     "ItemWeapon": {
       "Inner": {
@@ -48,16 +76,36 @@
         "Ranged": "Ranged",
         "Thrown": "Thrown"
       },
-      "BaseStats": "Base stats",
+      "GroupFeatures": "Features",
+      "GroupProjectile": "Projectile",
+      "GroupUsage": "Usage",
+      "AmmoGroupProjectile": "Projectile",
+      "AmmoGroupResource": "Resource properties",
       "ChannelOptions": "Channel options",
       "ApCost": "AP cost",
       "Accuracy": "Accuracy",
       "Recoil": "Recoil",
+      "Ergonomics": "Ergonomics",
+      "Reach": "Reach",
+      "TwoHanded": "Two-handed",
+      "ParryBonus": "Parry bonus",
+      "SwingSpeedTier": "Swing speed tier",
+      "EffectiveRange": "Effective range",
+      "MaxRange": "Maximum range",
+      "ChamberEnabled": "Has chamber",
+      "ThrowRange": "Throw range",
+      "Aerodynamics": "Aerodynamics",
+      "PrepareApCost": "Prepare AP cost",
+      "ConsumeOnUse": "Consume on use",
+      "Retrievable": "Retrievable",
+      "AoeRadius": "Area of effect (radius)",
+      "CombatPartTag": "Combat part tag",
       "ProjectilesPerUse": "Projectiles per use",
       "Damage": "Damage",
       "DamageType": "Damage type",
       "ArmorPen": "Armor penetration",
       "ArmorDamageFactor": "Armor damage factor",
+      "Hardness": "Projectile hardness",
       "PayloadId": "Payload id",
       "PayloadIdHint": "Payload library id (optional)",
       "RequiresHolding": "Requires holding item",
@@ -73,18 +121,23 @@
       "Default": "Default",
       "Disabled": "Disabled",
       "AttacksEmpty": "No attack variants yet.",
-      "AmmoConfig": "Ammunition / resource",
       "AmmoResourceType": "Resource type",
       "AmmoConsumePerUse": "Consume per use",
-      "AmmoChamberEnabled": "Chamber enabled",
       "AmmoChamberCurrentId": "Chamber current id",
       "AmmoFeedSource": "Feed source",
+      "AmmoUseMode": "Ammo use mode",
+      "AmmoUseModeHint": "attachedContainer, chamber, wornContainers, actorInventory, self",
+      "TakeFromActorInventory": "Fallback to actor inventory",
+      "AttachedContainerId": "Attached container id",
       "AmmoFeedFilterTags": "Feed filter tags",
       "AmmoReloadApCost": "Reload AP cost",
       "AmmoReloadRule": "Reload rule",
       "AmmoKeepChamberOnReload": "Keep round in chamber on reload",
+      "AmmoCaliberTag": "Caliber tag",
+      "AmmoCompatibilityTags": "Compatibility tags",
+      "AmmoStackMax": "Stack maximum",
       "AmmoSideTitle": "Notes",
-      "AmmoSideHint": "Attack variants are defined on the weapon item; this tab stores ammo/resource parameters only.",
+      "AmmoSideHint": "Attack variants are defined on the weapon item; this tab stores ammo projectile and resource parameters only.",
       "AttackName": "Name",
       "AttackOrigin": "Origin",
       "OriginManual": "Manual",
@@ -93,6 +146,9 @@
       "AttackEnabled": "Enabled",
       "AttackIsDefault": "Default attack",
       "ModifiersSection": "Modifiers (add / multiply vs base)",
+      "ModSubFeatures": "Features",
+      "ModSubProjectile": "Projectile",
+      "ModSubUsage": "Usage",
       "ModApCostAdd": "AP cost +",
       "ModAccuracyAdd": "Accuracy +",
       "ModRecoilAdd": "Recoil +",
@@ -101,6 +157,7 @@
       "ModDamageMult": "Damage ×",
       "ModArmorPenAdd": "Armor pen +",
       "ModArmorDamageFactorMult": "Armor damage factor ×",
+      "ModHardnessMult": "Hardness ×",
       "OverridesSection": "Overrides (replace base)",
       "OverridesHint": "Leave fields empty to inherit from base stats.",
       "OvApCost": "AP cost",
@@ -111,6 +168,7 @@
       "OvDamageType": "Damage type",
       "OvArmorPen": "Armor pen",
       "OvArmorDamageFactor": "Armor damage factor",
+      "OvHardness": "Hardness",
       "OvPayloadId": "Payload",
       "OvRequiresReadyState": "Requires ready",
       "OvRequiresAimState": "Requires aim",
@@ -121,17 +179,127 @@
       "OutOfScopeCombat": "These values are for authoring only; combat/shooting integration is not wired yet.",
       "Yes": "Yes",
       "No": "No",
-      "EditBase": "Edit base stats",
+      "EditFeatures": "Edit features",
+      "EditProjectile": "Edit projectile",
+      "EditUsage": "Edit usage",
       "EditChannelOptions": "Edit channel options",
-      "EditAmmo": "Edit ammunition",
-      "DialogBaseTitle": "Weapon — base stats",
+      "EditAmmoProjectile": "Edit projectile",
+      "EditAmmoResource": "Edit resource properties",
+      "DialogFeaturesTitle": "Weapon — features",
+      "DialogProjectileTitle": "Weapon — projectile",
+      "DialogUsageTitle": "Weapon — usage",
       "DialogChannelOptionsTitle": "Weapon — channel options",
-      "DialogAmmoTitle": "Ammunition / resource"
+      "DialogAmmoProjectileTitle": "Ammunition — projectile",
+      "DialogAmmoResourceTitle": "Ammunition — resource properties",
+      "TagsCommaSeparated": "Comma- or newline-separated tags",
+      "NestedStorageTitle": "Nested storage",
+      "NestedStorageEmpty": "No nested items.",
+      "NestedFeedSourcesHint": "Feed source values",
+      "NestedAttached": "attached",
+      "NestedChamber": "chamber",
+      "NestedAddTitle": "Add nested item",
+      "NestedExtract": "Extract to actor",
+      "NestedItemUuid": "Item UUID",
+      "NestedQuantity": "Quantity",
+      "NestedParentPath": "Parent path",
+      "NestedParentPathHint": "Optional: nested id path such as magazineId",
+      "NestedSourceNotFound": "Item not found: {uuid}",
+      "NestedCannotContainSelf": "Item cannot contain itself.",
+      "NestedAddFailed": "Failed to add nested item.",
+      "NestedExtractFailed": "Failed to extract nested item.",
+      "SetAttachedContainer": "Set as attached container",
+      "SetChamberItem": "Set as chamber item"
     },
     "ItemTypes": {
       "Item": "Equipment",
       "Feature": "Feature",
-      "Spell": "Spell"
+      "Spell": "Spell",
+      "Material": "Material"
+    },
+    "Materials": {
+      "Sheet": {
+        "Title": "Material",
+        "MaterialId": "Material id (slug)",
+        "MaterialIdHint": "Stable identifier referenced by armour layers (e.g. \"steel-plate\").",
+        "Category": "Category",
+        "IntegrityPerThickness": "Integrity per thickness",
+        "BreachCapacityPerThickness": "Breach capacity per thickness",
+        "BreachCapacityHint": "Defaults to integrity per thickness when zero.",
+        "WeightPerThickness": "Weight per thickness",
+        "ResistanceTable": "Resistance % per damage type",
+        "WearTable": "Wear susceptibility per damage type",
+        "Hardness": "Material hardness",
+        "HardnessTable": "Material hardness",
+        "HardnessHint": "Scalar material hardness used by the v3 armour rating: hardness × thickness². Resistance rows scale this by damage type.",
+        "ConductanceTable": "Conductance overrides (pass-through, pre-structure)",
+        "ConductanceHint": "Fraction of the incoming hit that passes through as the given type to the next layer, independent of blocking. Leave empty for default. JSON: [{\"type\":\"electric\",\"fraction\":0.9}, …]",
+        "SelfInductionTable": "Self-induction overrides (held → own integrity)",
+        "SelfInductionHint": "When the layer holds this damage type, the listed fractions are converted and damage the layer's own integrity. If integrity runs out, the remainder overflows into the next layer. Leave empty for default. JSON: [{\"type\":\"thermal\",\"fraction\":0.2}, …]",
+        "DegradationTable": "Degradation overrides",
+        "DegradationHint": "Leave empty to inherit the damage-type default."
+      },
+      "Categories": {
+        "Metal": "Metal",
+        "Fabric": "Fabric",
+        "Ceramic": "Ceramic",
+        "Composite": "Composite",
+        "Ablative": "Ablative",
+        "Biological": "Biological",
+        "Exotic": "Exotic"
+      },
+      "SteelPlate": {
+        "Label": "Steel plate",
+        "Description": "Hardened steel armour plate. Solid all-rounder against ballistics and impacts; vulnerable to thermal and chemical attack."
+      },
+      "Kevlar": {
+        "Label": "Kevlar weave",
+        "Description": "Aramid fibre weave. Stops bullets but slowly accumulates breach holes."
+      },
+      "Foam": {
+        "Label": "Impact foam",
+        "Description": "Soft cushioning layer. Eats up residual blunt impulses without breaking down quickly."
+      },
+      "Ablative": {
+        "Label": "Ablative film",
+        "Description": "Sacrificial heat-shielding film. Dumps thermal/laser energy but is consumed quickly."
+      },
+      "Skin": {
+        "Label": "Skin",
+        "Description": "Living dermis. Thin and fragile; offers almost no protection on its own, but absorbs a small share of thermal before burning through."
+      },
+      "Muscle": {
+        "Label": "Muscle",
+        "Description": "Soft tissue bulk. Moderate resistance to blunt and piercing impulses; partially redistributes damage past itself when torn."
+      },
+      "Bone": {
+        "Label": "Bone",
+        "Description": "Skeletal structure. Holds against narrow piercing/cutting loads until cracked; when held, hands much of the impulse to surrounding tissue."
+      }
+    },
+    "DamageTypes": {
+      "Categories": {
+        "Mechanical": "Mechanical",
+        "Energetic": "Energetic",
+        "Niche": "Niche"
+      },
+      "Ballistic":   { "Label": "Ballistic",   "Description": "High-velocity concentrated projectile (bullets, slugs)." },
+      "Concussive":  { "Label": "Concussive",  "Description": "Massive low-velocity impulse / blunt impact / shockwave." },
+      "Piercing":    { "Label": "Piercing",    "Description": "Slow point-load — spikes, picks, narrow blades on the thrust." },
+      "Cutting":     { "Label": "Cutting",     "Description": "Pressure along an edge — blades, claws, large fragments." },
+      "Thermal":     { "Label": "Thermal",     "Description": "Direct heat — flame, thermite, super-hot gases." },
+      "Laser":       { "Label": "Laser",       "Description": "Coherent EM beam, absorbed as concentrated heat." },
+      "Plasma":      { "Label": "Plasma",      "Description": "Hot ionized matter — kinetic, thermal and weakly electric." },
+      "Electric":    { "Label": "Electric",    "Description": "Current or induced EMF — short-circuits and arcs through dielectrics." },
+      "Sonic":       { "Label": "Sonic",       "Description": "Acoustic wave — impedance mismatch reflects most of it." },
+      "Radiation":   { "Label": "Radiation",   "Description": "Ionising radiation — poorly stopped by thin layers." },
+      "Chemical":    { "Label": "Chemical",    "Description": "Corrosives and reagents — mostly eats armour rather than transferring damage." }
+    },
+    "Degradation": {
+      "Reduction":    "Reduction (R × s)",
+      "Distribution": "Distribution (split by s)",
+      "Chance":       "Chance (breach roll)",
+      "Bypass":       "Bypass (any wear → ignored)",
+      "Bastion":      "Bastion (full R until destroyed)"
     },
     "Placeholder": {
       "Name": "Name"
@@ -441,7 +609,8 @@
         "AimingStartFailed": "Could not start aiming mode"
       },
       "AimShot": {
-        "HitApplied": "{shooter} hits {target} in {part} for {damage} damage"
+        "HitApplied": "{shooter} hits {target} in {part} for {damage} damage",
+        "DebugNoCoreWound": "no core wound (all energy spent in layers)"
       }
     },
     "ActionChatJournal": {
@@ -475,6 +644,9 @@
       "ForceMove": "Forced movement",
       "ForceMoveToggleOn": "Forced movement — does not spend AP",
       "ForceMoveToggleOff": "Cancel forced — restore AP cost",
+      "MoveGroupSummary": "{count} moves",
+      "ExpandTable": "Expand action table",
+      "CollapseTable": "Collapse action table",
       "SideNow": "Acting now",
       "SideNext": "Next",
       "IndicatorActive": "Active",
@@ -529,6 +701,64 @@
       },
       "Errors": {
         "InvalidInput": "Select a body part and enter valid damage."
+      },
+      "DamageNouns": {
+        "Ballistic": "Gunshot wound",
+        "Piercing": "Puncture wound",
+        "Cutting": "Cut wound",
+        "Concussive": "Bruise",
+        "Thermal": "Burn",
+        "Laser": "Laser burn",
+        "Plasma": "Plasma burn",
+        "Electric": "Electrical burn",
+        "Sonic": "Acoustic trauma",
+        "Radiation": "Radiation burn",
+        "Chemical": "Chemical burn",
+        "Unknown": "Injury"
+      },
+      "Prep": {
+        "In": "in",
+        "On": "on"
+      },
+      "BleedStates": {
+        "Bleeding": "bleeding",
+        "Clotting": "clotting",
+        "Dry": "dry",
+        "Healed": "healed",
+        "Cauterized": "cauterised",
+        "Corrosive": "corroding",
+        "None": ""
+      },
+      "WoundStates": {
+        "Open": "open",
+        "Closing": "closing",
+        "Scarring": "scarring over",
+        "Faded": "barely noticeable",
+        "RadFresh": "fresh burn",
+        "RadPeeling": "peeling",
+        "RadHealing": "healing",
+        "Aching": "severely aching",
+        "Sore": "sore",
+        "DullAche": "dull ache",
+        "Damage": "damaged",
+        "Misaligned": "misaligned",
+        "Patched": "patched",
+        "Repaired": "repaired",
+        "None": ""
+      },
+      "StatusPrefix": {
+        "Raw": "raw",
+        "Treated": "treated"
+      },
+      "SourceVerbs": {
+        "Fire": "shoots with",
+        "Strike": "strikes",
+        "Burn": "burns",
+        "Expose": "exposes to"
+      },
+      "SourceConnectors": {
+        "WithAmmo": "using",
+        "Standalone": "with"
       }
     },
     "Resources": {
@@ -553,27 +783,32 @@
     },
     "Wearable": {
       "TypeName": "Wearable",
-      "AnatomyGroup": "Anatomy group",
       "BodyPart": "Body part",
       "ArmorValue": "Armor",
       "ArmorByPartSection": "Armor by body part",
       "Equipped": "Equipped",
       "EquipToggleTooltip": "Toggle equip",
       "ModifiersSection": "Character modifiers",
-      "NoGroupSelected": "No anatomy group selected",
-      "SelectAnatomyGroup": "Select anatomy group",
       "ForAnatomy": "For",
       "Anatomy": "Anatomy",
       "SelectAnatomy": "Select anatomy",
       "NoAnatomySelected": "Not selected",
-      "NoBodyPartsForGroup": "No body parts available for selected group",
       "CoverageEditMode": "Coverage edit mode",
       "CoverageEditModeHint": "Click the edit button above to select body parts and set armor.",
       "SelectAnatomyFirst": "Select an anatomy first.",
       "CoverageList": "Coverage & armor",
       "CoverageEmpty": "No parts selected. Enable edit mode and click body parts on the left.",
       "CoverageNoParts": "No body parts selected",
-      "AnatomyNotLoaded": "Anatomy not loaded"
+      "AnatomyNotLoaded": "Anatomy not loaded",
+      "Layers": {
+        "Title": "Armor layers",
+        "Add": "Add layer",
+        "Material": "Material",
+        "Thickness": "Thickness",
+        "Integrity": "Integrity",
+        "BreachLoss": "Breach loss",
+        "Empty": "No layers defined."
+      }
     },
     "Modifiers": {
       "Abilities": "Core abilities",
@@ -662,8 +897,8 @@
         "Title": "Aiming Setup"
       },
       "AimingArcHoverTool": {
-        "Title": "Show aiming arc on hover",
-        "Hint": "Display aiming arc zones when hovering a token"
+        "Title": "Show aiming arc",
+        "Hint": "Display aiming arc zones on the selected token(s) and on hover. When disabled, the arc is still shown on selected tokens that are part of an active combat."
       },
       "InfluenceTool": {
         "Title": "Show Influence"
@@ -680,11 +915,16 @@
     },
     "AimingArc": {
       "PanelTitle": "Aiming Arc",
-      "PanelHint": "Half-angles per side from token facing (degrees).",
+      "PanelHint": "Zones use weights; zone widths are computed proportionally from total arc size.",
       "DialogTitle": "Edit aiming arc",
       "EditButton": "Edit",
       "ApplyButton": "Apply",
+      "PurpleArc": "Purple zone (deg)",
+      "TotalArc": "Total arc size (deg)",
+      "DeadZone": "Dead zone (deg)",
       "BaseDeviation": "Base deviation (deg)",
+      "PurpleArcHint": "Purple zone is configured separately and is not included in total arc size for standard zones.",
+      "WeightsHint": "Standard zone weights (green→red): weight ratios define actual zone sizes.",
       "DeviationHint": "Standard aiming applies x1/x2/x4 to yellow/orange/red zones.",
       "Zones": {
         "Purple": "Purple zone (bonus)",
@@ -699,7 +939,12 @@
         "Title": "Aiming Setup",
         "SelectPayload": "Select payload:",
         "AimingType": "Aiming type:",
-        "AutoRender": "Auto-render"
+        "AutoRender": "Auto-render",
+        "SelectWeapon": "Weapon:",
+        "NoWeapon": "— no weapon —",
+        "UseAmmo": "Use ammunition (debug)",
+        "SelectAmmo": "Ammunition:",
+        "NoAmmo": "— no ammunition in inventory —"
       },
       "AimingType": {
         "Simple": "Simple",
@@ -712,7 +957,11 @@
       "Messages": {
         "TokenNotSelected": "Token not selected",
         "AimingActivated": "Aiming mode activated. LMB - shoot, RMB/ESC - cancel",
-        "StandardShotInfo": "Standard aiming: zone {zone}, deviation {deviation} deg"
+        "StandardShotInfo": "Standard aiming: zone {zone}, deviation {deviation} deg",
+        "WeaponNotFound": "Weapon not found: {uuid}",
+        "NoAmmoForWeapon": "{weapon}: no ammunition ({reason})",
+        "PayloadNotFound": "Payload not found: {payload}",
+        "ProjectileShotResolved": "{shooter} fires {weapon} ({ammo}); impacts: {hits}"
       },
       "Errors": {
         "PayloadManifestLoad": "Error loading payloads manifest:",
@@ -1384,6 +1633,102 @@
           "InfluenceJournal": "Influence journal",
           "OpenInfluenceJournal": "Open influence journal"
         }
+      }
+    },
+    "ArmorTester": {
+      "Tabs": {
+        "Projectiles": "Projectiles vs material",
+        "ArmorPreview": "Armor item preview"
+      },
+      "Actions": {
+        "Refresh": "Refresh"
+      },
+      "Filters": {
+        "Search": "Search",
+        "SearchPlaceholder": "Name, caliber, tag",
+        "DamageType": "Damage type",
+        "AllTypes": "All types",
+        "Sort": "Sort",
+        "Source": "Item source",
+        "AllSources": "All (packs + world)",
+        "CompendiumOnly": "Built-in compendium (sh-test-items)",
+        "WorldOnly": "World items only"
+      },
+      "Sort": {
+        "Name": "Name",
+        "Damage": "Damage",
+        "ArmorPen": "Armor penetration",
+        "Hardness": "Hardness",
+        "Energy": "Energy",
+        "StopThickness": "Stop thickness"
+      },
+      "Material": {
+        "Material": "Material",
+        "Mode": "Mode",
+        "Thickness": "Thickness"
+      },
+      "Modes": {
+        "Stop": "Stop",
+        "Check": "Check"
+      },
+      "Units": {
+        "Mm": "mm"
+      },
+      "Summary": {
+        "Projectiles": "Projectiles",
+        "Material": "Material"
+      },
+      "Projectile": {
+        "Caliber": "Caliber",
+        "ItemSource": "Item source"
+      },
+      "Results": {
+        "Penetrates": "Penetrates",
+        "Stopped": "Stopped",
+        "Residual": "Residual",
+        "ThroughPlateTotal": "Through-plate total",
+        "ResidualTitle": "For “Check” mode: if the slab at the set thickness is penetrated, this is the v3 total damage that would get through the plate, summed over all application rows. Not shown in “Stop” mode."
+      },
+      "Source": {
+        "Pack": "Pack",
+        "World": "World"
+      },
+      "Preview": {
+        "Projectile": "Projectile",
+        "ArmorItem": "Armor item",
+        "Actor": "Actor/anatomy",
+        "UseArmorAnatomy": "Use armor anatomy",
+        "CoverageNote": "Hit location is limited to body areas covered by the selected item (synthetic one-part pass; no anatomy preset).",
+        "NoCoveredParts": "No covered areas with layers",
+        "NoCoveredPartsDetail": "This armor has no covered body areas with at least one material layer, so nothing can be previewed.",
+        "BodyPart": "Body part",
+        "Direction": "Direction",
+        "Result": "Preview result",
+        "Anatomy": "Anatomy",
+        "Layers": "layers",
+        "BodyDamage": "Body damage",
+        "Path": "Path",
+        "Trace": "Trace",
+        "NoBodyDamage": "No body damage reaches the body part.",
+        "NoPath": "No traversal path.",
+        "NoTrace": "No trace events.",
+        "SelectInputs": "Select a projectile, armor item, and body part."
+      },
+      "Directions": {
+        "front": "Front",
+        "back": "Back",
+        "left": "Left",
+        "right": "Right",
+        "top": "Top",
+        "bottom": "Bottom"
+      },
+      "Empty": {
+        "Projectiles": "No ammo projectiles found.",
+        "Armors": "No armor items found."
+      },
+      "Messages": {
+        "GmOnly": "Only the GM can open the armor tester.",
+        "OpenFailed": "Failed to open the armor tester."
       }
     },
     "ItemPilesSh": {

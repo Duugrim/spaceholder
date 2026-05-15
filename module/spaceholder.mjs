@@ -3,12 +3,15 @@ import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
 // Import sheet classes (Application V2)
 import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderLootSheet, SpaceHolderGlobalObjectSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
-import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic } from './sheets/item-sheet.mjs';
+import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic, SpaceHolderItemSheet_Material } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
 import { SPACEHOLDER } from './helpers/config.mjs';
 // Import anatomy manager
 import { anatomyManager } from './anatomy-manager.mjs';
+// Damage / armour system
+import { materialsManager, ensureLayerDefaults } from './helpers/damage/materials-manager.mjs';
+import { openArmorPenetrationTesterApp } from './helpers/damage/armor-penetration-tester-app.mjs';
 import { WearableCoverageEditor } from './helpers/wearable-coverage-editor.mjs';
 // Token pointer integration
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
@@ -80,12 +83,22 @@ import { CombatSessionManager } from './helpers/combat/combat-session-manager.mj
 import { installTurnPickOverlay } from './helpers/combat/turn-pick-overlay.mjs';
 import { registerItemPilesShSettings, initializeItemPilesSh } from './helpers/item-piles-sh/index.mjs';
 import { ITEM_PILES_SH } from './helpers/item-piles-sh/constants.mjs';
+import { registerSpaceholderActiveEffectModels } from './helpers/register-active-effect-models.mjs';
+import {
+  addItemToNestedStorage,
+  extractNestedItemToActor,
+  getNestedStorage,
+  normalizeNestedStorage,
+  resolveAndConsumeRangedAmmoForShot,
+} from './helpers/item-nested-storage.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
 /* -------------------------------------------- */
 
 Hooks.once('init', function () {
+  registerSpaceholderActiveEffectModels();
+
   // Register SpaceHolder settings and menus early
   registerIconLibrarySettings();
   registerIconLibraryMigrationSettings();
@@ -117,6 +130,8 @@ Hooks.once('init', function () {
     SpaceHolderItem,
     rollItemMacro,
     anatomyManager,
+    materialsManager,
+    openArmorPenetrationTester: openArmorPenetrationTesterApp,
     openJournalUpdateLogApp,
     openProgressionPointsApp,
     openTimelineV2App,
@@ -147,6 +162,13 @@ Hooks.once('init', function () {
     undoTransaction: (opts = {}) => undoTransaction(opts),
     getStoredActionPoints: (actor) => getStoredActionPoints(actor),
     ensureCharacterApSynced: (actor) => ensureCharacterApSynced(actor),
+    nestedItemStorage: {
+      addItemToNestedStorage,
+      extractNestedItemToActor,
+      getNestedStorage,
+      normalizeNestedStorage,
+      resolveAndConsumeRangedAmmoForShot,
+    },
     setCombatantSide: (args = {}) => game.spaceholder.combatSessionManager?.setCombatantSide?.(args),
     endCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.endTurn?.(args),
     pickCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.pickTurn?.(args),
@@ -308,6 +330,11 @@ Hooks.once('init', function () {
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.Item',
   });
+  foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Material, {
+    types: ['material'],
+    makeDefault: true,
+    label: 'SPACEHOLDER.SheetLabels.Item',
+  });
   // Generic fallback for any other item types
   foundry.documents.collections.Items.registerSheet('spaceholder', SpaceHolderItemSheet_Generic, {
     makeDefault: false,
@@ -361,7 +388,7 @@ Hooks.once('init', function () {
           coveredParts.map((c) => {
             const slotRef = String(c.slotRef ?? c.partId ?? "").trim();
             if (!slotRef) return null;
-            return [slotRef, { value: Number(c?.value) || 0 }];
+            return [slotRef, {}];
           }).filter(Boolean)
         );
         const showOnlyCovered = !doc.flags?.spaceholder?.wearableCoverageEditMode;
@@ -370,10 +397,18 @@ Hooks.once('init', function () {
           armorByPart,
           showOnlyCovered,
           onChange: showOnlyCovered ? undefined : async (next) => {
-            const nextCoveredParts = Object.entries(next).map(([slotRef, data]) => ({
-              slotRef,
-              value: Number(data?.value) || 0
-            }));
+            // Preserve any existing per-part data (e.g. layers) when toggling coverage.
+            const prev = Array.isArray(doc.system?.coveredParts) ? doc.system.coveredParts : [];
+            const prevBySlot = new Map();
+            for (const c of prev) {
+              const ref = String(c?.slotRef ?? c?.partId ?? '').trim();
+              if (ref) prevBySlot.set(ref, c);
+            }
+            const nextCoveredParts = Object.keys(next).map((slotRef) => {
+              const existing = prevBySlot.get(slotRef);
+              if (existing) return { ...existing, slotRef };
+              return { slotRef, layers: [] };
+            });
             const keepAnatomyId = doc.system?.anatomyId ?? null;
             // Item DataModel: обновление только coveredParts может сбросить anatomyId — явно сохраняем.
             await doc.update({
@@ -389,7 +424,7 @@ Hooks.once('init', function () {
 
     // Правая колонка: редактирование и удаление покрытия
     if (app.isEditable) {
-      element.querySelectorAll('[data-action="wearable-coverage-edit"]').forEach((el) => {
+      element.querySelectorAll('[data-action="wearable-coverage-layers"]').forEach((el) => {
         if (el.dataset.spaceholderBound) return;
         el.dataset.spaceholderBound = '1';
         el.addEventListener('click', (e) => {
@@ -397,9 +432,10 @@ Hooks.once('init', function () {
           const slotRef = e.currentTarget.dataset?.partId;
           const partName = e.currentTarget.dataset?.partName || slotRef;
           if (!slotRef) return;
-          openWearableCoverageEditDialog(doc, slotRef, partName).then(() => renderAndStayOnCoverage());
+          openWearableLayersDialog(doc, slotRef, partName).then(() => renderAndStayOnCoverage());
         });
       });
+
       element.querySelectorAll('[data-action="wearable-coverage-remove"]').forEach((el) => {
         if (el.dataset.spaceholderBound) return;
         el.dataset.spaceholderBound = '1';
@@ -561,69 +597,217 @@ async function openWearableAnatomyDialog(item) {
 }
 
 /**
- * Диалог редактирования значения защиты для одной части тела (предмет Wearable).
- * @param {Item} item - документ предмета типа item (gear)
- * @param {string} partRef - slotRef части тела (или legacy partId)
- * @param {string} [partName] - отображаемое имя части
+ * Диалог редактирования слоёв брони для конкретной покрытой части тела.
+ * Слои хранятся в `system.coveredParts[i].layers`.
+ *
+ * @param {Item} item
+ * @param {string} partRef - slotRef части тела
+ * @param {string} [partName]
  */
-async function openWearableCoverageEditDialog(item, partRef, partName) {
+async function openWearableLayersDialog(item, partRef, partName) {
   if (!item || item.type !== 'item' || !partRef) return;
   if (!item.system?.itemTags?.isArmor) return;
   const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
-  const entry = coveredParts.find((c) => {
-    const ref = String(c.slotRef ?? c.partId ?? "").trim();
+  const idx = coveredParts.findIndex((c) => {
+    const ref = String(c?.slotRef ?? c?.partId ?? '').trim();
     return ref && ref === partRef;
   });
-  const current = entry ? (Number(entry.value) || 0) : 0;
-  const displayName = (partName || partRef).replace(/</g, '&lt;');
+  if (idx < 0) return;
 
   const L = (key) => game.i18n.localize(key);
-  const labelValue = L('SPACEHOLDER.Wearable.ArmorValue');
-  const content = `
-    <div class="wearable-coverage-edit-dialog">
-      <p><strong>${displayName}</strong></p>
-      <div class="form-group">
-        <label>${labelValue.replace(/</g, '&lt;')}</label>
-        <input type="number" id="wearable-coverage-value" value="${current}" min="0" step="1" style="width:100%;"/>
+  const fmt = (n) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '';
+    return String(Math.round(v * 100) / 100);
+  };
+
+  // working copy of layers; mutated only on save
+  let workLayers = (Array.isArray(coveredParts[idx]?.layers) ? coveredParts[idx].layers : [])
+    .map((l) => ensureLayerDefaults(l, materialsManager.getMaterial(l?.material)));
+
+  const knownIds = new Set(materialsManager.listMaterialIds());
+  for (const l of workLayers) {
+    const id = String(l?.material ?? '').trim();
+    if (id) knownIds.add(id);
+  }
+  const materialOptions = Array.from(knownIds).sort().map((id) => {
+    const md = materialsManager.getMaterial(id);
+    const localized = md.nameLocalized ? game.i18n?.localize?.(md.nameLocalized) : '';
+    const label = (localized && localized !== md.nameLocalized) ? localized : (md.name || id);
+    return { id, label };
+  });
+  if (!materialOptions.length) materialOptions.push({ id: '', label: '—' });
+
+  const renderRows = () => {
+    if (!workLayers.length) {
+      return `<p class="hint"><em>${L('SPACEHOLDER.Wearable.Layers.Empty')}</em></p>`;
+    }
+    const rows = workLayers.map((layer, i) => {
+      const opts = materialOptions
+        .map((o) => `<option value="${o.id}" ${o.id === layer.material ? 'selected' : ''}>${foundry.utils.escapeHTML(o.label)}</option>`)
+        .join('');
+      return `
+        <tr data-layer-index="${i}">
+          <td>${i + 1}</td>
+          <td><select data-layer-field="material" data-layer-index="${i}">${opts}</select></td>
+          <td><input type="number" step="any" min="0" data-layer-field="thickness" data-layer-index="${i}" value="${fmt(layer.thickness)}" style="width:5em;"/></td>
+          <td>
+            <input type="number" step="any" min="0" data-layer-field="integrity" data-layer-index="${i}" value="${fmt(layer.integrity)}" style="width:5em;"/>
+            <span class="sh-wearable-layer-max">/ ${fmt(layer.integrityMax)}</span>
+          </td>
+          <td>
+            <input type="number" step="any" min="0" data-layer-field="breachLoss" data-layer-index="${i}" value="${fmt(layer.breachLoss)}" style="width:5em;"/>
+            <span class="sh-wearable-layer-max">/ ${fmt(layer.breachCapacity)}</span>
+          </td>
+          <td><button type="button" class="icon-btn" data-action="sh-wearable-layer-remove" data-layer-index="${i}" title="${L('SPACEHOLDER.Actions.Delete')}"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+    }).join('');
+    return `
+      <table class="sh-wearable-layers-table">
+        <thead><tr>
+          <th>#</th>
+          <th>${L('SPACEHOLDER.Wearable.Layers.Material')}</th>
+          <th>${L('SPACEHOLDER.Wearable.Layers.Thickness')}</th>
+          <th>${L('SPACEHOLDER.Wearable.Layers.Integrity')}</th>
+          <th>${L('SPACEHOLDER.Wearable.Layers.BreachLoss')}</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  };
+
+  const dialogUid = `wlay-${foundry.utils.randomID(8)}`;
+
+  const buildContent = () => `
+    <div class="sh-wearable-layers" data-sh-wearable-layers-dialog="${dialogUid}" data-part-id="${foundry.utils.escapeHTML(partRef)}">
+      <p><strong>${foundry.utils.escapeHTML(partName || partRef)}</strong></p>
+      <div class="sh-wearable-layers-header" style="margin-bottom: 6px;">
+        <button type="button" class="icon-btn" data-action="sh-wearable-layer-add" title="${L('SPACEHOLDER.Wearable.Layers.Add')}">
+          <i class="fas fa-plus"></i> ${L('SPACEHOLDER.Wearable.Layers.Add')}
+        </button>
       </div>
-    </div>
-  `;
+      <div data-layers-list>${renderRows()}</div>
+    </div>`;
+
+  const findRoot = () => (typeof document !== 'undefined'
+    ? document.querySelector(`[data-sh-wearable-layers-dialog="${dialogUid}"]`)
+    : null);
+
+  const refresh = (root) => {
+    const list = root?.querySelector('[data-layers-list]');
+    if (!list) return;
+    list.innerHTML = renderRows();
+    bindRowControls(root);
+  };
+
+  const captureRowEdits = (root) => {
+    if (!root) return;
+    root.querySelectorAll('[data-layer-field]').forEach((el) => {
+      const i = Number(el.dataset.layerIndex);
+      if (!Number.isFinite(i) || !workLayers[i]) return;
+      const field = el.dataset.layerField;
+      if (field === 'material') {
+        workLayers[i].material = String(el.value || '').trim();
+      } else {
+        const v = Number(el.value);
+        workLayers[i][field] = Number.isFinite(v) && v >= 0 ? v : 0;
+      }
+    });
+  };
+
+  const bindRowControls = (root) => {
+    if (!root) return;
+    root.querySelectorAll('[data-action="sh-wearable-layer-remove"]').forEach((btn) => {
+      if (btn.dataset.shBound) return;
+      btn.dataset.shBound = '1';
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        captureRowEdits(root);
+        const i = Number(ev.currentTarget.dataset.layerIndex);
+        if (!Number.isFinite(i)) return;
+        workLayers.splice(i, 1);
+        refresh(root);
+      });
+    });
+    root.querySelectorAll('select[data-layer-field="material"]').forEach((sel) => {
+      if (sel.dataset.shBound) return;
+      sel.dataset.shBound = '1';
+      sel.addEventListener('change', (ev) => {
+        const i = Number(ev.currentTarget.dataset.layerIndex);
+        if (!Number.isFinite(i) || !workLayers[i]) return;
+        workLayers[i].material = String(ev.currentTarget.value || '').trim();
+        const md = materialsManager.getMaterial(workLayers[i].material);
+        workLayers[i] = ensureLayerDefaults({
+          material: workLayers[i].material,
+          thickness: workLayers[i].thickness
+        }, md);
+        refresh(root);
+      });
+    });
+  };
+
+  const bindAdd = (root) => {
+    if (!root) return false;
+    const addBtn = root.querySelector('[data-action="sh-wearable-layer-add"]');
+    if (!addBtn || addBtn.dataset.shBound) return !!addBtn;
+    addBtn.dataset.shBound = '1';
+    addBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      captureRowEdits(root);
+      const defaultMaterialId = materialsManager.listMaterialIds()[0] ?? '';
+      const md = materialsManager.getMaterial(defaultMaterialId);
+      workLayers.push(ensureLayerDefaults({ material: defaultMaterialId, thickness: 1 }, md));
+      refresh(root);
+    });
+    return true;
+  };
+
+  // poll for the dialog DOM, then bind
+  const bindTimer = globalThis.setInterval?.(() => {
+    const root = findRoot();
+    if (root && bindAdd(root)) {
+      bindRowControls(root);
+      globalThis.clearInterval?.(bindTimer);
+    }
+  }, 40);
+  globalThis.setTimeout?.(() => globalThis.clearInterval?.(bindTimer), 2500);
 
   await foundry.applications.api.DialogV2.wait({
     classes: ['spaceholder'],
-    window: { title: L('SPACEHOLDER.Actions.Edit'), icon: 'fa-solid fa-shield-alt' },
-    position: { width: 280 },
-    content,
+    window: { title: L('SPACEHOLDER.Wearable.Layers.Title'), icon: 'fa-solid fa-layer-group' },
+    position: { width: 600 },
+    content: buildContent(),
     buttons: [
       {
         action: 'save',
         label: L('SPACEHOLDER.Actions.Save'),
         icon: 'fa-solid fa-check',
         default: true,
-        callback: async (dlgEvent) => {
-          const root = dlgEvent.currentTarget;
-          const raw = root.querySelector('#wearable-coverage-value')?.value;
-          const value = Math.max(0, parseInt(raw, 10) || 0);
+        callback: async () => {
+          const root = findRoot();
+          captureRowEdits(root);
           const prev = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
-          const idx = prev.findIndex((c) => {
-            const ref = String(c.slotRef ?? c.partId ?? "").trim();
-            return ref && ref === partRef;
-          });
-          const nextEntry = { slotRef: partRef, value };
-          const nextCoveredParts =
-            idx >= 0
-              ? prev.map((c, i) => (i === idx ? nextEntry : c))
-              : [...prev, nextEntry];
+          const nextCoveredParts = foundry.utils.deepClone(prev);
+          if (!nextCoveredParts[idx]) return;
+          nextCoveredParts[idx].layers = workLayers.map((l) => ({
+            material: l.material,
+            thickness: l.thickness,
+            integrity: l.integrity,
+            integrityMax: l.integrityMax,
+            breachLoss: l.breachLoss,
+            breachCapacity: l.breachCapacity
+          }));
           const keepAid = item.system?.anatomyId ?? null;
           await item.update({
             'system.coveredParts': nextCoveredParts,
-            'system.anatomyId': keepAid,
+            'system.anatomyId': keepAid
           });
         }
       },
       { action: 'cancel', label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' }
     ]
   });
+  globalThis.clearInterval?.(bindTimer);
 }
 
 async function loadWearableReferenceAnatomy(preferredAnatomyId) {
@@ -711,6 +895,36 @@ Hooks.once('ready', async function () {
   } catch (error) {
     console.error('SpaceHolder | Failed to initialize anatomy system:', error);
     ui.notifications.error('Failed to initialize anatomy system. Check console for details.');
+  }
+
+  // Initialize materials manager (compendium packs + world items)
+  try {
+    await materialsManager.initialize();
+    const count = materialsManager.listMaterialIds().length;
+    console.log(`SpaceHolder | Materials manager initialized (${count} entries).`);
+    if (!count) {
+      console.warn('SpaceHolder | Materials manager: no `material` items found in packs or world. '
+        + 'Wearable layers and body tissue stacks will resolve to empty materials. '
+        + 'Make sure the system compendium `sh-test-items` is installed.');
+    }
+  } catch (error) {
+    console.error('SpaceHolder | Failed to initialize materials manager:', error);
+  }
+  const _scheduleMaterialsRefresh = (() => {
+    let pending = false;
+    return () => {
+      if (pending) return;
+      pending = true;
+      setTimeout(async () => {
+        pending = false;
+        try { await materialsManager.initialize(); } catch (e) { console.error(e); }
+      }, 100);
+    };
+  })();
+  for (const event of ['createItem', 'updateItem', 'deleteItem']) {
+    Hooks.on(event, (doc) => {
+      if (doc?.type === 'material') _scheduleMaterialsRefresh();
+    });
   }
   
   // Initialize aiming system - OLD SYSTEM DISABLED

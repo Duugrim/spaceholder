@@ -1,0 +1,73 @@
+{
+  "name": "Толстая куртка",
+  "type": "item",
+  "_id": "shtestjacket00000",
+  "img": "systems/spaceholder/assets/icons/armor.svg/leather-armor.svg",
+  "system": {
+    "description": "<p>Плотная верхняя одежда (кожанка / бушлат / плотный плащ). Не броня, но и не футболка. Пуля или стрела проходят, немного теряя по дороге; контузионную часть удара почти не гасит. Кевларовый жилет заметно опережает её по защите. Покрывает грудь, живот и спину.</p><ul><li>cloth-heavy 2 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 2.5,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "cloth-heavy", "thickness": 2 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "cloth-heavy", "thickness": 2 }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          { "material": "cloth-heavy", "thickness": 2 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 515000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800111,
+    "modifiedTime": 1776279800111,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestjacket00000"
+}

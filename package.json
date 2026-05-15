@@ -7,7 +7,11 @@
     "watch": "sass src/scss/spaceholder.scss css/spaceholder.css --style=expanded --source-map --watch",
     "pack:sh-test-items": "node scripts/compile-sh-test-items.mjs --in-place",
     "pack:sh-test-items:next": "node scripts/compile-sh-test-items.mjs",
-    "unpack:sh-test-items": "npx --yes @foundryvtt/foundryvtt-cli package unpack -n sh-test-items --inputDirectory ./packs --outputDirectory ./pack-src/sh-test-items -c"
+    "unpack:sh-test-items": "npx --yes @foundryvtt/foundryvtt-cli package unpack -n sh-test-items --inputDirectory ./packs --outputDirectory ./pack-src/sh-test-items -c",
+    "generate:sh-test-actors": "node scripts/generate-sh-test-actors.mjs",
+    "pack:sh-test-actors": "node scripts/compile-sh-test-actors.mjs --in-place",
+    "pack:sh-test-actors:next": "node scripts/compile-sh-test-actors.mjs",
+    "unpack:sh-test-actors": "npx --yes @foundryvtt/foundryvtt-cli package unpack -n sh-test-actors --inputDirectory ./packs --outputDirectory ./pack-src/sh-test-actors -c"
   },
   "browserslist": [
     "last 3 versions"

@@ -10,11 +10,16 @@
     <div class="injuries-list">
       {{#if injuriesList}}
         {{#each injuriesList as |inj|}}
-          <div class="injury-card" data-injury-id="{{inj.id}}">
+          <div class="injury-card" data-injury-id="{{inj.id}}" data-injury-type="{{inj.type}}" data-injury-status="{{inj.status}}">
             <div class="injury-main">
-              <span class="injury-line">
-                {{inj.partName}}, {{inj.amountDisplay}}{{#if inj.type}}, {{inj.type}}{{/if}}{{#if inj.status}}, {{inj.status}}{{/if}}{{#if inj.source}}, {{inj.source}}{{/if}}
-              </span>
+              {{#if inj.hasDescription}}
+                {{> "systems/spaceholder/templates/actor/parts/injury/injury-description.hbs" segments=inj.segments tooltipSegments=inj.tooltipSegments}}
+              {{else}}
+                <span class="injury-line injury-line-fallback">
+                  {{inj.partName}}, {{inj.amountDisplay}}{{#if inj.type}}, {{inj.type}}{{/if}}
+                </span>
+              {{/if}}
+              <span class="injury-amount-badge" title="{{localize 'SPACEHOLDER.Injuries.Fields.Damage'}}">{{inj.amountDisplay}}</span>
               {{#if inj.createdAtText}}
                 <i class="fas fa-clock injury-when" title="{{inj.createdAtText}}"></i>
               {{/if}}

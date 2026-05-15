@@ -2,6 +2,13 @@ import { ITEM_PILES_SH, getPileFlagPath } from './constants.mjs';
 import { executeItemPilesShAsGm } from './socket-adapter.mjs';
 import { getUserFactionUuids, normalizeUuid } from '../user-factions.mjs';
 import {
+  getActorItemIdsInContainer,
+  orderedContainerDescendants,
+  normalizeItemContainerFields,
+  remapActorContainerContentsEntries,
+  releaseDirectContainerChildrenToRoot,
+} from '../item-container.mjs';
+import {
   computeFingerprintForPendingItem,
   computeItemStackFingerprint,
   getCachedStackFingerprint,
@@ -369,22 +376,150 @@ function _registerItemStackFingerprintHooks() {
   });
 }
 
-async function _addItemToPileActor(actor, itemData, quantity) {
+/**
+ * @param {Actor} actor
+ * @param {object} itemData
+ * @param {number} quantity
+ * @param {{ allowStackMerge?: boolean }} [opts]
+ * @returns {Promise<Item|null>} created/merged Item on `actor`, or null
+ */
+async function _addItemToPileActor(actor, itemData, quantity, { allowStackMerge = true } = {}) {
   const normalized = _normalizeItemDataForPile(itemData, quantity);
   const incomingFp = computeItemStackFingerprint(normalized);
-  foundry.utils.setProperty(
-    normalized,
-    `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`,
-    incomingFp,
-  );
+  const fpPath = `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`;
+  const fpValue = allowStackMerge
+    ? incomingFp
+    : `${incomingFp}|fresh:${foundry.utils.randomID()}`;
+  foundry.utils.setProperty(normalized, fpPath, fpValue);
+
+  if (!allowStackMerge) {
+    const [created] = await actor.createEmbeddedDocuments('Item', [normalized]);
+    return actor.items?.get?.(created?.id) ?? created ?? null;
+  }
+
   const existing = _findExistingItemByFingerprint(actor, incomingFp);
   if (!existing) {
-    await actor.createEmbeddedDocuments('Item', [normalized]);
-    return;
+    const [created] = await actor.createEmbeddedDocuments('Item', [normalized]);
+    return actor.items?.get?.(created?.id) ?? created ?? null;
   }
   const current = Math.max(0, _safeNumber(existing.system?.quantity, 1));
   const next = current + Math.max(1, _safeNumber(quantity, 1));
   await existing.update({ 'system.quantity': next });
+  return existing;
+}
+
+/**
+ * After the container host was recreated on `toActor` as `newHostItem`, clone all embedded
+ * descendants from `fromActor`, remap ids in `system.container.contents`, then remove
+ * descendants from the source actor. Does not delete `oldHostItem`.
+ * @param {Actor} fromActor
+ * @param {Actor} toActor
+ * @param {Item} oldHostItem
+ * @param {Item} newHostItem
+ */
+async function _migrateEmbeddedContainerSubtreeToActor(fromActor, toActor, oldHostItem, newHostItem) {
+  const oldRootId = oldHostItem.id;
+  const idMap = new Map([[oldRootId, newHostItem.id]]);
+  const descendants = orderedContainerDescendants(fromActor, oldRootId);
+
+  const snapshots = [];
+  snapshots.push({
+    oldId: oldRootId,
+    contents: [...normalizeItemContainerFields(oldHostItem.system).container.contents],
+  });
+  for (const d of descendants) {
+    if (!d.system?.itemTags?.isContainer) continue;
+    snapshots.push({
+      oldId: d.id,
+      contents: [...normalizeItemContainerFields(d.system).container.contents],
+    });
+  }
+
+  for (const doc of descendants) {
+    const oldId = doc.id;
+    const parentOld = String(doc.system?.containerHostId ?? '').trim();
+    const newParentId = idMap.get(parentOld);
+    if (!newParentId) continue;
+
+    const qty = Math.max(1, _safeInteger(doc.system?.quantity, 1));
+    const obj = doc.toObject(false);
+    delete obj._id;
+    obj.system = obj.system ?? {};
+    obj.system.containerHostId = newParentId;
+    if (obj.system.itemTags?.isContainer) {
+      obj.system.container = { contents: [] };
+    }
+    const normalized = _normalizeItemDataForPile(obj, qty);
+    const subFp = computeItemStackFingerprint(normalized);
+    foundry.utils.setProperty(
+      normalized,
+      `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`,
+      `${subFp}|subtree:${foundry.utils.randomID()}`,
+    );
+    const [created] = await toActor.createEmbeddedDocuments('Item', [normalized]);
+    const newId = created?.id;
+    if (!newId) continue;
+    idMap.set(oldId, newId);
+  }
+
+  const updates = [];
+  for (const snap of snapshots) {
+    const newHostId = idMap.get(snap.oldId);
+    if (!newHostId) continue;
+    const newContents = remapActorContainerContentsEntries(snap.contents, idMap);
+    updates.push({ _id: newHostId, 'system.container': { contents: newContents } });
+  }
+  if (updates.length) {
+    await toActor.updateEmbeddedDocuments('Item', updates, { render: false });
+  }
+
+  if (descendants.length) {
+    await fromActor.deleteEmbeddedDocuments(
+      'Item',
+      descendants.map((d) => d.id),
+      { render: false },
+    );
+  }
+}
+
+/**
+ * Move an embedded Item from its owning actor onto `toActor` (pile or PC), including
+ * container subtree when the whole stack is consumed.
+ * @param {Item} fromItem
+ * @param {Actor} toActor
+ * @param {number} transferQty
+ */
+async function _transferEmbeddedItemToPileActor(fromItem, toActor, transferQty) {
+  const fromActor = fromItem.parent;
+  if (!fromActor || fromActor.documentName !== 'Actor') return;
+
+  const sourceQty = Math.max(0, _safeInteger(fromItem.system?.quantity, 1));
+  const qty = Math.max(1, Math.min(_safeInteger(transferQty, 1), sourceQty || 1));
+  if (sourceQty <= 0) return;
+
+  const next = sourceQty - qty;
+  const descendants =
+    fromItem.type === 'item' && fromItem.system?.itemTags?.isContainer
+      ? orderedContainerDescendants(fromActor, fromItem.id)
+      : [];
+  const isFullHostTransfer = next <= 0 && descendants.length > 0;
+
+  let hostPayload = fromItem.toObject(false);
+  if (isFullHostTransfer) {
+    hostPayload.system = hostPayload.system ?? {};
+    hostPayload.system.container = { contents: [] };
+  }
+
+  const newHost = await _addItemToPileActor(toActor, hostPayload, qty, {
+    allowStackMerge: !isFullHostTransfer,
+  });
+
+  if (isFullHostTransfer && newHost) {
+    await _migrateEmbeddedContainerSubtreeToActor(fromActor, toActor, fromItem, newHost);
+  }
+
+  if (next <= 0) await fromItem.delete();
+  else await fromItem.update({ 'system.quantity': next });
 }
 
 async function _addItemToPileToken(tokenDoc, itemData, quantity) {
@@ -409,6 +544,9 @@ async function _consumeSourceItem(dropData, quantity) {
   const dropQty = Math.max(1, _safeNumber(quantity, 1));
   const next = current - dropQty;
   if (next <= 0) {
+    if (source.type === 'item' && source.system?.itemTags?.isContainer) {
+      await releaseDirectContainerChildrenToRoot(source.parent, source.id);
+    }
     await source.delete();
     return;
   }
@@ -470,10 +608,31 @@ async function _dropItemAsGm({ dropData, sceneId }) {
   const quantity = _resolveQuantity(data, itemDoc);
   const itemData = itemDoc.toObject();
 
+  let embeddedSource = null;
+  const dropUuid = String(data?.uuid || '').trim();
+  if (dropUuid) {
+    try {
+      const doc = await fromUuid(dropUuid);
+      if (
+        doc?.documentName === 'Item' &&
+        doc.isEmbedded === true &&
+        doc.parent?.documentName === 'Actor'
+      ) {
+        embeddedSource = doc;
+      }
+    } catch (_) {
+      embeddedSource = null;
+    }
+  }
+
   const pileToken = await _findPileTokenOnScene(scene, x, y);
   if (pileToken?.actor) {
-    await _addItemToPileToken(pileToken, itemData, quantity);
-    await _consumeSourceItem(data, quantity);
+    if (embeddedSource) {
+      await _transferEmbeddedItemToPileActor(embeddedSource, pileToken.actor, quantity);
+    } else {
+      await _addItemToPileToken(pileToken, itemData, quantity);
+      await _consumeSourceItem(data, quantity);
+    }
     return {
       handled: true,
       mode: 'merge',
@@ -483,9 +642,12 @@ async function _dropItemAsGm({ dropData, sceneId }) {
   }
 
   const pileTokenDoc = await _createPileTokenAsGm(scene, { x, y, textureSrc: itemData?.img });
-  await _addItemToPileToken(pileTokenDoc, itemData, quantity);
-
-  await _consumeSourceItem(data, quantity);
+  if (embeddedSource) {
+    await _transferEmbeddedItemToPileActor(embeddedSource, pileTokenDoc.actor, quantity);
+  } else {
+    await _addItemToPileToken(pileTokenDoc, itemData, quantity);
+    await _consumeSourceItem(data, quantity);
+  }
   return {
     handled: true,
     mode: 'create',
@@ -537,10 +699,7 @@ async function _transferItemAsGm(payload = {}, { requesterUserId } = {}) {
   const transferQty = Math.max(1, Math.min(requested, sourceQty || 1));
   if (sourceQty <= 0) throw new Error('source item quantity is empty');
 
-  await _addItemToPileActor(toActor, fromItem.toObject(), transferQty);
-  const next = sourceQty - transferQty;
-  if (next <= 0) await fromItem.delete();
-  else await fromItem.update({ 'system.quantity': next });
+  await _transferEmbeddedItemToPileActor(fromItem, toActor, transferQty);
 
   return {
     ok: true,
@@ -599,12 +758,14 @@ async function _transferAllAsGm(payload = {}, { requesterUserId } = {}) {
     }
   }
 
-  const itemDocs = Array.from(fromActor.items ?? []).filter((it) => it?.type === 'item');
+  const itemDocs = Array.from(fromActor.items ?? []).filter((it) => {
+    if (it?.type !== 'item') return false;
+    return !String(it.system?.containerHostId ?? '').trim();
+  });
   let moved = 0;
   for (const it of itemDocs) {
     const qty = Math.max(1, _safeInteger(it.system?.quantity, 1));
-    await _addItemToPileActor(toActor, it.toObject(), qty);
-    await it.delete();
+    await _transferEmbeddedItemToPileActor(it, toActor, qty);
     moved += 1;
   }
   return {
@@ -643,6 +804,13 @@ async function _splitItemAsGm(payload = {}, { requesterUserId } = {}) {
 
   const sourceQty = Math.max(0, _safeInteger(fromItem.system?.quantity, 1));
   if (sourceQty < 2) throw new Error('item cannot be split');
+  if (
+    fromItem.type === 'item' &&
+    fromItem.system?.itemTags?.isContainer &&
+    getActorItemIdsInContainer(fromActor, fromItem.id).size > 0
+  ) {
+    throw new Error('cannot split a non-empty container');
+  }
   const splitQty = Math.max(1, Math.min(_safeInteger(payload?.quantity, Math.floor(sourceQty / 2)), sourceQty - 1));
   await _addItemToPileActor(toActor, fromItem.toObject(), splitQty);
   await fromItem.update({ 'system.quantity': sourceQty - splitQty });

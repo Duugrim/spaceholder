@@ -1,0 +1,199 @@
+{
+  "name": "Мишень",
+  "type": "character",
+  "_id": "shtesttarget0000",
+  "img": "icons/svg/target.svg",
+  "system": {
+    "anatomy": {
+      "type": "target-chest",
+      "id": "target-chest",
+      "name": "Target Chest",
+      "bodyParts": {}
+    },
+    "health": {
+      "injuries": [],
+      "bodyParts": {
+        "chest#1": {
+          "id": "chest",
+          "name": "Chest",
+          "slotRef": "chest#1",
+          "uuid": "shtesttarget0000-bp-chest-1",
+          "weight": 1000,
+          "maxHp": 200,
+          "x": 0,
+          "y": 0,
+          "status": "healthy",
+          "internal": false,
+          "tags": [
+            "core",
+            "vital",
+            "armor_chest"
+          ],
+          "organs": [],
+          "exposure": {
+            "front": 100,
+            "right": 100,
+            "back": 100,
+            "left": 100
+          },
+          "relations": [],
+          "links": []
+        }
+      },
+      "anatomyGrid": {
+        "width": 1,
+        "height": 1
+      }
+    },
+    "biography": "<p>Тестовая мишень для проверки стрельбы. Кастомная анатомия с единственной частью тела <code>chest</code> и большим запасом HP. Принимает гуманоидную броню грудного слота (армор резолвится по <code>part.id === \"chest\"</code>).</p>",
+    "attributes": {
+      "level": {
+        "value": 1
+      }
+    },
+    "actionPoints": {
+      "value": 100
+    },
+    "speed": 1,
+    "gFaction": "",
+    "actions": [],
+    "aimingArc": {
+      "zoneHalfDegrees": [
+        1,
+        5,
+        15,
+        25,
+        30
+      ],
+      "deviationBaseDeg": 1
+    },
+    "abilities": {
+      "end": {
+        "value": 10
+      },
+      "str": {
+        "value": 10
+      },
+      "dex": {
+        "value": 10
+      },
+      "cor": {
+        "value": 10
+      },
+      "per": {
+        "value": 10
+      },
+      "int": {
+        "value": 10
+      },
+      "luc": {
+        "value": 10
+      }
+    }
+  },
+  "prototypeToken": {
+    "name": "Мишень",
+    "displayName": 30,
+    "actorLink": false,
+    "appendNumber": false,
+    "prependAdjective": false,
+    "width": 1,
+    "height": 1,
+    "texture": {
+      "src": "icons/svg/target.svg",
+      "anchorX": 0.5,
+      "anchorY": 0.5,
+      "offsetX": 0,
+      "offsetY": 0,
+      "fit": "contain",
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": 0,
+      "tint": "#ffffff",
+      "alphaThreshold": 0.75
+    },
+    "hexagonalShape": 0,
+    "lockRotation": false,
+    "rotation": 0,
+    "alpha": 1,
+    "disposition": 0,
+    "displayBars": 0,
+    "bar1": {
+      "attribute": null
+    },
+    "bar2": {
+      "attribute": null
+    },
+    "light": {
+      "negative": false,
+      "priority": 0,
+      "alpha": 0.5,
+      "angle": 360,
+      "bright": 0,
+      "color": null,
+      "coloration": 1,
+      "dim": 0,
+      "attenuation": 0.5,
+      "luminosity": 0.5,
+      "saturation": 0,
+      "contrast": 0,
+      "shadows": 0,
+      "animation": {
+        "type": null,
+        "speed": 5,
+        "intensity": 5,
+        "reverse": false
+      }
+    },
+    "sight": {
+      "enabled": false,
+      "range": 0,
+      "angle": 360,
+      "visionMode": "basic",
+      "color": null,
+      "attenuation": 0.1,
+      "brightness": 0,
+      "saturation": 0,
+      "contrast": 0
+    },
+    "detectionModes": [],
+    "occludable": {
+      "radius": 0
+    },
+    "ring": {
+      "enabled": false,
+      "colors": {
+        "ring": null,
+        "background": null
+      },
+      "effects": 1,
+      "subject": {
+        "scale": 1,
+        "texture": null
+      }
+    },
+    "movementAction": null,
+    "flags": {},
+    "randomImg": false
+  },
+  "items": [],
+  "effects": [],
+  "folder": null,
+  "sort": 200000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800101,
+    "modifiedTime": 1776279800101,
+    "lastModifiedBy": null
+  },
+  "_key": "!actors!shtesttarget0000"
+}

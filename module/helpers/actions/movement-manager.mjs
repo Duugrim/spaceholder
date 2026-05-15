@@ -228,6 +228,7 @@ export class MovementManager {
           tokenDoc: tokenDocument,
           movementId: moveId,
           distance: dist,
+          units: String(tokenDocument?.parent?.grid?.units || '').trim(),
           apCost: cost,
           baseApCost: rawMovementAp,
           from,
@@ -241,17 +242,20 @@ export class MovementManager {
       }
 
       if (combat && combatant) {
-        const moveLabel =
-          game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.Movement.Move') || 'Move';
+        const distance = Math.max(0, _num(dist, 0));
+        const units = String(tokenDocument?.parent?.grid?.units || '').trim();
+        const distLabel = units ? `${distance.toFixed(1)} ${units}` : `${distance.toFixed(1)}`;
         await appendCombatActionJournalLine({
           actor,
           combat,
           combatant,
           anchorActor,
           anchorCombatant,
-          label: moveLabel,
-          description: `${Math.max(0, _num(dist, 0)).toFixed(1)} u`,
+          label: distLabel,
+          description: "",
           apCost: cost,
+          distance,
+          units,
           kind: 'move',
           isReaction,
           actorName: actor?.name || "",

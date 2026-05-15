@@ -15,6 +15,37 @@ import { collectActorActions, executeActorAction, getActorActionPoints } from '.
 import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
 import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/held-drop-resolve.mjs';
 import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
+import { materialsManager } from '../helpers/damage/materials-manager.mjs';
+import {
+  getOrderedDirectChildItemIds,
+  importWorldContainerTreeToActor,
+  moveActorItemIntoContainer,
+  moveWorldContainerEntryToActor,
+  normalizeItemContainerFields,
+  removeActorItemFromContainer,
+  wouldCreateItemContainerCycle,
+} from '../helpers/item-container.mjs';
+
+/**
+ * Build a short human-readable summary of armor layers for a coverage
+ * entry. Example: "3mm Steel Plate, 5mm Kevlar Weave".
+ *
+ * @param {Array<Object>|undefined} layers
+ * @returns {string}
+ */
+function formatCoverageLayersSummary(layers) {
+  if (!Array.isArray(layers) || !layers.length) return '';
+  return layers.map((layer) => {
+    const thickness = Number(layer?.thickness);
+    const slug = String(layer?.material ?? '').trim();
+    if (!slug || !Number.isFinite(thickness) || thickness <= 0) return '';
+    const md = materialsManager?.getMaterial?.(slug);
+    const localized = md?.nameLocalized ? game.i18n?.localize?.(md.nameLocalized) : '';
+    const name = (localized && localized !== md?.nameLocalized) ? localized : (md?.name || slug);
+    const t = Math.round(thickness * 100) / 100;
+    return `${t}mm ${name}`;
+  }).filter(Boolean).join(', ');
+}
 
 /** Навигация и баннеры вкладок: один источник id / иконка / ключ i18n */
 const CHARACTER_SHEET_PRIMARY_TABS = Object.freeze([
@@ -132,6 +163,28 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     });
   }
 
+  /**
+   * @override
+   * @param {DragEvent} event
+   * @param {Item} item
+   */
+  async _onDropItem(event, item) {
+    const worldOrPackContainer =
+      item?.documentName === 'Item' &&
+      item?.type === 'item' &&
+      !item.isEmbedded &&
+      item.parent?.documentName !== 'Actor' &&
+      !!item.system?.itemTags?.isContainer;
+    if (worldOrPackContainer) {
+      const norm = normalizeItemContainerFields(item.system);
+      if (norm.container.contents.length > 0) {
+        const created = await importWorldContainerTreeToActor(this.actor, item);
+        if (created) return created;
+      }
+    }
+
+    return super._onDropItem(event, item);
+  }
 
   /* -------------------------------------------- */
 
@@ -265,13 +318,28 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Prepare health data for UI
     this._prepareHealthData(context);
     const aimingArcCfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
-    const defaults = Array.isArray(aimingArcCfg.defaultZoneHalfDegrees) ? aimingArcCfg.defaultZoneHalfDegrees : [1, 5, 15, 25, 30];
+    const standardZoneCount = Math.max(1, Number(aimingArcCfg.standardZoneCount) || 4);
+    const defaults = Array.isArray(aimingArcCfg.defaultZoneWeights) ? aimingArcCfg.defaultZoneWeights : [5, 15, 25, 30];
     const srcAimingArc = (context.system.aimingArc && typeof context.system.aimingArc === 'object') ? context.system.aimingArc : {};
-    if (!Array.isArray(srcAimingArc.zoneHalfDegrees)) srcAimingArc.zoneHalfDegrees = [...defaults];
-    srcAimingArc.zoneHalfDegrees = defaults.map((fallback, idx) => {
-      const n = Number(srcAimingArc.zoneHalfDegrees?.[idx] ?? fallback);
+    const legacyZones = Array.isArray(srcAimingArc.zoneHalfDegrees) ? srcAimingArc.zoneHalfDegrees : [];
+    const rawWeights = Array.isArray(srcAimingArc.zoneWeights) ? srcAimingArc.zoneWeights : [];
+    const weightOffset = rawWeights.length >= standardZoneCount + 1 ? 1 : 0;
+    srcAimingArc.zoneWeights = Array.from({ length: standardZoneCount }, (_unused, idx) => {
+      const fallback = Number(defaults[idx] ?? 0);
+      const n = Number(rawWeights[idx + weightOffset] ?? legacyZones[idx + 1] ?? fallback);
       return Number.isFinite(n) && n >= 0 ? n : Number(fallback) || 0;
     });
+    const purpleRaw = Number(srcAimingArc.purpleZoneDeg);
+    const legacyPurple = Number(legacyZones[0]);
+    srcAimingArc.purpleZoneDeg = Number.isFinite(purpleRaw)
+      ? Math.max(0, purpleRaw)
+      : (Number.isFinite(legacyPurple) ? Math.max(0, legacyPurple) : Math.max(0, Number(aimingArcCfg.defaultPurpleZoneDeg) || 1));
+    const totalRaw = Number(srcAimingArc.totalArcDeg);
+    const legacyTotal = legacyZones.slice(1).reduce((sum, v) => sum + Math.max(0, Number(v) || 0), 0);
+    const defaultTotal = Math.max(0, Number(aimingArcCfg.defaultTotalArcDeg) || 90);
+    srcAimingArc.totalArcDeg = Number.isFinite(totalRaw) ? Math.max(0, totalRaw) : (legacyTotal > 0 ? legacyTotal : defaultTotal);
+    const deadRaw = Number(srcAimingArc.deadZoneDeg);
+    srcAimingArc.deadZoneDeg = Number.isFinite(deadRaw) ? Math.max(0, deadRaw) : Math.max(0, Number(aimingArcCfg.defaultDeadZoneDeg) || 0);
     if (!Number.isFinite(Number(srcAimingArc.deviationBaseDeg))) {
       srcAimingArc.deviationBaseDeg = Math.max(0, Number(aimingArcCfg.defaultDeviationBaseDeg) || 1);
     }
@@ -284,18 +352,38 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   async _openAimingArcDialog() {
     if (this.actor?.type !== 'character' || !this.isEditable) return;
     const cfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
-    const defaults = Array.isArray(cfg.defaultZoneHalfDegrees) ? cfg.defaultZoneHalfDegrees : [1, 5, 15, 25, 30];
-    const zones = defaults.map((fallback, idx) => {
-      const n = Number(this.actor?.system?.aimingArc?.zoneHalfDegrees?.[idx] ?? fallback);
+    const standardZoneCount = Math.max(1, Number(cfg.standardZoneCount) || 4);
+    const defaults = Array.isArray(cfg.defaultZoneWeights) ? cfg.defaultZoneWeights : [5, 15, 25, 30];
+    const legacyZones = Array.isArray(this.actor?.system?.aimingArc?.zoneHalfDegrees)
+      ? this.actor.system.aimingArc.zoneHalfDegrees
+      : [];
+    const currentWeights = Array.isArray(this.actor?.system?.aimingArc?.zoneWeights)
+      ? this.actor.system.aimingArc.zoneWeights
+      : [];
+    const weightOffset = currentWeights.length >= standardZoneCount + 1 ? 1 : 0;
+    const weights = Array.from({ length: standardZoneCount }, (_unused, idx) => {
+      const fallback = Number(defaults[idx] ?? 0);
+      const n = Number(currentWeights[idx + weightOffset] ?? legacyZones[idx + 1] ?? fallback);
       return Number.isFinite(n) ? Math.max(0, n) : Math.max(0, Number(fallback) || 0);
     });
+    const purpleRaw = Number(this.actor?.system?.aimingArc?.purpleZoneDeg);
+    const legacyPurple = Number(legacyZones[0]);
+    const purpleZoneDeg = Number.isFinite(purpleRaw)
+      ? Math.max(0, purpleRaw)
+      : (Number.isFinite(legacyPurple) ? Math.max(0, legacyPurple) : Math.max(0, Number(cfg.defaultPurpleZoneDeg) || 1));
+    const totalArcRaw = Number(this.actor?.system?.aimingArc?.totalArcDeg);
+    const legacyTotalArc = legacyZones.slice(1).reduce((sum, val) => sum + Math.max(0, Number(val) || 0), 0);
+    const totalArcDeg = Number.isFinite(totalArcRaw)
+      ? Math.max(0, totalArcRaw)
+      : (legacyTotalArc > 0 ? legacyTotalArc : Math.max(0, Number(cfg.defaultTotalArcDeg) || 90));
+    const deadRaw = Number(this.actor?.system?.aimingArc?.deadZoneDeg);
+    const deadZoneDeg = Number.isFinite(deadRaw) ? Math.max(0, deadRaw) : Math.max(0, Number(cfg.defaultDeadZoneDeg) || 0);
     const defaultBaseRaw = Number(cfg.defaultDeviationBaseDeg);
     const fallbackBase = Number.isFinite(defaultBaseRaw) ? defaultBaseRaw : 1;
     const baseRaw = Number(this.actor?.system?.aimingArc?.deviationBaseDeg ?? fallbackBase);
     const base = Number.isFinite(baseRaw) ? Math.max(0, baseRaw) : 1;
 
     const zoneLabelKeys = [
-      'SPACEHOLDER.AimingArc.Zones.Purple',
       'SPACEHOLDER.AimingArc.Zones.Green',
       'SPACEHOLDER.AimingArc.Zones.Yellow',
       'SPACEHOLDER.AimingArc.Zones.Orange',
@@ -303,8 +391,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     ];
     const zoneRows = zoneLabelKeys.map((labelKey, idx) => `
       <div class="form-group">
-        <label for="sh-aiming-zone-${idx}">${game.i18n.localize(labelKey)}</label>
-        <input id="sh-aiming-zone-${idx}" type="number" min="0" step="0.5" value="${zones[idx]}">
+        <label for="sh-aiming-zone-weight-${idx}">${game.i18n.localize(labelKey)}</label>
+        <input id="sh-aiming-zone-weight-${idx}" type="number" min="0" step="0.1" value="${weights[idx]}">
       </div>
     `).join('');
 
@@ -317,6 +405,20 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       position: { width: 420 },
       content: `
         <div class="spaceholder-aiming-arc-dialog">
+          <div class="form-group">
+            <label for="sh-aiming-purple-arc">${game.i18n.localize('SPACEHOLDER.AimingArc.PurpleArc')}</label>
+            <input id="sh-aiming-purple-arc" type="number" min="0" step="0.5" value="${purpleZoneDeg}">
+          </div>
+          <div class="form-group">
+            <label for="sh-aiming-total-arc">${game.i18n.localize('SPACEHOLDER.AimingArc.TotalArc')}</label>
+            <input id="sh-aiming-total-arc" type="number" min="0" step="0.5" value="${totalArcDeg}">
+          </div>
+          <div class="form-group">
+            <label for="sh-aiming-dead-zone">${game.i18n.localize('SPACEHOLDER.AimingArc.DeadZone')}</label>
+            <input id="sh-aiming-dead-zone" type="number" min="0" step="0.5" value="${deadZoneDeg}">
+          </div>
+          <p class="hint">${game.i18n.localize('SPACEHOLDER.AimingArc.PurpleArcHint')}</p>
+          <p class="hint">${game.i18n.localize('SPACEHOLDER.AimingArc.WeightsHint')}</p>
           ${zoneRows}
           <div class="form-group">
             <label for="sh-aiming-base-dev">${game.i18n.localize('SPACEHOLDER.AimingArc.BaseDeviation')}</label>
@@ -338,16 +440,28 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
               dlgEvent?.currentTarget?.closest?.('form') ||
               dlgEvent?.target?.closest?.('form') ||
               dlgEvent?.currentTarget;
-            const nextZones = defaults.map((fallback, idx) => {
-              const raw = root?.querySelector?.(`#sh-aiming-zone-${idx}`)?.value ?? fallback;
+            const nextWeights = defaults.map((fallback, idx) => {
+              const raw = root?.querySelector?.(`#sh-aiming-zone-weight-${idx}`)?.value ?? fallback;
               const n = Number(raw);
               return Number.isFinite(n) ? Math.max(0, n) : Math.max(0, Number(fallback) || 0);
             });
+            const rawPurple = root?.querySelector?.('#sh-aiming-purple-arc')?.value ?? purpleZoneDeg;
+            const nPurple = Number(rawPurple);
+            const nextPurpleZoneDeg = Number.isFinite(nPurple) ? Math.max(0, nPurple) : purpleZoneDeg;
+            const rawTotal = root?.querySelector?.('#sh-aiming-total-arc')?.value ?? totalArcDeg;
+            const nTotal = Number(rawTotal);
+            const nextTotalArc = Number.isFinite(nTotal) ? Math.max(0, nTotal) : totalArcDeg;
+            const rawDead = root?.querySelector?.('#sh-aiming-dead-zone')?.value ?? deadZoneDeg;
+            const nDead = Number(rawDead);
+            const nextDeadZone = Number.isFinite(nDead) ? Math.max(0, nDead) : deadZoneDeg;
             const rawBase = root?.querySelector?.('#sh-aiming-base-dev')?.value ?? base;
             const nBase = Number(rawBase);
             const nextBase = Number.isFinite(nBase) ? Math.max(0, nBase) : base;
             await this.actor.update({
-              'system.aimingArc.zoneHalfDegrees': nextZones,
+              'system.aimingArc.purpleZoneDeg': nextPurpleZoneDeg,
+              'system.aimingArc.totalArcDeg': nextTotalArc,
+              'system.aimingArc.zoneWeights': nextWeights,
+              'system.aimingArc.deadZoneDeg': nextDeadZone,
               'system.aimingArc.deviationBaseDeg': nextBase,
             });
           },
@@ -470,7 +584,9 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * @param {Record<string, object>|null|undefined} bodyParts
    */
   _prepareHealthEquippedGear(context, bodyParts) {
-    const wearables = this.actor.items.filter((i) => i.type === 'item' && i.system?.equipped);
+    const wearables = this.actor.items.filter(
+      (i) => i.type === 'item' && i.system?.equipped && !String(i.system?.containerHostId ?? '').trim()
+    );
     const rows = [];
 
     for (const item of wearables) {
@@ -482,17 +598,16 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const bySlotRef = new Map();
       let matchedCoverageCount = 0;
       for (const entry of coveredParts) {
-        const val = Number(entry?.value ?? 0);
-        const safeValue = Number.isFinite(val) ? val : 0;
         const { slotRefs } = resolveCoverageEntryToActorSlots(bodyParts, entry);
         if (!slotRefs.length) continue;
         matchedCoverageCount += 1;
+        const layersSummary = formatCoverageLayersSummary(entry?.layers);
         for (const slotRef of slotRefs) {
           const prev = bySlotRef.get(slotRef) || {
             partName: this._bodyPartSlotLabel(bodyParts, slotRef),
-            armorValue: 0
+            layersSummary: ''
           };
-          prev.armorValue += safeValue;
+          prev.layersSummary = [prev.layersSummary, layersSummary].filter(Boolean).join(' + ');
           bySlotRef.set(slotRef, prev);
         }
       }
@@ -572,6 +687,36 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
+   * Flat rows for the character inventory tab: root items in `rootGearOrder`, then children
+   * under each container depth-first (order matches the item sheet container tab).
+   *
+   * @param {Actor} actor
+   * @param {Item[]} rootGearOrder
+   * @returns {Array<{ item: Item, depth: number }>}
+   */
+  _buildInventoryDisplayRows(actor, rootGearOrder) {
+    const rows = [];
+    /**
+     * @param {Item} item
+     * @param {number} depth
+     */
+    const visit = (item, depth) => {
+      if (!item || item.type !== 'item') return;
+      rows.push({ item, depth });
+      const tags = item.system?.itemTags || {};
+      if (!tags.isContainer) return;
+      for (const cid of getOrderedDirectChildItemIds(actor, item.id)) {
+        const child = actor.items.get(cid);
+        visit(child, depth + 1);
+      }
+    };
+    for (const item of rootGearOrder) {
+      visit(item, 0);
+    }
+    return rows;
+  }
+
+  /**
    * Organize and classify Items for Actor sheets.
    *
    * @param {object} context The context object to mutate
@@ -602,7 +747,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     for (let i of items) {
       i.img = i.img || Item.DEFAULT_ICON;
       // Append to gear (обычные предметы и надеваемые).
-      if (i.type === 'item') {
+      // Предметы внутри item-контейнера (реальные embedded Item на актёре) не дублируем в корневом списке.
+      if (i.type === 'item' && !String(i.system?.containerHostId ?? '').trim()) {
         gear.push(i);
       }
       // Append to features.
@@ -617,19 +763,24 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       }
     }
 
-    // Calculate inventory totals
+    // Calculate inventory totals (all Item documents on the actor, including inside containers)
     let totalWeight = 0;
     let totalItems = 0;
-    
-    for (let item of gear) {
+
+    for (const item of items) {
+      if (item.type !== 'item') continue;
       const quantity = item.system.quantity || 0;
       const weight = item.system.weight || 0;
       totalItems += quantity;
       totalWeight += weight * quantity;
     }
-    
+
+    // Character / loot: flat rows for inventory UI — root items first, then nested under each container
+    const inventoryRows = this._buildInventoryDisplayRows(this.actor, gear);
+
     // Assign and return
     context.gear = gear;
+    context.inventoryRows = inventoryRows;
     context.features = features;
     context.spells = spells;
     context.totalWeight = Math.round(totalWeight * 100) / 100; // Round to 2 decimal places
@@ -655,11 +806,11 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * Update inventory totals in the DOM without full re-render
    */
   _updateInventoryTotals() {
-    const gear = this.actor.items.filter(i => i.type === 'item');
     let totalWeight = 0;
     let totalItems = 0;
-    
-    for (let item of gear) {
+
+    for (const item of this.actor.items) {
+      if (item.type !== 'item') continue;
       const quantity = item.system.quantity || 0;
       const weight = item.system.weight || 0;
       totalItems += quantity;
@@ -748,12 +899,22 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       }
       if (partKey) part = bodyParts[partKey];
 
+      const description = this.actor.formatInjuryForDisplay?.(inj) ?? { segments: [], tooltipSegments: [] };
+      const hasDescription = Array.isArray(description.segments) && description.segments.length > 0;
+
       return {
-        ...this.actor.formatInjuryForDisplay?.(inj) ?? inj,
         id: inj.id,
+        type: inj.type,
+        status: inj.status ?? 'raw',
+        source: inj.source ?? null,
         partName: part?.displayName || part?.name || inj.partId || inj.partUuid || "",
-        amountDisplay: (Math.floor((inj.amount ?? 0)) / 100).toFixed(2), // amount хранится x100
-        createdAtText: inj.createdAt ? new Date(inj.createdAt).toLocaleString() : ''
+        amountDisplay: (Math.floor((inj.amount ?? 0)) / 100).toFixed(2),
+        createdAtText: inj.createdAt ? new Date(inj.createdAt).toLocaleString() : '',
+        hasDescription,
+        segments: description.segments ?? [],
+        tooltipSegments: description.tooltipSegments ?? [],
+        wound: description.wound ?? null,
+        material: description.material ?? 'biological',
       };
     });
   }
@@ -1667,6 +1828,9 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const preserveEdit = this._anatomyEditor?.editMode ?? false;
       const preserveLink = this._anatomyEditor?.linkMode ?? false;
       const preserveSel = this._anatomyEditor?.selectedPartId ?? null;
+      const preservePanelTabs = this._anatomyEditor?.panelTabs
+        ? { ...this._anatomyEditor.panelTabs }
+        : undefined;
       this._anatomyEditor = new AnatomyEditor(editorContainer, {
         fixedDisplayWidth: 378,
         fixedDisplayHeight: 420,
@@ -1675,7 +1839,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         selectedPanel: selectedPanel ?? undefined,
         editMode: preserveEdit,
         linkMode: preserveLink,
-        selectedPartId: preserveSel
+        selectedPartId: preserveSel,
+        panelTabs: preservePanelTabs
       });
       this._anatomyEditor.render();
       const editBtn = el.querySelector('.anatomy-editor-edit-btn');
@@ -1747,6 +1912,204 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         card.setAttribute('draggable', 'true');
         card.addEventListener('dragstart', handler, false);
       });
+
+      // Drop onto root inventory: take item out of item-container (same actor).
+      const rootInv = el.querySelector('[data-sh-root-inventory-drop]');
+      if (rootInv && rootInv.dataset.shRootInventoryDropBound !== '1') {
+        rootInv.dataset.shRootInventoryDropBound = '1';
+        rootInv.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          try {
+            ev.dataTransfer.dropEffect = 'move';
+          } catch (_) {
+            /* ignore */
+          }
+        });
+        rootInv.addEventListener('drop', (ev) => this._onRootInventoryContainerDrop(ev));
+      }
+
+      el.querySelectorAll('[data-sh-inventory-container-drop]').forEach((hostCard) => {
+        if (hostCard.dataset.shInvContainerDropBound === '1') return;
+        hostCard.dataset.shInvContainerDropBound = '1';
+        hostCard.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          try {
+            ev.dataTransfer.dropEffect = 'copy';
+          } catch (_) {
+            /* ignore */
+          }
+        });
+        hostCard.addEventListener('drop', (ev) => this._onInventoryContainerRowDrop(ev));
+      });
+    }
+  }
+
+  /**
+   * Drop from item-container sheet (or any drag payload) onto character root inventory:
+   * clear `containerHostId` and remove id from host `system.container.contents`.
+   * @param {DragEvent} ev
+   * @returns {Promise<void>}
+   */
+  async _onRootInventoryContainerDrop(ev) {
+    if (!this.isEditable || !this.actor?.isOwner) return;
+    let data = null;
+    try {
+      const raw = ev.dataTransfer?.getData?.('text/plain') ?? '';
+      data = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return;
+    }
+    if (!data || data.type !== 'Item' || !data.uuid) return;
+
+    const sh = data.spaceholder;
+    if (sh?.action === 'worldContainerMove') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const hostUuid = String(sh.containerHostUuid ?? '').trim();
+      const entryUuid = String(sh.entryUuid ?? data.uuid ?? '').trim();
+      let host = null;
+      try {
+        host = await fromUuid(hostUuid);
+      } catch (_) {
+        host = null;
+      }
+      if (!host || host.documentName !== 'Item') return;
+      const L = (k) => game.i18n?.localize?.(k) ?? k;
+      const ok = await moveWorldContainerEntryToActor(this.actor, host, entryUuid);
+      if (ok) ui.notifications?.info?.(L('SPACEHOLDER.ItemContainer.MovedFromWorldContainer'));
+      else ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed'));
+      await this.render(false);
+      try {
+        host.sheet?.render?.(false);
+      } catch (_) {
+        /* ignore */
+      }
+      return;
+    }
+
+    let doc = null;
+    try {
+      doc = await fromUuid(data.uuid);
+    } catch (_) {
+      doc = null;
+    }
+    if (!doc || doc.documentName !== 'Item') return;
+    if (doc.parent?.id !== this.actor.id) return;
+    if (doc.type !== 'item') return;
+    const hostId = String(doc.system?.containerHostId ?? '').trim();
+    if (!hostId) return;
+    const host = this.actor.items.get(hostId);
+    if (!host) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    await removeActorItemFromContainer(this.actor, host, doc.id);
+    await this.render(false);
+  }
+
+  /**
+   * Drop onto a container row on the character inventory tab (nest into that container).
+   * @param {DragEvent} ev
+   * @returns {Promise<void>}
+   */
+  async _onInventoryContainerRowDrop(ev) {
+    const card = ev.currentTarget?.closest?.('.inventory-item-card[data-sh-inventory-container-drop]');
+    const hostId = String(card?.dataset?.itemId ?? '').trim();
+    const actor = this.actor;
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
+
+    if (!hostId || !this.isEditable || !actor?.isOwner) return;
+
+    const hostItem = actor.items.get(hostId);
+    if (!hostItem?.system?.itemTags?.isContainer) return;
+
+    let data = null;
+    try {
+      const raw = ev.dataTransfer?.getData?.('text/plain') ?? '';
+      data = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return;
+    }
+    if (!data || data.type !== 'Item' || !data.uuid) return;
+
+    let doc = null;
+    try {
+      doc = await fromUuid(data.uuid);
+    } catch (_) {
+      doc = null;
+    }
+    if (!doc || doc.documentName !== 'Item') {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropNotAnItem') ?? 'Not an item.');
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
+
+    if (doc.parent?.id === actor.id && doc.type === 'item') {
+      if (doc.id === hostId) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
+      if (wouldCreateItemContainerCycle(actor, doc.id, hostId)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.CycleWarning') ?? 'Cannot nest that way.');
+        return;
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+      const ok = await moveActorItemIntoContainer(actor, hostItem, doc.id);
+      if (!ok) {
+        ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not place item.');
+        return;
+      }
+      await this.render(false);
+      return;
+    }
+
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    try {
+      const dropped = await (Item.implementation?.fromDropData?.(data) ?? Item.fromDropData(data));
+      if (!dropped || dropped.documentName !== 'Item') {
+        ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropNotAnItem') ?? 'Not an item.');
+        return;
+      }
+
+      const sourceActor = dropped.parent?.documentName === 'Actor' ? dropped.parent : null;
+      if (sourceActor && sourceActor.id !== actor.id) {
+        ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropWrongActor') ?? 'Item must belong to the same actor.');
+        return;
+      }
+
+      if (dropped.parent?.id === actor.id && dropped.type === 'item') {
+        if (dropped.id === hostId) return;
+        if (wouldCreateItemContainerCycle(actor, dropped.id, hostId)) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.CycleWarning') ?? 'Cannot nest that way.');
+          return;
+        }
+        const ok = await moveActorItemIntoContainer(actor, hostItem, dropped.id);
+        if (!ok) ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not place item.');
+        await this.render(false);
+        return;
+      }
+
+      const qty = Math.max(1, Number.parseInt(String(data?.quantity ?? dropped.system?.quantity ?? 1), 10) || 1);
+      const docData = foundry.utils.deepClone(dropped.toObject());
+      delete docData._id;
+      docData.system = docData.system ?? {};
+      docData.system.quantity = qty;
+      const created = await actor.createEmbeddedDocuments('Item', [docData]);
+      const newItem = created?.[0];
+      if (newItem) {
+        const ok = await moveActorItemIntoContainer(actor, hostItem, newItem.id);
+        if (!ok) ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not place item.');
+      }
+      await this.render(false);
+    } catch (error) {
+      console.error('SpaceHolder | inventory container row drop failed', error);
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not place item.');
     }
   }
 
@@ -1996,13 +2359,27 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const labelStatus = L('SPACEHOLDER.Injuries.Fields.Status');
     const labelSource = L('SPACEHOLDER.Injuries.Fields.Source');
 
+    const sourceIsStructured = existing.source && typeof existing.source === 'object'
+      && Object.keys(existing.source).some(k => k !== 'legacyLabel');
+    const sourceValue = (() => {
+      if (!existing.source) return '';
+      if (typeof existing.source === 'string') return existing.source;
+      if (existing.source.legacyLabel && !sourceIsStructured) return existing.source.legacyLabel;
+      return [existing.source.attackerName, existing.source.weaponName, existing.source.ammoName]
+        .filter(Boolean).join(' / ');
+    })();
+    const sourceInputAttrs = sourceIsStructured ? 'readonly' : '';
+    const sourceHint = sourceIsStructured
+      ? `<small class="inj-source-hint">${L('SPACEHOLDER.Injuries.Fields.Source')}: auto</small>`
+      : '';
+
     const content = `
       <div class="injury-edit-dialog">
         <p><strong>${heading}</strong></p>
         <div class="form-group"><label>${labelDamage}</label><input id="inj-amount" type="number" step="0.01" value="${(existing.amount||0)/100}"/></div>
         <div class="form-group"><label>${labelType}</label><input id="inj-type" type="text" value="${existing.type||''}"/></div>
-        <div class="form-group"><label>${labelStatus}</label><input id="inj-status" type="text" value="${existing.status||''}"/></div>
-        <div class="form-group"><label>${labelSource}</label><input id="inj-source" type="text" value="${existing.source||''}"/></div>
+        <div class="form-group"><label>${labelStatus}</label><input id="inj-status" type="text" value="${existing.status||'raw'}"/></div>
+        <div class="form-group"><label>${labelSource}</label><input id="inj-source" type="text" value="${sourceValue}" ${sourceInputAttrs}/>${sourceHint}</div>
       </div>
     `;
 
@@ -2026,12 +2403,14 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
               dlgEvent?.currentTarget;
             const amountStr = root.querySelector('#inj-amount')?.value ?? '0';
             const type = root.querySelector('#inj-type')?.value ?? '';
-            const status = root.querySelector('#inj-status')?.value ?? '';
-            const source = root.querySelector('#inj-source')?.value ?? '';
+            const status = root.querySelector('#inj-status')?.value ?? 'raw';
+            const sourceInput = root.querySelector('#inj-source');
             const parsed = Number.parseFloat(String(amountStr).replace(',', '.'));
             if (!Number.isNaN(parsed)) {
               const amount = Math.max(0, Math.floor(parsed * 100));
-              await this.actor.updateInjury(id, { amount, type, status, source });
+              const patch = { amount, type, status };
+              if (!sourceIsStructured) patch.source = sourceInput?.value ?? '';
+              await this.actor.updateInjury(id, patch);
               this.render(false);
             }
           }
@@ -2256,7 +2635,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
               const currentParts = this.actor.system.health?.bodyParts || {};
               const delUpdate = { 'system.anatomy.type': null };
               for (const id of Object.keys(currentParts)) {
-                delUpdate[`system.health.bodyParts.-=${id}`] = null;
+                delUpdate[`system.health.bodyParts.${id}`] = new foundry.data.operators.ForcedDeletion();
               }
               await this.actor.update(delUpdate);
               await this.actor.prepareData();
@@ -3342,8 +3721,11 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
     let x = anchorX + (anchorW * gridSize);
     let y = anchorY;
 
-    if (canvas?.grid?.getSnappedPosition) {
-      const snapped = canvas.grid.getSnappedPosition(x, y, 1);
+    if (canvas?.grid?.getSnappedPoint) {
+      const snapped = canvas.grid.getSnappedPoint(
+        { x, y },
+        { mode: CONST.GRID_SNAPPING_MODES.CENTER, resolution: 1 },
+      );
       if (snapped && typeof snapped.x === 'number' && typeof snapped.y === 'number') {
         x = snapped.x;
         y = snapped.y;

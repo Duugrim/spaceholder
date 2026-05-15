@@ -1,0 +1,49 @@
+{
+  "name": "Skin",
+  "type": "material",
+  "_id": "shtestmatskin0000",
+  "img": "systems/spaceholder/assets/icons/body.svg/pierced-body.svg",
+  "system": {
+    "description": "<p>Living dermis. Very thin and fragile — offers almost no protection against mechanical loads on its own, but absorbs a small share of thermal energy before burning through.</p>",
+    "materialId": "skin",
+    "category": "biological",
+    "hardness": 1,
+    "integrityPerThickness": 5,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.1,
+    "resistance": {
+      "ballistic": 20, "concussive": 40, "piercing": 20, "cutting": 40,
+      "thermal": 60, "laser": 40, "plasma": 20, "electric": 20,
+      "sonic": 20, "radiation": 0, "chemical": 40
+    },
+    "wear": {
+      "ballistic": 100, "concussive": 50, "piercing": 120, "cutting": 150,
+      "thermal": 200, "laser": 200, "plasma": 250, "electric": 10,
+      "sonic": 10, "radiation": 0, "chemical": 300
+    },
+    "conductance": {
+      "thermal": [
+        { "type": "thermal", "fraction": 0.1 }
+      ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 500000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800020,
+    "modifiedTime": 1776279800020,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatskin0000"
+}

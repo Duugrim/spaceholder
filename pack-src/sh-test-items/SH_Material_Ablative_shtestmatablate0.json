@@ -1,0 +1,53 @@
+{
+  "name": "Ablative Coating",
+  "type": "material",
+  "_id": "shtestmatablate00",
+  "img": "systems/spaceholder/assets/icons/fire.svg/fire-shield.svg",
+  "system": {
+    "description": "<p>Sacrificial ablative film. Vaporises against laser/plasma to protect inner layers; almost useless against kinetic threats.</p>",
+    "materialId": "ablative",
+    "category": "ablative",
+    "hardness": 12,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.2,
+    "resistance": {
+      "ballistic": 10, "concussive": 10, "piercing": 10, "cutting": 10,
+      "thermal": 250, "laser": 350, "plasma": 220, "electric": 5,
+      "sonic": 20, "radiation": 25, "chemical": 45
+    },
+    "wear": {
+      "ballistic": 50, "concussive": 30, "piercing": 50, "cutting": 50,
+      "thermal": 400, "laser": 500, "plasma": 400, "electric": 5,
+      "sonic": 10, "radiation": 50, "chemical": 200
+    },
+    "conductance": {},
+    "selfInduction": {
+      "thermal": [],
+      "plasma": [
+        { "type": "thermal", "fraction": 0.2 }
+      ]
+    },
+    "degradation": {
+      "thermal": "reduction",
+      "laser": "reduction"
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 430000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800013,
+    "modifiedTime": 1776279800013,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatablate00"
+}

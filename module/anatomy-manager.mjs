@@ -13,6 +13,10 @@ import {
   validateRelationsTargets,
   legacyLinksToAdjacentRelations
 } from "./helpers/anatomy-relations.mjs";
+import {
+  sanitizeBodyLayers,
+  getDefaultBodyLayersForType
+} from "./helpers/damage/body-layers-defaults.mjs";
 
 /** Путь к папке анатомий мира: worlds/<worldId>/spaceholder/anatomy */
 function _getWorldAnatomyDir() {
@@ -101,6 +105,11 @@ function _buildNormalizedActorBodyParts(rawBodyParts) {
     part.y = coerceAnatomyGridCoord(rawPart.y ?? part.y ?? 0);
     if (!("status" in part)) part.status = "healthy";
     if (!("internal" in part)) part.internal = false;
+
+    const cleanedLayers = sanitizeBodyLayers(rawPart.bodyLayers);
+    part.bodyLayers = cleanedLayers && cleanedLayers.length > 0
+      ? cleanedLayers
+      : getDefaultBodyLayersForType(typeId);
 
     part.exposure = sanitizeExposure(rawPart.exposure);
     let relsFromFile = Array.isArray(rawPart.relations)
@@ -396,7 +405,7 @@ export class AnatomyManager {
 
     // Важно для synthetic actor (unlinked token): удаляем bodyParts целиком,
     // иначе новые части могут смержиться с унаследованными от базового актёра.
-    await actor.update({ "system.health.-=bodyParts": null });
+    await actor.update({ "system.health.bodyParts": new foundry.data.operators.ForcedDeletion() });
 
     const bodyParts = _buildNormalizedActorBodyParts(foundry.utils.deepClone(preset.bodyParts));
 
@@ -425,69 +434,6 @@ export class AnatomyManager {
     return this.registry?.anatomies?.[anatomyId] || null;
   }
 
-  /**
-   * Получить ID группы анатомий для указанной анатомии.
-   * Источник: поле `group` в реестре анатомий; при его отсутствии
-   * может быть использовано поле meta.group для мировых анатомий.
-   * @param {string} anatomyId
-   * @returns {string|null}
-   */
-  getAnatomyGroupId(anatomyId) {
-    if (!anatomyId) return null;
-    const info = this.getAnatomyInfo(anatomyId);
-    if (info?.group && typeof info.group === "string") {
-      const g = info.group.trim();
-      return g || null;
-    }
-    // Попробуем найти в мировых анатомиях (meta.group)
-    const presets = this.getWorldPresets();
-    if (Array.isArray(presets) && presets.length) {
-      const preset = presets.find((p) => p.id === anatomyId);
-      const g = preset?.meta?.group;
-      if (typeof g === "string" && g.trim()) return g.trim();
-    }
-    return null;
-  }
-
-  /**
-   * Получить сгруппированный список анатомий по полю group.
-   * Используются только доступные (не отключённые) анатомии.
-   * @returns {Object<string, { id: string, anatomies: { id: string, name: string }[] }>}
-   */
-  getAnatomyGroups() {
-    if (!this.initialized) {
-      return {};
-    }
-    const available = this.getAvailableAnatomies();
-    const groups = {};
-    for (const [id, anatomy] of Object.entries(available)) {
-      const rawGroup = typeof anatomy.group === "string" ? anatomy.group.trim() : "";
-      const groupId = rawGroup || id;
-      if (!groups[groupId]) {
-        groups[groupId] = { id: groupId, anatomies: [] };
-      }
-      groups[groupId].anatomies.push({
-        id,
-        name: anatomy.name || id
-      });
-    }
-    return groups;
-  }
-
-  /**
-   * Получить представительскую анатомию для группы (первую по списку).
-   * Используется, чтобы брать список частей тела для настройки Wearable.
-   * @param {string} groupId
-   * @returns {string|null} ID анатомии или null
-   */
-  getRepresentativeAnatomyForGroup(groupId) {
-    if (!groupId) return null;
-    const groups = this.getAnatomyGroups();
-    const g = groups[groupId];
-    if (!g || !Array.isArray(g.anatomies) || !g.anatomies.length) return null;
-    return g.anatomies[0].id || null;
-  }
-  
   /**
    * Получить локализованное название анатомии
    * @param {string} anatomyId - ID анатомии
@@ -540,6 +486,11 @@ export class AnatomyManager {
       if (!('tags' in part)) part.tags = [];
       part.x = coerceAnatomyGridCoord(part.x);
       part.y = coerceAnatomyGridCoord(part.y);
+
+      const cleanedLayers = sanitizeBodyLayers(part.bodyLayers);
+      part.bodyLayers = cleanedLayers && cleanedLayers.length > 0
+        ? cleanedLayers
+        : getDefaultBodyLayersForType(String(part.id ?? partId));
 
       part.exposure = sanitizeExposure(part.exposure);
       let partRels = Array.isArray(part.relations) ? part.relations.map(sanitizeRelation).filter(Boolean) : [];

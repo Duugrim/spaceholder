@@ -92,6 +92,7 @@ async function _syncRoundChatMessagePointer(message, explicitActor = null) {
 
 async function _replaceJournalMessage(message, { content, journalFlags, anchorActor = null } = {}) {
   if (!message?.id) return message ?? null;
+  const oldId = message.id;
   const createData = _chatMessageCreatePayloadFromExisting(message, {
     content,
     moduleFlags: {
@@ -100,17 +101,21 @@ async function _replaceJournalMessage(message, { content, journalFlags, anchorAc
   });
   const fresh = await ChatMessage.create(createData);
   if (!fresh?.id) return message;
-  try {
-    await _syncRoundChatMessagePointer(fresh, anchorActor);
-  } catch (err) {
+
+  // Снимаем старую DOM-строку синхронно сразу после резолва create, не вставляя
+  // между ними await — иначе браузер успевает нарисовать кадр, в котором уже виден
+  // новый чат-узел, но ещё не убран старый.
+  _removeChatMessageDomNow(oldId);
+
+  // Пойнтер на актёре и удаление старого документа — в фоне: для визуальной
+  // последовательности «новое в DOM → старое из DOM» они не нужны.
+  _syncRoundChatMessagePointer(fresh, anchorActor).catch((err) => {
     console.warn("SpaceHolder | failed to sync round chat message pointer", err);
-  }
-  try {
-    _removeChatMessageDomNow(message.id);
-    await message.delete();
-  } catch (err) {
+  });
+  message.delete().catch((err) => {
     console.warn("SpaceHolder | failed to delete replaced journal message", err);
-  }
+  });
+
   return fresh;
 }
 
@@ -189,6 +194,8 @@ function _segmentFromJournalLine(line, preserveReactions = false) {
     label: line.label,
     description: String(line.description || "").trim(),
     apCost: Math.max(0, Number(line.apCost) || 0),
+    distance: Math.max(0, Number(line.distance) || 0),
+    units: String(line.units || ""),
     undone: !!line.undone,
     undoable: line.undoable !== false,
     transactionId: line.transactionId ?? null,
@@ -274,13 +281,244 @@ function _appendReactionToLines(lines, reactionLine) {
   lines.push(reactionLine);
 }
 
-function _markMoveGroupFullyUndone(group) {
-  const segments = (group.segments || []).map((s) => ({
-    ...s,
-    undone: true,
-    reactions: (s.reactions || []).map((r) => ({ ...r, undone: true })),
-  }));
-  return { ...group, segments };
+/**
+ * Flatten ordered move references across lines for cascading-deletion lookup.
+ * @param {object[]} lines
+ * @returns {Array<{type:'top-move'|'segment'|'reaction-move', i:number, si?:number, ri?:number, tokenUuid:string}>}
+ */
+function _flattenMoveRefs(lines) {
+  const refs = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (!l) continue;
+    if (l.kind === "moveGroup") {
+      const segs = Array.isArray(l.segments) ? l.segments : [];
+      for (let si = 0; si < segs.length; si++) {
+        const seg = segs[si];
+        refs.push({ type: "segment", i, si, tokenUuid: String(seg?.tokenUuid || "") });
+        const reacts = Array.isArray(seg?.reactions) ? seg.reactions : [];
+        for (let ri = 0; ri < reacts.length; ri++) {
+          const r = reacts[ri];
+          if (String(r?.kind) === "move") {
+            refs.push({
+              type: "reaction-move",
+              i,
+              si,
+              ri,
+              tokenUuid: String(r?.tokenUuid || ""),
+            });
+          }
+        }
+      }
+    } else if (l.kind === "move") {
+      refs.push({ type: "top-move", i, tokenUuid: String(l?.tokenUuid || "") });
+    }
+  }
+  return refs;
+}
+
+/**
+ * Determine which move refs would be deleted by an undo at `loc`.
+ * Shared by actual deletion and preview/hover so both stay in lockstep.
+ * @param {object[]} lines
+ * @param {object} loc - location returned by _findLineLocation
+ * @returns {{ refs: ReturnType<typeof _flattenMoveRefs>, refsToDelete: Set<number> }}
+ */
+function _selectMoveDeletionsAt(lines, loc) {
+  const refs = _flattenMoveRefs(lines);
+  let tokenKey = "";
+  let groupOnlyIdx = null;
+  let startRefIdx = -1;
+
+  if (loc.type === "group") {
+    groupOnlyIdx = loc.index;
+    const firstSeg = loc.line?.segments?.[0];
+    tokenKey = String(firstSeg?.tokenUuid || "");
+    startRefIdx = refs.findIndex((r) => r.i === loc.index);
+  } else if (loc.type === "top") {
+    tokenKey = String(loc.line?.tokenUuid || "");
+    startRefIdx = refs.findIndex((r) => r.type === "top-move" && r.i === loc.index);
+  } else if (loc.type === "segment") {
+    const seg = lines[loc.groupIndex]?.segments?.[loc.segIndex];
+    tokenKey = String(seg?.tokenUuid || "");
+    startRefIdx = refs.findIndex(
+      (r) => r.type === "segment" && r.i === loc.groupIndex && r.si === loc.segIndex
+    );
+  } else if (loc.type === "reaction") {
+    const r = lines[loc.groupIndex]?.segments?.[loc.segIndex]?.reactions?.[loc.reactIndex];
+    tokenKey = String(r?.tokenUuid || "");
+    startRefIdx = refs.findIndex(
+      (rr) =>
+        rr.type === "reaction-move" &&
+        rr.i === loc.groupIndex &&
+        rr.si === loc.segIndex &&
+        rr.ri === loc.reactIndex
+    );
+  }
+
+  const refsToDelete = new Set();
+  if (startRefIdx < 0 && groupOnlyIdx === null) return { refs, refsToDelete };
+
+  for (let k = 0; k < refs.length; k++) {
+    const r = refs[k];
+    const matchToken = !!tokenKey && r.tokenUuid === tokenKey;
+    const inGroup = groupOnlyIdx !== null && r.i === groupOnlyIdx;
+    const passesStart = startRefIdx >= 0 && k >= startRefIdx;
+    if (inGroup || (passesStart && matchToken)) refsToDelete.add(k);
+  }
+  return { refs, refsToDelete };
+}
+
+/**
+ * Identify what the user "directly" targeted, so cascade preview can subtract it
+ * from the deletion set when reporting the surprise count.
+ * @returns {(ref: object) => boolean}
+ */
+function _isUserClickedRef(loc) {
+  return (r) => {
+    if (loc.type === "top") return r.type === "top-move" && r.i === loc.index;
+    if (loc.type === "segment")
+      return r.type === "segment" && r.i === loc.groupIndex && r.si === loc.segIndex;
+    if (loc.type === "reaction")
+      return (
+        r.type === "reaction-move" &&
+        r.i === loc.groupIndex &&
+        r.si === loc.segIndex &&
+        r.ri === loc.reactIndex
+      );
+    return false;
+  };
+}
+
+/**
+ * Compute cascade preview directly from a journal message — matches what
+ * `_deleteMovesCascading` will actually drop. This avoids mismatches with
+ * combat-table queries (cross-combatant reactions, ghost rows already marked
+ * `ignored` on the GM side, etc.).
+ * @param {ChatMessage} message
+ * @param {string} lineId
+ * @param {string} undoScope - "group" or ""
+ * @returns {{ totalDeletes: number, cascadeAfter: number, cascadeEventIds: string[], cascadeLineIds: string[] }}
+ */
+function _computeJournalCascadePreview(message, lineId, undoScope) {
+  const empty = { totalDeletes: 0, cascadeAfter: 0, cascadeEventIds: [], cascadeLineIds: [] };
+  if (!message?.id) return empty;
+  const fj = message.flags?.[MODULE_NS]?.[FLAG_JOURNAL];
+  const lines = Array.isArray(fj?.lines) ? fj.lines : [];
+  const loc = _findLineLocation(lines, lineId);
+  if (!loc) return empty;
+
+  const undoWholeMoveGroup = undoScope === "group";
+  let targetKind = "";
+  if (loc.type === "top") targetKind = String(loc.line?.kind || "");
+  else if (loc.type === "group") targetKind = "moveGroup";
+  else if (loc.type === "segment") targetKind = "move";
+  else if (loc.type === "reaction") {
+    const r = lines[loc.groupIndex]?.segments?.[loc.segIndex]?.reactions?.[loc.reactIndex];
+    targetKind = String(r?.kind || "");
+  }
+  const isMoveDelete =
+    (loc.type === "group" && undoWholeMoveGroup) ||
+    loc.type === "segment" ||
+    (loc.type === "top" && targetKind === "move") ||
+    (loc.type === "reaction" && targetKind === "move");
+  if (!isMoveDelete) return empty;
+
+  const { refs, refsToDelete } = _selectMoveDeletionsAt(lines, loc);
+  if (!refsToDelete.size) return empty;
+
+  const isClicked = _isUserClickedRef(loc);
+  const cascadeEventIds = [];
+  const cascadeLineIds = [];
+  let cascadeAfter = 0;
+
+  for (const k of refsToDelete) {
+    const r = refs[k];
+    // For group-undo the "target" is the whole group, so in-group deletions are expected.
+    if (undoWholeMoveGroup && loc.type === "group" && r.i === loc.index) continue;
+    if (!undoWholeMoveGroup && isClicked(r)) continue;
+    cascadeAfter += 1;
+    let evt = "";
+    let id = "";
+    if (r.type === "top-move") {
+      const l = lines[r.i] || {};
+      evt = String(l.combatEventId || "");
+      id = String(l.id || "");
+    } else if (r.type === "segment") {
+      const seg = lines[r.i]?.segments?.[r.si] || {};
+      evt = String(seg.combatEventId || "");
+      id = String(seg.id || "");
+    } else if (r.type === "reaction-move") {
+      const re = lines[r.i]?.segments?.[r.si]?.reactions?.[r.ri] || {};
+      evt = String(re.combatEventId || "");
+      id = String(re.id || "");
+    }
+    if (evt) cascadeEventIds.push(evt);
+    if (id) cascadeLineIds.push(id);
+  }
+  return {
+    totalDeletes: refsToDelete.size,
+    cascadeAfter,
+    cascadeEventIds,
+    cascadeLineIds,
+  };
+}
+
+/**
+ * Delete a movement (and cascade subsequent same-token movements). Strict storage on the
+ * combat-log side already drops cascaded movements, so the journal must mirror that.
+ * @param {object[]} lines
+ * @param {object} loc - location returned by _findLineLocation
+ * @returns {object[]} new lines array
+ */
+function _deleteMovesCascading(lines, loc) {
+  const { refs, refsToDelete } = _selectMoveDeletionsAt(lines, loc);
+  if (!refsToDelete.size) return lines;
+
+  const removeTopIdxs = new Set();
+  const removeSegByGroup = new Map();
+  const removeReactByGroupSeg = new Map();
+
+  for (const k of refsToDelete) {
+    const r = refs[k];
+    if (r.type === "top-move") {
+      removeTopIdxs.add(r.i);
+    } else if (r.type === "segment") {
+      if (!removeSegByGroup.has(r.i)) removeSegByGroup.set(r.i, new Set());
+      removeSegByGroup.get(r.i).add(r.si);
+    } else if (r.type === "reaction-move") {
+      const key = `${r.i}:${r.si}`;
+      if (!removeReactByGroupSeg.has(key)) removeReactByGroupSeg.set(key, new Set());
+      removeReactByGroupSeg.get(key).add(r.ri);
+    }
+  }
+
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l?.kind === "moveGroup") {
+      const segDel = removeSegByGroup.get(i) || new Set();
+      const newSegs = [];
+      const segs = Array.isArray(l.segments) ? l.segments : [];
+      for (let si = 0; si < segs.length; si++) {
+        if (segDel.has(si)) continue;
+        const seg = segs[si];
+        const reactDel = removeReactByGroupSeg.get(`${i}:${si}`) || new Set();
+        if (reactDel.size) {
+          const newReacts = (seg.reactions || []).filter((_, ri) => !reactDel.has(ri));
+          newSegs.push({ ...seg, reactions: newReacts });
+        } else {
+          newSegs.push(seg);
+        }
+      }
+      if (newSegs.length === 0) continue;
+      out.push({ ...l, segments: newSegs });
+    } else {
+      if (removeTopIdxs.has(i)) continue;
+      out.push(l);
+    }
+  }
+  return out;
 }
 
 /**
@@ -374,6 +612,12 @@ function _renderUndoButton(line, opts = {}) {
         ><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></button>`;
 }
 
+function _renderApChipHtml(apCost) {
+  const ap = Math.max(0, Number(apCost) || 0);
+  if (ap <= 0) return `<span class="spaceholder-action-journal__cost"></span>`;
+  return `<span class="spaceholder-action-journal__cost"><span class="spaceholder-action-journal__ap-chip">${_esc(ap)}</span></span>`;
+}
+
 /**
  * @param {object} line
  * @param {{ reactionLabel: string, detailsLabel: string, nested?: boolean }} ctx
@@ -381,7 +625,6 @@ function _renderUndoButton(line, opts = {}) {
 function _renderStandardRowHtml(line, ctx) {
   const label = _esc(line.label || "");
   const description = String(line.description || "").trim();
-  const ap = Number(line.apCost) > 0 ? ` (−${_esc(line.apCost)} AP)` : "";
   const undone = !!line.undone;
   const isReaction = !!line.isReaction;
   const rowClass = `${_lineToneClass(line)}${undone ? " spaceholder-action-journal__row--undone" : ""}${isReaction ? " spaceholder-action-journal__row--reaction" : ""}${ctx.nested ? " spaceholder-action-journal__row--nested" : ""}`;
@@ -407,8 +650,9 @@ function _renderStandardRowHtml(line, ctx) {
       ${gutter}
       <span class="spaceholder-action-journal__main">
         <span class="spaceholder-action-journal__kind"><i class="${_lineIconClass(line)}" aria-hidden="true"></i></span>
-        <span class="spaceholder-action-journal__text">${label}${ap}</span>
+        <span class="spaceholder-action-journal__text">${label}</span>
       </span>
+      ${_renderApChipHtml(line.apCost)}
       <span class="spaceholder-action-journal__tools">${detailToggle}${btn}</span>
       ${details}
     </li>`;
@@ -422,19 +666,20 @@ function _renderMoveGroupHtml(group, ctx) {
   const segs = Array.isArray(group.segments) ? group.segments : [];
   const first = segs[0];
   const expanded = !!group.groupUiExpanded;
-  const moveWord = game.i18n?.localize?.("SPACEHOLDER.Combat.RowMove") || "Move";
   let apSum = 0;
-  for (const s of segs) apSum += Math.max(0, Number(s?.apCost) || 0);
-  const apStr = apSum > 0 ? ` (−${_esc(apSum)} AP)` : "";
-  const summary =
-    segs.length > 1
-      ? game.i18n?.format?.("SPACEHOLDER.ActionChatJournal.MoveGroupSummary", {
-          count: String(segs.length),
-        }) || `${moveWord} ×${segs.length}`
-      : moveWord;
+  let distSum = 0;
+  for (const s of segs) {
+    apSum += Math.max(0, Number(s?.apCost) || 0);
+    distSum += Math.max(0, Number(s?.distance) || 0);
+  }
+  const groupUnits = String(
+    segs.find((s) => s?.units)?.units || canvas?.scene?.grid?.units || ""
+  ).trim();
+  const distText = groupUnits ? `${distSum.toFixed(1)} ${groupUnits}` : distSum.toFixed(1);
+  const summary = segs.length > 1 ? `×${segs.length} · ${distText}` : distText;
   const groupUndone = segs.length > 0 && segs.every((s) => s.undone);
   const firstUndoable = first && first.undoable !== false && !first.undone;
-  const rowClass = `spaceholder-action-journal__row spaceholder-action-journal__row--move spaceholder-action-journal__movegroup${groupUndone ? " spaceholder-action-journal__row--undone" : ""}`;
+  const rowClass = `spaceholder-action-journal__row spaceholder-action-journal__row--move spaceholder-action-journal__row--movegroup spaceholder-action-journal__movegroup${groupUndone ? " spaceholder-action-journal__row--undone" : ""}`;
   const expandTitle = expanded ? ctx.collapseLabel : ctx.expandLabel;
   const chevron = expanded ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-right";
   const groupUndoLine = first
@@ -486,10 +731,15 @@ function _renderMoveGroupHtml(group, ctx) {
   const segmentRows = expanded
     ? segs
         .map((seg) => {
+          const segDist = Math.max(0, Number(seg.distance) || 0);
+          const segUnits = String(seg.units || groupUnits || "").trim();
+          const segLabel = String(
+            seg.label || (segUnits ? `${segDist.toFixed(1)} ${segUnits}` : segDist.toFixed(1))
+          );
           const line = {
             id: seg.id,
             kind: "move",
-            label: String(seg.label || moveWord),
+            label: segLabel,
             description: seg.description,
             apCost: seg.apCost,
             undone: seg.undone,
@@ -518,14 +768,14 @@ function _renderMoveGroupHtml(group, ctx) {
               return _renderStandardRowHtml(lr, { ...ctx, nested: true });
             })
             .join("");
-          const ap = Number(seg.apCost) > 0 ? ` (−${_esc(seg.apCost)} AP)` : "";
           const undone = !!seg.undone;
           const rowClassS = `spaceholder-action-journal__row spaceholder-action-journal__row--move spaceholder-action-journal__row--move-segment${undone ? " spaceholder-action-journal__row--undone" : ""} spaceholder-action-journal__row--nested`;
           return `<li class="${rowClassS}" data-line-id="${_esc(seg.id || "")}" data-event-id="${_esc(seg.combatEventId || "")}">
             <span class="spaceholder-action-journal__main">
               <span class="spaceholder-action-journal__kind"><i class="fa-solid fa-shoe-prints" aria-hidden="true"></i></span>
-              <span class="spaceholder-action-journal__text">${_esc(seg.label || moveWord)}${ap}</span>
+              <span class="spaceholder-action-journal__text">${_esc(segLabel)}</span>
             </span>
+            ${_renderApChipHtml(seg.apCost)}
             <span class="spaceholder-action-journal__tools">${detailToggle}${_renderUndoButton(line, { nested: true })}</span>
             ${details}
             ${reacts ? `<ul class="spaceholder-action-journal__sublist">${reacts}</ul>` : ""}
@@ -535,17 +785,21 @@ function _renderMoveGroupHtml(group, ctx) {
     : "";
 
   const firstEvt = first?.combatEventId || "";
+  const chevronBtn = segs.length > 1
+    ? `<button type="button" class="spaceholder-action-journal__toggle spaceholder-action-journal__toggle--chevron" data-action="sh-journal-toggle-move-group"
+        data-group-id="${_esc(group.id)}"
+        aria-expanded="${expanded ? "true" : "false"}"
+        title="${_esc(expandTitle)}"><i class="${chevron}" aria-hidden="true"></i></button>`
+    : "";
 
   return `<li class="${rowClass}" data-line-id="${_esc(group.id || "")}" data-event-id="${_esc(firstEvt)}">
     <span class="spaceholder-action-journal__main">
       <span class="spaceholder-action-journal__kind"><i class="fa-solid fa-shoe-prints" aria-hidden="true"></i></span>
-      <span class="spaceholder-action-journal__text">${_esc(summary)}${apStr}</span>
+      <span class="spaceholder-action-journal__text">${_esc(summary)}</span>
     </span>
+    ${_renderApChipHtml(apSum)}
     <span class="spaceholder-action-journal__tools">
-      <button type="button" class="spaceholder-action-journal__toggle spaceholder-action-journal__toggle--chevron" data-action="sh-journal-toggle-move-group"
-        data-group-id="${_esc(group.id)}"
-        aria-expanded="${expanded ? "true" : "false"}"
-        title="${_esc(expandTitle)}"><i class="${chevron}" aria-hidden="true"></i></button>
+      ${chevronBtn}
       ${groupUndoBtn}
     </span>
     <div class="spaceholder-action-journal__movegroup-body">
@@ -657,6 +911,8 @@ export async function appendCombatActionJournalLine({
   label,
   description = "",
   apCost = 0,
+  distance = 0,
+  units = "",
   kind = "action",
   isReaction = false,
   actorName = "",
@@ -682,6 +938,8 @@ export async function appendCombatActionJournalLine({
       label: String(label || "").trim() || "—",
       description: String(description || "").trim(),
       apCost: Math.max(0, Number(apCost) || 0),
+      distance: Math.max(0, Number(distance) || 0),
+      units: String(units || ""),
       kind: kind === "move" ? "move" : kind === "system" ? "system" : "action",
       undone: false,
       undoable: undoable !== false,
@@ -754,43 +1012,47 @@ async function _toggleMoveGroupExpandedInMessage(message, groupId) {
 }
 
 /**
+ * Apply a journal undo for the given line:
+ *   - Movements are DELETED (not marked "undone") and cascade-delete every later
+ *     movement of the same token. Combat-log storage already drops cascaded moves
+ *     on undo, so the journal must mirror that or rows turn into ghost references.
+ *   - Whole-moveGroup undo deletes the entire group plus same-token cascade after it.
+ *   - Non-move actions/reactions keep the legacy "undone" mark.
  * @param {ChatMessage} message
  * @param {string} lineId
- * @param {{ cascadeSubsequentMoves?: boolean, undoWholeMoveGroup?: boolean }} [opts]
+ * @param {{ undoWholeMoveGroup?: boolean }} [opts]
  */
 export async function markJournalLineUndoneInMessage(message, lineId, opts = {}) {
   if (!message?.id) return;
   const fj = message.flags?.[MODULE_NS]?.[FLAG_JOURNAL];
-  const lines = Array.isArray(fj?.lines) ? _dup(fj.lines) : [];
+  let lines = Array.isArray(fj?.lines) ? _dup(fj.lines) : [];
   const loc = _findLineLocation(lines, lineId);
   if (!loc) return;
 
   const undoWholeMoveGroup = !!opts.undoWholeMoveGroup;
-  const cascadeSubsequentMoves = !!opts.cascadeSubsequentMoves;
 
-  if (undoWholeMoveGroup && loc.type === "group") {
-    lines[loc.index] = _markMoveGroupFullyUndone(loc.line);
+  let targetKind = "";
+  if (loc.type === "top") targetKind = String(loc.line?.kind || "");
+  else if (loc.type === "group") targetKind = "moveGroup";
+  else if (loc.type === "segment") targetKind = "move";
+  else if (loc.type === "reaction") {
+    const r = lines[loc.groupIndex]?.segments?.[loc.segIndex]?.reactions?.[loc.reactIndex];
+    targetKind = String(r?.kind || "");
+  }
+
+  const isMoveDelete =
+    (loc.type === "group" && undoWholeMoveGroup) ||
+    loc.type === "segment" ||
+    (loc.type === "top" && targetKind === "move") ||
+    (loc.type === "reaction" && targetKind === "move");
+
+  if (isMoveDelete) {
+    lines = _deleteMovesCascading(lines, loc);
   } else if (loc.type === "top") {
     const target = loc.line;
     if (target?.undoable === false) return;
     if (target.kind === "moveGroup") return;
     lines[loc.index] = { ...target, undone: true };
-    if (cascadeSubsequentMoves && String(target.kind) === "move") {
-      const tokenKey = String(target?.tokenUuid || "").trim();
-      for (let j = loc.index + 1; j < lines.length; j++) {
-        if (String(lines[j]?.kind) !== "move" || lines[j].undone) continue;
-        if (tokenKey && String(lines[j]?.tokenUuid || "").trim() !== tokenKey) continue;
-        lines[j] = { ...lines[j], undone: true };
-      }
-    }
-  } else if (loc.type === "segment") {
-    const g = _dup(lines[loc.groupIndex]);
-    const segs = [...(g.segments || [])];
-    const seg = segs[loc.segIndex];
-    if (seg?.undoable === false) return;
-    segs[loc.segIndex] = { ...seg, undone: true };
-    g.segments = segs;
-    lines[loc.groupIndex] = g;
   } else if (loc.type === "reaction") {
     const g = _dup(lines[loc.groupIndex]);
     const segs = [...(g.segments || [])];
@@ -803,6 +1065,8 @@ export async function markJournalLineUndoneInMessage(message, lineId, opts = {})
     segs[loc.segIndex] = seg;
     g.segments = segs;
     lines[loc.groupIndex] = g;
+  } else {
+    return;
   }
 
   const round = Math.max(1, Number(fj?.round) || 1);
@@ -812,9 +1076,24 @@ export async function markJournalLineUndoneInMessage(message, lineId, opts = {})
   const content = buildActionJournalHtml(lines, round, title);
   const sh = { ...(message.flags?.[MODULE_NS] || {}) };
   sh[FLAG_JOURNAL] = { ...fj, schema: JOURNAL_SCHEMA, round, lines };
+
+  // Resolve anchor before lines were emptied so the actor pointer can follow the
+  // replacement message id even when deletion wiped every line referencing the actor.
+  let anchorActor = null;
+  const anchorUuid = _extractActorUuidFromJournalLines(fj?.lines);
+  if (anchorUuid) {
+    try {
+      const doc = await fromUuid(anchorUuid);
+      if (doc?.documentName === "Actor") anchorActor = doc;
+    } catch (_) {
+      anchorActor = null;
+    }
+  }
+
   await _replaceJournalMessage(message, {
     content,
     journalFlags: sh[FLAG_JOURNAL],
+    anchorActor,
   });
 }
 
@@ -879,32 +1158,22 @@ async function _applyJournalUndoClick(btn, message) {
   const journalRoot = btn.closest?.('[data-spaceholder-action-journal="1"]');
   _removeCascadePreview(journalRoot);
   const lineId = btn.getAttribute("data-line-id") || "";
-  const lineKind = btn.getAttribute("data-line-kind") || "";
   const combatId = btn.getAttribute("data-combat-id") || "";
   const combatEventId = btn.getAttribute("data-combat-event-id") || "";
   const tokenUuid = btn.getAttribute("data-token-uuid") || "";
   const undoScope = btn.getAttribute("data-undo-scope") || "";
-  const nested = btn.getAttribute("data-nested") === "1";
-  const previewMgr = game.spaceholder?.combatSessionManager;
-  let affectedCount = 0;
-  if (previewMgr?.requestJournalUndoPreviewFromClient && combatId && combatEventId) {
-    try {
-      const preview = await previewMgr.requestJournalUndoPreviewFromClient({
-        combatId,
-        targetEventId: combatEventId,
-        lineKind,
-        tokenUuid: tokenUuid || null,
-      });
-      affectedCount = Math.max(0, Number(preview?.affectedCount) || 0);
-    } catch (_) {
-      affectedCount = 0;
-    }
-  }
-  if (affectedCount > 1) {
-    const title = game.i18n?.localize?.("SPACEHOLDER.ActionChatJournal.ConfirmBulkUndoTitle") || "Confirm undo";
+  // Cascade preview computed locally from this very journal message — mirrors
+  // _deleteMovesCascading exactly, so reactions and cross-segment cascades are
+  // counted, while phantom rows already removed never re-appear in the count.
+  const preview = _computeJournalCascadePreview(message, lineId, undoScope);
+  if (preview.cascadeAfter >= 1) {
+    const title =
+      game.i18n?.localize?.("SPACEHOLDER.ActionChatJournal.ConfirmBulkUndoTitle") || "Confirm undo";
     const body =
-      game.i18n?.format?.("SPACEHOLDER.ActionChatJournal.ConfirmBulkUndoBody", { count: String(affectedCount) }) ||
-      `This undo will affect ${affectedCount} subsequent actions. Continue?`;
+      game.i18n?.format?.("SPACEHOLDER.ActionChatJournal.ConfirmBulkUndoBody", {
+        count: String(preview.cascadeAfter),
+      }) ||
+      `This undo will also drop ${preview.cascadeAfter} subsequent movement(s). Continue?`;
     const okLabel = game.i18n?.localize?.("SPACEHOLDER.ActionChatJournal.ConfirmUndo") || "Undo";
     const cancelLabel = game.i18n?.localize?.("SPACEHOLDER.Actions.Cancel") || "Cancel";
     const accepted = await foundry.applications.api.DialogV2.wait({
@@ -945,10 +1214,8 @@ async function _applyJournalUndoClick(btn, message) {
   const fresh = game.messages.get(message.id);
   if (fresh) {
     try {
-      const isGroupUndo = undoScope === "group";
       await markJournalLineUndoneInMessage(fresh, lineId, {
-        cascadeSubsequentMoves: !isGroupUndo && !nested && lineKind === "move",
-        undoWholeMoveGroup: isGroupUndo,
+        undoWholeMoveGroup: undoScope === "group",
       });
     } catch (e) {
       console.warn("SpaceHolder | journal message update failed", e);
@@ -1005,26 +1272,12 @@ function _installDelegatedJournalUiOnce() {
       _undoPreviewHoverBtn = btn;
       const root = btn.closest('[data-spaceholder-action-journal="1"]');
       _removeCascadePreview(root);
-      const lineKind = btn.getAttribute("data-line-kind") || "";
-      const combatId = btn.getAttribute("data-combat-id") || "";
-      const combatEventId = btn.getAttribute("data-combat-event-id") || "";
-      const tokenUuid = btn.getAttribute("data-token-uuid") || "";
-      const mgr = game.spaceholder?.combatSessionManager;
-      if (!mgr?.requestJournalUndoPreviewFromClient || !combatId || !combatEventId) return;
-      void (async () => {
-        try {
-          const preview = await mgr.requestJournalUndoPreviewFromClient({
-            combatId,
-            targetEventId: combatEventId,
-            lineKind,
-            tokenUuid: tokenUuid || null,
-          });
-          if (!preview?.ok) return;
-          _applyCascadePreviewByEventIds(preview.cascadeMoveEventIds || []);
-        } catch (_) {
-          /* ignore */
-        }
-      })();
+      const lineId = btn.getAttribute("data-line-id") || "";
+      const undoScope = btn.getAttribute("data-undo-scope") || "";
+      const message = _getChatMessageForJournalControl(btn);
+      if (!message || !lineId) return;
+      const preview = _computeJournalCascadePreview(message, lineId, undoScope);
+      if (preview.cascadeAfter > 0) _applyCascadePreviewByEventIds(preview.cascadeEventIds);
     },
     true
   );

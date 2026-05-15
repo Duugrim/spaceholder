@@ -12,9 +12,10 @@
 }
 
 .spaceholder-action-journal__title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
-  margin: 0 0 4px;
+  letter-spacing: 0.02em;
+  margin: 0 0 3px;
   padding: 0 1px;
   opacity: 0.9;
 }
@@ -25,41 +26,67 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   overflow: visible;
 }
 
 /* One line per entry; description opens on second row only when toggled */
 .spaceholder-action-journal__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto 40px;
   grid-template-areas:
-    "main tools"
-    "desc desc";
+    "main tools cost"
+    "desc desc desc";
   gap: 0 6px;
   align-items: center;
-  min-height: 26px;
-  padding: 2px 4px;
-  border: 0;
-  border-radius: 0;
+  min-height: 0;
+  padding: 2px 7px 2px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: $sh-radius-md;
   background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.07);
   box-sizing: border-box;
+  overflow: hidden;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.065);
+    border-color: rgba(255, 255, 255, 0.11);
+  }
 }
 
-.spaceholder-action-journal__row--action { border-left: 3px solid rgba(210, 175, 95, 0.8); padding-left: 3px; }
-.spaceholder-action-journal__row--move { border-left: 3px solid rgba(120, 175, 210, 0.78); padding-left: 3px; }
-.spaceholder-action-journal__row--system { border-left: 3px solid rgba(134, 196, 134, 0.78); padding-left: 3px; }
+/* Type-tinted icons + matching coloured left edge */
+.spaceholder-action-journal__row--action .spaceholder-action-journal__kind {
+  color: rgba(230, 200, 120, 0.92);
+}
+.spaceholder-action-journal__row--action {
+  box-shadow: inset 3px 0 0 rgba(230, 200, 120, 0.6);
+}
+.spaceholder-action-journal__row--move .spaceholder-action-journal__kind {
+  color: rgba(150, 200, 230, 0.95);
+}
+.spaceholder-action-journal__row--move {
+  box-shadow: inset 3px 0 0 rgba(150, 200, 230, 0.6);
+}
+.spaceholder-action-journal__row--system .spaceholder-action-journal__kind {
+  color: rgba(150, 210, 160, 0.95);
+}
+.spaceholder-action-journal__row--system {
+  box-shadow: inset 3px 0 0 rgba(150, 210, 160, 0.55);
+}
+
 .spaceholder-action-journal__row--reaction {
   position: relative;
-  box-shadow: inset 0 0 0 1px rgba(196, 153, 231, 0.22);
+  border-color: rgba(196, 153, 231, 0.28);
+  box-shadow: inset 3px 0 0 rgba(196, 153, 231, 0.55);
 
   .spaceholder-action-journal__main {
-    padding-left: 28px;
+    padding-left: 26px;
     box-sizing: border-box;
   }
 
   .spaceholder-action-journal__desc {
-    padding-left: 28px;
+    padding-left: 26px;
     box-sizing: border-box;
   }
 
@@ -72,21 +99,21 @@
 
 .spaceholder-action-journal__reaction-gutter {
   position: absolute;
-  left: 2px;
+  left: 6px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   pointer-events: none;
 }
 
 .spaceholder-action-journal__reaction-token {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.38);
@@ -95,14 +122,14 @@
 }
 
 .spaceholder-action-journal__reaction-token-fallback {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.88);
   background: rgba(130, 95, 165, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.32);
@@ -111,7 +138,7 @@
 
 .spaceholder-action-journal__main { grid-area: main; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .spaceholder-action-journal__kind {
-  width: 14px;
+  width: 16px;
   text-align: center;
   font-size: 13px;
   opacity: 0.88;
@@ -126,12 +153,44 @@
   font-weight: 600;
   line-height: 1.2;
 }
+.spaceholder-action-journal__cost {
+  grid-area: cost;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin-right: -7px;
+  padding: 0 6px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.spaceholder-action-journal__cost:not(:empty) {
+  background: rgba(0, 0, 0, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+.spaceholder-action-journal__ap-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: #{$font-secondary};
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
 .spaceholder-action-journal__tools { grid-area: tools; display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; flex-shrink: 0; }
 
 .spaceholder-action-journal__desc {
   grid-area: desc;
   margin: 2px 0 0 0;
-  padding: 4px 6px;
+  padding: 3px 6px;
   border: 0;
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.22);
@@ -158,13 +217,22 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   color: #f2f2f2;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 3px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  aspect-ratio: 1 / 1;
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
-  min-height: 22px;
-  min-width: 22px;
-  padding: 2px;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  min-width: 20px;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
@@ -190,19 +258,23 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   line-height: 1;
 }
 
-.spaceholder-action-journal__undone { font-size: 12px; opacity: 0.78; white-space: nowrap; }
+.spaceholder-action-journal__undone { font-size: 11px; opacity: 0.78; white-space: nowrap; }
 
 /* Move group: several main-turn moves in one chat row */
 .spaceholder-action-journal__row--movegroup,
 .spaceholder-action-journal__movegroup {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto 40px;
   grid-template-areas:
-    "main tools"
-    "body body";
+    "main tools cost"
+    "body body body";
 }
 
 .spaceholder-action-journal__movegroup .spaceholder-action-journal__main {
   grid-area: main;
+}
+
+.spaceholder-action-journal__movegroup .spaceholder-action-journal__cost {
+  grid-area: cost;
 }
 
 .spaceholder-action-journal__movegroup .spaceholder-action-journal__tools {
@@ -220,11 +292,10 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 .spaceholder-action-journal__movegroup-segments {
   list-style: none;
   margin: 0;
-  padding: 0 0 0 8px;
+  padding: 0 0 0 10px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  border-left: 2px solid rgba(120, 175, 210, 0.35);
+  gap: 2px;
   overflow: visible;
 }
 
@@ -234,31 +305,35 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   overflow: visible;
 }
 
 .spaceholder-action-journal__row--nested {
-  padding: 1px 3px;
+  padding: 1px 7px 1px 9px;
+}
+
+.spaceholder-action-journal__row--nested .spaceholder-action-journal__cost {
+  margin-right: -7px;
 }
 
 .spaceholder-action-journal__row--nested .spaceholder-action-journal__text {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .spaceholder-action-journal__row--nested .spaceholder-action-journal__kind {
-  width: 14px;
+  width: 16px;
   font-size: 13px;
 }
 
 /* One leg inside an expanded move group (no meta row) */
 .spaceholder-action-journal__row--move-segment {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto 40px;
   grid-template-areas:
-    "main tools"
-    "desc desc"
-    "sub sub";
+    "main tools cost"
+    "desc desc desc"
+    "sub sub sub";
 }
 
 .spaceholder-action-journal__sublist {
@@ -267,7 +342,7 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   grid-area: sub;
   overflow: visible;
 }
@@ -275,5 +350,6 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 body.game #chat .chat-message .message-content .spaceholder-action-journal__toggle--chevron,
 body.game #chat-notifications .chat-message .message-content .spaceholder-action-journal__toggle--chevron,
 body.game #chat-popout .chat-message .message-content .spaceholder-action-journal__toggle--chevron {
-  min-width: 22px;
+  width: 20px;
+  min-width: 20px;
 }

@@ -11,6 +11,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/actor/parts/actor-spells.hbs',
     'systems/spaceholder/templates/actor/parts/actor-health.hbs',
     'systems/spaceholder/templates/actor/parts/actor-injuries.hbs',
+    'systems/spaceholder/templates/actor/parts/injury/injury-description.hbs',
     'systems/spaceholder/templates/actor/parts/actor-inventory.hbs',
     'systems/spaceholder/templates/actor/parts/actor-effects.hbs',
     'systems/spaceholder/templates/actor/parts/actor-actions.hbs',
@@ -30,11 +31,14 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/item/parts/item-weapon-channel-tab.hbs',
     'systems/spaceholder/templates/item/parts/item-weapon-ammo-tab.hbs',
     'systems/spaceholder/templates/item/parts/item-weapon-attack-dialog.hbs',
-    'systems/spaceholder/templates/item/parts/item-weapon-base-dialog.hbs',
+    'systems/spaceholder/templates/item/parts/item-weapon-group-dialog.hbs',
     'systems/spaceholder/templates/item/parts/item-weapon-channel-options-dialog.hbs',
-    'systems/spaceholder/templates/item/parts/item-weapon-ammo-dialog.hbs',
+    'systems/spaceholder/templates/item/parts/item-container.hbs',
+    'systems/spaceholder/templates/item/parts/item-material-attributes.hbs',
     // Icon picker (ApplicationV2)
     'systems/spaceholder/templates/icon-picker/icon-picker.hbs',
+    // Damage tools
+    'systems/spaceholder/templates/damage/armor-penetration-tester-app.hbs',
     // HUD: Hotbar faction selector
     'systems/spaceholder/templates/hud/hotbar-faction-ui.hbs',
   ]);

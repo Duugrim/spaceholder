@@ -6,7 +6,50 @@ import { enrichHTMLWithFactionIcons } from '../helpers/faction-display.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
 import { pickIcon } from '../helpers/icon-picker/icon-picker.mjs';
 import { migrateItemWeaponData } from '../documents/item.mjs';
+import { materialsManager } from '../helpers/damage/materials-manager.mjs';
+import {
+  addItemToNestedStorage,
+  extractNestedItemToActor,
+  flattenNestedContents,
+  normalizeNestedStorage,
+  NESTED_STORAGE_FEED_SOURCES,
+} from '../helpers/item-nested-storage.mjs';
+import {
+  ENTRY_ACTOR_ITEM,
+  ENTRY_WORLD_UUID,
+  addWorldUuidToContainer,
+  moveActorItemIntoContainer,
+  normalizeItemContainerFields,
+  pruneBrokenWorldUuidLinks,
+  refreshContainerState,
+  removeActorItemFromContainer,
+  removeWorldUuidFromContainer,
+  rerenderOpenContainerRelatedSheets,
+  setContainerContentsOrder,
+  setWorldContainerContentsOrder,
+  wouldCreateItemContainerCycle,
+} from '../helpers/item-container.mjs';
 
+/**
+ * Build a short human-readable summary of armor layers for a coverage entry.
+ * Example: "3mm Steel Plate, 5mm Kevlar Weave".
+ *
+ * @param {Array<Object>|undefined} layers
+ * @returns {string}
+ */
+function formatCoverageLayersSummary(layers) {
+  if (!Array.isArray(layers) || !layers.length) return '';
+  return layers.map((layer) => {
+    const thickness = Number(layer?.thickness);
+    const slug = String(layer?.material ?? '').trim();
+    if (!slug || !Number.isFinite(thickness) || thickness <= 0) return '';
+    const md = materialsManager?.getMaterial?.(slug);
+    const localized = md?.nameLocalized ? game.i18n?.localize?.(md.nameLocalized) : '';
+    const name = (localized && localized !== md?.nameLocalized) ? localized : (md?.name || slug);
+    const t = Math.round(thickness * 100) / 100;
+    return `${t}mm ${name}`;
+  }).filter(Boolean).join(', ');
+}
 /**
  * Вкладки оружия на листе предмета правят только `system.weapon` (авторинг данных).
  * Подсистемы стрельбы / боя / `action-service` на этом этапе эти поля не используют.
@@ -23,6 +66,7 @@ const ITEM_SHEET_TAB_META = Object.freeze({
   ranged: { icon: 'fas fa-crosshairs', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Ranged' },
   thrown: { icon: 'fas fa-baseball', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Thrown' },
   ammo: { icon: 'fas fa-bullseye', labelKey: 'SPACEHOLDER.Tabs.Ammo' },
+  container: { icon: 'fas fa-box-open', labelKey: 'SPACEHOLDER.ItemContainer.Tab' },
 });
 
 /**
@@ -42,13 +86,24 @@ const ITEM_TYPE_LABEL_KEYS = Object.freeze({
   item: 'SPACEHOLDER.ItemTypes.Item',
   feature: 'SPACEHOLDER.ItemTypes.Feature',
   spell: 'SPACEHOLDER.ItemTypes.Spell',
+  material: 'SPACEHOLDER.ItemTypes.Material',
 });
 
 const ITEM_TYPE_ICON_CLASS = Object.freeze({
   item: 'fa-solid fa-box',
   feature: 'fa-solid fa-star',
   spell: 'fa-solid fa-wand-magic-sparkles',
+  material: 'fa-solid fa-cubes-stacked',
 });
+
+const MATERIAL_CATEGORY_OPTIONS = Object.freeze([
+  { id: 'metal', labelKey: 'SPACEHOLDER.Materials.Categories.Metal' },
+  { id: 'fabric', labelKey: 'SPACEHOLDER.Materials.Categories.Fabric' },
+  { id: 'ceramic', labelKey: 'SPACEHOLDER.Materials.Categories.Ceramic' },
+  { id: 'composite', labelKey: 'SPACEHOLDER.Materials.Categories.Composite' },
+  { id: 'ablative', labelKey: 'SPACEHOLDER.Materials.Categories.Ablative' },
+  { id: 'exotic', labelKey: 'SPACEHOLDER.Materials.Categories.Exotic' },
+]);
 
 const ITEM_ACTION_MODE_LABEL_KEYS = Object.freeze({
   chat: 'SPACEHOLDER.ActionsSystem.UI.ModeChat',
@@ -56,6 +111,261 @@ const ITEM_ACTION_MODE_LABEL_KEYS = Object.freeze({
   macro: 'SPACEHOLDER.ActionsSystem.UI.ModeMacro',
   aimShot: 'SPACEHOLDER.ActionsSystem.UI.ModeAimShot',
 });
+
+/**
+ * Field schemas for weapon / ammo group dialogs. The same descriptors drive:
+ *  - panel rows in the channel/ammo tab,
+ *  - inputs in the universal group dialog,
+ *  - parsing dialog form back into the weapon data object.
+ *
+ * `kind` ∈ { 'number', 'int', 'text', 'bool', 'tags' }.
+ */
+const WEAPON_FIELD_SCHEMAS = Object.freeze({
+  melee: Object.freeze({
+    features: Object.freeze([
+      { name: 'ergonomics', labelKey: 'SPACEHOLDER.ItemWeapon.Ergonomics', kind: 'number' },
+      { name: 'reach', labelKey: 'SPACEHOLDER.ItemWeapon.Reach', kind: 'number' },
+      { name: 'twoHanded', labelKey: 'SPACEHOLDER.ItemWeapon.TwoHanded', kind: 'bool' },
+      { name: 'parryBonus', labelKey: 'SPACEHOLDER.ItemWeapon.ParryBonus', kind: 'number' },
+      { name: 'swingSpeedTier', labelKey: 'SPACEHOLDER.ItemWeapon.SwingSpeedTier', kind: 'text' },
+    ]),
+    projectile: Object.freeze([
+      { name: 'damage', labelKey: 'SPACEHOLDER.ItemWeapon.Damage', kind: 'number' },
+      { name: 'damageType', labelKey: 'SPACEHOLDER.ItemWeapon.DamageType', kind: 'text' },
+      { name: 'armorPen', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorPen', kind: 'number' },
+      { name: 'armorDamageFactor', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorDamageFactor', kind: 'number' },
+      { name: 'hardness', labelKey: 'SPACEHOLDER.ItemWeapon.Hardness', kind: 'number' },
+      { name: 'projectilesPerUse', labelKey: 'SPACEHOLDER.ItemWeapon.ProjectilesPerUse', kind: 'int', min: 1 },
+      { name: 'payloadId', labelKey: 'SPACEHOLDER.ItemWeapon.PayloadId', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.PayloadIdHint' },
+      { name: 'combatPartTag', labelKey: 'SPACEHOLDER.ItemWeapon.CombatPartTag', kind: 'text' },
+    ]),
+    usage: Object.freeze([
+      { name: 'apCost', labelKey: 'SPACEHOLDER.ItemWeapon.ApCost', kind: 'int', min: 0 },
+      { name: 'requiresHolding', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresHolding', kind: 'bool' },
+      { name: 'requiresReadyState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresReadyState', kind: 'bool' },
+    ]),
+  }),
+  ranged: Object.freeze({
+    features: Object.freeze([
+      { name: 'ergonomics', labelKey: 'SPACEHOLDER.ItemWeapon.Ergonomics', kind: 'number' },
+      { name: 'accuracy', labelKey: 'SPACEHOLDER.ItemWeapon.Accuracy', kind: 'number' },
+      { name: 'recoil', labelKey: 'SPACEHOLDER.ItemWeapon.Recoil', kind: 'number' },
+      { name: 'chamberEnabled', labelKey: 'SPACEHOLDER.ItemWeapon.ChamberEnabled', kind: 'bool' },
+      { name: 'effectiveRange', labelKey: 'SPACEHOLDER.ItemWeapon.EffectiveRange', kind: 'number' },
+      { name: 'maxRange', labelKey: 'SPACEHOLDER.ItemWeapon.MaxRange', kind: 'number' },
+      { name: 'twoHanded', labelKey: 'SPACEHOLDER.ItemWeapon.TwoHanded', kind: 'bool' },
+    ]),
+    projectile: Object.freeze([
+      { name: 'damage', labelKey: 'SPACEHOLDER.ItemWeapon.Damage', kind: 'number' },
+      { name: 'damageType', labelKey: 'SPACEHOLDER.ItemWeapon.DamageType', kind: 'text' },
+      { name: 'armorPen', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorPen', kind: 'number' },
+      { name: 'armorDamageFactor', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorDamageFactor', kind: 'number' },
+      { name: 'hardness', labelKey: 'SPACEHOLDER.ItemWeapon.Hardness', kind: 'number' },
+      { name: 'projectilesPerUse', labelKey: 'SPACEHOLDER.ItemWeapon.ProjectilesPerUse', kind: 'int', min: 1 },
+      { name: 'payloadId', labelKey: 'SPACEHOLDER.ItemWeapon.PayloadId', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.PayloadIdHint' },
+    ]),
+    usage: Object.freeze([
+      { name: 'apCost', labelKey: 'SPACEHOLDER.ItemWeapon.ApCost', kind: 'int', min: 0 },
+      { name: 'reloadApCost', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoReloadApCost', kind: 'int', min: 0 },
+      { name: 'reloadRule', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoReloadRule', kind: 'text' },
+      { name: 'feedSource', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoFeedSource', kind: 'text' },
+      { name: 'ammoUseMode', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoUseMode', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.AmmoUseModeHint' },
+      { name: 'takeFromActorInventory', labelKey: 'SPACEHOLDER.ItemWeapon.TakeFromActorInventory', kind: 'bool' },
+      { name: 'attachedContainerId', labelKey: 'SPACEHOLDER.ItemWeapon.AttachedContainerId', kind: 'text' },
+      { name: 'feedFilterTags', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoFeedFilterTags', kind: 'tags', placeholderKey: 'SPACEHOLDER.ItemWeapon.TagsCommaSeparated' },
+      { name: 'consumePerUse', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoConsumePerUse', kind: 'number' },
+      { name: 'chamberCurrentId', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoChamberCurrentId', kind: 'text' },
+      { name: 'canKeepChamberOnReload', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoKeepChamberOnReload', kind: 'bool' },
+      { name: 'requiresHolding', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresHolding', kind: 'bool' },
+      { name: 'requiresReadyState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresReadyState', kind: 'bool' },
+      { name: 'requiresAimState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresAimState', kind: 'bool' },
+    ]),
+  }),
+  thrown: Object.freeze({
+    features: Object.freeze([
+      { name: 'ergonomics', labelKey: 'SPACEHOLDER.ItemWeapon.Ergonomics', kind: 'number' },
+      { name: 'accuracy', labelKey: 'SPACEHOLDER.ItemWeapon.Accuracy', kind: 'number' },
+      { name: 'throwRange', labelKey: 'SPACEHOLDER.ItemWeapon.ThrowRange', kind: 'number' },
+      { name: 'aerodynamics', labelKey: 'SPACEHOLDER.ItemWeapon.Aerodynamics', kind: 'number' },
+      { name: 'twoHanded', labelKey: 'SPACEHOLDER.ItemWeapon.TwoHanded', kind: 'bool' },
+    ]),
+    projectile: Object.freeze([
+      { name: 'damage', labelKey: 'SPACEHOLDER.ItemWeapon.Damage', kind: 'number' },
+      { name: 'damageType', labelKey: 'SPACEHOLDER.ItemWeapon.DamageType', kind: 'text' },
+      { name: 'armorPen', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorPen', kind: 'number' },
+      { name: 'armorDamageFactor', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorDamageFactor', kind: 'number' },
+      { name: 'hardness', labelKey: 'SPACEHOLDER.ItemWeapon.Hardness', kind: 'number' },
+      { name: 'projectilesPerUse', labelKey: 'SPACEHOLDER.ItemWeapon.ProjectilesPerUse', kind: 'int', min: 1 },
+      { name: 'payloadId', labelKey: 'SPACEHOLDER.ItemWeapon.PayloadId', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.PayloadIdHint' },
+      { name: 'aoeRadius', labelKey: 'SPACEHOLDER.ItemWeapon.AoeRadius', kind: 'number' },
+    ]),
+    usage: Object.freeze([
+      { name: 'apCost', labelKey: 'SPACEHOLDER.ItemWeapon.ApCost', kind: 'int', min: 0 },
+      { name: 'prepareApCost', labelKey: 'SPACEHOLDER.ItemWeapon.PrepareApCost', kind: 'int', min: 0 },
+      { name: 'consumeOnUse', labelKey: 'SPACEHOLDER.ItemWeapon.ConsumeOnUse', kind: 'bool' },
+      { name: 'retrievable', labelKey: 'SPACEHOLDER.ItemWeapon.Retrievable', kind: 'bool' },
+      { name: 'requiresHolding', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresHolding', kind: 'bool' },
+      { name: 'requiresReadyState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresReadyState', kind: 'bool' },
+    ]),
+  }),
+});
+
+const AMMO_FIELD_SCHEMAS = Object.freeze({
+  projectile: WEAPON_FIELD_SCHEMAS.ranged.projectile,
+  resource: Object.freeze([
+    { name: 'resourceType', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoResourceType', kind: 'text' },
+    { name: 'caliberTag', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoCaliberTag', kind: 'text' },
+    { name: 'compatibilityTags', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoCompatibilityTags', kind: 'tags', placeholderKey: 'SPACEHOLDER.ItemWeapon.TagsCommaSeparated' },
+    { name: 'stackMax', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoStackMax', kind: 'int', min: 0 },
+  ]),
+});
+
+const WEAPON_GROUP_DIALOG_TITLE_KEY = Object.freeze({
+  features: 'SPACEHOLDER.ItemWeapon.DialogFeaturesTitle',
+  projectile: 'SPACEHOLDER.ItemWeapon.DialogProjectileTitle',
+  usage: 'SPACEHOLDER.ItemWeapon.DialogUsageTitle',
+});
+
+const AMMO_GROUP_DIALOG_TITLE_KEY = Object.freeze({
+  projectile: 'SPACEHOLDER.ItemWeapon.DialogAmmoProjectileTitle',
+  resource: 'SPACEHOLDER.ItemWeapon.DialogAmmoResourceTitle',
+});
+
+/**
+ * @param {boolean} v
+ * @returns {string}
+ */
+function _shFormatBool(v) {
+  return v
+    ? game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.Yes') ?? 'Yes'
+    : game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.No') ?? 'No';
+}
+
+function _shFormatText(v) {
+  const s = String(v ?? '').trim();
+  return s.length ? s : '—';
+}
+
+function _shFormatNumber(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2);
+}
+
+function _shFormatTags(v) {
+  if (!Array.isArray(v) || v.length === 0) return '—';
+  return v.join(', ');
+}
+
+/**
+ * Build display rows for a panel given a field schema and the data object.
+ * @param {ReadonlyArray<object>} fields
+ * @param {object} data
+ * @returns {Array<{label: string, display: string, text: boolean, multiline: boolean}>}
+ */
+function _shBuildRows(fields, data) {
+  return fields.map((f) => {
+    const value = data?.[f.name];
+    let display;
+    let text = false;
+    let multiline = false;
+    switch (f.kind) {
+      case 'bool':
+        display = _shFormatBool(!!value);
+        break;
+      case 'text':
+        display = _shFormatText(value);
+        text = true;
+        break;
+      case 'tags':
+        display = _shFormatTags(value);
+        text = true;
+        multiline = true;
+        break;
+      case 'int':
+      case 'number':
+      default:
+        display = _shFormatNumber(value);
+    }
+    return {
+      label: game.i18n?.localize?.(f.labelKey) ?? f.labelKey,
+      display,
+      text,
+      multiline,
+    };
+  });
+}
+
+/**
+ * Build dialog field descriptors from a field schema and a data object.
+ * @param {ReadonlyArray<object>} fields
+ * @param {object} data
+ * @returns {Array<object>}
+ */
+function _shBuildDialogFields(fields, data) {
+  return fields.map((f) => {
+    const raw = data?.[f.name];
+    let value;
+    if (f.kind === 'bool') value = !!raw;
+    else if (f.kind === 'tags') value = Array.isArray(raw) ? raw.join(', ') : '';
+    else if (f.kind === 'int' || f.kind === 'number') {
+      const n = Number(raw);
+      value = Number.isFinite(n) ? n : 0;
+    } else value = String(raw ?? '');
+    return {
+      name: f.name,
+      label: game.i18n?.localize?.(f.labelKey) ?? f.labelKey,
+      kind: f.kind,
+      value,
+      placeholder: f.placeholderKey ? game.i18n?.localize?.(f.placeholderKey) ?? '' : '',
+      hint: f.hintKey ? game.i18n?.localize?.(f.hintKey) ?? '' : '',
+      min: f.min ?? '',
+    };
+  });
+}
+
+/**
+ * Read a universal group dialog form back into a plain data object.
+ * @param {HTMLElement|null} root
+ * @param {ReadonlyArray<object>} fields
+ * @returns {object}
+ */
+function _shReadDialogForm(root, fields) {
+  const out = {};
+  for (const f of fields) {
+    const el = root?.querySelector?.(`[name="${f.name}"]`);
+    if (!el) continue;
+    if (f.kind === 'bool') {
+      out[f.name] = !!el.checked;
+    } else if (f.kind === 'tags') {
+      const text = String(el.value ?? '');
+      out[f.name] = text
+        .split(/[,\n\r]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else if (f.kind === 'int') {
+      const raw = String(el.value ?? '').trim();
+      if (raw === '') {
+        out[f.name] = f.min ?? 0;
+      } else {
+        const n = Math.floor(Number(raw));
+        out[f.name] = Number.isFinite(n) ? Math.max(f.min ?? -Infinity, n) : f.min ?? 0;
+      }
+    } else if (f.kind === 'number') {
+      const raw = String(el.value ?? '').trim();
+      if (raw === '') {
+        out[f.name] = 0;
+      } else {
+        const n = Number(raw);
+        out[f.name] = Number.isFinite(n) ? n : 0;
+      }
+    } else {
+      out[f.name] = String(el.value ?? '').trim();
+    }
+  }
+  return out;
+}
 
 // Base V2 Item Sheet with Handlebars rendering
 export class SpaceHolderBaseItemSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -783,6 +1093,113 @@ export class SpaceHolderItemSheet_Generic extends SpaceHolderBaseItemSheet {
 }
 
 /**
+ * Material item sheet — describes per-damage-type resistance, wear,
+ * transmission and degradation overrides plus base metadata used by the
+ * damage resolver.
+ */
+export class SpaceHolderItemSheet_Material extends SpaceHolderBaseItemSheet {
+  static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-material-sheet.hbs' } };
+
+  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+    position: { width: 720, height: 760 },
+    window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: true }),
+  }, { inplace: false });
+
+  /** @inheritDoc */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    const sys = context.system || {};
+    const damageTypes = CONFIG?.SPACEHOLDER?.damageTypes ?? {};
+    const degradationModes = CONFIG?.SPACEHOLDER?.degradationModes ?? {};
+
+    const conductance = (sys.conductance && typeof sys.conductance === 'object') ? sys.conductance : {};
+    const selfInduction = (sys.selfInduction && typeof sys.selfInduction === 'object') ? sys.selfInduction : {};
+    const degradation = (sys.degradation && typeof sys.degradation === 'object') ? sys.degradation : {};
+    const resistance = (sys.resistance && typeof sys.resistance === 'object') ? sys.resistance : {};
+    const wear = (sys.wear && typeof sys.wear === 'object') ? sys.wear : {};
+
+    const asJsonString = (raw) => {
+      if (Array.isArray(raw)) {
+        try { return JSON.stringify(raw); } catch (_) { return ''; }
+      }
+      return typeof raw === 'string' ? raw : '';
+    };
+
+    context.materialDamageRows = Object.values(damageTypes).map((dt) => ({
+      id: dt.id,
+      labelKey: dt.label,
+      descriptionKey: dt.description,
+      category: dt.category,
+      resistance: Number(resistance[dt.id] ?? 0),
+      wear: Number(wear[dt.id] ?? 0),
+      conductanceJson: asJsonString(conductance[dt.id]),
+      selfInductionJson: asJsonString(selfInduction[dt.id]),
+      degradation: typeof degradation[dt.id] === 'string' ? degradation[dt.id] : '',
+    }));
+
+    context.degradationOptions = Object.entries(degradationModes).map(([_key, value]) => ({
+      id: value,
+      labelKey: `SPACEHOLDER.Degradation.${value.charAt(0).toUpperCase()}${value.slice(1)}`,
+    }));
+
+    const currentCategory = String(sys.category ?? 'metal');
+    context.materialCategoryOptions = MATERIAL_CATEGORY_OPTIONS.map((opt) => ({
+      ...opt,
+      selected: opt.id === currentCategory,
+    }));
+
+    return context;
+  }
+
+  /**
+   * Allow per-damage-type conductance / self-induction rows to be authored
+   * as JSON strings in text inputs. Convert them back to arrays before
+   * persisting; invalid JSON keeps the previous value to avoid wiping user
+   * data on a typo.
+   * @inheritDoc
+   */
+  _prepareSubmitData(event, form, formData) {
+    const data = super._prepareSubmitData(event, form, formData);
+    const hardness = data?.system?.hardness;
+    if (hardness && typeof hardness === 'object') {
+      const values = Object.values(hardness)
+        .map((v) => Number(v))
+        .filter((v) => Number.isFinite(v) && v > 0);
+      data.system.hardness = values.length ? Math.max(...values) : 1;
+    }
+    const normalizeFractionGroup = (group, prevGroup) => {
+      if (!group || typeof group !== 'object') return;
+      for (const [key, raw] of Object.entries(group)) {
+        if (Array.isArray(raw)) continue;
+        const text = String(raw ?? '').trim();
+        if (!text) {
+          group[key] = [];
+          continue;
+        }
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) group[key] = parsed;
+          else group[key] = Array.isArray(prevGroup?.[key]) ? prevGroup[key] : [];
+        } catch (_) {
+          group[key] = Array.isArray(prevGroup?.[key]) ? prevGroup[key] : [];
+        }
+      }
+    };
+    normalizeFractionGroup(data?.system?.conductance, this.document?.system?.conductance);
+    normalizeFractionGroup(data?.system?.selfInduction, this.document?.system?.selfInduction);
+
+    const degGroup = data?.system?.degradation;
+    if (degGroup && typeof degGroup === 'object') {
+      for (const [key, raw] of Object.entries(degGroup)) {
+        const value = String(raw ?? '').trim();
+        if (!value) delete degGroup[key];
+      }
+    }
+    return data;
+  }
+}
+
+/**
  * Item sheet (gear: anatomy coverage, equip, modifiers, optional roll formula).
  */
 export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
@@ -806,6 +1223,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         { id: 'attributes' },
         { id: 'actions' },
         { id: 'modifiers' },
+        { id: 'container' },
         { id: 'tags' },
       ],
       initial: 'description',
@@ -831,6 +1249,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         isRanged: false,
         isThrown: false,
         isAmmo: false,
+        isContainer: false,
       };
     } else {
       system.itemTags = {
@@ -841,6 +1260,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         isRanged: !!rawTags.isRanged,
         isThrown: !!rawTags.isThrown,
         isAmmo: !!rawTags.isAmmo,
+        isContainer: !!rawTags.isContainer,
       };
     }
     context.hasArmorTag = system.itemTags.isArmor;
@@ -850,6 +1270,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     context.hasRangedTag = system.itemTags.isRanged;
     context.hasThrownTag = system.itemTags.isThrown;
     context.hasAmmoTag = system.itemTags.isAmmo;
+    context.hasContainerTag = system.itemTags.isContainer;
 
     const allowedTabs = new Set(['description', 'tags']);
     if (system.itemTags.isArmor) allowedTabs.add('attributes');
@@ -859,6 +1280,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     if (system.itemTags.isRanged) allowedTabs.add('ranged');
     if (system.itemTags.isThrown) allowedTabs.add('thrown');
     if (system.itemTags.isAmmo) allowedTabs.add('ammo');
+    if (system.itemTags.isContainer) allowedTabs.add('container');
     let currentTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? 'description';
     if (currentTab === 'weapon') {
       if (system.itemTags.isMelee) currentTab = 'melee';
@@ -885,13 +1307,6 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     context.bodyPartsForGroup = [];
 
     const coveredParts = Array.isArray(system.coveredParts) ? system.coveredParts : [];
-    const valueBySlotRef = Object.fromEntries(
-      coveredParts.map((c) => {
-        const ref = String(c.slotRef ?? c.partId ?? "").trim();
-        if (!ref) return null;
-        return [ref, Number(c?.value) || 0];
-      }).filter(Boolean)
-    );
 
     if (editorAnatomyId) {
       try {
@@ -948,8 +1363,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
               const displayName = duplicateIndex ? `${baseName} (${duplicateIndex})` : baseName;
               entries.push({
                 id: entry.slotRef,
-                name: displayName,
-                armorValue: valueBySlotRef[entry.slotRef] ?? 0
+                name: displayName
               });
             });
           }
@@ -996,10 +1410,12 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         const m = String(slotRef).match(/#(\d+)$/);
         const dupIndex = hasDup && m ? Number(m[1]) : null;
         const uiName = dupIndex ? `${baseName} (${dupIndex})` : baseName;
+        const layers = Array.isArray(entry?.layers) ? entry.layers : [];
         return {
           partId: slotRef,
           partName: uiName,
-          armorValue: Number(entry?.value) || 0
+          layerCount: layers.length,
+          layersSummary: formatCoverageLayersSummary(layers)
         };
       })
       .filter(Boolean)
@@ -1019,14 +1435,33 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     system.modifiers.derived = Array.isArray(system.modifiers.derived) ? system.modifiers.derived : [];
     system.modifiers.params = Array.isArray(system.modifiers.params) ? system.modifiers.params : [];
 
+    // Layers are now per-coveredPart; the dialog opened via the
+    // "wearable-coverage-layers" button handles material selection.
+
     // Оружейные вкладки: нормализованные данные (без подключения к стрельбе — только авторинг в предмете).
+    system.storage = normalizeNestedStorage(system.storage);
     system.weapon = migrateItemWeaponData(system.weapon, system.itemTags);
-    const ammo = system.weapon?.ammo;
-    if (ammo && typeof ammo === 'object') {
-      ammo.feedFilterTagsText = Array.isArray(ammo.feedFilterTags) ? ammo.feedFilterTags.join(', ') : '';
-    }
+    if (context.hasMeleeTag) this._buildWeaponChannelRows(system.weapon.melee, 'melee');
+    if (context.hasRangedTag) this._buildWeaponChannelRows(system.weapon.ranged, 'ranged');
+    if (context.hasThrownTag) this._buildWeaponChannelRows(system.weapon.thrown, 'thrown');
+    if (context.hasAmmoTag) this._buildAmmoRows(system.weapon.ammo);
+
+    const icFields = normalizeItemContainerFields(system);
+    system.containerHostId = icFields.containerHostId;
+    system.container = icFields.container;
 
     context.system = system;
+
+    if (context.hasContainerTag) {
+      const actor = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
+      context.containerOnActor = !!actor;
+      context.containerWorldMode = !actor;
+      context.containerReadOnly = !this.isEditable;
+      const panel = await this._buildContainerPanelContext(actor);
+      context.containerGear = panel.containerGear;
+      context.containerTotalWeight = panel.containerTotalWeight;
+      context.containerTotalItems = panel.containerTotalItems;
+    }
 
     const wearableTabIds = ['description'];
     if (context.hasMeleeTag) wearableTabIds.push('melee');
@@ -1036,6 +1471,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     if (context.hasArmorTag) wearableTabIds.push('attributes');
     if (context.hasActionsTag) wearableTabIds.push('actions');
     if (context.hasModifiersTag) wearableTabIds.push('modifiers');
+    if (context.hasContainerTag) wearableTabIds.push('container');
     wearableTabIds.push('tags');
     context.sheetPrimaryTabs = buildItemSheetPrimaryTabs(wearableTabIds, {
       attributes: { icon: 'fas fa-shield-halved', labelKey: 'SPACEHOLDER.Tabs.Coverage' },
@@ -1044,6 +1480,175 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     context.itemHeaderInlineQuantity = true;
 
     return context;
+  }
+
+  /**
+   * Attach panel display rows to a channel object so the channel-tab template
+   * can render group panels generically.
+   * @param {object} ch
+   * @param {'melee'|'ranged'|'thrown'} channelKey
+   */
+  _buildWeaponChannelRows(ch, channelKey) {
+    if (!ch || typeof ch !== 'object') return;
+    const schema = WEAPON_FIELD_SCHEMAS[channelKey];
+    if (!schema) return;
+    ch.featuresRows = _shBuildRows(schema.features, ch.features);
+    ch.projectileRows = _shBuildRows(schema.projectile, ch.projectile);
+    ch.usageRows = _shBuildRows(schema.usage, ch.usage);
+    if (channelKey === 'ranged') ch.nestedStorage = this._buildNestedStorageSummary();
+  }
+
+  /**
+   * Attach panel display rows to the ammo block.
+   * @param {object} ammo
+   */
+  _buildAmmoRows(ammo) {
+    if (!ammo || typeof ammo !== 'object') return;
+    ammo.projectileRows = _shBuildRows(AMMO_FIELD_SCHEMAS.projectile, ammo.projectile);
+    ammo.resourceRows = _shBuildRows(AMMO_FIELD_SCHEMAS.resource, ammo.resource);
+  }
+
+  _buildNestedStorageSummary() {
+    const storage = normalizeNestedStorage(this.item?.system?.storage);
+    const usage = this.item?.system?.weapon?.ranged?.usage ?? {};
+    const contents = flattenNestedContents(storage).map(({ item, path }) => {
+      const qty = Number(item?.system?.quantity ?? 0);
+      const depth = Math.max(0, path.length - 1);
+      const isAmmo = !!item?.system?.itemTags?.isAmmo;
+      const childCount = normalizeNestedStorage(item?.system?.storage).contents.length;
+      return {
+        id: String(item?.id ?? ''),
+        path: path.join('/'),
+        depth,
+        name: String(item?.name ?? ''),
+        type: String(item?.type ?? ''),
+        quantity: Number.isFinite(qty) ? qty : 0,
+        isAmmo,
+        childCount,
+        isAttached: String(path[0] ?? '') === String(storage.slots.attachedContainerId || usage.attachedContainerId || ''),
+        isChamber: String(path[path.length - 1] ?? '') === String(storage.slots.chamberItemId || usage.chamberCurrentId || ''),
+      };
+    });
+    return {
+      attachedContainerId: String(storage.slots.attachedContainerId || usage.attachedContainerId || ''),
+      chamberItemId: String(storage.slots.chamberItemId || usage.chamberCurrentId || ''),
+      feedSources: Object.values(NESTED_STORAGE_FEED_SOURCES).join(', '),
+      contents,
+    };
+  }
+
+  /**
+   * @param {Actor|null} actor
+   * @returns {Promise<{ containerGear: object[], containerTotalWeight: number, containerTotalItems: number }>}
+   */
+  async _buildContainerPanelContext(actor) {
+    const empty = { containerGear: [], containerTotalWeight: 0, containerTotalItems: 0 };
+    if (actor?.items) return this._buildActorContainerPanelContext(actor);
+    return this._buildWorldContainerPanelContext();
+  }
+
+  /**
+   * @param {Actor} actor
+   * @returns {{ containerGear: object[], containerTotalWeight: number, containerTotalItems: number }}
+   */
+  _buildActorContainerPanelContext(actor) {
+    const empty = { containerGear: [], containerTotalWeight: 0, containerTotalItems: 0 };
+    if (!actor?.items) return empty;
+    const hostId = String(this.item?.id ?? '').trim();
+    if (!hostId) return empty;
+    const { container } = normalizeItemContainerFields(this.item.system);
+    const byId = new Map();
+    for (const it of actor.items) byId.set(it.id, it);
+    const rows = [];
+    const seen = new Set();
+    const pushRow = (it) => {
+      if (!it || it.type !== 'item' || it.id === hostId) return;
+      if (String(it.system?.containerHostId ?? '').trim() !== hostId) return;
+      rows.push({
+        entryKind: 'actor',
+        _id: it.id,
+        name: it.name,
+        img: it.img || Item.DEFAULT_ICON,
+        system: {
+          description: it.system?.description,
+          quantity: it.system?.quantity,
+          weight: it.system?.weight,
+        },
+      });
+      seen.add(it.id);
+    };
+    for (const entry of container.contents) {
+      if (entry.kind !== ENTRY_ACTOR_ITEM) continue;
+      pushRow(byId.get(entry.itemId));
+    }
+    for (const it of actor.items) {
+      if (!seen.has(it.id)) pushRow(it);
+    }
+    let tw = 0;
+    let ti = 0;
+    for (const r of rows) {
+      const q = Number(r.system?.quantity) || 0;
+      const w = Number(r.system?.weight) || 0;
+      ti += q;
+      tw += w * q;
+    }
+    return {
+      containerGear: rows,
+      containerTotalWeight: Math.round(tw * 100) / 100,
+      containerTotalItems: ti,
+    };
+  }
+
+  /**
+   * @returns {Promise<{ containerGear: object[], containerTotalWeight: number, containerTotalItems: number }>}
+   */
+  async _buildWorldContainerPanelContext() {
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
+    const { container } = normalizeItemContainerFields(this.item.system);
+    const rows = [];
+    let tw = 0;
+    let ti = 0;
+    for (const entry of container.contents) {
+      if (entry.kind !== ENTRY_WORLD_UUID) continue;
+      let doc = null;
+      try {
+        doc = await fromUuid(entry.uuid);
+      } catch (_) {
+        doc = null;
+      }
+      if (!doc || doc.documentName !== 'Item') {
+        rows.push({
+          entryKind: 'world',
+          worldUuid: entry.uuid,
+          broken: true,
+          name: L('SPACEHOLDER.ItemContainer.BrokenLink'),
+          img: Item.DEFAULT_ICON,
+          system: { description: '', quantity: 0, weight: 0 },
+        });
+        continue;
+      }
+      const q = Number(doc.system?.quantity) || 0;
+      const w = Number(doc.system?.weight) || 0;
+      ti += q;
+      tw += w * q;
+      rows.push({
+        entryKind: 'world',
+        worldUuid: entry.uuid,
+        broken: false,
+        name: doc.name,
+        img: doc.img || Item.DEFAULT_ICON,
+        system: {
+          description: doc.system?.description,
+          quantity: doc.system?.quantity,
+          weight: doc.system?.weight,
+        },
+      });
+    }
+    return {
+      containerGear: rows,
+      containerTotalWeight: Math.round(tw * 100) / 100,
+      containerTotalItems: ti,
+    };
   }
 
   /**
@@ -1075,6 +1680,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       m_damageMult: numStr(m.damageMult ?? 1),
       m_armorPenAdd: numStr(m.armorPenAdd),
       m_armorDamageFactorMult: numStr(m.armorDamageFactorMult ?? 1),
+      m_hardnessMult: numStr(m.hardnessMult ?? 1),
       o_apCost: numStr(o.apCost),
       o_accuracy: numStr(o.accuracy),
       o_recoil: numStr(o.recoil),
@@ -1083,6 +1689,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       o_damageType: o.damageType === null || o.damageType === undefined ? '' : String(o.damageType),
       o_armorPen: numStr(o.armorPen),
       o_armorDamageFactor: numStr(o.armorDamageFactor),
+      o_hardness: numStr(o.hardness),
       o_payloadId: o.payloadId === null || o.payloadId === undefined ? '' : String(o.payloadId),
       o_requiresReadyStateSel: triSel(o.requiresReadyState),
       o_requiresAimStateSel: triSel(o.requiresAimState),
@@ -1141,6 +1748,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         damageMult: Number(readVal('m_damageMult') ?? 1) || 1,
         armorPenAdd: Number(readVal('m_armorPenAdd') ?? 0) || 0,
         armorDamageFactorMult: Number(readVal('m_armorDamageFactorMult') ?? 1) || 1,
+        hardnessMult: Number(readVal('m_hardnessMult') ?? 1) || 1,
       },
       overrides: {
         apCost: parseNum(readVal('o_apCost')),
@@ -1154,6 +1762,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         })(),
         armorPen: parseNum(readVal('o_armorPen')),
         armorDamageFactor: parseNum(readVal('o_armorDamageFactor')),
+        hardness: parseNum(readVal('o_hardness')),
         payloadId: (() => {
           const s = String(readVal('o_payloadId') ?? '').trim();
           return s === '' ? null : s;
@@ -1230,28 +1839,6 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
    * @param {HTMLElement|null} root
    * @returns {object}
    */
-  _readWeaponBaseDialogForm(root) {
-    const q = (n) => root?.querySelector?.(`[name="${n}"]`);
-    return {
-      apCost: Math.max(0, Math.floor(Number(q('wb_apCost')?.value ?? 0) || 0)),
-      accuracy: Number(q('wb_accuracy')?.value ?? 0) || 0,
-      recoil: Number(q('wb_recoil')?.value ?? 0) || 0,
-      projectilesPerUse: Math.max(1, Math.floor(Number(q('wb_projectilesPerUse')?.value ?? 1) || 1)),
-      damage: Number(q('wb_damage')?.value ?? 0) || 0,
-      damageType: String(q('wb_damageType')?.value ?? '').trim(),
-      armorPen: Number(q('wb_armorPen')?.value ?? 0) || 0,
-      armorDamageFactor: Number(q('wb_armorDamageFactor')?.value ?? 0) || 0,
-      requiresHolding: !!q('wb_requiresHolding')?.checked,
-      requiresReadyState: !!q('wb_requiresReadyState')?.checked,
-      requiresAimState: !!q('wb_requiresAimState')?.checked,
-      payloadId: String(q('wb_payloadId')?.value ?? '').trim(),
-    };
-  }
-
-  /**
-   * @param {HTMLElement|null} root
-   * @returns {object}
-   */
   _readWeaponChannelOptionsDialogForm(root) {
     const q = (n) => root?.querySelector?.(`[name="${n}"]`);
     const idRaw = String(q('wo_defaultAttackId')?.value ?? '').trim();
@@ -1262,34 +1849,13 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   }
 
   /**
-   * @param {HTMLElement|null} root
-   * @returns {object}
-   */
-  _readWeaponAmmoDialogForm(root) {
-    const q = (n) => root?.querySelector?.(`[name="${n}"]`);
-    const parseTags = (text) =>
-      String(text ?? '')
-        .split(/[,\n\r]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-    const tagsText = String(q('wa_feedFilterTagsText')?.value ?? '');
-    return {
-      resourceType: String(q('wa_resourceType')?.value ?? '').trim() || 'cartridge',
-      consumePerUse: Math.max(0, Number(q('wa_consumePerUse')?.value ?? 0) || 0),
-      chamberEnabled: !!q('wa_chamberEnabled')?.checked,
-      chamberCurrentId: String(q('wa_chamberCurrentId')?.value ?? '').trim(),
-      feedSource: String(q('wa_feedSource')?.value ?? '').trim() || 'attachedContainer',
-      feedFilterTags: parseTags(tagsText),
-      reloadApCost: Math.max(0, Math.floor(Number(q('wa_reloadApCost')?.value ?? 0) || 0)),
-      reloadRule: String(q('wa_reloadRule')?.value ?? '').trim() || 'full',
-      canKeepChamberOnReload: !!q('wa_canKeepChamberOnReload')?.checked,
-    };
-  }
-
-  /**
+   * Open the universal group editor for `weapon.<channel>.<group>`.
    * @param {'melee'|'ranged'|'thrown'} channelKey
+   * @param {'features'|'projectile'|'usage'} groupKey
    */
-  async _openWeaponBaseDialog(channelKey) {
+  async _openWeaponGroupDialog(channelKey, groupKey) {
+    const schema = WEAPON_FIELD_SCHEMAS[channelKey]?.[groupKey];
+    if (!schema) return;
     const DialogV2 = foundry?.applications?.api?.DialogV2;
     if (!DialogV2?.wait) {
       ui.notifications?.warn?.(
@@ -1298,19 +1864,19 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       return;
     }
     const ch = this.item.system.weapon?.[channelKey];
-    const base = foundry.utils.duplicate(ch?.base ?? {});
+    const groupData = foundry.utils.duplicate(ch?.[groupKey] ?? {});
     const dialogUid = this._newActionId();
-    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/item/parts/item-weapon-base-dialog.hbs', {
-      dialogUid,
-      base,
-      channelKey,
-    });
+    const fields = _shBuildDialogFields(schema, groupData);
+    const content = await foundry.applications.handlebars.renderTemplate(
+      'systems/spaceholder/templates/item/parts/item-weapon-group-dialog.hbs',
+      { dialogUid, fields }
+    );
+    const titleKey = WEAPON_GROUP_DIALOG_TITLE_KEY[groupKey];
     await DialogV2.wait({
       classes: ['spaceholder'],
       window: {
-        title:
-          game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.DialogBaseTitle') ?? 'Weapon base stats',
-        icon: 'fa-solid fa-crosshairs',
+        title: game.i18n?.localize?.(titleKey) ?? 'Weapon group',
+        icon: 'fa-solid fa-pen-to-square',
       },
       position: { width: 440 },
       content,
@@ -1328,12 +1894,12 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
               dlgEvent?.target?.closest?.('form') ||
               dlgEvent?.currentTarget?.closest?.('.window-content') ||
               (typeof document !== 'undefined'
-                ? document.querySelector(`[data-sh-weapon-base-dialog="${dialogUid}"]`)
+                ? document.querySelector(`[data-sh-weapon-group-dialog="${dialogUid}"]`)
                 : null);
-            const nextBase = this._readWeaponBaseDialogForm(root);
+            const next = _shReadDialogForm(root, schema);
             const w = this._getWeaponData();
             if (!w[channelKey] || typeof w[channelKey] !== 'object') w[channelKey] = {};
-            w[channelKey].base = { ...w[channelKey].base, ...nextBase };
+            w[channelKey][groupKey] = { ...(w[channelKey][groupKey] ?? {}), ...next };
             await this._setWeaponData(w);
           },
         },
@@ -1409,7 +1975,13 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     });
   }
 
-  async _openWeaponAmmoDialog() {
+  /**
+   * Open the universal group editor for `weapon.ammo.<group>`.
+   * @param {'projectile'|'resource'} groupKey
+   */
+  async _openAmmoGroupDialog(groupKey) {
+    const schema = AMMO_FIELD_SCHEMAS[groupKey];
+    if (!schema) return;
     const DialogV2 = foundry?.applications?.api?.DialogV2;
     if (!DialogV2?.wait) {
       ui.notifications?.warn?.(
@@ -1417,18 +1989,18 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       );
       return;
     }
-    const ammo = foundry.utils.duplicate(this.item.system.weapon?.ammo ?? {});
-    if (ammo.canKeepChamberOnReload === undefined) ammo.canKeepChamberOnReload = true;
-    ammo.feedFilterTagsText = Array.isArray(ammo.feedFilterTags) ? ammo.feedFilterTags.join(', ') : '';
+    const groupData = foundry.utils.duplicate(this.item.system.weapon?.ammo?.[groupKey] ?? {});
     const dialogUid = this._newActionId();
-    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/item/parts/item-weapon-ammo-dialog.hbs', {
-      dialogUid,
-      ammo,
-    });
+    const fields = _shBuildDialogFields(schema, groupData);
+    const content = await foundry.applications.handlebars.renderTemplate(
+      'systems/spaceholder/templates/item/parts/item-weapon-group-dialog.hbs',
+      { dialogUid, fields }
+    );
+    const titleKey = AMMO_GROUP_DIALOG_TITLE_KEY[groupKey];
     await DialogV2.wait({
       classes: ['spaceholder'],
       window: {
-        title: game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.DialogAmmoTitle') ?? 'Ammunition',
+        title: game.i18n?.localize?.(titleKey) ?? 'Ammunition',
         icon: 'fa-solid fa-box',
       },
       position: { width: 440 },
@@ -1447,11 +2019,12 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
               dlgEvent?.target?.closest?.('form') ||
               dlgEvent?.currentTarget?.closest?.('.window-content') ||
               (typeof document !== 'undefined'
-                ? document.querySelector(`[data-sh-weapon-ammo-dialog="${dialogUid}"]`)
+                ? document.querySelector(`[data-sh-weapon-group-dialog="${dialogUid}"]`)
                 : null);
-            const nextAmmo = this._readWeaponAmmoDialogForm(root);
+            const next = _shReadDialogForm(root, schema);
             const w = this._getWeaponData();
-            w.ammo = { ...w.ammo, ...nextAmmo };
+            if (!w.ammo || typeof w.ammo !== 'object') w.ammo = {};
+            w.ammo[groupKey] = { ...(w.ammo[groupKey] ?? {}), ...next };
             await this._setWeaponData(w);
           },
         },
@@ -1462,6 +2035,179 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         },
       ],
     });
+  }
+
+  _nestedPathFromText(text) {
+    return String(text ?? '')
+      .split('/')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  async _openNestedStorageAddDialog() {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
+      );
+      return;
+    }
+
+    const dialogUid = this._newActionId();
+    const content = `
+      <div class="sh-item-action-dialog" data-sh-nested-storage-add-dialog="${dialogUid}">
+        <div class="form-group">
+          <label>${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedItemUuid') ?? 'Item UUID'}</label>
+          <div class="form-fields">
+            <input type="text" name="uuid" autocomplete="off" placeholder="Actor.x.Item.y" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedQuantity') ?? 'Quantity'}</label>
+          <div class="form-fields">
+            <input type="number" name="quantity" min="1" step="1" value="1" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedParentPath') ?? 'Parent path'}</label>
+          <div class="form-fields">
+            <input type="text" name="parentPath" autocomplete="off" placeholder="${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedParentPathHint') ?? 'Optional nested id path'}" />
+          </div>
+        </div>
+      </div>`;
+
+    let outcome = null;
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedAddTitle') ?? 'Add nested item',
+        icon: 'fa-solid fa-box-archive',
+      },
+      position: { width: 460 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget?.closest?.('.window-content') ||
+              (typeof document !== 'undefined'
+                ? document.querySelector(`[data-sh-nested-storage-add-dialog="${dialogUid}"]`)
+                : null);
+            outcome = {
+              uuid: String(root?.querySelector?.('[name="uuid"]')?.value ?? '').trim(),
+              quantity: Math.max(1, Math.floor(Number(root?.querySelector?.('[name="quantity"]')?.value ?? 1) || 1)),
+              parentPath: this._nestedPathFromText(root?.querySelector?.('[name="parentPath"]')?.value ?? ''),
+            };
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+    if (!outcome?.uuid) return;
+
+    let source = null;
+    try {
+      source = await fromUuid(outcome.uuid);
+    } catch (_) {
+      source = null;
+    }
+    if (!source || source.documentName !== 'Item') {
+      ui.notifications?.warn?.(
+        game.i18n?.format?.('SPACEHOLDER.ItemWeapon.NestedSourceNotFound', { uuid: outcome.uuid }) ??
+        `Item not found: ${outcome.uuid}`
+      );
+      return;
+    }
+    if (String(source.uuid ?? '') === String(this.item.uuid ?? '')) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedCannotContainSelf') ??
+        'Item cannot contain itself.'
+      );
+      return;
+    }
+    const inserted = await addItemToNestedStorage({
+      containerItem: this.item,
+      item: source,
+      quantity: outcome.quantity,
+      consumeSource: true,
+      parentPath: outcome.parentPath,
+    });
+    if (!inserted) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedAddFailed') ?? 'Failed to add nested item.'
+      );
+    }
+  }
+
+  async _setNestedStorageSlot(slotKey, pathText) {
+    const path = this._nestedPathFromText(pathText);
+    if (!path.length) return;
+    const itemId = slotKey === 'attached' ? path[0] : path[path.length - 1];
+    const storage = normalizeNestedStorage(this.item?.system?.storage);
+    const w = this._getWeaponData();
+    if (!w.ranged || typeof w.ranged !== 'object') return;
+    if (!w.ranged.usage || typeof w.ranged.usage !== 'object') w.ranged.usage = {};
+
+    if (slotKey === 'attached') {
+      storage.slots.attachedContainerId = itemId;
+      w.ranged.usage.attachedContainerId = itemId;
+    } else if (slotKey === 'chamber') {
+      storage.slots.chamberItemId = itemId;
+      w.ranged.usage.chamberCurrentId = itemId;
+    } else {
+      return;
+    }
+
+    await this.item.update({
+      'system.storage': storage,
+      'system.weapon': migrateItemWeaponData(w, this.item.system.itemTags),
+    });
+  }
+
+  async _extractNestedStoragePath(pathText) {
+    const path = this._nestedPathFromText(pathText);
+    if (!path.length) return;
+    const created = await extractNestedItemToActor({ containerItem: this.item, path, quantity: 1 });
+    if (!created) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedExtractFailed') ??
+        'Failed to extract nested item.'
+      );
+      return;
+    }
+
+    const storage = normalizeNestedStorage(this.item?.system?.storage);
+    const removedId = path[path.length - 1];
+    let needsPatch = false;
+    const w = this._getWeaponData();
+    if (storage.slots.attachedContainerId === removedId) {
+      storage.slots.attachedContainerId = '';
+      if (w.ranged?.usage) w.ranged.usage.attachedContainerId = '';
+      needsPatch = true;
+    }
+    if (storage.slots.chamberItemId === removedId) {
+      storage.slots.chamberItemId = '';
+      if (w.ranged?.usage) w.ranged.usage.chamberCurrentId = '';
+      needsPatch = true;
+    }
+    if (needsPatch) {
+      await this.item.update({
+        'system.storage': storage,
+        'system.weapon': migrateItemWeaponData(w, this.item.system.itemTags),
+      });
+    }
   }
 
   /**
@@ -1623,13 +2369,18 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       });
     };
 
-    bindDlg('[data-action="sh-weapon-edit-base"]', async (ev) => {
-      ev.preventDefault();
-      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
-      if (!channelKey) return;
-      await this._openWeaponBaseDialog(channelKey);
-      await this.render(false);
-    });
+    const bindGroupBtn = (selector, groupKey) => {
+      bindDlg(selector, async (ev) => {
+        ev.preventDefault();
+        const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
+        if (!channelKey) return;
+        await this._openWeaponGroupDialog(channelKey, groupKey);
+        await this.render(false);
+      });
+    };
+    bindGroupBtn('[data-action="sh-weapon-edit-features"]', 'features');
+    bindGroupBtn('[data-action="sh-weapon-edit-projectile"]', 'projectile');
+    bindGroupBtn('[data-action="sh-weapon-edit-usage"]', 'usage');
 
     bindDlg('[data-action="sh-weapon-edit-channel-options"]', async (ev) => {
       ev.preventDefault();
@@ -1639,11 +2390,428 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       await this.render(false);
     });
 
-    bindDlg('[data-action="sh-weapon-edit-ammo"]', async (ev) => {
+    bindDlg('[data-action="sh-ammo-edit-projectile"]', async (ev) => {
       ev.preventDefault();
-      await this._openWeaponAmmoDialog();
+      await this._openAmmoGroupDialog('projectile');
       await this.render(false);
     });
+
+    bindDlg('[data-action="sh-ammo-edit-resource"]', async (ev) => {
+      ev.preventDefault();
+      await this._openAmmoGroupDialog('resource');
+      await this.render(false);
+    });
+
+    bindDlg('[data-action="sh-nested-storage-add"]', async (ev) => {
+      ev.preventDefault();
+      await this._openNestedStorageAddDialog();
+      await this.render(false);
+    });
+
+    bindDlg('[data-action="sh-nested-storage-set-attached"]', async (ev) => {
+      ev.preventDefault();
+      const pathText = String(ev.currentTarget?.dataset?.path ?? '').trim();
+      await this._setNestedStorageSlot('attached', pathText);
+      await this.render(false);
+    });
+
+    bindDlg('[data-action="sh-nested-storage-set-chamber"]', async (ev) => {
+      ev.preventDefault();
+      const pathText = String(ev.currentTarget?.dataset?.path ?? '').trim();
+      await this._setNestedStorageSlot('chamber', pathText);
+      await this.render(false);
+    });
+
+    bindDlg('[data-action="sh-nested-storage-extract"]', async (ev) => {
+      ev.preventDefault();
+      const pathText = String(ev.currentTarget?.dataset?.path ?? '').trim();
+      await this._extractNestedStoragePath(pathText);
+      await this.render(false);
+    });
+  }
+
+  /**
+   * Вкладка «Контейнер»: DnD, создание, извлечение, синхронизация.
+   */
+  _bindItemContainerListeners() {
+    if (!this.item?.system?.itemTags?.isContainer) return;
+    const el = this.element;
+    if (!el) return;
+
+    const actor = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
+    const readOnly = !this.isEditable;
+    const actorMode = !!actor;
+
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
+
+    const zone = el.querySelector('[data-sh-item-container-drop]');
+    if (zone && !readOnly && zone.dataset.shContainerZoneBound !== '1') {
+      zone.dataset.shContainerZoneBound = '1';
+      zone.addEventListener('dragover', (ev) => {
+        if (ev.target?.closest?.('.item-container-item-card')) return;
+        ev.preventDefault();
+        try {
+          ev.dataTransfer.dropEffect = 'copy';
+        } catch (_) { /* ignore */ }
+      });
+      zone.addEventListener('drop', async (ev) => {
+        if (ev.target?.closest?.('.item-container-item-card')) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (actorMode) await this._onItemContainerExternalDrop(ev);
+        else await this._onItemContainerWorldDrop(ev);
+      });
+    }
+
+    el.querySelectorAll('[data-action="sh-item-container-create"]').forEach((btn) => {
+      if (btn.dataset.shContainerBtnBound === '1') return;
+      btn.dataset.shContainerBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly) return;
+        const a = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
+        if (!a) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.OnlyOnActor'));
+          return;
+        }
+        const defaultName = L('SPACEHOLDER.Inventory.NewItem');
+        const created = await Item.create(
+          { name: defaultName, type: 'item', img: Item.DEFAULT_ICON, system: {} },
+          { parent: a }
+        );
+        if (!created) return;
+        const ok = await moveActorItemIntoContainer(a, this.item, created.id);
+        if (!ok) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed'));
+          try {
+            await created.delete();
+          } catch (_) { /* ignore */ }
+          return;
+        }
+        await this.render(false);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-container-refresh"]').forEach((btn) => {
+      if (btn.dataset.shContainerBtnBound === '1') return;
+      btn.dataset.shContainerBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly) return;
+        if (actorMode) {
+          if (!actor) return;
+          const changed = await refreshContainerState(actor, this.item);
+          if (changed) ui.notifications?.info?.(L('SPACEHOLDER.ItemContainer.Refreshed'));
+        } else {
+          const n = await pruneBrokenWorldUuidLinks(this.item);
+          if (n) ui.notifications?.info?.(game.i18n.format('SPACEHOLDER.ItemContainer.WorldPruned', { n }));
+        }
+        await this.render(false);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-container-extract"]').forEach((btn) => {
+      if (btn.dataset.shContainerBtnBound === '1') return;
+      btn.dataset.shContainerBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly || !actor) return;
+        const id = String(ev.currentTarget?.dataset?.itemId ?? '').trim();
+        if (!id) return;
+        await removeActorItemFromContainer(actor, this.item, id);
+        await this.render(false);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-container-delete"]').forEach((btn) => {
+      if (btn.dataset.shContainerBtnBound === '1') return;
+      btn.dataset.shContainerBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly || !actor) return;
+        const id = String(ev.currentTarget?.dataset?.itemId ?? '').trim();
+        if (!id) return;
+        const child = actor.items.get(id);
+        if (!child) return;
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+          classes: ['spaceholder'],
+          window: {
+            title: L('SPACEHOLDER.Inventory.DeleteItem'),
+            icon: 'fa-solid fa-trash',
+          },
+          content: `<p>${foundry.utils.escapeHTML(L('SPACEHOLDER.ItemContainer.DeleteConfirm'))}</p>`,
+          yes: { label: L('SPACEHOLDER.Actions.Delete'), icon: 'fa-solid fa-trash' },
+          no: { label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' },
+        });
+        if (!confirmed) return;
+        try {
+          await child.delete();
+        } catch (e) {
+          console.error('SpaceHolder | container child delete failed:', e);
+          return;
+        }
+        await this._syncItemContainerContentsAfterDelete(actor, id);
+        await this.render(false);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-container-unlink"]').forEach((btn) => {
+      if (btn.dataset.shContainerBtnBound === '1') return;
+      btn.dataset.shContainerBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly || actorMode) return;
+        const u = String(ev.currentTarget?.dataset?.worldUuid ?? '').trim();
+        if (!u) return;
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+          classes: ['spaceholder'],
+          window: {
+            title: L('SPACEHOLDER.ItemContainer.Unlink'),
+            icon: 'fa-solid fa-unlink',
+          },
+          content: `<p>${foundry.utils.escapeHTML(L('SPACEHOLDER.ItemContainer.UnlinkConfirm'))}</p>`,
+          yes: { label: L('SPACEHOLDER.ItemContainer.Unlink'), icon: 'fa-solid fa-unlink' },
+          no: { label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' },
+        });
+        if (!confirmed) return;
+        await removeWorldUuidFromContainer(this.item, u);
+        await this.render(false);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-container-edit"]').forEach((btn) => {
+      if (btn.dataset.shContainerBtnBound === '1') return;
+      btn.dataset.shContainerBtnBound = '1';
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        const id = String(ev.currentTarget?.dataset?.itemId ?? '').trim();
+        if (!id || !actor) return;
+        const doc = actor.items.get(id);
+        doc?.sheet?.render(true);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-container-edit-world"]').forEach((btn) => {
+      if (btn.dataset.shContainerBtnBound === '1') return;
+      btn.dataset.shContainerBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const u = String(ev.currentTarget?.dataset?.worldUuid ?? '').trim();
+        if (!u) return;
+        let doc = null;
+        try {
+          doc = await fromUuid(u);
+        } catch (_) {
+          doc = null;
+        }
+        doc?.sheet?.render(true);
+      });
+    });
+
+    if (!readOnly) {
+      el.querySelectorAll('.item-container-item-card').forEach((card) => {
+        if (card.dataset.shContainerCardBound === '1') return;
+        card.dataset.shContainerCardBound = '1';
+        card.setAttribute('draggable', 'true');
+        card.addEventListener('dragstart', (ev) => this._onItemContainerDragStart(ev));
+        card.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          try {
+            ev.dataTransfer.dropEffect = 'move';
+          } catch (_) { /* ignore */ }
+        });
+        card.addEventListener('drop', async (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          await this._onItemContainerReorderDrop(ev);
+        });
+      });
+    }
+  }
+
+  /**
+   * @param {Actor} actor
+   * @param {string} childId
+   */
+  async _syncItemContainerContentsAfterDelete(actor, childId) {
+    const hid = String(this.item?.id ?? '').trim();
+    const cid = String(childId ?? '').trim();
+    if (!actor || !hid || !cid) return;
+    const host = actor.items.get(hid);
+    if (!host) return;
+    const cur = normalizeItemContainerFields(host.system);
+    const nextContents = cur.container.contents.filter(
+      (e) => !(e.kind === ENTRY_ACTOR_ITEM && e.itemId === cid),
+    );
+    await host.update({ 'system.container': { contents: nextContents } }, { render: false });
+    rerenderOpenContainerRelatedSheets(actor, [host]);
+  }
+
+  /**
+   * @param {DragEvent} ev
+   */
+  _onItemContainerDragStart(ev) {
+    const kind = String(ev.currentTarget?.dataset?.entryKind ?? '').trim();
+    this._itemContainerDragRef = null;
+    if (kind === 'world') {
+      const worldUuid = String(ev.currentTarget?.dataset?.worldUuid ?? '').trim();
+      if (worldUuid && this.item?.uuid) {
+        this._itemContainerDragRef = { kind: 'world', worldUuid };
+        const dragData = {
+          type: 'Item',
+          uuid: worldUuid,
+          spaceholder: {
+            action: 'worldContainerMove',
+            containerHostUuid: this.item.uuid,
+            entryUuid: worldUuid,
+          },
+        };
+        try {
+          ev.dataTransfer?.setData?.('text/plain', JSON.stringify(dragData));
+        } catch (_) { /* ignore */ }
+      }
+      return;
+    }
+    const id = String(ev.currentTarget?.dataset?.itemId ?? '').trim();
+    if (id) this._itemContainerDragRef = { kind: 'actor', itemId: id };
+    const actor = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
+    if (!actor || !id) return;
+    const doc = actor.items.get(id);
+    if (doc) {
+      const dragData = doc.toDragData ? doc.toDragData() : { type: 'Item', uuid: doc.uuid };
+      if (!dragData.uuid) dragData.uuid = doc.uuid;
+      try {
+        ev.dataTransfer?.setData?.('text/plain', JSON.stringify(dragData));
+      } catch (_) { /* ignore */ }
+    }
+  }
+
+  /**
+   * @param {DragEvent} ev
+   */
+  async _onItemContainerReorderDrop(ev) {
+    const actor = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
+    const dragRef = this._itemContainerDragRef;
+    this._itemContainerDragRef = null;
+    const card = ev.currentTarget?.closest?.('.item-container-item-card');
+    const rowKind = String(card?.dataset?.entryKind ?? dragRef?.kind ?? '').trim();
+
+    if (rowKind === 'world') {
+      const dragUuid = String(dragRef?.worldUuid ?? '').trim();
+      const targetUuid = String(card?.dataset?.worldUuid ?? '').trim();
+      if (!this.isEditable || !dragUuid || !targetUuid || dragUuid === targetUuid) return;
+      const list = [...this.element.querySelectorAll('.item-container-item-card[data-entry-kind="world"]')]
+        .map((c) => String(c.dataset?.worldUuid ?? '').trim())
+        .filter(Boolean);
+      const from = list.indexOf(dragUuid);
+      const to = list.indexOf(targetUuid);
+      if (from < 0 || to < 0) return;
+      const next = list.slice();
+      const [removed] = next.splice(from, 1);
+      next.splice(to, 0, removed);
+      await setWorldContainerContentsOrder(this.item, next);
+      await this.render(false);
+      return;
+    }
+
+    const dragId = String(dragRef?.itemId ?? '').trim();
+    const targetId = String(card?.dataset?.itemId ?? '').trim();
+    if (!this.isEditable || !actor || !dragId || !targetId || dragId === targetId) return;
+    const list = [...this.element.querySelectorAll('.item-container-item-card[data-entry-kind="actor"]')]
+      .map((c) => String(c.dataset?.itemId ?? '').trim())
+      .filter(Boolean);
+    const from = list.indexOf(dragId);
+    const to = list.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const next = list.slice();
+    const [removed] = next.splice(from, 1);
+    next.splice(to, 0, removed);
+    await setContainerContentsOrder(actor, this.item, next);
+    await this.render(false);
+  }
+
+  /**
+   * @param {DragEvent} ev
+   */
+  async _onItemContainerWorldDrop(ev) {
+    if (!this.isEditable) return;
+    let data = null;
+    try {
+      const raw = ev.dataTransfer?.getData?.('text/plain') ?? '';
+      data = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return;
+    }
+    if (!data || data.type !== 'Item' || !data.uuid) return;
+    let doc = null;
+    try {
+      doc = await fromUuid(data.uuid);
+    } catch (_) {
+      doc = null;
+    }
+    if (!doc || doc.documentName !== 'Item') {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.DropNotAnItem') ?? 'Not an item.');
+      return;
+    }
+    if (doc.uuid === this.item.uuid) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.CycleWarning') ?? 'Cannot nest that way.');
+      return;
+    }
+    const parentActor = doc.parent?.documentName === 'Actor' ? doc.parent : null;
+    if (parentActor) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ItemContainer.DropEmbeddedNotAllowed') ??
+          'Drop a sidebar/compendium item, not an item on a character.',
+      );
+      return;
+    }
+    const ok = await addWorldUuidToContainer(this.item, doc.uuid);
+    if (!ok) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not add link.');
+      return;
+    }
+    await this.render(false);
+  }
+
+  /**
+   * @param {DragEvent} ev
+   */
+  async _onItemContainerExternalDrop(ev) {
+    const actor = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
+    if (!this.isEditable || !actor) return;
+    let data = null;
+    try {
+      const raw = ev.dataTransfer?.getData?.('text/plain') ?? '';
+      data = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return;
+    }
+    if (!data || data.type !== 'Item' || !data.uuid) return;
+    let doc = null;
+    try {
+      doc = await fromUuid(data.uuid);
+    } catch (_) {
+      doc = null;
+    }
+    if (!doc || doc.documentName !== 'Item') {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.DropNotAnItem') ?? 'Not an item.');
+      return;
+    }
+    if (doc.parent?.id !== actor.id) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.DropWrongActor') ?? 'Item must belong to the same actor.');
+      return;
+    }
+    if (doc.id === this.item.id) return;
+    if (wouldCreateItemContainerCycle(actor, doc.id, this.item.id)) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.CycleWarning') ?? 'Cannot nest that way.');
+      return;
+    }
+    const ok = await moveActorItemIntoContainer(actor, this.item, doc.id);
+    if (!ok) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not place item.');
+      return;
+    }
+    await this.render(false);
   }
 
   /**
@@ -1664,21 +2832,6 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         ? foundry.utils.duplicate(this.item.system.weapon)
         : {};
     const merged = foundry.utils.mergeObject(docW, incoming, { inplace: false, recursive: true });
-
-    const parseTags = (text) =>
-      String(text ?? '')
-        .split(/[,\n\r]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-    if (
-      merged.ammo &&
-      typeof merged.ammo === 'object' &&
-      Object.prototype.hasOwnProperty.call(merged.ammo, 'feedFilterTagsText')
-    ) {
-      merged.ammo.feedFilterTags = parseTags(merged.ammo.feedFilterTagsText);
-      delete merged.ammo.feedFilterTagsText;
-    }
 
     for (const key of ['melee', 'ranged', 'thrown']) {
       const ch = merged[key];
@@ -1720,7 +2873,10 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       isRanged: !!(src && src.isRanged),
       isThrown: !!(src && src.isThrown),
       isAmmo: !!(src && src.isAmmo),
+      isContainer: !!(src && src.isContainer),
     };
+
+    const icPreserve = normalizeItemContainerFields(itemSys);
 
     const anatomyId = itemSys.anatomyId ?? null;
     const coveredParts = Array.isArray(itemSys.coveredParts)
@@ -1731,11 +2887,15 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       itemSys.weapon && typeof itemSys.weapon === 'object'
         ? foundry.utils.duplicate(itemSys.weapon)
         : null;
+    const storageSnap = normalizeNestedStorage(itemSys.storage);
 
     if (hasNestedSystem) {
       data.system.itemTags = { ...tagSnap };
       data.system.anatomyId = anatomyId;
       data.system.coveredParts = coveredParts;
+      data.system.storage = storageSnap;
+      data.system.containerHostId = icPreserve.containerHostId;
+      data.system.container = foundry.utils.duplicate(icPreserve.container);
       if (weaponSnap && !Object.prototype.hasOwnProperty.call(data.system, 'weapon')) {
         data.system.weapon = weaponSnap;
       }
@@ -1743,6 +2903,9 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     data['system.itemTags'] = { ...tagSnap };
     data['system.anatomyId'] = anatomyId;
     data['system.coveredParts'] = coveredParts;
+    data['system.storage'] = storageSnap;
+    data['system.containerHostId'] = icPreserve.containerHostId;
+    data['system.container'] = foundry.utils.duplicate(icPreserve.container);
   }
 
   /**
@@ -1763,8 +2926,24 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     await super._onRender(context, options);
 
     this._bindWeaponAttackListeners();
+    this._bindItemContainerListeners();
 
     if (!this.isEditable) return;
+
+    // Tag checkboxes have no `name` and are committed only by the "Apply" button.
+    // In v14, letting their `change` event reach the form (submitOnChange) produces an
+    // empty diff which then crashes Foundry's `cleanData` on a near-empty change object.
+    // Stop the change/input/click events so the form does not auto-submit on toggle.
+    const tagCheckboxes = this.element?.querySelectorAll?.('input[type="checkbox"][data-sh-item-tag]') ?? [];
+    for (const cb of tagCheckboxes) {
+      if (cb.dataset.spaceholderTagBound === '1') continue;
+      cb.dataset.spaceholderTagBound = '1';
+      const swallow = (ev) => {
+        ev.stopImmediatePropagation();
+      };
+      cb.addEventListener('change', swallow);
+      cb.addEventListener('input', swallow);
+    }
 
     const btn = this.element?.querySelector?.('[data-action="sh-item-tags-apply"]');
     if (btn && !btn.dataset.spaceholderTagsApplyBound) {
@@ -1785,6 +2964,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
           isRanged: readTag('isRanged'),
           isThrown: readTag('isThrown'),
           isAmmo: readTag('isAmmo'),
+          isContainer: readTag('isContainer'),
         };
         const patch = { 'system.itemTags': itemTags };
         const pending = this._getPendingNameFromForm();
@@ -1832,7 +3012,8 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
     cur.isMelee ||
     cur.isRanged ||
     cur.isThrown ||
-    cur.isAmmo
+    cur.isAmmo ||
+    cur.isContainer
   );
   if (!curAny) return false;
 
@@ -1846,7 +3027,8 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
       !inc.isMelee &&
       !inc.isRanged &&
       !inc.isThrown &&
-      !inc.isAmmo;
+      !inc.isAmmo &&
+      !inc.isContainer;
     if (!incAllFalse) return false;
     const sysKeys = Object.keys(change.system);
     const onlyItemTags = sysKeys.length === 1 && sysKeys[0] === 'itemTags';
@@ -1864,7 +3046,8 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
       !flatIt.isMelee &&
       !flatIt.isRanged &&
       !flatIt.isThrown &&
-      !flatIt.isAmmo;
+      !flatIt.isAmmo &&
+      !flatIt.isContainer;
     if (!incAllFalse) return false;
     const flatSys = Object.keys(change).filter(
       (k) => typeof k === 'string' && k.startsWith('system.') && k !== 'system.itemTags'

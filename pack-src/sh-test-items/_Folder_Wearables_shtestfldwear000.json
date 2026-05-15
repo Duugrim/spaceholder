@@ -1,0 +1,23 @@
+{
+  "name": "Wearables",
+  "type": "Item",
+  "_id": "shtestfldwear000",
+  "sorting": "a",
+  "folder": null,
+  "description": "",
+  "color": "#88aacc",
+  "sort": 100000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800101,
+    "modifiedTime": 1776279800101,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shtestfldwear000"
+}

@@ -1,0 +1,73 @@
+{
+  "name": "Футболка",
+  "type": "item",
+  "_id": "shtesttshirt00000",
+  "img": "systems/spaceholder/assets/icons/clothing.svg/t-shirt.svg",
+  "system": {
+    "description": "<p>Обычная х/б футболка. Технически предмет в слоте брони, фактически — почти ничего: любой рассматриваемый снаряд проходит насквозь, не теряя силы. Контрольный «0 защиты» для сценариев «через одежду в тело». Покрывает грудь, живот и спину.</p><ul><li>cloth-light 1 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 0.15,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "cloth-light", "thickness": 1 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "cloth-light", "thickness": 1 }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          { "material": "cloth-light", "thickness": 1 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 510000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800110,
+    "modifiedTime": 1776279800110,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtesttshirt00000"
+}

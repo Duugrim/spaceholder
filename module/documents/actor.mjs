@@ -2,30 +2,56 @@ import { anatomyManager, resolveBodyPartDisplayName } from '../anatomy-manager.m
 import { getMaxApFromAbilities } from '../helpers/actions/transaction-ledger.mjs';
 import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
 import { ensureActorPartRelationsSynced } from '../helpers/anatomy-relations.mjs';
+import { normalizeApplications } from '../helpers/damage/damage-resolver.mjs';
+import { resolveBodyTraversal } from '../helpers/damage/body-traversal-resolver.mjs';
+import { ensureActorPartBodyLayersSynced } from '../helpers/damage/body-layers-defaults.mjs';
+import { materialsManager, ensureLayerDefaults } from '../helpers/damage/materials-manager.mjs';
+import { describeInjury } from '../helpers/damage/injury-description.mjs';
+import { buildProjectileApplications, composeProjectileApplications } from './item.mjs';
 
 function _sanitizeAimingArcSystemData(systemData) {
   if (!systemData || typeof systemData !== 'object') return;
   const cfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
-  const segmentCount = Math.max(1, Number(cfg.segmentCount) || 5);
-  const maxHalfAngleDeg = Math.max(1, Number(cfg.maxHalfAngleDeg) || 90);
-  const defaults = Array.isArray(cfg.defaultZoneHalfDegrees) ? cfg.defaultZoneHalfDegrees : [1, 5, 15, 25, 30];
+  const standardZoneCount = Math.max(1, Number(cfg.standardZoneCount) || 4);
+  const defaults = Array.isArray(cfg.defaultZoneWeights) ? cfg.defaultZoneWeights : [5, 15, 25, 30];
+  const defaultPurpleZoneDeg = Math.max(0, Number(cfg.defaultPurpleZoneDeg) || 1);
+  const defaultTotalArcDeg = Math.max(0, Number(cfg.defaultTotalArcDeg) || 90);
+  const defaultDeadZoneDeg = Math.max(0, Number(cfg.defaultDeadZoneDeg) || 0);
   const defaultBaseDev = Math.max(0, Number(cfg.defaultDeviationBaseDeg) || 1);
 
   const aimingArc = (systemData.aimingArc && typeof systemData.aimingArc === 'object') ? systemData.aimingArc : {};
-  const raw = Array.isArray(aimingArc.zoneHalfDegrees) ? aimingArc.zoneHalfDegrees : [];
-  const zones = [];
-  let remaining = maxHalfAngleDeg;
-  for (let i = 0; i < segmentCount; i += 1) {
+  const legacyZones = Array.isArray(aimingArc.zoneHalfDegrees) ? aimingArc.zoneHalfDegrees : [];
+  const rawWeights = Array.isArray(aimingArc.zoneWeights) ? aimingArc.zoneWeights : [];
+  const zoneWeights = [];
+  const weightOffset = rawWeights.length >= standardZoneCount + 1 ? 1 : 0;
+  for (let i = 0; i < standardZoneCount; i += 1) {
     const fallback = Number(defaults[i] ?? 0);
-    const baseValue = Number(raw[i] ?? fallback);
-    const safe = Number.isFinite(baseValue) ? Math.max(0, baseValue) : 0;
-    const clipped = Math.min(remaining, safe);
-    zones.push(clipped);
-    remaining = Math.max(0, remaining - clipped);
+    const hasNewValue = Number.isFinite(Number(rawWeights[i + weightOffset]));
+    const hasLegacyValue = Number.isFinite(Number(legacyZones[i + 1]));
+    const sourceValue = hasNewValue ? Number(rawWeights[i + weightOffset]) : (hasLegacyValue ? Number(legacyZones[i + 1]) : fallback);
+    const safe = Number.isFinite(sourceValue) ? Math.max(0, sourceValue) : 0;
+    zoneWeights.push(safe);
   }
 
+  const purpleRaw = Number(aimingArc.purpleZoneDeg);
+  const legacyPurple = Number(legacyZones[0]);
+  const purpleZoneDeg = Number.isFinite(purpleRaw)
+    ? Math.max(0, purpleRaw)
+    : (Number.isFinite(legacyPurple) ? Math.max(0, legacyPurple) : defaultPurpleZoneDeg);
+
+  const totalArcRaw = Number(aimingArc.totalArcDeg);
+  const legacyTotalArc = legacyZones.slice(1).reduce((sum, val) => sum + Math.max(0, Number(val) || 0), 0);
+  const totalArcDeg = Number.isFinite(totalArcRaw)
+    ? Math.max(0, totalArcRaw)
+    : (legacyTotalArc > 0 ? legacyTotalArc : defaultTotalArcDeg);
+
+  const deadRaw = Number(aimingArc.deadZoneDeg);
+  const deadZoneDeg = Number.isFinite(deadRaw) ? Math.max(0, deadRaw) : defaultDeadZoneDeg;
   const baseDev = Number(aimingArc.deviationBaseDeg);
-  aimingArc.zoneHalfDegrees = zones;
+  aimingArc.purpleZoneDeg = purpleZoneDeg;
+  aimingArc.totalArcDeg = totalArcDeg;
+  aimingArc.zoneWeights = zoneWeights;
+  aimingArc.deadZoneDeg = deadZoneDeg;
   aimingArc.deviationBaseDeg = Number.isFinite(baseDev) ? Math.max(0, baseDev) : defaultBaseDev;
   systemData.aimingArc = aimingArc;
 }
@@ -36,18 +62,15 @@ function _sanitizeAimingArcSystemData(systemData) {
  */
 export class SpaceHolderActor extends Actor {
   /** @override */
-  prepareData() {
-    // Prepare data for the actor. Calling the super version of this executes
-    // the following, in order: data reset (to clear active effects),
-    // prepareBaseData(), prepareEmbeddedDocuments() (including active effects),
-    // prepareDerivedData().
-    super.prepareData();
-  }
-
-  /** @override */
   prepareBaseData() {
-    // Data modifications in this step occur before processing embedded
-    // documents or derived data.
+    // CRITICAL: must invoke super to run Foundry v14's `_clearData`, which
+    // initializes `this.overrides`, `this.tokenActiveEffectChanges`,
+    // `this.statuses`, and clears `this._completedActiveEffectPhases`.
+    // Without it, `applyActiveEffects` throws either
+    //   "ActiveEffect application phase ... has already completed"
+    // or "One of original or other are not Objects!" (when `this.overrides`
+    // is undefined for synthetic/token actors).
+    super.prepareBaseData();
   }
 
   /**
@@ -61,13 +84,24 @@ export class SpaceHolderActor extends Actor {
    */
   prepareDerivedData() {
     const actorData = this;
-    const systemData = actorData.system;
-    const flags = actorData.flags.spaceholder || {};
 
     // Make separate methods for each Actor type (character, npc, etc.) to keep
     // things organized.
     this._prepareCharacterData(actorData);
     this._prepareNpcData(actorData);
+  }
+
+  /**
+   * D20-style ability modifiers; shared by types that define `system.abilities` (incl. NPC/loot for v14 effects/initiative).
+   * @param {object} systemData
+   */
+  _prepareAbilityModifiers(systemData) {
+    if (!systemData?.abilities || typeof systemData.abilities !== 'object') return;
+    for (const ability of Object.values(systemData.abilities)) {
+      if (ability && typeof ability === 'object' && Number.isFinite(Number(ability.value))) {
+        ability.mod = Math.floor((Number(ability.value) - 10) / 2);
+      }
+    }
   }
 
   /**
@@ -81,20 +115,13 @@ export class SpaceHolderActor extends Actor {
     // Применяем модификаторы от экипированных надетых предметов к базовым значениям
     this._applyWearableModifiers(systemData);
 
-    // Loop through ability scores, and add their modifiers to our sheet output.
-    for (let [key, ability] of Object.entries(systemData.abilities)) {
-      // Calculate the modifier using d20 rules.
-      ability.mod = Math.floor((ability.value - 10) / 2);
-    }
+    this._prepareAbilityModifiers(systemData);
 
     this._prepareDerivedCharacterStats(systemData);
     _sanitizeAimingArcSystemData(systemData);
 
     // Process body parts health system (always based on health)
     this._prepareBodyParts(systemData);
-    // Применяем защиту по частям тела от надетых предметов
-    this._prepareWearableDefense(systemData);
-    
   }
 
   /**
@@ -219,6 +246,7 @@ export class SpaceHolderActor extends Actor {
     // Обновляем производные поля частей тела (typed relations + производные links; попадания — в shot-manager)
     for (const [partId, bodyPart] of Object.entries(bodyParts)) {
       ensureActorPartRelationsSynced(bodyPart);
+      ensureActorPartBodyLayersSynced(bodyPart);
       const typeId = String(bodyPart?.id ?? "").trim();
       if (typeId) {
         bodyPart.displayName = resolveBodyPartDisplayName(typeId, bodyPart.name);
@@ -238,39 +266,6 @@ export class SpaceHolderActor extends Actor {
       bodyPart.healthPercentage = bodyPart.maxHp > 0 ? Math.floor((currentHpDerived * 100) / bodyPart.maxHp) : 100;
       if (!bodyPart.status || bodyPart.status === 'healthy') {
         bodyPart.status = this._getBodyPartStatus({ healthPercentage: bodyPart.healthPercentage });
-      }
-    }
-  }
-
-  /**
-   * Подготовить защиту по частям тела от экипированных wearable-предметов.
-   * Производные значения, не сохраняются в документ.
-   */
-  _prepareWearableDefense(systemData) {
-    const bodyParts = systemData.health?.bodyParts || {};
-    if (!bodyParts || !Object.keys(bodyParts).length) return;
-
-    // Сбросить защиту перед перерасчётом
-    for (const part of Object.values(bodyParts)) {
-      part.armor = 0;
-    }
-
-    const wearables = this.items.filter((i) => i.type === 'item' && i.system?.equipped);
-    if (!wearables.length) return;
-
-    for (const item of wearables) {
-      if (!item.system?.itemTags?.isArmor) continue;
-      const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
-      for (const entry of coveredParts) {
-        const val = Number(entry?.value ?? 0);
-        if (!Number.isFinite(val) || val <= 0) continue;
-        const { slotRefs } = resolveCoverageEntryToActorSlots(bodyParts, entry);
-        if (!slotRefs.length) continue;
-        for (const slotRef of slotRefs) {
-          const part = bodyParts[slotRef];
-          if (!part) continue;
-          part.armor = (part.armor ?? 0) + val;
-        }
       }
     }
   }
@@ -331,13 +326,24 @@ export class SpaceHolderActor extends Actor {
 
   /**
    * Добавить травму
-   * amount хранится как целое число в масштабе x100 (например, 125 = 1.25 урона)
+   *
+   * `amount` хранится как целое в масштабе x100 (125 = 1.25 единицы урона).
+   *
+   * @param {Object} [opts]
+   * @param {string} [opts.partId]
+   * @param {string} [opts.partUuid]
+   * @param {number} [opts.amount]
+   * @param {number} [opts.initialAmount] если не передано, приравнивается к `amount`
+   * @param {string} [opts.type='unknown'] id из `DAMAGE_TYPES`
+   * @param {'raw'|'treated'} [opts.status='raw']
+   * @param {string|Object} [opts.source] либо строка-легаси, либо структурированный
+   *   объект `{ attackerUuid, attackerName, weaponUuid, weaponName, ammoUuid,
+   *   ammoName, verbKey, shotUid }` (любое поле опционально).
    */
-  async addInjury({ partId, partUuid, amount, type = 'unknown', status = 'raw', source = '' } = {}) {
+  async addInjury({ partId, partUuid, amount, initialAmount, type = 'unknown', status = 'raw', source = '' } = {}) {
     const bodyParts = this.system.health?.bodyParts || {};
     if (!bodyParts || !Object.keys(bodyParts).length) return false;
 
-    // Разрешаем как новый формат (partUuid), так и legacy (partId/slotRef).
     let resolvedSlotRef = null;
     let resolvedUuid = null;
 
@@ -349,7 +355,6 @@ export class SpaceHolderActor extends Actor {
           break;
         }
       }
-      // Совместимость: для старых анатомий без uuid partUuid может быть slotRef.
       if (!resolvedSlotRef && bodyParts[partUuid]) {
         resolvedSlotRef = partUuid;
         resolvedUuid = bodyParts[partUuid]?.uuid || null;
@@ -366,16 +371,19 @@ export class SpaceHolderActor extends Actor {
 
     if (!resolvedSlotRef) return false;
 
-    // Гарантируем целое и неотрицательное значение
     const amt = Math.max(0, (amount ?? 0) | 0);
+    const initAmt = Math.max(amt, (initialAmount ?? amt) | 0);
+    const normalizedStatus = status === 'treated' ? 'treated' : 'raw';
+    const normalizedSource = this._normalizeInjurySource(source);
     const injury = {
       id: foundry.utils.randomID?.() || randomID?.() || crypto.randomUUID?.() || String(Date.now()),
       partId: resolvedSlotRef,
       partUuid: resolvedUuid ?? undefined,
-      amount: amt, // x100
+      amount: amt,
+      initialAmount: initAmt,
       type,
-      status,
-      source,
+      status: normalizedStatus,
+      source: normalizedSource,
       createdAt: Date.now()
     };
 
@@ -383,6 +391,30 @@ export class SpaceHolderActor extends Actor {
     injuries.push(injury);
     await this.update({ 'system.health.injuries': injuries });
     return true;
+  }
+
+  /**
+   * Нормализовать источник травмы: строка → `{ legacyLabel }`, объект клонируется.
+   * Возвращаемое значение всегда пригодно для сериализации.
+   * @param {string|Object|null|undefined} source
+   * @returns {Object}
+   */
+  _normalizeInjurySource(source) {
+    if (source == null || source === '') return {};
+    if (typeof source === 'string') return { legacyLabel: source };
+    if (typeof source !== 'object') return { legacyLabel: String(source) };
+    const out = {};
+    for (const key of [
+      'attackerUuid', 'attackerName',
+      'weaponUuid', 'weaponName',
+      'ammoUuid', 'ammoName',
+      'verbKey', 'shotUid', 'legacyLabel'
+    ]) {
+      const val = source[key];
+      if (val == null || val === '') continue;
+      out[key] = String(val);
+    }
+    return out;
   }
 
   /** Обновить травму по id */
@@ -395,6 +427,14 @@ export class SpaceHolderActor extends Actor {
     // Масштаб amount сохраняем x100, если передан
     if (patch.hasOwnProperty('amount')) {
       patch.amount = Math.max(0, (patch.amount ?? 0) | 0);
+    }
+
+    if (patch.hasOwnProperty('status')) {
+      patch.status = patch.status === 'treated' ? 'treated' : 'raw';
+    }
+
+    if (patch.hasOwnProperty('source')) {
+      patch.source = this._normalizeInjurySource(patch.source);
     }
 
     injuries[idx] = { ...injuries[idx], ...patch };
@@ -428,9 +468,306 @@ export class SpaceHolderActor extends Actor {
     return Math.max(0, bodyPart.maxHp - dmgUnits);
   }
 
-  /** Заглушка форматирования травмы для UI */
+  /**
+   * Материал части тела (для выбора словаря описателя травмы).
+   * Нормализует legacy-значения MVP-редактора (`flesh` / `cybernetic` /
+   * `armor` / `other`) в канонические категории описателей:
+   *   — `biological` — ветка кровотечения/заживления;
+   *   — `bionic`     — ветка повреждения/ремонта.
+   * Всё незнакомое трактуется как `biological`, чтобы описатели никогда
+   * не получали неизвестный ключ. Слои тела `part.bodyLayers` сюда не
+   * участвуют — это именно категория самой части, а не её тканей.
+   * @param {Object} part
+   * @returns {'biological'|'bionic'}
+   */
+  getPartMaterial(part) {
+    if (!part || typeof part !== 'object') return 'biological';
+    const raw = String(part.material ?? '').trim();
+    if (!raw) return 'biological';
+    if (raw === 'biological' || raw === 'bionic') return raw;
+    if (raw === 'cybernetic') return 'bionic';
+    // flesh / armor / other и любые неизвестные legacy-значения
+    return 'biological';
+  }
+
+  /**
+   * Собрать структурированное описание травмы для рендера в UI.
+   * Возвращает `{ segments, tooltipSegments }` (и несколько служебных полей).
+   * Реализация — в `helpers/damage/injury-description.mjs`; сюда вынесено,
+   * чтобы `actor-sheet.mjs` не знал о реестре описателей.
+   * @param {Object} injury
+   * @returns {Object}
+   */
   formatInjuryForDisplay(injury) {
-    return injury; // позже заменим на человекочитаемое описание
+    if (!injury || typeof injury !== 'object') return { segments: [], tooltipSegments: [] };
+    const part = this.system?.health?.bodyParts?.[injury.partId] ?? null;
+    const material = this.getPartMaterial(part);
+    return describeInjury({ injury, part, material, actor: this });
+  }
+
+  /* ================================================================ *
+   *  Damage / armour resolution                                       *
+   * ================================================================ */
+
+  /**
+   * Resolve a damage package against the target's anatomy. Walks the
+   * projectile through the hit body part — and potentially onward via
+   * `relations.behind` — delegating to
+   * {@link resolveBodyTraversal}. Each traversed part's armour layers
+   * are persisted; each part that actually absorbed damage gets its own
+   * `injury` record.
+   *
+   * Layer ordering within a single slot: outer → inner mirrors the
+   * iteration order of {@link _collectLayerSourcesForSlot}. Within a
+   * wearable, `system.coveredParts[i].layers` are taken in declared
+   * order (first entry is outermost).
+   *
+   * @param {Object} options
+   * @param {string} [options.partId]          - canonical slotRef (e.g. 'leftArm')
+   * @param {string} [options.partUuid]        - alternative way to address a slot
+   * @param {Object|Array<Object>} options.applications - either a phased
+   *   array (`[{mode, items}]`), a flat item list, a legacy `{type,damage}`
+   *   pair, or a `projectile` object. Anything `normalizeApplications`
+   *   accepts works.
+   * @param {Object} [options.projectile]      - alternative to `applications`:
+   *   the system reads it via `buildProjectileApplications` so legacy
+   *   `damage`/`damageType` stay supported.
+   * @param {string} [options.builderId]       - if set, a registered
+   *   builder in `CONFIG.SPACEHOLDER.applicationBuilders` is invoked to
+   *   produce the package dynamically.
+   * @param {Object} [options.builderContext]  - extra context passed to
+   *   the builder (typically `{ weapon, ammo, attacker, target, channel }`).
+   * @param {string|Object} [options.source]   - source descriptor for the
+   *   resulting injury entry. Either a legacy string label or a structured
+   *   object with `attackerName`/`weaponName`/`ammoName`/uuids/etc. See
+   *   `addInjury` docstring for the accepted shape.
+   * @param {string} [options.hitDirection='front'] - side of the body the
+   *   projectile enters from. The v1 runtime does not yet read a real
+   *   direction from the shot pipeline, but callers (and tests) may
+   *   override it to exercise through-and-through behaviour.
+   * @param {() => number} [options.random]    - injectable RNG.
+   * @returns {Promise<{
+   *   bodyDamage: Array<{type:string, amount:number}>,
+   *   bodyDamageBySlot: Object<string, Array<{type:string, amount:number}>>,
+   *   path: Array<Object>,
+   *   trace: Array<Object>,
+   *   slotRef: string|null
+   * }>}
+   *   `bodyDamage` is the merged damage for the **entry** slot (for
+   *   backward compatibility with legacy callers that cared about one
+   *   part only). `bodyDamageBySlot` is the full per-part breakdown,
+   *   and `path` lists every visited slot with its entry/exit details.
+   */
+  async applyDamagePackage({
+    partId,
+    partUuid,
+    applications,
+    projectile,
+    builderId,
+    builderContext,
+    source = '',
+    hitDirection = 'front',
+    random
+  } = {}) {
+    const bodyParts = this.system?.health?.bodyParts || {};
+    const slotRef = this._resolveSlotRef({ partId, partUuid, bodyParts });
+    if (!slotRef) {
+      return { bodyDamage: [], bodyDamageBySlot: {}, path: [], trace: [], slotRef: null };
+    }
+
+    const package_ = this._composeApplicationPackage({ applications, projectile, builderId, builderContext });
+    if (!package_.length) {
+      return { bodyDamage: [], bodyDamageBySlot: {}, path: [], trace: [], slotRef };
+    }
+
+    const armorBySlot = this._collectArmorBySlot(bodyParts);
+    const traversal = resolveBodyTraversal({
+      anatomy: { bodyParts },
+      startSlotRef: slotRef,
+      hitDirection,
+      applications: package_,
+      armorBySlot,
+      resolveMaterial: (id) => materialsManager.getMaterial(id),
+      random
+    });
+
+    await this._persistTraversalArmorUpdates(traversal.armorUpdatesBySlot);
+
+    for (const [partSlot, hits] of Object.entries(traversal.bodyDamageBySlot)) {
+      if (!Array.isArray(hits) || !hits.length) continue;
+      const totalAmount = Math.round(hits.reduce((sum, d) => sum + d.amount, 0) * 100);
+      if (totalAmount <= 0) continue;
+      const dominant = hits.reduce((acc, d) => (d.amount > (acc?.amount ?? 0) ? d : acc), null);
+      await this.addInjury({
+        partId: partSlot,
+        amount: totalAmount,
+        initialAmount: totalAmount,
+        type: dominant?.type ?? 'unknown',
+        status: 'raw',
+        source: source || 'damage-package'
+      });
+    }
+
+    return {
+      bodyDamage: traversal.bodyDamageBySlot[slotRef] ?? [],
+      bodyDamageBySlot: traversal.bodyDamageBySlot,
+      path: traversal.path,
+      trace: traversal.trace,
+      slotRef
+    };
+  }
+
+  /**
+   * @param {Object} args
+   * @returns {string|null}
+   */
+  _resolveSlotRef({ partId, partUuid, bodyParts }) {
+    if (partId && bodyParts[partId]) return partId;
+    if (partUuid) {
+      for (const [slotRef, part] of Object.entries(bodyParts)) {
+        if (part?.uuid === partUuid) return slotRef;
+      }
+      if (bodyParts[partUuid]) return partUuid;
+    }
+    return null;
+  }
+
+  /**
+   * Build the canonical phased application package the resolver expects.
+   * Builder registry takes precedence; then explicit `applications`; then
+   * the legacy single-shot fallback baked into the projectile shape.
+   */
+  _composeApplicationPackage({ applications, projectile, builderId, builderContext }) {
+    // Explicit builderId takes priority; the projectile's own builderId
+    // (if any) is consulted by composeProjectileApplications below.
+    if (builderId) {
+      const registry = CONFIG?.SPACEHOLDER?.applicationBuilders ?? {};
+      const fn = registry?.[builderId];
+      if (typeof fn === 'function') {
+        try {
+          const built = fn({ ...(builderContext || {}), actor: this, projectile });
+          const phases = normalizeApplications(built);
+          if (phases.length) return phases;
+        } catch (e) {
+          console.error(`SpaceHolder | Application builder "${builderId}" failed:`, e);
+        }
+      } else {
+        console.warn(`SpaceHolder | Unknown application builder id: ${builderId}`);
+      }
+    }
+    if (applications != null) {
+      const phases = normalizeApplications(applications);
+      if (phases.length) return phases;
+    }
+    if (projectile && typeof projectile === 'object') {
+      return composeProjectileApplications(projectile, { ...(builderContext || {}), actor: this });
+    }
+    return [];
+  }
+
+  /**
+   * Walk equipped armour items covering `slotRef` and collect their layer
+   * stacks in outermost-first order. Layers now live per body part inside
+   * each `coveredParts[i].layers`; only the entry whose slotRef matches
+   * `slotRef` (directly or via `resolveCoverageEntryToActorSlots`)
+   * contributes layers.
+   *
+   * @param {string} slotRef
+   * @returns {Array<{itemId: string, coverageIdx: number, layers: Array<Object>}>}
+   */
+  _collectLayerSourcesForSlot(slotRef) {
+    const wearables = this.items?.filter?.((i) => i.type === 'item' && i.system?.equipped && i.system?.itemTags?.isArmor) ?? [];
+    const sources = [];
+    for (const item of wearables) {
+      const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
+      for (let i = 0; i < coveredParts.length; i += 1) {
+        const entry = coveredParts[i];
+        const direct = String(entry?.slotRef ?? entry?.partId ?? '').trim();
+        const matches = direct === slotRef
+          || resolveCoverageEntryToActorSlots(this.system?.health?.bodyParts || {}, entry).slotRefs.includes(slotRef);
+        if (!matches) continue;
+        const rawLayers = Array.isArray(entry?.layers) ? entry.layers : [];
+        const layers = rawLayers
+          .map((layer) => {
+            const md = materialsManager.getMaterial(layer?.material);
+            return ensureLayerDefaults(layer, md);
+          })
+          .filter((l) => l.thickness > 0);
+        if (!layers.length) continue;
+        sources.push({ itemId: item.id, coverageIdx: i, layers });
+      }
+    }
+    return sources;
+  }
+
+  /**
+   * Collect equipped-armour layer sources for every slot that currently
+   * exists on the actor. Returns a sparse map keyed by slotRef — slots
+   * without any layers are omitted. Because the body-traversal resolver
+   * cannot know which slots it will visit until it follows `behind`
+   * relations at runtime, we hand it the full map up front.
+   *
+   * @param {Object<string, Object>} bodyParts
+   * @returns {Object<string, Array<{itemId:string, coverageIdx:number, layers:Array}>>}
+   */
+  _collectArmorBySlot(bodyParts) {
+    const out = {};
+    const slots = bodyParts && typeof bodyParts === 'object' ? Object.keys(bodyParts) : [];
+    for (const slot of slots) {
+      const sources = this._collectLayerSourcesForSlot(slot);
+      if (sources.length) out[slot] = sources;
+    }
+    return out;
+  }
+
+  /**
+   * Persist armour updates returned by
+   * {@link resolveBodyTraversal}. The traversal resolver yields a map
+   * keyed by slotRef; each entry is the fresh `layers` state for every
+   * `(itemId, coverageIdx)` pair that contributed to that slot. We
+   * bucket them back to their source `item.system.coveredParts`
+   * entries and issue one `Item#update` per affected item.
+   *
+   * Caveat: if a single `coveredParts[i]` covers multiple slots and the
+   * projectile passed through several of them, the traversal resolver
+   * runs each slot independently (starting from full integrity every
+   * time), so the last slot's result wins here. v1 accepts that —
+   * real anatomies generally split such cases into separate coverage
+   * entries — but do not rely on cumulative shared-armour wear.
+   *
+   * @param {Object<string, Array<{itemId:string, coverageIdx:number, layers:Array}>>} armorUpdatesBySlot
+   */
+  async _persistTraversalArmorUpdates(armorUpdatesBySlot) {
+    if (!armorUpdatesBySlot || typeof armorUpdatesBySlot !== 'object') return;
+
+    const updatesByItem = new Map();
+    for (const [, sources] of Object.entries(armorUpdatesBySlot)) {
+      if (!Array.isArray(sources)) continue;
+      for (const src of sources) {
+        const itemId = String(src?.itemId ?? '');
+        if (!itemId) continue;
+        const item = this.items.get(itemId);
+        if (!item) continue;
+        const coverageIdx = Number(src?.coverageIdx ?? -1);
+        if (!Number.isInteger(coverageIdx) || coverageIdx < 0) continue;
+        const nextLayers = Array.isArray(src.layers) ? src.layers : [];
+        const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
+        const entry = coveredParts[coverageIdx];
+        if (!entry) continue;
+        if (!updatesByItem.has(itemId)) {
+          updatesByItem.set(itemId, { item, coveredParts: foundry.utils.deepClone(coveredParts) });
+        }
+        updatesByItem.get(itemId).coveredParts[coverageIdx].layers = nextLayers;
+      }
+    }
+
+    for (const { item, coveredParts } of updatesByItem.values()) {
+      const before = JSON.stringify(item.system?.coveredParts ?? []);
+      const after = JSON.stringify(coveredParts);
+      if (before === after) continue;
+      try { await item.update({ 'system.coveredParts': coveredParts }); }
+      catch (e) { console.error(`SpaceHolder | Failed to persist layers on ${item.name}:`, e); }
+    }
   }
 
   /**
@@ -552,11 +889,12 @@ export class SpaceHolderActor extends Actor {
           ...Object.keys(currentMergedParts)
         ]);
         const newSlotKeySet = new Set(Object.keys(anatomy.bodyParts ?? {}));
-        // ActorDelta: в одном update нельзя совмещать `-=slot` и запись того же `slot` —
-        // иначе для совпадающих слотов (например head#1) в дельте оказываются пустые объекты.
+        // ActorDelta: в одном update нельзя совмещать ForcedDeletion слота и запись
+        // того же слота — иначе для совпадающих слотов (например head#1) в дельте
+        // оказываются пустые объекты.
         for (const id of keysToDelete) {
           if (newSlotKeySet.has(id)) continue;
-          delUpdate[`delta.system.health.bodyParts.-=${id}`] = null;
+          delUpdate[`delta.system.health.bodyParts.${id}`] = new foundry.data.operators.ForcedDeletion();
         }
         delUpdate['delta.system.anatomy.id'] = anatomyId;
         delUpdate['delta.system.anatomy.name'] = displayName;
@@ -572,7 +910,7 @@ export class SpaceHolderActor extends Actor {
         await this.token.update(delUpdate);
       } else {
         // Для обычного actor-контекста оставляем обновление через actor.update.
-        await this.update({ 'system.health.-=bodyParts': null });
+        await this.update({ 'system.health.bodyParts': new foundry.data.operators.ForcedDeletion() });
         
         // Устанавливаем сведения об анатомии, сетку (если есть в шаблоне) и новые части
         const update = {
@@ -617,7 +955,7 @@ export class SpaceHolderActor extends Actor {
           ...Object.keys(currentMergedParts)
         ]);
         for (const id of keysToDelete) {
-          deltaUpdate[`delta.system.health.bodyParts.-=${id}`] = null;
+          deltaUpdate[`delta.system.health.bodyParts.${id}`] = new foundry.data.operators.ForcedDeletion();
         }
         if (clearType) {
           deltaUpdate['delta.system.anatomy.id'] = null;
@@ -630,7 +968,7 @@ export class SpaceHolderActor extends Actor {
         await this.token.update({ 'delta.system.health.bodyParts': {} });
       } else {
         // Удаляем bodyParts целиком, чтобы не сохранялись унаследованные ключи в synthetic actor.
-        const delUpdate = { 'system.health.-=bodyParts': null };
+        const delUpdate = { 'system.health.bodyParts': new foundry.data.operators.ForcedDeletion() };
         if (clearType) {
           delUpdate['system.anatomy.id'] = null;
           delUpdate['system.anatomy.name'] = null;
@@ -662,6 +1000,7 @@ export class SpaceHolderActor extends Actor {
 
     // Make modifications to data here. For example:
     const systemData = actorData.system;
+    this._prepareAbilityModifiers(systemData);
     systemData.xp = systemData.cr * systemData.cr * 100;
   }
 

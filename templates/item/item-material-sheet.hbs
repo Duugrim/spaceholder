@@ -1,0 +1,40 @@
+<form class='{{cssClass}} flexcol' autocomplete='off'>
+  <div class='spaceholder-sheet-stack flexcol'>
+  {{> "systems/spaceholder/templates/item/parts/item-sheet-header.hbs"}}
+
+  <section class='sheet-body sheet-body--item-primary'>
+    <nav class='sheet-tabs tabs sheet-tabs--item-primary' data-group='primary' data-tooltip-direction="UP">
+      {{#each sheetPrimaryTabs as |t|}}
+      <a class='item' data-action='tab' data-group='primary' data-tab='{{t.id}}' data-tooltip="{{localize t.labelKey}}" aria-label="{{localize t.labelKey}}"><i class='{{t.icon}}' aria-hidden='true'></i></a>
+      {{/each}}
+    </nav>
+
+    <div class='tab' data-group='primary' data-tab='description'>
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "description")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-description-prosemirror.hbs"}}
+    </div>
+
+    <div class='tab attributes' data-group='primary' data-tab='attributes'>
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "attributes")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-material-attributes.hbs"}}
+    </div>
+
+    <div class='tab effects' data-group='primary' data-tab='effects'>
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "effects")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/item/parts/item-effects.hbs"}}
+    </div>
+  </section>
+  </div>
+</form>

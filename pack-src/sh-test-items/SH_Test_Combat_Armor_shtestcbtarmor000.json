@@ -1,0 +1,73 @@
+{
+  "name": "Боевая броня",
+  "type": "item",
+  "_id": "shtestcbtarmor000",
+  "img": "systems/spaceholder/assets/icons/armor.svg/breastplate.svg",
+  "system": {
+    "description": "<p>Футуристичный нагрудник новейшего поколения. По «однократному пробитию» близок к тяжёлому бронежилету, но главное — выдерживает больше попаданий подряд в одну зону: большой <code>selfInduction</code> композита сажает удар внутри слоя, а не передаёт его в кевлар/пену. Контузия через броню значительно слабее, чем у тяжёлого жилета. Покрывает грудь, живот и спину.</p><ul><li>combat-composite 8 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 12.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "combat-composite", "thickness": 8 }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          { "material": "combat-composite", "thickness": 8 }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          { "material": "combat-composite", "thickness": 8 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 523000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800112,
+    "modifiedTime": 1776279800112,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestcbtarmor000"
+}

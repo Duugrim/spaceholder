@@ -565,7 +565,7 @@ export function openEventsApp() {
   _installHooksOnce();
   if (_singleton) {
     _singleton.render(true);
-    _singleton.bringToTop?.();
+    _singleton.bringToFront?.();
     return _singleton;
   }
   _singleton = new EventsApp();

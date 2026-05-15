@@ -1,0 +1,49 @@
+{
+  "name": "Light Cloth",
+  "type": "material",
+  "_id": "shtestmatclothlt0",
+  "img": "systems/spaceholder/assets/icons/armor.svg/cloth-armour.svg",
+  "system": {
+    "description": "<p>Обычная х/б ткань (футболка, рубашка). Защиты фактически нет: пули проходят, термика прожигает, износ копится мгновенно. Нужна как «слой до кожи», чтобы тестировать путь «через одежду в тело».</p>",
+    "materialId": "cloth-light",
+    "category": "fabric",
+    "hardness": 0.5,
+    "integrityPerThickness": 2,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.2,
+    "resistance": {
+      "ballistic": 10, "concussive": 10, "piercing": 5, "cutting": 20,
+      "thermal": 20, "laser": 10, "plasma": 5, "electric": 5,
+      "sonic": 0, "radiation": 0, "chemical": 5
+    },
+    "wear": {
+      "ballistic": 300, "concussive": 100, "piercing": 300, "cutting": 300,
+      "thermal": 500, "laser": 500, "plasma": 500, "electric": 5,
+      "sonic": 10, "radiation": 0, "chemical": 300
+    },
+    "conductance": {
+      "ballistic": [
+        { "type": "concussive", "fraction": 0.2 }
+      ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shtestfldmat0000",
+  "sort": 440000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800100,
+    "modifiedTime": 1776279800100,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtestmatclothlt0"
+}

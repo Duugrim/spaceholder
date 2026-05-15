@@ -94,9 +94,36 @@ export function buildStackIdentity(itemLike) {
  * @returns {object[]}
  */
 function stableSortedEffects(effects) {
-  const normalized = effects.map((e) => stableSortKeysDeep(e && typeof e === 'object' ? e : {}));
+  const normalized = effects.map((e) =>
+    stableSortKeysDeep(_stripVolatileForStackFingerprint(e && typeof e === 'object' ? e : {})),
+  );
   normalized.sort((a, b) => stableStringify(a).localeCompare(stableStringify(b)));
   return normalized;
+}
+
+/**
+ * Remove compendium linkage noise so stacks match across import/source variants (v14+ uses `_stats.compendiumSource`).
+ * @param {object} obj
+ * @returns {object}
+ */
+function _stripVolatileForStackFingerprint(obj) {
+  const o = foundry.utils.deepClone(obj);
+  if (o._stats && typeof o._stats === 'object') {
+    const st = { ...o._stats };
+    delete st.compendiumSource;
+    if (Object.keys(st).length) o._stats = st;
+    else delete o._stats;
+  }
+  if (o.flags?.core && typeof o.flags.core === 'object') {
+    const core = { ...o.flags.core };
+    delete core.sourceId;
+    if (Object.keys(core).length) o.flags = { ...o.flags, core };
+    else {
+      const { core: _c, ...rest } = o.flags;
+      o.flags = Object.keys(rest).length ? rest : undefined;
+    }
+  }
+  return o;
 }
 
 /**

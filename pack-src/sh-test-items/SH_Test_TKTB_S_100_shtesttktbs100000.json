@@ -1,0 +1,53 @@
+{
+  "name": "ТКТБ-С 100мм",
+  "type": "item",
+  "_id": "shtesttktbs100000",
+  "img": "systems/spaceholder/assets/icons/armor.svg/breastplate.svg",
+  "system": {
+    "description": "<p>Тотемный Кусок Танковой Брони (сталь). Плита в 100 мм `steel-plate`. Гарантированно держит почти всё кинетическое из текущего набора; HEAT всё равно прошивает — специально, чтобы показать разрыв между «очень толстой сталью» и «настоящей танковой бронёй» (см. `[ТКТБ-К 100мм]`).</p><ul><li>steel-plate 100 mm</li></ul>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 780.0,
+    "formula": "d20 + @str.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          { "material": "steel-plate", "thickness": 100 }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": { "showInCombat": false, "showInQuickbar": true },
+      "unequip": { "showInCombat": false, "showInQuickbar": true },
+      "hold": { "showInCombat": false, "showInQuickbar": true },
+      "stow": { "showInCombat": false, "showInQuickbar": true },
+      "drop": { "showInCombat": false, "showInQuickbar": false },
+      "wear": { "showInCombat": false, "showInQuickbar": false },
+      "show": { "showInCombat": false, "showInQuickbar": false }
+    },
+    "modifiers": { "abilities": [], "derived": [], "params": [] },
+    "itemTags": { "isArmor": true, "isActions": false, "isModifiers": false }
+  },
+  "effects": [],
+  "folder": "shtestfldwear000",
+  "sort": 532000,
+  "ownership": { "default": 0 },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1776279800122,
+    "modifiedTime": 1776279800122,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtesttktbs100000"
+}

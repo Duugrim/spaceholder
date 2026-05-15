@@ -129,7 +129,7 @@ export function openJournalUpdateLogApp({ tab = null } = {}) {
     try {
       if (tab) _singleton.setActiveTab(tab);
       _singleton.render(true);
-      _singleton.bringToTop?.();
+      _singleton.bringToFront?.();
     } catch (_) {
       // ignore
     }

@@ -50,7 +50,7 @@ export function openProgressionPointsApp({ userId = null } = {}) {
     try {
       if (userId) _singleton.setTargetUserId(userId);
       _singleton.render(true);
-      _singleton.bringToTop?.();
+      _singleton.bringToFront?.();
     } catch (_) {
       // ignore
     }

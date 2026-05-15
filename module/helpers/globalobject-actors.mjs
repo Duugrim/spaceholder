@@ -10,6 +10,19 @@ function _normalizeUuid(raw) {
   return String(match?.[1] ?? str).trim();
 }
 
+/** v14+: `_stats.compendiumSource`; older worlds: `flags.core.sourceId` / `document#sourceId`. */
+function _actorCompendiumOrLegacySource(actor) {
+  if (!actor) return '';
+  const fromStats = actor._stats?.compendiumSource;
+  if (fromStats) return _normalizeUuid(fromStats);
+  try {
+    const fromFlag = actor.getFlag?.('core', 'sourceId');
+    if (fromFlag) return _normalizeUuid(fromFlag);
+  } catch (_) { /* ignore */ }
+  if (actor.sourceId) return _normalizeUuid(actor.sourceId);
+  return '';
+}
+
 function _extractActorIdFromUuid(uuid) {
   const u = _normalizeUuid(uuid);
   if (!u) return '';
@@ -99,7 +112,7 @@ export function installGlobalObjectActorContainerHooks() {
 
       const tokenActorId = String(tokenDoc?.actorId ?? tokenDoc?.actor?.id ?? '').trim();
       const tokenActorUuid = _normalizeUuid(tokenDoc?.actor?.uuid);
-      const tokenActorSourceId = _normalizeUuid(tokenDoc?.actor?.sourceId);
+      const tokenActorSourceId = _actorCompendiumOrLegacySource(tokenDoc?.actor);
 
       const idMatch = !!p.actorId && !!tokenActorId && (tokenActorId === p.actorId);
       const uuidMatch = !!p.actorUuid && (tokenActorUuid === p.actorUuid || tokenActorSourceId === p.actorUuid);

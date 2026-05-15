@@ -724,7 +724,7 @@
 
   .anatomy-editor-selected-panel {
     margin-top: 0;
-    padding: 12px 14px;
+    padding: 8px 10px;
     min-height: 80px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--sh-border);
@@ -743,7 +743,7 @@
 
     .anatomy-editor-panel-cols {
       display: flex;
-      gap: 20px;
+      gap: 12px;
       width: 100%;
       min-width: 0;
     }
@@ -752,13 +752,13 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
     }
 
     .anatomy-editor-panel-col--protection {
       flex: 0 0 auto;
-      width: 180px;
-      min-width: 180px;
+      width: 170px;
+      min-width: 170px;
     }
 
     .anatomy-editor-panel-col--protection .anatomy-editor-panel-placeholder-hint {
@@ -773,10 +773,88 @@
       min-width: 200px;
     }
 
-    .anatomy-editor-panel-col--organs {
+    .anatomy-editor-panel-center-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+      gap: 8px 14px;
+      align-items: start;
+    }
+
+    .anatomy-editor-panel-center-props,
+    .anatomy-editor-panel-center-exposure {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .anatomy-editor-panel-exposure-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .anatomy-editor-panel-exposure-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+
+      .anatomy-editor-panel-label {
+        flex: 0 0 auto;
+        min-width: 60px;
+        color: var(--sh-text-muted);
+        font-size: 11px;
+      }
+
+      .anatomy-editor-panel-value {
+        color: var(--sh-text);
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    .anatomy-editor-panel-col--meta {
       flex: 0 0 auto;
-      width: 220px;
-      min-width: 220px;
+      width: 200px;
+      min-width: 200px;
+    }
+
+    // Мини-вкладки (протекция / мета-столбец)
+    .anatomy-editor-panel-minitabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--sh-border);
+      margin-bottom: 4px;
+    }
+
+    .anatomy-editor-panel-minitab {
+      flex: 1 1 0;
+      padding: 3px 6px;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--sh-text-muted);
+      cursor: pointer;
+      line-height: 1.2;
+      transition: color 0.12s ease, border-color 0.12s ease;
+
+      &:hover {
+        color: var(--sh-text);
+      }
+
+      &.active {
+        color: var(--sh-accent-strong);
+        border-bottom-color: var(--sh-accent-strong);
+      }
+    }
+
+    .anatomy-editor-panel-minitab-content {
+      min-height: 1px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
     &.anatomy-editor-panel-empty {
@@ -787,26 +865,40 @@
       font-style: italic;
     }
 
+    // Заголовок (название части) теперь живёт внутри центральной колонки,
+    // по центру. Выравнивается по высоте с мини-вкладками в соседних
+    // колонках за счёт одинакового padding-снизу и общей разделительной
+    // линии (см. `.anatomy-editor-panel-minitabs`).
     .anatomy-editor-panel-header {
+      position: relative;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       gap: 8px;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
+      margin-bottom: 4px;
+      padding-bottom: 4px;
       border-bottom: 1px solid var(--sh-border);
+      min-height: 22px;
     }
 
     .anatomy-editor-panel-title {
       font-weight: 700;
       font-size: 13px;
       color: var(--sh-text);
+      text-align: center;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .anatomy-editor-panel-edit-btn {
-      flex-shrink: 0;
-      width: 28px;
-      height: 28px;
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-55%);
+      width: 20px;
+      height: 20px;
       padding: 0;
       display: inline-flex;
       align-items: center;
@@ -816,6 +908,7 @@
       background: transparent;
       color: var(--sh-text);
       cursor: pointer;
+      font-size: 10px;
 
       &:hover {
         background: rgba(255, 255, 255, 0.08);
@@ -825,18 +918,19 @@
     .anatomy-editor-panel-props {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      margin-bottom: 2px;
+      gap: 2px;
+      margin-bottom: 0;
     }
 
     .anatomy-editor-panel-row {
       display: flex;
       align-items: baseline;
-      gap: 8px;
+      gap: 6px;
       margin: 0;
 
       .anatomy-editor-panel-label {
-        flex: 0 0 80px;
+        flex: 0 0 auto;
+        min-width: 72px;
         color: var(--sh-text-muted);
         font-size: 11px;
       }
@@ -848,15 +942,15 @@
         code {
           font-size: 11px;
           background: rgba(0, 0, 0, 0.35);
-          padding: 2px 5px;
+          padding: 1px 4px;
           border-radius: 3px;
         }
       }
     }
 
     .anatomy-editor-panel-block {
-      margin-top: 10px;
-      padding-top: 8px;
+      margin-top: 4px;
+      padding-top: 4px;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
 
@@ -866,7 +960,7 @@
       color: var(--sh-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.03em;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .anatomy-editor-panel-list {
@@ -874,19 +968,22 @@
       padding-left: 16px;
       font-size: 12px;
       color: var(--sh-text);
+      line-height: 1.3;
     }
 
     .anatomy-editor-panel-empty-hint {
       color: var(--sh-text-dim);
       font-style: italic;
+      margin: 0;
+      font-size: 11px;
     }
 
     .anatomy-editor-panel-links-list,
     .anatomy-editor-panel-organs-list {
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      margin-bottom: 6px;
+      gap: 1px;
+      margin-bottom: 2px;
     }
 
     .anatomy-editor-panel-link-row,
@@ -895,7 +992,304 @@
       align-items: center;
       justify-content: space-between;
       gap: 6px;
-      padding: 2px 0;
+      padding: 1px 0;
+      font-size: 12px;
+    }
+
+    .anatomy-editor-panel-link-name,
+    .anatomy-editor-panel-organ-name {
+      color: var(--sh-text);
+      flex: 1;
+      min-width: 0;
+    }
+
+    // Список предметов и слоёв защиты (левый столбец)
+    .anatomy-editor-panel-protection-items {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      font-size: 12px;
+
+      li {
+        padding: 1px 0;
+        color: var(--sh-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .anatomy-editor-panel-item-layers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .anatomy-editor-panel-item-layer-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: baseline;
+      gap: 4px;
+      font-size: 11px;
+      padding: 1px 0;
+    }
+
+    .anatomy-editor-panel-item-layer-name {
+      color: var(--sh-text);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .anatomy-editor-panel-item-layer-source {
+      color: var(--sh-text-dim);
+      font-style: italic;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .anatomy-editor-panel-link-remove,
+    .anatomy-editor-panel-organ-remove {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--sh-border);
+      border-radius: var(--sh-radius-sm);
+      background: transparent;
+      color: var(--sh-text);
+      cursor: pointer;
+      font-size: 10px;
+
+      &:hover {
+        background: rgba(204, 68, 68, 0.2);
+        border-color: rgba(204, 68, 68, 0.5);
+      }
+    }
+
+    .anatomy-editor-panel-add-link,
+    .anatomy-editor-panel-add-organ {
+      padding: 3px 8px;
+      font-size: 11px;
+      border-radius: var(--sh-radius-sm);
+      border: 1px solid var(--sh-border);
+      background: transparent;
+      color: var(--sh-text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    .anatomy-editor-panel-body-layers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      margin-bottom: 2px;
+    }
+
+    .anatomy-editor-panel-body-layer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 1px 0;
+      font-size: 12px;
+
+      .anatomy-editor-panel-body-layer-meta {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .anatomy-editor-panel-body-layer-name {
+        color: var(--sh-text);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .anatomy-editor-panel-body-layer-thickness {
+        color: var(--sh-text-dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .anatomy-editor-panel-body-layer-controls {
+        display: inline-flex;
+        gap: 2px;
+        flex-shrink: 0;
+
+        button {
+          &:not(:last-child):hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--sh-border);
+          }
+          &:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+          }
+        }
+      }
+    }
+
+    .anatomy-editor-panel-delete {
+      margin-top: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: var(--sh-radius-sm);
+      border: 1px solid var(--sh-border);
+      background: rgba(204, 68, 68, 0.2);
+      color: var(--sh-text);
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(204, 68, 68, 0.35);
+      }
+    }
+  }
+
+  // Диалог редактирования части тела
+  .anatomy-edit-part-dialog.anatomy-edit-part-dialog--tabbed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 280px;
+
+    .anatomy-edit-part-tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--sh-border);
+      flex-wrap: wrap;
+    }
+
+    .anatomy-edit-part-tab {
+      padding: 4px 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--sh-text-muted);
+      cursor: pointer;
+      line-height: 1.2;
+
+      &:hover {
+        color: var(--sh-text);
+      }
+
+      &.active {
+        color: var(--sh-accent-strong);
+        border-bottom-color: var(--sh-accent-strong);
+      }
+    }
+
+    .anatomy-edit-part-body {
+      min-height: 180px;
+    }
+
+    .anatomy-edit-part-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .anatomy-edit-part-section--danger {
+      gap: 8px;
+    }
+
+    .anatomy-edit-part-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 10px;
+    }
+
+    .anatomy-edit-part-form-grid--exposure {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px 10px;
+    }
+
+    .anatomy-edit-part-form {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin: 0;
+
+        label {
+          font-size: 11px;
+          color: var(--sh-text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+
+        input,
+        select {
+          width: 100%;
+        }
+      }
+
+      .notes {
+        margin: 0;
+        font-size: 10px;
+        color: var(--sh-text-dim);
+      }
+    }
+
+    // Общие стили строк (связи/органы/слои тела) — в панели они
+    // живут внутри `.anatomy-editor-selected-panel`, здесь дублируем,
+    // чтобы те же классы работали и в диалоге редактирования.
+    .anatomy-editor-panel-empty-hint {
+      color: var(--sh-text-dim);
+      font-style: italic;
+      margin: 0;
+      font-size: 11px;
+    }
+
+    .anatomy-editor-panel-placeholder-hint {
+      margin: 0;
+      font-size: 11px;
+      color: var(--sh-text-dim);
+      font-style: italic;
+    }
+
+    .anatomy-editor-panel-links-list,
+    .anatomy-editor-panel-organs-list,
+    .anatomy-editor-panel-body-layers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 2px;
+    }
+
+    .anatomy-editor-panel-link-row,
+    .anatomy-editor-panel-organ-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 1px 0;
       font-size: 12px;
     }
 
@@ -940,14 +1334,79 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      align-self: flex-start;
 
       &:hover {
         background: rgba(255, 255, 255, 0.06);
       }
     }
 
+    .anatomy-editor-panel-body-layer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 1px 0;
+      font-size: 12px;
+
+      .anatomy-editor-panel-body-layer-meta {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .anatomy-editor-panel-body-layer-name {
+        color: var(--sh-text);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .anatomy-editor-panel-body-layer-thickness {
+        color: var(--sh-text-dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .anatomy-editor-panel-body-layer-controls {
+        display: inline-flex;
+        gap: 2px;
+        flex-shrink: 0;
+
+        button {
+          width: 22px;
+          height: 22px;
+          padding: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--sh-border);
+          border-radius: var(--sh-radius-sm);
+          background: transparent;
+          color: var(--sh-text);
+          cursor: pointer;
+          font-size: 10px;
+
+          &:not(:last-child):hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--sh-border);
+          }
+          &:last-child:hover {
+            background: rgba(204, 68, 68, 0.2);
+            border-color: rgba(204, 68, 68, 0.5);
+          }
+          &:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+          }
+        }
+      }
+    }
+
     .anatomy-editor-panel-delete {
-      margin-top: 12px;
+      margin-top: 4px;
       padding: 6px 10px;
       font-size: 12px;
       border-radius: var(--sh-radius-sm);
@@ -955,6 +1414,7 @@
       background: rgba(204, 68, 68, 0.2);
       color: var(--sh-text);
       cursor: pointer;
+      align-self: flex-start;
 
       &:hover {
         background: rgba(204, 68, 68, 0.35);

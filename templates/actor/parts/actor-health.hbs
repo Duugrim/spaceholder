@@ -70,10 +70,10 @@
                     {{#each gear.coverageLines as |line|}}
                       <li class="health-equipment-coverage__row">
                         <span class="health-equipment-coverage__part">{{line.partName}}</span>
-                        {{#if ../isArmor}}
+                        {{#if line.layersSummary}}
                           <span class="health-equipment-coverage__val">
-                            <i class="fas fa-shield-alt" aria-hidden="true"></i>
-                            {{line.armorValue}}
+                            <i class="fas fa-layer-group" aria-hidden="true"></i>
+                            {{line.layersSummary}}
                           </span>
                         {{/if}}
                       </li>
@@ -109,11 +109,6 @@
           <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}" data-part-id="{{part.id}}" role="button" tabindex="0">
             <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
             <span class="part-spacer"></span>
-            {{#if part.armor}}
-            <span class="part-armor">
-              <i class="fas fa-shield-alt"></i> {{part.armor}}
-            </span>
-            {{/if}}
             <span class="health-numbers">{{part.currentHp}}/{{part.maxHp}}</span>
           </div>
           {{/each}}
