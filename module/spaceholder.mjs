@@ -91,6 +91,7 @@ import {
   normalizeNestedStorage,
   resolveAndConsumeRangedAmmoForShot,
 } from './helpers/item-nested-storage.mjs';
+import { registerHealthAnatomyViewerSettings } from './helpers/health-anatomy-viewer-settings.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -110,6 +111,7 @@ Hooks.once('init', function () {
   registerProgressionPointsSettings();
   registerTimelineV2Settings();
   registerItemPilesShSettings();
+  registerHealthAnatomyViewerSettings();
   installTokenPointerTabs();
   // Legacy world anatomy keys: used only for one-time migration into world folder files
   // World anatomies live in: worlds/<worldId>/spaceholder/anatomy/*.json (FilePicker upload/browse)

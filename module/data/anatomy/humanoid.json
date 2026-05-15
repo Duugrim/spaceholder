@@ -2,7 +2,7 @@
   "id": "humanoid",
   "name": "Humanoid",
   "description": "Standard human-like anatomy: head, neck, back, shoulders, arms, hands, chest, abdomen, groin, thighs, shins, feet",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "grid": {
     "width": 9,
     "height": 10
@@ -114,6 +114,11 @@
       "maxHp": 35,
       "x": 5,
       "y": 4,
+      "position3d": {
+        "x": 0,
+        "y": 3.55,
+        "z": -1.42
+      },
       "status": "healthy",
       "internal": false,
       "tags": [
@@ -170,6 +175,11 @@
       "maxHp": 45,
       "x": 4,
       "y": 3,
+      "position3d": {
+        "x": 0,
+        "y": 3.85,
+        "z": -0.72
+      },
       "status": "healthy",
       "internal": false,
       "tags": [

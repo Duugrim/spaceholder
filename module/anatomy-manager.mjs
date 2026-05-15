@@ -59,6 +59,22 @@ export function coerceAnatomyGridCoord(v) {
 }
 
 /**
+ * Опциональные координаты для 3D-просмотра вкладки «Здоровье» (единицы Three.js: X вправо, Y вверх, Z глубина).
+ * Независимы от сеточных `x`/`y` (только 2D-редактор).
+ *
+ * @param {unknown} raw
+ * @returns {{ x: number, y: number, z: number } | null}
+ */
+export function sanitizePosition3d(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const x = Number(raw.x);
+  const y = Number(raw.y);
+  const z = Number(raw.z);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+  return { x, y, z };
+}
+
+/**
  * Построить нормализованный словарь частей тела для актёра.
  * - Использует part.id как тип (ключ локализации).
  * - Генерирует slotRef (детерминированный, по порядку и счётчику id).
@@ -103,6 +119,9 @@ function _buildNormalizedActorBodyParts(rawBodyParts) {
     if (!Array.isArray(part.tags)) part.tags = Array.isArray(rawPart.tags) ? rawPart.tags : [];
     part.x = coerceAnatomyGridCoord(rawPart.x ?? part.x ?? 0);
     part.y = coerceAnatomyGridCoord(rawPart.y ?? part.y ?? 0);
+    const p3 = sanitizePosition3d(rawPart.position3d);
+    if (p3) part.position3d = p3;
+    else delete part.position3d;
     if (!("status" in part)) part.status = "healthy";
     if (!("internal" in part)) part.internal = false;
 
@@ -486,6 +505,9 @@ export class AnatomyManager {
       if (!('tags' in part)) part.tags = [];
       part.x = coerceAnatomyGridCoord(part.x);
       part.y = coerceAnatomyGridCoord(part.y);
+      const p3v = sanitizePosition3d(part.position3d);
+      if (p3v) part.position3d = p3v;
+      else delete part.position3d;
 
       const cleanedLayers = sanitizeBodyLayers(part.bodyLayers);
       part.bodyLayers = cleanedLayers && cleanedLayers.length > 0

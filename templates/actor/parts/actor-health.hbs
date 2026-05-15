@@ -93,11 +93,20 @@
       </div>
     </div>
 
-    {{!-- Колонка 2: только визуализация --}}
-    <div class="health-anatomy-editor-column">
+    {{!-- Колонка 2: 2D сетка; при включённой мировой опции 3D — блок WebGL (при ошибке/редактировании остаётся 2D) --}}
+    <div class="health-anatomy-editor-column" data-sh-health-anatomy-col>
       <div class="anatomy-editor-wrap anatomy-editor-wrap--fixed">
         <div class="anatomy-editor-container" data-anatomy-editor="container"></div>
       </div>
+      {{#if healthAnatomy3dEnabled}}
+      <div class="health-anatomy-3d-section">
+        <div class="health-anatomy-3d-head">
+          <span class="health-anatomy-3d-title">{{localize "SPACEHOLDER.Health.Anatomy3d.Title"}}</span>
+          <span class="health-anatomy-3d-hint">{{localize "SPACEHOLDER.Health.Anatomy3d.Hint"}}</span>
+        </div>
+        <div class="health-anatomy-3d-canvas-host" data-anatomy-3d="container"></div>
+      </div>
+      {{/if}}
     </div>
 
     {{!-- Колонка 3: список частей тела --}}

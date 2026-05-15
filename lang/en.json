@@ -399,6 +399,17 @@
         "NoMatchingParts": "No matching body parts on this character.",
         "TagArmor": "Armor",
         "TagModifiers": "Modifiers"
+      },
+      "Anatomy3d": {
+        "Title": "3D preview",
+        "Hint": "Drag to rotate, scroll to zoom. Click a sphere to select a body part.",
+        "Empty": "No anatomy loaded"
+      }
+    },
+    "Settings": {
+      "HealthAnatomy3d": {
+        "Name": "Use 3D anatomy preview on the Health tab",
+        "Hint": "GM only. When enabled, the sheet loads WebGL and tries 3D first, then falls back to the 2D grid (for example while editing the layout). Turning this on or off requires a reload so the client can load or skip 3D code."
       }
     },
     "BodyParts": {

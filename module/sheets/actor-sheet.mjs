@@ -4,6 +4,7 @@ import {
 } from '../helpers/effects.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
 import { AnatomyEditor } from '../helpers/anatomy-editor.mjs';
+import { getHealthAnatomy3dEnabled } from '../helpers/health-anatomy-viewer-settings.mjs';
 import { promptPickAndApplyIconToActorOrToken } from '../helpers/icon-picker/icon-apply.mjs';
 import {
   isProgressionEnabled,
@@ -507,6 +508,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * @param {object} context The context object to mutate
    */
   _prepareHealthData(context) {
+    context.healthAnatomy3dEnabled = getHealthAnatomy3dEnabled();
+
     // Принудительно обновляем актёра для получения свежих данных
     const freshActorData = this.actor.system;
     const bodyParts = freshActorData.health?.bodyParts;
@@ -552,6 +555,89 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     context.hierarchicalBodyParts = this._buildBodyPartsList(bodyParts, currentHpMap);
 
     this._prepareHealthEquippedGear(context, bodyParts);
+  }
+
+  /** @returns {void} */
+  _refreshAnatomy3dPreview() {
+    if (!getHealthAnatomy3dEnabled() || !this._anatomyEditor3d) return;
+    try {
+      void this._anatomyEditor3d.refresh();
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  /**
+   * Вкладка «Здоровье»: при включённой мировой опции 3D загрузить Three.js и показать сцену;
+   * при ошибке WebGL или `editing` — только 2D (класс на колонке).
+   * @param {HTMLElement} el — корень вкладки health
+   * @param {{ editing?: boolean }} [opts]
+   * @returns {Promise<void>}
+   */
+  async _activateHealthAnatomy3dView(el, opts = {}) {
+    const editing = Boolean(opts.editing);
+    const col = el.querySelector("[data-sh-health-anatomy-col]");
+    const container3d = el.querySelector('[data-anatomy-3d="container"]');
+
+    if (!getHealthAnatomy3dEnabled()) {
+      col?.classList.remove(
+        "health-anatomy-editor-column--3d-capable",
+        "health-anatomy-editor-column--force-2d"
+      );
+      if (this._anatomyEditor3d) {
+        try {
+          this._anatomyEditor3d.dispose();
+        } catch (_) {
+          /* ignore */
+        }
+        this._anatomyEditor3d = null;
+      }
+      return;
+    }
+
+    if (!col || !container3d) return;
+
+    if (this._anatomyEditor3d) {
+      try {
+        this._anatomyEditor3d.dispose();
+      } catch (_) {
+        /* ignore */
+      }
+      this._anatomyEditor3d = null;
+    }
+
+    col.classList.add("health-anatomy-editor-column--3d-capable");
+
+    if (editing) {
+      col.classList.add("health-anatomy-editor-column--force-2d");
+      return;
+    }
+
+    col.classList.remove("health-anatomy-editor-column--force-2d");
+
+    try {
+      const { AnatomyEditor3D } = await import("../helpers/anatomy-editor-3d.mjs");
+      this._anatomyEditor3d = new AnatomyEditor3D(container3d, {
+        actor: this.actor,
+        getSelectedPartId: () => this._anatomyEditor?.selectedPartId ?? null,
+        onSelectPartId: (id) => {
+          if (this._anatomyEditor) this._anatomyEditor.setSelectedPartId(id);
+        },
+      });
+      const ok = await this._anatomyEditor3d.refresh();
+      if (!ok) throw new Error("AnatomyEditor3D.refresh returned false");
+    } catch (e) {
+      console.warn("SpaceHolder | Health anatomy 3D unavailable, using 2D grid", e);
+      col.classList.add("health-anatomy-editor-column--force-2d");
+      if (this._anatomyEditor3d) {
+        try {
+          this._anatomyEditor3d.dispose();
+        } catch (_) {
+          /* ignore */
+        }
+        this._anatomyEditor3d = null;
+      }
+    }
   }
 
   /**
@@ -1822,6 +1908,15 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Anatomy: управление через кнопку текущей анатомии и панель инструментов редактора
     el.querySelector('.anatomy-current-btn')?.addEventListener('click', (e) => this._onAnatomyManageClick(e));
 
+    if (this._anatomyEditor3d) {
+      try {
+        this._anatomyEditor3d.dispose();
+      } catch (_) {
+        /* ignore */
+      }
+      this._anatomyEditor3d = null;
+    }
+
     const editorContainer = el.querySelector('[data-anatomy-editor="container"]');
     const selectedPanel = el.querySelector('[data-anatomy-editor="panel"]');
     if (editorContainer) {
@@ -1868,6 +1963,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           this._anatomyEditor.setEditMode(!this._anatomyEditor.editMode);
           this._anatomyEditor.render();
           applyEditState();
+          void this._activateHealthAnatomy3dView(el, { editing: this._anatomyEditor.editMode });
         });
       }
 
@@ -1895,6 +1991,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       }
 
       applyEditState();
+
+      void this._activateHealthAnatomy3dView(el, { editing: preserveEdit });
     }
 
     this._setupAnatomyListPointer(el, editorContainer);
@@ -2449,6 +2547,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
             const height = Math.max(1, Math.min(99, parseInt(document.querySelector("#ag-height")?.value ?? "10", 10) || 10));
             await this.actor.update({ "system.health.anatomyGrid": { width, height } });
             if (this._anatomyEditor) this._anatomyEditor.render();
+            this._refreshAnatomy3dPreview();
           }
         },
         { action: "cancel", label: "Отмена", icon: "fa-solid fa-times" }

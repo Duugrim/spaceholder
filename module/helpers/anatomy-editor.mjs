@@ -3,7 +3,7 @@
  * Центрирование по bounding box, Drag&Drop позиции в режиме редактирования.
  * Под сеткой — панель выбранной части (органы, импланты) без всплывающих окон.
  */
-import { anatomyManager, coerceAnatomyGridCoord } from '../anatomy-manager.mjs';
+import { anatomyManager, coerceAnatomyGridCoord, sanitizePosition3d } from '../anatomy-manager.mjs';
 import {
   sanitizeExposure,
   sanitizeRelation,
@@ -777,10 +777,15 @@ export class AnatomyEditor {
     const slotRefCode = String(partId).replace(/</g, "&lt;");
     const typeIdCode = String(bodyPart.id ?? "—").replace(/</g, "&lt;");
     const uuidCode = String(bodyPart.uuid ?? "—").replace(/</g, "&lt;");
+    const p3 = sanitizePosition3d(bodyPart.position3d);
+    const pos3dLabel = p3
+      ? `(${p3.x}, ${p3.y}, ${p3.z})`
+      : "— (авто из сетки)";
     props.innerHTML = `
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Слот</span><span class="anatomy-editor-panel-value"><code>${slotRefCode}</code></span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Тип</span><span class="anatomy-editor-panel-value"><code>${typeIdCode}</code></span></div>
-      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Координаты</span><span class="anatomy-editor-panel-value">(${bodyPart.x ?? 0}, ${bodyPart.y ?? 0})</span></div>
+      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Сетка</span><span class="anatomy-editor-panel-value">(${bodyPart.x ?? 0}, ${bodyPart.y ?? 0})</span></div>
+      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">3D</span><span class="anatomy-editor-panel-value">${pos3dLabel}</span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">UUID</span><span class="anatomy-editor-panel-value"><code>${uuidCode}</code></span></div>`;
     container.appendChild(props);
   }
@@ -1042,6 +1047,29 @@ export class AnatomyEditor {
     const yRaw = readField(basicForm, "#ep-y")?.value;
     const y = yRaw !== undefined ? (parseInt(yRaw, 10) || 0) : (part.y ?? 0);
 
+    const x3El = readField(basicForm, "#ep-x3");
+    const y3El = readField(basicForm, "#ep-y3");
+    const z3El = readField(basicForm, "#ep-z3");
+    let position3dUpdate = undefined;
+    if (x3El && y3El && z3El) {
+      const sx = String(x3El.value ?? "").trim();
+      const sy = String(y3El.value ?? "").trim();
+      const sz = String(z3El.value ?? "").trim();
+      if (sx === "" && sy === "" && sz === "") {
+        position3dUpdate = null;
+      } else {
+        const nx = Number(sx);
+        const ny = Number(sy);
+        const nz = Number(sz);
+        if (Number.isFinite(nx) && Number.isFinite(ny) && Number.isFinite(nz)) {
+          position3dUpdate = { x: nx, y: ny, z: nz };
+        } else {
+          ui.notifications.warn("3D: укажите три числа (X, Y, Z) или очистите все три поля.");
+          return;
+        }
+      }
+    }
+
     /** @type {Record<string, number>|undefined} */
     let newExposure;
     if (expForm) {
@@ -1068,6 +1096,8 @@ export class AnatomyEditor {
       partData.material = material;
       partData.x = x;
       partData.y = y;
+      if (position3dUpdate === null) delete partData.position3d;
+      else if (position3dUpdate) partData.position3d = position3dUpdate;
       if (newExposure !== undefined) partData.exposure = sanitizeExposure(newExposure);
       partData.slotRef = newId;
       updated[newId] = partData;
@@ -1081,6 +1111,8 @@ export class AnatomyEditor {
       updated[partId].material = material;
       updated[partId].x = x;
       updated[partId].y = y;
+      if (position3dUpdate === null) delete updated[partId].position3d;
+      else if (position3dUpdate) updated[partId].position3d = position3dUpdate;
       if (newExposure !== undefined) updated[partId].exposure = sanitizeExposure(newExposure);
     }
     this._normalizeAllBodyPartRelations(updated);
@@ -1098,6 +1130,10 @@ export class AnatomyEditor {
       (m) => `<option value="${m.id}" ${m.id === materialVal ? "selected" : ""}>${m.label}</option>`
     ).join("");
     const esc = (s) => String(s ?? "").replace(/"/g, "&quot;");
+    const p3 = sanitizePosition3d(part.position3d);
+    const x3v = p3 ? esc(p3.x) : "";
+    const y3v = p3 ? esc(p3.y) : "";
+    const z3v = p3 ? esc(p3.z) : "";
     section.innerHTML = `
       <form data-edit-part-basic-form class="anatomy-edit-part-form">
         <div class="anatomy-edit-part-form-grid">
@@ -1105,9 +1141,13 @@ export class AnatomyEditor {
           <div class="form-group"><label>Название</label><input type="text" id="ep-name" value="${esc(part.name || "")}" placeholder="Название части"/></div>
           <div class="form-group"><label>Вес</label><input type="number" id="ep-weight" value="${part.weight ?? 0}" min="0"/></div>
           <div class="form-group"><label>Max HP</label><input type="number" id="ep-maxHp" value="${part.maxHp ?? 0}" min="0"/></div>
-          <div class="form-group"><label>X</label><input type="number" id="ep-x" value="${part.x ?? 0}"/></div>
-          <div class="form-group"><label>Y</label><input type="number" id="ep-y" value="${part.y ?? 0}"/></div>
+          <div class="form-group"><label>Сетка X</label><input type="number" id="ep-x" value="${part.x ?? 0}"/></div>
+          <div class="form-group"><label>Сетка Y</label><input type="number" id="ep-y" value="${part.y ?? 0}"/></div>
+          <div class="form-group"><label>3D X</label><input type="number" step="any" id="ep-x3" value="${x3v}" placeholder="авто"/></div>
+          <div class="form-group"><label>3D Y</label><input type="number" step="any" id="ep-y3" value="${y3v}" placeholder="авто"/></div>
+          <div class="form-group"><label>3D Z</label><input type="number" step="any" id="ep-z3" value="${z3v}" placeholder="авто"/></div>
         </div>
+        <p class="notes">Сетка X/Y — только 2D-редактор. 3D X/Y/Z — опционально для просмотра 3D; пустые три поля — позиция считается из сетки.</p>
         <div class="form-group">
           <label>Категория ткани</label>
           <select id="ep-material"><option value="">—</option>${materialOptionsHtml}</select>
