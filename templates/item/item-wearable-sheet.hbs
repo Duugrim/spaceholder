@@ -19,36 +19,14 @@
       {{> "systems/spaceholder/templates/item/parts/item-description-prosemirror.hbs"}}
     </div>
 
-    {{#if hasMeleeTag}}
-    <div class="tab" data-group="primary" data-tab="melee">
+    {{#if hasWeaponTag}}
+    <div class="tab" data-group="primary" data-tab="weapon">
       {{#each sheetPrimaryTabs}}
-        {{#if (eq id "melee")}}
+        {{#if (eq id "weapon")}}
           {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
         {{/if}}
       {{/each}}
-      {{> "systems/spaceholder/templates/item/parts/item-weapon-channel-tab.hbs" channelKey="melee" ch=system.weapon.melee}}
-    </div>
-    {{/if}}
-
-    {{#if hasRangedTag}}
-    <div class="tab" data-group="primary" data-tab="ranged">
-      {{#each sheetPrimaryTabs}}
-        {{#if (eq id "ranged")}}
-          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
-        {{/if}}
-      {{/each}}
-      {{> "systems/spaceholder/templates/item/parts/item-weapon-channel-tab.hbs" channelKey="ranged" ch=system.weapon.ranged}}
-    </div>
-    {{/if}}
-
-    {{#if hasThrownTag}}
-    <div class="tab" data-group="primary" data-tab="thrown">
-      {{#each sheetPrimaryTabs}}
-        {{#if (eq id "thrown")}}
-          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
-        {{/if}}
-      {{/each}}
-      {{> "systems/spaceholder/templates/item/parts/item-weapon-channel-tab.hbs" channelKey="thrown" ch=system.weapon.thrown}}
+      {{> "systems/spaceholder/templates/item/parts/item-weapon-v3-tab.hbs" w=weaponV3 editable=editable}}
     </div>
     {{/if}}
 
@@ -59,7 +37,7 @@
           {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
         {{/if}}
       {{/each}}
-      {{> "systems/spaceholder/templates/item/parts/item-weapon-ammo-tab.hbs" ammo=system.weapon.ammo}}
+      {{> "systems/spaceholder/templates/item/parts/item-ammo-v3-tab.hbs" a=ammoV3 editable=editable}}
     </div>
     {{/if}}
 
@@ -326,16 +304,8 @@
               <span>{{localize 'SPACEHOLDER.ItemTags.Modifiers'}}</span>
             </label>
             <label class="sh-item-tag-row">
-              <input type="checkbox" data-sh-item-tag="isMelee" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isMelee}}checked{{/if}} />
-              <span>{{localize 'SPACEHOLDER.ItemWeapon.Inner.Melee'}}</span>
-            </label>
-            <label class="sh-item-tag-row">
-              <input type="checkbox" data-sh-item-tag="isRanged" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isRanged}}checked{{/if}} />
-              <span>{{localize 'SPACEHOLDER.ItemWeapon.Inner.Ranged'}}</span>
-            </label>
-            <label class="sh-item-tag-row">
-              <input type="checkbox" data-sh-item-tag="isThrown" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isThrown}}checked{{/if}} />
-              <span>{{localize 'SPACEHOLDER.ItemWeapon.Inner.Thrown'}}</span>
+              <input type="checkbox" data-sh-item-tag="isWeapon" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isWeapon}}checked{{/if}} />
+              <span>{{localize 'SPACEHOLDER.ItemTags.Weapon'}}</span>
             </label>
             <label class="sh-item-tag-row">
               <input type="checkbox" data-sh-item-tag="isAmmo" {{#unless editable}}disabled{{/unless}} {{#if system.itemTags.isAmmo}}checked{{/if}} />

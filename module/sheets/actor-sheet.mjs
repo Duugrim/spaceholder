@@ -12,7 +12,7 @@ import {
   computeFactionSpentPoints,
 } from '../helpers/progression-points.mjs';
 import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
-import { collectActorActions, executeActorAction, getActorActionPoints } from '../helpers/actions/action-service.mjs';
+import { collectActorActions, executeActorAction, getActorActionPoints, openItemInteractMenu } from '../helpers/actions/action-service.mjs';
 import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
 import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/held-drop-resolve.mjs';
 import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
@@ -1300,6 +1300,26 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       if (!item || item.type !== 'item') return null;
       return item;
     };
+
+    const openWeaponInteractFromCard = async (ev) => {
+      const card = ev.target?.closest?.('.inventory-item-card, .sh-held-item-card');
+      const itemId = card?.dataset?.itemId;
+      if (!itemId) return;
+      const item = this.actor.items.get(itemId);
+      if (!item || item.type !== 'item') return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      await openItemInteractMenu(this.actor, item, {
+        editable: this.isEditable,
+        event: ev,
+        anchorElement: card,
+      });
+    };
+
+    if (el && el.dataset.shWeaponInteractContextBound !== '1') {
+      el.dataset.shWeaponInteractContextBound = '1';
+      el.addEventListener('contextmenu', openWeaponInteractFromCard, true);
+    }
 
     el.querySelectorAll('[data-action="sh-held-item-open"]').forEach((node) => {
       node.addEventListener('click', (ev) => {

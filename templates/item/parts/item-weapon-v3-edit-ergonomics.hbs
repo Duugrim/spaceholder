@@ -1,0 +1,67 @@
+<section class="sh-wv3-panel">
+  <div class="sh-wv3-grid">
+    <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Ergo.OverallHint'}}">
+      <span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.Overall'}}</span>
+      <input type="number" min="0" step="1" data-wpath="ergonomics.overall" data-wdtype="Int" value="{{w.ergonomics.overall}}" />
+    </label>
+
+    <div class="sh-wv3-toggleable {{#unless w.ergonomics.zones.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Ergo.ZonesHint'}}">
+        <input type="checkbox" data-wpath="ergonomics.zones.enabled" {{#if w.ergonomics.zones.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.Zones'}}</span>
+      </label>
+      {{#if w.ergonomics.zones.enabled}}
+      <div class="sh-wv3-zones">
+        <label class="sh-wv3-field sh-wv3-field--green"><span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.ZoneGreen'}}</span>
+          <input type="number" min="0" step="1" data-wpath="ergonomics.zones.green" data-wdtype="Int" value="{{w.ergonomics.zones.green}}" /></label>
+        <label class="sh-wv3-field sh-wv3-field--yellow"><span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.ZoneYellow'}}</span>
+          <input type="number" min="0" step="1" data-wpath="ergonomics.zones.yellow" data-wdtype="Int" value="{{w.ergonomics.zones.yellow}}" /></label>
+        <label class="sh-wv3-field sh-wv3-field--orange"><span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.ZoneOrange'}}</span>
+          <input type="number" min="0" step="1" data-wpath="ergonomics.zones.orange" data-wdtype="Int" value="{{w.ergonomics.zones.orange}}" /></label>
+        <label class="sh-wv3-field sh-wv3-field--red"><span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.ZoneRed'}}</span>
+          <input type="number" min="0" step="1" data-wpath="ergonomics.zones.red" data-wdtype="Int" value="{{w.ergonomics.zones.red}}" /></label>
+      </div>
+      {{/if}}
+    </div>
+
+    <div class="sh-wv3-toggleable {{#unless w.ergonomics.deadZone.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Ergo.DeadZoneHint'}}">
+        <input type="checkbox" data-wpath="ergonomics.deadZone.enabled" {{#if w.ergonomics.deadZone.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.DeadZone'}}</span>
+      </label>
+      <input type="number" min="0" step="1" data-wpath="ergonomics.deadZone.value" data-wdtype="Int" value="{{w.ergonomics.deadZone.value}}" />
+    </div>
+
+    <div class="sh-wv3-toggleable {{#unless w.ergonomics.aimPenalty.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Ergo.AimPenaltyHint'}}">
+        <input type="checkbox" data-wpath="ergonomics.aimPenalty.enabled" {{#if w.ergonomics.aimPenalty.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.AimPenalty'}}</span>
+      </label>
+      <input type="number" min="0" step="1" data-wpath="ergonomics.aimPenalty.value" data-wdtype="Int" value="{{w.ergonomics.aimPenalty.value}}" />
+    </div>
+
+    <div class="sh-wv3-toggleable {{#unless w.ergonomics.critZoneBonus.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Ergo.CritZoneBonusHint'}}">
+        <input type="checkbox" data-wpath="ergonomics.critZoneBonus.enabled" {{#if w.ergonomics.critZoneBonus.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.CritZoneBonus'}}</span>
+      </label>
+      <input type="number" min="0" step="any" data-wpath="ergonomics.critZoneBonus.value" data-wdtype="Number" value="{{w.ergonomics.critZoneBonus.value}}" />
+    </div>
+
+    <div class="sh-wv3-toggleable {{#unless w.ergonomics.critZoneSize.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Ergo.CritZoneSizeHint'}}">
+        <input type="checkbox" data-wpath="ergonomics.critZoneSize.enabled" {{#if w.ergonomics.critZoneSize.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.CritZoneSize'}}</span>
+      </label>
+      <input type="number" min="0" step="1" data-wpath="ergonomics.critZoneSize.value" data-wdtype="Int" value="{{w.ergonomics.critZoneSize.value}}" />
+    </div>
+
+    <div class="sh-wv3-toggleable {{#unless w.ergonomics.readying.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Ergo.ReadyingHint'}}">
+        <input type="checkbox" data-wpath="ergonomics.readying.enabled" {{#if w.ergonomics.readying.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Ergo.Readying'}}</span>
+      </label>
+      <input type="number" min="0" step="any" data-wpath="ergonomics.readying.value" data-wdtype="Number" value="{{w.ergonomics.readying.value}}" />
+    </div>
+  </div>
+</section>

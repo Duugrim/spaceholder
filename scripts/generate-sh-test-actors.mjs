@@ -1,21 +1,23 @@
 /**
- * Build deterministic actor JSON sources for the `sh-test-actors` compendium.
+ * Build actor JSON sources for the `sh-test-actors` compendium (weapon v3 test rigs).
  *
- * Reads the canonical humanoid anatomy from `data/anatomy/humanoid.json` and
- * normalizes it the same way `module/anatomy-manager.mjs` does at runtime
- * (slotRef = `${typeId}#${index}`, deterministic uuids, relations remapped).
+ * Reads humanoid anatomy from `data/anatomy/humanoid.json` and embeds v3 weapons,
+ * ammo and magazines from `pack-src/sh-test-items/SH_WV3_*`.
  *
- * Two actors are generated:
- *  - "Стрелок" (Shooter): character with humanoid anatomy and one stack of
- *    every existing test ammo type embedded in inventory.
- *  - "Мишень" (Target):   character with custom inline anatomy that has a
- *    single body part `chest` (so humanoid chest armor can be equipped).
- *
- * Outputs go to `pack-src/sh-test-actors/`. Files are then compiled to
- * LevelDB by `scripts/compile-sh-test-actors.mjs` (`npm run pack:sh-test-actors`).
+ * Actors:
+ *  - Стрелок v3       — full arsenal (drag-and-pick any weapon/ammo scenario)
+ *  - Тест: ближний бой — sword held, readied
+ *  - Тест: пистолет   — pistol held, mag + loose ammo in inventory (attack chain)
+ *  - Тест: пистолет (готов) — pistol held, mag chambered, readied (instant aim)
+ *  - Тест: болтовка   — bolt rifle held, internal mag loaded, empty chamber (bolt step)
+ *  - Тест: автомат    — auto rifle held, mag attached + chambered, readied (burst/auto)
+ *  - Тест: лазер      — laser held, batteries in block + spare in inventory
+ *  - Тест: лук        — bow held, arrows in inventory (on-the-fly search)
+ *  - Мишень           — single-part target dummy
  *
  * Usage:
- *   node scripts/generate-sh-test-actors.mjs
+ *   npm run generate:sh-test-actors
+ *   npm run pack:sh-test-actors   (Foundry closed)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,36 +26,34 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
 const anatomyDir = path.join(root, 'data', 'anatomy');
-const ammoSrcDir = path.join(root, 'pack-src', 'sh-test-items');
+const itemSrcDir = path.join(root, 'pack-src', 'sh-test-items');
 const outDir = path.join(root, 'pack-src', 'sh-test-actors');
 
 const SYSTEM_VERSION = readSystemVersion();
 const CORE_VERSION = '13.350';
-const CREATED_TIME = 1776279800100;
+const CREATED_TIME = 1781100000000;
 
-const SHOOTER_ID = 'shtestshooter000';
 const TARGET_ID = 'shtesttarget0000';
 
-// Source ammo files in sh-test-items (will be embedded into Shooter as items).
-const SHOOTER_AMMO_FILES = [
-  // Legacy test ammo (English names) — kept while DAMAGE_RESOLVER_TEST_EXAMPLES §1–9 reference them.
-  'SH_Test_Ammo_9mm_Ball_shtestammo9mm000.json',
-  'SH_Test_Ammo_AP_Rifle_shtestammoap0000.json',
-  'SH_Test_Ammo_Buckshot_shtestammobuck00.json',
-  'SH_Test_Ammo_HEAT_shtestammoheat00.json',
-  'SH_Test_Ammo_Plasma_shtestammoplasma.json',
-  // New-spectrum ammo (see DAMAGE_RESOLVER_TEST_ITEMS.md §7).
-  'SH_Test_Ammo_Pistol_Ball_shtestammopistbl0.json',
-  'SH_Test_Ammo_Pistol_AP_shtestammopistap0.json',
-  'SH_Test_Ammo_Rifle_Ball_shtestammorifle00.json',
-  'SH_Test_Ammo_Rifle_AP_shtestammorifap00.json',
-  'SH_Test_Ammo_Sniper_Ball_shtestammosnipe00.json',
-  'SH_Test_Ammo_Sniper_AP_shtestammosnipap0.json'
-];
+/** v3 test items in pack-src (basename without .json). */
+const WV3 = {
+  sword: 'SH_WV3_Sword_shwv3sword000000',
+  pistol: 'SH_WV3_Pistol_shwv3pistol00000',
+  boltRifle: 'SH_WV3_Bolt_Rifle_shwv3boltrifle00',
+  autoRifle: 'SH_WV3_Auto_Rifle_shwv3autorifle00',
+  laser: 'SH_WV3_Laser_shwv3laser000000',
+  bow: 'SH_WV3_Bow_shwv3bow00000000',
+  ammo9x19: 'SH_WV3_Ammo_9x19_shwv3ammo9x19000',
+  ammo762: 'SH_WV3_Ammo_762x54_shwv3ammo762x540',
+  ammo545: 'SH_WV3_Ammo_545x39_shwv3ammo545x390',
+  ammoArrow: 'SH_WV3_Ammo_Arrow_shwv3ammoarrow00',
+  ammoBattery: 'SH_WV3_Ammo_Battery_shwv3ammobattery',
+  magPistol: 'SH_WV3_Mag_Pistol_shwv3magpistol00',
+  magRifle: 'SH_WV3_Mag_Rifle_shwv3magrifle000',
+};
 
 // ---------- Anatomy normalization (mirrors AnatomyManager) -------------------
 
-/** Stable uuid for an embedded body-part instance — keeps git diffs clean. */
 function stableUuid(actorId, slotRef) {
   return `${actorId}-bp-${slotRef.replace('#', '-')}`;
 }
@@ -116,13 +116,12 @@ function buildActorBodyParts(rawBodyParts, actorId) {
       tags: Array.isArray(rawPart.tags) ? [...rawPart.tags] : [],
       organs: [],
       exposure: sanitizeExposure(rawPart.exposure),
-      relations: Array.isArray(rawPart.relations) ? rawPart.relations.map((r) => ({ ...r })) : []
+      relations: Array.isArray(rawPart.relations) ? rawPart.relations.map((r) => ({ ...r })) : [],
     };
 
     out[slotRef] = part;
   }
 
-  // Remap relation targets from raw keys to slotRefs and derive `links`.
   for (const part of Object.values(out)) {
     const remapped = part.relations
       .map((r) => {
@@ -132,7 +131,6 @@ function buildActorBodyParts(rawBodyParts, actorId) {
       })
       .filter(Boolean);
 
-    // Single-parent enforcement (last wins).
     let parentSeen = false;
     const cleaned = [];
     for (let i = remapped.length - 1; i >= 0; i -= 1) {
@@ -144,9 +142,7 @@ function buildActorBodyParts(rawBodyParts, actorId) {
       cleaned.unshift(r);
     }
     part.relations = dedupeRelations(cleaned);
-    part.links = part.relations
-      .filter((r) => r.kind === 'adjacent')
-      .map((r) => r.target);
+    part.links = part.relations.filter((r) => r.kind === 'adjacent').map((r) => r.target);
   }
 
   return out;
@@ -171,6 +167,10 @@ function readSystemVersion() {
   }
 }
 
+function loadItemSrc(basename) {
+  return readJson(path.join(itemSrcDir, `${basename}.json`));
+}
+
 function makeStats(extraTime = 0) {
   return {
     compendiumSource: null,
@@ -181,7 +181,7 @@ function makeStats(extraTime = 0) {
     systemVersion: SYSTEM_VERSION,
     createdTime: CREATED_TIME + extraTime,
     modifiedTime: CREATED_TIME + extraTime,
-    lastModifiedBy: null
+    lastModifiedBy: null,
   };
 }
 
@@ -205,7 +205,7 @@ function makePrototypeToken({ name, src, disposition }) {
       scaleY: 1,
       rotation: 0,
       tint: '#ffffff',
-      alphaThreshold: 0.75
+      alphaThreshold: 0.75,
     },
     hexagonalShape: 0,
     lockRotation: false,
@@ -229,7 +229,7 @@ function makePrototypeToken({ name, src, disposition }) {
       saturation: 0,
       contrast: 0,
       shadows: 0,
-      animation: { type: null, speed: 5, intensity: 5, reverse: false }
+      animation: { type: null, speed: 5, intensity: 5, reverse: false },
     },
     sight: {
       enabled: false,
@@ -240,7 +240,7 @@ function makePrototypeToken({ name, src, disposition }) {
       attenuation: 0.1,
       brightness: 0,
       saturation: 0,
-      contrast: 0
+      contrast: 0,
     },
     detectionModes: [],
     occludable: { radius: 0 },
@@ -248,11 +248,11 @@ function makePrototypeToken({ name, src, disposition }) {
       enabled: false,
       colors: { ring: null, background: null },
       effects: 1,
-      subject: { scale: 1, texture: null }
+      subject: { scale: 1, texture: null },
     },
     movementAction: null,
     flags: {},
-    randomImg: false
+    randomImg: false,
   };
 }
 
@@ -264,118 +264,388 @@ function makeBaseAbilities() {
     cor: { value: 10 },
     per: { value: 10 },
     int: { value: 10 },
-    luc: { value: 10 }
+    luc: { value: 10 },
   };
 }
 
 function makeCharacterSystem({ anatomyId, anatomyName, bodyParts, anatomyGrid, biography }) {
   return {
-    anatomy: {
-      type: anatomyId,
-      id: anatomyId,
-      name: anatomyName,
-      bodyParts: {}
-    },
-    health: {
-      injuries: [],
-      bodyParts,
-      anatomyGrid
-    },
+    anatomy: { type: anatomyId, id: anatomyId, name: anatomyName, bodyParts: {} },
+    health: { injuries: [], bodyParts, anatomyGrid },
     biography,
     attributes: { level: { value: 1 } },
     actionPoints: { value: 100 },
     speed: 1,
     gFaction: '',
     actions: [],
-    aimingArc: {
-      zoneHalfDegrees: [1, 5, 15, 25, 30],
-      deviationBaseDeg: 1
-    },
-    abilities: makeBaseAbilities()
+    aimingArc: { zoneHalfDegrees: [1, 5, 15, 25, 30], deviationBaseDeg: 1 },
+    abilities: makeBaseAbilities(),
   };
 }
 
-// ---------- Embedded items (Shooter ammo) -----------------------------------
+/** Deterministic 16-char embedded item id unique per actor + source item. */
+function embeddedItemId(actorId, srcId, slot) {
+  const raw = `e${actorId.slice(-5)}${srcId.slice(-8)}${String(slot).padStart(2, '0')}`;
+  return raw.slice(0, 16);
+}
 
 /**
- * Promote an existing test-ammo source JSON into an embedded item document
- * for the Shooter. Reuses the original item's `system` payload as-is, gives
- * it a fresh, deterministic `_id` so it does not clash with the standalone
- * pack entry, and rewrites `_key` for the actors compendium.
+ * Nested-storage / FIFO ammo record (matches weapon-ammo-runtime snapshots).
+ * @param {object} ammoSrc compendium ammo JSON
+ * @param {number} quantity
+ * @param {string} recordId
  */
-function buildEmbeddedAmmoItem({ srcJson, embeddedId, sort }) {
-  const item = JSON.parse(JSON.stringify(srcJson));
-  item._id = embeddedId;
-  item._key = `!actors.items!${SHOOTER_ID}.${embeddedId}`;
-  item.folder = null;
-  item.sort = sort;
-  item.ownership = { default: 0 };
-  item.flags = item.flags ?? {};
-  item._stats = {
-    ...makeStats(0),
-    compendiumSource: null,
-    duplicateSource: null
+function nestedAmmoRecord(ammoSrc, quantity, recordId) {
+  const system = JSON.parse(JSON.stringify(ammoSrc.system));
+  system.quantity = quantity;
+  return {
+    id: recordId,
+    type: 'item',
+    name: ammoSrc.name,
+    img: ammoSrc.img,
+    system,
+    flags: {},
+    sourceUuid: '',
   };
-  return item;
 }
 
-function loadShooterEmbeddedItems() {
+/** Magazine snapshot for external-magazine block runtime. */
+function magazineRuntimeSnapshot(magSrc, snapId) {
+  return {
+    id: snapId,
+    type: 'item',
+    name: magSrc.name,
+    img: magSrc.img,
+    system: JSON.parse(JSON.stringify(magSrc.system)),
+    flags: {},
+    sourceUuid: '',
+  };
+}
+
+/**
+ * @typedef {object} LoadoutEntry
+ * @property {string} srcKey key in WV3
+ * @property {boolean} [held]
+ * @property {number} [quantity]
+ * @property {object} [weaponState] patch for system.weapon.state
+ * @property {Array<{blockId: string, runtime: object}>} [blockPatches]
+ */
+
+/**
+ * @param {string} actorId
+ * @param {LoadoutEntry[]} loadout
+ * @returns {object[]}
+ */
+function buildEmbeddedItems(actorId, loadout) {
   const items = [];
   let sort = 100000;
-  for (const file of SHOOTER_AMMO_FILES) {
-    const srcJson = readJson(path.join(ammoSrcDir, file));
-    // Stable embedded ids: prefix original with "e" and trim if too long.
-    const baseId = String(srcJson._id ?? '').trim();
-    if (!baseId) continue;
-    const embeddedId = ('e' + baseId).slice(0, 16);
-    items.push(buildEmbeddedAmmoItem({ srcJson, embeddedId, sort }));
+  for (let i = 0; i < loadout.length; i += 1) {
+    const entry = loadout[i];
+    const basename = WV3[entry.srcKey];
+    if (!basename) throw new Error(`Unknown WV3 key: ${entry.srcKey}`);
+    const src = loadItemSrc(basename);
+    const embeddedId = embeddedItemId(actorId, src._id, i);
+
+    const item = JSON.parse(JSON.stringify(src));
+    item._id = embeddedId;
+    item._key = `!actors.items!${actorId}.${embeddedId}`;
+    item.folder = null;
+    item.sort = sort;
+    item.ownership = { default: 0 };
+    item.flags = item.flags ?? {};
+    item._stats = makeStats(i);
+
+    if (entry.quantity != null) {
+      item.system.quantity = entry.quantity;
+    }
+    if (entry.held) {
+      item.system.held = true;
+      item.system.equipped = false;
+      item.system.containerHostId = '';
+    }
+
+    const weapon = item.system?.weapon;
+    if (weapon && entry.weaponState) {
+      weapon.state = { ...(weapon.state ?? {}), ...entry.weaponState };
+    }
+    if (weapon && Array.isArray(entry.blockPatches)) {
+      for (const patch of entry.blockPatches) {
+        const line = weapon.lines?.[0];
+        const block = line?.ammoBlocks?.find((b) => b.id === patch.blockId);
+        if (block) {
+          block.runtime = { ...(block.runtime ?? {}), ...patch.runtime };
+        }
+      }
+    }
+
+    items.push(item);
     sort += 10000;
   }
   return items;
 }
 
-// ---------- Actor builders --------------------------------------------------
-
-function buildShooterActor() {
+function buildHumanoidActor({
+  id,
+  name,
+  file,
+  sort,
+  img,
+  tokenImg,
+  disposition,
+  biography,
+  loadout,
+  timeOffset = 0,
+}) {
   const humanoid = readJson(path.join(anatomyDir, 'humanoid.json'));
-  const bodyParts = buildActorBodyParts(humanoid.bodyParts, SHOOTER_ID);
+  const bodyParts = buildActorBodyParts(humanoid.bodyParts, id);
   const anatomyGrid = humanoid.grid && typeof humanoid.grid.width === 'number'
     ? { width: humanoid.grid.width, height: humanoid.grid.height }
     : { width: 9, height: 10 };
 
-  const items = loadShooterEmbeddedItems();
-
   return {
-    name: 'Стрелок',
-    type: 'character',
-    _id: SHOOTER_ID,
-    img: 'systems/spaceholder/assets/icons/action.svg/bowman.svg',
-    system: makeCharacterSystem({
-      anatomyId: 'humanoid',
-      anatomyName: 'Humanoid',
-      bodyParts,
-      anatomyGrid,
-      biography: '<p>Тестовый стрелок: гуманоидная анатомия, в инвентаре по пачке всех существующих тестовых патронов. Используется для проверки боевых пайплайнов (payload/applications/etc.) до появления настоящего оружия.</p>'
-    }),
-    prototypeToken: makePrototypeToken({
-      name: 'Стрелок',
-      src: 'systems/spaceholder/assets/icons/action.svg/bowman.svg',
-      disposition: 1
-    }),
-    items,
-    effects: [],
-    folder: null,
-    sort: 100000,
-    ownership: { default: 0 },
-    flags: {},
-    _stats: makeStats(0),
-    _key: `!actors!${SHOOTER_ID}`
+    doc: {
+      name,
+      type: 'character',
+      _id: id,
+      img,
+      system: makeCharacterSystem({
+        anatomyId: 'humanoid',
+        anatomyName: 'Humanoid',
+        bodyParts,
+        anatomyGrid,
+        biography,
+      }),
+      prototypeToken: makePrototypeToken({ name, src: tokenImg ?? img, disposition }),
+      items: buildEmbeddedItems(id, loadout),
+      effects: [],
+      folder: null,
+      sort,
+      ownership: { default: 0 },
+      flags: {},
+      _stats: makeStats(timeOffset),
+      _key: `!actors!${id}`,
+    },
+    file,
   };
 }
 
+// ---------- Loadout presets ------------------------------------------------
+
+function fullArsenalLoadout() {
+  return [
+    { srcKey: 'sword' },
+    { srcKey: 'pistol' },
+    { srcKey: 'boltRifle' },
+    { srcKey: 'autoRifle' },
+    { srcKey: 'laser' },
+    { srcKey: 'bow' },
+    { srcKey: 'magPistol' },
+    { srcKey: 'magRifle' },
+    { srcKey: 'ammo9x19', quantity: 50 },
+    { srcKey: 'ammo762', quantity: 20 },
+    { srcKey: 'ammo545', quantity: 60 },
+    { srcKey: 'ammoArrow', quantity: 12 },
+    { srcKey: 'ammoBattery', quantity: 3 },
+  ];
+}
+
+function pistolReadyLoadout() {
+  const ammoSrc = loadItemSrc(WV3.ammo9x19);
+  const magSrc = loadItemSrc(WV3.magPistol);
+  const chamberRound = nestedAmmoRecord(ammoSrc, 1, 'chambpistol9x19');
+  const magSnap = magazineRuntimeSnapshot(magSrc, 'snapmagpistol00');
+
+  return [
+    {
+      srcKey: 'pistol',
+      held: true,
+      weaponState: { ready: true, activeLineId: 'linePistolMain00', activeModeId: 'modePistolSingle' },
+      blockPatches: [{
+        blockId: 'blkPistolMag0000',
+        runtime: { magazine: magSnap, chamberItem: chamberRound },
+      }],
+    },
+  ];
+}
+
+function boltRifleLoadout() {
+  const ammoSrc = loadItemSrc(WV3.ammo762);
+  const rounds = Array.from({ length: 5 }, (_, i) =>
+    nestedAmmoRecord(ammoSrc, 1, `bolt762r${i}`),
+  );
+
+  return [
+    {
+      srcKey: 'boltRifle',
+      held: true,
+      weaponState: { ready: false },
+      blockPatches: [{
+        blockId: 'blkBoltMag000000',
+        runtime: { contents: rounds, chamberItem: null },
+      }],
+    },
+    { srcKey: 'ammo762', quantity: 10 },
+  ];
+}
+
+function autoRifleReadyLoadout() {
+  const ammoSrc = loadItemSrc(WV3.ammo545);
+  const magSrc = loadItemSrc(WV3.magRifle);
+  const chamberRound = nestedAmmoRecord(ammoSrc, 1, 'chambauto545x39');
+  const magSnap = magazineRuntimeSnapshot(magSrc, 'snapmagrifle000');
+
+  return [
+    {
+      srcKey: 'autoRifle',
+      held: true,
+      weaponState: {
+        ready: true,
+        activeLineId: 'lineAutoMain0000',
+        activeModeId: 'modeAutoBurst000',
+      },
+      blockPatches: [{
+        blockId: 'blkAutoMag000000',
+        runtime: { magazine: magSnap, chamberItem: chamberRound },
+      }],
+    },
+  ];
+}
+
+function laserLoadout() {
+  const batterySrc = loadItemSrc(WV3.ammoBattery);
+  const installed = nestedAmmoRecord(batterySrc, 1, 'lasbatinstalled0');
+  installed.system.weapon.ammo.charge = { enabled: true, max: 20, current: 20 };
+
+  return [
+    {
+      srcKey: 'laser',
+      held: true,
+      weaponState: { ready: true, activeLineId: 'lineLaserMain000', activeModeId: 'modeLaserStd0000' },
+      blockPatches: [{
+        blockId: 'blkLaserBat00000',
+        runtime: { contents: [installed] },
+      }],
+    },
+    { srcKey: 'ammoBattery', quantity: 2 },
+  ];
+}
+
+// ---------- Actor definitions ---------------------------------------------
+
+function buildAllActors() {
+  const actors = [];
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestshooter000',
+    name: 'Стрелок v3',
+    file: 'SH_Shooter_shtestshooter000.json',
+    sort: 100000,
+    img: 'systems/spaceholder/assets/icons/action.svg/bowman.svg',
+    biography: '<p>Полный набор оружия v3, магазинов и боеприпасов в инвентаре. Ничего не в руках — удобно проверять цепочку атаки «взять → перезарядить → прицелиться» с нуля.</p>',
+    disposition: 1,
+    loadout: fullArsenalLoadout(),
+    timeOffset: 0,
+  }));
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestwv3melee00',
+    name: 'Тест: ближний бой',
+    file: 'SH_WV3_Melee_shtestwv3melee00.json',
+    sort: 110000,
+    img: 'systems/spaceholder/assets/icons/weapon.svg/gladius.svg',
+    biography: '<p>Меч в руках, боеготовность включена. Проверка линии без блоков патронов и саб-блока урона на оружии.</p>',
+    disposition: 1,
+    loadout: [{
+      srcKey: 'sword',
+      held: true,
+      weaponState: { ready: true, activeLineId: 'lineSwordMain000', activeModeId: 'modeSwordStd0000' },
+    }],
+    timeOffset: 1,
+  }));
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestwv3pist00',
+    name: 'Тест: пистолет',
+    file: 'SH_WV3_Pistol_shtestwv3pist00.json',
+    sort: 120000,
+    img: 'systems/spaceholder/assets/icons/weapon.svg/luger.svg',
+    biography: '<p>Пистолет в руках, магазин и патроны 9×19 в инвентаре (магазин не установлен). Проверка цепочки: установить магазин → затвор → изготовка → прицел.</p>',
+    disposition: 1,
+    loadout: [
+      { srcKey: 'pistol', held: true },
+      { srcKey: 'magPistol' },
+      { srcKey: 'ammo9x19', quantity: 24 },
+    ],
+    timeOffset: 2,
+  }));
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestwv3pistrdy',
+    name: 'Тест: пистолет (готов)',
+    file: 'SH_WV3_PistolReady_shtestwv3pistrdy.json',
+    sort: 130000,
+    img: 'systems/spaceholder/assets/icons/weapon.svg/luger.svg',
+    biography: '<p>Пистолет в руках, магазин установлен, патрон в патроннике, боеготовность. Минимальная цепочка до прицеливания — сразу стрелять.</p>',
+    disposition: 1,
+    loadout: pistolReadyLoadout(),
+    timeOffset: 3,
+  }));
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestwv3bolt000',
+    name: 'Тест: болтовка',
+    file: 'SH_WV3_Bolt_shtestwv3bolt000.json',
+    sort: 140000,
+    img: 'systems/spaceholder/assets/icons/weapon.svg/lee-enfield.svg',
+    biography: '<p>Болтовая винтовка в руках, 5 патронов в резерве, патронник пуст. Проверка ручного затвора и одиночного выстрела.</p>',
+    disposition: 1,
+    loadout: boltRifleLoadout(),
+    timeOffset: 4,
+  }));
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestwv3auto000',
+    name: 'Тест: автомат',
+    file: 'SH_WV3_Auto_shtestwv3auto000.json',
+    sort: 150000,
+    img: 'systems/spaceholder/assets/icons/weapon.svg/steyr-aug.svg',
+    biography: '<p>Автомат в руках, магазин установлен и заряжен, режим «Очередь ×3», боеготовность. Проверка очереди и автоогня.</p>',
+    disposition: 1,
+    loadout: autoRifleReadyLoadout(),
+    timeOffset: 5,
+  }));
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestwv3laser00',
+    name: 'Тест: лазер',
+    file: 'SH_WV3_Laser_shtestwv3laser00.json',
+    sort: 160000,
+    img: 'systems/spaceholder/assets/icons/weapon.svg/laser-gun.svg',
+    biography: '<p>Лазер в руках, батарея в блоке внешнего заряда + запасные батареи в инвентаре. Проверка расхода заряда и режима «Импульс».</p>',
+    disposition: 1,
+    loadout: laserLoadout(),
+    timeOffset: 6,
+  }));
+
+  actors.push(buildHumanoidActor({
+    id: 'shtestwv3bow0000',
+    name: 'Тест: лук',
+    file: 'SH_WV3_Bow_shtestwv3bow0000.json',
+    sort: 170000,
+    img: 'systems/spaceholder/assets/icons/weapon.svg/bow-arrow.svg',
+    biography: '<p>Лук в руках, стрелы в инвентаре. Проверка поиска боеприпаса «на лету» (ёмкость 0, без патронника).</p>',
+    disposition: 1,
+    loadout: [
+      { srcKey: 'bow', held: true, weaponState: { ready: true } },
+      { srcKey: 'ammoArrow', quantity: 8 },
+    ],
+    timeOffset: 7,
+  }));
+
+  return actors;
+}
+
 function buildTargetActor() {
-  // Custom inline anatomy: single body part `chest` (so humanoid chest armor
-  // resolves through `findActorSlotsForCanonicalPart` by `part.id === "chest"`).
   const rawBodyParts = {
     chest: {
       id: 'chest',
@@ -388,37 +658,40 @@ function buildTargetActor() {
       internal: false,
       tags: ['core', 'vital', 'armor_chest'],
       relations: [],
-      exposure: { front: 100, right: 100, back: 100, left: 100 }
-    }
+      exposure: { front: 100, right: 100, back: 100, left: 100 },
+    },
   };
 
   const bodyParts = buildActorBodyParts(rawBodyParts, TARGET_ID);
 
   return {
-    name: 'Мишень',
-    type: 'character',
-    _id: TARGET_ID,
-    img: 'icons/svg/target.svg',
-    system: makeCharacterSystem({
-      anatomyId: 'target-chest',
-      anatomyName: 'Target Chest',
-      bodyParts,
-      anatomyGrid: { width: 1, height: 1 },
-      biography: '<p>Тестовая мишень для проверки стрельбы. Кастомная анатомия с единственной частью тела <code>chest</code> и большим запасом HP. Принимает гуманоидную броню грудного слота (армор резолвится по <code>part.id === "chest"</code>).</p>'
-    }),
-    prototypeToken: makePrototypeToken({
+    doc: {
       name: 'Мишень',
-      src: 'icons/svg/target.svg',
-      disposition: 0
-    }),
-    items: [],
-    effects: [],
-    folder: null,
-    sort: 200000,
-    ownership: { default: 0 },
-    flags: {},
-    _stats: makeStats(1),
-    _key: `!actors!${TARGET_ID}`
+      type: 'character',
+      _id: TARGET_ID,
+      img: 'icons/svg/target.svg',
+      system: makeCharacterSystem({
+        anatomyId: 'target-chest',
+        anatomyName: 'Target Chest',
+        bodyParts,
+        anatomyGrid: { width: 1, height: 1 },
+        biography: '<p>Тестовая мишень: одна часть тела <code>chest</code>, много HP. Для проверки попаданий и урона v3.</p>',
+      }),
+      prototypeToken: makePrototypeToken({
+        name: 'Мишень',
+        src: 'icons/svg/target.svg',
+        disposition: 0,
+      }),
+      items: [],
+      effects: [],
+      folder: null,
+      sort: 200000,
+      ownership: { default: 0 },
+      flags: {},
+      _stats: makeStats(99),
+      _key: `!actors!${TARGET_ID}`,
+    },
+    file: 'SH_Target_shtesttarget0000.json',
   };
 }
 
@@ -427,17 +700,28 @@ function buildTargetActor() {
 function main() {
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-  const shooter = buildShooterActor();
-  const target = buildTargetActor();
+  const built = [...buildAllActors(), buildTargetActor()];
+  const written = [];
 
-  const shooterFile = path.join(outDir, `SH_Shooter_${SHOOTER_ID}.json`);
-  const targetFile = path.join(outDir, `SH_Target_${TARGET_ID}.json`);
+  for (const { doc, file } of built) {
+    const outPath = path.join(outDir, file);
+    writeJson(outPath, doc);
+    written.push({ file, name: doc.name, items: doc.items?.length ?? 0 });
+  }
 
-  writeJson(shooterFile, shooter);
-  writeJson(targetFile, target);
+  // Remove stale actor JSON not regenerated (e.g. old single-shooter variants).
+  const keep = new Set(built.map((b) => b.file));
+  for (const name of fs.readdirSync(outDir)) {
+    if (!name.endsWith('.json') || name.startsWith('_Folder')) continue;
+    if (!keep.has(name)) {
+      fs.unlinkSync(path.join(outDir, name));
+      console.log(`Removed stale: ${name}`);
+    }
+  }
 
-  console.log(`Wrote ${path.relative(root, shooterFile)} (${shooter.items.length} embedded items)`);
-  console.log(`Wrote ${path.relative(root, targetFile)} (${target.items.length} embedded items)`);
+  for (const row of written) {
+    console.log(`Wrote ${row.file} — ${row.name} (${row.items} items)`);
+  }
 }
 
 main();

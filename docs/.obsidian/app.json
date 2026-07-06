@@ -1,7 +1,7 @@
 {
   "pdfExportSettings": {
-    "includeName": true,
-    "pageSize": "Tabloid",
+    "includeName": false,
+    "pageSize": "A4",
     "landscape": false,
     "margin": "0",
     "downscalePercent": 100
@@ -10,5 +10,6 @@
   "promptDelete": false,
   "readableLineLength": false,
   "strictLineBreaks": true,
-  "newFileLocation": "root"
+  "newFileLocation": "root",
+  "showLineNumber": true
 }

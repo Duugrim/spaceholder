@@ -24,6 +24,8 @@
  * @property {string} [icon] - FontAwesome class, e.g. "fa-solid fa-person-walking"
  * @property {number} [apCost] - Action Points cost, evaluated at runtime if needed
  * @property {string} [description] - Optional detail text for compact chat log
+ * @property {string} [menuGroup] - Optional context-menu group label
+ * @property {string} [menuLabel] - Optional context-menu row label
  * @property {boolean} [showInCombat]
  * @property {boolean} [showInQuickbar]
  * @property {(ctx: ActionContext)=>boolean} [visible]
@@ -53,6 +55,19 @@ function _num(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function _escapeHTML(value) {
+  try {
+    return foundry.utils.escapeHTML(String(value ?? ''));
+  } catch (_) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+}
+
 function _normalizeAimingType(v) {
   const raw = String(v ?? "simple").trim().toLowerCase();
   return raw === "standard" ? "standard" : "simple";
@@ -60,6 +75,29 @@ function _normalizeAimingType(v) {
  
 import { ensureCharacterApSynced, getStoredActionPoints, spendAp } from './transaction-ledger.mjs';
 import { appendCombatActionJournalLine } from './action-chat-journal.mjs';
+import { listWeaponAttacks, AMMO_BLOCK_TYPES } from '../weapon/weapon-model.mjs';
+import {
+  getWeaponData,
+  persistWeaponData,
+  getAmmoBlock,
+  loadBlock,
+  operateBolt,
+  unloadBlock,
+  emptyBlock,
+  attachMagazine,
+  detachMagazine,
+  reloadBlock,
+  canLoadOne,
+  canLoadX,
+  canReloadBlock,
+  canBoltBlock,
+  canUnloadBlock,
+  canEmptyBlock,
+  canAttachMagazine,
+  canDetachMagazine,
+} from '../weapon/weapon-ammo-runtime.mjs';
+import { runWeaponAttack } from '../weapon/attack-chain.mjs';
+import { findNearestPileDropPointWithinCells } from '../item-piles-sh/held-drop-resolve.mjs';
 
 async function _ensureAimingManager() {
   let mgr = game.spaceholder?.aimingManager || null;
@@ -106,6 +144,92 @@ function _getCombatantForActor(actor, tokenDoc = null, combat = _activeCombat())
 }
 
 const SYSTEM_FREE_ACTION_ID = 'system.freeAction';
+const ITEM_STANDARD_GROUP_KEY = 'SPACEHOLDER.ActionsSystem.ItemMenu.StandardGroup';
+
+function _itemActionPrefix(item) {
+  return `item.${item?.uuid ?? ''}.`;
+}
+
+function _actionBelongsToItem(action, item) {
+  const prefix = _itemActionPrefix(item);
+  return !!prefix && String(action?.id ?? '').startsWith(prefix);
+}
+
+async function _dropItemToScene(actor, item, ctx) {
+  if (!actor || !item) return false;
+  if (!game.settings.get('spaceholder', 'itemPilesShEnabled')) {
+    ui.notifications?.warn?.(_t('SPACEHOLDER.Inventory.HeldActions.DropItemPilesDisabled'));
+    return false;
+  }
+  const pilesApi = game.spaceholder?.itemPilesSh?.api;
+  if (!pilesApi?.dropData) {
+    ui.notifications?.warn?.(_t('SPACEHOLDER.Inventory.HeldActions.DropItemPilesDisabled'));
+    return false;
+  }
+  const scene = canvas?.scene;
+  if (!scene) {
+    ui.notifications?.warn?.(_t('SPACEHOLDER.Inventory.HeldActions.DropNoToken'));
+    return false;
+  }
+  const token = ctx?.tokenDoc?.object
+    ?? (canvas.tokens?.controlled ?? []).find((t) => t.actor?.id === actor.id)
+    ?? actor.getActiveTokens?.()?.[0]
+    ?? null;
+  if (!token?.center) {
+    ui.notifications?.warn?.(_t('SPACEHOLDER.Inventory.HeldActions.DropNoToken'));
+    return false;
+  }
+
+  const gridSize = canvas.grid.size;
+  const cx = token.center.x;
+  const cy = token.center.y;
+  const dirDeg = Number(token.document?.getFlag?.('spaceholder', 'tokenpointerDirection') ?? 90);
+  const rad = (dirDeg * Math.PI) / 180;
+  const step = gridSize / 2;
+  const targetX = cx + Math.cos(rad) * step;
+  const targetY = cy + Math.sin(rad) * step;
+  const mergeCenter = findNearestPileDropPointWithinCells(scene, cx, cy, 2, gridSize);
+  const dropX = mergeCenter ? mergeCenter.x : targetX - gridSize / 2;
+  const dropY = mergeCenter ? mergeCenter.y : targetY - gridSize / 2;
+
+  try {
+    await pilesApi.dropData({
+      dropData: {
+        type: 'Item',
+        uuid: item.uuid,
+        x: dropX,
+        y: dropY,
+        quantity: 1,
+      },
+      sceneId: scene.id,
+    });
+    return true;
+  } catch (e) {
+    console.error('SpaceHolder | failed to drop item via item-piles-sh:', e);
+    ui.notifications?.warn?.(_t('SPACEHOLDER.Inventory.HeldActions.DropFailed'));
+    return false;
+  }
+}
+
+async function _showItemInChat(item) {
+  if (!item) return false;
+  const escape = foundry.utils.escapeHTML;
+  const qty = Math.max(1, Number(item.system?.quantity) || 1);
+  const desc = String(item.system?.description ?? '').trim();
+  const safeDesc = desc ? await TextEditor.enrichHTML(desc, { async: true }) : '';
+  await ChatMessage.create({
+    speaker: ChatMessage.getSpeaker({ actor: item.parent ?? null }),
+    content: `
+      <div class="spaceholder-chat-card">
+        <h3>${escape(item.name ?? '')}</h3>
+        <div><img src="${escape(item.img ?? '')}" width="48" height="48" style="float:left;margin:0 8px 4px 0;" /></div>
+        <p><strong>${escape(_t('SPACEHOLDER.Inventory.Quantity'))}:</strong> ${qty}</p>
+        ${safeDesc ? `<div>${safeDesc}</div>` : ''}
+      </div>
+    `,
+  });
+  return true;
+}
 
 /**
  * Combat session log + per-actor chat journal line (after AP spend).
@@ -451,6 +575,42 @@ function _collectWearableToggleActions(actor, ctx) {
     const unequipDefaults = defaults?.unequip ?? {};
     const holdDefaults = defaults?.hold ?? {};
     const stowDefaults = defaults?.stow ?? {};
+    const dropDefaults = defaults?.drop ?? {};
+    const showDefaults = defaults?.show ?? {};
+    const standardGroup = _t(ITEM_STANDARD_GROUP_KEY);
+    const pushCommonItemActions = () => {
+      actions.push({
+        id: `item.${item.uuid}.drop`,
+        source: 'item',
+        sourceItemName: item.name,
+        label: _t('SPACEHOLDER.ActionsSystem.Wearable.Drop', { item: item.name }),
+        menuGroup: standardGroup,
+        menuLabel: _t('SPACEHOLDER.ActionsSystem.Wearable.DropShort'),
+        icon: 'fa-solid fa-arrow-down',
+        apCost: 0,
+        showInCombat: dropDefaults.showInCombat ?? false,
+        showInQuickbar: dropDefaults.showInQuickbar ?? false,
+        visible: () => true,
+        enabled: () => !!ctx.editable,
+        disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
+        run: async (runCtx) => _dropItemToScene(actor, item, runCtx),
+      });
+      actions.push({
+        id: `item.${item.uuid}.show`,
+        source: 'item',
+        sourceItemName: item.name,
+        label: _t('SPACEHOLDER.ActionsSystem.Wearable.Show', { item: item.name }),
+        menuGroup: standardGroup,
+        menuLabel: _t('SPACEHOLDER.ActionsSystem.Wearable.ShowShort'),
+        icon: 'fa-solid fa-comment-dots',
+        apCost: 0,
+        showInCombat: showDefaults.showInCombat ?? false,
+        showInQuickbar: showDefaults.showInQuickbar ?? false,
+        visible: () => true,
+        enabled: () => true,
+        run: async () => _showItemInChat(item),
+      });
+    };
  
     if (equipped && isArmor) {
       actions.push({
@@ -458,6 +618,8 @@ function _collectWearableToggleActions(actor, ctx) {
         source: 'item',
         sourceItemName: item.name,
         label: _t('SPACEHOLDER.ActionsSystem.Wearable.Unequip', { item: item.name }),
+        menuGroup: standardGroup,
+        menuLabel: _t('SPACEHOLDER.ActionsSystem.Wearable.UnequipShort'),
         icon: 'fa-solid fa-shield',
         apCost: 0,
         showInCombat: unequipDefaults.showInCombat ?? false,
@@ -469,6 +631,7 @@ function _collectWearableToggleActions(actor, ctx) {
           await item.update({ 'system.equipped': false, 'system.held': true });
         }
       });
+      pushCommonItemActions();
       continue;
     }
 
@@ -479,6 +642,8 @@ function _collectWearableToggleActions(actor, ctx) {
           source: 'item',
           sourceItemName: item.name,
           label: _t('SPACEHOLDER.ActionsSystem.Wearable.Equip', { item: item.name }),
+          menuGroup: standardGroup,
+          menuLabel: _t('SPACEHOLDER.ActionsSystem.Wearable.EquipShort'),
           icon: 'fa-solid fa-shield-halved',
           apCost: 0,
           showInCombat: equipDefaults.showInCombat ?? false,
@@ -496,6 +661,8 @@ function _collectWearableToggleActions(actor, ctx) {
         source: 'item',
         sourceItemName: item.name,
         label: _t('SPACEHOLDER.ActionsSystem.Wearable.Stow', { item: item.name }),
+        menuGroup: standardGroup,
+        menuLabel: _t('SPACEHOLDER.ActionsSystem.Wearable.StowShort'),
         icon: 'fa-solid fa-box-open',
         apCost: 0,
         showInCombat: stowDefaults.showInCombat ?? false,
@@ -507,6 +674,7 @@ function _collectWearableToggleActions(actor, ctx) {
           await item.update({ 'system.equipped': false, 'system.held': false });
         }
       });
+      pushCommonItemActions();
       continue;
     }
 
@@ -515,6 +683,8 @@ function _collectWearableToggleActions(actor, ctx) {
       source: 'item',
       sourceItemName: item.name,
       label: _t('SPACEHOLDER.ActionsSystem.Wearable.Hold', { item: item.name }),
+      menuGroup: standardGroup,
+      menuLabel: _t('SPACEHOLDER.ActionsSystem.Wearable.HoldShort'),
       icon: 'fa-solid fa-hand',
       apCost: 0,
       showInCombat: holdDefaults.showInCombat ?? false,
@@ -526,6 +696,7 @@ function _collectWearableToggleActions(actor, ctx) {
         await item.update({ 'system.equipped': false, 'system.held': true });
       }
     });
+    pushCommonItemActions();
   }
   return actions;
 }
@@ -599,7 +770,7 @@ function _collectCustomActions(actor, ctx) {
               ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming"));
               return false;
             }
-            const payloadId = String(a.payloadId || item?.system?.weapon?.ranged?.projectile?.payloadId || "").trim();
+            const payloadId = String(a.payloadId || "").trim();
             if (!payloadId) {
               ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.MissingActionPayload"));
               return false;
@@ -616,9 +787,6 @@ function _collectCustomActions(actor, ctx) {
               damage: Math.max(0, _num(a.damage, 1)),
               actor,
               item,
-              weaponItem: item?.system?.itemTags?.isRanged ? item : null,
-              weaponItemUuid: item?.system?.itemTags?.isRanged ? item.uuid : '',
-              useWeaponAmmo: !!item?.system?.itemTags?.isRanged,
               actionName: a.name,
             });
             if (!started) {
@@ -646,6 +814,526 @@ function _collectCustomActions(actor, ctx) {
   return out;
 }
  
+let _weaponInteractMenuEl = null;
+let _weaponInteractMenuCleanup = null;
+
+function _filterWeaponInteractActions(interactActions, ctx, { requireEnabled = true } = {}) {
+  return (interactActions ?? []).filter((a) => {
+    if (typeof a.visible === 'function' && !a.visible(ctx)) return false;
+    if (requireEnabled && typeof a.enabled === 'function' && !a.enabled(ctx)) return false;
+    return true;
+  });
+}
+
+function _closeWeaponInteractMenu(result = false) {
+  const cleanup = _weaponInteractMenuCleanup;
+  _weaponInteractMenuCleanup = null;
+  if (cleanup) {
+    try { cleanup(result); } catch (_) { /* ignore */ }
+    return;
+  }
+  try { _weaponInteractMenuEl?.remove?.(); } catch (_) { /* ignore */ }
+  _weaponInteractMenuEl = null;
+}
+
+function _resolveWeaponMenuPosition(ctx) {
+  const ev = ctx?.event;
+  if (Number.isFinite(ev?.clientX) && Number.isFinite(ev?.clientY)) {
+    return { x: ev.clientX, y: ev.clientY };
+  }
+  const anchor = ctx?.anchorElement;
+  const rect = anchor?.getBoundingClientRect?.();
+  if (rect) return { x: rect.left, y: rect.bottom + 4 };
+  return {
+    x: Math.round((window.innerWidth || 800) / 2),
+    y: Math.round((window.innerHeight || 600) / 2),
+  };
+}
+
+function _positionWeaponInteractMenu(menu, ctx) {
+  const { x, y } = _resolveWeaponMenuPosition(ctx);
+  const pad = 8;
+  const vw = window.innerWidth || document.documentElement?.clientWidth || 800;
+  const vh = window.innerHeight || document.documentElement?.clientHeight || 600;
+  const rect = menu.getBoundingClientRect();
+  const left = Math.max(pad, Math.min(x, vw - rect.width - pad));
+  const top = Math.max(pad, Math.min(y, vh - rect.height - pad));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function _groupWeaponInteractActions(actions) {
+  const groups = [];
+  const byName = new Map();
+  for (const action of actions) {
+    const groupName = String(action.menuGroup || action.description || '').trim();
+    if (!byName.has(groupName)) {
+      const group = { name: groupName, actions: [] };
+      byName.set(groupName, group);
+      groups.push(group);
+    }
+    byName.get(groupName).actions.push(action);
+  }
+  return groups;
+}
+
+/**
+ * Fallback dialog for environments where a DOM popover cannot be rendered.
+ * @param {Actor} actor
+ * @param {Item} weaponItem
+ * @param {ActionDescriptor[]} interactActions
+ * @param {Partial<ActionContext>} ctx
+ * @returns {Promise<boolean>}
+ */
+async function _showWeaponInteractDialog(actor, weaponItem, interactActions, ctx) {
+  const available = (interactActions ?? []).filter((a) => {
+    if (typeof a.visible === 'function' && !a.visible(ctx)) return false;
+    if (typeof a.enabled === 'function' && !a.enabled(ctx)) return false;
+    return true;
+  });
+  if (!available.length) {
+    ui.notifications?.info?.(_t('SPACEHOLDER.WeaponV3.Interact.NoActions'));
+    return false;
+  }
+  const DialogV2 = foundry?.applications?.api?.DialogV2;
+  if (!DialogV2?.wait) {
+    return executeActorAction(actor, available[0], ctx);
+  }
+  let result = false;
+  const apShort = _t('SPACEHOLDER.WeaponV3.Chain.ApShort');
+  const buttons = available.map((action, i) => ({
+    action: `pick_${i}`,
+    label: `${action.menuLabel || action.label}${action.apCost ? ` (${action.apCost} ${apShort})` : ''}`,
+    icon: action.icon ?? 'fa-solid fa-box-open',
+    callback: async () => {
+      result = await executeActorAction(actor, action, ctx);
+    },
+  }));
+  buttons.push({ action: 'cancel', label: _t('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' });
+  await DialogV2.wait({
+    classes: ['spaceholder'],
+    window: {
+      title: _t('SPACEHOLDER.WeaponV3.Interact.Title', { name: weaponItem.name }),
+      icon: 'fa-solid fa-hand',
+    },
+    position: { width: 420 },
+    content: `<p class="notes">${_escapeHTML(_t('SPACEHOLDER.WeaponV3.Interact.Hint'))}</p>`,
+    buttons,
+  });
+  return result;
+}
+
+/**
+ * Show weapon interact menu (atomic block actions).
+ * @param {Actor} actor
+ * @param {Item} weaponItem
+ * @param {ActionDescriptor[]} interactActions
+ * @param {Partial<ActionContext>} ctx
+ * @returns {Promise<boolean>}
+ */
+async function _showWeaponInteractMenu(actor, weaponItem, interactActions, ctx) {
+  const visible = _filterWeaponInteractActions(interactActions, ctx, { requireEnabled: false });
+  if (!visible.length) {
+    ui.notifications?.info?.(_t('SPACEHOLDER.WeaponV3.Interact.NoActions'));
+    return false;
+  }
+
+  if (!document?.body) return _showWeaponInteractDialog(actor, weaponItem, visible, ctx);
+  _closeWeaponInteractMenu(false);
+
+  const apShort = _t('SPACEHOLDER.WeaponV3.Chain.ApShort');
+  const menu = document.createElement('nav');
+  menu.id = 'spaceholder-weapon-interact-menu';
+  menu.className = 'spaceholder-weapon-interact-menu';
+  menu.setAttribute('role', 'menu');
+  menu.innerHTML = `
+    <div class="spaceholder-weapon-interact-menu__title">${_escapeHTML(weaponItem.name)}</div>
+    ${_groupWeaponInteractActions(visible).map((group) => `
+      <section class="spaceholder-weapon-interact-menu__group">
+        ${group.name ? `<div class="spaceholder-weapon-interact-menu__group-title">${_escapeHTML(group.name)}</div>` : ''}
+        ${group.actions.map((action) => `
+          <button type="button" class="spaceholder-weapon-interact-menu__action" data-action-id="${_escapeHTML(action.id)}" role="menuitem" ${typeof action.enabled === 'function' && !action.enabled(ctx) ? 'disabled' : ''}>
+            <span class="spaceholder-weapon-interact-menu__label">${_escapeHTML(action.menuLabel || action.label)}</span>
+            <span class="spaceholder-weapon-interact-menu__ap">${Math.max(0, Number(action.apCost) || 0)} ${_escapeHTML(apShort)}</span>
+          </button>
+        `).join('')}
+      </section>
+    `).join('')}
+  `;
+
+  document.body.appendChild(menu);
+  _weaponInteractMenuEl = menu;
+  _positionWeaponInteractMenu(menu, ctx);
+
+  return new Promise((resolve) => {
+    const finish = (value) => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+      try { menu.remove(); } catch (_) { /* ignore */ }
+      if (_weaponInteractMenuEl === menu) _weaponInteractMenuEl = null;
+      resolve(!!value);
+    };
+
+    const onPointerDown = (ev) => {
+      if (menu.contains(ev.target)) return;
+      _closeWeaponInteractMenu(false);
+    };
+    const onKeyDown = (ev) => {
+      if (ev.key !== 'Escape') return;
+      ev.preventDefault();
+      _closeWeaponInteractMenu(false);
+    };
+
+    _weaponInteractMenuCleanup = finish;
+    menu.addEventListener('contextmenu', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    menu.addEventListener('click', async (ev) => {
+      const btn = ev.target?.closest?.('[data-action-id]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const action = visible.find((a) => a.id === btn.dataset.actionId);
+      if (!action) return;
+      _weaponInteractMenuCleanup = null;
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+      try { menu.remove(); } catch (_) { /* ignore */ }
+      if (_weaponInteractMenuEl === menu) _weaponInteractMenuEl = null;
+      const result = await executeActorAction(actor, action, ctx);
+      resolve(!!result);
+    });
+
+    setTimeout(() => {
+      document.addEventListener('pointerdown', onPointerDown, true);
+      document.addEventListener('keydown', onKeyDown, true);
+    }, 0);
+  });
+}
+
+function _collectItemInteractActions(actor, item, ctx) {
+  const interactActions = [];
+  interactActions.push(..._collectWearableToggleActions(actor, ctx).filter((a) => _actionBelongsToItem(a, item)));
+  interactActions.push(..._collectCustomActions(actor, ctx).filter((a) => _actionBelongsToItem(a, item)));
+
+  if (item?.system?.itemTags?.isWeapon) {
+    const weapon = getWeaponData(item);
+    for (const line of weapon.lines ?? []) {
+      for (const block of line.ammoBlocks ?? []) {
+        interactActions.push(..._buildWeaponBlockActions(actor, item, line, block));
+      }
+    }
+  }
+
+  return interactActions;
+}
+
+/**
+ * Open standard item interact menu (HUD / inventory PKM).
+ * @param {Actor} actor
+ * @param {Item} item
+ * @param {Partial<ActionContext>} partialCtx
+ * @returns {Promise<boolean>}
+ */
+export async function openItemInteractMenu(actor, item, partialCtx = {}) {
+  if (!actor || !item || item.type !== 'item') return false;
+  const ctx = {
+    user: game.user,
+    isGM: !!game.user?.isGM,
+    inCombat: !!_activeCombat(),
+    actor,
+    tokenDoc: partialCtx.tokenDoc ?? null,
+    editable: partialCtx.editable !== undefined ? !!partialCtx.editable : !!actor?.isOwner,
+    event: partialCtx.event ?? null,
+    anchorElement: partialCtx.anchorElement ?? null,
+  };
+  const interactActions = _collectItemInteractActions(actor, item, ctx);
+  return _showWeaponInteractMenu(actor, item, interactActions, ctx);
+}
+
+/**
+ * Backward-compatible name for weapon callers; now opens the generic item menu.
+ */
+export async function openWeaponInteractMenu(actor, item, partialCtx = {}) {
+  return openItemInteractMenu(actor, item, partialCtx);
+}
+
+/**
+ * Build atomic ammo-block action descriptors for one weapon block.
+ * @returns {ActionDescriptor[]}
+ */
+function _buildWeaponBlockActions(actor, item, line, block) {
+  const out = [];
+  const lineName = line.name || _t('SPACEHOLDER.WeaponV3.Line.Default');
+  const prefix = `${lineName}`;
+
+  const pushAction = ({ id, labelKey, labelData, icon, apKey, canFn, runFn }) => {
+    const cfg = block.apActions?.[apKey];
+    if (!cfg?.enabled) return;
+    const actionLabel = labelData ? _t(labelKey, labelData) : _t(labelKey);
+    out.push({
+      id,
+      source: 'item',
+      sourceItemName: item.name,
+      label: `${prefix}: ${actionLabel}`,
+      menuGroup: prefix,
+      menuLabel: actionLabel,
+      icon: icon ?? 'fa-solid fa-box-open',
+      apCost: Math.max(0, cfg.value),
+      description: prefix,
+      showInCombat: true,
+      showInQuickbar: false,
+      weaponInteract: true,
+      visible: () => canFn(),
+      enabled: () => !!item.system?.held && canFn(),
+      run: runFn,
+    });
+  };
+
+  pushAction({
+    id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.loadOne`,
+    labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.LoadOne',
+    apKey: 'loadOne',
+    canFn: () => canLoadOne(actor, block),
+    runFn: async () => {
+      const w = getWeaponData(item);
+      const b = getAmmoBlock(w, line.id, block.id);
+      if (!b) return false;
+      const res = await loadBlock({ actor, block: b, count: 1 });
+      if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+      await persistWeaponData(item, w);
+      return true;
+    },
+  });
+
+  const loadXAmount = Math.max(0, Number(block.loadAmount) || 0);
+  if (block.apActions?.loadX?.enabled && loadXAmount > 0) {
+    pushAction({
+      id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.loadX`,
+      labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.LoadX',
+      labelData: { count: loadXAmount },
+      apKey: 'loadX',
+      canFn: () => canLoadX(actor, block),
+      runFn: async () => {
+        const w = getWeaponData(item);
+        const b = getAmmoBlock(w, line.id, block.id);
+        if (!b) return false;
+        const res = await loadBlock({ actor, block: b, count: loadXAmount });
+        if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+        await persistWeaponData(item, w);
+        return true;
+      },
+    });
+  }
+
+  pushAction({
+    id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.reload`,
+    labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.Reload',
+    apKey: 'reload',
+    canFn: () => canReloadBlock(actor, block),
+    runFn: async () => {
+      const w = getWeaponData(item);
+      const b = getAmmoBlock(w, line.id, block.id);
+      if (!b) return false;
+      const res = await reloadBlock({ actor, block: b });
+      if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+      await persistWeaponData(item, w);
+      return true;
+    },
+  });
+
+  if (block.chamberEnabled) {
+    pushAction({
+      id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.bolt`,
+      labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.Bolt',
+      apKey: 'bolt',
+      icon: 'fa-solid fa-rotate',
+      canFn: () => canBoltBlock(block),
+      runFn: async () => {
+        const w = getWeaponData(item);
+        const b = getAmmoBlock(w, line.id, block.id);
+        if (!b) return false;
+        const res = await operateBolt({ actor, block: b });
+        if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+        await persistWeaponData(item, w);
+        return true;
+      },
+    });
+  }
+
+  pushAction({
+    id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.unload`,
+    labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.Unload',
+    apKey: 'unload',
+    canFn: () => canUnloadBlock(block),
+    runFn: async () => {
+      const w = getWeaponData(item);
+      const b = getAmmoBlock(w, line.id, block.id);
+      if (!b) return false;
+      const res = await unloadBlock({ actor, block: b });
+      if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+      await persistWeaponData(item, w);
+      return true;
+    },
+  });
+
+  pushAction({
+    id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.empty`,
+    labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.Empty',
+    apKey: 'empty',
+    canFn: () => canEmptyBlock(block),
+    runFn: async () => {
+      const w = getWeaponData(item);
+      const b = getAmmoBlock(w, line.id, block.id);
+      if (!b) return false;
+      const res = await emptyBlock({ actor, block: b });
+      if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+      await persistWeaponData(item, w);
+      return true;
+    },
+  });
+
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
+    if (canAttachMagazine(actor, block)) {
+      out.push({
+        id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.attachMagazine`,
+        source: 'item',
+        sourceItemName: item.name,
+        label: `${prefix}: ${_t('SPACEHOLDER.WeaponV3.BlockActions.AttachMagazine')}`,
+        menuGroup: prefix,
+        menuLabel: _t('SPACEHOLDER.WeaponV3.BlockActions.AttachMagazine'),
+        icon: 'fa-solid fa-box',
+        apCost: block.apActions?.reload?.enabled ? Math.max(0, block.apActions.reload.value) : 0,
+        description: prefix,
+        showInCombat: true,
+        showInQuickbar: false,
+        weaponInteract: true,
+        visible: () => canAttachMagazine(actor, block),
+        enabled: () => !!item.system?.held && canAttachMagazine(actor, block),
+        run: async () => {
+          const w = getWeaponData(item);
+          const b = getAmmoBlock(w, line.id, block.id);
+          if (!b) return false;
+          const res = await attachMagazine({ actor, block: b });
+          if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+          await persistWeaponData(item, w);
+          return true;
+        },
+      });
+    }
+    if (canDetachMagazine(block)) {
+      out.push({
+        id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.detachMagazine`,
+        source: 'item',
+        sourceItemName: item.name,
+        label: `${prefix}: ${_t('SPACEHOLDER.WeaponV3.BlockActions.DetachMagazine')}`,
+        menuGroup: prefix,
+        menuLabel: _t('SPACEHOLDER.WeaponV3.BlockActions.DetachMagazine'),
+        icon: 'fa-solid fa-box',
+        apCost: 0,
+        description: prefix,
+        showInCombat: true,
+        showInQuickbar: false,
+        weaponInteract: true,
+        visible: () => canDetachMagazine(block),
+        enabled: () => !!item.system?.held && canDetachMagazine(block),
+        run: async () => {
+          const w = getWeaponData(item);
+          const b = getAmmoBlock(w, line.id, block.id);
+          if (!b) return false;
+          const res = await detachMagazine({ actor, block: b });
+          if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
+          await persistWeaponData(item, w);
+          return true;
+        },
+      });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Weapon v3: attacks (line × mode) + interact menu for atomic ammo actions.
+ *
+ * @param {Actor} actor
+ * @param {ActionContext} ctx
+ * @returns {ActionDescriptor[]}
+ */
+function _collectWeaponV3Actions(actor, ctx) {
+  const out = [];
+  const items = actor?.items ? Array.from(actor.items) : [];
+  for (const item of items) {
+    if (item?.type !== 'item') continue;
+    const tags = item.system?.itemTags ?? {};
+    if (!tags.isWeapon) continue;
+    const weapon = getWeaponData(item);
+    if (!Array.isArray(weapon.lines) || !weapon.lines.length) continue;
+
+    for (const attack of listWeaponAttacks(weapon)) {
+      const lineName = attack.line.name || _t('SPACEHOLDER.WeaponV3.Line.Default');
+      const modeName = attack.mode.name || _t('SPACEHOLDER.WeaponV3.Mode.Default');
+      out.push({
+        id: `item.${item.uuid}.weaponAttack.${attack.lineId}.${attack.modeId}`,
+        source: 'item',
+        sourceItemName: item.name,
+        label: `${item.name}: ${lineName} / ${modeName}`,
+        icon: 'fa-solid fa-crosshairs',
+        apCost: 0,
+        description: '',
+        showInCombat: true,
+        showInQuickbar: true,
+        requiresHolding: false,
+        skipPostCombatLog: true,
+        visible: () => true,
+        enabled: () => true,
+        run: async (runCtx) => {
+          const token = _resolveActionToken(runCtx, actor);
+          if (!token) {
+            ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming'));
+            return false;
+          }
+          return runWeaponAttack({
+            actor,
+            weaponItem: item,
+            token,
+            lineId: attack.lineId,
+            modeId: attack.modeId,
+          });
+        },
+      });
+    }
+
+    if (!item.system?.held) continue;
+
+    const interactActions = [];
+    for (const line of weapon.lines) {
+      for (const block of line.ammoBlocks ?? []) {
+        interactActions.push(..._buildWeaponBlockActions(actor, item, line, block));
+      }
+    }
+
+    out.push({
+      id: `item.${item.uuid}.weaponInteract`,
+      source: 'item',
+      sourceItemName: item.name,
+      label: _t('SPACEHOLDER.WeaponV3.Interact.ActionLabel', { name: item.name }),
+      icon: 'fa-solid fa-hand',
+      apCost: 0,
+      description: '',
+      showInCombat: true,
+      showInQuickbar: true,
+      requiresHolding: true,
+      skipPostCombatLog: true,
+      visible: () => true,
+      enabled: () => !!item.system?.held,
+      run: async (runCtx) => openItemInteractMenu(actor, item, runCtx),
+    });
+  }
+  return out;
+}
+
 /**
  * Apply context filters.
  * @param {ActionDescriptor[]} list
@@ -679,6 +1367,7 @@ export function collectActorActions(actor, partialCtx = {}) {
  
   let list = [];
   list = list.concat(_collectWearableToggleActions(actor, ctx));
+  list = list.concat(_collectWeaponV3Actions(actor, ctx));
   list = list.concat(_collectCustomActions(actor, ctx));
   if (actor?.type === 'character') {
     list.push(_buildSystemFreeAction(ctx));

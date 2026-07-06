@@ -1,5 +1,5 @@
 {
-  "name": "Стрелок",
+  "name": "Стрелок v3",
   "type": "character",
   "_id": "shtestshooter000",
   "img": "systems/spaceholder/assets/icons/action.svg/bowman.svg",
@@ -70,9 +70,9 @@
           "organs": [],
           "exposure": {
             "front": 100,
-            "right": 50,
+            "right": 85,
             "back": 100,
-            "left": 50
+            "left": 85
           },
           "relations": [
             {
@@ -116,9 +116,9 @@
           "organs": [],
           "exposure": {
             "front": 0,
-            "right": 50,
+            "right": 80,
             "back": 100,
-            "left": 50
+            "left": 80
           },
           "relations": [
             {
@@ -166,9 +166,9 @@
           "organs": [],
           "exposure": {
             "front": 100,
-            "right": 70,
+            "right": 80,
             "back": 0,
-            "left": 70
+            "left": 80
           },
           "relations": [
             {
@@ -219,9 +219,9 @@
           "organs": [],
           "exposure": {
             "front": 100,
-            "right": 65,
+            "right": 80,
             "back": 0,
-            "left": 65
+            "left": 80
           },
           "relations": [
             {
@@ -270,10 +270,10 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 70,
-            "right": 50,
+            "front": 100,
+            "right": 55,
             "back": 50,
-            "left": 50
+            "left": 55
           },
           "relations": [
             {
@@ -318,8 +318,8 @@
           "organs": [],
           "exposure": {
             "front": 100,
-            "right": 0,
-            "back": 50,
+            "right": 30,
+            "back": 85,
             "left": 100
           },
           "relations": [
@@ -361,8 +361,8 @@
           "exposure": {
             "front": 100,
             "right": 100,
-            "back": 50,
-            "left": 0
+            "back": 85,
+            "left": 30
           },
           "relations": [
             {
@@ -402,9 +402,9 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 50,
-            "right": 40,
-            "back": 0,
+            "front": 100,
+            "right": 30,
+            "back": 90,
             "left": 100
           },
           "relations": [
@@ -445,10 +445,10 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 50,
+            "front": 100,
             "right": 100,
-            "back": 40,
-            "left": 0
+            "back": 90,
+            "left": 30
           },
           "relations": [
             {
@@ -489,9 +489,9 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 40,
-            "right": 30,
-            "back": 0,
+            "front": 100,
+            "right": 40,
+            "back": 85,
             "left": 100
           },
           "relations": [
@@ -528,10 +528,10 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 40,
+            "front": 100,
             "right": 100,
-            "back": 30,
-            "left": 0
+            "back": 85,
+            "left": 40
           },
           "relations": [
             {
@@ -566,9 +566,9 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 50,
-            "right": 40,
-            "back": 0,
+            "front": 100,
+            "right": 60,
+            "back": 85,
             "left": 100
           },
           "relations": [
@@ -609,10 +609,10 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 50,
+            "front": 100,
             "right": 100,
-            "back": 40,
-            "left": 0
+            "back": 85,
+            "left": 60
           },
           "relations": [
             {
@@ -652,9 +652,9 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 40,
-            "right": 30,
-            "back": 0,
+            "front": 100,
+            "right": 75,
+            "back": 90,
             "left": 100
           },
           "relations": [
@@ -695,10 +695,10 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 40,
+            "front": 100,
             "right": 100,
-            "back": 30,
-            "left": 0
+            "back": 90,
+            "left": 75
           },
           "relations": [
             {
@@ -738,9 +738,9 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 40,
-            "right": 20,
-            "back": 30,
+            "front": 100,
+            "right": 100,
+            "back": 90,
             "left": 100
           },
           "relations": [
@@ -776,10 +776,10 @@
           ],
           "organs": [],
           "exposure": {
-            "front": 40,
+            "front": 100,
             "right": 100,
-            "back": 30,
-            "left": 20
+            "back": 90,
+            "left": 100
           },
           "relations": [
             {
@@ -801,7 +801,7 @@
         "height": 10
       }
     },
-    "biography": "<p>Тестовый стрелок: гуманоидная анатомия, в инвентаре по пачке всех существующих тестовых патронов. Используется для проверки боевых пайплайнов (payload/applications/etc.) до появления настоящего оружия.</p>",
+    "biography": "<p>Полный набор оружия v3, магазинов и боеприпасов в инвентаре. Ничего не в руках — удобно проверять цепочку атаки «взять → перезарядить → прицелиться» с нуля.</p>",
     "attributes": {
       "level": {
         "value": 1
@@ -848,7 +848,7 @@
     }
   },
   "prototypeToken": {
-    "name": "Стрелок",
+    "name": "Стрелок v3",
     "displayName": 30,
     "actorLink": false,
     "appendNumber": false,
@@ -934,16 +934,16 @@
   },
   "items": [
     {
-      "name": "9mm Ball",
+      "name": "ТМ-1 «Клинок» (тест v3)",
       "type": "item",
-      "_id": "eshtestammo9mm00",
-      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "_id": "eer000rd00000000",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/gladius.svg",
       "system": {
-        "description": "<p>Generic 9 mm ball cartridge. Single ballistic application — exercises the simplest path through the damage resolver.</p>",
+        "description": "<p>Тестовый меч v3: одна линия без блоков патронов — саб-блок урона на оружии (режущий 35). Изготовка 5 ОД.</p>",
         "implantReplaceOrgan": null,
         "actions": [],
-        "quantity": 30,
-        "weight": 0.012,
+        "quantity": 1,
+        "weight": 1.2,
         "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
         "equipped": false,
         "held": false,
@@ -952,15 +952,15 @@
         "defaultActions": {
           "equip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "unequip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "hold": {
-            "showInCombat": false,
-            "showInQuickbar": false
+            "showInCombat": true,
+            "showInQuickbar": true
           },
           "stow": {
             "showInCombat": false,
@@ -988,39 +988,120 @@
           "isArmor": false,
           "isActions": false,
           "isModifiers": false,
-          "isAmmo": true
+          "isWeapon": true,
+          "isAmmo": false,
+          "isContainer": false
         },
         "weapon": {
-          "version": 2,
-          "ammo": {
-            "projectile": {
-              "damage": 25,
-              "damageType": "ballistic",
-              "armorPen": 0,
-              "armorDamageFactor": 1,
-              "projectilesPerUse": 1,
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 5
+            }
+          },
+          "lines": [
+            {
+              "id": "lineSwordMain000",
+              "name": "Удар",
               "payloadId": "",
-              "applications": [
+              "aiming": 15,
+              "trigger": 5,
+              "energyMult": {
+                "enabled": false,
+                "value": 100
+              },
+              "spread": {
+                "enabled": false,
+                "value": 0
+              },
+              "recoil": {
+                "enabled": false,
+                "value": 0
+              },
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "damage": [
                 {
-                  "mode": "sequential",
-                  "items": [
-                    {
-                      "type": "ballistic",
-                      "damage": 25
-                    }
-                  ]
+                  "damageType": "cutting",
+                  "damage": 35,
+                  "armorPen": 20,
+                  "hardness": 1.5,
+                  "armorDamageFactor": 100,
+                  "armorDamageReduction": 100,
+                  "speed": 0,
+                  "payloadId": ""
                 }
               ],
-              "builderId": ""
-            },
-            "resource": {
-              "resourceType": "cartridge",
-              "caliberTag": "9x19",
-              "compatibilityTags": [
-                "9x19"
-              ],
-              "stackMax": 30
+              "ammoBlocks": [],
+              "modes": [
+                {
+                  "id": "modeSwordStd0000",
+                  "name": "Стандарт",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 5,
+                  "enterCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "exitCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "modifiers": []
+                }
+              ]
             }
+          ],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
           }
         }
       },
@@ -1038,23 +1119,23 @@
         "coreVersion": "13.350",
         "systemId": "spaceholder",
         "systemVersion": "0.178",
-        "createdTime": 1776279800100,
-        "modifiedTime": 1776279800100,
+        "createdTime": 1781100000000,
+        "modifiedTime": 1781100000000,
         "lastModifiedBy": null
       },
-      "_key": "!actors.items!shtestshooter000.eshtestammo9mm00"
+      "_key": "!actors.items!shtestshooter000.eer000rd00000000"
     },
     {
-      "name": "AP Rifle",
+      "name": "ТП-9 «Шквал» (тест v3)",
       "type": "item",
-      "_id": "eshtestammoap000",
-      "img": "systems/spaceholder/assets/icons/weapon.svg/heavy-bullets.svg",
+      "_id": "eer000tol0000001",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/luger.svg",
       "system": {
-        "description": "<p>Armour-piercing rifle round. Ballistic application with significant <code>armorPen</code>; useful for testing R_eff reduction against steel layers.</p>",
+        "description": "<p>Тестовый пистолет v3: внешний магазин (разъём «тп-9», 12 патронов 9×19), патронник с автоподачей. Режимы: одиночный и «двойка» (×2, задержка 2 ОД).</p>",
         "implantReplaceOrgan": null,
         "actions": [],
-        "quantity": 20,
-        "weight": 0.025,
+        "quantity": 1,
+        "weight": 0.9,
         "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
         "equipped": false,
         "held": false,
@@ -1063,15 +1144,15 @@
         "defaultActions": {
           "equip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "unequip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "hold": {
-            "showInCombat": false,
-            "showInQuickbar": false
+            "showInCombat": true,
+            "showInQuickbar": true
           },
           "stow": {
             "showInCombat": false,
@@ -1099,41 +1180,176 @@
           "isArmor": false,
           "isActions": false,
           "isModifiers": false,
-          "isAmmo": true
+          "isWeapon": true,
+          "isAmmo": false,
+          "isContainer": false
         },
         "weapon": {
-          "version": 2,
-          "ammo": {
-            "projectile": {
-              "damage": 60,
-              "damageType": "ballistic",
-              "armorPen": 25,
-              "armorDamageFactor": 1.2,
-              "projectilesPerUse": 1,
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 3
+            }
+          },
+          "lines": [
+            {
+              "id": "linePistolMain00",
+              "name": "Ствол",
               "payloadId": "",
-              "applications": [
+              "aiming": 20,
+              "trigger": 3,
+              "energyMult": {
+                "enabled": false,
+                "value": 100
+              },
+              "spread": {
+                "enabled": true,
+                "value": 3
+              },
+              "recoil": {
+                "enabled": false,
+                "value": 0
+              },
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "damage": [],
+              "ammoBlocks": [
                 {
-                  "mode": "sequential",
-                  "items": [
-                    {
-                      "type": "ballistic",
-                      "damage": 60,
-                      "armorPen": 25,
-                      "armorDamageFactor": 1.2
+                  "id": "blkPistolMag0000",
+                  "type": "externalMagazine",
+                  "capacity": 12,
+                  "chamberEnabled": true,
+                  "autoFeed": true,
+                  "caliber": "9x19",
+                  "connector": "тп-9",
+                  "search": {
+                    "hands": true,
+                    "worn": true,
+                    "inventory": true,
+                    "containers": true,
+                    "mode": "auto"
+                  },
+                  "apActions": {
+                    "loadOne": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "loadX": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "reload": {
+                      "enabled": true,
+                      "value": 30
+                    },
+                    "bolt": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "unload": {
+                      "enabled": true,
+                      "value": 20
+                    },
+                    "empty": {
+                      "enabled": true,
+                      "value": 25
                     }
-                  ]
+                  },
+                  "damage": [],
+                  "runtime": {
+                    "charge": 0,
+                    "chamberCharge": false,
+                    "chamberItem": null,
+                    "contents": [],
+                    "magazine": null
+                  }
                 }
               ],
-              "builderId": ""
-            },
-            "resource": {
-              "resourceType": "cartridge",
-              "caliberTag": "7.62x51",
-              "compatibilityTags": [
-                "7.62x51"
-              ],
-              "stackMax": 20
+              "modes": [
+                {
+                  "id": "modePistolSingle",
+                  "name": "Одиночный",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 5,
+                  "enterCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "exitCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "modifiers": []
+                },
+                {
+                  "id": "modePistolDouble",
+                  "name": "Двойка",
+                  "fireMode": "burst",
+                  "burstCount": 2,
+                  "fireDelayAp": 2,
+                  "enterCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "exitCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "modifiers": []
+                }
+              ]
             }
+          ],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
           }
         }
       },
@@ -1151,23 +1367,23 @@
         "coreVersion": "13.350",
         "systemId": "spaceholder",
         "systemVersion": "0.178",
-        "createdTime": 1776279800100,
-        "modifiedTime": 1776279800100,
+        "createdTime": 1781100000001,
+        "modifiedTime": 1781100000001,
         "lastModifiedBy": null
       },
-      "_key": "!actors.items!shtestshooter000.eshtestammoap000"
+      "_key": "!actors.items!shtestshooter000.eer000tol0000001"
     },
     {
-      "name": "Buckshot Shell",
+      "name": "ТВ-5 «Рубеж» (тест v3)",
       "type": "item",
-      "_id": "eshtestammobuck0",
-      "img": "systems/spaceholder/assets/icons/explosion.svg/striking-balls.svg",
+      "_id": "eer000trifle0002",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/lee-enfield.svg",
       "system": {
-        "description": "<p>12-gauge buckshot shell. Demonstrates a single <em>parallel</em> phase splitting one trigger pull into 8 independent ballistic pellets, each running through the layer stack from scratch.</p>",
+        "description": "<p>Тестовая болтовая винтовка v3: внутренний магазин на 5 патронов 7.62×54, патронник без автоподачи — после каждого выстрела нужен «Затвор» (8 ОД). Помеха прицеливания 80%.</p>",
         "implantReplaceOrgan": null,
         "actions": [],
-        "quantity": 12,
-        "weight": 0.05,
+        "quantity": 1,
+        "weight": 4,
         "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
         "equipped": false,
         "held": false,
@@ -1176,15 +1392,15 @@
         "defaultActions": {
           "equip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "unequip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "hold": {
-            "showInCombat": false,
-            "showInQuickbar": false
+            "showInCombat": true,
+            "showInQuickbar": true
           },
           "stow": {
             "showInCombat": false,
@@ -1212,67 +1428,160 @@
           "isArmor": false,
           "isActions": false,
           "isModifiers": false,
-          "isAmmo": true
+          "isWeapon": true,
+          "isAmmo": false,
+          "isContainer": false
         },
         "weapon": {
-          "version": 2,
-          "ammo": {
-            "projectile": {
-              "damage": 0,
-              "damageType": "",
-              "armorPen": 0,
-              "armorDamageFactor": 1,
-              "projectilesPerUse": 1,
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": true,
+              "value": 80
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 10
+            }
+          },
+          "lines": [
+            {
+              "id": "lineBoltMain0000",
+              "name": "Ствол",
               "payloadId": "",
-              "applications": [
+              "aiming": 35,
+              "trigger": 5,
+              "energyMult": {
+                "enabled": true,
+                "value": 120
+              },
+              "spread": {
+                "enabled": true,
+                "value": 1
+              },
+              "recoil": {
+                "enabled": false,
+                "value": 0
+              },
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "damage": [],
+              "ammoBlocks": [
                 {
-                  "mode": "parallel",
-                  "items": [
-                    {
-                      "type": "ballistic",
-                      "damage": 12
+                  "id": "blkBoltMag000000",
+                  "type": "internalMagazine",
+                  "capacity": 5,
+                  "chamberEnabled": true,
+                  "autoFeed": false,
+                  "caliber": "7.62x54",
+                  "connector": "",
+                  "search": {
+                    "hands": true,
+                    "worn": true,
+                    "inventory": true,
+                    "containers": true,
+                    "mode": "auto"
+                  },
+                  "apActions": {
+                    "loadOne": {
+                      "enabled": true,
+                      "value": 10
                     },
-                    {
-                      "type": "ballistic",
-                      "damage": 12
+                    "loadX": {
+                      "enabled": true,
+                      "value": 10
                     },
-                    {
-                      "type": "ballistic",
-                      "damage": 12
+                    "reload": {
+                      "enabled": true,
+                      "value": 40
                     },
-                    {
-                      "type": "ballistic",
-                      "damage": 12
+                    "bolt": {
+                      "enabled": true,
+                      "value": 8
                     },
-                    {
-                      "type": "ballistic",
-                      "damage": 12
+                    "unload": {
+                      "enabled": true,
+                      "value": 30
                     },
-                    {
-                      "type": "ballistic",
-                      "damage": 12
-                    },
-                    {
-                      "type": "ballistic",
-                      "damage": 12
-                    },
-                    {
-                      "type": "ballistic",
-                      "damage": 12
+                    "empty": {
+                      "enabled": true,
+                      "value": 35
                     }
-                  ]
+                  },
+                  "damage": [],
+                  "runtime": {
+                    "charge": 0,
+                    "chamberCharge": false,
+                    "chamberItem": null,
+                    "contents": [],
+                    "magazine": null
+                  }
                 }
               ],
-              "builderId": ""
-            },
-            "resource": {
-              "resourceType": "shell",
-              "caliberTag": "12g",
-              "compatibilityTags": [
-                "12g"
-              ],
-              "stackMax": 12
+              "modes": [
+                {
+                  "id": "modeBoltSingle00",
+                  "name": "Одиночный",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 5,
+                  "enterCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "exitCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "modifiers": []
+                }
+              ]
             }
+          ],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
           }
         }
       },
@@ -1290,23 +1599,23 @@
         "coreVersion": "13.350",
         "systemId": "spaceholder",
         "systemVersion": "0.178",
-        "createdTime": 1776279800100,
-        "modifiedTime": 1776279800100,
+        "createdTime": 1781100000002,
+        "modifiedTime": 1781100000002,
         "lastModifiedBy": null
       },
-      "_key": "!actors.items!shtestshooter000.eshtestammobuck0"
+      "_key": "!actors.items!shtestshooter000.eer000trifle0002"
     },
     {
-      "name": "HEAT Round",
+      "name": "ТА-7 «Гроза» (тест v3)",
       "type": "item",
-      "_id": "eshtestammoheat0",
-      "img": "systems/spaceholder/assets/icons/weapon.svg/grenade.svg",
+      "_id": "eer000orifle0003",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/steyr-aug.svg",
       "system": {
-        "description": "<p>Shaped-charge HEAT round. Demonstrates <em>sequential</em> application phases:</p><ol><li>Phase 1: high-armorPen piercing jet drills the layer stack.</li><li>Phase 2: residual thermal + concussive blast follow through the same hole.</li></ol>",
+        "description": "<p>Тестовый автомат v3: внешний магазин (разъём «та-7», 30 патронов 5.45×39), патронник с автоподачей. Режимы: одиночный, очередь ×3 и авто (задержка 1 ОД ≈ 600 в/мин); в авто разброс ×2.</p>",
         "implantReplaceOrgan": null,
         "actions": [],
-        "quantity": 6,
-        "weight": 1.4,
+        "quantity": 1,
+        "weight": 3.4,
         "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
         "equipped": false,
         "held": false,
@@ -1315,15 +1624,15 @@
         "defaultActions": {
           "equip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "unequip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "hold": {
-            "showInCombat": false,
-            "showInQuickbar": false
+            "showInCombat": true,
+            "showInQuickbar": true
           },
           "stow": {
             "showInCombat": false,
@@ -1351,54 +1660,201 @@
           "isArmor": false,
           "isActions": false,
           "isModifiers": false,
-          "isAmmo": true
+          "isWeapon": true,
+          "isAmmo": false,
+          "isContainer": false
         },
         "weapon": {
-          "version": 2,
-          "ammo": {
-            "projectile": {
-              "damage": 0,
-              "damageType": "",
-              "armorPen": 0,
-              "armorDamageFactor": 1,
-              "projectilesPerUse": 1,
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 6
+            }
+          },
+          "lines": [
+            {
+              "id": "lineAutoMain0000",
+              "name": "Ствол",
               "payloadId": "",
-              "applications": [
+              "aiming": 25,
+              "trigger": 4,
+              "energyMult": {
+                "enabled": false,
+                "value": 100
+              },
+              "spread": {
+                "enabled": true,
+                "value": 2
+              },
+              "recoil": {
+                "enabled": false,
+                "value": 0
+              },
+              "enterCost": {
+                "enabled": true,
+                "value": 5
+              },
+              "exitCost": {
+                "enabled": true,
+                "value": 3
+              },
+              "damage": [],
+              "ammoBlocks": [
                 {
-                  "mode": "sequential",
-                  "items": [
-                    {
-                      "type": "piercing",
-                      "damage": 200,
-                      "armorPen": 60,
-                      "armorDamageFactor": 2
+                  "id": "blkAutoMag000000",
+                  "type": "externalMagazine",
+                  "capacity": 30,
+                  "chamberEnabled": true,
+                  "autoFeed": true,
+                  "caliber": "5.45x39",
+                  "connector": "та-7",
+                  "search": {
+                    "hands": true,
+                    "worn": true,
+                    "inventory": true,
+                    "containers": true,
+                    "mode": "auto"
+                  },
+                  "apActions": {
+                    "loadOne": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "loadX": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "reload": {
+                      "enabled": true,
+                      "value": 35
+                    },
+                    "bolt": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "unload": {
+                      "enabled": true,
+                      "value": 25
+                    },
+                    "empty": {
+                      "enabled": true,
+                      "value": 30
                     }
-                  ]
+                  },
+                  "damage": [],
+                  "runtime": {
+                    "charge": 0,
+                    "chamberCharge": false,
+                    "chamberItem": null,
+                    "contents": [],
+                    "magazine": null
+                  }
+                }
+              ],
+              "modes": [
+                {
+                  "id": "modeAutoSingle00",
+                  "name": "Одиночный",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 5,
+                  "enterCost": {
+                    "enabled": true,
+                    "value": 2
+                  },
+                  "exitCost": {
+                    "enabled": true,
+                    "value": 2
+                  },
+                  "modifiers": []
                 },
                 {
-                  "mode": "sequential",
-                  "items": [
+                  "id": "modeAutoBurst000",
+                  "name": "Очередь ×3",
+                  "fireMode": "burst",
+                  "burstCount": 3,
+                  "fireDelayAp": 1,
+                  "enterCost": {
+                    "enabled": true,
+                    "value": 2
+                  },
+                  "exitCost": {
+                    "enabled": true,
+                    "value": 2
+                  },
+                  "modifiers": []
+                },
+                {
+                  "id": "modeAutoFull0000",
+                  "name": "Авто",
+                  "fireMode": "auto",
+                  "burstCount": 3,
+                  "fireDelayAp": 1,
+                  "enterCost": {
+                    "enabled": true,
+                    "value": 2
+                  },
+                  "exitCost": {
+                    "enabled": true,
+                    "value": 2
+                  },
+                  "modifiers": [
                     {
-                      "type": "thermal",
-                      "damage": 80
-                    },
-                    {
-                      "type": "concussive",
-                      "damage": 50
+                      "id": "modAutoSpread000",
+                      "param": "line.spread",
+                      "op": "mult",
+                      "value": 200,
+                      "enabled": true,
+                      "disableParam": false
                     }
                   ]
                 }
-              ],
-              "builderId": ""
-            },
-            "resource": {
-              "resourceType": "shell",
-              "caliberTag": "heat-66mm",
-              "compatibilityTags": [
-                "heat-66mm"
-              ],
-              "stackMax": 6
+              ]
             }
+          ],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
           }
         }
       },
@@ -1416,24 +1872,24 @@
         "coreVersion": "13.350",
         "systemId": "spaceholder",
         "systemVersion": "0.178",
-        "createdTime": 1776279800100,
-        "modifiedTime": 1776279800100,
+        "createdTime": 1781100000003,
+        "modifiedTime": 1781100000003,
         "lastModifiedBy": null
       },
-      "_key": "!actors.items!shtestshooter000.eshtestammoheat0"
+      "_key": "!actors.items!shtestshooter000.eer000orifle0003"
     },
     {
-      "name": "Plasma Cell",
+      "name": "ТЛ-3 «Луч» (тест v3)",
       "type": "item",
-      "_id": "eshtestammoplasm",
-      "img": "systems/spaceholder/assets/icons/fire.svg/plasma-bolt.svg",
+      "_id": "eer000er00000004",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/laser-gun.svg",
       "system": {
-        "description": "<p>Single-shot plasma cell. Demonstrates a non-kinetic damage type — strong against steel, but quickly burns through ablative coatings (which fall back to <em>reduction</em> degradation).</p>",
+        "description": "<p>Тестовая лазерная винтовка v3: внешний заряд — батарея «тл-батарея» (калибр), урон на оружии (лазер 25). Режим «Импульс»: урон ×2, разброс выключен, прицеливание +10 ОД.</p>",
         "implantReplaceOrgan": null,
         "actions": [],
-        "quantity": 10,
-        "weight": 0.2,
-        "formula": "d20 + @per.mod + ceil(@lvl / 2)",
+        "quantity": 1,
+        "weight": 3,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
         "equipped": false,
         "held": false,
         "anatomyId": null,
@@ -1441,15 +1897,15 @@
         "defaultActions": {
           "equip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "unequip": {
             "showInCombat": false,
-            "showInQuickbar": false
+            "showInQuickbar": true
           },
           "hold": {
-            "showInCombat": false,
-            "showInQuickbar": false
+            "showInCombat": true,
+            "showInQuickbar": true
           },
           "stow": {
             "showInCombat": false,
@@ -1477,39 +1933,212 @@
           "isArmor": false,
           "isActions": false,
           "isModifiers": false,
-          "isAmmo": true
+          "isWeapon": true,
+          "isAmmo": false,
+          "isContainer": false
         },
         "weapon": {
-          "version": 2,
-          "ammo": {
-            "projectile": {
-              "damage": 60,
-              "damageType": "plasma",
-              "armorPen": 0,
-              "armorDamageFactor": 1,
-              "projectilesPerUse": 1,
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 5
+            }
+          },
+          "lines": [
+            {
+              "id": "lineLaserMain000",
+              "name": "Излучатель",
               "payloadId": "",
-              "applications": [
+              "aiming": 22,
+              "trigger": 3,
+              "energyMult": {
+                "enabled": true,
+                "value": 110
+              },
+              "spread": {
+                "enabled": true,
+                "value": 1
+              },
+              "recoil": {
+                "enabled": false,
+                "value": 0
+              },
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "damage": [],
+              "ammoBlocks": [
                 {
-                  "mode": "sequential",
-                  "items": [
+                  "id": "blkLaserBat00000",
+                  "type": "externalCharge",
+                  "capacity": 1,
+                  "chamberEnabled": false,
+                  "autoFeed": false,
+                  "caliber": "тл-батарея",
+                  "connector": "",
+                  "search": {
+                    "hands": true,
+                    "worn": true,
+                    "inventory": true,
+                    "containers": true,
+                    "mode": "auto"
+                  },
+                  "apActions": {
+                    "loadOne": {
+                      "enabled": true,
+                      "value": 15
+                    },
+                    "loadX": {
+                      "enabled": false,
+                      "value": 0
+                    },
+                    "reload": {
+                      "enabled": true,
+                      "value": 15
+                    },
+                    "bolt": {
+                      "enabled": false,
+                      "value": 0
+                    },
+                    "unload": {
+                      "enabled": true,
+                      "value": 15
+                    },
+                    "empty": {
+                      "enabled": false,
+                      "value": 0
+                    }
+                  },
+                  "damage": [
                     {
-                      "type": "plasma",
-                      "damage": 60
+                      "damageType": "laser",
+                      "damage": 25,
+                      "armorPen": 80,
+                      "hardness": 1,
+                      "armorDamageFactor": 100,
+                      "armorDamageReduction": 50,
+                      "speed": 0,
+                      "payloadId": ""
+                    }
+                  ],
+                  "runtime": {
+                    "charge": 0,
+                    "chamberCharge": false,
+                    "chamberItem": null,
+                    "contents": [],
+                    "magazine": null
+                  }
+                }
+              ],
+              "modes": [
+                {
+                  "id": "modeLaserStd0000",
+                  "name": "Стандарт",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 5,
+                  "enterCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "exitCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "modifiers": []
+                },
+                {
+                  "id": "modeLaserPulse00",
+                  "name": "Импульс",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 5,
+                  "enterCost": {
+                    "enabled": true,
+                    "value": 3
+                  },
+                  "exitCost": {
+                    "enabled": true,
+                    "value": 3
+                  },
+                  "modifiers": [
+                    {
+                      "id": "modLaserDmg00000",
+                      "param": "damage.damage",
+                      "op": "mult",
+                      "value": 200,
+                      "enabled": true,
+                      "disableParam": false
+                    },
+                    {
+                      "id": "modLaserSpread00",
+                      "param": "line.spread",
+                      "op": "set",
+                      "value": 0,
+                      "enabled": true,
+                      "disableParam": true
+                    },
+                    {
+                      "id": "modLaserAim00000",
+                      "param": "line.aiming",
+                      "op": "add",
+                      "value": 10,
+                      "enabled": true,
+                      "disableParam": false
                     }
                   ]
                 }
-              ],
-              "builderId": ""
-            },
-            "resource": {
-              "resourceType": "cell",
-              "caliberTag": "plasma-cell",
-              "compatibilityTags": [
-                "plasma-cell"
-              ],
-              "stackMax": 10
+              ]
             }
+          ],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
           }
         }
       },
@@ -1527,11 +2156,1424 @@
         "coreVersion": "13.350",
         "systemId": "spaceholder",
         "systemVersion": "0.178",
-        "createdTime": 1776279800100,
-        "modifiedTime": 1776279800100,
+        "createdTime": 1781100000004,
+        "modifiedTime": 1781100000004,
         "lastModifiedBy": null
       },
-      "_key": "!actors.items!shtestshooter000.eshtestammoplasm"
+      "_key": "!actors.items!shtestshooter000.eer000er00000004"
+    },
+    {
+      "name": "ТЛ-1 «Тетива» (тест v3)",
+      "type": "item",
+      "_id": "eer0000000000005",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bow-arrow.svg",
+      "system": {
+        "description": "<p>Тестовый лук v3: внутренний магазин с ёмкостью 0 без патронника — стрела ищется «на лету» при каждом выстреле (калибр «стрела»). Изготовка 8 ОД.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 1,
+        "weight": 1.5,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": true,
+          "isAmmo": false,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 8
+            }
+          },
+          "lines": [
+            {
+              "id": "lineBowMain00000",
+              "name": "Тетива",
+              "payloadId": "",
+              "aiming": 30,
+              "trigger": 5,
+              "energyMult": {
+                "enabled": false,
+                "value": 100
+              },
+              "spread": {
+                "enabled": false,
+                "value": 0
+              },
+              "recoil": {
+                "enabled": false,
+                "value": 0
+              },
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "damage": [],
+              "ammoBlocks": [
+                {
+                  "id": "blkBowOnTheFly00",
+                  "type": "internalMagazine",
+                  "capacity": 0,
+                  "chamberEnabled": false,
+                  "autoFeed": false,
+                  "caliber": "стрела",
+                  "connector": "",
+                  "search": {
+                    "hands": true,
+                    "worn": true,
+                    "inventory": true,
+                    "containers": true,
+                    "mode": "auto"
+                  },
+                  "apActions": {
+                    "loadOne": {
+                      "enabled": false,
+                      "value": 0
+                    },
+                    "loadX": {
+                      "enabled": false,
+                      "value": 0
+                    },
+                    "reload": {
+                      "enabled": false,
+                      "value": 0
+                    },
+                    "bolt": {
+                      "enabled": false,
+                      "value": 0
+                    },
+                    "unload": {
+                      "enabled": false,
+                      "value": 0
+                    },
+                    "empty": {
+                      "enabled": false,
+                      "value": 0
+                    }
+                  },
+                  "damage": [],
+                  "runtime": {
+                    "charge": 0,
+                    "chamberCharge": false,
+                    "chamberItem": null,
+                    "contents": [],
+                    "magazine": null
+                  }
+                }
+              ],
+              "modes": [
+                {
+                  "id": "modeBowSingle000",
+                  "name": "Выстрел",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 5,
+                  "enterCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "exitCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "modifiers": []
+                }
+              ]
+            }
+          ],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 150000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000005,
+        "modifiedTime": 1781100000005,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer0000000000005"
+    },
+    {
+      "name": "Магазин ТП-9 (тест v3)",
+      "type": "item",
+      "_id": "eer000pistol0006",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/ammo-box.svg",
+      "system": {
+        "description": "<p>Магазин-контейнер для ТП-9 (v3): разъём «тп-9», заряжается патронами 9×19. Предзаряжен 12 патронами.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 1,
+        "weight": 0.2,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "9x19",
+            "connector": {
+              "enabled": true,
+              "value": "тп-9"
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": false
+          }
+        },
+        "storage": {
+          "version": 1,
+          "enabled": true,
+          "slots": {
+            "attachedContainerId": "",
+            "chamberItemId": ""
+          },
+          "contents": [
+            {
+              "id": "recmagpistol9x19",
+              "type": "item",
+              "name": "Патрон 9×19 (тест v3)",
+              "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+              "system": {
+                "description": "",
+                "implantReplaceOrgan": null,
+                "actions": [],
+                "quantity": 12,
+                "weight": 0.012,
+                "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+                "equipped": false,
+                "held": false,
+                "anatomyId": null,
+                "coveredParts": [],
+                "defaultActions": {
+                  "equip": {
+                    "showInCombat": false,
+                    "showInQuickbar": true
+                  },
+                  "unequip": {
+                    "showInCombat": false,
+                    "showInQuickbar": true
+                  },
+                  "hold": {
+                    "showInCombat": true,
+                    "showInQuickbar": true
+                  },
+                  "stow": {
+                    "showInCombat": false,
+                    "showInQuickbar": true
+                  },
+                  "drop": {
+                    "showInCombat": false,
+                    "showInQuickbar": false
+                  },
+                  "wear": {
+                    "showInCombat": false,
+                    "showInQuickbar": false
+                  },
+                  "show": {
+                    "showInCombat": false,
+                    "showInQuickbar": false
+                  }
+                },
+                "modifiers": {
+                  "abilities": [],
+                  "derived": [],
+                  "params": []
+                },
+                "itemTags": {
+                  "isArmor": false,
+                  "isActions": false,
+                  "isModifiers": false,
+                  "isWeapon": false,
+                  "isAmmo": true,
+                  "isContainer": false
+                },
+                "weapon": {
+                  "version": 3,
+                  "ergonomics": {},
+                  "lines": [],
+                  "state": {},
+                  "ammo": {
+                    "damage": [
+                      {
+                        "damageType": "ballistic",
+                        "damage": 30,
+                        "armorPen": 50,
+                        "hardness": 1,
+                        "armorDamageFactor": 100,
+                        "armorDamageReduction": 100,
+                        "speed": 0,
+                        "payloadId": ""
+                      }
+                    ],
+                    "caliber": "9x19",
+                    "connector": {
+                      "enabled": false,
+                      "value": ""
+                    },
+                    "charge": {
+                      "enabled": false,
+                      "max": 0,
+                      "current": 0
+                    },
+                    "consume": true
+                  }
+                }
+              },
+              "flags": {}
+            }
+          ]
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 160000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000006,
+        "modifiedTime": 1781100000006,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer000pistol0006"
+    },
+    {
+      "name": "Магазин ТА-7 (тест v3)",
+      "type": "item",
+      "_id": "eer000rifle00007",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/ammo-box.svg",
+      "system": {
+        "description": "<p>Магазин-контейнер для ТА-7 (v3): разъём «та-7», заряжается патронами 5.45×39. Предзаряжен 30 патронами.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 1,
+        "weight": 0.35,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "5.45x39",
+            "connector": {
+              "enabled": true,
+              "value": "та-7"
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": false
+          }
+        },
+        "storage": {
+          "version": 1,
+          "enabled": true,
+          "slots": {
+            "attachedContainerId": "",
+            "chamberItemId": ""
+          },
+          "contents": [
+            {
+              "id": "recmagrifle545x3",
+              "type": "item",
+              "name": "Патрон 5.45×39 (тест v3)",
+              "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+              "system": {
+                "description": "",
+                "implantReplaceOrgan": null,
+                "actions": [],
+                "quantity": 30,
+                "weight": 0.012,
+                "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+                "equipped": false,
+                "held": false,
+                "anatomyId": null,
+                "coveredParts": [],
+                "defaultActions": {
+                  "equip": {
+                    "showInCombat": false,
+                    "showInQuickbar": true
+                  },
+                  "unequip": {
+                    "showInCombat": false,
+                    "showInQuickbar": true
+                  },
+                  "hold": {
+                    "showInCombat": true,
+                    "showInQuickbar": true
+                  },
+                  "stow": {
+                    "showInCombat": false,
+                    "showInQuickbar": true
+                  },
+                  "drop": {
+                    "showInCombat": false,
+                    "showInQuickbar": false
+                  },
+                  "wear": {
+                    "showInCombat": false,
+                    "showInQuickbar": false
+                  },
+                  "show": {
+                    "showInCombat": false,
+                    "showInQuickbar": false
+                  }
+                },
+                "modifiers": {
+                  "abilities": [],
+                  "derived": [],
+                  "params": []
+                },
+                "itemTags": {
+                  "isArmor": false,
+                  "isActions": false,
+                  "isModifiers": false,
+                  "isWeapon": false,
+                  "isAmmo": true,
+                  "isContainer": false
+                },
+                "weapon": {
+                  "version": 3,
+                  "ergonomics": {},
+                  "lines": [],
+                  "state": {},
+                  "ammo": {
+                    "damage": [
+                      {
+                        "damageType": "ballistic",
+                        "damage": 35,
+                        "armorPen": 60,
+                        "hardness": 1,
+                        "armorDamageFactor": 100,
+                        "armorDamageReduction": 100,
+                        "speed": 0,
+                        "payloadId": ""
+                      }
+                    ],
+                    "caliber": "5.45x39",
+                    "connector": {
+                      "enabled": false,
+                      "value": ""
+                    },
+                    "charge": {
+                      "enabled": false,
+                      "max": 0,
+                      "current": 0
+                    },
+                    "consume": true
+                  }
+                }
+              },
+              "flags": {}
+            }
+          ]
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 170000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000007,
+        "modifiedTime": 1781100000007,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer000rifle00007"
+    },
+    {
+      "name": "Патрон 9×19 (тест v3)",
+      "type": "item",
+      "_id": "eer000o9x1900008",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "system": {
+        "description": "<p>Пистолетный патрон для ТП-9 (v3): баллистический 30, пробитие 50%.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 50,
+        "weight": 0.012,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "damageType": "ballistic",
+                "damage": 30,
+                "armorPen": 50,
+                "hardness": 1,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "9x19",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 180000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000008,
+        "modifiedTime": 1781100000008,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer000o9x1900008"
+    },
+    {
+      "name": "Патрон 7.62×54 (тест v3)",
+      "type": "item",
+      "_id": "eer000o762x54009",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/heavy-bullets.svg",
+      "system": {
+        "description": "<p>Винтовочный патрон для ТВ-5 (v3): баллистический 45, пробитие 70%, твёрдость 1.2.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 20,
+        "weight": 0.024,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "damageType": "ballistic",
+                "damage": 45,
+                "armorPen": 70,
+                "hardness": 1.2,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "7.62x54",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 190000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000009,
+        "modifiedTime": 1781100000009,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer000o762x54009"
+    },
+    {
+      "name": "Патрон 5.45×39 (тест v3)",
+      "type": "item",
+      "_id": "eer000o545x39010",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "system": {
+        "description": "<p>Автоматный патрон для ТА-7 (v3): баллистический 35, пробитие 60%.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 60,
+        "weight": 0.011,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "damageType": "ballistic",
+                "damage": 35,
+                "armorPen": 60,
+                "hardness": 1,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "5.45x39",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 200000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000010,
+        "modifiedTime": 1781100000010,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer000o545x39010"
+    },
+    {
+      "name": "Стрела (тест v3)",
+      "type": "item",
+      "_id": "eer000oarrow0011",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/heavy-arrow.svg",
+      "system": {
+        "description": "<p>Стрела для ТЛ-1 (v3): колющий 25, пробитие 40%, твёрдость 0.8.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 12,
+        "weight": 0.05,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "damageType": "piercing",
+                "damage": 25,
+                "armorPen": 40,
+                "hardness": 0.8,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "стрела",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0
+            },
+            "consume": true
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 210000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000011,
+        "modifiedTime": 1781100000011,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer000oarrow0011"
+    },
+    {
+      "name": "Батарея ТЛ (тест v3)",
+      "type": "item",
+      "_id": "eer000obattery12",
+      "img": "icons/svg/lightning.svg",
+      "system": {
+        "description": "<p>Батарея для ТЛ-3 (v3): без собственного урона, заряд 20/20, тратится первым; при нуле — списывается 1 quantity.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 3,
+        "weight": 0.4,
+        "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+        "equipped": false,
+        "held": false,
+        "anatomyId": null,
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": true,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "тл-батарея",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": true,
+              "max": 20,
+              "current": 20
+            },
+            "consume": true
+          }
+        }
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 220000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1781100000012,
+        "modifiedTime": 1781100000012,
+        "lastModifiedBy": null
+      },
+      "_key": "!actors.items!shtestshooter000.eer000obattery12"
     }
   ],
   "effects": [],
@@ -1548,8 +3590,8 @@
     "coreVersion": "13.350",
     "systemId": "spaceholder",
     "systemVersion": "0.178",
-    "createdTime": 1776279800100,
-    "modifiedTime": 1776279800100,
+    "createdTime": 1781100000000,
+    "modifiedTime": 1781100000000,
     "lastModifiedBy": null
   },
   "_key": "!actors!shtestshooter000"

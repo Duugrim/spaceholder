@@ -1,0 +1,273 @@
+{
+  "name": "ТА-7 «Гроза» (тест v3)",
+  "type": "item",
+  "_id": "shwv3autorifle00",
+  "img": "systems/spaceholder/assets/icons/weapon.svg/steyr-aug.svg",
+  "system": {
+    "description": "<p>Тестовый автомат v3: внешний магазин (разъём «та-7», 30 патронов 5.45×39), патронник с автоподачей. Режимы: одиночный, очередь ×3 и авто (задержка 1 ОД ≈ 600 в/мин); в авто разброс ×2.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 3.4,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": true,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isWeapon": true,
+      "isAmmo": false,
+      "isContainer": false
+    },
+    "weapon": {
+      "version": 3,
+      "ergonomics": {
+        "overall": 100,
+        "zones": {
+          "enabled": false,
+          "green": 100,
+          "yellow": 100,
+          "orange": 100,
+          "red": 100
+        },
+        "deadZone": {
+          "enabled": false,
+          "value": 100
+        },
+        "aimPenalty": {
+          "enabled": false,
+          "value": 100
+        },
+        "critZoneBonus": {
+          "enabled": false,
+          "value": 0
+        },
+        "critZoneSize": {
+          "enabled": false,
+          "value": 100
+        },
+        "readying": {
+          "enabled": true,
+          "value": 6
+        }
+      },
+      "lines": [
+        {
+          "id": "lineAutoMain0000",
+          "name": "Ствол",
+          "payloadId": "",
+          "aiming": 25,
+          "trigger": 4,
+          "energyMult": {
+            "enabled": false,
+            "value": 100
+          },
+          "spread": {
+            "enabled": true,
+            "value": 2
+          },
+          "recoil": {
+            "enabled": false,
+            "value": 0
+          },
+          "enterCost": {
+            "enabled": true,
+            "value": 5
+          },
+          "exitCost": {
+            "enabled": true,
+            "value": 3
+          },
+          "damage": [],
+          "ammoBlocks": [
+            {
+              "id": "blkAutoMag000000",
+              "type": "externalMagazine",
+              "capacity": 30,
+              "chamberEnabled": true,
+              "autoFeed": true,
+              "caliber": "5.45x39",
+              "connector": "та-7",
+              "search": {
+                "hands": true,
+                "worn": true,
+                "inventory": true,
+                "containers": true,
+                "mode": "auto"
+              },
+              "apActions": {
+                "loadOne": {
+                  "enabled": true,
+                  "value": 5
+                },
+                "loadX": {
+                  "enabled": true,
+                  "value": 5
+                },
+                "reload": {
+                  "enabled": true,
+                  "value": 35
+                },
+                "bolt": {
+                  "enabled": true,
+                  "value": 5
+                },
+                "unload": {
+                  "enabled": true,
+                  "value": 25
+                },
+                "empty": {
+                  "enabled": true,
+                  "value": 30
+                }
+              },
+              "damage": [],
+              "runtime": {
+                "charge": 0,
+                "chamberCharge": false,
+                "chamberItem": null,
+                "contents": [],
+                "magazine": null
+              }
+            }
+          ],
+          "modes": [
+            {
+              "id": "modeAutoSingle00",
+              "name": "Одиночный",
+              "fireMode": "single",
+              "burstCount": 3,
+              "fireDelayAp": 5,
+              "enterCost": {
+                "enabled": true,
+                "value": 2
+              },
+              "exitCost": {
+                "enabled": true,
+                "value": 2
+              },
+              "modifiers": []
+            },
+            {
+              "id": "modeAutoBurst000",
+              "name": "Очередь ×3",
+              "fireMode": "burst",
+              "burstCount": 3,
+              "fireDelayAp": 1,
+              "enterCost": {
+                "enabled": true,
+                "value": 2
+              },
+              "exitCost": {
+                "enabled": true,
+                "value": 2
+              },
+              "modifiers": []
+            },
+            {
+              "id": "modeAutoFull0000",
+              "name": "Авто",
+              "fireMode": "auto",
+              "burstCount": 3,
+              "fireDelayAp": 1,
+              "enterCost": {
+                "enabled": true,
+                "value": 2
+              },
+              "exitCost": {
+                "enabled": true,
+                "value": 2
+              },
+              "modifiers": [
+                {
+                  "id": "modAutoSpread000",
+                  "param": "line.spread",
+                  "op": "mult",
+                  "value": 200,
+                  "enabled": true,
+                  "disableParam": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "state": {
+        "activeLineId": "",
+        "activeModeId": "",
+        "ready": false
+      },
+      "ammo": {
+        "damage": [],
+        "caliber": "",
+        "connector": {
+          "enabled": false,
+          "value": ""
+        },
+        "charge": {
+          "enabled": false,
+          "max": 0,
+          "current": 0
+        },
+        "consume": true
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtestfldwv30000",
+  "sort": 130000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1781100000000,
+    "modifiedTime": 1781100000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shwv3autorifle00"
+}

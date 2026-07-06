@@ -1,0 +1,105 @@
+{{!-- Редактирование блоков «Патроны» линии (диалог). Контекст: line, w. --}}
+<section class="sh-wv3-panel">
+  <div class="sh-wv3-subpanel__header">
+    <span class="sh-wv3-subpanel__spacer"></span>
+    <select data-wblock-type-for="{{line.index}}">
+      {{#each w.blockTypeOptions as |opt|}}
+      <option value="{{opt.value}}">{{opt.label}}</option>
+      {{/each}}
+    </select>
+    <button type="button" class="sh-wv3-icon-btn" data-waction="block-add" data-line="{{line.index}}"
+            data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.Add'}}">
+      <i class="fas fa-plus" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  {{#each line.ammoBlocks as |block|}}
+  <div class="sh-wv3-block" data-block-id="{{block.id}}">
+    <div class="sh-wv3-block__header">
+      <span class="sh-wv3-block__type">{{block.typeLabel}}</span>
+      <button type="button" class="sh-wv3-icon-btn sh-wv3-icon-btn--danger" data-waction="block-remove"
+              data-line="{{line.index}}" data-block="{{block.index}}"
+              data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.Remove'}}">
+        <i class="fas fa-trash" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="sh-wv3-grid">
+      <label class="sh-wv3-field" data-tooltip="{{#if block.isExternalMagazine}}{{localize 'SPACEHOLDER.WeaponV3.Block.ExternalCapacityHint'}}{{else}}{{localize 'SPACEHOLDER.WeaponV3.Block.CapacityHint'}}{{/if}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.Capacity'}}</span>
+        <input type="number" min="0" step="1" data-wpath="{{block.path}}.capacity" data-wdtype="Int" value="{{block.capacity}}" />
+      </label>
+      {{#if block.isItemFed}}
+      {{#unless block.isExternalMagazine}}
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.LoadAmountHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.LoadAmount'}}</span>
+        <input type="number" min="0" step="1" data-wpath="{{block.path}}.loadAmount" data-wdtype="Int" value="{{block.loadAmount}}" />
+      </label>
+      {{/unless}}
+      {{/if}}
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.ChamberHint'}}">
+        <input type="checkbox" data-wpath="{{block.path}}.chamberEnabled" {{#if block.chamberEnabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.Chamber'}}</span>
+      </label>
+      {{#if block.chamberEnabled}}
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.AutoFeedHint'}}">
+        <input type="checkbox" data-wpath="{{block.path}}.autoFeed" {{#if block.autoFeed}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.AutoFeed'}}</span>
+      </label>
+      {{/if}}
+      {{#if block.isItemFed}}
+      <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.CaliberHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.Caliber'}}</span>
+        <input type="text" data-wpath="{{block.path}}.caliber" data-wdtype="String" value="{{block.caliber}}" />
+      </label>
+      {{/if}}
+      {{#if block.isExternalMagazine}}
+      <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.ConnectorHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.Connector'}}</span>
+        <input type="text" data-wpath="{{block.path}}.connector" data-wdtype="String" value="{{block.connector}}" />
+      </label>
+      {{/if}}
+      {{#if block.isInternalCharge}}
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.ChargeHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.Charge'}}</span>
+        <input type="number" min="0" step="1" data-wpath="{{block.path}}.runtime.charge" data-wdtype="Int" value="{{block.runtime.charge}}" />
+      </label>
+      {{/if}}
+    </div>
+
+    {{#if block.isItemFed}}
+    <div class="sh-wv3-block__search">
+      <span class="sh-wv3-block__search-title" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.SearchHint'}}">{{localize 'SPACEHOLDER.WeaponV3.Block.Search'}}</span>
+      <label class="sh-wv3-toggle"><input type="checkbox" data-wpath="{{block.path}}.search.hands" {{#if block.search.hands}}checked{{/if}} /><span>{{localize 'SPACEHOLDER.WeaponV3.Ammo.Group.hands'}}</span></label>
+      <label class="sh-wv3-toggle"><input type="checkbox" data-wpath="{{block.path}}.search.worn" {{#if block.search.worn}}checked{{/if}} /><span>{{localize 'SPACEHOLDER.WeaponV3.Ammo.Group.worn'}}</span></label>
+      <label class="sh-wv3-toggle"><input type="checkbox" data-wpath="{{block.path}}.search.inventory" {{#if block.search.inventory}}checked{{/if}} /><span>{{localize 'SPACEHOLDER.WeaponV3.Ammo.Group.inventory'}}</span></label>
+      <label class="sh-wv3-toggle"><input type="checkbox" data-wpath="{{block.path}}.search.containers" {{#if block.search.containers}}checked{{/if}} /><span>{{localize 'SPACEHOLDER.WeaponV3.Ammo.Group.containers'}}</span></label>
+      <select data-wpath="{{block.path}}.search.mode" data-wdtype="String">
+        {{#each ../w.searchModeOptions as |opt|}}
+        <option value="{{opt.value}}" {{#if (eq opt.value block.search.mode)}}selected{{/if}}>{{opt.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+    {{/if}}
+
+    <div class="sh-wv3-block__ap">
+      <span class="sh-wv3-block__ap-title" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.ApHint'}}">{{localize 'SPACEHOLDER.WeaponV3.Block.ApTitle'}}</span>
+      {{#each block.apRows as |ap|}}
+      <div class="sh-wv3-block__ap-row {{#unless ap.enabled}}sh-wv3-toggleable--off{{/unless}}">
+        <label class="sh-wv3-toggle">
+          <input type="checkbox" data-wpath="{{ap.path}}.enabled" {{#if ap.enabled}}checked{{/if}} />
+          <span>{{ap.label}}</span>
+        </label>
+        <input type="number" min="0" step="any" data-wpath="{{ap.path}}.value" data-wdtype="Number" value="{{ap.value}}" />
+      </div>
+      {{/each}}
+    </div>
+
+    {{#if block.hasWeaponDamage}}
+    {{> "systems/spaceholder/templates/item/parts/item-weapon-v3-damage.hbs" dmg=block.damageCtx editable=true}}
+    {{/if}}
+  </div>
+  {{else}}
+  <p class="sh-wv3-empty"><em>{{localize 'SPACEHOLDER.WeaponV3.Block.Empty'}}</em></p>
+  {{/each}}
+</section>

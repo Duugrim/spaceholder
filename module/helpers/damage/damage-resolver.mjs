@@ -104,16 +104,29 @@ export function projectileEnergy(amount, mods) {
 
 /**
  * Convert absorbed energy back into the same damage scale as the incoming hit.
+ *
+ * `reductionPct` is the v3 «Снижение урона бронёй» percentage:
+ *   damageRatio = 1 − (1 − energyAfter/energyBefore) × reductionPct/100
+ *
+ * 100 → damage drops proportionally to energy (legacy behaviour);
+ * 50  → energy halved costs only a quarter of the damage;
+ * 0   → armor never reduces damage; > 100 → damage can run out before energy
+ * («урон кончился, энергия осталась» — снаряд отведён бронёй).
+ *
  * @param {number} amount
  * @param {number} energyBefore
  * @param {number} eAR
+ * @param {number} [reductionPct]
  * @returns {{ energyAfter: number, residual: number }}
  */
-export function residualDamageAfterArmor(amount, energyBefore, eAR) {
+export function residualDamageAfterArmor(amount, energyBefore, eAR, reductionPct = 100) {
   const energy = Math.max(0, Number(energyBefore) || 0);
   if (energy <= EPSILON) return { energyAfter: 0, residual: 0 };
   const energyAfter = Math.max(0, energy - Math.max(0, Number(eAR) || 0));
-  const residual = Math.max(0, Number(amount) || 0) * (energyAfter / energy);
+  const pct = Math.max(0, Number.isFinite(Number(reductionPct)) ? Number(reductionPct) : 100);
+  const energyLossRatio = 1 - energyAfter / energy;
+  const damageRatio = Math.max(0, 1 - energyLossRatio * (pct / 100));
+  const residual = Math.max(0, Number(amount) || 0) * damageRatio;
   return { energyAfter, residual };
 }
 
@@ -148,13 +161,19 @@ export function normalizeApplications(raw) {
     const armorPen = Number(item.armorPen ?? 0);
     const armorDamageFactor = Number(item.armorDamageFactor ?? 1);
     const hardnessRaw = Number(item.hardness ?? 1);
-    return {
+    const out = {
       type,
       damage,
       armorPen: Number.isFinite(armorPen) && armorPen > 0 ? armorPen : 0,
       armorDamageFactor: Number.isFinite(armorDamageFactor) && armorDamageFactor > 0 ? armorDamageFactor : 1,
       hardness: Number.isFinite(hardnessRaw) && hardnessRaw > EPSILON ? hardnessRaw : 1
     };
+    // v3 extensions: pre-computed projectile energy and «Снижение урона бронёй».
+    const energy = Number(item.energy);
+    if (Number.isFinite(energy) && energy >= 0) out.energy = energy;
+    const reduction = Number(item.armorDamageReduction);
+    if (Number.isFinite(reduction) && reduction >= 0) out.armorDamageReduction = reduction;
+    return out;
   };
 
   const sanitizePhase = (phase) => {
@@ -279,6 +298,12 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
   let currentType = type;
   let currentAmount = amount;
   let deepest = startIdx;
+  // v3: the projectile energy is computed once BEFORE the shot and carried
+  // through the stack independently from the damage amount. Energy decides
+  // penetration; damage decides body harm (scaled by armorDamageReduction).
+  let currentEnergy = Number.isFinite(mods.initialEnergy) && mods.initialEnergy >= 0
+    ? mods.initialEnergy
+    : projectileEnergy(amount, mods);
 
   while (cursor < layers.length) {
     const layer = layers[cursor];
@@ -308,6 +333,9 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
       conductedFraction += take;
     }
     const xStruct = currentAmount * Math.max(0, 1 - conductedFraction);
+    // Conducted shares take their proportional energy with them (their
+    // sub-hits recompute energy from their own amounts).
+    currentEnergy *= Math.max(0, 1 - conductedFraction);
 
     if (conductedItems.length) {
       trace.push({
@@ -354,6 +382,8 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
         deepest = Math.max(deepest, tail.deepestLayerReached);
       }
       structAmount = insideAmt;
+      // Energy splits in the same proportion as the distributed amount.
+      currentEnergy *= Math.max(0, evalRes.distributionInsideFraction);
       if (!_isPositive(structAmount)) {
         // Entire structural portion slipped through via distribution; the
         // layer's integrity is not affected by the bypassed amount.
@@ -364,10 +394,10 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
     const eAR = evalRes.eAR;
     const Hp = _positiveProjectileHardness(mods.hardness);
     const armorPen = _nonNegativeArmorPen(mods.armorPen);
-    const energyBefore = projectileEnergy(structAmount, mods);
+    const energyBefore = Math.max(0, currentEnergy);
     const energyResult = eAR <= EPSILON
       ? { energyAfter: energyBefore, residual: structAmount }
-      : residualDamageAfterArmor(structAmount, energyBefore, eAR);
+      : residualDamageAfterArmor(structAmount, energyBefore, eAR, mods.armorDamageReduction);
     const { energyAfter, residual } = energyResult;
     const energyAbsorbed = eAR <= EPSILON ? 0 : Math.min(energyBefore, eAR);
 
@@ -390,6 +420,7 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
       });
 
       currentAmount = residual;
+      currentEnergy = energyAfter;
       cursor += 1;
       continue;
     }
@@ -568,7 +599,9 @@ export function resolveDamagePackage(input) {
         const mods = {
           armorPen: item.armorPen ?? 0,
           armorDamageFactor: item.armorDamageFactor ?? 1,
-          hardness: _positiveProjectileHardness(item.hardness)
+          hardness: _positiveProjectileHardness(item.hardness),
+          armorDamageReduction: item.armorDamageReduction,
+          initialEnergy: item.energy
         };
         const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true);
         bodyDamage.push(...result.bodyHits);
@@ -585,7 +618,9 @@ export function resolveDamagePackage(input) {
         const mods = {
           armorPen: item.armorPen ?? 0,
           armorDamageFactor: item.armorDamageFactor ?? 1,
-          hardness: _positiveProjectileHardness(item.hardness)
+          hardness: _positiveProjectileHardness(item.hardness),
+          armorDamageReduction: item.armorDamageReduction,
+          initialEnergy: item.energy
         };
         const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true);
         bodyDamage.push(...result.bodyHits);

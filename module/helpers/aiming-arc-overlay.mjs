@@ -1,7 +1,11 @@
+import { applyErgonomicsToArcs } from './weapon/weapon-model.mjs';
+
 const MODULE_NS = 'spaceholder';
 const OVERLAY_KEY = 'aimingArcOverlay';
 let _installed = false;
 const _forcedTokenKeys = new Set();
+/** tokenKey → normalized weapon ergonomics applied while force-shown. */
+const _forcedErgonomics = new Map();
 
 function _tokenKey(token) {
   return String(token?.document?.uuid ?? token?.document?.id ?? token?.id ?? '');
@@ -11,7 +15,7 @@ function _degToRad(v) {
   return (Number(v) * Math.PI) / 180;
 }
 
-function _normalizeHalfZones(actor) {
+function _normalizeHalfZones(actor, ergo = null) {
   const cfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
   const standardZoneCount = Math.max(1, Number(cfg.standardZoneCount) || 4);
   const defaults = Array.isArray(cfg.defaultZoneWeights) ? cfg.defaultZoneWeights : [5, 15, 25, 30];
@@ -33,22 +37,27 @@ function _normalizeHalfZones(actor) {
   const deadRaw = Number(aimingArc.deadZoneDeg);
   const defaultDeadZone = Math.max(0, Number(cfg.defaultDeadZoneDeg) || 0);
   const deadZoneDeg = Number.isFinite(deadRaw) ? Math.max(0, deadRaw) : defaultDeadZone;
-  const visiblePerSideDeg = Math.max(0, 180 - deadZoneDeg);
-  const standardZones = [];
   const weights = [];
-  let weightSum = 0;
   const weightOffset = rawWeights.length >= standardZoneCount + 1 ? 1 : 0;
   for (let i = 0; i < standardZoneCount; i += 1) {
     const n = Number(rawWeights[i + weightOffset] ?? legacyZones[i + 1] ?? defaults[i] ?? 0);
-    const safe = Number.isFinite(n) ? Math.max(0, n) : 0;
-    weights.push(safe);
-    weightSum += safe;
+    weights.push(Number.isFinite(n) ? Math.max(0, n) : 0);
   }
+
+  // Weapon ergonomics modify the character's base arcs (v3 refactor).
+  const arcs = applyErgonomicsToArcs(
+    { purpleZoneDeg, totalArcDeg, weights, deadZoneDeg },
+    ergo
+  );
+
+  const visiblePerSideDeg = Math.max(0, 180 - arcs.deadZoneDeg);
+  const weightSum = arcs.weights.reduce((sum, w) => sum + w, 0);
+  const standardZones = [];
   for (let i = 0; i < standardZoneCount; i += 1) {
-    const zoneDeg = weightSum > 0 ? (totalArcDeg * weights[i]) / weightSum : 0;
+    const zoneDeg = weightSum > 0 ? (arcs.totalArcDeg * (arcs.weights[i] ?? 0)) / weightSum : 0;
     standardZones.push(Math.max(0, Number(zoneDeg) || 0));
   }
-  const zones = [purpleZoneDeg, ...standardZones];
+  const zones = [arcs.purpleZoneDeg, ...standardZones];
   return { zones, visiblePerSideDeg };
 }
 
@@ -138,7 +147,8 @@ function _renderOverlay(token) {
   const alpha = Math.min(1, Math.max(0, Number(cfg.overlayAlpha) || 0.36));
   const thickness = Math.max(8, Number(cfg.overlayThicknessPx) || 44);
   const direction = Number(token.document?.getFlag(MODULE_NS, 'tokenpointerDirection') ?? 90);
-  const { zones, visiblePerSideDeg } = _normalizeHalfZones(token.actor);
+  const forcedErgo = _forcedErgonomics.get(_tokenKey(token)) ?? null;
+  const { zones, visiblePerSideDeg } = _normalizeHalfZones(token.actor, forcedErgo);
 
   const radiusInner = Math.max(token.w, token.h);
   const radiusOuter = radiusInner + thickness;
@@ -186,11 +196,23 @@ export function drawAimingArcOverlayForToken(token, hovered = token?.hover) {
   _renderOverlay(token);
 }
 
-export function setForcedAimingArcOverlay(token, forced) {
+/**
+ * @param {Token} token
+ * @param {boolean} forced
+ * @param {object|null} [ergonomics] weapon ergonomics to apply to the arcs
+ *   while the overlay is force-shown (v3 aiming).
+ */
+export function setForcedAimingArcOverlay(token, forced, ergonomics = null) {
   const key = _tokenKey(token);
   if (!key) return;
-  if (forced) _forcedTokenKeys.add(key);
-  else _forcedTokenKeys.delete(key);
+  if (forced) {
+    _forcedTokenKeys.add(key);
+    if (ergonomics) _forcedErgonomics.set(key, ergonomics);
+    else _forcedErgonomics.delete(key);
+  } else {
+    _forcedTokenKeys.delete(key);
+    _forcedErgonomics.delete(key);
+  }
   drawAimingArcOverlayForToken(token, token?.hover);
 }
 
@@ -228,6 +250,7 @@ export function installAimingArcOverlayHooks() {
   Hooks.on('deleteToken', (tokenDoc) => {
     if (tokenDoc?.object) {
       _forcedTokenKeys.delete(_tokenKey(tokenDoc.object));
+      _forcedErgonomics.delete(_tokenKey(tokenDoc.object));
       _destroyOverlay(tokenDoc.object);
     }
   });

@@ -3,9 +3,31 @@
  * Управляет процессом прицеливания и создаёт выстрелы через shot-manager
  */
 import { setForcedAimingArcOverlay } from './aiming-arc-overlay.mjs';
-import { resolveAndConsumeRangedAmmoForShot } from './item-nested-storage.mjs';
+import {
+  AP_PER_SECOND,
+  FIRE_MODES,
+  applyErgonomicsToArcs,
+  applyDamageModifiers,
+  buildProjectileFromDamageEntries,
+  resolveEffectiveAttackParams,
+} from './weapon/weapon-model.mjs';
+import {
+  getWeaponData,
+  persistWeaponData,
+  consumeShotFromLine,
+  preflightLineShotReadiness,
+} from './weapon/weapon-ammo-runtime.mjs';
+import { spendAp } from './actions/transaction-ledger.mjs';
+import {
+  normalizeTrajectoryKind,
+  resolveWeaponLinePayload,
+  TRAJECTORY_KINDS,
+} from './weapon/trajectory.mjs';
 
 let _payloadLibraryCache = null;
+
+/** Canonical id inside straight-line.json (manifest filename uses hyphens). */
+const DEFAULT_WEAPON_PAYLOAD_ID = 'straight_line';
 
 function _normalizeAimingType(typeRaw) {
   const type = String(typeRaw ?? 'simple').trim().toLowerCase();
@@ -19,7 +41,7 @@ function _normalizeAngleDeltaDeg(a, b) {
   return delta;
 }
 
-function _resolveAimingArcConfig(actor) {
+function _resolveAimingArcConfig(actor, ergo = null) {
   const cfg = CONFIG?.SPACEHOLDER?.aimingArc ?? {};
   const standardZoneCount = Math.max(1, Number(cfg.standardZoneCount) || 4);
   const defaults = Array.isArray(cfg.defaultZoneWeights) ? cfg.defaultZoneWeights : [5, 15, 25, 30];
@@ -39,23 +61,32 @@ function _resolveAimingArcConfig(actor) {
     ? Math.max(0, totalArcRaw)
     : (totalArcFromLegacy > 0 ? totalArcFromLegacy : defaultTotalArc);
   const weights = [];
-  let weightSum = 0;
   const weightOffset = rawWeights.length >= standardZoneCount + 1 ? 1 : 0;
   for (let i = 0; i < standardZoneCount; i += 1) {
     const n = Number(rawWeights[i + weightOffset] ?? legacyZones[i + 1] ?? defaults[i] ?? 0);
-    const safe = Number.isFinite(n) ? Math.max(0, n) : 0;
-    weights.push(safe);
-    weightSum += safe;
+    weights.push(Number.isFinite(n) ? Math.max(0, n) : 0);
   }
+  const deadRaw = Number(aimingArc.deadZoneDeg);
+  const deadZoneDeg = Number.isFinite(deadRaw)
+    ? Math.max(0, deadRaw)
+    : Math.max(0, Number(cfg.defaultDeadZoneDeg) || 0);
+
+  // Weapon ergonomics modify the character's base arcs (v3 refactor).
+  const arcs = applyErgonomicsToArcs(
+    { purpleZoneDeg, totalArcDeg, weights, deadZoneDeg },
+    ergo
+  );
+
+  const weightSum = arcs.weights.reduce((sum, w) => sum + w, 0);
   const standardZones = [];
   for (let i = 0; i < standardZoneCount; i += 1) {
-    const zone = weightSum > 0 ? (totalArcDeg * weights[i]) / weightSum : 0;
+    const zone = weightSum > 0 ? (arcs.totalArcDeg * (arcs.weights[i] ?? 0)) / weightSum : 0;
     standardZones.push(Math.max(0, Number(zone) || 0));
   }
-  const zones = [purpleZoneDeg, ...standardZones];
+  const zones = [arcs.purpleZoneDeg, ...standardZones];
   const baseDevRaw = Number(actor?.system?.aimingArc?.deviationBaseDeg);
   const defaultBase = Math.max(0, Number(cfg.defaultDeviationBaseDeg) || 1);
-  const deviationBaseDeg = Number.isFinite(baseDevRaw) ? Math.max(0, baseDevRaw) : defaultBase;
+  const deviationBaseDeg = (Number.isFinite(baseDevRaw) ? Math.max(0, baseDevRaw) : defaultBase) * arcs.aimPenaltyMult;
   const multipliers = Array.isArray(cfg.deviationMultipliers) ? cfg.deviationMultipliers : [0, 0, 1, 2, 4];
   return { zones, deviationBaseDeg, multipliers };
 }
@@ -85,8 +116,8 @@ function _zoneKeyByIndex(zoneIndex) {
   }
 }
 
-function _applyStandardAimingDeviation(token, baseDirectionDeg) {
-  const { zones, deviationBaseDeg, multipliers } = _resolveAimingArcConfig(token?.actor);
+function _applyStandardAimingDeviation(token, baseDirectionDeg, ergo = null) {
+  const { zones, deviationBaseDeg, multipliers } = _resolveAimingArcConfig(token?.actor, ergo);
   const pointerDeg = Number(token?.document?.getFlag?.('spaceholder', 'tokenpointerDirection') ?? 90);
   const deltaFromPointer = _normalizeAngleDeltaDeg(baseDirectionDeg, pointerDeg);
   const zoneIndex = _resolveAimingArcZoneIndex(deltaFromPointer, zones);
@@ -120,13 +151,19 @@ export class AimingManager {
     this._boundEvents = {
       onMouseMove: this._onMouseMove.bind(this),
       onMouseDown: this._onMouseDown.bind(this),
+      onMouseUp: this._onMouseUp.bind(this),
       onContextMenu: this._onContextMenu.bind(this),
       onKeyDown: this._onKeyDown.bind(this)
     };
+
+    // Авто-режим (v3): таймер серии, пока зажата ЛКМ.
+    this._autoFireTimer = null;
+    this._fireBusy = false;
   }
 
   _normalizePayloadId(id) {
-    return String(id ?? '').trim().toLowerCase();
+    // Manifest/filenames use hyphens; payload `id` fields use underscores.
+    return String(id ?? '').trim().toLowerCase().replace(/-/g, '_');
   }
 
   /**
@@ -162,8 +199,7 @@ export class AimingManager {
   async startAimingFromActionConfig(cfg = {}) {
     const token = cfg?.token ?? null;
     if (!token) return false;
-    const weaponItem = cfg?.weaponItem ?? cfg?.item ?? null;
-    const payloadId = String(cfg?.payloadId ?? weaponItem?.system?.weapon?.ranged?.projectile?.payloadId ?? '').trim();
+    const payloadId = String(cfg?.payloadId ?? '').trim();
     if (!payloadId) return false;
     const payload = await this.getPayloadById(payloadId);
     if (!payload) return false;
@@ -174,12 +210,56 @@ export class AimingManager {
       damage: Math.max(0, Number(cfg?.damage) || 0),
       actorUuid: String(cfg?.actor?.uuid ?? token?.actor?.uuid ?? '').trim() || null,
       itemUuid: String(cfg?.item?.uuid ?? '').trim() || null,
-      weaponItemUuid: String(cfg?.weaponItemUuid ?? weaponItem?.uuid ?? '').trim() || null,
-      useWeaponAmmo: !!(cfg?.useWeaponAmmo ?? weaponItem?.system?.itemTags?.isRanged),
       actionName: String(cfg?.actionName ?? '').trim() || null,
     };
 
     this.startAiming(token, payload, options);
+    return true;
+  }
+
+  /**
+   * Старт прицеливания для атаки v3 (Линия × Режим). Вызывается из
+   * attack-chain после исполнения цепочки подготовительных Действий.
+   *
+   * @param {object} args
+   * @param {Token} args.token
+   * @param {Actor|null} args.actor
+   * @param {Item} args.weaponItem
+   * @param {string} args.lineId
+   * @param {string} args.modeId
+   * @returns {Promise<boolean>}
+   */
+  async startWeaponV3Aiming({ token, actor, weaponItem, lineId, modeId } = {}) {
+    if (!token || !weaponItem) return false;
+    const weapon = getWeaponData(weaponItem);
+    const eff = resolveEffectiveAttackParams(weapon, lineId, modeId);
+    if (!eff) return false;
+
+    const payload = await resolveWeaponLinePayload(
+      eff.line,
+      token,
+      (id) => this.getPayloadById(id),
+    );
+    if (!payload) {
+      console.warn('AimingManager: payload not found for v3 attack', {
+        trajectoryKind: eff.line.trajectoryKind,
+        payloadId: eff.line.payloadId,
+        lineId,
+        modeId,
+        weapon: weaponItem?.name,
+      });
+      return false;
+    }
+
+    this.startAiming(token, payload, {
+      type: 'standard',
+      autoRender: true,
+      actorUuid: String(actor?.uuid ?? token?.actor?.uuid ?? '').trim() || null,
+      weaponItemUuid: String(weaponItem.uuid ?? '').trim() || null,
+      weaponV3: { weaponItemUuid: weaponItem.uuid, lineId, modeId },
+    });
+    // Перерисовать дуги с учётом эргономики оружия (с модификаторами режима).
+    setForcedAimingArcOverlay(token, true, eff.ergonomics);
     return true;
   }
   
@@ -200,10 +280,6 @@ export class AimingManager {
       .join('');
 
     const ammoItems = this._collectAmmoItemsForToken(token);
-    const rangedWeapons = this._collectRangedWeaponsForToken(token);
-    const weaponOptions = rangedWeapons
-      .map((it) => `<option value="${foundry.utils.escapeHTML(it.uuid)}">${foundry.utils.escapeHTML(it.name)}</option>`)
-      .join('');
     const ammoOptions = ammoItems
       .map((it) => {
         const qty = Number(it.system?.quantity ?? 0);
@@ -229,13 +305,6 @@ export class AimingManager {
           <select id="aiming-type" style="width: 100%; padding: 6px; margin: 8px 0;">
             <option value="simple">${L('SPACEHOLDER.AimingManager.AimingType.Simple')}</option>
             <option value="standard">${L('SPACEHOLDER.AimingManager.AimingType.Standard')}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="weapon-select">${L('SPACEHOLDER.AimingManager.Dialog.SelectWeapon')}</label>
-          <select id="weapon-select" style="width: 100%; padding: 6px; margin: 8px 0;">
-            <option value="">${foundry.utils.escapeHTML(L('SPACEHOLDER.AimingManager.Dialog.NoWeapon'))}</option>
-            ${weaponOptions}
           </select>
         </div>
         <div class="form-group" style="margin: 12px 0;">
@@ -288,7 +357,6 @@ export class AimingManager {
             const autoRender = root.querySelector('#auto-render')?.checked ?? true;
             const useAmmoChecked = !!root.querySelector('#use-ammo')?.checked;
             const ammoUuid = String(root.querySelector('#ammo-select')?.value ?? '').trim();
-            const weaponItemUuid = String(root.querySelector('#weapon-select')?.value ?? '').trim();
 
             const payload = payloads.find((p) => p.id === payloadId);
             if (payload) {
@@ -297,8 +365,6 @@ export class AimingManager {
                 autoRender,
                 useAmmo: useAmmoChecked && !!ammoUuid,
                 ammoUuid: useAmmoChecked ? ammoUuid : '',
-                weaponItemUuid: weaponItemUuid || null,
-                useWeaponAmmo: !!weaponItemUuid,
               });
             }
           }
@@ -332,18 +398,6 @@ export class AimingManager {
     return out;
   }
 
-  _collectRangedWeaponsForToken(token) {
-    const actor = token?.actor ?? null;
-    if (!actor || !actor.items) return [];
-    const out = [];
-    for (const it of actor.items) {
-      if (it?.type !== 'item') continue;
-      if (!it?.system?.itemTags?.isRanged) continue;
-      out.push(it);
-    }
-    out.sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')));
-    return out;
-  }
   
   /**
    * Загрузить список доступных payloads
@@ -423,6 +477,7 @@ export class AimingManager {
     if (!this.isAiming) return;
     
     console.log('AimingManager: Stopping aiming');
+    this._stopAutoFire();
     const currentToken = this.currentToken;
     const aimingType = _normalizeAimingType(this.currentOptions?.type);
     
@@ -540,11 +595,14 @@ export class AimingManager {
       console.error('AimingManager: Global shotManager not initialized');
       return;
     }
-    
-    const shotContext = await this._resolveCurrentWeaponShotContext();
-    if (shotContext?.blocked) return;
 
-    const payload = shotContext?.payload ?? this.currentPayload;
+    // v3: атака Линия × Режим со своим расходом ОД/боеприпасов и режимами огня.
+    if (this.currentOptions?.weaponV3) {
+      await this._fireWeaponV3();
+      return;
+    }
+    
+    const payload = this.currentPayload;
     const baseDirection = this._getCurrentDirection();
     const aimingType = _normalizeAimingType(this.currentOptions?.type);
     const standardInfo = aimingType === 'standard'
@@ -590,9 +648,7 @@ export class AimingManager {
       }
     }
 
-    if (shotContext?.projectile) {
-      await this._applyResolvedProjectileDamage(uid, shotContext);
-    } else if (this.currentOptions?.useAmmo && this.currentOptions?.ammoUuid) {
+    if (this.currentOptions?.useAmmo && this.currentOptions?.ammoUuid) {
       await this._applyAmmoDamage(uid);
     } else {
       await this._applyFirstTokenHitDamage(uid);
@@ -601,57 +657,188 @@ export class AimingManager {
     // Не останавливаем прицеливание автоматически - пользователь может продолжить
   }
 
-  async _resolveCurrentWeaponShotContext() {
-    const weaponUuid = String(this.currentOptions?.weaponItemUuid ?? '').trim();
-    if (!weaponUuid || !this.currentOptions?.useWeaponAmmo) return { payload: this.currentPayload };
+  /**
+   * Атака v3 по нажатию ЛКМ: одиночный / очередь X / авто (пока зажата ЛКМ).
+   * @private
+   */
+  async _fireWeaponV3() {
+    if (this._fireBusy || this._autoFireTimer) return;
+    const ctx = await this._resolveWeaponV3Context();
+    if (!ctx) return;
 
+    const fireMode = ctx.eff.mode.fireMode;
+    if (fireMode === FIRE_MODES.AUTO) {
+      const delayMs = Math.max(60, (ctx.eff.mode.fireDelayAp / AP_PER_SECOND) * 1000);
+      const first = await this._fireWeaponV3Single({ first: true });
+      if (!first) return;
+      this._autoFireTimer = setInterval(() => {
+        if (this._fireBusy) return;
+        void this._fireWeaponV3Single({ first: false }).then((cont) => {
+          if (!cont) this._stopAutoFire();
+        });
+      }, delayMs);
+      return;
+    }
+
+    const count = fireMode === FIRE_MODES.BURST ? Math.max(2, ctx.eff.mode.burstCount) : 1;
+    for (let i = 0; i < count; i += 1) {
+      const ok = await this._fireWeaponV3Single({ first: i === 0 });
+      if (!ok) break;
+    }
+  }
+
+  _stopAutoFire() {
+    if (this._autoFireTimer) {
+      clearInterval(this._autoFireTimer);
+      this._autoFireTimer = null;
+    }
+  }
+
+  /**
+   * Резолв контекста v3-атаки из currentOptions.
+   * @private
+   * @returns {Promise<{weaponItem: Item, weapon: object, eff: object, lineId: string, modeId: string}|null>}
+   */
+  async _resolveWeaponV3Context() {
+    const cfg = this.currentOptions?.weaponV3;
+    if (!cfg) return null;
     let weaponItem = null;
     try {
-      weaponItem = await fromUuid(weaponUuid);
+      weaponItem = await fromUuid(String(cfg.weaponItemUuid ?? ''));
     } catch (_) {
       weaponItem = null;
     }
     if (!weaponItem) {
       ui.notifications?.warn?.(
-        game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.WeaponNotFound', { uuid: weaponUuid }) ??
-        `Weapon not found: ${weaponUuid}`
+        game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.WeaponNotFound', { uuid: String(cfg.weaponItemUuid ?? '') }) ??
+        `Weapon not found: ${cfg.weaponItemUuid}`
       );
-      return { blocked: true };
+      return null;
     }
+    const weapon = getWeaponData(weaponItem);
+    const eff = resolveEffectiveAttackParams(weapon, cfg.lineId, cfg.modeId);
+    if (!eff) return null;
+    return { weaponItem, weapon, eff, lineId: cfg.lineId, modeId: cfg.modeId };
+  }
 
-    const resolved = await resolveAndConsumeRangedAmmoForShot({
-      actor: this.currentToken?.actor ?? null,
-      weaponItem,
-    });
-    if (!resolved?.ok) {
-      const message = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.NoAmmoForWeapon', {
-        weapon: weaponItem.name ?? '',
-        reason: resolved?.reason ?? 'noAmmo',
-      }) || `${weaponItem.name}: no ammunition (${resolved?.reason ?? 'noAmmo'})`;
-      ui.notifications?.warn?.(message);
-      return { blocked: true };
-    }
+  /**
+   * Один выстрел v3: трата ОД, расход боеприпаса по всем блокам линии,
+   * отклонение по дугам + независимый Разброс линии, создание снаряда.
+   *
+   * Стоимость первого выстрела серии — Прицеливание + Спуск линии;
+   * последующих — задержка режима (Скорострельность, 10 ОД = 1 с).
+   *
+   * @private
+   * @param {{first: boolean}} args
+   * @returns {Promise<boolean>} продолжать ли серию
+   */
+  async _fireWeaponV3Single({ first = true } = {}) {
+    if (!this.isAiming || !this.currentToken) return false;
+    this._fireBusy = true;
+    try {
+      const ctx = await this._resolveWeaponV3Context();
+      if (!ctx) return false;
+      const { weaponItem, weapon, eff, lineId } = ctx;
+      const actor = this.currentToken?.actor ?? null;
 
-    let payload = this.currentPayload;
-    const payloadId = String(resolved.projectile?.payloadId ?? '').trim();
-    if (payloadId && this._normalizePayloadId(payloadId) !== this._normalizePayloadId(payload?.id)) {
-      payload = await this.getPayloadById(payloadId);
-      if (!payload) {
-        ui.notifications?.warn?.(
-          game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.PayloadNotFound', { payload: payloadId }) ??
-          `Payload not found: ${payloadId}`
-        );
-        return { blocked: true };
+      const preflight = await preflightLineShotReadiness(actor, weapon, lineId);
+      if (!preflight.ready) {
+        const key = preflight.reason === 'needBolt'
+          ? 'SPACEHOLDER.WeaponV3.Ammo.NeedBolt'
+          : 'SPACEHOLDER.WeaponV3.Ammo.NoAmmoForShot';
+        ui.notifications?.warn?.(game.i18n?.localize?.(key) ?? key);
+        return false;
       }
-    }
 
-    return {
-      payload,
-      projectile: resolved.projectile,
-      ammoItem: resolved.ammoItem,
-      weaponItem,
-      builderContext: resolved.builderContext,
-    };
+      // --- ОД ---------------------------------------------------------
+      const cost = first
+        ? Math.max(0, eff.line.aiming) + Math.max(0, eff.line.trigger)
+        : Math.max(0, eff.mode.fireDelayAp);
+      const apCost = Math.ceil(cost);
+      if (apCost > 0 && actor?.type === 'character') {
+        let spend = null;
+        try {
+          spend = await spendAp(actor, apCost, {
+            source: { type: 'action', actionId: 'weaponV3.shot', label: weaponItem.name },
+          });
+        } catch (e) {
+          ui.notifications?.warn?.(String(e?.message || e));
+          return false;
+        }
+        if (!spend?.ok) {
+          ui.notifications?.warn?.(spend?.error ?? 'AP spend failed');
+          return false;
+        }
+      }
+
+      // --- Боеприпас (все блоки линии) ----------------------------------
+      const consumed = await consumeShotFromLine({ actor, weapon, lineId });
+      if (!consumed.ok) {
+        const key = consumed.reason === 'needBolt'
+          ? 'SPACEHOLDER.WeaponV3.Ammo.NeedBolt'
+          : 'SPACEHOLDER.WeaponV3.Ammo.NoAmmoForShot';
+        ui.notifications?.warn?.(game.i18n?.localize?.(key) ?? key);
+        return false;
+      }
+      await persistWeaponData(weaponItem, weapon);
+
+      // --- Снаряд: модификаторы урона + множитель энергии ----------------
+      const entries = applyDamageModifiers(consumed.damageEntries, eff.damageMods, eff.line.energyMult);
+      const projectile = buildProjectileFromDamageEntries(entries, { payloadId: consumed.payloadId });
+
+      let payload = this.currentPayload;
+      const wantedPayloadId = String(projectile?.payloadId ?? consumed.payloadId ?? '').trim();
+      const lineUsesSimple = normalizeTrajectoryKind(eff.line.trajectoryKind) === TRAJECTORY_KINDS.SIMPLE;
+      if (lineUsesSimple && !wantedPayloadId) {
+        payload = await resolveWeaponLinePayload(
+          eff.line,
+          this.currentToken,
+          (id) => this.getPayloadById(id),
+        );
+      } else if (wantedPayloadId && this._normalizePayloadId(wantedPayloadId) !== this._normalizePayloadId(payload?.id)) {
+        payload = await this.getPayloadById(wantedPayloadId) ?? payload;
+      }
+
+      // --- Направление: дуги (с эргономикой) + независимый Разброс -------
+      const baseDirection = this._getCurrentDirection();
+      const standardInfo = _applyStandardAimingDeviation(this.currentToken, baseDirection, eff.ergonomics);
+      let direction = standardInfo.direction;
+      if (eff.line.spread?.enabled && eff.line.spread.value > 0) {
+        // Разброс НЕ суммируется с отклонением дуг — независимый random.
+        direction += (Math.random() * 2 - 1) * eff.line.spread.value;
+      }
+
+      const shotManager = game.spaceholder?.shotManager;
+      const uid = shotManager.createShot(this.currentToken, payload, direction);
+
+      if (this.currentOptions?.autoRender) {
+        const shotResult = shotManager.getShotResult(uid);
+        if (shotResult && game.spaceholder?.drawManager) {
+          game.spaceholder.drawManager.drawShot(shotResult);
+        }
+      }
+
+      if (projectile) {
+        const firstRound = consumed.rounds.find((r) => r.round)?.round ?? null;
+        await this._applyResolvedProjectileDamage(uid, {
+          projectile,
+          weaponItem,
+          ammoItem: firstRound,
+          builderContext: {
+            shooterActorUuid: actor?.uuid ?? null,
+            weaponItemUuid: weaponItem.uuid,
+            weaponName: weaponItem.name,
+            ammoName: firstRound?.name ?? null,
+          },
+        });
+      }
+
+      // Камера осталась пустой без автоподачи → серия прерывается затвором.
+      if (consumed.needsBolt) return false;
+      return true;
+    } finally {
+      this._fireBusy = false;
+    }
   }
 
   async _applyResolvedProjectileDamage(shotUid, shotContext = {}) {
@@ -1002,6 +1189,7 @@ export class AimingManager {
   _bindEvents() {
     canvas.stage.on('mousemove', this._boundEvents.onMouseMove);
     canvas.stage.on('mousedown', this._boundEvents.onMouseDown);
+    canvas.stage.on('mouseup', this._boundEvents.onMouseUp);
     document.addEventListener('contextmenu', this._boundEvents.onContextMenu);
     document.addEventListener('keydown', this._boundEvents.onKeyDown);
   }
@@ -1013,6 +1201,7 @@ export class AimingManager {
   _unbindEvents() {
     canvas.stage.off('mousemove', this._boundEvents.onMouseMove);
     canvas.stage.off('mousedown', this._boundEvents.onMouseDown);
+    canvas.stage.off('mouseup', this._boundEvents.onMouseUp);
     document.removeEventListener('contextmenu', this._boundEvents.onContextMenu);
     document.removeEventListener('keydown', this._boundEvents.onKeyDown);
   }
@@ -1039,6 +1228,14 @@ export class AimingManager {
     }
   }
   
+  /**
+   * Обработчик отпускания мыши: останавливает авто-огонь (v3, режим Авто).
+   * @private
+   */
+  _onMouseUp(event) {
+    if (event?.data?.button === 0) this._stopAutoFire();
+  }
+
   /**
    * Обработчик правого клика
    * @private

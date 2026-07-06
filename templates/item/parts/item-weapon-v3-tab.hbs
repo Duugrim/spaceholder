@@ -1,0 +1,143 @@
+{{!-- Вкладка «Оружие» (v3): статичное отображение + редактирование через диалоги.
+     Контекст: w = weaponV3 (см. _buildWeaponV3Context), editable. --}}
+<div class="spaceholder-weapon-tab-layout sh-wv3" data-sh-weapon-v3-root>
+
+  <div class="spaceholder-weapon-tab-layout__stats flexcol">
+    <div class="stats-panel spaceholder-aiming-arc-panel sh-weapon-channel-panel">
+      <h3 class="spaceholder-aiming-arc-panel__title">
+        <i class="fas fa-hand-holding" aria-hidden="true"></i>
+        {{localize 'SPACEHOLDER.WeaponV3.Ergo.Title'}}
+      </h3>
+      <div class="spaceholder-aiming-arc-grid">
+        {{#each w.ergoRows as |row|}}
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{row.label}}</span>
+          <span class="spaceholder-aiming-arc-row__value{{#if row.text}} sh-weapon-value--text{{/if}}">{{row.display}}</span>
+        </div>
+        {{/each}}
+      </div>
+      {{#if editable}}
+      <button type="button" class="icon-btn spaceholder-aiming-arc-panel__edit" data-wdialog="ergonomics">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Edit.Ergonomics'}}</span>
+      </button>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="spaceholder-weapon-tab-layout__attacks flexcol">
+    <div class="sh-weapon-attacks-toolbar">
+      <h3 class="spaceholder-aiming-arc-panel__title sh-weapon-attacks-panel__title">
+        <i class="fas fa-bullseye" aria-hidden="true"></i>
+        {{localize 'SPACEHOLDER.WeaponV3.Line.Title'}}
+      </h3>
+      {{#if editable}}
+      <button type="button" class="icon-btn" data-waction="line-add" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.Add'}}">
+        <i class="fas fa-plus" aria-hidden="true"></i>
+      </button>
+      {{/if}}
+    </div>
+
+    {{#each w.lines as |line|}}
+    <div class="stats-panel spaceholder-aiming-arc-panel sh-weapon-channel-panel" data-line-id="{{line.id}}">
+      <div class="sh-weapon-attacks-toolbar">
+        <h3 class="spaceholder-aiming-arc-panel__title sh-weapon-attacks-panel__title">
+          <i class="fas fa-location-crosshairs" aria-hidden="true"></i>
+          {{line.displayName}}
+        </h3>
+        {{#if ../editable}}
+        <button type="button" class="icon-btn sh-wv3-icon-btn--danger" data-waction="line-remove" data-line="{{line.index}}"
+                data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.Remove'}}">
+          <i class="fas fa-trash" aria-hidden="true"></i>
+        </button>
+        {{/if}}
+      </div>
+
+      <div class="spaceholder-aiming-arc-grid">
+        {{#each line.paramRows as |row|}}
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{row.label}}</span>
+          <span class="spaceholder-aiming-arc-row__value{{#if row.text}} sh-weapon-value--text{{/if}}">{{row.display}}</span>
+        </div>
+        {{/each}}
+        {{#if line.damageSummary}}
+        <div class="spaceholder-aiming-arc-row">
+          <span class="spaceholder-aiming-arc-row__label">{{localize 'SPACEHOLDER.WeaponV3.Damage.Title'}}</span>
+          <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{line.damageSummary}}</span>
+        </div>
+        {{/if}}
+      </div>
+      {{#if ../editable}}
+      <button type="button" class="icon-btn spaceholder-aiming-arc-panel__edit" data-wdialog="line" data-line="{{line.index}}">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Edit.Line'}}</span>
+      </button>
+      {{/if}}
+
+      <div class="sh-wv3-subpanel sh-wv3-subpanel--readonly">
+        <div class="sh-wv3-subpanel__header">
+          <i class="fas fa-box-open" aria-hidden="true"></i>
+          {{localize 'SPACEHOLDER.WeaponV3.Block.Title'}}
+        </div>
+        {{#each line.blockSummaries as |block|}}
+        <div class="sh-wv3-block-summary">
+          <div class="sh-wv3-block-summary__title">{{block.title}}</div>
+          <div class="spaceholder-aiming-arc-grid">
+            {{#each block.rows as |row|}}
+            <div class="spaceholder-aiming-arc-row">
+              <span class="spaceholder-aiming-arc-row__label">{{row.label}}</span>
+              <span class="spaceholder-aiming-arc-row__value{{#if row.text}} sh-weapon-value--text{{/if}}">{{row.display}}</span>
+            </div>
+            {{/each}}
+            {{#if block.damageSummary}}
+            <div class="spaceholder-aiming-arc-row">
+              <span class="spaceholder-aiming-arc-row__label">{{localize 'SPACEHOLDER.WeaponV3.Damage.Title'}}</span>
+              <span class="spaceholder-aiming-arc-row__value sh-weapon-value--text">{{block.damageSummary}}</span>
+            </div>
+            {{/if}}
+          </div>
+        </div>
+        {{else}}
+        <p class="sh-wv3-empty"><em>{{localize 'SPACEHOLDER.WeaponV3.Block.Empty'}}</em></p>
+        {{/each}}
+        {{#if ../editable}}
+        <button type="button" class="icon-btn spaceholder-aiming-arc-panel__edit" data-wdialog="blocks" data-line="{{line.index}}">
+          <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+          <span>{{localize 'SPACEHOLDER.WeaponV3.Edit.Blocks'}}</span>
+        </button>
+        {{/if}}
+      </div>
+
+      <div class="sh-wv3-subpanel sh-wv3-subpanel--readonly">
+        <div class="sh-wv3-subpanel__header">
+          <i class="fas fa-sliders" aria-hidden="true"></i>
+          {{localize 'SPACEHOLDER.WeaponV3.Mode.Title'}}
+        </div>
+        {{#each line.modeSummaries as |mode|}}
+        <div class="sh-wv3-mode-summary">
+          <div class="sh-wv3-mode-summary__title">{{mode.title}}</div>
+          <div class="spaceholder-aiming-arc-grid">
+            {{#each mode.rows as |row|}}
+            <div class="spaceholder-aiming-arc-row">
+              <span class="spaceholder-aiming-arc-row__label">{{row.label}}</span>
+              <span class="spaceholder-aiming-arc-row__value{{#if row.text}} sh-weapon-value--text{{/if}}">{{row.display}}</span>
+            </div>
+            {{/each}}
+          </div>
+        </div>
+        {{else}}
+        <p class="sh-wv3-empty"><em>{{localize 'SPACEHOLDER.WeaponV3.Mode.ModsEmpty'}}</em></p>
+        {{/each}}
+        {{#if ../editable}}
+        <button type="button" class="icon-btn spaceholder-aiming-arc-panel__edit" data-wdialog="modes" data-line="{{line.index}}">
+          <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+          <span>{{localize 'SPACEHOLDER.WeaponV3.Edit.Modes'}}</span>
+        </button>
+        {{/if}}
+      </div>
+    </div>
+    {{else}}
+    <p class="sh-wv3-empty"><em>{{localize 'SPACEHOLDER.WeaponV3.Line.Empty'}}</em></p>
+    {{/each}}
+  </div>
+</div>

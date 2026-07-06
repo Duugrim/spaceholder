@@ -64,6 +64,7 @@ import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edg
 import { installGlobalMapFactionVision } from './helpers/global-map/global-map-faction-vision.mjs';
 // Hotbar: faction selector + PP indicator
 import { installHotbarFactionUiHooks } from './helpers/hotbar-faction-ui.mjs';
+import { installTokenQuickHudHooks } from './helpers/token-quick-hud.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
@@ -89,7 +90,6 @@ import {
   extractNestedItemToActor,
   getNestedStorage,
   normalizeNestedStorage,
-  resolveAndConsumeRangedAmmoForShot,
 } from './helpers/item-nested-storage.mjs';
 import { registerHealthAnatomyViewerSettings } from './helpers/health-anatomy-viewer-settings.mjs';
 
@@ -169,7 +169,6 @@ Hooks.once('init', function () {
       extractNestedItemToActor,
       getNestedStorage,
       normalizeNestedStorage,
-      resolveAndConsumeRangedAmmoForShot,
     },
     setCombatantSide: (args = {}) => game.spaceholder.combatSessionManager?.setCombatantSide?.(args),
     endCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.endTurn?.(args),
@@ -245,6 +244,7 @@ Hooks.once('init', function () {
   installUserFactionsHooks();
   // Hotbar: faction selector + PP indicator
   installHotbarFactionUiHooks();
+  installTokenQuickHudHooks();
   // Install Journal Directory hooks (Clear Journals button)
   installJournalDirectoryHooks();
   // Install Journal Check hooks (statuses + UI)

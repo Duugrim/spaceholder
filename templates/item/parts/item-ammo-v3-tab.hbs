@@ -1,0 +1,50 @@
+{{!-- Вкладка «Боеприпас» (v3): weapon.ammo предмета-боеприпаса.
+     Контекст: a = ammoV3 (см. _buildAmmoV3Context), editable. --}}
+<div class="sh-wv3" data-sh-weapon-v3-root>
+  <section class="sh-wv3-panel">
+    <div class="sh-wv3-panel__header">
+      <i class="fas fa-bullseye" aria-hidden="true"></i>
+      {{localize 'SPACEHOLDER.WeaponV3.AmmoItem.Title'}}
+    </div>
+    <div class="sh-wv3-grid">
+      <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.CaliberHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.Caliber'}}</span>
+        <input type="text" data-wpath="ammo.caliber" data-wdtype="String" value="{{a.caliber}}" {{#unless editable}}disabled{{/unless}} />
+      </label>
+
+      <div class="sh-wv3-toggleable {{#unless a.connector.enabled}}sh-wv3-toggleable--off{{/unless}}">
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ConnectorHint'}}">
+          <input type="checkbox" data-wpath="ammo.connector.enabled" {{#if a.connector.enabled}}checked{{/if}} {{#unless editable}}disabled{{/unless}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.Connector'}}</span>
+        </label>
+        <input type="text" data-wpath="ammo.connector.value" data-wdtype="String" value="{{a.connector.value}}" {{#unless editable}}disabled{{/unless}} />
+        <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.MagCapacityHint'}}">
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.MagCapacity'}}</span>
+          <input type="number" min="0" step="1" data-wpath="ammo.capacity" data-wdtype="Int" value="{{a.capacity}}" {{#unless editable}}disabled{{/unless}} />
+        </label>
+      </div>
+
+      <div class="sh-wv3-toggleable {{#unless a.charge.enabled}}sh-wv3-toggleable--off{{/unless}}">
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChargeHint'}}">
+          <input type="checkbox" data-wpath="ammo.charge.enabled" {{#if a.charge.enabled}}checked{{/if}} {{#unless editable}}disabled{{/unless}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.Charge'}}</span>
+        </label>
+        <label class="sh-wv3-field">
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChargeCurrent'}}</span>
+          <input type="number" min="0" step="1" data-wpath="ammo.charge.current" data-wdtype="Int" value="{{a.charge.current}}" {{#unless editable}}disabled{{/unless}} />
+        </label>
+        <label class="sh-wv3-field">
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChargeMax'}}</span>
+          <input type="number" min="0" step="1" data-wpath="ammo.charge.max" data-wdtype="Int" value="{{a.charge.max}}" {{#unless editable}}disabled{{/unless}} />
+        </label>
+      </div>
+
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ConsumeHint'}}">
+        <input type="checkbox" data-wpath="ammo.consume" {{#if a.consume}}checked{{/if}} {{#unless editable}}disabled{{/unless}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.Consume'}}</span>
+      </label>
+    </div>
+
+    {{> "systems/spaceholder/templates/item/parts/item-weapon-v3-damage.hbs" dmg=a.damageCtx editable=editable}}
+  </section>
+</div>

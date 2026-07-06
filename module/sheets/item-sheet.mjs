@@ -7,13 +7,30 @@ import { anatomyManager } from '../anatomy-manager.mjs';
 import { pickIcon } from '../helpers/icon-picker/icon-picker.mjs';
 import { migrateItemWeaponData } from '../documents/item.mjs';
 import { materialsManager } from '../helpers/damage/materials-manager.mjs';
+import { normalizeNestedStorage } from '../helpers/item-nested-storage.mjs';
 import {
-  addItemToNestedStorage,
-  extractNestedItemToActor,
-  flattenNestedContents,
-  normalizeNestedStorage,
-  NESTED_STORAGE_FEED_SOURCES,
-} from '../helpers/item-nested-storage.mjs';
+  AMMO_BLOCK_TYPES,
+  AMMO_BLOCK_TYPE_LIST,
+  AMMO_SEARCH_MODES,
+  FIRE_MODES,
+  MOD_OPS,
+  MODE_MODIFIER_PARAMS,
+  WEAPON_DAMAGE_BLOCK_TYPES,
+  createAmmoBlock,
+  createModeModifier,
+  createWeaponLine,
+  createWeaponMode,
+  defaultDamageEntry,
+  computeProjectileEnergy,
+  fireDelayToRpm,
+  formatAmmoCounter,
+} from '../helpers/weapon/weapon-model.mjs';
+import {
+  TRAJECTORY_KINDS,
+  TRAJECTORY_LENGTH_UNITS,
+  formatTrajectorySummary,
+  normalizeTrajectoryKind,
+} from '../helpers/weapon/trajectory.mjs';
 import {
   ENTRY_ACTOR_ITEM,
   ENTRY_WORLD_UUID,
@@ -62,9 +79,7 @@ const ITEM_SHEET_TAB_META = Object.freeze({
   effects: { icon: 'fas fa-wand-magic-sparkles', labelKey: 'SPACEHOLDER.Tabs.Effects' },
   tags: { icon: 'fas fa-tags', labelKey: 'SPACEHOLDER.Tabs.Tags' },
   modifiers: { icon: 'fas fa-dumbbell', labelKey: 'SPACEHOLDER.Tabs.Modifiers' },
-  melee: { icon: 'fas fa-hand-fist', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Melee' },
-  ranged: { icon: 'fas fa-crosshairs', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Ranged' },
-  thrown: { icon: 'fas fa-baseball', labelKey: 'SPACEHOLDER.ItemWeapon.Inner.Thrown' },
+  weapon: { icon: 'fas fa-crosshairs', labelKey: 'SPACEHOLDER.WeaponV3.Tab' },
   ammo: { icon: 'fas fa-bullseye', labelKey: 'SPACEHOLDER.Tabs.Ammo' },
   container: { icon: 'fas fa-box-open', labelKey: 'SPACEHOLDER.ItemContainer.Tab' },
 });
@@ -80,6 +95,79 @@ function buildItemSheetPrimaryTabs(tabIds, overrides = {}) {
     if (row) out.push({ id, icon: row.icon, labelKey: row.labelKey });
   }
   return Object.freeze(out);
+}
+
+const WEAPON_V3_DIALOG_EDIT_TEMPLATES = Object.freeze({
+  ergonomics: 'systems/spaceholder/templates/item/parts/item-weapon-v3-edit-ergonomics.hbs',
+  line: 'systems/spaceholder/templates/item/parts/item-weapon-v3-edit-line.hbs',
+  blocks: 'systems/spaceholder/templates/item/parts/item-weapon-v3-edit-blocks.hbs',
+  modes: 'systems/spaceholder/templates/item/parts/item-weapon-v3-edit-modes.hbs',
+});
+
+const WEAPON_V3_DIALOG_TITLE_KEYS = Object.freeze({
+  ergonomics: 'SPACEHOLDER.WeaponV3.Dialog.ErgonomicsTitle',
+  line: 'SPACEHOLDER.WeaponV3.Dialog.LineTitle',
+  blocks: 'SPACEHOLDER.WeaponV3.Dialog.BlocksTitle',
+  modes: 'SPACEHOLDER.WeaponV3.Dialog.ModesTitle',
+});
+
+/** @param {boolean} v @returns {string} */
+function _wv3FmtBool(v) {
+  return v
+    ? game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.Yes') ?? 'Yes'
+    : game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.No') ?? 'No';
+}
+
+/** @param {*} v @returns {string} */
+function _wv3FmtText(v) {
+  const s = String(v ?? '').trim();
+  return s.length ? s : '—';
+}
+
+/** @param {*} v @returns {string} */
+function _wv3FmtNumber(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2);
+}
+
+/** @param {*} v @returns {string} */
+function _wv3FmtPct(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return `${_wv3FmtNumber(n)}%`;
+}
+
+/**
+ * @param {{ enabled?: boolean, value?: number }} [tog]
+ * @param {string} [suffix]
+ * @returns {string}
+ */
+function _wv3FmtToggleable(tog, suffix = '') {
+  if (!tog?.enabled) return _wv3FmtBool(false);
+  const n = _wv3FmtNumber(tog.value);
+  return suffix ? `${n}${suffix}` : n;
+}
+
+/**
+ * @param {object} [z]
+ * @returns {string}
+ */
+function _wv3FmtZones(z) {
+  if (!z?.enabled) return _wv3FmtBool(false);
+  return `G${_wv3FmtNumber(z.green)} Y${_wv3FmtNumber(z.yellow)} O${_wv3FmtNumber(z.orange)} R${_wv3FmtNumber(z.red)}`;
+}
+
+/**
+ * @param {{ rows?: Array<{ damageType?: string, damage?: number, energy?: number }> }} [dmgCtx]
+ * @returns {string}
+ */
+function _wv3FmtDamageSummary(dmgCtx) {
+  if (!dmgCtx?.rows?.length) return '';
+  return dmgCtx.rows
+    .map((r) => `${_wv3FmtText(r.damageType)}: ${_wv3FmtNumber(r.damage)} (⚡${_wv3FmtNumber(r.energy)})`)
+    .join('; ');
 }
 
 const ITEM_TYPE_LABEL_KEYS = Object.freeze({
@@ -111,261 +199,6 @@ const ITEM_ACTION_MODE_LABEL_KEYS = Object.freeze({
   macro: 'SPACEHOLDER.ActionsSystem.UI.ModeMacro',
   aimShot: 'SPACEHOLDER.ActionsSystem.UI.ModeAimShot',
 });
-
-/**
- * Field schemas for weapon / ammo group dialogs. The same descriptors drive:
- *  - panel rows in the channel/ammo tab,
- *  - inputs in the universal group dialog,
- *  - parsing dialog form back into the weapon data object.
- *
- * `kind` ∈ { 'number', 'int', 'text', 'bool', 'tags' }.
- */
-const WEAPON_FIELD_SCHEMAS = Object.freeze({
-  melee: Object.freeze({
-    features: Object.freeze([
-      { name: 'ergonomics', labelKey: 'SPACEHOLDER.ItemWeapon.Ergonomics', kind: 'number' },
-      { name: 'reach', labelKey: 'SPACEHOLDER.ItemWeapon.Reach', kind: 'number' },
-      { name: 'twoHanded', labelKey: 'SPACEHOLDER.ItemWeapon.TwoHanded', kind: 'bool' },
-      { name: 'parryBonus', labelKey: 'SPACEHOLDER.ItemWeapon.ParryBonus', kind: 'number' },
-      { name: 'swingSpeedTier', labelKey: 'SPACEHOLDER.ItemWeapon.SwingSpeedTier', kind: 'text' },
-    ]),
-    projectile: Object.freeze([
-      { name: 'damage', labelKey: 'SPACEHOLDER.ItemWeapon.Damage', kind: 'number' },
-      { name: 'damageType', labelKey: 'SPACEHOLDER.ItemWeapon.DamageType', kind: 'text' },
-      { name: 'armorPen', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorPen', kind: 'number' },
-      { name: 'armorDamageFactor', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorDamageFactor', kind: 'number' },
-      { name: 'hardness', labelKey: 'SPACEHOLDER.ItemWeapon.Hardness', kind: 'number' },
-      { name: 'projectilesPerUse', labelKey: 'SPACEHOLDER.ItemWeapon.ProjectilesPerUse', kind: 'int', min: 1 },
-      { name: 'payloadId', labelKey: 'SPACEHOLDER.ItemWeapon.PayloadId', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.PayloadIdHint' },
-      { name: 'combatPartTag', labelKey: 'SPACEHOLDER.ItemWeapon.CombatPartTag', kind: 'text' },
-    ]),
-    usage: Object.freeze([
-      { name: 'apCost', labelKey: 'SPACEHOLDER.ItemWeapon.ApCost', kind: 'int', min: 0 },
-      { name: 'requiresHolding', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresHolding', kind: 'bool' },
-      { name: 'requiresReadyState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresReadyState', kind: 'bool' },
-    ]),
-  }),
-  ranged: Object.freeze({
-    features: Object.freeze([
-      { name: 'ergonomics', labelKey: 'SPACEHOLDER.ItemWeapon.Ergonomics', kind: 'number' },
-      { name: 'accuracy', labelKey: 'SPACEHOLDER.ItemWeapon.Accuracy', kind: 'number' },
-      { name: 'recoil', labelKey: 'SPACEHOLDER.ItemWeapon.Recoil', kind: 'number' },
-      { name: 'chamberEnabled', labelKey: 'SPACEHOLDER.ItemWeapon.ChamberEnabled', kind: 'bool' },
-      { name: 'effectiveRange', labelKey: 'SPACEHOLDER.ItemWeapon.EffectiveRange', kind: 'number' },
-      { name: 'maxRange', labelKey: 'SPACEHOLDER.ItemWeapon.MaxRange', kind: 'number' },
-      { name: 'twoHanded', labelKey: 'SPACEHOLDER.ItemWeapon.TwoHanded', kind: 'bool' },
-    ]),
-    projectile: Object.freeze([
-      { name: 'damage', labelKey: 'SPACEHOLDER.ItemWeapon.Damage', kind: 'number' },
-      { name: 'damageType', labelKey: 'SPACEHOLDER.ItemWeapon.DamageType', kind: 'text' },
-      { name: 'armorPen', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorPen', kind: 'number' },
-      { name: 'armorDamageFactor', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorDamageFactor', kind: 'number' },
-      { name: 'hardness', labelKey: 'SPACEHOLDER.ItemWeapon.Hardness', kind: 'number' },
-      { name: 'projectilesPerUse', labelKey: 'SPACEHOLDER.ItemWeapon.ProjectilesPerUse', kind: 'int', min: 1 },
-      { name: 'payloadId', labelKey: 'SPACEHOLDER.ItemWeapon.PayloadId', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.PayloadIdHint' },
-    ]),
-    usage: Object.freeze([
-      { name: 'apCost', labelKey: 'SPACEHOLDER.ItemWeapon.ApCost', kind: 'int', min: 0 },
-      { name: 'reloadApCost', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoReloadApCost', kind: 'int', min: 0 },
-      { name: 'reloadRule', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoReloadRule', kind: 'text' },
-      { name: 'feedSource', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoFeedSource', kind: 'text' },
-      { name: 'ammoUseMode', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoUseMode', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.AmmoUseModeHint' },
-      { name: 'takeFromActorInventory', labelKey: 'SPACEHOLDER.ItemWeapon.TakeFromActorInventory', kind: 'bool' },
-      { name: 'attachedContainerId', labelKey: 'SPACEHOLDER.ItemWeapon.AttachedContainerId', kind: 'text' },
-      { name: 'feedFilterTags', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoFeedFilterTags', kind: 'tags', placeholderKey: 'SPACEHOLDER.ItemWeapon.TagsCommaSeparated' },
-      { name: 'consumePerUse', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoConsumePerUse', kind: 'number' },
-      { name: 'chamberCurrentId', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoChamberCurrentId', kind: 'text' },
-      { name: 'canKeepChamberOnReload', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoKeepChamberOnReload', kind: 'bool' },
-      { name: 'requiresHolding', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresHolding', kind: 'bool' },
-      { name: 'requiresReadyState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresReadyState', kind: 'bool' },
-      { name: 'requiresAimState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresAimState', kind: 'bool' },
-    ]),
-  }),
-  thrown: Object.freeze({
-    features: Object.freeze([
-      { name: 'ergonomics', labelKey: 'SPACEHOLDER.ItemWeapon.Ergonomics', kind: 'number' },
-      { name: 'accuracy', labelKey: 'SPACEHOLDER.ItemWeapon.Accuracy', kind: 'number' },
-      { name: 'throwRange', labelKey: 'SPACEHOLDER.ItemWeapon.ThrowRange', kind: 'number' },
-      { name: 'aerodynamics', labelKey: 'SPACEHOLDER.ItemWeapon.Aerodynamics', kind: 'number' },
-      { name: 'twoHanded', labelKey: 'SPACEHOLDER.ItemWeapon.TwoHanded', kind: 'bool' },
-    ]),
-    projectile: Object.freeze([
-      { name: 'damage', labelKey: 'SPACEHOLDER.ItemWeapon.Damage', kind: 'number' },
-      { name: 'damageType', labelKey: 'SPACEHOLDER.ItemWeapon.DamageType', kind: 'text' },
-      { name: 'armorPen', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorPen', kind: 'number' },
-      { name: 'armorDamageFactor', labelKey: 'SPACEHOLDER.ItemWeapon.ArmorDamageFactor', kind: 'number' },
-      { name: 'hardness', labelKey: 'SPACEHOLDER.ItemWeapon.Hardness', kind: 'number' },
-      { name: 'projectilesPerUse', labelKey: 'SPACEHOLDER.ItemWeapon.ProjectilesPerUse', kind: 'int', min: 1 },
-      { name: 'payloadId', labelKey: 'SPACEHOLDER.ItemWeapon.PayloadId', kind: 'text', placeholderKey: 'SPACEHOLDER.ItemWeapon.PayloadIdHint' },
-      { name: 'aoeRadius', labelKey: 'SPACEHOLDER.ItemWeapon.AoeRadius', kind: 'number' },
-    ]),
-    usage: Object.freeze([
-      { name: 'apCost', labelKey: 'SPACEHOLDER.ItemWeapon.ApCost', kind: 'int', min: 0 },
-      { name: 'prepareApCost', labelKey: 'SPACEHOLDER.ItemWeapon.PrepareApCost', kind: 'int', min: 0 },
-      { name: 'consumeOnUse', labelKey: 'SPACEHOLDER.ItemWeapon.ConsumeOnUse', kind: 'bool' },
-      { name: 'retrievable', labelKey: 'SPACEHOLDER.ItemWeapon.Retrievable', kind: 'bool' },
-      { name: 'requiresHolding', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresHolding', kind: 'bool' },
-      { name: 'requiresReadyState', labelKey: 'SPACEHOLDER.ItemWeapon.RequiresReadyState', kind: 'bool' },
-    ]),
-  }),
-});
-
-const AMMO_FIELD_SCHEMAS = Object.freeze({
-  projectile: WEAPON_FIELD_SCHEMAS.ranged.projectile,
-  resource: Object.freeze([
-    { name: 'resourceType', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoResourceType', kind: 'text' },
-    { name: 'caliberTag', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoCaliberTag', kind: 'text' },
-    { name: 'compatibilityTags', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoCompatibilityTags', kind: 'tags', placeholderKey: 'SPACEHOLDER.ItemWeapon.TagsCommaSeparated' },
-    { name: 'stackMax', labelKey: 'SPACEHOLDER.ItemWeapon.AmmoStackMax', kind: 'int', min: 0 },
-  ]),
-});
-
-const WEAPON_GROUP_DIALOG_TITLE_KEY = Object.freeze({
-  features: 'SPACEHOLDER.ItemWeapon.DialogFeaturesTitle',
-  projectile: 'SPACEHOLDER.ItemWeapon.DialogProjectileTitle',
-  usage: 'SPACEHOLDER.ItemWeapon.DialogUsageTitle',
-});
-
-const AMMO_GROUP_DIALOG_TITLE_KEY = Object.freeze({
-  projectile: 'SPACEHOLDER.ItemWeapon.DialogAmmoProjectileTitle',
-  resource: 'SPACEHOLDER.ItemWeapon.DialogAmmoResourceTitle',
-});
-
-/**
- * @param {boolean} v
- * @returns {string}
- */
-function _shFormatBool(v) {
-  return v
-    ? game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.Yes') ?? 'Yes'
-    : game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.No') ?? 'No';
-}
-
-function _shFormatText(v) {
-  const s = String(v ?? '').trim();
-  return s.length ? s : '—';
-}
-
-function _shFormatNumber(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return '—';
-  if (Number.isInteger(n)) return String(n);
-  return n.toFixed(2);
-}
-
-function _shFormatTags(v) {
-  if (!Array.isArray(v) || v.length === 0) return '—';
-  return v.join(', ');
-}
-
-/**
- * Build display rows for a panel given a field schema and the data object.
- * @param {ReadonlyArray<object>} fields
- * @param {object} data
- * @returns {Array<{label: string, display: string, text: boolean, multiline: boolean}>}
- */
-function _shBuildRows(fields, data) {
-  return fields.map((f) => {
-    const value = data?.[f.name];
-    let display;
-    let text = false;
-    let multiline = false;
-    switch (f.kind) {
-      case 'bool':
-        display = _shFormatBool(!!value);
-        break;
-      case 'text':
-        display = _shFormatText(value);
-        text = true;
-        break;
-      case 'tags':
-        display = _shFormatTags(value);
-        text = true;
-        multiline = true;
-        break;
-      case 'int':
-      case 'number':
-      default:
-        display = _shFormatNumber(value);
-    }
-    return {
-      label: game.i18n?.localize?.(f.labelKey) ?? f.labelKey,
-      display,
-      text,
-      multiline,
-    };
-  });
-}
-
-/**
- * Build dialog field descriptors from a field schema and a data object.
- * @param {ReadonlyArray<object>} fields
- * @param {object} data
- * @returns {Array<object>}
- */
-function _shBuildDialogFields(fields, data) {
-  return fields.map((f) => {
-    const raw = data?.[f.name];
-    let value;
-    if (f.kind === 'bool') value = !!raw;
-    else if (f.kind === 'tags') value = Array.isArray(raw) ? raw.join(', ') : '';
-    else if (f.kind === 'int' || f.kind === 'number') {
-      const n = Number(raw);
-      value = Number.isFinite(n) ? n : 0;
-    } else value = String(raw ?? '');
-    return {
-      name: f.name,
-      label: game.i18n?.localize?.(f.labelKey) ?? f.labelKey,
-      kind: f.kind,
-      value,
-      placeholder: f.placeholderKey ? game.i18n?.localize?.(f.placeholderKey) ?? '' : '',
-      hint: f.hintKey ? game.i18n?.localize?.(f.hintKey) ?? '' : '',
-      min: f.min ?? '',
-    };
-  });
-}
-
-/**
- * Read a universal group dialog form back into a plain data object.
- * @param {HTMLElement|null} root
- * @param {ReadonlyArray<object>} fields
- * @returns {object}
- */
-function _shReadDialogForm(root, fields) {
-  const out = {};
-  for (const f of fields) {
-    const el = root?.querySelector?.(`[name="${f.name}"]`);
-    if (!el) continue;
-    if (f.kind === 'bool') {
-      out[f.name] = !!el.checked;
-    } else if (f.kind === 'tags') {
-      const text = String(el.value ?? '');
-      out[f.name] = text
-        .split(/[,\n\r]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-    } else if (f.kind === 'int') {
-      const raw = String(el.value ?? '').trim();
-      if (raw === '') {
-        out[f.name] = f.min ?? 0;
-      } else {
-        const n = Math.floor(Number(raw));
-        out[f.name] = Number.isFinite(n) ? Math.max(f.min ?? -Infinity, n) : f.min ?? 0;
-      }
-    } else if (f.kind === 'number') {
-      const raw = String(el.value ?? '').trim();
-      if (raw === '') {
-        out[f.name] = 0;
-      } else {
-        const n = Number(raw);
-        out[f.name] = Number.isFinite(n) ? n : 0;
-      }
-    } else {
-      out[f.name] = String(el.value ?? '').trim();
-    }
-  }
-  return out;
-}
 
 // Base V2 Item Sheet with Handlebars rendering
 export class SpaceHolderBaseItemSheet extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -1211,14 +1044,12 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: true }),
   });
 
-  // Вкладки: описание → ближнее / дальнее / метательное / боеприпас (по тегам) → прочее → настройки последние.
+  // Вкладки: описание → оружие / боеприпас (по тегам) → прочее → настройки последние.
   static TABS = {
     primary: {
       tabs: [
         { id: 'description' },
-        { id: 'melee' },
-        { id: 'ranged' },
-        { id: 'thrown' },
+        { id: 'weapon' },
         { id: 'ammo' },
         { id: 'attributes' },
         { id: 'actions' },
@@ -1238,37 +1069,18 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
 
     // itemTags: булевы флаги групп механик (см. template.json / migrateData)
     const rawTags = system.itemTags && typeof system.itemTags === 'object' ? system.itemTags : {};
-    const legacyWeapon = !!rawTags.isWeapon;
-    const hadAnyWeaponKind = !!(rawTags.isMelee || rawTags.isRanged || rawTags.isThrown);
-    if (!system.itemTags || typeof system.itemTags !== 'object') {
-      system.itemTags = {
-        isArmor: false,
-        isActions: false,
-        isModifiers: false,
-        isMelee: false,
-        isRanged: false,
-        isThrown: false,
-        isAmmo: false,
-        isContainer: false,
-      };
-    } else {
-      system.itemTags = {
-        isArmor: !!rawTags.isArmor,
-        isActions: !!rawTags.isActions,
-        isModifiers: !!rawTags.isModifiers,
-        isMelee: !!(rawTags.isMelee || (legacyWeapon && !hadAnyWeaponKind)),
-        isRanged: !!rawTags.isRanged,
-        isThrown: !!rawTags.isThrown,
-        isAmmo: !!rawTags.isAmmo,
-        isContainer: !!rawTags.isContainer,
-      };
-    }
+    system.itemTags = {
+      isArmor: !!rawTags.isArmor,
+      isActions: !!rawTags.isActions,
+      isModifiers: !!rawTags.isModifiers,
+      isWeapon: !!(rawTags.isWeapon || rawTags.isMelee || rawTags.isRanged || rawTags.isThrown),
+      isAmmo: !!rawTags.isAmmo,
+      isContainer: !!rawTags.isContainer,
+    };
     context.hasArmorTag = system.itemTags.isArmor;
     context.hasActionsTag = system.itemTags.isActions;
     context.hasModifiersTag = system.itemTags.isModifiers;
-    context.hasMeleeTag = system.itemTags.isMelee;
-    context.hasRangedTag = system.itemTags.isRanged;
-    context.hasThrownTag = system.itemTags.isThrown;
+    context.hasWeaponTag = system.itemTags.isWeapon;
     context.hasAmmoTag = system.itemTags.isAmmo;
     context.hasContainerTag = system.itemTags.isContainer;
 
@@ -1276,19 +1088,10 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     if (system.itemTags.isArmor) allowedTabs.add('attributes');
     if (system.itemTags.isActions) allowedTabs.add('actions');
     if (system.itemTags.isModifiers) allowedTabs.add('modifiers');
-    if (system.itemTags.isMelee) allowedTabs.add('melee');
-    if (system.itemTags.isRanged) allowedTabs.add('ranged');
-    if (system.itemTags.isThrown) allowedTabs.add('thrown');
+    if (context.hasWeaponTag) allowedTabs.add('weapon');
     if (system.itemTags.isAmmo) allowedTabs.add('ammo');
     if (system.itemTags.isContainer) allowedTabs.add('container');
-    let currentTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? 'description';
-    if (currentTab === 'weapon') {
-      if (system.itemTags.isMelee) currentTab = 'melee';
-      else if (system.itemTags.isRanged) currentTab = 'ranged';
-      else if (system.itemTags.isThrown) currentTab = 'thrown';
-      else currentTab = 'description';
-      this._activeTabPrimary = currentTab;
-    }
+    const currentTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? 'description';
     if (!allowedTabs.has(currentTab)) {
       this._activeTabPrimary = 'tags';
     }
@@ -1438,13 +1241,14 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     // Layers are now per-coveredPart; the dialog opened via the
     // "wearable-coverage-layers" button handles material selection.
 
-    // Оружейные вкладки: нормализованные данные (без подключения к стрельбе — только авторинг в предмете).
+    // Вкладки оружия/боеприпаса v3: нормализованные данные + контекст для шаблона.
     system.storage = normalizeNestedStorage(system.storage);
     system.weapon = migrateItemWeaponData(system.weapon, system.itemTags);
-    if (context.hasMeleeTag) this._buildWeaponChannelRows(system.weapon.melee, 'melee');
-    if (context.hasRangedTag) this._buildWeaponChannelRows(system.weapon.ranged, 'ranged');
-    if (context.hasThrownTag) this._buildWeaponChannelRows(system.weapon.thrown, 'thrown');
-    if (context.hasAmmoTag) this._buildAmmoRows(system.weapon.ammo);
+    if (context.hasWeaponTag) {
+      context.weaponV3 = this._buildWeaponV3Context(system.weapon);
+      context.weaponV3.payloadOptions = await this._getActionPayloadOptions();
+    }
+    if (context.hasAmmoTag) context.ammoV3 = this._buildAmmoV3Context(system.weapon.ammo);
 
     const icFields = normalizeItemContainerFields(system);
     system.containerHostId = icFields.containerHostId;
@@ -1464,9 +1268,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     }
 
     const wearableTabIds = ['description'];
-    if (context.hasMeleeTag) wearableTabIds.push('melee');
-    if (context.hasRangedTag) wearableTabIds.push('ranged');
-    if (context.hasThrownTag) wearableTabIds.push('thrown');
+    if (context.hasWeaponTag) wearableTabIds.push('weapon');
     if (context.hasAmmoTag) wearableTabIds.push('ammo');
     if (context.hasArmorTag) wearableTabIds.push('attributes');
     if (context.hasActionsTag) wearableTabIds.push('actions');
@@ -1480,61 +1282,6 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     context.itemHeaderInlineQuantity = true;
 
     return context;
-  }
-
-  /**
-   * Attach panel display rows to a channel object so the channel-tab template
-   * can render group panels generically.
-   * @param {object} ch
-   * @param {'melee'|'ranged'|'thrown'} channelKey
-   */
-  _buildWeaponChannelRows(ch, channelKey) {
-    if (!ch || typeof ch !== 'object') return;
-    const schema = WEAPON_FIELD_SCHEMAS[channelKey];
-    if (!schema) return;
-    ch.featuresRows = _shBuildRows(schema.features, ch.features);
-    ch.projectileRows = _shBuildRows(schema.projectile, ch.projectile);
-    ch.usageRows = _shBuildRows(schema.usage, ch.usage);
-    if (channelKey === 'ranged') ch.nestedStorage = this._buildNestedStorageSummary();
-  }
-
-  /**
-   * Attach panel display rows to the ammo block.
-   * @param {object} ammo
-   */
-  _buildAmmoRows(ammo) {
-    if (!ammo || typeof ammo !== 'object') return;
-    ammo.projectileRows = _shBuildRows(AMMO_FIELD_SCHEMAS.projectile, ammo.projectile);
-    ammo.resourceRows = _shBuildRows(AMMO_FIELD_SCHEMAS.resource, ammo.resource);
-  }
-
-  _buildNestedStorageSummary() {
-    const storage = normalizeNestedStorage(this.item?.system?.storage);
-    const usage = this.item?.system?.weapon?.ranged?.usage ?? {};
-    const contents = flattenNestedContents(storage).map(({ item, path }) => {
-      const qty = Number(item?.system?.quantity ?? 0);
-      const depth = Math.max(0, path.length - 1);
-      const isAmmo = !!item?.system?.itemTags?.isAmmo;
-      const childCount = normalizeNestedStorage(item?.system?.storage).contents.length;
-      return {
-        id: String(item?.id ?? ''),
-        path: path.join('/'),
-        depth,
-        name: String(item?.name ?? ''),
-        type: String(item?.type ?? ''),
-        quantity: Number.isFinite(qty) ? qty : 0,
-        isAmmo,
-        childCount,
-        isAttached: String(path[0] ?? '') === String(storage.slots.attachedContainerId || usage.attachedContainerId || ''),
-        isChamber: String(path[path.length - 1] ?? '') === String(storage.slots.chamberItemId || usage.chamberCurrentId || ''),
-      };
-    });
-    return {
-      attachedContainerId: String(storage.slots.attachedContainerId || usage.attachedContainerId || ''),
-      chamberItemId: String(storage.slots.chamberItemId || usage.chamberCurrentId || ''),
-      feedSources: Object.values(NESTED_STORAGE_FEED_SOURCES).join(', '),
-      contents,
-    };
   }
 
   /**
@@ -1652,565 +1399,6 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   }
 
   /**
-   * Черновик для диалога варианта атаки (плоские поля для input).
-   * @param {object} atk
-   * @param {'melee'|'ranged'|'thrown'} channelKey
-   * @returns {object}
-   */
-  _weaponAttackDialogDraft(atk, channelKey) {
-    const a = atk && typeof atk === 'object' ? atk : {};
-    const m = a.modifiers && typeof a.modifiers === 'object' ? a.modifiers : {};
-    const o = a.overrides && typeof a.overrides === 'object' ? a.overrides : {};
-    const numStr = (v) => (v === null || v === undefined ? '' : v);
-    const triSel = (v) => (v === null || v === undefined ? '' : v ? '1' : '0');
-    return {
-      id: String(a.id ?? '').trim(),
-      name: String(a.name ?? '').trim(),
-      mode: String(a.mode ?? 'single').trim() || 'single',
-      description: String(a.description ?? '').trim(),
-      enabled: a.enabled !== false,
-      isDefault: !!a.isDefault,
-      origin: String(a.origin ?? 'manual').trim() || 'manual',
-      channel: channelKey,
-      m_apCostAdd: numStr(m.apCostAdd),
-      m_accuracyAdd: numStr(m.accuracyAdd),
-      m_recoilAdd: numStr(m.recoilAdd),
-      m_damageAdd: numStr(m.damageAdd),
-      m_projectilesPerUseAdd: numStr(m.projectilesPerUseAdd),
-      m_damageMult: numStr(m.damageMult ?? 1),
-      m_armorPenAdd: numStr(m.armorPenAdd),
-      m_armorDamageFactorMult: numStr(m.armorDamageFactorMult ?? 1),
-      m_hardnessMult: numStr(m.hardnessMult ?? 1),
-      o_apCost: numStr(o.apCost),
-      o_accuracy: numStr(o.accuracy),
-      o_recoil: numStr(o.recoil),
-      o_projectilesPerUse: numStr(o.projectilesPerUse),
-      o_damage: numStr(o.damage),
-      o_damageType: o.damageType === null || o.damageType === undefined ? '' : String(o.damageType),
-      o_armorPen: numStr(o.armorPen),
-      o_armorDamageFactor: numStr(o.armorDamageFactor),
-      o_hardness: numStr(o.hardness),
-      o_payloadId: o.payloadId === null || o.payloadId === undefined ? '' : String(o.payloadId),
-      o_requiresReadyStateSel: triSel(o.requiresReadyState),
-      o_requiresAimStateSel: triSel(o.requiresAimState),
-    };
-  }
-
-  /**
-   * @param {HTMLElement|null} root
-   * @param {'melee'|'ranged'|'thrown'} channelKey
-   * @param {string} [fallbackId]
-   * @returns {object|null}
-   */
-  _readWeaponAttackDialogForm(root, channelKey, fallbackId = '') {
-    const read = (name) => root?.querySelector?.(`[name="${name}"]`);
-    const readVal = (name) => read(name)?.value;
-    const readChecked = (name) => !!read(name)?.checked;
-    const parseNum = (raw) => {
-      const s = String(raw ?? '').trim();
-      if (s === '') return null;
-      const n = Number(s);
-      return Number.isFinite(n) ? n : null;
-    };
-    const parseTri = (raw) => {
-      const s = String(raw ?? '').trim();
-      if (s === '') return null;
-      if (s === '0') return false;
-      if (s === '1') return true;
-      return null;
-    };
-
-    let id = String(readVal('atkId') ?? '').trim() || String(fallbackId ?? '').trim();
-    if (!id) id = this._newActionId();
-    const name = String(readVal('atkName') ?? '').trim();
-    if (!name) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.AttackNameRequired') ?? 'Attack name is required'
-      );
-      return null;
-    }
-
-    return {
-      id,
-      name,
-      channel: channelKey,
-      mode: String(readVal('atkMode') ?? 'single').trim() || 'single',
-      description: String(readVal('atkDescription') ?? '').trim(),
-      enabled: readChecked('atkEnabled'),
-      isDefault: readChecked('atkIsDefault'),
-      origin: String(readVal('atkOrigin') ?? 'manual').trim() || 'manual',
-      modifiers: {
-        apCostAdd: Number(readVal('m_apCostAdd') ?? 0) || 0,
-        accuracyAdd: Number(readVal('m_accuracyAdd') ?? 0) || 0,
-        recoilAdd: Number(readVal('m_recoilAdd') ?? 0) || 0,
-        damageAdd: Number(readVal('m_damageAdd') ?? 0) || 0,
-        projectilesPerUseAdd: Number(readVal('m_projectilesPerUseAdd') ?? 0) || 0,
-        damageMult: Number(readVal('m_damageMult') ?? 1) || 1,
-        armorPenAdd: Number(readVal('m_armorPenAdd') ?? 0) || 0,
-        armorDamageFactorMult: Number(readVal('m_armorDamageFactorMult') ?? 1) || 1,
-        hardnessMult: Number(readVal('m_hardnessMult') ?? 1) || 1,
-      },
-      overrides: {
-        apCost: parseNum(readVal('o_apCost')),
-        accuracy: parseNum(readVal('o_accuracy')),
-        recoil: parseNum(readVal('o_recoil')),
-        projectilesPerUse: parseNum(readVal('o_projectilesPerUse')),
-        damage: parseNum(readVal('o_damage')),
-        damageType: (() => {
-          const s = String(readVal('o_damageType') ?? '').trim();
-          return s === '' ? null : s;
-        })(),
-        armorPen: parseNum(readVal('o_armorPen')),
-        armorDamageFactor: parseNum(readVal('o_armorDamageFactor')),
-        hardness: parseNum(readVal('o_hardness')),
-        payloadId: (() => {
-          const s = String(readVal('o_payloadId') ?? '').trim();
-          return s === '' ? null : s;
-        })(),
-        requiresReadyState: parseTri(readVal('o_requiresReadyState')),
-        requiresAimState: parseTri(readVal('o_requiresAimState')),
-      },
-    };
-  }
-
-  /**
-   * @param {object} opts
-   * @param {string} opts.title
-   * @param {'melee'|'ranged'|'thrown'} opts.channelKey
-   * @param {object|null} [opts.action]
-   * @returns {Promise<object|null>}
-   */
-  async _openWeaponAttackDialog({ title, channelKey, action = null } = {}) {
-    const DialogV2 = foundry?.applications?.api?.DialogV2;
-    if (!DialogV2?.wait) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
-      );
-      return null;
-    }
-
-    const dialogUid = this._newActionId();
-    const draft = this._weaponAttackDialogDraft(action, channelKey);
-    const payloadOptions = await this._getActionPayloadOptions();
-    const content = await foundry.applications.handlebars.renderTemplate('systems/spaceholder/templates/item/parts/item-weapon-attack-dialog.hbs', {
-      dialogUid,
-      attack: draft,
-      payloadOptions,
-    });
-
-    let outcome = null;
-    const titleText =
-      title ||
-      (game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.AddAttack') ?? 'Attack variant');
-
-    await DialogV2.wait({
-      classes: ['spaceholder'],
-      window: { title: titleText, icon: 'fa-solid fa-crosshairs' },
-      position: { width: 560 },
-      content,
-      buttons: [
-        {
-          action: 'save',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
-          icon: 'fa-solid fa-check',
-          default: true,
-          callback: (dlgEvent) => {
-            const root =
-              dlgEvent?.currentTarget?.form ||
-              dlgEvent?.target?.form ||
-              dlgEvent?.currentTarget?.closest?.('form') ||
-              dlgEvent?.target?.closest?.('form') ||
-              dlgEvent?.currentTarget;
-            outcome = this._readWeaponAttackDialogForm(root, channelKey, draft.id);
-          },
-        },
-        {
-          action: 'cancel',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
-          icon: 'fa-solid fa-times',
-        },
-      ],
-    });
-
-    return outcome;
-  }
-
-  /**
-   * @param {HTMLElement|null} root
-   * @returns {object}
-   */
-  _readWeaponChannelOptionsDialogForm(root) {
-    const q = (n) => root?.querySelector?.(`[name="${n}"]`);
-    const idRaw = String(q('wo_defaultAttackId')?.value ?? '').trim();
-    return {
-      defaultAttackId: idRaw.length ? idRaw : null,
-      autoGenerateDefault: !!q('wo_autoGenerateDefault')?.checked,
-    };
-  }
-
-  /**
-   * Open the universal group editor for `weapon.<channel>.<group>`.
-   * @param {'melee'|'ranged'|'thrown'} channelKey
-   * @param {'features'|'projectile'|'usage'} groupKey
-   */
-  async _openWeaponGroupDialog(channelKey, groupKey) {
-    const schema = WEAPON_FIELD_SCHEMAS[channelKey]?.[groupKey];
-    if (!schema) return;
-    const DialogV2 = foundry?.applications?.api?.DialogV2;
-    if (!DialogV2?.wait) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
-      );
-      return;
-    }
-    const ch = this.item.system.weapon?.[channelKey];
-    const groupData = foundry.utils.duplicate(ch?.[groupKey] ?? {});
-    const dialogUid = this._newActionId();
-    const fields = _shBuildDialogFields(schema, groupData);
-    const content = await foundry.applications.handlebars.renderTemplate(
-      'systems/spaceholder/templates/item/parts/item-weapon-group-dialog.hbs',
-      { dialogUid, fields }
-    );
-    const titleKey = WEAPON_GROUP_DIALOG_TITLE_KEY[groupKey];
-    await DialogV2.wait({
-      classes: ['spaceholder'],
-      window: {
-        title: game.i18n?.localize?.(titleKey) ?? 'Weapon group',
-        icon: 'fa-solid fa-pen-to-square',
-      },
-      position: { width: 440 },
-      content,
-      buttons: [
-        {
-          action: 'save',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
-          icon: 'fa-solid fa-check',
-          default: true,
-          callback: async (dlgEvent) => {
-            const root =
-              dlgEvent?.currentTarget?.form ||
-              dlgEvent?.target?.form ||
-              dlgEvent?.currentTarget?.closest?.('form') ||
-              dlgEvent?.target?.closest?.('form') ||
-              dlgEvent?.currentTarget?.closest?.('.window-content') ||
-              (typeof document !== 'undefined'
-                ? document.querySelector(`[data-sh-weapon-group-dialog="${dialogUid}"]`)
-                : null);
-            const next = _shReadDialogForm(root, schema);
-            const w = this._getWeaponData();
-            if (!w[channelKey] || typeof w[channelKey] !== 'object') w[channelKey] = {};
-            w[channelKey][groupKey] = { ...(w[channelKey][groupKey] ?? {}), ...next };
-            await this._setWeaponData(w);
-          },
-        },
-        {
-          action: 'cancel',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
-          icon: 'fa-solid fa-times',
-        },
-      ],
-    });
-  }
-
-  /**
-   * @param {'melee'|'ranged'|'thrown'} channelKey
-   */
-  async _openWeaponChannelOptionsDialog(channelKey) {
-    const DialogV2 = foundry?.applications?.api?.DialogV2;
-    if (!DialogV2?.wait) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
-      );
-      return;
-    }
-    const raw = this.item.system.weapon?.[channelKey];
-    const ch = foundry.utils.duplicate(raw ?? {});
-    ch.defaultAttackId = ch.defaultAttackId ?? '';
-    ch.autoGenerateDefault = ch.autoGenerateDefault !== false;
-    const dialogUid = this._newActionId();
-    const content = await foundry.applications.handlebars.renderTemplate(
-      'systems/spaceholder/templates/item/parts/item-weapon-channel-options-dialog.hbs',
-      { dialogUid, ch, channelKey }
-    );
-    await DialogV2.wait({
-      classes: ['spaceholder'],
-      window: {
-        title:
-          game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.DialogChannelOptionsTitle') ??
-          'Channel options',
-        icon: 'fa-solid fa-sliders',
-      },
-      position: { width: 420 },
-      content,
-      buttons: [
-        {
-          action: 'save',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
-          icon: 'fa-solid fa-check',
-          default: true,
-          callback: async (dlgEvent) => {
-            const root =
-              dlgEvent?.currentTarget?.form ||
-              dlgEvent?.target?.form ||
-              dlgEvent?.currentTarget?.closest?.('form') ||
-              dlgEvent?.target?.closest?.('form') ||
-              dlgEvent?.currentTarget?.closest?.('.window-content') ||
-              (typeof document !== 'undefined'
-                ? document.querySelector(`[data-sh-weapon-channel-options-dialog="${dialogUid}"]`)
-                : null);
-            const opts = this._readWeaponChannelOptionsDialogForm(root);
-            const w = this._getWeaponData();
-            if (!w[channelKey] || typeof w[channelKey] !== 'object') w[channelKey] = {};
-            w[channelKey].defaultAttackId = opts.defaultAttackId;
-            w[channelKey].autoGenerateDefault = opts.autoGenerateDefault;
-            await this._setWeaponData(w);
-          },
-        },
-        {
-          action: 'cancel',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
-          icon: 'fa-solid fa-times',
-        },
-      ],
-    });
-  }
-
-  /**
-   * Open the universal group editor for `weapon.ammo.<group>`.
-   * @param {'projectile'|'resource'} groupKey
-   */
-  async _openAmmoGroupDialog(groupKey) {
-    const schema = AMMO_FIELD_SCHEMAS[groupKey];
-    if (!schema) return;
-    const DialogV2 = foundry?.applications?.api?.DialogV2;
-    if (!DialogV2?.wait) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
-      );
-      return;
-    }
-    const groupData = foundry.utils.duplicate(this.item.system.weapon?.ammo?.[groupKey] ?? {});
-    const dialogUid = this._newActionId();
-    const fields = _shBuildDialogFields(schema, groupData);
-    const content = await foundry.applications.handlebars.renderTemplate(
-      'systems/spaceholder/templates/item/parts/item-weapon-group-dialog.hbs',
-      { dialogUid, fields }
-    );
-    const titleKey = AMMO_GROUP_DIALOG_TITLE_KEY[groupKey];
-    await DialogV2.wait({
-      classes: ['spaceholder'],
-      window: {
-        title: game.i18n?.localize?.(titleKey) ?? 'Ammunition',
-        icon: 'fa-solid fa-box',
-      },
-      position: { width: 440 },
-      content,
-      buttons: [
-        {
-          action: 'save',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
-          icon: 'fa-solid fa-check',
-          default: true,
-          callback: async (dlgEvent) => {
-            const root =
-              dlgEvent?.currentTarget?.form ||
-              dlgEvent?.target?.form ||
-              dlgEvent?.currentTarget?.closest?.('form') ||
-              dlgEvent?.target?.closest?.('form') ||
-              dlgEvent?.currentTarget?.closest?.('.window-content') ||
-              (typeof document !== 'undefined'
-                ? document.querySelector(`[data-sh-weapon-group-dialog="${dialogUid}"]`)
-                : null);
-            const next = _shReadDialogForm(root, schema);
-            const w = this._getWeaponData();
-            if (!w.ammo || typeof w.ammo !== 'object') w.ammo = {};
-            w.ammo[groupKey] = { ...(w.ammo[groupKey] ?? {}), ...next };
-            await this._setWeaponData(w);
-          },
-        },
-        {
-          action: 'cancel',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
-          icon: 'fa-solid fa-times',
-        },
-      ],
-    });
-  }
-
-  _nestedPathFromText(text) {
-    return String(text ?? '')
-      .split('/')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-
-  async _openNestedStorageAddDialog() {
-    const DialogV2 = foundry?.applications?.api?.DialogV2;
-    if (!DialogV2?.wait) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
-      );
-      return;
-    }
-
-    const dialogUid = this._newActionId();
-    const content = `
-      <div class="sh-item-action-dialog" data-sh-nested-storage-add-dialog="${dialogUid}">
-        <div class="form-group">
-          <label>${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedItemUuid') ?? 'Item UUID'}</label>
-          <div class="form-fields">
-            <input type="text" name="uuid" autocomplete="off" placeholder="Actor.x.Item.y" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label>${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedQuantity') ?? 'Quantity'}</label>
-          <div class="form-fields">
-            <input type="number" name="quantity" min="1" step="1" value="1" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label>${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedParentPath') ?? 'Parent path'}</label>
-          <div class="form-fields">
-            <input type="text" name="parentPath" autocomplete="off" placeholder="${game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedParentPathHint') ?? 'Optional nested id path'}" />
-          </div>
-        </div>
-      </div>`;
-
-    let outcome = null;
-    await DialogV2.wait({
-      classes: ['spaceholder'],
-      window: {
-        title: game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedAddTitle') ?? 'Add nested item',
-        icon: 'fa-solid fa-box-archive',
-      },
-      position: { width: 460 },
-      content,
-      buttons: [
-        {
-          action: 'save',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
-          icon: 'fa-solid fa-check',
-          default: true,
-          callback: (dlgEvent) => {
-            const root =
-              dlgEvent?.currentTarget?.form ||
-              dlgEvent?.target?.form ||
-              dlgEvent?.currentTarget?.closest?.('form') ||
-              dlgEvent?.target?.closest?.('form') ||
-              dlgEvent?.currentTarget?.closest?.('.window-content') ||
-              (typeof document !== 'undefined'
-                ? document.querySelector(`[data-sh-nested-storage-add-dialog="${dialogUid}"]`)
-                : null);
-            outcome = {
-              uuid: String(root?.querySelector?.('[name="uuid"]')?.value ?? '').trim(),
-              quantity: Math.max(1, Math.floor(Number(root?.querySelector?.('[name="quantity"]')?.value ?? 1) || 1)),
-              parentPath: this._nestedPathFromText(root?.querySelector?.('[name="parentPath"]')?.value ?? ''),
-            };
-          },
-        },
-        {
-          action: 'cancel',
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
-          icon: 'fa-solid fa-times',
-        },
-      ],
-    });
-    if (!outcome?.uuid) return;
-
-    let source = null;
-    try {
-      source = await fromUuid(outcome.uuid);
-    } catch (_) {
-      source = null;
-    }
-    if (!source || source.documentName !== 'Item') {
-      ui.notifications?.warn?.(
-        game.i18n?.format?.('SPACEHOLDER.ItemWeapon.NestedSourceNotFound', { uuid: outcome.uuid }) ??
-        `Item not found: ${outcome.uuid}`
-      );
-      return;
-    }
-    if (String(source.uuid ?? '') === String(this.item.uuid ?? '')) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedCannotContainSelf') ??
-        'Item cannot contain itself.'
-      );
-      return;
-    }
-    const inserted = await addItemToNestedStorage({
-      containerItem: this.item,
-      item: source,
-      quantity: outcome.quantity,
-      consumeSource: true,
-      parentPath: outcome.parentPath,
-    });
-    if (!inserted) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedAddFailed') ?? 'Failed to add nested item.'
-      );
-    }
-  }
-
-  async _setNestedStorageSlot(slotKey, pathText) {
-    const path = this._nestedPathFromText(pathText);
-    if (!path.length) return;
-    const itemId = slotKey === 'attached' ? path[0] : path[path.length - 1];
-    const storage = normalizeNestedStorage(this.item?.system?.storage);
-    const w = this._getWeaponData();
-    if (!w.ranged || typeof w.ranged !== 'object') return;
-    if (!w.ranged.usage || typeof w.ranged.usage !== 'object') w.ranged.usage = {};
-
-    if (slotKey === 'attached') {
-      storage.slots.attachedContainerId = itemId;
-      w.ranged.usage.attachedContainerId = itemId;
-    } else if (slotKey === 'chamber') {
-      storage.slots.chamberItemId = itemId;
-      w.ranged.usage.chamberCurrentId = itemId;
-    } else {
-      return;
-    }
-
-    await this.item.update({
-      'system.storage': storage,
-      'system.weapon': migrateItemWeaponData(w, this.item.system.itemTags),
-    });
-  }
-
-  async _extractNestedStoragePath(pathText) {
-    const path = this._nestedPathFromText(pathText);
-    if (!path.length) return;
-    const created = await extractNestedItemToActor({ containerItem: this.item, path, quantity: 1 });
-    if (!created) {
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.NestedExtractFailed') ??
-        'Failed to extract nested item.'
-      );
-      return;
-    }
-
-    const storage = normalizeNestedStorage(this.item?.system?.storage);
-    const removedId = path[path.length - 1];
-    let needsPatch = false;
-    const w = this._getWeaponData();
-    if (storage.slots.attachedContainerId === removedId) {
-      storage.slots.attachedContainerId = '';
-      if (w.ranged?.usage) w.ranged.usage.attachedContainerId = '';
-      needsPatch = true;
-    }
-    if (storage.slots.chamberItemId === removedId) {
-      storage.slots.chamberItemId = '';
-      if (w.ranged?.usage) w.ranged.usage.chamberCurrentId = '';
-      needsPatch = true;
-    }
-    if (needsPatch) {
-      await this.item.update({
-        'system.storage': storage,
-        'system.weapon': migrateItemWeaponData(w, this.item.system.itemTags),
-      });
-    }
-  }
-
-  /**
    * @returns {object}
    */
   _getWeaponData() {
@@ -2235,199 +1423,613 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     await this.item.update(patch);
   }
 
-  /**
-   * Кнопки CRUD вариантов атаки (только лист предмета type=item).
-   */
-  _bindWeaponAttackListeners() {
-    const el = this.element;
-    if (!el || !this.isEditable) return;
+  /* ------------------------------------------------------------------ *
+   *  Weapon v3: контекст вкладки «Оружие»                                *
+   * ------------------------------------------------------------------ */
 
-    const bindBtn = (selector, handler) => {
-      el.querySelectorAll(selector).forEach((btn) => {
-        if (btn.dataset.shWeaponAtkBound === '1') return;
-        btn.dataset.shWeaponAtkBound = '1';
-        btn.addEventListener('click', handler);
+  /**
+   * Контекст редактора саб-блока урона.
+   * @param {object[]} entries normalized damage entries
+   * @param {string} basePath dot-path внутри weapon (например `lines.0.damage`)
+   */
+  _damageEntriesV3Context(entries, basePath) {
+    const list = Array.isArray(entries) ? entries : [];
+    return {
+      basePath,
+      rows: list.map((entry, i) => ({
+        ...entry,
+        index: i,
+        path: `${basePath}.${i}`,
+        energy: Math.round(computeProjectileEnergy(entry) * 100) / 100,
+      })),
+    };
+  }
+
+  /**
+   * @param {object} ergo
+   * @param {(key: string) => string} L
+   */
+  _buildWeaponV3ErgoRows(ergo, L) {
+    return [
+      { label: L('SPACEHOLDER.WeaponV3.Ergo.Overall'), display: _wv3FmtPct(ergo?.overall) },
+      { label: L('SPACEHOLDER.WeaponV3.Ergo.Zones'), display: _wv3FmtZones(ergo?.zones) },
+      { label: L('SPACEHOLDER.WeaponV3.Ergo.DeadZone'), display: _wv3FmtToggleable(ergo?.deadZone, '%') },
+      { label: L('SPACEHOLDER.WeaponV3.Ergo.AimPenalty'), display: _wv3FmtToggleable(ergo?.aimPenalty, '%') },
+      { label: L('SPACEHOLDER.WeaponV3.Ergo.CritZoneBonus'), display: _wv3FmtToggleable(ergo?.critZoneBonus) },
+      { label: L('SPACEHOLDER.WeaponV3.Ergo.CritZoneSize'), display: _wv3FmtToggleable(ergo?.critZoneSize, '%') },
+      { label: L('SPACEHOLDER.WeaponV3.Ergo.Readying'), display: _wv3FmtToggleable(ergo?.readying) },
+    ];
+  }
+
+  /**
+   * @param {object} line
+   * @param {(key: string) => string} L
+   */
+  _buildWeaponV3LineParamRows(line, L) {
+    const kind = normalizeTrajectoryKind(line.trajectoryKind);
+    const rows = [
+      { label: L('SPACEHOLDER.WeaponV3.Line.Aiming'), display: _wv3FmtNumber(line.aiming) },
+      { label: L('SPACEHOLDER.WeaponV3.Line.Trigger'), display: _wv3FmtNumber(line.trigger) },
+      {
+        label: L('SPACEHOLDER.WeaponV3.Trajectory.Kind'),
+        display: kind === TRAJECTORY_KINDS.COMPLEX
+          ? L('SPACEHOLDER.WeaponV3.Trajectory.KindComplex')
+          : L('SPACEHOLDER.WeaponV3.Trajectory.KindSimple'),
+      },
+    ];
+    if (kind === TRAJECTORY_KINDS.COMPLEX) {
+      rows.push({
+        label: L('SPACEHOLDER.WeaponV3.Line.PayloadId'),
+        display: _wv3FmtText(line.payloadId),
+        text: true,
       });
+    } else {
+      rows.push({
+        label: L('SPACEHOLDER.WeaponV3.Trajectory.Length'),
+        display: formatTrajectorySummary(line, L),
+        text: true,
+      });
+    }
+    rows.push(
+      { label: L('SPACEHOLDER.WeaponV3.Line.EnergyMult'), display: _wv3FmtToggleable(line.energyMult, '%') },
+      { label: L('SPACEHOLDER.WeaponV3.Line.Spread'), display: _wv3FmtToggleable(line.spread) },
+      { label: L('SPACEHOLDER.WeaponV3.Line.Recoil'), display: _wv3FmtToggleable(line.recoil) },
+      { label: L('SPACEHOLDER.WeaponV3.Line.EnterCost'), display: _wv3FmtToggleable(line.enterCost) },
+      { label: L('SPACEHOLDER.WeaponV3.Line.ExitCost'), display: _wv3FmtToggleable(line.exitCost) },
+    );
+    return rows;
+  }
+
+  /**
+   * @param {object} block
+   * @param {(key: string) => string} L
+   */
+  _buildWeaponV3BlockDisplayRows(block, L) {
+    const rows = [];
+    rows.push({
+      label: L('SPACEHOLDER.WeaponV3.Block.Capacity'),
+      display: _wv3FmtNumber(block.capacity),
+    });
+    if (block.isItemFed && !block.isExternalMagazine) {
+      rows.push({
+        label: L('SPACEHOLDER.WeaponV3.Block.LoadAmount'),
+        display: _wv3FmtNumber(block.loadAmount),
+      });
+    }
+    rows.push({ label: L('SPACEHOLDER.WeaponV3.Block.Chamber'), display: _wv3FmtBool(!!block.chamberEnabled) });
+    if (block.chamberEnabled) {
+      rows.push({ label: L('SPACEHOLDER.WeaponV3.Block.AutoFeed'), display: _wv3FmtBool(!!block.autoFeed) });
+    }
+    if (block.isItemFed) {
+      rows.push({ label: L('SPACEHOLDER.WeaponV3.Block.Caliber'), display: _wv3FmtText(block.caliber), text: true });
+      const groups = [];
+      if (block.search?.hands) groups.push(L('SPACEHOLDER.WeaponV3.Ammo.Group.hands'));
+      if (block.search?.worn) groups.push(L('SPACEHOLDER.WeaponV3.Ammo.Group.worn'));
+      if (block.search?.inventory) groups.push(L('SPACEHOLDER.WeaponV3.Ammo.Group.inventory'));
+      if (block.search?.containers) groups.push(L('SPACEHOLDER.WeaponV3.Ammo.Group.containers'));
+      const mode = L(`SPACEHOLDER.WeaponV3.Block.SearchModes.${block.search?.mode ?? 'auto'}`);
+      rows.push({
+        label: L('SPACEHOLDER.WeaponV3.Block.Search'),
+        display: groups.length ? `${groups.join(', ')} · ${mode}` : mode,
+        text: true,
+      });
+    }
+    if (block.isExternalMagazine) {
+      rows.push({ label: L('SPACEHOLDER.WeaponV3.Block.Connector'), display: _wv3FmtText(block.connector), text: true });
+      if (block.magazineName) {
+        rows.push({ label: L('SPACEHOLDER.WeaponV3.Ammo.PickMagazineTitle'), display: block.magazineName, text: true });
+      }
+    }
+    if (block.isInternalCharge) {
+      rows.push({ label: L('SPACEHOLDER.WeaponV3.Block.Charge'), display: _wv3FmtNumber(block.runtime?.charge) });
+    }
+    for (const ap of block.apRows ?? []) {
+      if (ap.enabled) rows.push({ label: ap.label, display: _wv3FmtNumber(ap.value) });
+    }
+    return rows;
+  }
+
+  /**
+   * @param {object} mode
+   * @param {(key: string) => string} L
+   */
+  _buildWeaponV3ModeDisplayRows(mode, L) {
+    const rows = [
+      {
+        label: L('SPACEHOLDER.WeaponV3.Mode.Title'),
+        display: L(`SPACEHOLDER.WeaponV3.Mode.FireModes.${mode.fireMode}`),
+      },
+    ];
+    if (mode.isBurst) {
+      rows.push({ label: L('SPACEHOLDER.WeaponV3.Mode.BurstCount'), display: _wv3FmtNumber(mode.burstCount) });
+    }
+    if (!mode.isSingle) {
+      rows.push({
+        label: L('SPACEHOLDER.WeaponV3.Mode.Rpm'),
+        display: String(mode.rpmDisplay ?? '—'),
+      });
+    }
+    rows.push(
+      { label: L('SPACEHOLDER.WeaponV3.Mode.EnterCost'), display: _wv3FmtToggleable(mode.enterCost) },
+      { label: L('SPACEHOLDER.WeaponV3.Mode.ExitCost'), display: _wv3FmtToggleable(mode.exitCost) },
+    );
+    const modCount = Array.isArray(mode.modifiers) ? mode.modifiers.filter((m) => m?.enabled).length : 0;
+    rows.push({
+      label: L('SPACEHOLDER.WeaponV3.Mode.Modifiers'),
+      display: modCount ? String(modCount) : _wv3FmtBool(false),
+    });
+    return rows;
+  }
+
+  /**
+   * Контекст вкладки «Оружие» (v3): эргономика, линии, блоки, режимы.
+   * Вкладка — статичное отображение; input'ы только в диалогах редактирования.
+   * @param {object} weapon normalized v3 weapon
+   */
+  _buildWeaponV3Context(weapon) {
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
+    const blockTypeOptions = AMMO_BLOCK_TYPE_LIST.map((t) => ({
+      value: t,
+      label: L(`SPACEHOLDER.WeaponV3.Block.Types.${t}`),
+    }));
+    const fireModeOptions = Object.values(FIRE_MODES).map((m) => ({
+      value: m,
+      label: L(`SPACEHOLDER.WeaponV3.Mode.FireModes.${m}`),
+    }));
+    const searchModeOptions = Object.values(AMMO_SEARCH_MODES).map((m) => ({
+      value: m,
+      label: L(`SPACEHOLDER.WeaponV3.Block.SearchModes.${m}`),
+    }));
+    const modOpOptions = Object.values(MOD_OPS).map((op) => ({
+      value: op,
+      label: L(`SPACEHOLDER.WeaponV3.Mode.ModOps.${op}`),
+    }));
+    const modParamOptions = MODE_MODIFIER_PARAMS.map((p) => ({
+      value: p.id,
+      label: L(p.labelKey),
+    }));
+
+    const lines = (weapon.lines ?? []).map((line, li) => {
+      const lp = `lines.${li}`;
+      const ammoBlocks = (line.ammoBlocks ?? []).map((block, bi) => {
+        const bp = `${lp}.ammoBlocks.${bi}`;
+        const isInternalCharge = block.type === AMMO_BLOCK_TYPES.INTERNAL_CHARGE;
+        const isExternalMagazine = block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE;
+        const isItemFed = !isInternalCharge;
+        return {
+          ...block,
+          index: bi,
+          path: bp,
+          typeLabel: L(`SPACEHOLDER.WeaponV3.Block.Types.${block.type}`),
+          counter: formatAmmoCounter(block),
+          isInternalCharge,
+          isExternalMagazine,
+          isItemFed,
+          hasWeaponDamage: WEAPON_DAMAGE_BLOCK_TYPES.includes(block.type),
+          damageCtx: WEAPON_DAMAGE_BLOCK_TYPES.includes(block.type)
+            ? this._damageEntriesV3Context(block.damage, `${bp}.damage`)
+            : null,
+          apRows: Object.entries(block.apActions ?? {}).map(([key, ap]) => ({
+            key,
+            label: L(`SPACEHOLDER.WeaponV3.Block.Ap.${key}`),
+            enabled: !!ap?.enabled,
+            value: Number(ap?.value) || 0,
+            path: `${bp}.apActions.${key}`,
+          })),
+          magazineName: block.runtime?.magazine?.name ?? '',
+        };
+      });
+      const modes = (line.modes ?? []).map((mode, mi) => {
+        const mp = `${lp}.modes.${mi}`;
+        const rpm = fireDelayToRpm(mode.fireDelayAp);
+        return {
+          ...mode,
+          index: mi,
+          path: mp,
+          isSingle: mode.fireMode === FIRE_MODES.SINGLE,
+          isBurst: mode.fireMode === FIRE_MODES.BURST,
+          isAuto: mode.fireMode === FIRE_MODES.AUTO,
+          rpmDisplay: Number.isFinite(rpm) ? rpm : '∞',
+          modifiers: (mode.modifiers ?? []).map((mod, xi) => ({
+            ...mod,
+            index: xi,
+            path: `${mp}.modifiers.${xi}`,
+          })),
+        };
+      });
+      const showLineDamage = ammoBlocks.length === 0;
+      const damageCtx = this._damageEntriesV3Context(line.damage, `${lp}.damage`);
+      const displayName = String(line.name ?? '').trim() || L('SPACEHOLDER.WeaponV3.Line.Default');
+      const trajectoryKind = normalizeTrajectoryKind(line.trajectoryKind);
+      return {
+        ...line,
+        index: li,
+        path: lp,
+        trajectoryKind,
+        isSimpleTrajectory: trajectoryKind === TRAJECTORY_KINDS.SIMPLE,
+        isComplexTrajectory: trajectoryKind === TRAJECTORY_KINDS.COMPLEX,
+        simpleLimitEnabled: !!line.simpleLimit?.enabled,
+        ammoBlocks,
+        modes,
+        showLineDamage,
+        damageCtx,
+        displayName,
+        paramRows: this._buildWeaponV3LineParamRows(line, L),
+        damageSummary: showLineDamage ? _wv3FmtDamageSummary(damageCtx) : '',
+        blockSummaries: ammoBlocks.map((block) => ({
+          title: `${block.typeLabel} [${block.counter}]`,
+          rows: this._buildWeaponV3BlockDisplayRows(block, L),
+          damageSummary: block.hasWeaponDamage ? _wv3FmtDamageSummary(block.damageCtx) : '',
+        })),
+        modeSummaries: modes.map((mode) => ({
+          title: String(mode.name ?? '').trim() || L('SPACEHOLDER.WeaponV3.Mode.Default'),
+          rows: this._buildWeaponV3ModeDisplayRows(mode, L),
+        })),
+      };
+    });
+
+    return {
+      ergonomics: weapon.ergonomics,
+      ergoRows: this._buildWeaponV3ErgoRows(weapon.ergonomics, L),
+      lines,
+      state: weapon.state,
+      blockTypeOptions,
+      fireModeOptions,
+      searchModeOptions,
+      modOpOptions,
+      modParamOptions,
+      trajectoryKindOptions: [
+        { value: TRAJECTORY_KINDS.SIMPLE, label: L('SPACEHOLDER.WeaponV3.Trajectory.KindSimple') },
+        { value: TRAJECTORY_KINDS.COMPLEX, label: L('SPACEHOLDER.WeaponV3.Trajectory.KindComplex') },
+      ],
+      trajectoryUnitOptions: [
+        { value: TRAJECTORY_LENGTH_UNITS.GRID, label: L('SPACEHOLDER.WeaponV3.Trajectory.UnitGrid') },
+        { value: TRAJECTORY_LENGTH_UNITS.MEASURE, label: L('SPACEHOLDER.WeaponV3.Trajectory.UnitMeasure') },
+      ],
+      payloadOptions: [],
+    };
+  }
+
+  /**
+   * Контекст вкладки «Боеприпас» (v3): weapon.ammo.
+   * @param {object} ammo normalized ammo config
+   */
+  _buildAmmoV3Context(ammo) {
+    return {
+      ...ammo,
+      damageCtx: this._damageEntriesV3Context(ammo.damage, 'ammo.damage'),
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Weapon v3: обработчики вкладок «Оружие» / «Боеприпас»               *
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Прочитать значение input'а с data-wpath согласно data-wdtype.
+   * @param {HTMLElement} el
+   */
+  _readWeaponV3Input(el) {
+    const dtype = String(el.dataset.wdtype ?? 'String');
+    if (el.type === 'checkbox') return !!el.checked;
+    const raw = String(el.value ?? '').trim();
+    if (dtype === 'Number') {
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    }
+    if (dtype === 'Int') {
+      const n = Math.floor(Number(raw));
+      return Number.isFinite(n) ? n : 0;
+    }
+    if (dtype === 'Boolean') return raw === 'true' || raw === '1';
+    return raw;
+  }
+
+  /**
+   * Прочитать все `data-wpath` из корня формы в объект weapon.
+   * @param {HTMLElement|null|undefined} root
+   * @param {object} target
+   */
+  _applyWeaponV3FormFromRoot(root, target) {
+    if (!root || !target) return;
+    for (const input of root.querySelectorAll('[data-wpath]')) {
+      foundry.utils.setProperty(target, String(input.dataset.wpath), this._readWeaponV3Input(input));
+    }
+  }
+
+  /**
+   * Структурные операции v3 (`data-waction`) над черновиком weapon.
+   * @param {string} action
+   * @param {DOMStringMap} ds
+   * @param {object} w
+   * @param {ParentNode|null|undefined} [scopeRoot]
+   * @returns {boolean} true если данные изменены
+   */
+  _mutateWeaponV3Draft(action, ds, w, scopeRoot = null) {
+    const lines = Array.isArray(w.lines) ? w.lines : (w.lines = []);
+    const lineAt = () => lines[Number(ds.line)];
+    const scope = scopeRoot ?? this.element;
+    switch (action) {
+      case 'line-add':
+        lines.push(createWeaponLine());
+        return true;
+      case 'line-remove': {
+        if (lines.length <= 1) {
+          ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.WeaponV3.Line.LastLine') ?? 'A weapon needs at least one line');
+          return false;
+        }
+        lines.splice(Number(ds.line), 1);
+        return true;
+      }
+      case 'mode-add': {
+        const line = lineAt();
+        if (!line) return false;
+        line.modes = Array.isArray(line.modes) ? line.modes : [];
+        line.modes.push(createWeaponMode());
+        return true;
+      }
+      case 'mode-remove': {
+        const line = lineAt();
+        if (!line || !Array.isArray(line.modes)) return false;
+        if (line.modes.length <= 1) {
+          ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.WeaponV3.Mode.LastMode') ?? 'A line needs at least one mode');
+          return false;
+        }
+        line.modes.splice(Number(ds.mode), 1);
+        return true;
+      }
+      case 'block-add': {
+        const line = lineAt();
+        if (!line) return false;
+        const sel = scope?.querySelector?.(`select[data-wblock-type-for="${ds.line}"]`);
+        const type = String(sel?.value ?? AMMO_BLOCK_TYPES.INTERNAL_MAGAZINE);
+        line.ammoBlocks = Array.isArray(line.ammoBlocks) ? line.ammoBlocks : [];
+        line.ammoBlocks.push(createAmmoBlock(type));
+        return true;
+      }
+      case 'block-remove': {
+        const line = lineAt();
+        if (!line || !Array.isArray(line.ammoBlocks)) return false;
+        line.ammoBlocks.splice(Number(ds.block), 1);
+        return true;
+      }
+      case 'mod-add': {
+        const line = lineAt();
+        const mode = line?.modes?.[Number(ds.mode)];
+        if (!mode) return false;
+        mode.modifiers = Array.isArray(mode.modifiers) ? mode.modifiers : [];
+        mode.modifiers.push(createModeModifier());
+        return true;
+      }
+      case 'mod-remove': {
+        const line = lineAt();
+        const mode = line?.modes?.[Number(ds.mode)];
+        if (!mode || !Array.isArray(mode.modifiers)) return false;
+        mode.modifiers.splice(Number(ds.mod), 1);
+        return true;
+      }
+      case 'dmg-add': {
+        const basePath = String(ds.dmgPath ?? '');
+        if (!basePath) return false;
+        const list = foundry.utils.getProperty(w, basePath);
+        const arr = Array.isArray(list) ? list : [];
+        arr.push(defaultDamageEntry());
+        foundry.utils.setProperty(w, basePath, arr);
+        return true;
+      }
+      case 'dmg-remove': {
+        const basePath = String(ds.dmgPath ?? '');
+        const list = foundry.utils.getProperty(w, basePath);
+        if (!basePath || !Array.isArray(list)) return false;
+        list.splice(Number(ds.index), 1);
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Структурные операции вкладок v3 (`data-waction`) с немедленным сохранением.
+   * @param {string} action
+   * @param {DOMStringMap} ds dataset кнопки
+   */
+  async _handleWeaponV3Action(action, ds) {
+    const w = this._getWeaponData();
+    if (!this._mutateWeaponV3Draft(action, ds, w)) return;
+    await this._setWeaponData(w);
+  }
+
+  /**
+   * @param {'ergonomics'|'line'|'blocks'|'modes'} kind
+   * @param {object} draft
+   * @param {number|null} lineIndex
+   */
+  async _renderWeaponV3DialogBody(kind, draft, lineIndex = null) {
+    const editTpl = WEAPON_V3_DIALOG_EDIT_TEMPLATES[kind];
+    if (!editTpl) return '';
+    const w = this._buildWeaponV3Context(draft);
+    if (kind === 'line') {
+      w.payloadOptions = this._context?.weaponV3?.payloadOptions?.length
+        ? this._context.weaponV3.payloadOptions
+        : await this._getActionPayloadOptions();
+    }
+    const ctx = { w, editable: true };
+    if (kind !== 'ergonomics') {
+      const li = Number(lineIndex);
+      ctx.line = w.lines?.[li];
+      if (!ctx.line) return '';
+    }
+    return foundry.applications.handlebars.renderTemplate(editTpl, ctx);
+  }
+
+  /**
+   * @param {HTMLElement} dialogRoot
+   * @param {{ kind: string, draft: object, lineIndex: number|null, dialogUid: string }} opts
+   */
+  _bindWeaponV3DialogListeners(dialogRoot, opts) {
+    if (!dialogRoot || dialogRoot.dataset.shWeaponV3DialogBound === '1') return;
+    dialogRoot.dataset.shWeaponV3DialogBound = '1';
+
+    const rerender = async () => {
+      const body = await this._renderWeaponV3DialogBody(opts.kind, opts.draft, opts.lineIndex);
+      const mount = dialogRoot.querySelector('[data-sh-weapon-v3-dialog-body]');
+      if (mount) mount.innerHTML = body;
     };
 
-    bindBtn('[data-action="sh-weapon-attack-add"]', async (ev) => {
-      ev.preventDefault();
-      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
-      if (!channelKey) return;
-      const created = await this._openWeaponAttackDialog({
-        title: game.i18n?.localize?.('SPACEHOLDER.ItemWeapon.AddAttack') ?? 'Add attack',
-        channelKey,
-        action: {
-          id: this._newActionId(),
-          name: '',
-          channel: channelKey,
-          mode: 'single',
-          origin: 'manual',
-          enabled: true,
-          isDefault: false,
-          description: '',
-          modifiers: {},
-          overrides: {},
-        },
-      });
-      if (!created) return;
-      const w = this._getWeaponData();
-      if (!w[channelKey] || typeof w[channelKey] !== 'object') return;
-      w[channelKey].attacks = Array.isArray(w[channelKey].attacks) ? w[channelKey].attacks : [];
-      w[channelKey].attacks.push(created);
-      await this._setWeaponData(w);
-      await this.render(false);
+    dialogRoot.addEventListener('change', async (ev) => {
+      const el = ev.target?.closest?.('[data-wpath]');
+      if (!el || !dialogRoot.contains(el)) return;
+      const path = String(el.dataset.wpath ?? '');
+      if (
+        path.endsWith('.trajectoryKind')
+        || path.endsWith('.simpleLimit.enabled')
+      ) {
+        this._applyWeaponV3FormFromRoot(dialogRoot, opts.draft);
+        await rerender();
+      }
     });
 
-    bindBtn('[data-action="sh-weapon-attack-edit"]', async (ev) => {
+    dialogRoot.addEventListener('click', async (ev) => {
+      const btn = ev.target?.closest?.('[data-waction]');
+      if (!btn || !dialogRoot.contains(btn)) return;
       ev.preventDefault();
-      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
-      const id = String(ev.currentTarget?.dataset?.attackId ?? '').trim();
-      if (!channelKey || !id) return;
-      const w = this._getWeaponData();
-      const list = w[channelKey]?.attacks;
-      const source = Array.isArray(list) ? list.find((a) => String(a?.id ?? '') === id) : null;
-      if (!source) return;
-      const edited = await this._openWeaponAttackDialog({
-        title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.EditAction') ?? 'Edit attack',
-        channelKey,
-        action: source,
-      });
-      if (!edited) return;
-      const nextList = (Array.isArray(list) ? list : []).map((a) =>
-        String(a?.id ?? '') === id ? edited : a
+      ev.stopPropagation();
+      this._applyWeaponV3FormFromRoot(dialogRoot, opts.draft);
+      if (!this._mutateWeaponV3Draft(String(btn.dataset.waction), btn.dataset, opts.draft, dialogRoot)) return;
+      await rerender();
+    });
+  }
+
+  /**
+   * @param {'ergonomics'|'line'|'blocks'|'modes'} kind
+   * @param {number|null} [lineIndex]
+   */
+  async _openWeaponV3Dialog(kind, lineIndex = null) {
+    const editTpl = WEAPON_V3_DIALOG_EDIT_TEMPLATES[kind];
+    if (!editTpl) return;
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(
+        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable'
       );
-      w[channelKey].attacks = nextList;
-      await this._setWeaponData(w);
-      await this.render(false);
-    });
+      return;
+    }
 
-    bindBtn('[data-action="sh-weapon-attack-duplicate"]', async (ev) => {
-      ev.preventDefault();
-      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
-      const id = String(ev.currentTarget?.dataset?.attackId ?? '').trim();
-      if (!channelKey || !id) return;
-      const w = this._getWeaponData();
-      const list = w[channelKey]?.attacks;
-      const source = Array.isArray(list) ? list.find((a) => String(a?.id ?? '') === id) : null;
-      if (!source) return;
-      const duplicateSuffix =
-        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DuplicateSuffix') ?? 'Copy';
-      const cloned = await this._openWeaponAttackDialog({
-        title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DuplicateAction') ?? 'Duplicate attack',
-        channelKey,
-        action: {
-          ...foundry.utils.duplicate(source),
-          id: this._newActionId(),
-          name: source.name ? `${source.name} (${duplicateSuffix})` : '',
-          isDefault: false,
-          origin: 'manual',
-        },
-      });
-      if (!cloned) return;
-      w[channelKey].attacks = [...(Array.isArray(list) ? list : []), cloned];
-      await this._setWeaponData(w);
-      await this.render(false);
-    });
+    const draft = this._getWeaponData();
+    if (kind !== 'ergonomics') {
+      const li = Number(lineIndex);
+      if (!Number.isInteger(li) || !draft.lines?.[li]) return;
+    }
 
-    bindBtn('[data-action="sh-weapon-attack-remove"]', async (ev) => {
-      ev.preventDefault();
-      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
-      const id = String(ev.currentTarget?.dataset?.attackId ?? '').trim();
-      if (!channelKey || !id) return;
-      const confirmed = await foundry.applications.api.DialogV2.confirm({
-        classes: ['spaceholder'],
-        window: {
-          title: game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionTitle') ?? 'Delete',
-          icon: 'fa-solid fa-trash',
+    const dialogUid = this._newActionId();
+    const body = await this._renderWeaponV3DialogBody(kind, draft, lineIndex);
+    const content = await foundry.applications.handlebars.renderTemplate(
+      'systems/spaceholder/templates/item/parts/item-weapon-v3-dialog.hbs',
+      { dialogUid, body }
+    );
+
+    const dialogOpts = { kind, draft, lineIndex, dialogUid };
+    const bindTimer = globalThis.setInterval?.(() => {
+      const root =
+        typeof document !== 'undefined'
+          ? document.querySelector(`[data-sh-weapon-v3-dialog="${dialogUid}"]`)
+          : null;
+      if (root) {
+        this._bindWeaponV3DialogListeners(root, dialogOpts);
+        globalThis.clearInterval?.(bindTimer);
+      }
+    }, 40);
+    globalThis.setTimeout?.(() => globalThis.clearInterval?.(bindTimer), 2500);
+
+    const titleKey = WEAPON_V3_DIALOG_TITLE_KEYS[kind];
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: game.i18n?.localize?.(titleKey) ?? 'Weapon',
+        icon: 'fa-solid fa-pen-to-square',
+      },
+      position: { width: kind === 'ergonomics' ? 480 : 560 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget?.closest?.('.window-content') ||
+              (typeof document !== 'undefined'
+                ? document.querySelector(`[data-sh-weapon-v3-dialog="${dialogUid}"]`)
+                : null);
+            this._applyWeaponV3FormFromRoot(root, draft);
+            await this._setWeaponData(draft);
+          },
         },
-        content: `<p>${foundry.utils.escapeHTML(
-          game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.DeleteActionConfirm') ?? 'Delete this attack?'
-        )}</p>`,
-        yes: {
-          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Delete') ?? 'Delete',
-          icon: 'fa-solid fa-trash',
-        },
-        no: {
+        {
+          action: 'cancel',
           label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
           icon: 'fa-solid fa-times',
         },
-      });
-      if (!confirmed) return;
-      const w = this._getWeaponData();
-      const list = w[channelKey]?.attacks;
-      w[channelKey].attacks = (Array.isArray(list) ? list : []).filter((a) => String(a?.id ?? '') !== id);
-      await this._setWeaponData(w);
-      await this.render(false);
+      ],
     });
+  }
 
-    const bindDlg = (selector, handler) => {
-      el.querySelectorAll(selector).forEach((btn) => {
-        if (btn.dataset.shWeaponDlgBound === '1') return;
-        btn.dataset.shWeaponDlgBound = '1';
-        btn.addEventListener('click', handler);
-      });
-    };
+  /**
+   * Делегированные обработчики вкладки «Оружие» (v3).
+   * Вкладка read-only: структурные кнопки + открытие диалогов редактирования.
+   */
+  _bindWeaponV3Listeners() {
+    const el = this.element;
+    if (!el || !this.isEditable) return;
+    for (const root of el.querySelectorAll('[data-sh-weapon-v3-root]')) {
+      if (root.dataset.shWeaponV3Bound === '1') continue;
+      root.dataset.shWeaponV3Bound = '1';
 
-    const bindGroupBtn = (selector, groupKey) => {
-      bindDlg(selector, async (ev) => {
+      root.addEventListener('click', async (ev) => {
+        const dlgBtn = ev.target?.closest?.('[data-wdialog]');
+        if (dlgBtn && root.contains(dlgBtn)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const kind = String(dlgBtn.dataset.wdialog ?? '');
+          const lineRaw = dlgBtn.dataset.line;
+          const lineIndex = lineRaw === undefined || lineRaw === '' ? null : Number(lineRaw);
+          await this._openWeaponV3Dialog(kind, lineIndex);
+          return;
+        }
+
+        const btn = ev.target?.closest?.('[data-waction]');
+        if (!btn || !root.contains(btn)) return;
         ev.preventDefault();
-        const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
-        if (!channelKey) return;
-        await this._openWeaponGroupDialog(channelKey, groupKey);
-        await this.render(false);
+        ev.stopPropagation();
+        await this._handleWeaponV3Action(String(btn.dataset.waction), btn.dataset);
       });
-    };
-    bindGroupBtn('[data-action="sh-weapon-edit-features"]', 'features');
-    bindGroupBtn('[data-action="sh-weapon-edit-projectile"]', 'projectile');
-    bindGroupBtn('[data-action="sh-weapon-edit-usage"]', 'usage');
-
-    bindDlg('[data-action="sh-weapon-edit-channel-options"]', async (ev) => {
-      ev.preventDefault();
-      const channelKey = String(ev.currentTarget?.dataset?.channel ?? '').trim();
-      if (!channelKey) return;
-      await this._openWeaponChannelOptionsDialog(channelKey);
-      await this.render(false);
-    });
-
-    bindDlg('[data-action="sh-ammo-edit-projectile"]', async (ev) => {
-      ev.preventDefault();
-      await this._openAmmoGroupDialog('projectile');
-      await this.render(false);
-    });
-
-    bindDlg('[data-action="sh-ammo-edit-resource"]', async (ev) => {
-      ev.preventDefault();
-      await this._openAmmoGroupDialog('resource');
-      await this.render(false);
-    });
-
-    bindDlg('[data-action="sh-nested-storage-add"]', async (ev) => {
-      ev.preventDefault();
-      await this._openNestedStorageAddDialog();
-      await this.render(false);
-    });
-
-    bindDlg('[data-action="sh-nested-storage-set-attached"]', async (ev) => {
-      ev.preventDefault();
-      const pathText = String(ev.currentTarget?.dataset?.path ?? '').trim();
-      await this._setNestedStorageSlot('attached', pathText);
-      await this.render(false);
-    });
-
-    bindDlg('[data-action="sh-nested-storage-set-chamber"]', async (ev) => {
-      ev.preventDefault();
-      const pathText = String(ev.currentTarget?.dataset?.path ?? '').trim();
-      await this._setNestedStorageSlot('chamber', pathText);
-      await this.render(false);
-    });
-
-    bindDlg('[data-action="sh-nested-storage-extract"]', async (ev) => {
-      ev.preventDefault();
-      const pathText = String(ev.currentTarget?.dataset?.path ?? '').trim();
-      await this._extractNestedStoragePath(pathText);
-      await this.render(false);
-    });
+    }
   }
 
   /**
@@ -2815,39 +2417,6 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   }
 
   /**
-   * Привести поля weapon после FormData (теги textarea, пустые id).
-   * Частичный submit мержим с документом, чтобы не потерять соседние ветки `weapon.*`.
-   * @param {object} [data]
-   */
-  _postProcessWeaponSubmitData(data) {
-    if (!data || typeof data !== 'object') return;
-    if (!data.system || typeof data.system !== 'object') return;
-    if (!Object.prototype.hasOwnProperty.call(data.system, 'weapon')) return;
-
-    const incoming = data.system.weapon;
-    if (!incoming || typeof incoming !== 'object') return;
-
-    const docW =
-      this.item?.system?.weapon && typeof this.item.system.weapon === 'object'
-        ? foundry.utils.duplicate(this.item.system.weapon)
-        : {};
-    const merged = foundry.utils.mergeObject(docW, incoming, { inplace: false, recursive: true });
-
-    for (const key of ['melee', 'ranged', 'thrown']) {
-      const ch = merged[key];
-      if (!ch || typeof ch !== 'object') continue;
-      if (ch.defaultAttackId === '' || ch.defaultAttackId === undefined) {
-        ch.defaultAttackId = null;
-      } else if (typeof ch.defaultAttackId === 'string') {
-        const t = ch.defaultAttackId.trim();
-        ch.defaultAttackId = t.length ? t : null;
-      }
-    }
-
-    data.system.weapon = migrateItemWeaponData(merged, this.item.system.itemTags);
-  }
-
-  /**
    * Поля без привязки к FormData (теги — `data-sh-item-tag`; анатомия/покрытие — диалог и PIXI-редактор):
    * при submitOnChange вложенный `system` приходит без них → DataModel подставляет дефолты и затирает данные.
    * Подмешиваем снимок с документа, как для `itemTags`.
@@ -2869,9 +2438,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       isArmor: !!(src && src.isArmor),
       isActions: !!(src && src.isActions),
       isModifiers: !!(src && src.isModifiers),
-      isMelee: !!(src && src.isMelee),
-      isRanged: !!(src && src.isRanged),
-      isThrown: !!(src && src.isThrown),
+      isWeapon: !!(src && src.isWeapon),
       isAmmo: !!(src && src.isAmmo),
       isContainer: !!(src && src.isContainer),
     };
@@ -2914,7 +2481,6 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   async _prepareSubmitData(event, form, formData) {
     const data = await super._prepareSubmitData(event, form, formData);
     this._preserveWearableGearSubmitFields(data);
-    this._postProcessWeaponSubmitData(data);
     return data;
   }
 
@@ -2925,7 +2491,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   async _onRender(context, options) {
     await super._onRender(context, options);
 
-    this._bindWeaponAttackListeners();
+    this._bindWeaponV3Listeners();
     this._bindItemContainerListeners();
 
     if (!this.isEditable) return;
@@ -2960,9 +2526,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
           isArmor: readTag('isArmor'),
           isActions: readTag('isActions'),
           isModifiers: readTag('isModifiers'),
-          isMelee: readTag('isMelee'),
-          isRanged: readTag('isRanged'),
-          isThrown: readTag('isThrown'),
+          isWeapon: readTag('isWeapon'),
           isAmmo: readTag('isAmmo'),
           isContainer: readTag('isContainer'),
         };
@@ -3009,9 +2573,7 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
     cur.isArmor ||
     cur.isActions ||
     cur.isModifiers ||
-    cur.isMelee ||
-    cur.isRanged ||
-    cur.isThrown ||
+    cur.isWeapon ||
     cur.isAmmo ||
     cur.isContainer
   );
@@ -3024,9 +2586,7 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
       !inc.isArmor &&
       !inc.isActions &&
       !inc.isModifiers &&
-      !inc.isMelee &&
-      !inc.isRanged &&
-      !inc.isThrown &&
+      !inc.isWeapon &&
       !inc.isAmmo &&
       !inc.isContainer;
     if (!incAllFalse) return false;
@@ -3043,9 +2603,7 @@ function fixSpuriousWearableItemTagsWipe(item, change) {
       !flatIt.isArmor &&
       !flatIt.isActions &&
       !flatIt.isModifiers &&
-      !flatIt.isMelee &&
-      !flatIt.isRanged &&
-      !flatIt.isThrown &&
+      !flatIt.isWeapon &&
       !flatIt.isAmmo &&
       !flatIt.isContainer;
     if (!incAllFalse) return false;

@@ -39,6 +39,7 @@
       "Armor": "Armor (coverage, equip/unequip)",
       "Actions": "Actions (custom item actions)",
       "Modifiers": "Modifiers (character stats)",
+      "Weapon": "Weapon (lines, ammo blocks, fire modes)",
       "Ammo": "Ammo",
       "Container": "Container (nested inventory)",
       "EmptyTabPlaceholder": "This tab is empty for now."
@@ -69,6 +70,263 @@
       "DropNotAnItem": "That drop is not an item.",
       "DropWrongActor": "The item must belong to the same character as this container.",
       "CycleWarning": "That would create a nested container loop."
+    },
+    "WeaponV3": {
+      "Tab": "Weapon",
+      "Edit": {
+        "Ergonomics": "Edit ergonomics",
+        "Line": "Edit line",
+        "Blocks": "Edit ammunition",
+        "Modes": "Edit fire modes"
+      },
+      "Dialog": {
+        "ErgonomicsTitle": "Weapon — ergonomics",
+        "LineTitle": "Weapon — line parameters",
+        "BlocksTitle": "Weapon — ammunition blocks",
+        "ModesTitle": "Weapon — fire modes"
+      },
+      "Ergo": {
+        "Title": "Ergonomics",
+        "Overall": "Overall",
+        "OverallHint": "Percent multiplier of the character's total aiming arc size (100 = neutral)",
+        "Zones": "Zone weights",
+        "ZonesHint": "Re-weight arc zones while the total size stays fixed",
+        "ZoneGreen": "Green",
+        "ZoneYellow": "Yellow",
+        "ZoneOrange": "Orange",
+        "ZoneRed": "Red",
+        "DeadZone": "Dead zone",
+        "DeadZoneHint": "Percent multiplier of the character's dead zone",
+        "AimPenalty": "Aiming interference",
+        "AimPenaltyHint": "Percent multiplier of the deviation penalty outside the green zone",
+        "CritZoneBonus": "Crit zone bonus",
+        "CritZoneBonusHint": "Flat bonus to the critical (purple) zone, applied before the size multiplier",
+        "CritZoneSize": "Crit zone size",
+        "CritZoneSizeHint": "Percent multiplier of the critical (purple) zone, applied after the flat bonus",
+        "Readying": "Readying",
+        "ReadyingHint": "AP cost to enter combat readiness; disabled = no readying needed at all"
+      },
+      "Line": {
+        "Title": "Attack lines",
+        "Add": "Add line",
+        "Remove": "Remove line",
+        "Default": "Standard line",
+        "Empty": "No attack lines.",
+        "LastLine": "A weapon needs at least one line.",
+        "PayloadId": "Payload ID",
+        "Aiming": "Aiming (AP)",
+        "AimingHint": "Base AP cost of attacking with this line",
+        "Trigger": "Trigger (AP)",
+        "TriggerHint": "AP cost of finishing the attack cycle",
+        "EnergyMult": "Energy multiplier",
+        "EnergyMultHint": "Percent multiplier of projectile energy AND damage (barrel length)",
+        "Spread": "Spread",
+        "SpreadHint": "Degrees; rolled independently from the aiming arc deviation",
+        "Recoil": "Recoil",
+        "RecoilHint": "Placeholder — recoil is not calculated yet",
+        "EnterCost": "Enable (AP)",
+        "EnterCostHint": "AP cost to switch into this line",
+        "ExitCost": "Disable (AP)",
+        "ExitCostHint": "AP cost to switch out of this line",
+        "PayloadIdHint": "Payload from module/data/payloads/ library"
+      },
+      "Trajectory": {
+        "Kind": "Trajectory",
+        "KindHint": "Simple — straight line; complex — payload from the library",
+        "KindSimple": "Simple (straight)",
+        "KindComplex": "Complex (payload)",
+        "Length": "Length",
+        "Limit": "Limit",
+        "LimitHint": "Set a fixed segment length instead of spanning the scene",
+        "SimpleDefaultHint": "By default the line spans scene width + height (no ricochets or penetration).",
+        "SceneLength": "Scene width + height",
+        "NoPayload": "Not selected",
+        "UnitGrid": "Grid cells",
+        "UnitMeasure": "Measurement units",
+        "UnitGridShort": "cells",
+        "UnitMeasureShort": "u."
+      },
+      "Block": {
+        "Title": "Ammunition",
+        "Add": "Add ammo block",
+        "Remove": "Remove ammo block",
+        "Empty": "No ammo blocks — the line consumes no ammunition; damage is set on the weapon.",
+        "Types": {
+          "internalCharge": "Internal charge",
+          "internalMagazine": "Internal magazine",
+          "externalCharge": "External charge",
+          "externalMagazine": "External magazine"
+        },
+        "Capacity": "Capacity",
+        "CapacityHint": "Reserve only; the chamber holds up to one more",
+        "ExternalCapacityHint": "Fallback capacity when the magazine item has none set",
+        "LoadAmount": "Load amount (X)",
+        "LoadAmountHint": "Rounds added by the Load X action",
+        "Chamber": "Chamber",
+        "ChamberHint": "0/1-round chamber; off = fire straight from the reserve",
+        "AutoFeed": "Auto-feed",
+        "AutoFeedHint": "Chamber refills automatically after a shot (no bolt action needed)",
+        "Caliber": "Caliber",
+        "CaliberHint": "Comma-separated types; one match is enough (e.g. \"Type A, Type B\")",
+        "Connector": "Connector",
+        "ConnectorHint": "Magazine attachment slot; matched against the magazine item connector",
+        "Charge": "Charge",
+        "ChargeHint": "Current internal charge (no items consumed)",
+        "CounterHint": "[chamber]+reserve/capacity",
+        "Search": "Ammo search",
+        "SearchHint": "Where to look for ammunition, in priority order: hands → worn → inventory → containers",
+        "SearchModes": {
+          "auto": "Auto",
+          "semi": "Semi-auto",
+          "manual": "Manual"
+        },
+        "ApTitle": "Actions (AP)",
+        "ApHint": "AP costs of the block's atomic actions; disabled = action unavailable",
+        "Ap": {
+          "loadOne": "Load 1",
+          "loadX": "Load X",
+          "reload": "Reload",
+          "bolt": "Bolt",
+          "unload": "Unload",
+          "empty": "Empty"
+        }
+      },
+      "Mode": {
+        "Title": "Fire modes",
+        "Add": "Add mode",
+        "Remove": "Remove mode",
+        "Default": "Mode",
+        "LastMode": "A line needs at least one mode.",
+        "FireModes": {
+          "single": "Single",
+          "burst": "Burst (X)",
+          "auto": "Auto"
+        },
+        "BurstCount": "Shots per burst",
+        "BurstCountHint": "Number of shots in one burst",
+        "Rpm": "RPM",
+        "FireDelayHint": "Delay between shots in AP (10 AP = 1 s)",
+        "EnterCost": "Enable (AP)",
+        "EnterCostHint": "AP cost to switch into this mode",
+        "ExitCost": "Disable (AP)",
+        "ExitCostHint": "AP cost to switch out of this mode",
+        "Modifiers": "Modifiers",
+        "ModifiersHint": "Override any previously defined parameter while this mode is active",
+        "ModAdd": "Add modifier",
+        "ModRemove": "Remove modifier",
+        "ModEnabled": "Modifier active",
+        "ModDisable": "Disable param",
+        "ModDisableHint": "Turn the target parameter off entirely instead of changing its value",
+        "ModsEmpty": "No modifiers.",
+        "ModOps": {
+          "add": "Bonus (+N)",
+          "mult": "Multiplier (×N/100)",
+          "set": "Set (=N)"
+        }
+      },
+      "Damage": {
+        "Title": "Damage",
+        "Add": "Add damage entry",
+        "Remove": "Remove damage entry",
+        "Empty": "No damage entries.",
+        "Type": "Damage type",
+        "Damage": "Damage",
+        "ArmorPen": "Armor pen (%)",
+        "Hardness": "Hardness",
+        "ArmorDamageReduction": "Armor dmg reduction (%)",
+        "ArmorDamageReductionHint": "100% — damage drops proportionally to energy lost in armor; 0% — armor never reduces damage",
+        "Speed": "Speed",
+        "SpeedHint": "Placeholder — projectile speed is not used yet",
+        "PayloadId": "Payload ID",
+        "EnergyHint": "Projectile energy: damage × (armorPen/100)² × hardness, computed before the shot"
+      },
+      "AmmoItem": {
+        "Title": "Ammunition item",
+        "Caliber": "Caliber",
+        "CaliberHint": "What weapons/magazines this round fits (comma-separated types)",
+        "Connector": "Connector",
+        "ConnectorHint": "Enabled = this item is a magazine container; connector defines where it attaches",
+        "Charge": "Charge",
+        "ChargeHint": "Battery charge: spent first; at 0 one unit of quantity is consumed",
+        "ChargeCurrent": "Current",
+        "ChargeMax": "Max",
+        "Consume": "Consumed",
+        "ConsumeHint": "Item disappears when quantity reaches 0",
+        "MagCapacity": "Capacity",
+        "MagCapacityHint": "Maximum rounds in this magazine container"
+      },
+      "Ammo": {
+        "PickTitle": "Select ammunition",
+        "PickMagazineTitle": "Select magazine",
+        "NoMagazineAttached": "no magazine",
+        "PickPrompt": "Ammunition source",
+        "NoCandidates": "No compatible ammunition found.",
+        "NoMagazineFound": "No compatible magazine found.",
+        "NoAmmoForShot": "No ammunition for the shot.",
+        "NeedBolt": "Bolt action required before firing.",
+        "BoltFailed": "Bolt action failed.",
+        "RoundEjected": "The chambered round was ejected to the ground.",
+        "Group": {
+          "hands": "In hands",
+          "worn": "Worn",
+          "inventory": "Inventory",
+          "containers": "Containers"
+        }
+      },
+      "BlockActions": {
+        "LoadOne": "Load 1",
+        "LoadX": "Load {count}",
+        "Reload": "Reload",
+        "Bolt": "Bolt",
+        "Unload": "Unload",
+        "Empty": "Empty",
+        "AttachMagazine": "Attach magazine",
+        "DetachMagazine": "Detach magazine",
+        "Failed": "Action failed: {reason}"
+      },
+      "Interact": {
+        "ActionLabel": "{name}: Interact",
+        "Title": "Actions: {name}",
+        "Hint": "Choose a standard weapon action.",
+        "NoActions": "No actions available for this weapon."
+      },
+      "Chain": {
+        "Title": "Complex attack",
+        "Execute": "Execute",
+        "Total": "Total",
+        "ApShort": "AP",
+        "AutoConfirm": "Confirm complex actions automatically",
+        "TakeWeapon": "Take {name} in hands",
+        "EnterLine": "Enter line: {name}",
+        "EnterMode": "Enter mode: {name}",
+        "ExitMode": "Exit mode: {name}",
+        "SwitchMode": "Switch mode",
+        "Reload": "Reload",
+        "Bolt": "Bolt",
+        "AttachMagazine": "Attach magazine",
+        "Ready": "Readying",
+        "Aim": "Aiming",
+        "Blocked": {
+          "unknown": "The attack cannot be performed.",
+          "noAttack": "Attack not found (line/mode).",
+          "noLine": "Attack line not found.",
+          "noAmmo": "Not enough ammunition.",
+          "noAmmoFound": "No compatible ammunition found.",
+          "noMagazine": "No magazine attached.",
+          "noMagazineFound": "No compatible magazine found.",
+          "noChamber": "This block has no chamber.",
+          "noBlock": "Ammo block not found.",
+          "needReload": "Reload required.",
+          "reloadUnavailable": "Reload is unavailable.",
+          "reserveEmpty": "Reserve is empty.",
+          "full": "The block is already full.",
+          "incompatible": "Incompatible ammunition.",
+          "alreadyAttached": "A magazine is already attached.",
+          "wrongBlockType": "Action is not applicable to this block type.",
+          "onTheFly": "Ammunition is found on the fly during the shot.",
+          "notEnoughAp": "Not enough action points."
+        }
+      }
     },
     "ItemWeapon": {
       "Inner": {
@@ -527,6 +785,21 @@
         "Placeholder": "Placeholder"
       }
     },
+    "TokenQuickHud": {
+      "AriaLabel": "Quick access: {name}",
+      "AriaLabelEmpty": "Quick access: no token",
+      "QuickActions": "Quick actions",
+      "NoActions": "No quick actions",
+      "NoHeldItems": "No held items",
+      "NoToken": "No token selected",
+      "HeldItems": "Held",
+      "HeldWeapons": "Held weapons",
+      "ExpandSegment": "Expand segment",
+      "CollapseSegment": "Collapse segment",
+      "SourceSelected": "Selected token",
+      "SourceFallback": "Your character",
+      "SourceLastSelected": "Last selected"
+    },
     "ActionsSystem": {
       "UI": {
         "Title": "Actions",
@@ -589,15 +862,22 @@
       "Common": {
         "NotEditable": "Sheet is not editable"
       },
+      "ItemMenu": {
+        "StandardGroup": "Standard actions"
+      },
       "Wearable": {
         "Equip": "Equip: {item}",
         "Unequip": "Unequip: {item}",
         "Hold": "Hold: {item}",
         "Stow": "Stow: {item}",
+        "Drop": "Drop: {item}",
+        "Show": "Show: {item}",
         "EquipShort": "Equip",
         "UnequipShort": "Unequip",
         "HoldShort": "Hold",
-        "StowShort": "Stow"
+        "StowShort": "Stow",
+        "DropShort": "Drop",
+        "ShowShort": "Show"
       },
       "Movement": {
         "Move": "Move"
@@ -615,6 +895,7 @@
         "NotEnoughAP": "Not enough Action Points (need {need}, have {have})",
         "ApSpendFailed": "Could not apply Action Point spend",
         "NoTokenForAiming": "No token found for aiming action",
+        "ActionNotFound": "Action not found",
         "MissingActionPayload": "Select a payload for this action first",
         "AimingUnavailable": "Aiming manager is unavailable",
         "AimingStartFailed": "Could not start aiming mode"

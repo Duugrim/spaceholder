@@ -45,7 +45,7 @@
         "height": 1
       }
     },
-    "biography": "<p>Тестовая мишень для проверки стрельбы. Кастомная анатомия с единственной частью тела <code>chest</code> и большим запасом HP. Принимает гуманоидную броню грудного слота (армор резолвится по <code>part.id === \"chest\"</code>).</p>",
+    "biography": "<p>Тестовая мишень: одна часть тела <code>chest</code>, много HP. Для проверки попаданий и урона v3.</p>",
     "attributes": {
       "level": {
         "value": 1
@@ -191,8 +191,8 @@
     "coreVersion": "13.350",
     "systemId": "spaceholder",
     "systemVersion": "0.178",
-    "createdTime": 1776279800101,
-    "modifiedTime": 1776279800101,
+    "createdTime": 1781100000099,
+    "modifiedTime": 1781100000099,
     "lastModifiedBy": null
   },
   "_key": "!actors!shtesttarget0000"

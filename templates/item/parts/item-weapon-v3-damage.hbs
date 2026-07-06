@@ -1,0 +1,65 @@
+{{!-- Саб-блок урона (v3): список записей урона с предрассчитанной энергией.
+     Контекст: dmg = { basePath, rows: [{ index, path, damageType, damage, armorPen,
+     hardness, armorDamageReduction, speed, payloadId, energy }] } --}}
+<div class="sh-wv3-damage" data-sh-wv3-damage="{{dmg.basePath}}">
+  <div class="sh-wv3-damage__header">
+    <span class="sh-wv3-damage__title">
+      <i class="fas fa-burst" aria-hidden="true"></i>
+      {{localize 'SPACEHOLDER.WeaponV3.Damage.Title'}}
+    </span>
+    {{#if editable}}
+    <button type="button" class="sh-wv3-icon-btn" data-waction="dmg-add" data-dmg-path="{{dmg.basePath}}"
+            data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Damage.Add'}}">
+      <i class="fas fa-plus" aria-hidden="true"></i>
+    </button>
+    {{/if}}
+  </div>
+  {{#if dmg.rows.length}}
+  <div class="sh-wv3-damage__rows">
+    {{#each dmg.rows as |row|}}
+    <div class="sh-wv3-damage__row">
+      <label class="sh-wv3-field sh-wv3-field--wide">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.Type'}}</span>
+        <input type="text" data-wpath="{{row.path}}.damageType" data-wdtype="String" value="{{row.damageType}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <label class="sh-wv3-field">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.Damage'}}</span>
+        <input type="number" min="0" step="any" data-wpath="{{row.path}}.damage" data-wdtype="Number" value="{{row.damage}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <label class="sh-wv3-field">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.ArmorPen'}}</span>
+        <input type="number" min="0" step="1" data-wpath="{{row.path}}.armorPen" data-wdtype="Int" value="{{row.armorPen}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <label class="sh-wv3-field">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.Hardness'}}</span>
+        <input type="number" min="0" step="any" data-wpath="{{row.path}}.hardness" data-wdtype="Number" value="{{row.hardness}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Damage.ArmorDamageReductionHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.ArmorDamageReduction'}}</span>
+        <input type="number" min="0" step="1" data-wpath="{{row.path}}.armorDamageReduction" data-wdtype="Int" value="{{row.armorDamageReduction}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Damage.SpeedHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.Speed'}}</span>
+        <input type="number" min="0" step="any" data-wpath="{{row.path}}.speed" data-wdtype="Number" value="{{row.speed}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <label class="sh-wv3-field sh-wv3-field--wide">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.PayloadId'}}</span>
+        <input type="text" data-wpath="{{row.path}}.payloadId" data-wdtype="String" value="{{row.payloadId}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <span class="sh-wv3-damage__energy" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Damage.EnergyHint'}}">
+        <i class="fas fa-bolt" aria-hidden="true"></i> {{row.energy}}
+      </span>
+      {{#if ../editable}}
+      <button type="button" class="sh-wv3-icon-btn sh-wv3-icon-btn--danger" data-waction="dmg-remove"
+              data-dmg-path="{{../dmg.basePath}}" data-index="{{row.index}}"
+              data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Damage.Remove'}}">
+        <i class="fas fa-trash" aria-hidden="true"></i>
+      </button>
+      {{/if}}
+    </div>
+    {{/each}}
+  </div>
+  {{else}}
+  <p class="sh-wv3-empty"><em>{{localize 'SPACEHOLDER.WeaponV3.Damage.Empty'}}</em></p>
+  {{/if}}
+</div>

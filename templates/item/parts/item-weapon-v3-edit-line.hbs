@@ -1,0 +1,98 @@
+{{!-- Редактирование параметров линии (диалог). Контекст: line, w. --}}
+<section class="sh-wv3-panel">
+  <div class="sh-wv3-line__header">
+    <input type="text" class="sh-wv3-line__name" data-wpath="{{line.path}}.name" data-wdtype="String"
+           value="{{line.name}}" placeholder="{{localize 'SPACEHOLDER.WeaponV3.Line.Default'}}" />
+  </div>
+  <div class="sh-wv3-grid">
+    <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.AimingHint'}}">
+      <span>{{localize 'SPACEHOLDER.WeaponV3.Line.Aiming'}}</span>
+      <input type="number" min="0" step="any" data-wpath="{{line.path}}.aiming" data-wdtype="Number" value="{{line.aiming}}" />
+    </label>
+    <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.TriggerHint'}}">
+      <span>{{localize 'SPACEHOLDER.WeaponV3.Line.Trigger'}}</span>
+      <input type="number" min="0" step="any" data-wpath="{{line.path}}.trigger" data-wdtype="Number" value="{{line.trigger}}" />
+    </label>
+
+    <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Trajectory.KindHint'}}">
+      <span>{{localize 'SPACEHOLDER.WeaponV3.Trajectory.Kind'}}</span>
+      <select data-wpath="{{line.path}}.trajectoryKind" data-wdtype="String">
+        {{#each w.trajectoryKindOptions as |opt|}}
+        <option value="{{opt.value}}" {{#if (eq ../line.trajectoryKind opt.value)}}selected{{/if}}>{{opt.label}}</option>
+        {{/each}}
+      </select>
+    </label>
+
+    {{#if line.isSimpleTrajectory}}
+    <div class="sh-wv3-trajectory-simple sh-wv3-field--wide">
+      <p class="sh-wv3-trajectory-simple__hint">{{localize 'SPACEHOLDER.WeaponV3.Trajectory.SimpleDefaultHint'}}</p>
+      <div class="sh-wv3-toggleable {{#unless line.simpleLimitEnabled}}sh-wv3-toggleable--off{{/unless}}">
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Trajectory.LimitHint'}}">
+          <input type="checkbox" data-wpath="{{line.path}}.simpleLimit.enabled" {{#if line.simpleLimit.enabled}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.Trajectory.Limit'}}</span>
+        </label>
+        <input type="number" min="0" step="any"
+               data-wpath="{{line.path}}.simpleLimit.value" data-wdtype="Number"
+               value="{{line.simpleLimit.value}}" />
+        <select data-wpath="{{line.path}}.simpleLimit.unit" data-wdtype="String">
+          {{#each w.trajectoryUnitOptions as |opt|}}
+          <option value="{{opt.value}}" {{#if (eq ../line.simpleLimit.unit opt.value)}}selected{{/if}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+    {{/if}}
+
+    {{#if line.isComplexTrajectory}}
+    <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.PayloadIdHint'}}">
+      <span>{{localize 'SPACEHOLDER.WeaponV3.Line.PayloadId'}}</span>
+      <select data-wpath="{{line.path}}.payloadId" data-wdtype="String">
+        <option value="">{{localize 'SPACEHOLDER.WeaponV3.Trajectory.NoPayload'}}</option>
+        {{#each w.payloadOptions as |p|}}
+        <option value="{{p.id}}" {{#if (eq ../line.payloadId p.id)}}selected{{/if}}>{{p.name}}</option>
+        {{/each}}
+      </select>
+    </label>
+    {{/if}}
+
+    <div class="sh-wv3-toggleable {{#unless line.energyMult.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.EnergyMultHint'}}">
+        <input type="checkbox" data-wpath="{{line.path}}.energyMult.enabled" {{#if line.energyMult.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Line.EnergyMult'}}</span>
+      </label>
+      <input type="number" min="0" step="1" data-wpath="{{line.path}}.energyMult.value" data-wdtype="Int" value="{{line.energyMult.value}}" />
+    </div>
+    <div class="sh-wv3-toggleable {{#unless line.spread.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.SpreadHint'}}">
+        <input type="checkbox" data-wpath="{{line.path}}.spread.enabled" {{#if line.spread.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Line.Spread'}}</span>
+      </label>
+      <input type="number" min="0" step="any" data-wpath="{{line.path}}.spread.value" data-wdtype="Number" value="{{line.spread.value}}" />
+    </div>
+    <div class="sh-wv3-toggleable {{#unless line.recoil.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.RecoilHint'}}">
+        <input type="checkbox" data-wpath="{{line.path}}.recoil.enabled" {{#if line.recoil.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Line.Recoil'}}</span>
+      </label>
+      <input type="number" min="0" step="any" data-wpath="{{line.path}}.recoil.value" data-wdtype="Number" value="{{line.recoil.value}}" />
+    </div>
+    <div class="sh-wv3-toggleable {{#unless line.enterCost.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.EnterCostHint'}}">
+        <input type="checkbox" data-wpath="{{line.path}}.enterCost.enabled" {{#if line.enterCost.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Line.EnterCost'}}</span>
+      </label>
+      <input type="number" min="0" step="any" data-wpath="{{line.path}}.enterCost.value" data-wdtype="Number" value="{{line.enterCost.value}}" />
+    </div>
+    <div class="sh-wv3-toggleable {{#unless line.exitCost.enabled}}sh-wv3-toggleable--off{{/unless}}">
+      <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Line.ExitCostHint'}}">
+        <input type="checkbox" data-wpath="{{line.path}}.exitCost.enabled" {{#if line.exitCost.enabled}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Line.ExitCost'}}</span>
+      </label>
+      <input type="number" min="0" step="any" data-wpath="{{line.path}}.exitCost.value" data-wdtype="Number" value="{{line.exitCost.value}}" />
+    </div>
+  </div>
+
+  {{#if line.showLineDamage}}
+  {{> "systems/spaceholder/templates/item/parts/item-weapon-v3-damage.hbs" dmg=line.damageCtx editable=true}}
+  {{/if}}
+</section>

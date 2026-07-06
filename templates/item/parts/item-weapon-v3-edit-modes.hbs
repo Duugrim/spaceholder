@@ -1,0 +1,94 @@
+{{!-- Редактирование режимов огня линии (диалог). Контекст: line, w. --}}
+<section class="sh-wv3-panel">
+  <div class="sh-wv3-subpanel__header">
+    <button type="button" class="sh-wv3-icon-btn" data-waction="mode-add" data-line="{{line.index}}"
+            data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.Add'}}">
+      <i class="fas fa-plus" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  {{#each line.modes as |mode|}}
+  <div class="sh-wv3-mode" data-mode-id="{{mode.id}}">
+    <div class="sh-wv3-mode__header">
+      <input type="text" class="sh-wv3-mode__name" data-wpath="{{mode.path}}.name" data-wdtype="String"
+             value="{{mode.name}}" placeholder="{{localize 'SPACEHOLDER.WeaponV3.Mode.Default'}}" />
+      <select data-wpath="{{mode.path}}.fireMode" data-wdtype="String">
+        {{#each ../w.fireModeOptions as |opt|}}
+        <option value="{{opt.value}}" {{#if (eq opt.value mode.fireMode)}}selected{{/if}}>{{opt.label}}</option>
+        {{/each}}
+      </select>
+      <button type="button" class="sh-wv3-icon-btn sh-wv3-icon-btn--danger" data-waction="mode-remove"
+              data-line="{{line.index}}" data-mode="{{mode.index}}"
+              data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.Remove'}}">
+        <i class="fas fa-trash" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="sh-wv3-grid">
+      {{#if mode.isBurst}}
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.BurstCountHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.BurstCount'}}</span>
+        <input type="number" min="2" step="1" data-wpath="{{mode.path}}.burstCount" data-wdtype="Int" value="{{mode.burstCount}}" />
+      </label>
+      {{/if}}
+      {{#unless mode.isSingle}}
+      <label class="sh-wv3-field"
+             data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.FireDelayHint'}}: {{mode.fireDelayAp}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.Rpm'}} ≈ {{mode.rpmDisplay}}</span>
+        <input type="number" min="0" step="any" data-wpath="{{mode.path}}.fireDelayAp" data-wdtype="Number" value="{{mode.fireDelayAp}}" />
+      </label>
+      {{/unless}}
+      <div class="sh-wv3-toggleable {{#unless mode.enterCost.enabled}}sh-wv3-toggleable--off{{/unless}}">
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.EnterCostHint'}}">
+          <input type="checkbox" data-wpath="{{mode.path}}.enterCost.enabled" {{#if mode.enterCost.enabled}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.EnterCost'}}</span>
+        </label>
+        <input type="number" min="0" step="any" data-wpath="{{mode.path}}.enterCost.value" data-wdtype="Number" value="{{mode.enterCost.value}}" />
+      </div>
+      <div class="sh-wv3-toggleable {{#unless mode.exitCost.enabled}}sh-wv3-toggleable--off{{/unless}}">
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.ExitCostHint'}}">
+          <input type="checkbox" data-wpath="{{mode.path}}.exitCost.enabled" {{#if mode.exitCost.enabled}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.ExitCost'}}</span>
+        </label>
+        <input type="number" min="0" step="any" data-wpath="{{mode.path}}.exitCost.value" data-wdtype="Number" value="{{mode.exitCost.value}}" />
+      </div>
+    </div>
+
+    <div class="sh-wv3-mods">
+      <span class="sh-wv3-mods__title" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.ModifiersHint'}}">{{localize 'SPACEHOLDER.WeaponV3.Mode.Modifiers'}}</span>
+      <button type="button" class="sh-wv3-icon-btn" data-waction="mod-add" data-line="{{line.index}}" data-mode="{{mode.index}}"
+              data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.ModAdd'}}">
+        <i class="fas fa-plus" aria-hidden="true"></i>
+      </button>
+      {{#each mode.modifiers as |mod|}}
+      <div class="sh-wv3-mods__row {{#unless mod.enabled}}sh-wv3-toggleable--off{{/unless}}">
+        <input type="checkbox" data-wpath="{{mod.path}}.enabled" {{#if mod.enabled}}checked{{/if}}
+               data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.ModEnabled'}}" />
+        <select data-wpath="{{mod.path}}.param" data-wdtype="String">
+          {{#each ../../w.modParamOptions as |opt|}}
+          <option value="{{opt.value}}" {{#if (eq opt.value mod.param)}}selected{{/if}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+        <select data-wpath="{{mod.path}}.op" data-wdtype="String">
+          {{#each ../../w.modOpOptions as |opt|}}
+          <option value="{{opt.value}}" {{#if (eq opt.value mod.op)}}selected{{/if}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+        <input type="number" step="any" data-wpath="{{mod.path}}.value" data-wdtype="Number" value="{{mod.value}}" />
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.ModDisableHint'}}">
+          <input type="checkbox" data-wpath="{{mod.path}}.disableParam" {{#if mod.disableParam}}checked{{/if}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.ModDisable'}}</span>
+        </label>
+        <button type="button" class="sh-wv3-icon-btn sh-wv3-icon-btn--danger" data-waction="mod-remove"
+                data-line="{{line.index}}" data-mode="{{mode.index}}" data-mod="{{mod.index}}"
+                data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.ModRemove'}}">
+          <i class="fas fa-trash" aria-hidden="true"></i>
+        </button>
+      </div>
+      {{else}}
+      <p class="sh-wv3-empty"><em>{{localize 'SPACEHOLDER.WeaponV3.Mode.ModsEmpty'}}</em></p>
+      {{/each}}
+    </div>
+  </div>
+  {{/each}}
+</section>
