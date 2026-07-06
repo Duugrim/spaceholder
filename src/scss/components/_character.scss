@@ -1022,12 +1022,16 @@
   .sh-action-chip--fav-toggle .sh-action-chip__main {
     position: relative;
     z-index: 0;
-    padding-right: 30px;
+  }
+
+  .sh-action-chip--fav-toggle .sh-action-chip__main > i {
+    opacity: 1;
+    transition: opacity 0.15s ease;
   }
 
   .sh-action-chip__fav {
     position: absolute;
-    right: 5px;
+    left: 7px;
     top: 50%;
     transform: translateY(-50%);
     width: 26px;
@@ -1045,6 +1049,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    transition: opacity 0.15s ease;
 
     i {
       font-size: 12px;
@@ -1057,17 +1062,29 @@
       color: #fff;
     }
 
-    &:focus-visible {
-      @include sh-focus-ring;
+    &:focus,
+    &:focus-visible,
+    &:active {
+      outline: none;
+      border: none;
+      box-shadow: none;
+      background: transparent;
     }
   }
 
   .sh-action-chip--fav-toggle:hover .sh-action-chip__fav,
   .sh-action-chip--fav-toggle:focus-within .sh-action-chip__fav,
   .sh-action-chip--fav-toggle .sh-action-chip__main:hover + .sh-action-chip__fav,
+  .sh-action-chip__fav:hover,
   .sh-action-chip__fav:focus-visible {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  .sh-action-chip--fav-toggle:hover .sh-action-chip__main > i,
+  .sh-action-chip--fav-toggle:focus-within .sh-action-chip__main > i,
+  .sh-action-chip--fav-toggle .sh-action-chip__main:hover > i {
+    opacity: 0;
   }
 
   .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill {

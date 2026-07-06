@@ -3808,12 +3808,16 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main {
   position: relative;
   z-index: 0;
-  padding-right: 30px;
+}
+.window-app.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main > i,
+.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main > i {
+  opacity: 1;
+  transition: opacity 0.15s ease;
 }
 .window-app.spaceholder .sh-action-chip__fav,
 .spaceholder .sh-action-chip__fav {
   position: absolute;
-  right: 5px;
+  left: 7px;
   top: 50%;
   transform: translateY(-50%);
   width: 26px;
@@ -3831,6 +3835,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: opacity 0.15s ease;
 }
 .window-app.spaceholder .sh-action-chip__fav i,
 .spaceholder .sh-action-chip__fav i {
@@ -3843,22 +3848,35 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   box-shadow: none;
   color: #fff;
 }
-.window-app.spaceholder .sh-action-chip__fav:focus-visible,
-.spaceholder .sh-action-chip__fav:focus-visible {
+.window-app.spaceholder .sh-action-chip__fav:focus, .window-app.spaceholder .sh-action-chip__fav:focus-visible, .window-app.spaceholder .sh-action-chip__fav:active,
+.spaceholder .sh-action-chip__fav:focus,
+.spaceholder .sh-action-chip__fav:focus-visible,
+.spaceholder .sh-action-chip__fav:active {
   outline: none;
-  border-color: var(--sh-border-focus);
-  box-shadow: 0 0 0 2px var(--sh-focus-ring);
+  border: none;
+  box-shadow: none;
+  background: transparent;
 }
 .window-app.spaceholder .sh-action-chip--fav-toggle:hover .sh-action-chip__fav,
 .window-app.spaceholder .sh-action-chip--fav-toggle:focus-within .sh-action-chip__fav,
 .window-app.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main:hover + .sh-action-chip__fav,
+.window-app.spaceholder .sh-action-chip__fav:hover,
 .window-app.spaceholder .sh-action-chip__fav:focus-visible,
 .spaceholder .sh-action-chip--fav-toggle:hover .sh-action-chip__fav,
 .spaceholder .sh-action-chip--fav-toggle:focus-within .sh-action-chip__fav,
 .spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main:hover + .sh-action-chip__fav,
+.spaceholder .sh-action-chip__fav:hover,
 .spaceholder .sh-action-chip__fav:focus-visible {
   opacity: 1;
   pointer-events: auto;
+}
+.window-app.spaceholder .sh-action-chip--fav-toggle:hover .sh-action-chip__main > i,
+.window-app.spaceholder .sh-action-chip--fav-toggle:focus-within .sh-action-chip__main > i,
+.window-app.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main:hover > i,
+.spaceholder .sh-action-chip--fav-toggle:hover .sh-action-chip__main > i,
+.spaceholder .sh-action-chip--fav-toggle:focus-within .sh-action-chip__main > i,
+.spaceholder .sh-action-chip--fav-toggle .sh-action-chip__main:hover > i {
+  opacity: 0;
 }
 .window-app.spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill,
 .spaceholder .sh-actions-preview-card__meta .sh-actions-preview-fav.sh-item-action-pill {
