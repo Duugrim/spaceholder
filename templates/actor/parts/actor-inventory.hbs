@@ -1,110 +1,162 @@
 <div class="inventory-panel" data-sh-root-inventory-drop="1">
-  <div class="inventory-stats">
-    <div class="inventory-stat">
-      <i class="fas fa-weight-hanging"></i>
-      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalWeight'}}</span>
-      <span class="stat-value">{{totalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
-    </div>
-    <div class="inventory-stat">
-      <i class="fas fa-boxes"></i>
-      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalItems'}}</span>
-      <span class="stat-value">{{totalItems}}</span>
-    </div>
-  </div>
-
-  <div class="inventory-controls">
-    <button
-      type="button"
-      class="item-create-btn"
-      title="{{localize 'SPACEHOLDER.Inventory.CreateItem'}}"
-      data-type="item"
-    >
-      <i class="fas fa-plus"></i>
-      <span class="btn-text">{{localize 'SPACEHOLDER.Inventory.NewItem'}}</span>
-    </button>
-  </div>
-
-  <div class='inventory-list'>
-    {{#each inventoryRows as |row|}}
-      <div
-        class='inventory-item-card{{#if row.depth}} inventory-item-card--nested{{/if}}'
-        data-item-id='{{row.item._id}}'
-        {{#if row.item.system.itemTags.isContainer}}data-sh-inventory-container-drop="1"{{/if}}
-        style='--sh-inv-depth: {{row.depth}};'
-      >
-        <div class='item-main'>
-          <div class='item-image'>
-            <a class='rollable' data-roll-type='item'>
-              <img
-                src='{{row.item.img}}'
-                title='{{row.item.name}}'
-                width='32'
-                height='32'
-              />
-            </a>
-          </div>
-          <div class='item-info'>
-            <div class='item-name'>{{row.item.name}}</div>
-            {{#if row.item.system.description}}
-              <div class='item-description'>{{row.item.system.description}}</div>
-            {{/if}}
-            <div class='item-details'>
-              {{#if row.item.system.quantity}}
-                <span class='item-quantity'>{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{row.item.system.quantity}}</span>
-              {{/if}}
-              {{#if row.item.system.weight}}
-                <span class='item-weight'>{{localize 'SPACEHOLDER.Inventory.ItemTotalWeight'}} {{numberFormat (multiply row.item.system.weight row.item.system.quantity) decimals=2}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+  <div class="inventory-layout">
+    <aside class="inventory-preview-column">
+      {{#if selectedInventoryRow}}
+        <article class="inventory-preview-card">
+          <header class="inventory-preview-header">
+            <img
+              src="{{selectedInventoryRow.img}}"
+              title="{{selectedInventoryRow.name}}"
+              width="48"
+              height="48"
+            />
+            <div class="inventory-preview-title">
+              <h3>{{selectedInventoryRow.name}}</h3>
+              {{#if selectedInventoryRow.isSnapshot}}
+                <span class="item-storage-kind">{{localize 'SPACEHOLDER.Inventory.NestedStorageItem'}}</span>
               {{/if}}
             </div>
+          </header>
+
+          <div class="inventory-preview-meta">
+            <span>{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{selectedInventoryRow.quantity}}</span>
+            <span>{{localize 'SPACEHOLDER.Resources.Weight'}} {{selectedInventoryRow.totalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
           </div>
+
+          <div class="inventory-preview-description">
+            {{{selectedInventoryRow.enrichedDescription}}}
+          </div>
+
+          <div class="item-controls inventory-preview-controls">
+            {{#if selectedInventoryRow.canHold}}
+            <button
+              type="button"
+              class="icon-btn item-held-toggle {{#if selectedInventoryRow.system.held}}active{{/if}}"
+              title="{{#if selectedInventoryRow.system.held}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}{{/if}}"
+              data-item-id="{{selectedInventoryRow.itemId}}"
+              data-action="item-held-toggle"
+            >
+              <i class="fa-solid fa-hand"></i>
+            </button>
+            {{/if}}
+            {{#if selectedInventoryRow.canEquipArmor}}
+            <button
+              type="button"
+              class="icon-btn item-wearable-toggle {{#if selectedInventoryRow.system.equipped}}active{{/if}}"
+              title="{{localize 'SPACEHOLDER.Wearable.EquipToggleTooltip'}}"
+              data-item-id="{{selectedInventoryRow.itemId}}"
+              data-action="wearable-toggle"
+            >
+              <i class="fas fa-shield-alt"></i>
+            </button>
+            {{/if}}
+            {{#if selectedInventoryRow.canEdit}}
+            <button
+              type="button"
+              class="icon-btn item-edit"
+              title="{{localize 'SPACEHOLDER.Inventory.EditItem'}}"
+              data-item-id="{{selectedInventoryRow.itemId}}"
+            >
+              <i class="fas fa-edit"></i>
+            </button>
+            {{/if}}
+            {{#if selectedInventoryRow.canDelete}}
+            <button
+              type="button"
+              class="icon-btn item-delete"
+              title="{{localize 'SPACEHOLDER.Inventory.DeleteItem'}}"
+              data-item-id="{{selectedInventoryRow.itemId}}"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+            {{/if}}
+          </div>
+        </article>
+      {{else}}
+        <div class="inventory-preview-empty">
+          <i class="fas fa-box-open"></i>
+          <p><em>{{localize 'SPACEHOLDER.Inventory.Empty'}}</em></p>
         </div>
-        <div class='item-controls'>
-          <button
-            type="button"
-            class="icon-btn item-held-toggle {{#if row.item.system.held}}active{{/if}}"
-            title="{{#if row.item.system.held}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}{{/if}}"
-            data-item-id="{{row.item._id}}"
-            data-action="item-held-toggle"
+      {{/if}}
+    </aside>
+
+    <section class="inventory-list-column">
+      <div class='inventory-list'>
+        {{#each inventoryRows as |row|}}
+          <div
+            class='inventory-item-card{{#if row.depth}} inventory-item-card--nested{{/if}}{{#if row.isSnapshot}} inventory-item-card--storage-snapshot{{/if}}{{#if row.isSelected}} is-selected{{/if}}'
+            data-action="inventory-row-select"
+            data-inventory-row-key='{{row.key}}'
+            {{#if row.itemId}}data-item-id='{{row.itemId}}'{{/if}}
+            {{#if row.canDropContainer}}data-sh-inventory-container-drop="1"{{/if}}
+            style='--sh-inv-depth: {{row.depth}};'
+            role="button"
+            tabindex="0"
           >
-            <i class="fa-solid fa-hand"></i>
-          </button>
-          {{#if row.item.system.itemTags}}
-          {{#if row.item.system.itemTags.isArmor}}
-          <button
-            type="button"
-            class="icon-btn item-wearable-toggle {{#if row.item.system.equipped}}active{{/if}}"
-            title="{{localize 'SPACEHOLDER.Wearable.EquipToggleTooltip'}}"
-            data-item-id="{{row.item._id}}"
-            data-action="wearable-toggle"
-          >
-            <i class="fas fa-shield-alt"></i>
-          </button>
-          {{/if}}
-          {{/if}}
-          <button
-            type="button"
-            class='icon-btn item-edit'
-            title='{{localize "SPACEHOLDER.Inventory.EditItem"}}'
-            data-item-id='{{row.item._id}}'
-          >
-            <i class='fas fa-edit'></i>
-          </button>
-          <button
-            type="button"
-            class='icon-btn item-delete'
-            title='{{localize "SPACEHOLDER.Inventory.DeleteItem"}}'
-            data-item-id='{{row.item._id}}'
-          >
-            <i class='fas fa-trash'></i>
+            <div class='item-main'>
+              <div class='item-image'>
+                {{#if row.isDocument}}
+                <a class='rollable' data-roll-type='item'>
+                  <img
+                    src='{{row.img}}'
+                    title='{{row.name}}'
+                    width='32'
+                    height='32'
+                  />
+                </a>
+                {{else}}
+                  <img
+                    src='{{row.img}}'
+                    title='{{row.name}}'
+                    width='32'
+                    height='32'
+                  />
+                {{/if}}
+              </div>
+              <div class='item-info'>
+                <div class='item-name'>{{row.displayName}}</div>
+                {{#if row.isSnapshot}}
+                  <div class='item-details'>
+                    <span class='item-storage-kind'>{{localize 'SPACEHOLDER.Inventory.NestedStorageItem'}}</span>
+                  </div>
+                {{/if}}
+              </div>
+            </div>
+            {{#if row.hasChildren}}
+              <button
+                type="button"
+                class="icon-btn inventory-row-toggle {{#if row.isCollapsed}}is-collapsed{{/if}}"
+                data-action="inventory-row-toggle"
+                data-inventory-row-key="{{row.key}}"
+                title="{{#if row.isCollapsed}}{{localize 'SPACEHOLDER.Inventory.ExpandItem'}}{{else}}{{localize 'SPACEHOLDER.Inventory.CollapseItem'}}{{/if}}"
+              >
+                <i class="fa-solid fa-chevron-down"></i>
+              </button>
+            {{/if}}
+          </div>
+        {{/each}}
+        {{#unless inventoryRows.length}}
+          <div class='empty-inventory'>
+            <i class='fas fa-box-open'></i>
+            <p><em>{{localize 'SPACEHOLDER.Inventory.Empty'}}</em></p>
+          </div>
+        {{/unless}}
+      </div>
+
+      <footer class="inventory-stats inventory-footer">
+        <div class="inventory-stat">
+          <i class="fas fa-weight-hanging"></i>
+          <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalWeight'}}</span>
+          <span class="stat-value">{{totalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+        </div>
+        <div class="inventory-stat">
+          <i class="fas fa-boxes"></i>
+          <button type="button" class="inventory-stat-button" data-action="inventory-debug-open" title="{{localize 'SPACEHOLDER.Inventory.DebugOpenTooltip'}}">
+            <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalItems'}}</span>
+            <span class="stat-value">{{totalItems}}</span>
           </button>
         </div>
-      </div>
-    {{/each}}
-    {{#unless inventoryRows.length}}
-      <div class='empty-inventory'>
-        <i class='fas fa-box-open'></i>
-        <p><em>{{localize 'SPACEHOLDER.Inventory.Empty'}}</em></p>
-      </div>
-    {{/unless}}
+      </footer>
+    </section>
   </div>
 </div>

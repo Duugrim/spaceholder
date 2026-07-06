@@ -5837,21 +5837,140 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-lg);
-  padding: 12px;
+  padding: 10px;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+.window-app.spaceholder .inventory-layout,
+.spaceholder .inventory-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(340px, 2fr);
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.window-app.spaceholder .inventory-preview-column,
+.window-app.spaceholder .inventory-list-column,
+.spaceholder .inventory-preview-column,
+.spaceholder .inventory-list-column {
+  min-width: 0;
+  min-height: 0;
+}
+.window-app.spaceholder .inventory-list-column,
+.spaceholder .inventory-list-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.window-app.spaceholder .inventory-preview-card,
+.window-app.spaceholder .inventory-preview-empty,
+.spaceholder .inventory-preview-card,
+.spaceholder .inventory-preview-empty {
+  padding: 10px;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  min-height: 140px;
+}
+.window-app.spaceholder .inventory-preview-header,
+.spaceholder .inventory-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.window-app.spaceholder .inventory-preview-header img,
+.spaceholder .inventory-preview-header img {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  object-fit: cover;
+}
+.window-app.spaceholder .inventory-preview-title,
+.spaceholder .inventory-preview-title {
+  min-width: 0;
+}
+.window-app.spaceholder .inventory-preview-title h3,
+.spaceholder .inventory-preview-title h3 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sh-text);
+  overflow-wrap: break-word;
+}
+.window-app.spaceholder .inventory-preview-meta,
+.spaceholder .inventory-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.window-app.spaceholder .inventory-preview-meta span,
+.spaceholder .inventory-preview-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--sh-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.window-app.spaceholder .inventory-preview-description,
+.spaceholder .inventory-preview-description {
+  color: var(--sh-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+}
+.window-app.spaceholder .inventory-preview-description p:first-child,
+.spaceholder .inventory-preview-description p:first-child {
+  margin-top: 0;
+}
+.window-app.spaceholder .inventory-preview-description p:last-child,
+.spaceholder .inventory-preview-description p:last-child {
+  margin-bottom: 0;
+}
+.window-app.spaceholder .inventory-preview-controls,
+.spaceholder .inventory-preview-controls {
+  margin-top: 12px;
+}
+.window-app.spaceholder .inventory-preview-empty,
+.spaceholder .inventory-preview-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .inventory-preview-empty i,
+.spaceholder .inventory-preview-empty i {
+  font-size: 14px;
+  opacity: 0.8;
+}
+.window-app.spaceholder .inventory-preview-empty p,
+.spaceholder .inventory-preview-empty p {
+  margin: 0;
+}
 .window-app.spaceholder .inventory-stats,
 .spaceholder .inventory-stats {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  margin: 0 0 12px 0;
+  margin: 0;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.window-app.spaceholder .inventory-footer,
+.spaceholder .inventory-footer {
+  flex: 0 0 auto;
+  padding: 8px 0 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 .window-app.spaceholder .inventory-stat,
 .spaceholder .inventory-stat {
@@ -5875,11 +5994,93 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   color: #ffffff;
   font-weight: 700;
 }
+.window-app.spaceholder .inventory-stat-button,
+.spaceholder .inventory-stat-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.window-app.spaceholder .inventory-stat-button:hover .stat-value, .window-app.spaceholder .inventory-stat-button:focus-visible .stat-value,
+.spaceholder .inventory-stat-button:hover .stat-value,
+.spaceholder .inventory-stat-button:focus-visible .stat-value {
+  color: var(--sh-accent-strong);
+}
 .window-app.spaceholder .inventory-controls,
 .spaceholder .inventory-controls {
   display: flex;
   justify-content: flex-end;
   margin: 0 0 12px 0;
+}
+.window-app.spaceholder .spaceholder-item-container-limits,
+.spaceholder .spaceholder-item-container-limits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+.window-app.spaceholder .spaceholder-item-container-limit-row,
+.spaceholder .spaceholder-item-container-limit-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+}
+.window-app.spaceholder .spaceholder-item-container-limit-label,
+.spaceholder .spaceholder-item-container-limit-label {
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .spaceholder-item-container-limit-value,
+.spaceholder .spaceholder-item-container-limit-value {
+  color: #ffffff;
+  font-weight: 700;
+}
+.window-app.spaceholder .spaceholder-item-container-limit-source,
+.spaceholder .spaceholder-item-container-limit-source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 1px solid rgba(125, 113, 175, 0.45);
+  border-radius: var(--sh-radius-sm);
+  color: var(--sh-text-muted);
+  background: rgba(125, 113, 175, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+}
+.window-app.spaceholder .spaceholder-item-container-limits-dialog,
+.spaceholder .spaceholder-item-container-limits-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.window-app.spaceholder .spaceholder-item-container-limits-dialog .form-group,
+.spaceholder .spaceholder-item-container-limits-dialog .form-group {
+  margin: 0;
+}
+.window-app.spaceholder .spaceholder-item-container-limits-dialog input,
+.spaceholder .spaceholder-item-container-limits-dialog input {
+  width: 100%;
+}
+.window-app.spaceholder .spaceholder-item-container-limits-dialog .hint,
+.spaceholder .spaceholder-item-container-limits-dialog .hint {
+  margin: 3px 0 0 0;
+  color: var(--sh-text-muted);
+  font-size: 11px;
 }
 .window-app.spaceholder .item-create-btn,
 .spaceholder .item-create-btn {
@@ -5925,11 +6126,17 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border: 1px solid rgba(74, 110, 74, 0.6);
   border-radius: var(--sh-radius-md);
   padding: 8px 10px;
+  cursor: pointer;
 }
 .window-app.spaceholder .inventory-item-card:hover,
 .spaceholder .inventory-item-card:hover {
   border-color: rgba(143, 185, 143, 0.7);
   background: linear-gradient(135deg, rgb(32, 32, 32) 0%, rgb(44, 44, 44) 100%);
+}
+.window-app.spaceholder .inventory-item-card.is-selected,
+.spaceholder .inventory-item-card.is-selected {
+  border-color: rgba(143, 185, 143, 0.9);
+  box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.35), 0 0 10px rgba(74, 110, 74, 0.14);
 }
 .window-app.spaceholder .inventory-item-card--nested,
 .spaceholder .inventory-item-card--nested {
@@ -5938,6 +6145,11 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border-color: rgba(74, 110, 74, 0.45);
   background: linear-gradient(135deg, rgba(28, 32, 28, 0.95) 0%, rgba(36, 40, 36, 0.95) 100%);
 }
+.window-app.spaceholder .inventory-item-card--storage-snapshot,
+.spaceholder .inventory-item-card--storage-snapshot {
+  border-color: rgba(125, 113, 175, 0.5);
+  background: linear-gradient(135deg, rgba(30, 28, 38, 0.95) 0%, rgba(38, 36, 48, 0.95) 100%);
+}
 .window-app.spaceholder .inventory-item-card .item-main,
 .spaceholder .inventory-item-card .item-main {
   display: flex;
@@ -5945,6 +6157,23 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   gap: 10px;
   flex: 1 1 auto;
   min-width: 0;
+}
+.window-app.spaceholder .inventory-row-toggle,
+.spaceholder .inventory-row-toggle {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  align-self: center;
+}
+.window-app.spaceholder .inventory-row-toggle i,
+.spaceholder .inventory-row-toggle i {
+  transition: transform 120ms ease;
+}
+.window-app.spaceholder .inventory-row-toggle.is-collapsed i,
+.spaceholder .inventory-row-toggle.is-collapsed i {
+  transform: rotate(-90deg);
 }
 .window-app.spaceholder .inventory-item-card .item-image,
 .spaceholder .inventory-item-card .item-image {
@@ -5965,9 +6194,9 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .inventory-item-card .item-name,
 .spaceholder .inventory-item-card .item-name {
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  margin: 0 0 2px 0;
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5996,6 +6225,56 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   display: flex;
   gap: 6px;
   flex: 0 0 auto;
+}
+.window-app.spaceholder .item-storage-kind,
+.spaceholder .item-storage-kind {
+  color: rgba(190, 180, 255, 0.86);
+}
+.window-app.spaceholder .spaceholder-inventory-debug-dialog,
+.spaceholder .spaceholder-inventory-debug-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.window-app.spaceholder .spaceholder-inventory-debug-list,
+.spaceholder .spaceholder-inventory-debug-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.window-app.spaceholder .spaceholder-inventory-debug-row,
+.spaceholder .spaceholder-inventory-debug-row {
+  display: grid;
+  grid-template-columns: 20px 24px minmax(110px, 1fr) auto minmax(160px, 1.4fr);
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px calc(6px + var(--sh-inv-debug-depth, 0) * 12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-sm);
+  background: rgba(0, 0, 0, 0.18);
+}
+.window-app.spaceholder .spaceholder-inventory-debug-row__name,
+.spaceholder .spaceholder-inventory-debug-row__name {
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .spaceholder-inventory-debug-row__meta,
+.window-app.spaceholder .spaceholder-inventory-debug-row__path,
+.spaceholder .spaceholder-inventory-debug-row__meta,
+.spaceholder .spaceholder-inventory-debug-row__path {
+  color: var(--sh-text-muted);
+  font-size: 11px;
+}
+.window-app.spaceholder .spaceholder-inventory-debug-row__path,
+.spaceholder .spaceholder-inventory-debug-row__path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .window-app.spaceholder .empty-inventory,
 .spaceholder .empty-inventory {
@@ -6030,6 +6309,12 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder .spaceholder-item-container-panel[data-sh-item-container-drop],
 .spaceholder .spaceholder-item-container-panel[data-sh-item-container-drop] {
   min-height: 120px;
+}
+@media (max-width: 900px) {
+  .window-app.spaceholder .inventory-layout,
+  .spaceholder .inventory-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .window-app.spaceholder .faction-color-swatch,

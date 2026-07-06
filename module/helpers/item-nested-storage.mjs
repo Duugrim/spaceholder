@@ -272,6 +272,23 @@ export async function extractNestedItemToActor({ containerItem, path, quantity =
 }
 
 /**
+ * Remove a nested storage entry without extracting it back to the actor.
+ *
+ * @param {object} args
+ * @param {Item} args.containerItem
+ * @param {string[]} args.path
+ * @returns {Promise<boolean>}
+ */
+export async function deleteNestedItemFromStorage({ containerItem, path } = {}) {
+  if (!_isItemDocument(containerItem)) return false;
+  const storage = getNestedStorage(containerItem);
+  const removed = _removeByPath(storage, path, Number.MAX_SAFE_INTEGER);
+  if (!removed.item) return false;
+  await _updateItemStorage(containerItem, storage);
+  return true;
+}
+
+/**
  * @param {Item} item
  * @param {object} storage
  * @returns {Promise<boolean>}

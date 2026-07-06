@@ -22,6 +22,34 @@ tags:
 | v14: «ForcedReplacement» / «name: may not be undefined» при частичных update'ах | Переопределить `Document.updateSource()` и подставлять `type`/`name` из `_source`; в `update()` короткозамкнуть пустые патчи (см. §5) |
 | v14: чекбоксы без `name` рушат `submitOnChange` | На `change`/`input` вызывать `ev.stopImmediatePropagation()` (см. §5) |
 | v14: «ActiveEffect application phase already completed» / «One of original or other are not Objects!» в `Actor.prepareData` | В переопределённом `prepareBaseData()` обязательно вызывать `super.prepareBaseData()` — он запускает `Actor._clearData` (см. §6) |
+| App V2: пункты меню окна дублируются | `static DEFAULT_OPTIONS` задавать как дельту; не делать `mergeObject(super.DEFAULT_OPTIONS, ...)` (см. §0) |
+
+---
+
+## 0. `DEFAULT_OPTIONS` в Application V2
+
+### Проблема
+
+В меню окна повторяются базовые пункты вроде «Прототип токена», «Просмотр портрета», «Просмотр изображения токена».
+
+### Причина
+
+Application V2 сам собирает `DEFAULT_OPTIONS` по цепочке наследования. Если в классе написать `static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {...})`, родительские опции попадают в дочерний класс заранее, а потом Foundry мержит родителя ещё раз. Для массивов вроде `window.controls` это даёт дубликаты.
+
+### Решение
+
+В App V2 классах `DEFAULT_OPTIONS` должен содержать только отличия текущего класса:
+
+```javascript
+class MySheet extends BaseSheet {
+  static DEFAULT_OPTIONS = {
+    position: { width: 720, height: 860 },
+    window: { resizable: true },
+  };
+}
+```
+
+Не копировать `super.DEFAULT_OPTIONS.window` через `Object.assign` и не оборачивать `DEFAULT_OPTIONS` в `mergeObject(super.DEFAULT_OPTIONS, ...)`.
 
 ---
 

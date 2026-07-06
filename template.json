@@ -130,6 +130,10 @@
       "coveredParts": [],
       "containerHostId": "",
       "container": {
+        "limits": {
+          "maxItems": 0,
+          "maxWeight": 0
+        },
         "contents": []
       },
       "storage": {
@@ -205,6 +209,7 @@
           "damage": [],
           "caliber": "",
           "connector": { "enabled": false, "value": "" },
+          "capacity": 0,
           "charge": { "enabled": false, "max": 0, "current": 0 },
           "consume": true
         }

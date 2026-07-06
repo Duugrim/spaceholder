@@ -11,6 +11,24 @@
 export const ENTRY_ACTOR_ITEM = 'actorItem';
 export const ENTRY_WORLD_UUID = 'worldUuid';
 
+function _int(value, fallback = 0, min = 0) {
+  const n = Math.floor(Number(value));
+  return Number.isFinite(n) ? Math.max(min, n) : fallback;
+}
+
+function _num(value, fallback = 0, min = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(min, n) : fallback;
+}
+
+function _quantityOf(itemLike) {
+  return _int(itemLike?.system?.quantity, 0, 0);
+}
+
+function _unitWeightOf(itemLike) {
+  return _num(itemLike?.system?.weight, 0, 0);
+}
+
 /**
  * @param {unknown} el
  * @returns {ContainerContentEntry|null}
@@ -56,6 +74,18 @@ export function normalizeContainerContentsArray(rawContents) {
  */
 export function migratePersistedContainerContents(rawContents) {
   return normalizeContainerContentsArray(rawContents);
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {{ maxItems: number, maxWeight: number }}
+ */
+export function normalizeContainerLimits(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  return {
+    maxItems: _int(src.maxItems, 0, 0),
+    maxWeight: _num(src.maxWeight, 0, 0),
+  };
 }
 
 /**
@@ -105,16 +135,69 @@ export function containerContentsEqual(a, b) {
 
 /**
  * @param {object|null|undefined} system
- * @returns {{ containerHostId: string, container: { contents: ContainerContentEntry[] } }}
+ * @returns {{ containerHostId: string, container: { contents: ContainerContentEntry[], limits: { maxItems: number, maxWeight: number } } }}
  */
 export function normalizeItemContainerFields(system) {
   const hostId = String(system?.containerHostId ?? '').trim();
   const raw = system?.container && typeof system.container === 'object' ? system.container : {};
   const contents = normalizeContainerContentsArray(raw.contents);
+  const limits = normalizeContainerLimits(raw.limits);
   return {
     containerHostId: hostId,
-    container: { contents },
+    container: { contents, limits },
   };
+}
+
+/**
+ * Direct actor-container usage by stack quantity and total item weight.
+ *
+ * @param {Actor|null|undefined} actor
+ * @param {Item|null|undefined} containerItem
+ * @param {Array<Item|object>} [extraItems]
+ * @param {Set<string>} [excludeIds]
+ * @returns {{ itemCount: number, totalWeight: number }}
+ */
+export function calculateActorContainerUsage(actor, containerItem, extraItems = [], excludeIds = new Set()) {
+  const hostId = String(containerItem?.id ?? '').trim();
+  let itemCount = 0;
+  let totalWeight = 0;
+  const add = (itemLike) => {
+    if (!itemLike) return;
+    const q = _quantityOf(itemLike);
+    const w = _unitWeightOf(itemLike);
+    itemCount += q;
+    totalWeight += q * w;
+  };
+  for (const childId of getOrderedDirectChildItemIds(actor, hostId)) {
+    if (excludeIds.has(childId)) continue;
+    add(actor?.items?.get?.(childId));
+  }
+  for (const itemLike of extraItems) add(itemLike);
+  return {
+    itemCount,
+    totalWeight: Math.round(totalWeight * 100) / 100,
+  };
+}
+
+/**
+ * @param {Actor|null|undefined} actor
+ * @param {Item|null|undefined} containerItem
+ * @param {Array<Item|object>} [extraItems]
+ * @param {Set<string>} [excludeIds]
+ * @returns {{ ok: boolean, reason: ''|'maxItems'|'maxWeight', itemCount: number, totalWeight: number, maxItems: number, maxWeight: number }}
+ */
+export function checkActorContainerCapacity(actor, containerItem, extraItems = [], excludeIds = new Set()) {
+  const limits = normalizeItemContainerFields(containerItem?.system).container.limits;
+  const usage = calculateActorContainerUsage(actor, containerItem, extraItems, excludeIds);
+  const maxItems = limits.maxItems;
+  const maxWeight = limits.maxWeight;
+  if (maxItems > 0 && usage.itemCount > maxItems) {
+    return { ok: false, reason: 'maxItems', ...usage, maxItems, maxWeight };
+  }
+  if (maxWeight > 0 && usage.totalWeight > maxWeight) {
+    return { ok: false, reason: 'maxWeight', ...usage, maxItems, maxWeight };
+  }
+  return { ok: true, reason: '', ...usage, maxItems, maxWeight };
 }
 
 /**
@@ -317,7 +400,7 @@ export async function refreshContainerState(actor, containerItem) {
   const sameOrder = containerContentsEqual(cur.container.contents, contents);
   const docs = [];
   if (!sameOrder) {
-    docs.push({ _id: containerItem.id, 'system.container': { contents } });
+    docs.push({ _id: containerItem.id, 'system.container': { ...cur.container, contents } });
   }
   docs.push(...updates);
   if (!docs.length) return false;
@@ -345,6 +428,12 @@ export async function moveActorItemIntoContainer(actor, containerItem, childItem
   if (wouldCreateItemContainerCycle(actor, childId, hostId)) return false;
 
   const prevHostId = String(child.system?.containerHostId ?? '').trim();
+  const currentHost = normalizeItemContainerFields(host.system);
+  const alreadyInHost = prevHostId === hostId || entriesContainActorItem(currentHost.container.contents, childId);
+  if (!alreadyInHost) {
+    const capacity = checkActorContainerCapacity(actor, host, [child]);
+    if (!capacity.ok) return false;
+  }
   const updates = [];
 
   if (prevHostId && prevHostId !== hostId) {
@@ -358,7 +447,7 @@ export async function moveActorItemIntoContainer(actor, containerItem, childItem
     }
   }
 
-  const nextHost = normalizeItemContainerFields(host.system);
+  const nextHost = currentHost;
   if (!entriesContainActorItem(nextHost.container.contents, childId)) {
     nextHost.container.contents.push({ kind: ENTRY_ACTOR_ITEM, itemId: childId });
   }
@@ -423,7 +512,8 @@ export async function setContainerContentsOrder(actor, containerItem, orderedChi
     if (!nextIds.includes(id)) nextIds.push(id);
   }
   const contents = nextIds.map((itemId) => ({ kind: ENTRY_ACTOR_ITEM, itemId }));
-  await containerItem.update({ 'system.container': { contents } }, { render: false });
+  const norm = normalizeItemContainerFields(containerItem.system);
+  await containerItem.update({ 'system.container': { ...norm.container, contents } }, { render: false });
   const owner = containerItem.actor ?? null;
   if (owner?.documentName === 'Actor') {
     rerenderOpenContainerRelatedSheets(owner, [containerItem]);
@@ -463,7 +553,7 @@ export async function removeWorldUuidFromContainer(hostItem, itemUuid) {
   const norm = normalizeItemContainerFields(hostItem.system);
   const next = norm.container.contents.filter((e) => !(e.kind === ENTRY_WORLD_UUID && e.uuid === u));
   if (next.length === norm.container.contents.length) return false;
-  await hostItem.update({ 'system.container': { contents: next } }, { render: false });
+  await hostItem.update({ 'system.container': { ...norm.container, contents: next } }, { render: false });
   rerenderOpenContainerRelatedSheets(null, [hostItem]);
   return true;
 }
@@ -508,7 +598,7 @@ export async function pruneBrokenWorldUuidLinks(hostItem) {
     else removed++;
   }
   if (!removed) return 0;
-  await hostItem.update({ 'system.container': { contents: kept } }, { render: false });
+  await hostItem.update({ 'system.container': { ...norm.container, contents: kept } }, { render: false });
   rerenderOpenContainerRelatedSheets(null, [hostItem]);
   return removed;
 }
@@ -531,7 +621,7 @@ export async function setWorldContainerContentsOrder(hostItem, orderedUuids) {
   for (const u of actual) {
     if (!next.some((e) => e.uuid === u)) next.push({ kind: ENTRY_WORLD_UUID, uuid: u });
   }
-  await hostItem.update({ 'system.container': { contents: next } }, { render: false });
+  await hostItem.update({ 'system.container': { ...norm.container, contents: next } }, { render: false });
   rerenderOpenContainerRelatedSheets(null, [hostItem]);
 }
 
@@ -636,7 +726,7 @@ async function cloneWorldContainerSubtreeOntoActor(actor, worldItem, parentActor
   obj.system.containerHostId = parentActorContainerId ? String(parentActorContainerId).trim() : '';
   const isContainer = !!obj.system?.itemTags?.isContainer;
   if (isContainer) {
-    obj.system.container = { contents: [] };
+    obj.system.container = { ...normalizeItemContainerFields(worldItem.system).container, contents: [] };
   }
 
   const [created] = await actor.createEmbeddedDocuments('Item', [obj]);
@@ -653,7 +743,8 @@ async function cloneWorldContainerSubtreeOntoActor(actor, worldItem, parentActor
       childEntries.push({ kind: ENTRY_ACTOR_ITEM, itemId: cid });
     }
     if (childEntries.length) {
-      await created.update({ 'system.container': { contents: childEntries } }, { render: false });
+      const createdNorm = normalizeItemContainerFields(created.system);
+      await created.update({ 'system.container': { ...createdNorm.container, contents: childEntries } }, { render: false });
     }
   }
   return newId;

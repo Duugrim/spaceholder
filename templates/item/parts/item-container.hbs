@@ -1,4 +1,83 @@
 <div class="inventory-panel spaceholder-item-container-panel" data-sh-item-container-drop="1" data-container-host-id="{{item._id}}">
+  {{#if containerUsesNestedStorage}}
+  <div class="inventory-stats">
+    <div class="inventory-stat">
+      <i class="fas fa-boxes"></i>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalItems'}}</span>
+      <span class="stat-value">{{containerTotalItems}}{{#if containerLimitItemsEnabled}} / {{containerLimitMaxItems}}{{/if}}</span>
+    </div>
+    <div class="inventory-stat">
+      <i class="fas fa-weight-hanging"></i>
+      <span class="stat-label">{{localize 'SPACEHOLDER.Inventory.TotalWeight'}}</span>
+      <span class="stat-value">{{containerTotalWeight}}{{#if containerLimitWeightEnabled}} / {{containerLimitMaxWeight}}{{/if}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+    </div>
+  </div>
+
+  <div class="spaceholder-item-container-limits">
+    <div class="spaceholder-item-container-limit-row">
+      <span class="spaceholder-item-container-limit-label">{{localize 'SPACEHOLDER.ItemContainer.LimitItems'}}</span>
+      <span class="spaceholder-item-container-limit-value">{{#if containerLimitItemsEnabled}}{{containerLimitMaxItems}}{{else}}{{localize 'SPACEHOLDER.ItemContainer.Unlimited'}}{{/if}}</span>
+    </div>
+    <div class="spaceholder-item-container-limit-row">
+      <span class="spaceholder-item-container-limit-label">{{localize 'SPACEHOLDER.ItemContainer.LimitWeight'}}</span>
+      <span class="spaceholder-item-container-limit-value">{{#if containerLimitWeightEnabled}}{{containerLimitMaxWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}{{else}}{{localize 'SPACEHOLDER.ItemContainer.Unlimited'}}{{/if}}</span>
+    </div>
+  </div>
+
+  <div class="inventory-controls spaceholder-item-container-controls">
+    {{#unless containerReadOnly}}
+    <button type="button" class="item-create-btn" data-action="sh-item-container-limits-edit" title="{{localize 'SPACEHOLDER.ItemContainer.EditLimits'}}">
+      <i class="fas fa-gear"></i>
+      <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.EditLimits'}}</span>
+    </button>
+    {{/unless}}
+  </div>
+
+  <div class="inventory-list spaceholder-item-container-list spaceholder-item-storage-list" data-sh-item-storage-drop="1">
+    {{#each containerStorageRows as |sitem|}}
+      <div class="inventory-item-card item-container-item-card inventory-item-card--nested inventory-item-card--storage-snapshot" style="--sh-inv-depth: {{sitem.depth}}" data-nested-path="{{sitem.path}}">
+        <div class="item-main">
+          <div class="item-image">
+            <img src="{{sitem.img}}" title="{{sitem.name}}" width="32" height="32" alt="" />
+          </div>
+          <div class="item-info">
+            <div class="item-name">{{sitem.name}}</div>
+            {{#if sitem.system.description}}
+              <div class="item-description">{{sitem.system.description}}</div>
+            {{/if}}
+            <div class="item-details">
+              <span class="item-storage-kind">{{localize 'SPACEHOLDER.Inventory.NestedStorageItem'}}</span>
+              <span class="item-quantity">{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{sitem.quantity}}</span>
+              <span class="item-weight">{{localize 'SPACEHOLDER.Inventory.ItemTotalWeight'}} {{numberFormat sitem.totalWeight decimals=2}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+            </div>
+          </div>
+        </div>
+        <div class="item-controls">
+          {{#unless ../containerReadOnly}}
+          {{#if ../containerOnActor}}
+          <button type="button" class="icon-btn" title="{{localize 'SPACEHOLDER.ItemContainer.Extract'}}" data-action="sh-item-storage-extract" data-nested-path="{{sitem.path}}">
+            <i class="fas fa-box-open"></i>
+          </button>
+          {{/if}}
+          <button type="button" class="icon-btn item-delete" title="{{localize 'SPACEHOLDER.Inventory.DeleteItem'}}" data-action="sh-item-storage-delete" data-nested-path="{{sitem.path}}">
+            <i class="fas fa-trash"></i>
+          </button>
+          {{/unless}}
+        </div>
+      </div>
+    {{/each}}
+    {{#unless containerStorageRows.length}}
+      <div class="empty-inventory spaceholder-item-container-empty">
+        <i class="fas fa-box-open"></i>
+        <p><em>{{localize 'SPACEHOLDER.ItemContainer.MagazineEmpty'}}</em></p>
+        {{#unless containerReadOnly}}
+        <p class="spaceholder-item-container-drop-hint"><em>{{localize 'SPACEHOLDER.ItemContainer.MagazineDropHint'}}</em></p>
+        {{/unless}}
+      </div>
+    {{/unless}}
+  </div>
+
+  {{else}}
   {{#if containerWorldMode}}
   <p class="spaceholder-item-container-hint"><em>{{localize 'SPACEHOLDER.ItemContainer.WorldModeHint'}}</em></p>
   <div class="inventory-stats">
@@ -14,8 +93,23 @@
     </div>
   </div>
 
+  <div class="spaceholder-item-container-limits">
+    <div class="spaceholder-item-container-limit-row">
+      <span class="spaceholder-item-container-limit-label">{{localize 'SPACEHOLDER.ItemContainer.LimitItems'}}</span>
+      <span class="spaceholder-item-container-limit-value">{{#if containerLimitItemsEnabled}}{{containerLimitMaxItems}}{{else}}{{localize 'SPACEHOLDER.ItemContainer.Unlimited'}}{{/if}}</span>
+    </div>
+    <div class="spaceholder-item-container-limit-row">
+      <span class="spaceholder-item-container-limit-label">{{localize 'SPACEHOLDER.ItemContainer.LimitWeight'}}</span>
+      <span class="spaceholder-item-container-limit-value">{{#if containerLimitWeightEnabled}}{{containerLimitMaxWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}{{else}}{{localize 'SPACEHOLDER.ItemContainer.Unlimited'}}{{/if}}</span>
+    </div>
+  </div>
+
   <div class="inventory-controls spaceholder-item-container-controls">
     {{#unless containerReadOnly}}
+    <button type="button" class="item-create-btn" data-action="sh-item-container-limits-edit" title="{{localize 'SPACEHOLDER.ItemContainer.EditLimits'}}">
+      <i class="fas fa-gear"></i>
+      <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.EditLimits'}}</span>
+    </button>
     <button type="button" class="item-create-btn spaceholder-item-container-refresh-btn" data-action="sh-item-container-refresh" title="{{localize 'SPACEHOLDER.ItemContainer.WorldRefreshHint'}}">
       <i class="fas fa-rotate"></i>
       <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.Refresh'}}</span>
@@ -93,8 +187,23 @@
     </div>
   </div>
 
+  <div class="spaceholder-item-container-limits">
+    <div class="spaceholder-item-container-limit-row">
+      <span class="spaceholder-item-container-limit-label">{{localize 'SPACEHOLDER.ItemContainer.LimitItems'}}</span>
+      <span class="spaceholder-item-container-limit-value">{{#if containerLimitItemsEnabled}}{{containerLimitMaxItems}}{{else}}{{localize 'SPACEHOLDER.ItemContainer.Unlimited'}}{{/if}}</span>
+    </div>
+    <div class="spaceholder-item-container-limit-row">
+      <span class="spaceholder-item-container-limit-label">{{localize 'SPACEHOLDER.ItemContainer.LimitWeight'}}</span>
+      <span class="spaceholder-item-container-limit-value">{{#if containerLimitWeightEnabled}}{{containerLimitMaxWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}{{else}}{{localize 'SPACEHOLDER.ItemContainer.Unlimited'}}{{/if}}</span>
+    </div>
+  </div>
+
   <div class="inventory-controls spaceholder-item-container-controls">
     {{#unless containerReadOnly}}
+    <button type="button" class="item-create-btn" data-action="sh-item-container-limits-edit" title="{{localize 'SPACEHOLDER.ItemContainer.EditLimits'}}">
+      <i class="fas fa-gear"></i>
+      <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.EditLimits'}}</span>
+    </button>
     <button type="button" class="item-create-btn" data-action="sh-item-container-create" title="{{localize 'SPACEHOLDER.ItemContainer.CreateInside'}}">
       <i class="fas fa-plus"></i>
       <span class="btn-text">{{localize 'SPACEHOLDER.ItemContainer.NewInside'}}</span>
@@ -157,5 +266,6 @@
       </div>
     {{/unless}}
   </div>
+  {{/if}}
   {{/if}}
 </div>

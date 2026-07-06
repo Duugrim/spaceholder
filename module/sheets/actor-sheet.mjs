@@ -26,6 +26,10 @@ import {
   removeActorItemFromContainer,
   wouldCreateItemContainerCycle,
 } from '../helpers/item-container.mjs';
+import {
+  deleteNestedItemFromStorage,
+  getNestedStorage,
+} from '../helpers/item-nested-storage.mjs';
 
 /**
  * Build a short human-readable summary of armor layers for a coverage
@@ -69,6 +73,15 @@ const ACTIONS_UI_MODES = Object.freeze({
   inspect: 'inspect',
 });
 
+const TOKEN_HEADER_ACTIONS = new Set(['token', 'tokenConfig', 'configureToken', 'configure-token']);
+const PROTOTYPE_TOKEN_HEADER_ACTIONS = new Set([
+  'prototypeToken',
+  'prototypeTokenConfig',
+  'configurePrototypeToken',
+  'prototype-token',
+  'configure-prototype-token',
+]);
+
 const NPC_SHEET_PRIMARY_TABS = Object.freeze([
   { id: 'description', icon: 'fas fa-file-lines', labelKey: 'SPACEHOLDER.Tabs.Description' },
   { id: 'items', icon: 'fas fa-suitcase', labelKey: 'SPACEHOLDER.Tabs.Items' },
@@ -85,7 +98,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   foundry.applications.sheets.ActorSheetV2
 ) {
   /** @override */
-  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+  static DEFAULT_OPTIONS = {
     classes: ['spaceholder', 'sheet', 'actor'],
     position: { width: 900, height: 'auto' },
     window: {
@@ -95,7 +108,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     form: {
       submitOnChange: true
     }
-  }, { inplace: false });
+  };
 
   /** @override */
   get title() {
@@ -133,32 +146,22 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
-   * Переопределяем _getHeaderControls:
-   * - удаляем дубликаты
-   * - убираем Token-контрол, если реального контекста токена нет (иначе Foundry падает на null.sheet)
+   * Token and prototype-token sheet controls are mutually exclusive in Foundry.
+   * A sheet opened from a placed token must configure that TokenDocument; a
+   * regular actor sheet must configure the actor prototype token.
    * @override
    */
   _getHeaderControls() {
     const controls = super._getHeaderControls();
 
     const tokenDoc = this._getTokenDocumentFromContext();
-    const hasTokenContext = Boolean(tokenDoc);
+    const hasTokenContext = Boolean(tokenDoc || this.document?.isToken);
     const hasPrototype = Boolean(this.document?.prototypeToken);
 
-    const seen = new Set();
     return controls.filter((control) => {
-      const key = control.label || control.icon || control.action;
-      if (seen.has(key)) return false;
-      seen.add(key);
-
-      // Если контекста токена нет, но и prototypeToken тоже отсутствует,
-      // не показываем конфигурацию токена.
-      if (!hasTokenContext && !hasPrototype) {
-        if (control.action === 'token') return false;
-      }
-
-      // Если контекста токена нет — убираем token action (Foundry пытается открыть null.sheet)
-      if (!hasTokenContext && control.action === 'token') return false;
+      const action = String(control?.action ?? '');
+      if (TOKEN_HEADER_ACTIONS.has(action)) return hasTokenContext;
+      if (PROTOTYPE_TOKEN_HEADER_ACTIONS.has(action)) return !hasTokenContext && hasPrototype;
 
       return true;
     });
@@ -211,7 +214,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Prepare data per type
     if (actorData.type === 'character') {
-      this._prepareItems(context);
+      await this._prepareItems(context);
       this._prepareCharacterData(context);
       await this._prepareAnatomyData(context);
       context.system.gFaction ??= '';
@@ -245,7 +248,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       context.characterDispositionIconClass = this._characterDispositionIconClass(this.actor);
       context.sheetPrimaryTabs = CHARACTER_SHEET_PRIMARY_TABS;
     } else if (actorData.type === 'npc' || actorData.type === 'loot') {
-      this._prepareItems(context);
+      await this._prepareItems(context);
       context.sheetPrimaryTabs = actorData.type === 'loot' ? LOOT_SHEET_PRIMARY_TABS : NPC_SHEET_PRIMARY_TABS;
     }
 
@@ -773,31 +776,116 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
-   * Flat rows for the character inventory tab: root items in `rootGearOrder`, then children
-   * under each container depth-first (order matches the item sheet container tab).
+   * Flat rows for the character inventory tab: root items first, then both
+   * actor-container children and weapon/ammo nested-storage snapshots.
    *
    * @param {Actor} actor
    * @param {Item[]} rootGearOrder
-   * @returns {Array<{ item: Item, depth: number }>}
+   * @returns {Array<object>}
    */
   _buildInventoryDisplayRows(actor, rootGearOrder) {
     const rows = [];
+    const collapsed = this._inventoryCollapsedKeys ??= new Set();
+    const kg = game.i18n?.localize?.('SPACEHOLDER.Units.Kg') ?? 'kg';
+
+    const makeInventoryMeta = (itemLike) => {
+      const quantity = Math.max(0, Number(itemLike?.system?.quantity) || 0);
+      const unitWeight = Math.max(0, Number(itemLike?.system?.weight) || 0);
+      const totalWeight = Math.round(unitWeight * quantity * 100) / 100;
+      const name = String(itemLike?.name ?? '').trim() || (game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.UntitledAction') ?? 'Unnamed');
+      return {
+        quantity,
+        unitWeight,
+        totalWeight,
+        displayName: `${name} x ${quantity}, ${totalWeight} ${kg}`,
+      };
+    };
+
     /**
      * @param {Item} item
      * @param {number} depth
      */
-    const visit = (item, depth) => {
+    const visitDocument = (item, depth) => {
       if (!item || item.type !== 'item') return;
-      rows.push({ item, depth });
       const tags = item.system?.itemTags || {};
-      if (!tags.isContainer) return;
-      for (const cid of getOrderedDirectChildItemIds(actor, item.id)) {
+      const actorChildIds = tags.isContainer ? getOrderedDirectChildItemIds(actor, item.id) : [];
+      const storageChildren = getNestedStorage(item).contents;
+      const key = `doc:${item.id}`;
+      const hasChildren = actorChildIds.length > 0 || storageChildren.length > 0;
+      const meta = makeInventoryMeta(item);
+      rows.push({
+        item,
+        depth,
+        key,
+        itemId: item.id,
+        name: item.name,
+        displayName: meta.displayName,
+        quantity: meta.quantity,
+        unitWeight: meta.unitWeight,
+        totalWeight: meta.totalWeight,
+        img: item.img || Item.DEFAULT_ICON,
+        system: item.system,
+        isDocument: true,
+        canEdit: true,
+        canDelete: true,
+        canHold: true,
+        canEquipArmor: !!item.system?.itemTags?.isArmor,
+        canDropContainer: !!tags.isContainer,
+        hasChildren,
+        isCollapsed: collapsed.has(key),
+      });
+      if (!hasChildren || collapsed.has(key)) return;
+      for (const cid of actorChildIds) {
         const child = actor.items.get(cid);
-        visit(child, depth + 1);
+        visitDocument(child, depth + 1);
+      }
+      for (const child of storageChildren) {
+        visitStorageSnapshot(child, item, [child.id], depth + 1);
       }
     };
+
+    /**
+     * @param {object} item
+     * @param {Item} hostItem
+     * @param {string[]} path
+     * @param {number} depth
+     */
+    const visitStorageSnapshot = (item, hostItem, path, depth) => {
+      if (!item) return;
+      const storageChildren = getNestedStorage(item).contents;
+      const key = `nested:${hostItem.id}:${path.join('/')}`;
+      const hasChildren = storageChildren.length > 0;
+      const meta = makeInventoryMeta(item);
+      rows.push({
+        item,
+        depth,
+        key,
+        name: item.name,
+        displayName: meta.displayName,
+        quantity: meta.quantity,
+        unitWeight: meta.unitWeight,
+        totalWeight: meta.totalWeight,
+        img: item.img || Item.DEFAULT_ICON,
+        system: item.system ?? {},
+        isSnapshot: true,
+        hostItemId: hostItem.id,
+        nestedPath: path.join('/'),
+        canEdit: false,
+        canDelete: false,
+        canHold: false,
+        canEquipArmor: false,
+        canDropContainer: false,
+        hasChildren,
+        isCollapsed: collapsed.has(key),
+      });
+      if (!hasChildren || collapsed.has(key)) return;
+      for (const child of storageChildren) {
+        visitStorageSnapshot(child, hostItem, [...path, child.id], depth + 1);
+      }
+    };
+
     for (const item of rootGearOrder) {
-      visit(item, 0);
+      visitDocument(item, 0);
     }
     return rows;
   }
@@ -807,7 +895,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    *
    * @param {object} context The context object to mutate
    */
-  _prepareItems(context) {
+  async _prepareItems(context) {
     // Initialize containers.
     const gear = [];
     const features = [];
@@ -863,10 +951,29 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     // Character / loot: flat rows for inventory UI — root items first, then nested under each container
     const inventoryRows = this._buildInventoryDisplayRows(this.actor, gear);
+    const selectedKey = String(this._inventorySelectedRowKey ?? '').trim();
+    const selectedInventoryRow = inventoryRows.find((row) => row.key === selectedKey) || inventoryRows[0] || null;
+    this._inventorySelectedRowKey = selectedInventoryRow?.key ?? '';
+    for (const row of inventoryRows) {
+      row.isSelected = !!selectedInventoryRow && row.key === selectedInventoryRow.key;
+    }
+    if (selectedInventoryRow) {
+      const desc = String(selectedInventoryRow.system?.description ?? '').trim();
+      const noDescription = game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.NoDescription') ?? 'No description';
+      const escape = foundry.utils?.escapeHTML ?? ((s) => String(s ?? ''));
+      selectedInventoryRow.enrichedDescription = desc
+        ? await TextEditor.enrichHTML(desc, {
+          async: true,
+          secrets: this.document.isOwner,
+          relativeTo: selectedInventoryRow.isDocument ? selectedInventoryRow.item : this.actor,
+        })
+        : `<em>${escape(noDescription)}</em>`;
+    }
 
     // Assign and return
     context.gear = gear;
     context.inventoryRows = inventoryRows;
+    context.selectedInventoryRow = selectedInventoryRow;
     context.features = features;
     context.spells = spells;
     context.totalWeight = Math.round(totalWeight * 100) / 100; // Round to 2 decimal places
@@ -906,16 +1013,21 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     totalWeight = Math.round(totalWeight * 100) / 100; // Round to 2 decimal places
     
     // Update DOM elements
-    const weightEl = this.element.querySelector('.stat-value');
-    const itemsEl = this.element.querySelector('.inventory-stat .stat-value');
+    const inventoryStats = Array.from(this.element.querySelectorAll('.inventory-stat'));
+    const weightEl = inventoryStats
+      .find((stat) => stat.querySelector('i.fa-weight-hanging'))
+      ?.querySelector('.stat-value');
+    const itemsEl = inventoryStats
+      .find((stat) => stat.querySelector('i.fa-boxes'))
+      ?.querySelector('.stat-value');
 
     const kg = game?.i18n?.localize?.('SPACEHOLDER.Units.Kg') ?? 'kg';
     const itemTotalWeightLabel = game?.i18n?.localize?.('SPACEHOLDER.Inventory.ItemTotalWeight') ?? 'Total weight:';
 
-    if (weightEl && weightEl.closest('.inventory-stat').querySelector('i.fa-weight-hanging')) {
+    if (weightEl) {
       weightEl.textContent = `${totalWeight} ${kg}`;
     }
-    if (itemsEl && itemsEl.closest('.inventory-stat').querySelector('i.fa-boxes')) {
+    if (itemsEl) {
       itemsEl.textContent = totalItems;
     }
 
@@ -931,6 +1043,165 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         }
       }
     });
+  }
+
+  /**
+   * @returns {Array<object>}
+   */
+  _collectInventoryDebugRows() {
+    const rows = [];
+    const actor = this.actor;
+    if (!actor?.items) return rows;
+
+    const makeItemMeta = (itemLike) => {
+      const quantity = Math.max(0, Number(itemLike?.system?.quantity) || 0);
+      const weight = Math.max(0, Number(itemLike?.system?.weight) || 0);
+      return {
+        quantity,
+        weight,
+        totalWeight: Math.round(quantity * weight * 100) / 100,
+      };
+    };
+
+    for (const item of actor.items) {
+      if (item.type !== 'item') continue;
+      const hostId = String(item.system?.containerHostId ?? '').trim();
+      const host = hostId ? actor.items.get(hostId) : null;
+      rows.push({
+        key: `doc:${item.id}`,
+        kind: 'doc',
+        depth: host ? 1 : 0,
+        name: item.name,
+        img: item.img || Item.DEFAULT_ICON,
+        id: item.id,
+        type: item.type,
+        location: host ? `${host.name} > ${item.name}` : item.name,
+        meta: makeItemMeta(item),
+      });
+    }
+
+    const visitStorage = (hostItem, entry, path, labels) => {
+      if (!entry) return;
+      const nextLabels = [...labels, entry.name || entry.id];
+      rows.push({
+        key: `nested:${hostItem.id}:${path.map(encodeURIComponent).join('/')}`,
+        kind: 'nested',
+        depth: nextLabels.length,
+        name: entry.name,
+        img: entry.img || Item.DEFAULT_ICON,
+        id: entry.id,
+        type: entry.type || 'item',
+        location: `${hostItem.name} > ${nextLabels.join(' > ')}`,
+        meta: makeItemMeta(entry),
+      });
+      for (const child of getNestedStorage(entry).contents) {
+        visitStorage(hostItem, child, [...path, child.id], nextLabels);
+      }
+    };
+
+    for (const hostItem of actor.items) {
+      if (hostItem.type !== 'item') continue;
+      for (const entry of getNestedStorage(hostItem).contents) {
+        visitStorage(hostItem, entry, [entry.id], []);
+      }
+    }
+
+    return rows;
+  }
+
+  async _openInventoryDebugDialog() {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable');
+      return;
+    }
+
+    const L = (key) => game.i18n?.localize?.(key) ?? key;
+    const esc = (value) => foundry.utils.escapeHTML(String(value ?? ''));
+    const rows = this._collectInventoryDebugRows();
+    const kg = L('SPACEHOLDER.Units.Kg');
+    const contentRows = rows.map((row) => `
+      <label class="spaceholder-inventory-debug-row" style="--sh-inv-debug-depth: ${Math.max(0, Number(row.depth) || 0)};">
+        <input type="checkbox" name="sh-inventory-debug-entry" value="${esc(row.key)}" ${this.isEditable ? '' : 'disabled'} />
+        <img src="${esc(row.img)}" alt="" width="24" height="24" />
+        <span class="spaceholder-inventory-debug-row__name">${esc(row.name)}</span>
+        <span class="spaceholder-inventory-debug-row__meta">${esc(L('SPACEHOLDER.Inventory.Quantity'))} ${row.meta.quantity} · ${row.meta.totalWeight} ${esc(kg)}</span>
+        <span class="spaceholder-inventory-debug-row__path">${esc(row.location)}</span>
+      </label>
+    `).join('');
+
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: L('SPACEHOLDER.Inventory.DebugDialogTitle'),
+        icon: 'fa-solid fa-list-check',
+      },
+      position: { width: 640 },
+      content: `
+        <div class="spaceholder-inventory-debug-dialog">
+          <p class="hint">${esc(L('SPACEHOLDER.Inventory.DebugDialogHint'))}</p>
+          <div class="spaceholder-inventory-debug-list">
+            ${contentRows || `<p class="hint">${esc(L('SPACEHOLDER.Inventory.Empty'))}</p>`}
+          </div>
+        </div>
+      `,
+      buttons: [
+        {
+          action: 'delete',
+          label: L('SPACEHOLDER.Inventory.DebugDeleteSelected'),
+          icon: 'fa-solid fa-trash',
+          callback: async (dlgEvent) => {
+            if (!this.isEditable) return;
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const keys = Array.from(root?.querySelectorAll?.('input[name="sh-inventory-debug-entry"]:checked') ?? [])
+              .map((input) => String(input?.value ?? '').trim())
+              .filter(Boolean);
+            if (!keys.length) {
+              ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.DebugSelectItem'));
+              return;
+            }
+            for (const key of keys) {
+              await this._deleteInventoryDebugEntry(key);
+            }
+            this.render(false);
+          },
+        },
+        {
+          action: 'close',
+          label: L('SPACEHOLDER.Actions.Close'),
+          icon: 'fa-solid fa-times',
+          default: true,
+        },
+      ],
+    });
+  }
+
+  async _deleteInventoryDebugEntry(key) {
+    const raw = String(key ?? '').trim();
+    if (!raw || !this.isEditable) return false;
+    if (raw.startsWith('doc:')) {
+      const itemId = raw.slice(4);
+      const item = this.actor?.items?.get?.(itemId);
+      if (!item || item.type !== 'item') return false;
+      await item.delete();
+      return true;
+    }
+    if (raw.startsWith('nested:')) {
+      const rest = raw.slice(7);
+      const splitAt = rest.indexOf(':');
+      if (splitAt < 0) return false;
+      const hostId = rest.slice(0, splitAt);
+      const path = rest.slice(splitAt + 1).split('/').map(decodeURIComponent).filter(Boolean);
+      const hostItem = this.actor?.items?.get?.(hostId);
+      if (!hostItem || hostItem.type !== 'item' || !path.length) return false;
+      return deleteNestedItemFromStorage({ containerItem: hostItem, path });
+    }
+    return false;
   }
 
   /* -------------------------------------------- */
@@ -1861,6 +2132,42 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       btn.addEventListener('click', this._onItemCreate.bind(this));
     });
 
+    el.querySelectorAll('[data-action="inventory-debug-open"]').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        void this._openInventoryDebugDialog();
+      });
+    });
+
+    el.querySelectorAll('[data-action="inventory-row-toggle"]').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const key = String(ev.currentTarget?.dataset?.inventoryRowKey ?? '').trim();
+        if (!key) return;
+        const collapsed = this._inventoryCollapsedKeys ??= new Set();
+        if (collapsed.has(key)) collapsed.delete(key);
+        else collapsed.add(key);
+        this.render(false);
+      });
+    });
+
+    el.querySelectorAll('[data-action="inventory-row-select"]').forEach(card => {
+      const selectRow = (ev) => {
+        if (ev.target?.closest?.('button, a, input, select, textarea')) return;
+        const key = String(card.dataset?.inventoryRowKey ?? '').trim();
+        if (!key || key === this._inventorySelectedRowKey) return;
+        ev.preventDefault();
+        this._inventorySelectedRowKey = key;
+        this.render(false);
+      };
+      card.addEventListener('click', selectRow);
+      card.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+        selectRow(ev);
+      });
+    });
+
     // Delete Inventory Item
     el.querySelectorAll('.item-delete').forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -2025,8 +2332,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         li.setAttribute('draggable', 'true');
         li.addEventListener('dragstart', handler, false);
       });
-      // Character inventory uses card layout instead of li.item; make cards draggable too.
-      el.querySelectorAll('.inventory-item-card').forEach((card) => {
+      // Character inventory uses card layout instead of li.item; make real Item cards draggable too.
+      el.querySelectorAll('.inventory-item-card[data-item-id]').forEach((card) => {
         card.setAttribute('draggable', 'true');
         card.addEventListener('dragstart', handler, false);
       });
@@ -3137,10 +3444,10 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
 // Character-specific sheet (Application V2)
 export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
-  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+  static DEFAULT_OPTIONS = {
     position: { width: 950, height: 950 },
-    window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: false }),
-  }, { inplace: false });
+    window: { resizable: false },
+  };
 
   // Native tabs for character sheet: overview, stats, health, injuries, inventory
   static TABS = {
@@ -3322,9 +3629,9 @@ export class SpaceHolderLootSheet extends SpaceHolderBaseActorSheet {
 
 // Global Object sheet (Application V2)
 export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
-  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+  static DEFAULT_OPTIONS = {
     position: { width: 560, height: 'auto' },
-  }, { inplace: false });
+  };
 
   static PARTS = {
     body: { root: true, template: 'systems/spaceholder/templates/actor/actor-globalobject-sheet.hbs' },
@@ -4084,9 +4391,9 @@ export class SpaceHolderGlobalObjectSheet extends SpaceHolderBaseActorSheet {
 
 // Faction sheet (Application V2)
 export class SpaceHolderFactionSheet extends SpaceHolderBaseActorSheet {
-  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+  static DEFAULT_OPTIONS = {
     position: { width: 520, height: 'auto' },
-  }, { inplace: false });
+  };
 
   static PARTS = {
     body: { root: true, template: 'systems/spaceholder/templates/actor/actor-faction-sheet.hbs' },

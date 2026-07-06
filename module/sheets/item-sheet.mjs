@@ -7,7 +7,13 @@ import { anatomyManager } from '../anatomy-manager.mjs';
 import { pickIcon } from '../helpers/icon-picker/icon-picker.mjs';
 import { migrateItemWeaponData } from '../documents/item.mjs';
 import { materialsManager } from '../helpers/damage/materials-manager.mjs';
-import { normalizeNestedStorage } from '../helpers/item-nested-storage.mjs';
+import {
+  addItemToNestedStorage,
+  deleteNestedItemFromStorage,
+  extractNestedItemToActor,
+  getNestedStorage,
+  normalizeNestedStorage,
+} from '../helpers/item-nested-storage.mjs';
 import {
   AMMO_BLOCK_TYPES,
   AMMO_BLOCK_TYPE_LIST,
@@ -21,9 +27,11 @@ import {
   createWeaponLine,
   createWeaponMode,
   defaultDamageEntry,
+  compatMatches,
   computeProjectileEnergy,
   fireDelayToRpm,
   formatAmmoCounter,
+  normalizeAmmoConfig,
 } from '../helpers/weapon/weapon-model.mjs';
 import {
   TRAJECTORY_KINDS,
@@ -35,6 +43,7 @@ import {
   ENTRY_ACTOR_ITEM,
   ENTRY_WORLD_UUID,
   addWorldUuidToContainer,
+  checkActorContainerCapacity,
   moveActorItemIntoContainer,
   normalizeItemContainerFields,
   pruneBrokenWorldUuidLinks,
@@ -204,7 +213,7 @@ const ITEM_ACTION_MODE_LABEL_KEYS = Object.freeze({
 export class SpaceHolderBaseItemSheet extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.sheets.ItemSheet
 ) {
-  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+  static DEFAULT_OPTIONS = {
     classes: ['spaceholder', 'sheet', 'item'],
     position: { width: 520, height: 480 },
     window: {
@@ -214,7 +223,7 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     form: {
       submitOnChange: true,
     },
-  }, { inplace: false });
+  };
 
   // Native tabs configuration (Application V2)
   static TABS = {
@@ -933,10 +942,10 @@ export class SpaceHolderItemSheet_Generic extends SpaceHolderBaseItemSheet {
 export class SpaceHolderItemSheet_Material extends SpaceHolderBaseItemSheet {
   static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-material-sheet.hbs' } };
 
-  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+  static DEFAULT_OPTIONS = {
     position: { width: 720, height: 760 },
-    window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: true }),
-  }, { inplace: false });
+    window: { resizable: true },
+  };
 
   /** @inheritDoc */
   async _prepareContext(options) {
@@ -1038,11 +1047,11 @@ export class SpaceHolderItemSheet_Material extends SpaceHolderBaseItemSheet {
 export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   static PARTS = { body: { root: true, template: 'systems/spaceholder/templates/item/item-wearable-sheet.hbs' } };
 
-  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS ?? {}, {
+  static DEFAULT_OPTIONS = {
     // Шапка + полоса вкладок + баннер + строка управления + фиксированный ряд 420px (покрытие)
     position: { width: 720, height: 860 },
-    window: Object.assign({}, super.DEFAULT_OPTIONS?.window, { resizable: true }),
-  });
+    window: { resizable: true },
+  };
 
   // Вкладки: описание → оружие / боеприпас (по тегам) → прочее → настройки последние.
   static TABS = {
@@ -1261,10 +1270,28 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       context.containerOnActor = !!actor;
       context.containerWorldMode = !actor;
       context.containerReadOnly = !this.isEditable;
-      const panel = await this._buildContainerPanelContext(actor);
-      context.containerGear = panel.containerGear;
-      context.containerTotalWeight = panel.containerTotalWeight;
-      context.containerTotalItems = panel.containerTotalItems;
+      context.containerUsesNestedStorage = !!(context.hasAmmoTag && system.itemTags.isContainer);
+      if (context.containerUsesNestedStorage) {
+        const panel = this._buildNestedStorageContainerPanelContext(system);
+        context.containerStorageRows = panel.containerStorageRows;
+        context.containerTotalWeight = panel.containerTotalWeight;
+        context.containerTotalItems = panel.containerTotalItems;
+        context.containerLimitMaxItems = panel.containerLimitMaxItems;
+        context.containerLimitMaxWeight = panel.containerLimitMaxWeight;
+        context.containerLimitItemsEnabled = panel.containerLimitMaxItems > 0;
+        context.containerLimitWeightEnabled = panel.containerLimitMaxWeight > 0;
+        context.containerLimitItemsSourceAmmo = true;
+      } else {
+        const panel = await this._buildContainerPanelContext(actor);
+        context.containerGear = panel.containerGear;
+        context.containerTotalWeight = panel.containerTotalWeight;
+        context.containerTotalItems = panel.containerTotalItems;
+        context.containerLimitMaxItems = icFields.container.limits.maxItems;
+        context.containerLimitMaxWeight = icFields.container.limits.maxWeight;
+        context.containerLimitItemsEnabled = icFields.container.limits.maxItems > 0;
+        context.containerLimitWeightEnabled = icFields.container.limits.maxWeight > 0;
+        context.containerLimitItemsSourceAmmo = false;
+      }
     }
 
     const wearableTabIds = ['description'];
@@ -1292,6 +1319,68 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     const empty = { containerGear: [], containerTotalWeight: 0, containerTotalItems: 0 };
     if (actor?.items) return this._buildActorContainerPanelContext(actor);
     return this._buildWorldContainerPanelContext();
+  }
+
+  /**
+   * @param {object} system
+   * @returns {{ containerStorageRows: object[], containerTotalWeight: number, containerTotalItems: number, containerLimitMaxItems: number, containerLimitMaxWeight: number }}
+   */
+  _buildNestedStorageContainerPanelContext(system) {
+    const storage = normalizeNestedStorage(system?.storage);
+    const ammo = normalizeAmmoConfig(system?.weapon?.ammo);
+    const limits = normalizeItemContainerFields(system).container.limits;
+    const kg = game.i18n?.localize?.('SPACEHOLDER.Units.Kg') ?? 'kg';
+    const rows = [];
+
+    const usageOf = (itemLike) => {
+      const quantity = Math.max(0, Math.floor(Number(itemLike?.system?.quantity) || 0));
+      const unitWeight = Math.max(0, Number(itemLike?.system?.weight) || 0);
+      const totalWeight = Math.round(quantity * unitWeight * 100) / 100;
+      const name = String(itemLike?.name ?? '').trim() || (game.i18n?.localize?.('SPACEHOLDER.Inventory.NewItem') ?? 'Item');
+      return {
+        quantity,
+        unitWeight,
+        totalWeight,
+        displayName: `${name} x ${quantity}, ${totalWeight} ${kg}`,
+      };
+    };
+
+    const visit = (entry, path, depth) => {
+      if (!entry) return;
+      const nested = getNestedStorage(entry);
+      const meta = usageOf(entry);
+      rows.push({
+        id: entry.id,
+        path: path.join('/'),
+        depth,
+        name: entry.name,
+        displayName: meta.displayName,
+        quantity: meta.quantity,
+        unitWeight: meta.unitWeight,
+        totalWeight: meta.totalWeight,
+        img: entry.img || Item.DEFAULT_ICON,
+        system: entry.system ?? {},
+        hasChildren: nested.contents.length > 0,
+      });
+      for (const child of nested.contents) visit(child, [...path, child.id], depth + 1);
+    };
+
+    let totalItems = 0;
+    let totalWeight = 0;
+    for (const entry of storage.contents) {
+      const meta = usageOf(entry);
+      totalItems += meta.quantity;
+      totalWeight += meta.totalWeight;
+      visit(entry, [entry.id], 0);
+    }
+
+    return {
+      containerStorageRows: rows,
+      containerTotalWeight: Math.round(totalWeight * 100) / 100,
+      containerTotalItems: totalItems,
+      containerLimitMaxItems: Math.max(0, Math.floor(Number(ammo.capacity) || 0)),
+      containerLimitMaxWeight: limits.maxWeight,
+    };
   }
 
   /**
@@ -2033,10 +2122,325 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
   }
 
   /**
+   * Hybrid Ammo+Container items use plain nested-storage snapshots on the
+   * Container tab, while normal containers keep the actor embedded-item model.
+   * @returns {boolean}
+   */
+  _usesNestedStorageContainer() {
+    const tags = this.item?.system?.itemTags ?? {};
+    return !!(tags.isAmmo && tags.isContainer);
+  }
+
+  /**
+   * @param {unknown} raw
+   * @returns {string[]}
+   */
+  _nestedStoragePath(raw) {
+    return String(raw ?? '').split('/').map((p) => p.trim()).filter(Boolean);
+  }
+
+  /**
+   * @param {Item|object|null|undefined} itemLike
+   * @returns {boolean}
+   */
+  _isLooseAmmoForNestedContainer(itemLike) {
+    const tags = itemLike?.system?.itemTags ?? {};
+    if (!tags.isAmmo) return false;
+    const ammo = normalizeAmmoConfig(itemLike?.system?.weapon?.ammo);
+    return !ammo.connector.enabled;
+  }
+
+  /**
+   * @param {Item|object|null|undefined} itemLike
+   * @returns {boolean}
+   */
+  _isAmmoCompatibleWithNestedContainer(itemLike) {
+    if (!this._isLooseAmmoForNestedContainer(itemLike)) return false;
+    const magAmmo = normalizeAmmoConfig(this.item?.system?.weapon?.ammo);
+    const roundAmmo = normalizeAmmoConfig(itemLike?.system?.weapon?.ammo);
+    const magCaliber = String(magAmmo.caliber ?? '').trim();
+    const roundCaliber = String(roundAmmo.caliber ?? '').trim();
+    if (!magCaliber || !roundCaliber) return true;
+    return compatMatches(magCaliber, roundCaliber);
+  }
+
+  /**
+   * @param {Item|object} source
+   * @returns {{ ok: boolean, quantity: number, reason: ''|'maxItems'|'maxWeight' }}
+   */
+  _resolveNestedStorageAddQuantity(source) {
+    const sourceQty = Math.max(1, Math.floor(Number(source?.system?.quantity) || 1));
+    let quantity = sourceQty;
+    const panel = this._buildNestedStorageContainerPanelContext(this.item?.system ?? {});
+    const maxItems = panel.containerLimitMaxItems;
+    if (maxItems > 0) {
+      const byItems = maxItems - panel.containerTotalItems;
+      if (byItems <= 0) return { ok: false, quantity: 0, reason: 'maxItems' };
+      quantity = Math.min(quantity, byItems);
+    }
+    const maxWeight = panel.containerLimitMaxWeight;
+    if (maxWeight > 0) {
+      const unitWeight = Math.max(0, Number(source?.system?.weight) || 0);
+      if (unitWeight > 0) {
+        const byWeight = Math.floor((maxWeight - panel.containerTotalWeight) / unitWeight);
+        if (byWeight <= 0) return { ok: false, quantity: 0, reason: 'maxWeight' };
+        quantity = Math.min(quantity, byWeight);
+      } else if (panel.containerTotalWeight > maxWeight) {
+        return { ok: false, quantity: 0, reason: 'maxWeight' };
+      }
+    }
+    return { ok: quantity > 0, quantity: Math.max(0, quantity), reason: quantity > 0 ? '' : 'maxItems' };
+  }
+
+  /**
+   * Dialog editor for container limits. Hybrid Ammo+Container items keep their
+   * item-count limit in the Ammo tab (`ammo.capacity`), so this dialog only
+   * edits the shared weight limit for them.
+   */
+  async _openItemContainerLimitsDialog() {
+    if (!this.isEditable || !this.item?.system?.itemTags?.isContainer) return;
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) return;
+
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
+    const escape = foundry.utils?.escapeHTML ?? ((s) => String(s ?? ''));
+    const usesNested = this._usesNestedStorageContainer();
+    const { container } = normalizeItemContainerFields(this.item.system);
+    const ammo = normalizeAmmoConfig(this.item.system?.weapon?.ammo);
+    const maxItems = usesNested
+      ? Math.max(0, Math.floor(Number(ammo.capacity) || 0))
+      : container.limits.maxItems;
+    const maxWeight = container.limits.maxWeight;
+
+    const itemLimitBody = usesNested
+      ? `<div class="form-fields"><span class="spaceholder-item-container-limit-source">${escape(L('SPACEHOLDER.ItemContainer.LimitItemsFromAmmoCapacity'))}: ${maxItems || escape(L('SPACEHOLDER.ItemContainer.Unlimited'))}</span></div>`
+      : `<div class="form-fields"><input id="sh-container-limit-items" type="number" min="0" step="1" value="${maxItems}" /></div>`;
+
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: L('SPACEHOLDER.ItemContainer.LimitsDialogTitle'),
+        icon: 'fa-solid fa-box-open',
+      },
+      position: { width: 420 },
+      content: `
+        <div class="spaceholder-item-container-limits-dialog">
+          <div class="form-group">
+            <label for="sh-container-limit-items">${escape(L('SPACEHOLDER.ItemContainer.LimitItems'))}</label>
+            ${itemLimitBody}
+          </div>
+          <div class="form-group">
+            <label for="sh-container-limit-weight">${escape(L('SPACEHOLDER.ItemContainer.LimitWeight'))}</label>
+            <div class="form-fields">
+              <input id="sh-container-limit-weight" type="number" min="0" step="0.01" value="${maxWeight}" />
+            </div>
+          </div>
+          <p class="hint">${escape(L('SPACEHOLDER.ItemContainer.LimitZeroUnlimited'))}</p>
+        </div>
+      `,
+      buttons: [
+        {
+          action: 'save',
+          label: L('SPACEHOLDER.Actions.Save'),
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const rawWeight = root?.querySelector?.('#sh-container-limit-weight')?.value ?? maxWeight;
+            const weightNumber = Number(rawWeight);
+            const nextLimits = {
+              ...container.limits,
+              maxWeight: Number.isFinite(weightNumber) ? Math.max(0, weightNumber) : 0,
+            };
+            if (!usesNested) {
+              const rawItems = root?.querySelector?.('#sh-container-limit-items')?.value ?? maxItems;
+              const itemNumber = Math.floor(Number(rawItems));
+              nextLimits.maxItems = Number.isFinite(itemNumber) ? Math.max(0, itemNumber) : 0;
+            }
+            const patch = {
+              'system.container': {
+                ...container,
+                limits: nextLimits,
+              },
+            };
+            const pending = this._getPendingNameFromForm();
+            if (pending && pending !== String(this.item.name ?? '').trim()) {
+              patch.name = pending;
+            }
+            const pendingQty = this._getPendingQuantityFromForm();
+            if (pendingQty !== null) {
+              const cur = Math.max(0, Math.floor(Number(this.item.system?.quantity ?? 1)));
+              if (pendingQty !== cur) patch['system.quantity'] = pendingQty;
+            }
+            await this.item.update(patch);
+            this._activeTabPrimary = 'container';
+          },
+        },
+        {
+          action: 'cancel',
+          label: L('SPACEHOLDER.Actions.Cancel'),
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+    await this.render(false);
+  }
+
+  /**
+   * Вкладка «Контейнер» для магазина: DnD, извлечение, удаление.
+   */
+  _bindNestedStorageContainerListeners() {
+    const el = this.element;
+    if (!el) return;
+    const readOnly = !this.isEditable;
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
+
+    el.querySelectorAll('[data-action="sh-item-container-limits-edit"]').forEach((btn) => {
+      if (btn.dataset.shContainerLimitsBound === '1') return;
+      btn.dataset.shContainerLimitsBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly) return;
+        await this._openItemContainerLimitsDialog();
+      });
+    });
+
+    const zone = el.querySelector('[data-sh-item-storage-drop]');
+    if (zone && !readOnly && zone.dataset.shItemStorageZoneBound !== '1') {
+      zone.dataset.shItemStorageZoneBound = '1';
+      zone.addEventListener('dragover', (ev) => {
+        ev.preventDefault();
+        try {
+          ev.dataTransfer.dropEffect = 'copy';
+        } catch (_) { /* ignore */ }
+      });
+      zone.addEventListener('drop', async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        await this._onNestedStorageExternalDrop(ev);
+      });
+    }
+
+    el.querySelectorAll('[data-action="sh-item-storage-extract"]').forEach((btn) => {
+      if (btn.dataset.shItemStorageBtnBound === '1') return;
+      btn.dataset.shItemStorageBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly) return;
+        const path = this._nestedStoragePath(ev.currentTarget?.dataset?.nestedPath);
+        if (!path.length) return;
+        const created = await extractNestedItemToActor({ containerItem: this.item, path, quantity: Number.MAX_SAFE_INTEGER });
+        if (!created) {
+          ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.NestedExtractFailed'));
+          return;
+        }
+        this._activeTabPrimary = 'container';
+        await this.render(false);
+      });
+    });
+
+    el.querySelectorAll('[data-action="sh-item-storage-delete"]').forEach((btn) => {
+      if (btn.dataset.shItemStorageBtnBound === '1') return;
+      btn.dataset.shItemStorageBtnBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly) return;
+        const path = this._nestedStoragePath(ev.currentTarget?.dataset?.nestedPath);
+        if (!path.length) return;
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+          classes: ['spaceholder'],
+          window: {
+            title: L('SPACEHOLDER.Inventory.DeleteItem'),
+            icon: 'fa-solid fa-trash',
+          },
+          content: `<p>${foundry.utils.escapeHTML(L('SPACEHOLDER.ItemContainer.NestedDeleteConfirm'))}</p>`,
+          yes: { label: L('SPACEHOLDER.Actions.Delete'), icon: 'fa-solid fa-trash' },
+          no: { label: L('SPACEHOLDER.Actions.Cancel'), icon: 'fa-solid fa-times' },
+        });
+        if (!confirmed) return;
+        const ok = await deleteNestedItemFromStorage({ containerItem: this.item, path });
+        if (!ok) return;
+        this._activeTabPrimary = 'container';
+        await this.render(false);
+      });
+    });
+  }
+
+  /**
+   * @param {DragEvent} ev
+   */
+  async _onNestedStorageExternalDrop(ev) {
+    if (!this.isEditable) return;
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
+    let data = null;
+    try {
+      const raw = ev.dataTransfer?.getData?.('text/plain') ?? '';
+      data = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return;
+    }
+    if (!data || data.type !== 'Item' || !data.uuid) return;
+    let doc = null;
+    try {
+      doc = await fromUuid(data.uuid);
+    } catch (_) {
+      doc = null;
+    }
+    if (!doc || doc.documentName !== 'Item') {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropNotAnItem'));
+      return;
+    }
+    if (doc.uuid === this.item.uuid) {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.CycleWarning'));
+      return;
+    }
+    const actor = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
+    const sourceActor = doc.parent?.documentName === 'Actor' ? doc.parent : null;
+    if (sourceActor && actor && sourceActor.id !== actor.id) {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropWrongActor'));
+      return;
+    }
+    if (!this._isAmmoCompatibleWithNestedContainer(doc)) {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.IncompatibleAmmo'));
+      return;
+    }
+    const qty = this._resolveNestedStorageAddQuantity(doc);
+    if (!qty.ok) {
+      ui.notifications?.warn?.(
+        qty.reason === 'maxWeight'
+          ? L('SPACEHOLDER.ItemContainer.MaxWeightExceeded')
+          : L('SPACEHOLDER.ItemContainer.MagazineFull')
+      );
+      return;
+    }
+    const inserted = await addItemToNestedStorage({
+      containerItem: this.item,
+      item: doc,
+      quantity: qty.quantity,
+      consumeSource: !!sourceActor,
+    });
+    if (!inserted) {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.NestedAddFailed'));
+      return;
+    }
+    this._activeTabPrimary = 'container';
+    await this.render(false);
+  }
+
+  /**
    * Вкладка «Контейнер»: DnD, создание, извлечение, синхронизация.
    */
   _bindItemContainerListeners() {
     if (!this.item?.system?.itemTags?.isContainer) return;
+    if (this._usesNestedStorageContainer()) {
+      this._bindNestedStorageContainerListeners();
+      return;
+    }
     const el = this.element;
     if (!el) return;
 
@@ -2045,6 +2449,16 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     const actorMode = !!actor;
 
     const L = (k) => game.i18n?.localize?.(k) ?? k;
+
+    el.querySelectorAll('[data-action="sh-item-container-limits-edit"]').forEach((btn) => {
+      if (btn.dataset.shContainerLimitsBound === '1') return;
+      btn.dataset.shContainerLimitsBound = '1';
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (readOnly) return;
+        await this._openItemContainerLimitsDialog();
+      });
+    });
 
     const zone = el.querySelector('[data-sh-item-container-drop]');
     if (zone && !readOnly && zone.dataset.shContainerZoneBound !== '1') {
@@ -2074,6 +2488,15 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         const a = this.item.parent?.documentName === 'Actor' ? this.item.parent : null;
         if (!a) {
           ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.OnlyOnActor'));
+          return;
+        }
+        const capacity = checkActorContainerCapacity(a, this.item, [{ system: { quantity: 1, weight: 0 } }]);
+        if (!capacity.ok) {
+          ui.notifications?.warn?.(
+            capacity.reason === 'maxWeight'
+              ? L('SPACEHOLDER.ItemContainer.MaxWeightExceeded')
+              : L('SPACEHOLDER.ItemContainer.MaxItemsExceeded')
+          );
           return;
         }
         const defaultName = L('SPACEHOLDER.Inventory.NewItem');
@@ -2245,7 +2668,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     const nextContents = cur.container.contents.filter(
       (e) => !(e.kind === ENTRY_ACTOR_ITEM && e.itemId === cid),
     );
-    await host.update({ 'system.container': { contents: nextContents } }, { render: false });
+    await host.update({ 'system.container': { ...cur.container, contents: nextContents } }, { render: false });
     rerenderOpenContainerRelatedSheets(actor, [host]);
   }
 
@@ -2337,6 +2760,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
    */
   async _onItemContainerWorldDrop(ev) {
     if (!this.isEditable) return;
+    const L = (k) => game.i18n?.localize?.(k) ?? k;
     let data = null;
     try {
       const raw = ev.dataTransfer?.getData?.('text/plain') ?? '';
@@ -2352,24 +2776,35 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       doc = null;
     }
     if (!doc || doc.documentName !== 'Item') {
-      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.DropNotAnItem') ?? 'Not an item.');
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropNotAnItem'));
       return;
     }
     if (doc.uuid === this.item.uuid) {
-      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.CycleWarning') ?? 'Cannot nest that way.');
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.CycleWarning'));
       return;
     }
     const parentActor = doc.parent?.documentName === 'Actor' ? doc.parent : null;
     if (parentActor) {
       ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ItemContainer.DropEmbeddedNotAllowed') ??
-          'Drop a sidebar/compendium item, not an item on a character.',
+        L('SPACEHOLDER.ItemContainer.DropEmbeddedNotAllowed'),
       );
+      return;
+    }
+    const panel = await this._buildWorldContainerPanelContext();
+    const limits = normalizeItemContainerFields(this.item.system).container.limits;
+    const q = Math.max(0, Math.floor(Number(doc.system?.quantity) || 0));
+    const w = Math.max(0, Number(doc.system?.weight) || 0);
+    if (limits.maxItems > 0 && panel.containerTotalItems + q > limits.maxItems) {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MaxItemsExceeded'));
+      return;
+    }
+    if (limits.maxWeight > 0 && panel.containerTotalWeight + (q * w) > limits.maxWeight) {
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MaxWeightExceeded'));
       return;
     }
     const ok = await addWorldUuidToContainer(this.item, doc.uuid);
     if (!ok) {
-      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not add link.');
+      ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed'));
       return;
     }
     await this.render(false);
@@ -2406,6 +2841,15 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     if (doc.id === this.item.id) return;
     if (wouldCreateItemContainerCycle(actor, doc.id, this.item.id)) {
       ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ItemContainer.CycleWarning') ?? 'Cannot nest that way.');
+      return;
+    }
+    const capacity = checkActorContainerCapacity(actor, this.item, [doc]);
+    if (!capacity.ok) {
+      ui.notifications?.warn?.(
+        capacity.reason === 'maxWeight'
+          ? (game.i18n?.localize?.('SPACEHOLDER.ItemContainer.MaxWeightExceeded') ?? 'Container weight limit exceeded.')
+          : (game.i18n?.localize?.('SPACEHOLDER.ItemContainer.MaxItemsExceeded') ?? 'Container item limit exceeded.')
+      );
       return;
     }
     const ok = await moveActorItemIntoContainer(actor, this.item, doc.id);
@@ -2455,6 +2899,27 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         ? foundry.utils.duplicate(itemSys.weapon)
         : null;
     const storageSnap = normalizeNestedStorage(itemSys.storage);
+    const containerSnap = foundry.utils.duplicate(icPreserve.container);
+
+    const readSubmittedContainerLimit = (key) => {
+      const flatKey = `system.container.limits.${key}`;
+      if (Object.prototype.hasOwnProperty.call(data, flatKey)) return data[flatKey];
+      if (hasNestedSystem) {
+        const nested = data.system?.container?.limits;
+        if (nested && Object.prototype.hasOwnProperty.call(nested, key)) return nested[key];
+      }
+      return undefined;
+    };
+    const submittedMaxItems = readSubmittedContainerLimit('maxItems');
+    const submittedMaxWeight = readSubmittedContainerLimit('maxWeight');
+    if (submittedMaxItems !== undefined) {
+      const n = Math.floor(Number(submittedMaxItems));
+      containerSnap.limits.maxItems = Number.isFinite(n) ? Math.max(0, n) : 0;
+    }
+    if (submittedMaxWeight !== undefined) {
+      const n = Number(submittedMaxWeight);
+      containerSnap.limits.maxWeight = Number.isFinite(n) ? Math.max(0, n) : 0;
+    }
 
     if (hasNestedSystem) {
       data.system.itemTags = { ...tagSnap };
@@ -2462,7 +2927,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       data.system.coveredParts = coveredParts;
       data.system.storage = storageSnap;
       data.system.containerHostId = icPreserve.containerHostId;
-      data.system.container = foundry.utils.duplicate(icPreserve.container);
+      data.system.container = foundry.utils.duplicate(containerSnap);
       if (weaponSnap && !Object.prototype.hasOwnProperty.call(data.system, 'weapon')) {
         data.system.weapon = weaponSnap;
       }
@@ -2472,7 +2937,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     data['system.coveredParts'] = coveredParts;
     data['system.storage'] = storageSnap;
     data['system.containerHostId'] = icPreserve.containerHostId;
-    data['system.container'] = foundry.utils.duplicate(icPreserve.container);
+    data['system.container'] = foundry.utils.duplicate(containerSnap);
   }
 
   /**
