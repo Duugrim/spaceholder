@@ -85,10 +85,6 @@
             <span>{{localize 'SPACEHOLDER.Resources.Weight'}} {{selectedInventoryRow.totalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
           </div>
 
-          <div class="inventory-preview-description">
-            {{{selectedInventoryRow.enrichedDescription}}}
-          </div>
-
           <div class="item-controls inventory-preview-controls">
             {{#if selectedInventoryRow.canHold}}
             <button
@@ -133,6 +129,10 @@
             </button>
             {{/if}}
           </div>
+
+          <div class="inventory-preview-description">
+            {{{selectedInventoryRow.enrichedDescription}}}
+          </div>
         </article>
       {{else}}
         <div class="inventory-preview-empty">
@@ -146,12 +146,12 @@
       <div class='inventory-list'>
         {{#each inventoryRows as |row|}}
           <div
-            class='inventory-item-card{{#if row.depth}} inventory-item-card--nested{{/if}}{{#if row.isSnapshot}} inventory-item-card--storage-snapshot{{/if}}{{#if row.isSelected}} is-selected{{/if}}'
+            class='inventory-item-card{{#if row.depth}} inventory-item-card--nested{{/if}}{{#if row.isSnapshot}} inventory-item-card--storage-snapshot{{/if}}{{#if row.tagClass}} {{row.tagClass}}{{/if}}{{#if row.isHeld}} inventory-item-card--held{{/if}}{{#if row.isSelected}} is-selected{{/if}}'
             data-action="inventory-row-select"
             data-inventory-row-key='{{row.key}}'
             {{#if row.itemId}}data-item-id='{{row.itemId}}'{{/if}}
             {{#if row.canDropContainer}}data-sh-inventory-container-drop="1"{{/if}}
-            style='--sh-inv-depth: {{row.depth}};'
+            style='--sh-inv-depth: {{row.depth}};{{#if row.tagStyle}} {{row.tagStyle}}{{/if}}'
             role="button"
             tabindex="0"
           >
@@ -162,16 +162,16 @@
                   <img
                     src='{{row.img}}'
                     title='{{row.name}}'
-                    width='32'
-                    height='32'
+                    width='48'
+                    height='48'
                   />
                 </a>
                 {{else}}
                   <img
                     src='{{row.img}}'
                     title='{{row.name}}'
-                    width='32'
-                    height='32'
+                    width='48'
+                    height='48'
                   />
                 {{/if}}
               </div>

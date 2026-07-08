@@ -943,6 +943,47 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
+   * Soft background + border for inventory cards from highlight tags
+   * (weapon / ammo / container / armor). Multi-tag cards get equal slanted stripes.
+   *
+   * @param {object|null|undefined} itemTags
+   * @returns {{ tagClass: string, tagStyle: string }}
+   */
+  _buildInventoryRowTagVisual(itemTags) {
+    const tags = itemTags && typeof itemTags === 'object' ? itemTags : {};
+    /** @type {Record<string, { fill: string, border: string }>} */
+    const palette = {
+      weapon: { fill: 'rgba(176, 90, 82, 0.22)', border: 'rgba(176, 90, 82, 0.72)' },
+      ammo: { fill: 'rgba(143, 122, 69, 0.24)', border: 'rgba(143, 122, 69, 0.72)' },
+      container: { fill: 'rgba(125, 113, 175, 0.24)', border: 'rgba(125, 113, 175, 0.72)' },
+      armor: { fill: 'rgba(90, 138, 158, 0.24)', border: 'rgba(90, 138, 158, 0.72)' },
+    };
+    /** Fixed visual order when several tags are on. */
+    const kinds = [];
+    if (tags.isWeapon || tags.isMelee || tags.isRanged || tags.isThrown) kinds.push('weapon');
+    if (tags.isAmmo) kinds.push('ammo');
+    if (tags.isContainer) kinds.push('container');
+    if (tags.isArmor) kinds.push('armor');
+    if (!kinds.length) return { tagClass: '', tagStyle: '' };
+
+    const n = kinds.length;
+    const stops = kinds
+      .map((kind, i) => {
+        const start = (i / n) * 100;
+        const end = ((i + 1) / n) * 100;
+        return `${palette[kind].fill} ${start}% ${end}%`;
+      })
+      .join(', ');
+    // ~105deg ≈ vertical divider with a mild `/` slant.
+    const bg = `linear-gradient(105deg, ${stops})`;
+    const border = palette[kinds[0]].border;
+    return {
+      tagClass: 'inventory-item-card--tagged',
+      tagStyle: `--sh-inv-tag-bg: ${bg}; --sh-inv-tag-border: ${border};`,
+    };
+  }
+
+  /**
    * Flat rows for the character inventory tab: root items first, then both
    * actor-container children and weapon/ammo nested-storage snapshots.
    *
@@ -980,6 +1021,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const key = `doc:${item.id}`;
       const hasChildren = actorChildIds.length > 0 || storageChildren.length > 0;
       const meta = makeInventoryMeta(item);
+      const tagVisual = this._buildInventoryRowTagVisual(tags);
       rows.push({
         item,
         depth,
@@ -1000,6 +1042,9 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         canDropContainer: !!tags.isContainer,
         hasChildren,
         isCollapsed: collapsed.has(key),
+        isHeld: !!item.system?.held,
+        tagClass: tagVisual.tagClass,
+        tagStyle: tagVisual.tagStyle,
       });
       if (!hasChildren || collapsed.has(key)) return;
       for (const cid of actorChildIds) {
@@ -1023,6 +1068,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const key = `nested:${hostItem.id}:${path.join('/')}`;
       const hasChildren = storageChildren.length > 0;
       const meta = makeInventoryMeta(item);
+      const tagVisual = this._buildInventoryRowTagVisual(item.system?.itemTags);
       rows.push({
         item,
         depth,
@@ -1044,6 +1090,9 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         canDropContainer: false,
         hasChildren,
         isCollapsed: collapsed.has(key),
+        isHeld: false,
+        tagClass: tagVisual.tagClass,
+        tagStyle: tagVisual.tagStyle,
       });
       if (!hasChildren || collapsed.has(key)) return;
       for (const child of storageChildren) {
