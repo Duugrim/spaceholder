@@ -18,6 +18,7 @@ import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/he
 import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
 import { materialsManager } from '../helpers/damage/materials-manager.mjs';
 import {
+  calculateActorContainerUsage,
   getOrderedDirectChildItemIds,
   importWorldContainerTreeToActor,
   moveActorItemIntoContainer,
@@ -30,6 +31,15 @@ import {
   deleteNestedItemFromStorage,
   getNestedStorage,
 } from '../helpers/item-nested-storage.mjs';
+import {
+  blockChamberLoaded,
+  blockReserveCount,
+} from '../helpers/weapon/weapon-ammo-runtime.mjs';
+import {
+  normalizeAmmoConfig,
+  normalizeWeaponV3,
+  resolveBlockCapacity,
+} from '../helpers/weapon/weapon-model.mjs';
 
 /**
  * Build a short human-readable summary of armor layers for a coverage
@@ -776,6 +786,163 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
+   * @param {{ label?: string, current?: number, max?: number }} params
+   * @returns {object|null}
+   */
+  _makeInventoryPreviewGauge({ label, current, max }) {
+    const c = Math.max(0, Number(current) || 0);
+    const m = Math.max(0, Number(max) || 0);
+    if (m <= 0) return null;
+    const percent = Math.min(1, Math.max(0, c / m));
+    return {
+      label: String(label ?? '').trim(),
+      current: c,
+      max: m,
+      percent: Math.round(percent * 1000) / 1000,
+    };
+  }
+
+  /**
+   * @param {object} block normalized ammo block with runtime
+   * @param {string} lineLabel
+   * @returns {object|null}
+   */
+  _buildAmmoBlockPreviewGauge(block, lineLabel) {
+    if (!block) return null;
+    const reserve = blockReserveCount(block);
+    const chamber = blockChamberLoaded(block) ? 1 : 0;
+    const capacity = resolveBlockCapacity(block);
+    const denominator = capacity + (block.chamberEnabled ? 1 : 0);
+    if (denominator <= 0) return null;
+    const typeLabel = game.i18n?.localize?.(`SPACEHOLDER.WeaponV3.Block.Types.${block.type}`)
+      ?? String(block.type ?? '');
+    const label = lineLabel ? `${lineLabel} · ${typeLabel}` : typeLabel;
+    return this._makeInventoryPreviewGauge({
+      label,
+      current: reserve + chamber,
+      max: denominator,
+    });
+  }
+
+  /**
+   * @param {object|null|undefined} row selected inventory display row
+   * @returns {object}
+   */
+  _buildInventoryPreviewGauges(row) {
+    const empty = {
+      count: 0,
+      layout: 'vertical',
+      showOverflowHint: false,
+      verticalGauges: [],
+      horizontalGroups: [],
+    };
+    if (!row) return empty;
+
+    const system = row.system ?? {};
+    const tags = system.itemTags ?? {};
+    const gauges = [];
+    const horizontalGroups = [];
+    const L = (key) => game.i18n?.localize?.(key) ?? key;
+    const itemLike = row.isDocument && row.item ? row.item : { system };
+
+    const addGauge = (gauge) => {
+      if (gauge) gauges.push(gauge);
+    };
+
+    const isWeapon = !!(tags.isWeapon || tags.isMelee || tags.isRanged || tags.isThrown);
+    if (isWeapon) {
+      const weapon = normalizeWeaponV3(system.weapon, tags);
+      for (const line of weapon.lines ?? []) {
+        const blocks = (line.ammoBlocks ?? []).filter(Boolean);
+        if (!blocks.length) continue;
+        const lineLabel = String(line.name ?? '').trim() || L('SPACEHOLDER.WeaponV3.Line.Default');
+        const lineGauges = [];
+        for (const block of blocks) {
+          const gauge = this._buildAmmoBlockPreviewGauge(block, lineLabel);
+          if (gauge) {
+            lineGauges.push(gauge);
+            gauges.push(gauge);
+          }
+        }
+        if (lineGauges.length) {
+          horizontalGroups.push({ lineLabel, gauges: lineGauges });
+        }
+      }
+    } else if (tags.isAmmo) {
+      const ammo = normalizeAmmoConfig(system.weapon?.ammo);
+      if (ammo.charge.enabled && ammo.charge.max > 0) {
+        addGauge(this._makeInventoryPreviewGauge({
+          label: L('SPACEHOLDER.Inventory.PreviewGauge.Charge'),
+          current: ammo.charge.current,
+          max: ammo.charge.max,
+        }));
+      }
+      if (ammo.connector.enabled && ammo.capacity > 0) {
+        const contents = getNestedStorage(itemLike).contents;
+        const current = contents.reduce(
+          (sum, entry) => sum + Math.max(0, Number(entry?.system?.quantity) || 0),
+          0,
+        );
+        addGauge(this._makeInventoryPreviewGauge({
+          label: L('SPACEHOLDER.Inventory.PreviewGauge.Magazine'),
+          current,
+          max: ammo.capacity,
+        }));
+      }
+    }
+
+    if (tags.isContainer) {
+      const limits = normalizeItemContainerFields(system).container.limits;
+      if (limits.maxItems > 0) {
+        let current = 0;
+        if (row.isDocument && row.item) {
+          current = calculateActorContainerUsage(this.actor, row.item).itemCount;
+        } else {
+          const contents = getNestedStorage(itemLike).contents;
+          current = contents.reduce(
+            (sum, entry) => sum + Math.max(0, Number(entry?.system?.quantity) || 0),
+            0,
+          );
+        }
+        addGauge(this._makeInventoryPreviewGauge({
+          label: L('SPACEHOLDER.Inventory.PreviewGauge.Items'),
+          current,
+          max: limits.maxItems,
+        }));
+      }
+      if (limits.maxWeight > 0) {
+        let current = 0;
+        if (row.isDocument && row.item) {
+          current = calculateActorContainerUsage(this.actor, row.item).totalWeight;
+        } else {
+          const contents = getNestedStorage(itemLike).contents;
+          current = contents.reduce((sum, entry) => {
+            const q = Math.max(0, Number(entry?.system?.quantity) || 0);
+            const w = Math.max(0, Number(entry?.system?.weight) || 0);
+            return sum + q * w;
+          }, 0);
+          current = Math.round(current * 100) / 100;
+        }
+        addGauge(this._makeInventoryPreviewGauge({
+          label: L('SPACEHOLDER.Inventory.PreviewGauge.Weight'),
+          current,
+          max: limits.maxWeight,
+        }));
+      }
+    }
+
+    const count = gauges.length;
+    const overflow = count > 3;
+    return {
+      count,
+      layout: overflow ? 'overflow' : 'vertical',
+      showOverflowHint: overflow,
+      verticalGauges: overflow ? [] : gauges,
+      horizontalGroups: overflow ? horizontalGroups : [],
+    };
+  }
+
+  /**
    * Flat rows for the character inventory tab: root items first, then both
    * actor-container children and weapon/ammo nested-storage snapshots.
    *
@@ -968,6 +1135,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           relativeTo: selectedInventoryRow.isDocument ? selectedInventoryRow.item : this.actor,
         })
         : `<em>${escape(noDescription)}</em>`;
+      selectedInventoryRow.previewGauges = this._buildInventoryPreviewGauges(selectedInventoryRow);
     }
 
     // Assign and return

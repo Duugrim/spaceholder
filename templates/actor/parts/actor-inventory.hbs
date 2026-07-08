@@ -3,20 +3,82 @@
     <aside class="inventory-preview-column">
       {{#if selectedInventoryRow}}
         <article class="inventory-preview-card">
-          <header class="inventory-preview-header">
-            <img
-              src="{{selectedInventoryRow.img}}"
-              title="{{selectedInventoryRow.name}}"
-              width="48"
-              height="48"
-            />
+          <div class="inventory-preview-top">
+            <div class="inventory-preview-visual">
+              <div class="inventory-preview-visual__side inventory-preview-visual__side--left">
+                <div class="inventory-preview-gauge-placeholder" aria-hidden="true"></div>
+              </div>
+              <div class="inventory-preview-visual__center">
+                <div class="inventory-preview-image-frame">
+                  <img
+                    class="inventory-preview-image"
+                    src="{{selectedInventoryRow.img}}"
+                    title="{{selectedInventoryRow.name}}"
+                    alt="{{selectedInventoryRow.name}}"
+                  />
+                </div>
+              </div>
+              <div class="inventory-preview-visual__side inventory-preview-visual__side--right">
+                {{#if selectedInventoryRow.previewGauges.showOverflowHint}}
+                  <div
+                    class="inventory-preview-gauge-overflow"
+                    title="{{localize 'SPACEHOLDER.Inventory.PreviewGauge.OverflowHint'}}"
+                    aria-label="{{localize 'SPACEHOLDER.Inventory.PreviewGauge.OverflowHint'}}"
+                  >
+                    <i class="fas fa-chevron-down"></i>
+                  </div>
+                {{else if selectedInventoryRow.previewGauges.verticalGauges.length}}
+                  <div class="inventory-preview-gauges inventory-preview-gauges--vertical">
+                    {{#each selectedInventoryRow.previewGauges.verticalGauges as |gauge|}}
+                      <div
+                        class="inventory-preview-gauge"
+                        title="{{gauge.label}} {{gauge.current}}/{{gauge.max}}"
+                      >
+                        <div class="inventory-preview-gauge__track">
+                          <div
+                            class="inventory-preview-gauge__fill"
+                            style="--sh-gauge-percent: {{gauge.percent}};"
+                          ></div>
+                        </div>
+                      </div>
+                    {{/each}}
+                  </div>
+                {{/if}}
+              </div>
+            </div>
+
+            {{#if selectedInventoryRow.previewGauges.showOverflowHint}}
+              <div class="inventory-preview-gauges-horizontal">
+                {{#each selectedInventoryRow.previewGauges.horizontalGroups as |group|}}
+                  <div class="inventory-preview-gauge-group">
+                    <div class="inventory-preview-gauge-group__label">{{group.lineLabel}}</div>
+                    <div class="inventory-preview-gauges inventory-preview-gauges--horizontal">
+                      {{#each group.gauges as |gauge|}}
+                        <div
+                          class="inventory-preview-gauge"
+                          title="{{gauge.label}} {{gauge.current}}/{{gauge.max}}"
+                        >
+                          <div class="inventory-preview-gauge__track">
+                            <div
+                              class="inventory-preview-gauge__fill"
+                              style="--sh-gauge-percent: {{gauge.percent}};"
+                            ></div>
+                          </div>
+                        </div>
+                      {{/each}}
+                    </div>
+                  </div>
+                {{/each}}
+              </div>
+            {{/if}}
+
             <div class="inventory-preview-title">
               <h3>{{selectedInventoryRow.name}}</h3>
               {{#if selectedInventoryRow.isSnapshot}}
                 <span class="item-storage-kind">{{localize 'SPACEHOLDER.Inventory.NestedStorageItem'}}</span>
               {{/if}}
             </div>
-          </header>
+          </div>
 
           <div class="inventory-preview-meta">
             <span>{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{selectedInventoryRow.quantity}}</span>

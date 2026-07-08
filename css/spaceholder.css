@@ -5893,21 +5893,173 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   background: rgba(255, 255, 255, 0.03);
   min-height: 140px;
 }
-.window-app.spaceholder .inventory-preview-header,
-.spaceholder .inventory-preview-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.window-app.spaceholder .inventory-preview-top,
+.spaceholder .inventory-preview-top {
   margin-bottom: 10px;
 }
-.window-app.spaceholder .inventory-preview-header img,
-.spaceholder .inventory-preview-header img {
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+.window-app.spaceholder .inventory-preview-visual,
+.spaceholder .inventory-preview-visual {
+  display: grid;
+  grid-template-columns: minmax(24px, 1fr) minmax(96px, var(--sh-inventory-preview-image-size)) minmax(24px, 1fr);
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 8px;
+  --sh-inventory-preview-image-size: min(70%, 200px);
+}
+.window-app.spaceholder .inventory-preview-visual__side,
+.spaceholder .inventory-preview-visual__side {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  min-width: 0;
+}
+.window-app.spaceholder .inventory-preview-visual__center,
+.spaceholder .inventory-preview-visual__center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  justify-self: stretch;
+  align-self: start;
+  width: 100%;
+  aspect-ratio: 1/1;
+  min-width: 0;
+}
+.window-app.spaceholder .inventory-preview-image-frame,
+.spaceholder .inventory-preview-image-frame {
+  width: 100%;
+  height: 100%;
   border: 1px solid var(--sh-border);
   border-radius: var(--sh-radius-sm);
-  object-fit: cover;
+  background: rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.window-app.spaceholder .inventory-preview-image,
+.spaceholder .inventory-preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border: 0;
+  border-radius: inherit;
+}
+.window-app.spaceholder .inventory-preview-visual__side--right,
+.spaceholder .inventory-preview-visual__side--right {
+  min-width: 0;
+  width: 100%;
+}
+.window-app.spaceholder .inventory-preview-gauge-placeholder,
+.spaceholder .inventory-preview-gauge-placeholder {
+  width: 100%;
+  min-height: 64px;
+  margin: 0 auto;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+.window-app.spaceholder .inventory-preview-gauges,
+.spaceholder .inventory-preview-gauges {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+.window-app.spaceholder .inventory-preview-gauges--vertical,
+.spaceholder .inventory-preview-gauges--vertical {
+  flex-direction: row;
+  justify-content: stretch;
+  align-items: stretch;
+  min-height: 80px;
+}
+.window-app.spaceholder .inventory-preview-gauges--horizontal,
+.spaceholder .inventory-preview-gauges--horizontal {
+  flex-direction: column;
+  gap: 6px;
+}
+.window-app.spaceholder .inventory-preview-gauge,
+.spaceholder .inventory-preview-gauge {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder .inventory-preview-gauges--vertical .inventory-preview-gauge,
+.spaceholder .inventory-preview-gauges--vertical .inventory-preview-gauge {
+  flex: 1 1 0;
+  width: auto;
+}
+.window-app.spaceholder .inventory-preview-gauge__track,
+.spaceholder .inventory-preview-gauge__track {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sh-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.window-app.spaceholder .inventory-preview-gauges--vertical .inventory-preview-gauge__track,
+.spaceholder .inventory-preview-gauges--vertical .inventory-preview-gauge__track {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  min-height: 80px;
+  height: 100%;
+}
+.window-app.spaceholder .inventory-preview-gauges--horizontal .inventory-preview-gauge__track,
+.spaceholder .inventory-preview-gauges--horizontal .inventory-preview-gauge__track {
+  height: 8px;
+  min-height: 8px;
+}
+.window-app.spaceholder .inventory-preview-gauge__fill,
+.spaceholder .inventory-preview-gauge__fill {
+  background: linear-gradient(to top, var(--sh-accent-strong) 0%, rgba(143, 185, 143, 0.85) 100%);
+}
+.window-app.spaceholder .inventory-preview-gauges--vertical .inventory-preview-gauge__fill,
+.spaceholder .inventory-preview-gauges--vertical .inventory-preview-gauge__fill {
+  width: 100%;
+  height: calc(var(--sh-gauge-percent, 0) * 100%);
+}
+.window-app.spaceholder .inventory-preview-gauges--horizontal .inventory-preview-gauge__fill,
+.spaceholder .inventory-preview-gauges--horizontal .inventory-preview-gauge__fill {
+  height: 100%;
+  width: calc(var(--sh-gauge-percent, 0) * 100%);
+  background: linear-gradient(to right, var(--sh-accent-strong) 0%, rgba(143, 185, 143, 0.85) 100%);
+}
+.window-app.spaceholder .inventory-preview-gauge-overflow,
+.spaceholder .inventory-preview-gauge-overflow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 80px;
+  border-radius: var(--sh-radius-sm);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+  color: var(--sh-text-muted);
+  font-size: 12px;
+}
+.window-app.spaceholder .inventory-preview-gauges-horizontal,
+.spaceholder .inventory-preview-gauges-horizontal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sh-radius-sm);
+  background: rgba(0, 0, 0, 0.16);
+}
+.window-app.spaceholder .inventory-preview-gauge-group,
+.spaceholder .inventory-preview-gauge-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.window-app.spaceholder .inventory-preview-gauge-group__label,
+.spaceholder .inventory-preview-gauge-group__label {
+  color: var(--sh-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 .window-app.spaceholder .inventory-preview-title,
 .spaceholder .inventory-preview-title {
@@ -6035,28 +6187,67 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   justify-content: flex-end;
   margin: 0 0 12px 0;
 }
-.window-app.spaceholder .spaceholder-item-container-limits,
-.spaceholder .spaceholder-item-container-limits {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 10px 0;
-  padding: 6px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--sh-radius-md);
-  background: rgba(255, 255, 255, 0.03);
-}
-.window-app.spaceholder .spaceholder-item-container-limit-row,
-.spaceholder .spaceholder-item-container-limit-row {
+.window-app.spaceholder .spaceholder-item-container-stat-chip,
+.spaceholder .spaceholder-item-container-stat-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  overflow: hidden;
   min-height: 24px;
   padding: 2px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--sh-radius-sm);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+  isolation: isolate;
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip__fill,
+.spaceholder .spaceholder-item-container-stat-chip__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--sh-container-fill, 0%);
+  max-width: 100%;
+  background: rgba(74, 110, 74, 0.38);
+  pointer-events: none;
+  z-index: 0;
+  transition: width 160ms ease;
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip.has-limit,
+.spaceholder .spaceholder-item-container-stat-chip.has-limit {
+  border-color: rgba(74, 110, 74, 0.45);
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip.is-over,
+.spaceholder .spaceholder-item-container-stat-chip.is-over {
+  border-color: rgba(180, 90, 70, 0.7);
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip.is-over .spaceholder-item-container-stat-chip__fill,
+.spaceholder .spaceholder-item-container-stat-chip.is-over .spaceholder-item-container-stat-chip__fill {
+  background: rgba(180, 90, 70, 0.42);
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip__content,
+.spaceholder .spaceholder-item-container-stat-chip__content {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip__content i,
+.spaceholder .spaceholder-item-container-stat-chip__content i {
+  width: 12px;
+  text-align: center;
+  color: var(--sh-accent-strong);
   font-size: 11px;
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip__content .stat-label,
+.spaceholder .spaceholder-item-container-stat-chip__content .stat-label {
+  color: var(--sh-text-muted);
+}
+.window-app.spaceholder .spaceholder-item-container-stat-chip__content .stat-value,
+.spaceholder .spaceholder-item-container-stat-chip__content .stat-value {
+  color: #ffffff;
+  font-weight: 700;
 }
 .window-app.spaceholder .spaceholder-item-container-limit-label,
 .spaceholder .spaceholder-item-container-limit-label {
@@ -6066,6 +6257,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .spaceholder-item-container-limit-value {
   color: #ffffff;
   font-weight: 700;
+  white-space: nowrap;
 }
 .window-app.spaceholder .spaceholder-item-container-limit-source,
 .spaceholder .spaceholder-item-container-limit-source {
@@ -6311,12 +6503,6 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .empty-inventory p {
   margin: 0;
 }
-.window-app.spaceholder .spaceholder-item-container-controls,
-.spaceholder .spaceholder-item-container-controls {
-  justify-content: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 .window-app.spaceholder .spaceholder-item-container-hint,
 .window-app.spaceholder .spaceholder-item-container-drop-hint,
 .spaceholder .spaceholder-item-container-hint,
@@ -6324,9 +6510,40 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   color: var(--sh-text-muted);
   margin: 0 0 8px 0;
 }
+.window-app.spaceholder .spaceholder-item-container-panel,
+.spaceholder .spaceholder-item-container-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .window-app.spaceholder .spaceholder-item-container-panel[data-sh-item-container-drop],
 .spaceholder .spaceholder-item-container-panel[data-sh-item-container-drop] {
   min-height: 120px;
+}
+.window-app.spaceholder .spaceholder-item-container-footer,
+.spaceholder .spaceholder-item-container-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.window-app.spaceholder .spaceholder-item-container-footer__info,
+.spaceholder .spaceholder-item-container-footer__info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder .spaceholder-item-container-footer__actions,
+.spaceholder .spaceholder-item-container-footer__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 @media (max-width: 900px) {
   .window-app.spaceholder .inventory-layout,

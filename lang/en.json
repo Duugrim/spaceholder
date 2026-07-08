@@ -70,6 +70,8 @@
       "DropNotAnItem": "That drop is not an item.",
       "DropWrongActor": "The item must belong to the same character as this container.",
       "CycleWarning": "That would create a nested container loop.",
+      "SlotsLabel": "Slots:",
+      "WeightLabel": "Weight:",
       "LimitItems": "Item limit",
       "LimitWeight": "Weight limit",
       "LimitZeroUnlimited": "0 means unlimited.",
@@ -991,6 +993,13 @@
       "Empty": "Inventory is empty.",
       "HeldSummaryWithItems": "{name} holds {items}.",
       "HeldSummaryEmpty": "{name} holds nothing.",
+      "PreviewGauge": {
+        "Charge": "Charge",
+        "Magazine": "Magazine",
+        "Items": "Items",
+        "Weight": "Weight",
+        "OverflowHint": "See gauges below"
+      },
       "HeldActions": {
         "StowTooltip": "Stow in backpack",
         "DropTooltip": "Drop on the ground",

@@ -1292,6 +1292,16 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         context.containerLimitWeightEnabled = icFields.container.limits.maxWeight > 0;
         context.containerLimitItemsSourceAmmo = false;
       }
+      context.containerItemsFillPercent = context.containerLimitItemsEnabled
+        ? Math.min(100, Math.max(0, Math.round((Number(context.containerTotalItems) / context.containerLimitMaxItems) * 100)))
+        : 0;
+      context.containerWeightFillPercent = context.containerLimitWeightEnabled
+        ? Math.min(100, Math.max(0, Math.round((Number(context.containerTotalWeight) / context.containerLimitMaxWeight) * 100)))
+        : 0;
+      context.containerItemsOverLimit = context.containerLimitItemsEnabled
+        && Number(context.containerTotalItems) > Number(context.containerLimitMaxItems);
+      context.containerWeightOverLimit = context.containerLimitWeightEnabled
+        && Number(context.containerTotalWeight) > Number(context.containerLimitMaxWeight);
     }
 
     const wearableTabIds = ['description'];

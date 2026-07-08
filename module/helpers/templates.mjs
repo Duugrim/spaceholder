@@ -37,6 +37,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/item/parts/item-weapon-v3-damage.hbs',
     'systems/spaceholder/templates/item/parts/item-ammo-v3-tab.hbs',
     'systems/spaceholder/templates/item/parts/item-container.hbs',
+    'systems/spaceholder/templates/item/parts/item-container-footer.hbs',
     'systems/spaceholder/templates/item/parts/item-material-attributes.hbs',
     // Icon picker (ApplicationV2)
     'systems/spaceholder/templates/icon-picker/icon-picker.hbs',

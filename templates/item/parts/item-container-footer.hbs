@@ -1,0 +1,55 @@
+<footer class="spaceholder-item-container-footer inventory-footer">
+  <div class="spaceholder-item-container-footer__info">
+    <span
+      class="spaceholder-item-container-stat-chip{{#if containerLimitItemsEnabled}} has-limit{{/if}}{{#if containerItemsOverLimit}} is-over{{/if}}"
+      style="--sh-container-fill: {{containerItemsFillPercent}}%;"
+      title="{{localize 'SPACEHOLDER.ItemContainer.LimitItems'}}"
+    >
+      <span class="spaceholder-item-container-stat-chip__fill" aria-hidden="true"></span>
+      <span class="spaceholder-item-container-stat-chip__content">
+        <i class="fas fa-boxes" aria-hidden="true"></i>
+        <span class="stat-label">{{localize 'SPACEHOLDER.ItemContainer.SlotsLabel'}}</span>
+        <span class="stat-value">{{containerTotalItems}}{{#if containerLimitItemsEnabled}}/{{containerLimitMaxItems}}{{/if}}</span>
+      </span>
+    </span>
+    <span
+      class="spaceholder-item-container-stat-chip{{#if containerLimitWeightEnabled}} has-limit{{/if}}{{#if containerWeightOverLimit}} is-over{{/if}}"
+      style="--sh-container-fill: {{containerWeightFillPercent}}%;"
+      title="{{localize 'SPACEHOLDER.ItemContainer.LimitWeight'}}"
+    >
+      <span class="spaceholder-item-container-stat-chip__fill" aria-hidden="true"></span>
+      <span class="spaceholder-item-container-stat-chip__content">
+        <i class="fas fa-weight-hanging" aria-hidden="true"></i>
+        <span class="stat-label">{{localize 'SPACEHOLDER.ItemContainer.WeightLabel'}}</span>
+        <span class="stat-value">{{containerTotalWeight}}{{#if containerLimitWeightEnabled}}/{{containerLimitMaxWeight}}{{/if}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+      </span>
+    </span>
+  </div>
+  <div class="spaceholder-item-container-footer__actions">
+    {{#unless containerReadOnly}}
+    <button type="button" class="icon-btn" data-action="sh-item-container-limits-edit" title="{{localize 'SPACEHOLDER.ItemContainer.EditLimits'}}">
+      <i class="fas fa-gear"></i>
+    </button>
+    {{#if containerOnActor}}
+    {{#unless containerUsesNestedStorage}}
+    {{#unless containerWorldMode}}
+    <button type="button" class="icon-btn" data-action="sh-item-container-create" title="{{localize 'SPACEHOLDER.ItemContainer.CreateInside'}}">
+      <i class="fas fa-plus"></i>
+    </button>
+    {{/unless}}
+    {{/unless}}
+    {{/if}}
+    {{#if containerWorldMode}}
+    <button type="button" class="icon-btn" data-action="sh-item-container-refresh" title="{{localize 'SPACEHOLDER.ItemContainer.WorldRefreshHint'}}">
+      <i class="fas fa-rotate"></i>
+    </button>
+    {{else if containerOnActor}}
+    {{#unless containerUsesNestedStorage}}
+    <button type="button" class="icon-btn" data-action="sh-item-container-refresh" title="{{localize 'SPACEHOLDER.ItemContainer.RefreshHint'}}">
+      <i class="fas fa-rotate"></i>
+    </button>
+    {{/unless}}
+    {{/if}}
+    {{/unless}}
+  </div>
+</footer>

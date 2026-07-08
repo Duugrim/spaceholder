@@ -70,6 +70,8 @@
       "DropNotAnItem": "Это не предмет.",
       "DropWrongActor": "Предмет должен принадлежать тому же персонажу, что и контейнер.",
       "CycleWarning": "Так получится цикл вложенных контейнеров.",
+      "SlotsLabel": "Слоты:",
+      "WeightLabel": "Вес:",
       "LimitItems": "Лимит количества",
       "LimitWeight": "Лимит веса",
       "LimitZeroUnlimited": "0 — без лимита.",
@@ -991,6 +993,13 @@
       "Empty": "Инвентарь пуст.",
       "HeldSummaryWithItems": "{name} держит {items}.",
       "HeldSummaryEmpty": "{name} ничего не держит.",
+      "PreviewGauge": {
+        "Charge": "Заряд",
+        "Magazine": "Магазин",
+        "Items": "Предметы",
+        "Weight": "Вес",
+        "OverflowHint": "Смотрите индикаторы ниже"
+      },
       "HeldActions": {
         "StowTooltip": "Убрать в рюкзак",
         "DropTooltip": "Отпустить на землю",
