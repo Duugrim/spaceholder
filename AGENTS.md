@@ -135,14 +135,22 @@ Add `| cmd /c "findstr pattern"` to filter results.
   - `game.spaceholder.getUsersForFaction(factionUuid)`
   - `game.spaceholder.getUsersForToken(tokenLike)`
   - `game.spaceholder.normalizeUuid(raw)`
-- Вложенное хранилище предметов:
-  - `game.spaceholder.nestedItemStorage.addItemToNestedStorage({ containerItem, item, quantity?, consumeSource?, parentPath? })`
-  - `game.spaceholder.nestedItemStorage.extractNestedItemToActor({ containerItem, path, quantity? })`
-  - `game.spaceholder.nestedItemStorage.getNestedStorage(itemLike)`
-  - `game.spaceholder.nestedItemStorage.resolveAndConsumeRangedAmmoForShot({ actor, weaponItem })`
-- Доступ к инстансам/подсистемам (если экспортируются):
-  - `game.spaceholder.tokenpointer`, `drawManager`, `shotManager`, `influenceManager`
-  - `game.spaceholder.globalMapProcessing`, `globalMapRenderer`, `globalMapTools`
+  - Вложенное хранилище предметов:
+    - `game.spaceholder.nestedItemStorage.addItemToNestedStorage({ containerItem, item, quantity?, consumeSource?, parentPath? })`
+    - `game.spaceholder.nestedItemStorage.extractNestedItemToActor({ containerItem, path, quantity? })`
+    - `game.spaceholder.nestedItemStorage.getNestedStorage(itemLike)`
+    - `game.spaceholder.nestedItemStorage.resolveAndConsumeRangedAmmoForShot({ actor, weaponItem })`
+  - Личное время (секунды из ОД; см. `docs/code/reference/PERSONAL_TIME.md`):
+    - `game.spaceholder.apToSeconds(actor, ap)`, `secondsToAp(actor, seconds)`
+    - `await game.spaceholder.advancePersonalTime(actor, seconds, meta?)`
+    - `game.spaceholder.getPersonalTimeTotal(actor)`
+    - `await game.spaceholder.openSkipPersonalTimeDialog()` (GM)
+    - `game.spaceholder.REFERENCE_TURN_SECONDS` (= 10)
+    - Миниигра взлома (локально, без привязки к навыкам/миру):
+    - `await game.spaceholder.openHackMinigame()` — диалог генерации → Application V2
+    - Доступ к инстансам/подсистемам (если экспортируются):
+    - `game.spaceholder.tokenpointer`, `drawManager`, `shotManager`, `influenceManager`
+    - `game.spaceholder.globalMapProcessing`, `globalMapRenderer`, `globalMapTools`
 
 Если добавляете новый публичный метод, считайте это как изменение внешнего API: документируйте в этом файле и старайтесь держать сигнатуру стабильной.
 

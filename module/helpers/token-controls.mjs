@@ -98,8 +98,24 @@ function addCustomButtons(tokenControls) {
     button: true,
     order: 12,
   }) : false;
+  const addedSkipTime = game.user?.isGM ? upsertTool(tokenControls, {
+    name: 'skip-personal-time',
+    title: game.i18n.localize('SPACEHOLDER.TokenControls.SkipTime.Title'),
+    icon: 'fas fa-hourglass-half',
+    onChange: () => openSkipPersonalTime(),
+    button: true,
+    order: 13,
+  }) : false;
+  const addedHackMinigame = upsertTool(tokenControls, {
+    name: 'hack-minigame',
+    title: game.i18n.localize('SPACEHOLDER.TokenControls.HackMinigame.Title'),
+    icon: 'fas fa-laptop-code',
+    onChange: () => openHackMinigame(),
+    button: true,
+    order: 14,
+  });
 
-  if (addedAiming || addedAimingArcHover || addedArmorTester) {
+  if (addedAiming || addedAimingArcHover || addedArmorTester || addedSkipTime || addedHackMinigame) {
     console.log('SpaceHolder | Added custom Token Control buttons');
   }
 }
@@ -214,6 +230,24 @@ function openArmorTester() {
     .catch((err) => {
       console.error('SpaceHolder | Failed to load Armor Penetration Tester:', err);
       ui.notifications?.error?.(game.i18n.localize('SPACEHOLDER.ArmorTester.Messages.OpenFailed'));
+    });
+}
+
+function openSkipPersonalTime() {
+  import('./actions/personal-time.mjs')
+    .then(({ openSkipPersonalTimeDialog }) => openSkipPersonalTimeDialog())
+    .catch((err) => {
+      console.error('SpaceHolder | Failed to open Skip Time dialog:', err);
+      ui.notifications?.error?.(game.i18n.localize('SPACEHOLDER.TokenControls.SkipTime.OpenFailed'));
+    });
+}
+
+function openHackMinigame() {
+  import('./minigames/hack/hack-generate-dialog.mjs')
+    .then(({ openHackGenerateDialog }) => openHackGenerateDialog())
+    .catch((err) => {
+      console.error('SpaceHolder | Failed to open hack minigame:', err);
+      ui.notifications?.error?.(game.i18n.localize('SPACEHOLDER.HackMinigame.Messages.OpenFailed'));
     });
 }
 

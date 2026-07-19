@@ -1,14 +1,12 @@
-{{!-- Character sheet: портрет + иконка фракции (клик — открыть лист фракции); подпись — имя фракции / диспозиция / UUID --}}
+{{!-- Character sheet: портрет + иконка фракции (клик — открыть лист фракции); подпись справа от иконки --}}
 <header
   class="sheet-header sh-character-header"
   style="--sh-character-header-accent: {{#if characterHeaderAccent}}{{characterHeaderAccent}}{{else}}#3d4a5c{{/if}};{{#if factionColor}} --faction-color: {{factionColor}};{{/if}}"
 >
-  <div
-    class="sh-character-header__card{{#if editable}}{{#unless system.gFaction}} sh-character-header__card--factionDrop{{/unless}}{{/if}}"
-  >
+  <div class="sh-character-header__card">
     <div class="sh-character-header__top">
       <div class="sh-portrait sh-character-header__portrait">
-        <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="150" width="150" alt=""/>
+        <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="166" width="166" alt=""/>
         {{#if editable}}
           <button
             type="button"
@@ -20,6 +18,7 @@
         {{/if}}
       </div>
       {{#if system.gFaction}}
+        <div class="sh-character-header__factionCluster">
         <a
           class="sh-character-header__factionIconWrap"
           href="#"
@@ -34,41 +33,46 @@
             <span class="sh-character-header__factionIconPh" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
           {{/if}}
         </a>
+        <div class="sh-character-header__caption">
+          <div class="sh-character-header__captionRow">
+            <span class="sh-character-header__captionFactionName">{{gFactionName}}</span>
+          </div>
+        </div>
+        </div>
       {{else}}
+        <div class="sh-character-header__factionCluster">
         <div class="sh-character-header__factionIconWrap">
           <span class="sh-character-header__factionIconPh sh-character-header__factionIconPh--disposition" aria-hidden="true"><i class="{{characterDispositionIconClass}}"></i></span>
         </div>
-      {{/if}}
-    </div>
-    <div class="sh-character-header__caption">
-      {{#if system.gFaction}}
-        <input type="hidden" name="system.gFaction" value="{{system.gFaction}}"/>
-        <div class="sh-character-header__captionRow">
-          <span class="sh-character-header__captionFactionName">{{gFactionName}}</span>
-          {{#if editable}}
-            <button type="button" class="icon-btn sh-character-header__factionClear" data-action="uuid-clear" data-field="system.gFaction" data-tooltip="{{localize 'SPACEHOLDER.Actions.Clear'}}" aria-label="{{localize 'SPACEHOLDER.Actions.Clear'}}">
-              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-            </button>
-          {{/if}}
+        <div class="sh-character-header__caption">
+          <span class="sh-character-header__captionFactionName">{{characterDispositionLabel}}</span>
         </div>
-      {{else}}
-        <span class="sh-character-header__captionFactionName">{{characterDispositionLabel}}</span>
+        </div>
       {{/if}}
     </div>
   </div>
-  <div class="sh-character-header__aside">
-    <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
-    {{#if actionPointsCurrent}}
-      <div
-        class="sh-character-header__ap"
-        data-tooltip="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}}: {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
-        aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}} {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
-      >
-        <span class="sh-character-header__ap-inner">
-          <span class="sh-character-header__ap-label">{{localize 'SPACEHOLDER.ActionsSystem.UI.APHeaderLabel'}}</span>
-          <span class="sh-character-header__ap-value">{{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}</span>
-        </span>
-      </div>
+  <div class="sh-character-header__nameRow">
+    <h1 class="charname sh-character-header__name">{{actor.name}}</h1>
+    {{#if editable}}
+      <button
+        type="button"
+        class="icon-btn sh-character-header__edit"
+        data-action="sh-character-header-edit"
+        data-tooltip="{{localize 'SPACEHOLDER.Character.HeaderEditButton'}}"
+        aria-label="{{localize 'SPACEHOLDER.Character.HeaderEditButton'}}"
+      ><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
     {{/if}}
   </div>
+  {{#if actionPointsCurrent}}
+    <div
+      class="sh-character-header__ap"
+      data-tooltip="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}}: {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
+      aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}} {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
+    >
+      <span class="sh-character-header__ap-inner">
+        <span class="sh-character-header__ap-label">{{localize 'SPACEHOLDER.ActionsSystem.UI.APHeaderLabel'}}</span>
+        <span class="sh-character-header__ap-value">{{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}</span>
+      </span>
+    </div>
+  {{/if}}
 </header>

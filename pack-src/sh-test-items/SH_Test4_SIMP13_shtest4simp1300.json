@@ -1,0 +1,265 @@
+{
+  "name": "Пистолет SIMP-13 (тест)",
+  "type": "item",
+  "_id": "shtest4simp13000",
+  "img": "systems/spaceholder/assets/icons/weapon.svg/laser-gun.svg",
+  "system": {
+    "description": "<p>Плазменный пистолет с внутренним зарядом. Патронника нет; перезарядка — действие (без поиска магазина).</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 1.1,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": true,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isWeapon": true,
+      "isAmmo": false,
+      "isContainer": false
+    },
+    "weapon": {
+      "version": 3,
+      "ergonomics": {
+        "overall": 100,
+        "zones": {
+          "enabled": false,
+          "green": 100,
+          "yellow": 100,
+          "orange": 100,
+          "red": 100
+        },
+        "deadZone": {
+          "enabled": false,
+          "value": 100
+        },
+        "aimPenalty": {
+          "enabled": false,
+          "value": 100
+        },
+        "critZoneBonus": {
+          "enabled": false,
+          "value": 0
+        },
+        "critZoneSize": {
+          "enabled": false,
+          "value": 100
+        },
+        "readying": {
+          "enabled": true,
+          "value": 3
+        }
+      },
+      "lines": [
+        {
+          "id": "lineSimpMain0000",
+          "name": "Излучатель",
+          "trajectoryKind": "simple",
+          "simpleLimit": {
+            "enabled": false,
+            "value": 0,
+            "unit": "grid"
+          },
+          "payloadId": "",
+          "aiming": 18,
+          "trigger": 3,
+          "energyMult": {
+            "enabled": false,
+            "value": 100
+          },
+          "spread": {
+            "enabled": true,
+            "value": 2
+          },
+          "recoil": {
+            "enabled": false,
+            "value": 0
+          },
+          "enterCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "exitCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "damage": [],
+          "ammoBlocks": [
+            {
+              "id": "blockSimpCharge0",
+              "type": "internalCharge",
+              "capacity": 20,
+              "loadAmount": 20,
+              "chamberEnabled": false,
+              "autoFeed": false,
+              "caliber": "",
+              "connector": "",
+              "search": {
+                "hands": true,
+                "worn": true,
+                "inventory": true,
+                "containers": true,
+                "mode": "auto"
+              },
+              "apActions": {
+                "loadOne": {
+                  "enabled": false,
+                  "value": 0
+                },
+                "loadX": {
+                  "enabled": false,
+                  "value": 0
+                },
+                "reload": {
+                  "enabled": true,
+                  "value": 25
+                },
+                "bolt": {
+                  "enabled": false,
+                  "value": 0
+                },
+                "unload": {
+                  "enabled": true,
+                  "value": 5
+                },
+                "empty": {
+                  "enabled": true,
+                  "value": 10
+                }
+              },
+              "damage": [
+                {
+                  "enabled": true,
+                  "damageType": "energy",
+                  "damage": 22,
+                  "armorPen": 40,
+                  "hardness": 1,
+                  "armorDamageFactor": 100,
+                  "armorDamageReduction": 100,
+                  "speed": 0,
+                  "payloadId": ""
+                }
+              ],
+              "runtime": {
+                "charge": 20,
+                "chamberCharge": false,
+                "chamberItem": null,
+                "contents": [],
+                "magazine": null
+              }
+            }
+          ],
+          "modes": [
+            {
+              "id": "modeSimpSingle00",
+              "name": "Одиночный",
+              "fireMode": "single",
+              "burstCount": 3,
+              "fireDelayAp": 5,
+              "ammoCost": 1,
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "state": {
+        "activeLineId": "lineSimpMain0000",
+        "activeModeId": "modeSimpSingle00",
+        "ready": false
+      },
+      "ammo": {
+        "damage": [],
+        "caliber": "",
+        "connector": {
+          "enabled": false,
+          "value": ""
+        },
+        "charge": {
+          "enabled": false,
+          "max": 0,
+          "current": 0,
+          "allowFractional": false,
+          "clampNonNegative": true,
+          "scaleDamageFromSpent": false,
+          "overheatNotify": false,
+          "changePerShot": {
+            "sign": "-",
+            "formula": "1"
+          },
+          "changePerSecond": {
+            "sign": "+",
+            "formula": "0"
+          }
+        },
+        "capacity": 0,
+        "consume": true
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtest4fldwpn000",
+  "sort": 110000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.180",
+    "createdTime": 1782000000000,
+    "modifiedTime": 1782000000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtest4simp13000"
+}

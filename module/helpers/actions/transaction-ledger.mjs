@@ -41,6 +41,30 @@ function _randomId() {
 }
 
 /**
+ * Apply or reverse personal-time side effect stored on transaction meta.
+ * @param {object} meta
+ * @param {{ reverse?: boolean }} [opts]
+ */
+async function _applyPersonalTimeSideEffect(meta, { reverse = false } = {}) {
+  const seconds = _num(meta?.personalTimeSeconds, 0);
+  const uuid = String(meta?.personalTimeActorUuid || "").trim();
+  if (!uuid || !Number.isFinite(seconds) || seconds === 0) return;
+  let actor = null;
+  try {
+    actor = await fromUuid(uuid);
+  } catch (_) {
+    actor = null;
+  }
+  if (!actor || actor.documentName !== "Actor") return;
+  const { advancePersonalTime } = await import("./personal-time.mjs");
+  const delta = reverse ? -seconds : seconds;
+  const source = reverse
+    ? "apLedgerUndo"
+    : String(meta?.personalTimeSource || meta?.kind || "ap");
+  await advancePersonalTime(actor, delta, { source, reverse: !!reverse });
+}
+
+/**
  * Max AP from abilities (same rule as legacy action-service).
  * @param {Actor} actor
  */
@@ -293,6 +317,9 @@ export async function commitTransaction({ operations = [], meta = {} } = {}) {
     }
 
     const transactionId = _randomId();
+    const personalTimeSeconds = _num(meta.personalTimeSeconds, 0);
+    const personalTimeActorUuid = String(meta.personalTimeActorUuid || "").trim() || null;
+    const personalTimeSource = meta.personalTimeSource ? String(meta.personalTimeSource) : null;
     const tx = {
       id: transactionId,
       schema: 1,
@@ -304,6 +331,9 @@ export async function commitTransaction({ operations = [], meta = {} } = {}) {
       combatantId: meta.combatantId ?? null,
       source: meta.source && typeof meta.source === "object" ? meta.source : {},
       operations: fullOps,
+      personalTimeSeconds: personalTimeSeconds || undefined,
+      personalTimeActorUuid: personalTimeActorUuid || undefined,
+      personalTimeSource: personalTimeSource || undefined,
     };
 
     const primaryUuid = fullOps[0]?.documentUuid;
@@ -317,6 +347,7 @@ export async function commitTransaction({ operations = [], meta = {} } = {}) {
 
     const target = { ..._resolveLedgerTarget(meta), primaryActor };
     await _appendLedgerEntry(tx, target);
+    await _applyPersonalTimeSideEffect(tx, { reverse: false });
 
     return { ok: true, transactionId };
   } catch (e) {
@@ -372,6 +403,9 @@ export async function commitTransactionAsGMSocket(payload, requesterUserId) {
   }
 
   const transactionId = String(payload?.transactionId || "").trim() || _randomId();
+  const personalTimeSeconds = _num(meta.personalTimeSeconds, 0);
+  const personalTimeActorUuid = String(meta.personalTimeActorUuid || "").trim() || null;
+  const personalTimeSource = meta.personalTimeSource ? String(meta.personalTimeSource) : null;
   const tx = {
     id: transactionId,
     schema: 1,
@@ -383,6 +417,9 @@ export async function commitTransactionAsGMSocket(payload, requesterUserId) {
     combatantId: meta.combatantId ?? null,
     source: { ...(typeof meta.source === "object" ? meta.source : {}), byUserId: requesterUserId },
     operations: built,
+    personalTimeSeconds: personalTimeSeconds || undefined,
+    personalTimeActorUuid: personalTimeActorUuid || undefined,
+    personalTimeSource: personalTimeSource || undefined,
   };
 
   const combatId = String(meta.combatId || game.combat?.id || "").trim();
@@ -393,6 +430,7 @@ export async function commitTransactionAsGMSocket(payload, requesterUserId) {
   list.push(tx);
   _pruneLedger(list);
   await _writeLedgerToCombat(combat, list);
+  await _applyPersonalTimeSideEffect(tx, { reverse: false });
 
   return { ok: true, transactionId };
 }
@@ -443,6 +481,8 @@ export async function undoTransaction({ transactionId, combat = null, actor = nu
     await doc.update(update);
   }
 
+  await _applyPersonalTimeSideEffect(tx, { reverse: true });
+
   tx.undoneAt = Date.now();
   tx.undoneBy = game.user?.id || null;
   list[idx] = tx;
@@ -465,8 +505,11 @@ export async function spendAp(actor, cost, meta = {}) {
   if (!actor || actor.type !== "character") return { ok: false, error: "Not a character" };
   if (c === 0) return { ok: true, transactionId: null };
 
-  const { value, max } = getStoredActionPoints(actor);
+  const { value } = getStoredActionPoints(actor);
   const next = Math.max(0, value - c);
+  const actualSpent = Math.max(0, value - next);
+  const { apToSeconds } = await import("./personal-time.mjs");
+  const personalTimeSeconds = apToSeconds(actor, actualSpent);
   const combat = game?.combat?.started ? game.combat : null;
   return commitTransaction({
     operations: [{ documentUuid: actor.uuid, path: AP_VALUE, after: next }],
@@ -474,12 +517,16 @@ export async function spendAp(actor, cost, meta = {}) {
       ...meta,
       kind: "apSpend",
       combatId: meta.combatId ?? combat?.id ?? null,
+      personalTimeSeconds,
+      personalTimeActorUuid: actor.uuid,
+      personalTimeSource: "apSpend",
     },
   });
 }
 
 /**
  * Refresh AP pool to full (official turn start).
+ * Remaining AP before refill counts as spent for personal time.
  * @param {Actor} actor
  * @param {object} [meta]
  */
@@ -487,6 +534,9 @@ export async function refreshApPool(actor, meta = {}) {
   await ensureCharacterApSynced(actor);
   if (!actor || actor.type !== "character") return { ok: false, error: "Not a character" };
   const max = getMaxApFromAbilities(actor);
+  const { value } = getStoredActionPoints(actor);
+  const { apToSeconds } = await import("./personal-time.mjs");
+  const personalTimeSeconds = apToSeconds(actor, value);
   const combat = game?.combat?.started ? game.combat : null;
   return commitTransaction({
     operations: [
@@ -497,6 +547,9 @@ export async function refreshApPool(actor, meta = {}) {
       ...meta,
       kind: "apRefresh",
       combatId: meta.combatId ?? combat?.id ?? null,
+      personalTimeSeconds,
+      personalTimeActorUuid: actor.uuid,
+      personalTimeSource: "apRefreshRemainder",
     },
   });
 }

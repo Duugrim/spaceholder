@@ -1,0 +1,146 @@
+{
+  "name": "Ёмкость со смазкой (тест)",
+  "type": "item",
+  "_id": "shtest4lube00000",
+  "img": "icons/svg/water.svg",
+  "system": {
+    "description": "<p>Смазка для Reil-guffin: −1 заряд за выстрел.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 0.4,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": true,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isWeapon": false,
+      "isAmmo": true,
+      "isContainer": false
+    },
+    "weapon": {
+      "version": 3,
+      "ergonomics": {
+        "overall": 100,
+        "zones": {
+          "enabled": false,
+          "green": 100,
+          "yellow": 100,
+          "orange": 100,
+          "red": 100
+        },
+        "deadZone": {
+          "enabled": false,
+          "value": 100
+        },
+        "aimPenalty": {
+          "enabled": false,
+          "value": 100
+        },
+        "critZoneBonus": {
+          "enabled": false,
+          "value": 0
+        },
+        "critZoneSize": {
+          "enabled": false,
+          "value": 100
+        },
+        "readying": {
+          "enabled": true,
+          "value": 0
+        }
+      },
+      "lines": [],
+      "state": {
+        "activeLineId": "",
+        "activeModeId": "",
+        "ready": false
+      },
+      "ammo": {
+        "damage": [],
+        "caliber": "reil-смазка",
+        "connector": {
+          "enabled": false,
+          "value": ""
+        },
+        "charge": {
+          "enabled": true,
+          "max": 50,
+          "current": 50,
+          "allowFractional": false,
+          "clampNonNegative": true,
+          "scaleDamageFromSpent": false,
+          "overheatNotify": false,
+          "changePerShot": {
+            "sign": "-",
+            "formula": "1"
+          },
+          "changePerSecond": {
+            "sign": "+",
+            "formula": "0"
+          }
+        },
+        "capacity": 0,
+        "consume": true
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtest4fldammo00",
+  "sort": 190000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.180",
+    "createdTime": 1782000000000,
+    "modifiedTime": 1782000000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtest4lube00000"
+}

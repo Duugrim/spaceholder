@@ -12,6 +12,7 @@ import {
   computeFactionSpentPoints,
 } from '../helpers/progression-points.mjs';
 import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
+import { getWorldFactionActors } from '../helpers/user-factions.mjs';
 import { collectActorActions, executeActorAction, getActorActionPoints, openItemInteractMenu } from '../helpers/actions/action-service.mjs';
 import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
 import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/held-drop-resolve.mjs';
@@ -32,14 +33,15 @@ import {
   getNestedStorage,
 } from '../helpers/item-nested-storage.mjs';
 import {
-  blockChamberLoaded,
-  blockReserveCount,
-} from '../helpers/weapon/weapon-ammo-runtime.mjs';
-import {
+  AMMO_BLOCK_TYPES,
+  compatMatches,
+  getBlockFillPreview,
   normalizeAmmoConfig,
   normalizeWeaponV3,
-  resolveBlockCapacity,
 } from '../helpers/weapon/weapon-model.mjs';
+import {
+  getAmmoItemChargePreview,
+} from '../helpers/weapon/weapon-ammo-runtime.mjs';
 
 /**
  * Build a short human-readable summary of armor layers for a coverage
@@ -490,6 +492,105 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
+   * Open editor dialog for character header: name, disposition, faction.
+   */
+  async _openCharacterHeaderEditDialog() {
+    if (this.actor?.type !== 'character' || !this.isEditable) return;
+
+    const F = CONST.TOKEN_DISPOSITIONS ?? { FRIENDLY: 1, NEUTRAL: 0, HOSTILE: -1, SECRET: -2 };
+    const escape = foundry.utils.escapeHTML;
+    const currentName = String(this.actor.name ?? '');
+    const currentDisposition = Number(this.actor.prototypeToken?.disposition ?? F.NEUTRAL);
+    const currentFaction = String(this.actor.system?.gFaction ?? '').trim();
+
+    const dispositionOptions = [
+      { value: F.FRIENDLY, key: 'SPACEHOLDER.Character.DispositionFriendly' },
+      { value: F.NEUTRAL, key: 'SPACEHOLDER.Character.DispositionNeutral' },
+      { value: F.HOSTILE, key: 'SPACEHOLDER.Character.DispositionHostile' },
+      { value: F.SECRET, key: 'SPACEHOLDER.Character.DispositionSecret' },
+    ];
+    const dispositionRows = dispositionOptions.map(({ value, key }) => {
+      const selected = value === currentDisposition ? ' selected' : '';
+      return `<option value="${value}"${selected}>${escape(game.i18n.localize(key))}</option>`;
+    }).join('');
+
+    const noneLabel = escape(game.i18n.localize('SPACEHOLDER.Character.HeaderEditFactionNone'));
+    const factionRows = [
+      `<option value="">${noneLabel}</option>`,
+      ...getWorldFactionActors().map((factionActor) => {
+        const uuid = String(factionActor.uuid ?? '');
+        const selected = uuid && uuid === currentFaction ? ' selected' : '';
+        return `<option value="${escape(uuid)}"${selected}>${escape(factionActor.name ?? uuid)}</option>`;
+      }),
+    ].join('');
+
+    await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: game.i18n.localize('SPACEHOLDER.Character.HeaderEditDialogTitle'),
+        icon: 'fa-solid fa-user-pen',
+      },
+      position: { width: 420 },
+      content: `
+        <div class="spaceholder-character-header-dialog">
+          <div class="form-group">
+            <label for="sh-character-edit-name">${game.i18n.localize('SPACEHOLDER.Character.HeaderEditName')}</label>
+            <input
+              id="sh-character-edit-name"
+              type="text"
+              value=""
+              placeholder="${escape(currentName)}"
+              autocomplete="off"
+            >
+          </div>
+          <p class="hint">${game.i18n.localize('SPACEHOLDER.Character.HeaderEditNameHint')}</p>
+          <div class="form-group">
+            <label for="sh-character-edit-disposition">${game.i18n.localize('SPACEHOLDER.Character.HeaderEditDisposition')}</label>
+            <select id="sh-character-edit-disposition">${dispositionRows}</select>
+          </div>
+          <div class="form-group">
+            <label for="sh-character-edit-faction">${game.i18n.localize('SPACEHOLDER.Character.HeaderEditFaction')}</label>
+            <select id="sh-character-edit-faction">${factionRows}</select>
+          </div>
+        </div>
+      `,
+      buttons: [
+        {
+          action: 'apply',
+          label: game.i18n.localize('SPACEHOLDER.Character.HeaderEditApply'),
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const updates = {};
+
+            const nameTrim = String(root?.querySelector?.('#sh-character-edit-name')?.value ?? '').trim();
+            if (nameTrim) updates.name = nameTrim;
+
+            const dispositionRaw = root?.querySelector?.('#sh-character-edit-disposition')?.value;
+            const disposition = Number(dispositionRaw);
+            if (Number.isFinite(disposition)) updates['prototypeToken.disposition'] = disposition;
+
+            updates['system.gFaction'] = String(root?.querySelector?.('#sh-character-edit-faction')?.value ?? '').trim();
+
+            if (Object.keys(updates).length) await this.actor.update(updates);
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n.localize('SPACEHOLDER.Actions.Cancel'),
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+  }
+
+  /**
    * Prepare anatomy data for UI
    * @param {object} context The context object to mutate
    */
@@ -786,6 +887,39 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
+   * Live items parented under a weapon (`containerHostId`) for inventory tree.
+   * Prefer runtime id order when present; otherwise all hosted children.
+   * @param {Item} weaponItem
+   * @returns {string[]}
+   */
+  _listWeaponHostedChildIds(weaponItem) {
+    const tags = weaponItem?.system?.itemTags ?? {};
+    if (!(tags.isWeapon || tags.isMelee || tags.isRanged || tags.isThrown)) return [];
+    const actor = this.actor;
+    if (!actor) return [];
+    const weapon = normalizeWeaponV3(weaponItem.system?.weapon, tags);
+    const ordered = [];
+    const seen = new Set();
+    const push = (id) => {
+      const s = String(id ?? '').trim();
+      if (!s || seen.has(s)) return;
+      if (!actor.items.get(s)) return;
+      seen.add(s);
+      ordered.push(s);
+    };
+    for (const line of weapon.lines ?? []) {
+      for (const block of line.ammoBlocks ?? []) {
+        if (!block?.runtime) continue;
+        push(block.runtime.attachedItemId);
+        push(block.runtime.chamberItemId);
+        for (const id of block.runtime.contentItemIds ?? []) push(id);
+      }
+    }
+    for (const id of getOrderedDirectChildItemIds(actor, weaponItem.id)) push(id);
+    return ordered;
+  }
+
+  /**
    * @param {{ label?: string, current?: number, max?: number }} params
    * @returns {object|null}
    */
@@ -809,18 +943,27 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    */
   _buildAmmoBlockPreviewGauge(block, lineLabel) {
     if (!block) return null;
-    const reserve = blockReserveCount(block);
-    const chamber = blockChamberLoaded(block) ? 1 : 0;
-    const capacity = resolveBlockCapacity(block);
-    const denominator = capacity + (block.chamberEnabled ? 1 : 0);
-    if (denominator <= 0) return null;
+    const fill = getBlockFillPreview(block, this.actor);
+    if (fill.mode === 'empty' || fill.max <= 0) {
+      // External mag with no magazine attached — skip gauge
+      if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE
+        && !(String(block.runtime?.attachedItemId ?? '').trim() || block.runtime?.magazine)) return null;
+      if (fill.max <= 0 && fill.current <= 0) return null;
+    }
     const typeLabel = game.i18n?.localize?.(`SPACEHOLDER.WeaponV3.Block.Types.${block.type}`)
       ?? String(block.type ?? '');
     const label = lineLabel ? `${lineLabel} · ${typeLabel}` : typeLabel;
+    const current = fill.mode === 'charge'
+      ? fill.current
+      : fill.current + (block.chamberEnabled ? fill.chamber : 0);
+    const max = fill.mode === 'charge'
+      ? fill.max
+      : fill.max + (block.chamberEnabled ? 1 : 0);
+    if (max <= 0) return null;
     return this._makeInventoryPreviewGauge({
       label,
-      current: reserve + chamber,
-      max: denominator,
+      current,
+      max,
     });
   }
 
@@ -1016,10 +1159,19 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const visitDocument = (item, depth) => {
       if (!item || item.type !== 'item') return;
       const tags = item.system?.itemTags || {};
-      const actorChildIds = tags.isContainer ? getOrderedDirectChildItemIds(actor, item.id) : [];
-      const storageChildren = getNestedStorage(item).contents;
+      const isWeapon = !!(tags.isWeapon || tags.isMelee || tags.isRanged || tags.isThrown);
+      const isMagazine = !!(tags.isAmmo && normalizeAmmoConfig(item.system?.weapon?.ammo).connector?.enabled);
+      // Live children: containers, magazines, and weapons (hosted ammo via containerHostId).
+      const actorChildIds = (tags.isContainer || isWeapon)
+        ? getOrderedDirectChildItemIds(actor, item.id)
+        : [];
+      // Prefer runtime order for weapons when available.
+      const weaponHostedIds = isWeapon ? this._listWeaponHostedChildIds(item) : [];
+      const childIds = weaponHostedIds.length ? weaponHostedIds : actorChildIds;
+      // Nested storage only for non-magazine legacy; magazines use live container children.
+      const storageChildren = (tags.isContainer && isMagazine) ? [] : getNestedStorage(item).contents;
       const key = `doc:${item.id}`;
-      const hasChildren = actorChildIds.length > 0 || storageChildren.length > 0;
+      const hasChildren = childIds.length > 0 || storageChildren.length > 0;
       const meta = makeInventoryMeta(item);
       const tagVisual = this._buildInventoryRowTagVisual(tags);
       rows.push({
@@ -1039,7 +1191,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         canDelete: true,
         canHold: true,
         canEquipArmor: !!item.system?.itemTags?.isArmor,
-        canDropContainer: !!tags.isContainer,
+        canDropContainer: !!tags.isContainer || isWeapon || isMagazine,
+        canDropWeaponAmmo: isWeapon,
         hasChildren,
         isCollapsed: collapsed.has(key),
         isHeld: !!item.system?.held,
@@ -1047,7 +1200,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         tagStyle: tagVisual.tagStyle,
       });
       if (!hasChildren || collapsed.has(key)) return;
-      for (const cid of actorChildIds) {
+      for (const cid of childIds) {
         const child = actor.items.get(cid);
         visitDocument(child, depth + 1);
       }
@@ -1055,7 +1208,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         visitStorageSnapshot(child, item, [child.id], depth + 1);
       }
     };
-
     /**
      * @param {object} item
      * @param {Item} hostItem
@@ -2151,6 +2303,14 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         });
       });
 
+      el.querySelectorAll('[data-action="sh-character-header-edit"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          await this._openCharacterHeaderEditDialog();
+          this.render(false);
+        });
+      });
+
       el.querySelectorAll('[data-action="sh-actions-mode-set"]').forEach((btn) => {
         btn.addEventListener('click', async (ev) => {
           ev.preventDefault();
@@ -2221,40 +2381,11 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Everything below here is only needed if the sheet is editable
     if (!this.isEditable) return;
 
-    // Character: фракция — дроп Actor(faction) куда угодно по листу (form + capture dragover)
+    // Character: открытие листа фракции по клику на иконку в шапке
     if (this.actor?.type === 'character') {
       el.querySelectorAll('[data-action="uuid-open"]').forEach((btn) => {
         btn.addEventListener('click', this._onCharacterUuidOpen.bind(this));
       });
-      el.querySelectorAll('[data-action="uuid-clear"]').forEach((btn) => {
-        btn.addEventListener('click', this._onCharacterUuidClear.bind(this));
-      });
-      const form = el.matches?.('form') ? el : el.querySelector('form');
-      if (form) {
-        if (!this._onCharacterFactionFormDragOverBound) {
-          this._onCharacterFactionFormDragOverBound = (e) => {
-            e.preventDefault();
-            try {
-              const ea = String(e.dataTransfer?.effectAllowed ?? '').toLowerCase();
-              // Anatomy editor repositions parts with effectAllowed "move". Forcing "copy" here breaks drops in Chromium/Electron.
-              if (ea === 'move' || ea === 'linkmove') {
-                e.dataTransfer.dropEffect = 'move';
-              } else {
-                e.dataTransfer.dropEffect = 'copy';
-              }
-            } catch (_) {
-              /* ignore */
-            }
-          };
-        }
-        if (!this._onCharacterSheetFactionFormDropBound) {
-          this._onCharacterSheetFactionFormDropBound = this._onCharacterSheetFactionFormDrop.bind(this);
-        }
-        form.removeEventListener('dragover', this._onCharacterFactionFormDragOverBound, true);
-        form.addEventListener('dragover', this._onCharacterFactionFormDragOverBound, true);
-        form.removeEventListener('drop', this._onCharacterSheetFactionFormDropBound);
-        form.addEventListener('drop', this._onCharacterSheetFactionFormDropBound);
-      }
     }
 
     // Custom actions editor (actor.system.actions): compact list + modal edit
@@ -2645,6 +2776,15 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     ev.preventDefault();
     ev.stopPropagation();
     await removeActorItemFromContainer(this.actor, host, doc.id);
+    // Weapons are not always isContainer — still clear containerHostId + runtime refs.
+    const hostTags = host.system?.itemTags ?? {};
+    const isWeaponHost = !!(hostTags.isWeapon || hostTags.isMelee || hostTags.isRanged || hostTags.isThrown);
+    if (isWeaponHost || String(doc.system?.containerHostId ?? '').trim() === hostId) {
+      const { unparentActorItemFromHost } = await import('../helpers/item-weapon-host.mjs');
+      const { clearItemFromAllWeaponRuntimes } = await import('../helpers/weapon/weapon-ammo-runtime.mjs');
+      await unparentActorItemFromHost(this.actor, doc.id, { held: true });
+      await clearItemFromAllWeaponRuntimes(this.actor, doc.id);
+    }
     await this.render(false);
   }
 
@@ -2662,7 +2802,16 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     if (!hostId || !this.isEditable || !actor?.isOwner) return;
 
     const hostItem = actor.items.get(hostId);
-    if (!hostItem?.system?.itemTags?.isContainer) return;
+    if (!hostItem) return;
+
+    const hostTags = hostItem.system?.itemTags ?? {};
+    const hostAmmo = normalizeAmmoConfig(hostItem.system?.weapon?.ammo);
+    const isWeaponHost = !!(hostTags.isWeapon || hostTags.isMelee || hostTags.isRanged || hostTags.isThrown);
+    const isMagazineHost = !!(hostTags.isAmmo && hostAmmo.connector?.enabled);
+    // Magazines use the same actor-container path as bandoliers.
+    const isActorContainerHost = !!hostTags.isContainer;
+
+    if (!isWeaponHost && !isMagazineHost && !isActorContainerHost) return;
 
     let data = null;
     try {
@@ -2686,6 +2835,69 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       return;
     }
 
+    // --- Weapon: attach magazine or load rounds into attached mag / charge block ---
+    if (isWeaponHost) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (doc.parent?.id !== actor.id || doc.type !== 'item') {
+        ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropWrongActor') ?? 'Item must belong to the same actor.');
+        return;
+      }
+      const ok = await this._tryDropAmmoOntoWeapon(actor, hostItem, doc);
+      if (!ok) {
+        ui.notifications?.warn?.(L('SPACEHOLDER.WeaponV3.BlockActions.Failed') ?? 'Could not load.');
+        return;
+      }
+      await this.render(false);
+      return;
+    }
+
+    // --- Magazine: load rounds into live container children ---
+    if (isMagazineHost) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (doc.parent?.id !== actor.id || doc.type !== 'item') {
+        ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.DropWrongActor') ?? 'Item must belong to the same actor.');
+        return;
+      }
+      if (doc.id === hostId) return;
+      const droppedAmmo = normalizeAmmoConfig(doc.system?.weapon?.ammo);
+      if (!doc.system?.itemTags?.isAmmo || droppedAmmo.connector?.enabled) {
+        ui.notifications?.warn?.(L('SPACEHOLDER.WeaponV3.BlockActions.Failed') ?? 'Could not load.');
+        return;
+      }
+      if (!compatMatches(hostAmmo.caliber, droppedAmmo.caliber)) {
+        ui.notifications?.warn?.(L('SPACEHOLDER.WeaponV3.BlockActions.Failed') ?? 'Could not load.');
+        return;
+      }
+      if (!hostTags.isContainer) {
+        await hostItem.update({ 'system.itemTags.isContainer': true }, { render: false });
+      }
+      const cap = Math.max(0, Number(hostAmmo.capacity) || 0);
+      if (cap > 0) {
+        const norm = normalizeItemContainerFields(hostItem.system);
+        if (norm.container.limits.maxItems !== cap) {
+          await hostItem.update({ 'system.container.limits.maxItems': cap }, { render: false });
+        }
+      }
+      const preview = getAmmoItemChargePreview(hostItem);
+      const free = Math.max(0, (preview.max || 0) - (preview.current || 0));
+      if (free <= 0) {
+        ui.notifications?.warn?.(L('SPACEHOLDER.WeaponV3.BlockActions.Failed') ?? 'Could not load.');
+        return;
+      }
+      const qty = Math.min(free, Math.max(1, Number(doc.system?.quantity) || 1));
+      const { moveQtyIntoMagazineContainer } = await import('../helpers/item-weapon-host.mjs');
+      const moved = await moveQtyIntoMagazineContainer(actor, hostItem, doc, qty);
+      if (!moved?.ok) {
+        ui.notifications?.warn?.(L('SPACEHOLDER.WeaponV3.BlockActions.Failed') ?? 'Could not load.');
+        return;
+      }
+      await this.render(false);
+      return;
+    }
+
+    // --- Actor-level container (bandolier etc.) ---
     if (doc.parent?.id === actor.id && doc.type === 'item') {
       if (doc.id === hostId) {
         ev.preventDefault();
@@ -2753,6 +2965,75 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       console.error('SpaceHolder | inventory container row drop failed', error);
       ui.notifications?.warn?.(L('SPACEHOLDER.ItemContainer.MoveFailed') ?? 'Could not place item.');
     }
+  }
+
+  /**
+   * Drop magazine onto weapon (attach) or rounds onto weapon (load attached mag / charge).
+   * @param {Actor} actor
+   * @param {Item} weaponItem
+   * @param {Item} droppedItem
+   * @returns {Promise<boolean>}
+   */
+  async _tryDropAmmoOntoWeapon(actor, weaponItem, droppedItem) {
+    const {
+      attachMagazine,
+      loadBlock,
+      findCompatibleWeaponLoadTargets,
+      getWeaponData,
+      persistWeaponData,
+      getAmmoBlock,
+    } = await import('../helpers/weapon/weapon-ammo-runtime.mjs');
+
+    const targets = findCompatibleWeaponLoadTargets(actor, droppedItem)
+      .filter((t) => t.weaponItem?.id === weaponItem.id);
+    if (!targets.length) return false;
+    let target = targets[0];
+    if (targets.length > 1) {
+      const DialogV2 = foundry?.applications?.api?.DialogV2;
+      if (DialogV2?.wait) {
+        const options = targets.map((t, i) => {
+          const lineName = String(t.line?.name ?? '').trim() || game.i18n?.localize?.('SPACEHOLDER.WeaponV3.Line.Default') || 'Line';
+          const blockLabel = t.block?.type === 'externalMagazine'
+            ? (String(t.block?.connector ?? '').trim() || t.block?.id)
+            : (String(t.block?.caliber ?? '').trim() || t.block?.id);
+          const label = `${lineName} · ${blockLabel}`;
+          return `<option value="${i}">${foundry.utils.escapeHTML(label)}</option>`;
+        }).join('');
+        let picked = 0;
+        await DialogV2.wait({
+          classes: ['spaceholder'],
+          window: { title: game.i18n?.localize?.('SPACEHOLDER.WeaponV3.Interact.Charge') ?? 'Load', icon: 'fa-solid fa-box-open' },
+          position: { width: 360 },
+          content: `<div class="form-group"><select name="sh-ammo-block" style="width:100%">${options}</select></div>`,
+          buttons: [
+            {
+              action: 'ok',
+              label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'OK',
+              default: true,
+              callback: (ev) => {
+                const root = ev?.currentTarget?.closest?.('.window-content') ?? document;
+                picked = Number(root.querySelector('[name="sh-ammo-block"]')?.value) || 0;
+              },
+            },
+            { action: 'cancel', label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel' },
+          ],
+        });
+        target = targets[picked] ?? targets[0];
+      }
+    }
+    const w = getWeaponData(weaponItem);
+    const b = getAmmoBlock(w, target.line.id, target.block.id);
+    if (!b) return false;
+    const isMag = !!droppedItem.system?.weapon?.ammo?.connector?.enabled;
+    let res;
+    if (isMag || target.mode === 'magazine') {
+      res = await attachMagazine({ actor, weaponItem, block: b, magazineItem: droppedItem });
+    } else {
+      res = await loadBlock({ actor, weaponItem, block: b, count: Infinity, ammoItem: droppedItem });
+    }
+    if (!res?.ok) return false;
+    await persistWeaponData(weaponItem, w);
+    return true;
   }
 
   /**
@@ -3482,35 +3763,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       }
     }
     return '';
-  }
-
-  /**
-   * Лист персонажа: назначить фракцию при дропе Actor(faction) в любую область формы.
-   * Не перехватывает Item / ActiveEffect / Folder — отдаёт ядру.
-   * @param {DragEvent} event
-   */
-  async _onCharacterSheetFactionFormDrop(event) {
-    if (!this.isEditable || this.actor?.type !== 'character') return;
-
-    const docType = this._syncFoundryDropDocumentType(event);
-    if (docType === 'Item' || docType === 'ActiveEffect' || docType === 'Folder') return;
-
-    const uuid = this._extractUuidFromDropEventShared(event);
-    if (!uuid) return;
-
-    let doc = null;
-    try {
-      doc = await fromUuid(uuid);
-    } catch (_) {
-      doc = null;
-    }
-    if (!doc || doc.documentName !== 'Actor' || doc.type !== 'faction') return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    const uuidToStore = doc.uuid ?? uuid;
-    await this.actor.update({ 'system.gFaction': uuidToStore });
-    this.render(false);
   }
 
   async _onCharacterUuidOpen(event) {

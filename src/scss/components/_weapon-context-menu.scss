@@ -5,7 +5,7 @@
   max-width: min(22rem, calc(100vw - 1rem));
   max-height: min(32rem, calc(100vh - 1rem));
   padding: 0.35rem;
-  overflow-y: auto;
+  overflow: visible;
   color: rgba(255, 255, 255, 0.92);
   background: rgba(18, 27, 42, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -88,5 +88,122 @@
   color: rgba(255, 255, 255, 0.62);
   font-family: $font-mono;
   font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.spaceholder-weapon-interact-menu__flyout {
+  position: relative;
+
+  // Open via JS `.is-open` (triangle-of-expectation aim assist).
+  // Keep `:focus-within` for keyboard navigation.
+  &.is-open > .spaceholder-weapon-interact-menu__submenu,
+  &:focus-within > .spaceholder-weapon-interact-menu__submenu {
+    display: flex;
+  }
+
+  &.is-open > .spaceholder-weapon-interact-menu__flyout-trigger,
+  &:focus-within > .spaceholder-weapon-interact-menu__flyout-trigger {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.spaceholder-weapon-interact-menu__flyout-trigger {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.spaceholder-weapon-interact-menu__flyout-caret {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+}
+
+.spaceholder-weapon-interact-menu__submenu {
+  display: none;
+  position: absolute;
+  top: 0;
+  // Overlap parent so the cursor can enter the panel without a dead gap.
+  left: calc(100% - 0.4rem);
+  z-index: 2;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 15rem;
+  max-width: min(22rem, calc(100vw - 1rem));
+  max-height: min(24rem, calc(100vh - 1rem));
+  padding: 0.3rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(18, 27, 42, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.spaceholder-weapon-interact-menu__charge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  height: auto;
+  min-height: 0;
+  padding: 0.35rem 0.45rem;
+}
+
+.spaceholder-weapon-interact-menu__charge-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.spaceholder-weapon-interact-menu__charge-info {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-empty {
+    color: rgba(255, 180, 120, 0.78);
+    font-style: italic;
+  }
+}
+
+.spaceholder-weapon-interact-menu__charge-fill-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.spaceholder-weapon-interact-menu__charge-bar,
+.spaceholder-weapon-interact-menu__charge-bar-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.spaceholder-weapon-interact-menu__charge-bar {
+  display: block;
+  height: 0.35rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.spaceholder-weapon-interact-menu__charge-bar-fill {
+  display: block;
+  height: 100%;
+  background: rgba(120, 190, 255, 0.85);
+  border-radius: inherit;
+}
+
+.spaceholder-weapon-interact-menu__charge-count {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.62);
+  font-family: $font-mono;
+  font-size: 0.72rem;
   white-space: nowrap;
 }

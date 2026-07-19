@@ -208,14 +208,24 @@ export class SpaceHolderItem extends Item {
   async delete(options = {}) {
     if (
       this.type === 'item' &&
-      this.system?.itemTags?.isContainer &&
       this.isEmbedded === true &&
       this.actor
     ) {
-      try {
-        await releaseDirectContainerChildrenToRoot(this.actor, this.id);
-      } catch (error) {
-        console.error('SpaceHolder | release container children before Item delete', error);
+      const tags = this.system?.itemTags ?? {};
+      if (tags.isContainer) {
+        try {
+          await releaseDirectContainerChildrenToRoot(this.actor, this.id);
+        } catch (error) {
+          console.error('SpaceHolder | release container children before Item delete', error);
+        }
+      }
+      if (tags.isWeapon || tags.isMelee || tags.isRanged || tags.isThrown) {
+        try {
+          const { releaseWeaponHostedChildrenToRoot } = await import('../helpers/item-weapon-host.mjs');
+          await releaseWeaponHostedChildrenToRoot(this.actor, this.id);
+        } catch (error) {
+          console.error('SpaceHolder | release weapon-hosted children before Item delete', error);
+        }
       }
     }
     return super.delete(options);
@@ -321,6 +331,45 @@ export class SpaceHolderItem extends Item {
     // As with the actor class, items are documents that can have their data
     // preparation methods overridden (such as prepareBaseData()).
     super.prepareData();
+  }
+
+  /**
+   * Magazine containers with nested rounds must stay quantity=1 (contents are
+   * shared on the item document — Mag×5 with 10 rounds inside is not 5×10).
+   * Empty magazines may still stack.
+   * @override
+   */
+  async _preUpdate(changed, options, user) {
+    const allowed = await super._preUpdate(changed, options, user);
+    if (allowed === false) return false;
+
+    const nextSystem = changed.system ? foundry.utils.mergeObject(
+      foundry.utils.deepClone(this.system),
+      changed.system,
+      { inplace: false },
+    ) : this.system;
+    const tags = nextSystem?.itemTags ?? {};
+    const ammo = nextSystem?.weapon?.ammo;
+    const isMag = !!(tags.isAmmo && ammo?.connector?.enabled);
+    if (!isMag) return true;
+
+    const contents = Array.isArray(nextSystem?.storage?.contents)
+      ? nextSystem.storage.contents
+      : [];
+    const hasRounds = contents.some((e) => Math.max(0, Number(e?.system?.quantity) || 0) > 0);
+    const nextQty = changed.system?.quantity !== undefined
+      ? Number(changed.system.quantity)
+      : Number(this.system?.quantity);
+    if (hasRounds && Number.isFinite(nextQty) && nextQty > 1) {
+      foundry.utils.setProperty(changed, 'system.quantity', 1);
+      try {
+        ui.notifications?.warn?.(
+          game.i18n?.localize?.('SPACEHOLDER.WeaponV3.AmmoItem.MagazineQtyClamp')
+          ?? 'Magazines with rounds inside cannot stack (quantity forced to 1).',
+        );
+      } catch (_) { /* ignore */ }
+    }
+    return true;
   }
 
   /**

@@ -31,11 +31,54 @@
         </label>
         <label class="sh-wv3-field">
           <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChargeCurrent'}}</span>
-          <input type="number" min="0" step="1" data-wpath="ammo.charge.current" data-wdtype="Int" value="{{a.charge.current}}" {{#unless editable}}disabled{{/unless}} />
+          <input type="number" min="0" step="any" data-wpath="ammo.charge.current" data-wdtype="Number" value="{{a.charge.current}}" {{#unless editable}}disabled{{/unless}} />
         </label>
         <label class="sh-wv3-field">
           <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChargeMax'}}</span>
-          <input type="number" min="0" step="1" data-wpath="ammo.charge.max" data-wdtype="Int" value="{{a.charge.max}}" {{#unless editable}}disabled{{/unless}} />
+          <input type="number" min="0" step="any" data-wpath="ammo.charge.max" data-wdtype="Number" value="{{a.charge.max}}" {{#unless editable}}disabled{{/unless}} />
+        </label>
+
+        <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChangePerShotHint'}}">
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChangePerShot'}}</span>
+          <div class="sh-wv3-change-row">
+            <input type="hidden" data-wpath="ammo.charge.changePerShot.sign" data-wdtype="String" value="{{a.charge.changePerShot.sign}}" />
+            <button type="button" class="sh-wv3-sign-btn" data-waction="toggle-change-sign"
+                    data-sign-path="ammo.charge.changePerShot.sign"
+                    {{#unless editable}}disabled{{/unless}}
+                    data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChangeSignHint'}}">{{a.charge.changePerShot.sign}}</button>
+            <input type="text" data-wpath="ammo.charge.changePerShot.formula" data-wdtype="String"
+                   value="{{a.charge.changePerShot.formula}}" placeholder="1" {{#unless editable}}disabled{{/unless}} />
+          </div>
+        </label>
+
+        <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChangePerSecondHint'}}">
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChangePerSecond'}}</span>
+          <div class="sh-wv3-change-row">
+            <input type="hidden" data-wpath="ammo.charge.changePerSecond.sign" data-wdtype="String" value="{{a.charge.changePerSecond.sign}}" />
+            <button type="button" class="sh-wv3-sign-btn" data-waction="toggle-change-sign"
+                    data-sign-path="ammo.charge.changePerSecond.sign"
+                    {{#unless editable}}disabled{{/unless}}
+                    data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ChangeSignHint'}}">{{a.charge.changePerSecond.sign}}</button>
+            <input type="text" data-wpath="ammo.charge.changePerSecond.formula" data-wdtype="String"
+                   value="{{a.charge.changePerSecond.formula}}" placeholder="0" {{#unless editable}}disabled{{/unless}} />
+          </div>
+        </label>
+
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.AllowFractionalHint'}}">
+          <input type="checkbox" data-wpath="ammo.charge.allowFractional" {{#if a.charge.allowFractional}}checked{{/if}} {{#unless editable}}disabled{{/unless}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.AllowFractional'}}</span>
+        </label>
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ClampNonNegativeHint'}}">
+          <input type="checkbox" data-wpath="ammo.charge.clampNonNegative" {{#if a.charge.clampNonNegative}}checked{{/if}} {{#unless editable}}disabled{{/unless}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ClampNonNegative'}}</span>
+        </label>
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ScaleDamageHint'}}">
+          <input type="checkbox" data-wpath="ammo.charge.scaleDamageFromSpent" {{#if a.charge.scaleDamageFromSpent}}checked{{/if}} {{#unless editable}}disabled{{/unless}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.ScaleDamage'}}</span>
+        </label>
+        <label class="sh-wv3-toggle" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.OverheatNotifyHint'}}">
+          <input type="checkbox" data-wpath="ammo.charge.overheatNotify" {{#if a.charge.overheatNotify}}checked{{/if}} {{#unless editable}}disabled{{/unless}} />
+          <span>{{localize 'SPACEHOLDER.WeaponV3.AmmoItem.OverheatNotify'}}</span>
         </label>
       </div>
 

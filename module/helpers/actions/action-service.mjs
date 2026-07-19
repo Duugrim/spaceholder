@@ -82,7 +82,6 @@ import {
   getAmmoBlock,
   loadBlock,
   operateBolt,
-  unloadBlock,
   emptyBlock,
   attachMagazine,
   detachMagazine,
@@ -91,11 +90,22 @@ import {
   canLoadX,
   canReloadBlock,
   canBoltBlock,
-  canUnloadBlock,
   canEmptyBlock,
-  canAttachMagazine,
   canDetachMagazine,
+  findChargeCandidatesForBlock,
+  findCompatibleWeaponLoadTargets,
+  findCompatibleMagazineLoadTargets,
+  getAmmoItemChargePreview,
+  getAttachedMagazineItem,
+  getBlockContentItems,
+  getChamberItem,
+  hasAttachedMagazine,
 } from '../weapon/weapon-ammo-runtime.mjs';
+import { moveQtyIntoMagazineContainer, unparentActorItemFromHost } from '../item-weapon-host.mjs';
+import {
+  getOrderedDirectChildItemIds,
+  removeActorItemFromContainer,
+} from '../item-container.mjs';
 import { runWeaponAttack } from '../weapon/attack-chain.mjs';
 import { findNearestPileDropPointWithinCells } from '../item-piles-sh/held-drop-resolve.mjs';
 
@@ -573,7 +583,6 @@ function _collectWearableToggleActions(actor, ctx) {
     const defaults = item.system?.defaultActions ?? {};
     const equipDefaults = defaults?.equip ?? {};
     const unequipDefaults = defaults?.unequip ?? {};
-    const holdDefaults = defaults?.hold ?? {};
     const stowDefaults = defaults?.stow ?? {};
     const dropDefaults = defaults?.drop ?? {};
     const showDefaults = defaults?.show ?? {};
@@ -687,8 +696,10 @@ function _collectWearableToggleActions(actor, ctx) {
       menuLabel: _t('SPACEHOLDER.ActionsSystem.Wearable.HoldShort'),
       icon: 'fa-solid fa-hand',
       apCost: 0,
-      showInCombat: holdDefaults.showInCombat ?? false,
-      showInQuickbar: holdDefaults.showInQuickbar ?? true,
+      // Hold is available via item interact (RMB) only — keep the actions list uncluttered.
+      showInCombat: false,
+      showInQuickbar: false,
+      interactMenuOnly: true,
       visible: () => true,
       enabled: () => !!ctx.editable,
       disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
@@ -836,6 +847,264 @@ function _closeWeaponInteractMenu(result = false) {
   _weaponInteractMenuEl = null;
 }
 
+/**
+ * Point-in-triangle (same-side / barycentric sign test).
+ * @param {{x:number,y:number}} p
+ * @param {{x:number,y:number}} a
+ * @param {{x:number,y:number}} b
+ * @param {{x:number,y:number}} c
+ */
+function _pointInTriangle(p, a, b, c) {
+  const sign = (p1, p2, p3) => (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+  const b1 = sign(p, a, b) < 0;
+  const b2 = sign(p, b, c) < 0;
+  const b3 = sign(p, c, a) < 0;
+  return b1 === b2 && b2 === b3;
+}
+
+/**
+ * Amazon / Kamens "triangle of expectation" for nested flyouts.
+ * Keeps the open submenu alive while the cursor travels through empty space
+ * between the parent row and the flyout panel (outside the menu hit-box).
+ *
+ * @param {HTMLElement} menu
+ * @returns {() => void} dispose
+ */
+function _bindWeaponInteractFlyoutAim(menu) {
+  const FLYOUT_SEL = '.spaceholder-weapon-interact-menu__flyout';
+  const SUB_SEL = '.spaceholder-weapon-interact-menu__submenu';
+  const CLOSE_GRACE_MS = 120;
+  const LOC_HISTORY = 4;
+
+  /** @type {HTMLElement|null} */
+  let openFlyout = null;
+  /** @type {{x:number,y:number}|null} */
+  let bridgeApex = null;
+  /** @type {{x:number,y:number}[]} */
+  const mouseLocs = [];
+  /** @type {ReturnType<typeof setTimeout>|null} */
+  let closeTimer = null;
+  /** @type {ReturnType<typeof setTimeout>|null} */
+  let siblingTimer = null;
+  /** @type {HTMLElement|null} */
+  let pendingSibling = null;
+  let docTracking = false;
+
+  const flyouts = Array.from(menu.querySelectorAll(FLYOUT_SEL));
+
+  const pushMouse = (x, y) => {
+    mouseLocs.push({ x, y });
+    if (mouseLocs.length > LOC_HISTORY) mouseLocs.shift();
+  };
+
+  const clearCloseTimer = () => {
+    if (closeTimer != null) {
+      clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+  };
+
+  const clearSiblingTimer = () => {
+    if (siblingTimer != null) {
+      clearTimeout(siblingTimer);
+      siblingTimer = null;
+    }
+    pendingSibling = null;
+  };
+
+  const stopDocTracking = () => {
+    if (!docTracking) return;
+    document.removeEventListener('pointermove', onDocPointerMove, true);
+    docTracking = false;
+  };
+
+  const startDocTracking = () => {
+    if (docTracking) return;
+    document.addEventListener('pointermove', onDocPointerMove, true);
+    docTracking = true;
+  };
+
+  const setOpen = (flyout) => {
+    clearCloseTimer();
+    clearSiblingTimer();
+    if (!flyout) stopDocTracking();
+    if (openFlyout === flyout) {
+      if (flyout) flyout.classList.add('is-open');
+      return;
+    }
+    for (const f of flyouts) {
+      f.classList.toggle('is-open', f === flyout);
+      const trigger = f.querySelector('.spaceholder-weapon-interact-menu__flyout-trigger');
+      if (trigger) trigger.setAttribute('aria-expanded', f === flyout ? 'true' : 'false');
+    }
+    openFlyout = flyout;
+    if (flyout) {
+      const loc = mouseLocs[mouseLocs.length - 1];
+      bridgeApex = loc ? { ...loc } : null;
+    } else {
+      bridgeApex = null;
+    }
+  };
+
+  /**
+   * Safe corridor from apex (exit point on parent) to the near edge of the submenu.
+   * @param {{x:number,y:number}} loc
+   */
+  const isInExpectationTriangle = (loc) => {
+    if (!openFlyout || !loc) return false;
+    const sub = openFlyout.querySelector(SUB_SEL);
+    if (!sub) return false;
+    // Must be open for a real rect; force layout if needed.
+    if (!openFlyout.classList.contains('is-open')) return false;
+    const rect = sub.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const apex = bridgeApex ?? mouseLocs[0] ?? loc;
+    // Near edge of submenu (opens to the right). Pad vertically so the corridor is forgiving.
+    const padY = 8;
+    const top = { x: rect.left, y: rect.top - padY };
+    const bottom = { x: rect.left, y: rect.bottom + padY };
+    // Also accept being over the submenu rect itself.
+    if (
+      loc.x >= rect.left
+      && loc.x <= rect.right
+      && loc.y >= rect.top
+      && loc.y <= rect.bottom
+    ) {
+      return true;
+    }
+    return _pointInTriangle(loc, apex, top, bottom);
+  };
+
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimer = setTimeout(() => {
+      closeTimer = null;
+      const loc = mouseLocs[mouseLocs.length - 1];
+      if (loc && isInExpectationTriangle(loc)) {
+        // Still aiming at the panel — keep open and keep tracking.
+        startDocTracking();
+        return;
+      }
+      // Pointer may be over the menu again (missed events).
+      const el = loc ? document.elementFromPoint(loc.x, loc.y) : null;
+      if (el && menu.contains(el)) {
+        stopDocTracking();
+        return;
+      }
+      setOpen(null);
+    }, CLOSE_GRACE_MS);
+  };
+
+  const activate = (flyout) => {
+    if (!flyout) {
+      setOpen(null);
+      return;
+    }
+    stopDocTracking();
+    clearCloseTimer();
+    if (flyout === openFlyout) {
+      clearSiblingTimer();
+      const loc = mouseLocs[mouseLocs.length - 1];
+      if (loc) bridgeApex = { ...loc };
+      return;
+    }
+    // Mild sibling delay only while clearly aiming at the current submenu.
+    const loc = mouseLocs[mouseLocs.length - 1];
+    if (openFlyout && loc && isInExpectationTriangle(loc)) {
+      pendingSibling = flyout;
+      if (siblingTimer != null) clearTimeout(siblingTimer);
+      siblingTimer = setTimeout(() => {
+        siblingTimer = null;
+        const next = pendingSibling;
+        pendingSibling = null;
+        if (next) setOpen(next);
+      }, 280);
+      return;
+    }
+    setOpen(flyout);
+  };
+
+  const onMenuPointerMove = (ev) => {
+    pushMouse(ev.clientX, ev.clientY);
+    if (pendingSibling) {
+      const loc = { x: ev.clientX, y: ev.clientY };
+      if (!isInExpectationTriangle(loc)) {
+        const next = pendingSibling;
+        clearSiblingTimer();
+        setOpen(next);
+      }
+    }
+  };
+
+  const onDocPointerMove = (ev) => {
+    pushMouse(ev.clientX, ev.clientY);
+    const loc = { x: ev.clientX, y: ev.clientY };
+    const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    if (el && menu.contains(el)) {
+      // Re-entered menu DOM (trigger or submenu).
+      clearCloseTimer();
+      stopDocTracking();
+      if (openFlyout) {
+        const flyout = el.closest?.(FLYOUT_SEL);
+        if (flyout === openFlyout) bridgeApex = { ...loc };
+      }
+      return;
+    }
+    if (isInExpectationTriangle(loc)) {
+      clearCloseTimer();
+      return;
+    }
+    // Left the safe corridor — close.
+    setOpen(null);
+  };
+
+  const onFlyoutEnter = (ev) => {
+    const flyout = ev.currentTarget;
+    if (!(flyout instanceof HTMLElement)) return;
+    activate(flyout);
+  };
+
+  const onMenuLeave = (ev) => {
+    const related = ev.relatedTarget;
+    if (related && menu.contains(related)) return;
+    // Leaving into empty space: keep submenu if aiming at it.
+    const loc = mouseLocs[mouseLocs.length - 1];
+    if (openFlyout) {
+      if (loc) bridgeApex = bridgeApex ?? { ...loc };
+      startDocTracking();
+      if (loc && isInExpectationTriangle(loc)) {
+        clearCloseTimer();
+        return;
+      }
+      scheduleClose();
+      return;
+    }
+    setOpen(null);
+  };
+
+  for (const flyout of flyouts) {
+    const trigger = flyout.querySelector('.spaceholder-weapon-interact-menu__flyout-trigger');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    flyout.addEventListener('pointerenter', onFlyoutEnter);
+  }
+  menu.addEventListener('pointermove', onMenuPointerMove);
+  menu.addEventListener('pointerleave', onMenuLeave);
+
+  return () => {
+    clearCloseTimer();
+    clearSiblingTimer();
+    stopDocTracking();
+    menu.removeEventListener('pointermove', onMenuPointerMove);
+    menu.removeEventListener('pointerleave', onMenuLeave);
+    for (const flyout of flyouts) {
+      flyout.removeEventListener('pointerenter', onFlyoutEnter);
+      flyout.classList.remove('is-open');
+    }
+    openFlyout = null;
+    bridgeApex = null;
+  };
+}
+
 function _resolveWeaponMenuPosition(ctx) {
   const ev = ctx?.event;
   if (Number.isFinite(ev?.clientX) && Number.isFinite(ev?.clientY)) {
@@ -875,6 +1144,82 @@ function _groupWeaponInteractActions(actions) {
     byName.get(groupName).actions.push(action);
   }
   return groups;
+}
+
+function _weaponLineCount(item) {
+  if (!item?.system?.itemTags?.isWeapon) return 0;
+  return (getWeaponData(item).lines ?? []).length;
+}
+
+function _formatChargeFillLabel(preview) {
+  if (!preview) return '';
+  if (preview.max > 0) return `${preview.current}/${preview.max}`;
+  if (preview.current > 0) return `×${preview.current}`;
+  return '';
+}
+
+function _renderChargeCandidateRow(candidate) {
+  const item = candidate.item;
+  const preview = getAmmoItemChargePreview(item);
+  const fill = _formatChargeFillLabel(preview);
+  const groupLabel = String(candidate.group ?? '').trim();
+  const loadedText = preview.loadedLabel
+    ? String(preview.loadedLabel).trim()
+    : (preview.isMagazine && preview.isEmpty
+      ? _t('SPACEHOLDER.WeaponV3.Interact.EmptyMagazine')
+      : '');
+  const infoParts = [groupLabel, loadedText].filter(Boolean);
+  const info = infoParts.join(' · ');
+  const infoIsEmpty = !preview.loadedLabel && preview.isMagazine && preview.isEmpty;
+  const percent = Math.round((preview.percent || 0) * 100);
+  const showBar = preview.max > 0 || preview.isMagazine;
+  return `
+    <button type="button" class="spaceholder-weapon-interact-menu__action spaceholder-weapon-interact-menu__charge-item" data-charge-item-id="${_escapeHTML(item.id)}" role="menuitem">
+      <span class="spaceholder-weapon-interact-menu__charge-name">${_escapeHTML(item.name)}</span>
+      ${info ? `<span class="spaceholder-weapon-interact-menu__charge-info${infoIsEmpty ? ' is-empty' : ''}">${_escapeHTML(info)}</span>` : ''}
+      ${showBar || fill ? `
+        <span class="spaceholder-weapon-interact-menu__charge-fill-row">
+          ${showBar ? `
+            <span class="spaceholder-weapon-interact-menu__charge-bar" aria-hidden="true">
+              <span class="spaceholder-weapon-interact-menu__charge-bar-fill" style="width:${percent}%"></span>
+            </span>
+          ` : '<span class="spaceholder-weapon-interact-menu__charge-bar-spacer"></span>'}
+          ${fill ? `<span class="spaceholder-weapon-interact-menu__charge-count">${_escapeHTML(fill)}</span>` : ''}
+        </span>
+      ` : ''}
+    </button>
+  `;
+}
+
+function _renderLoadTargetRow(target, index) {
+  let label = '';
+  if (target.targetKind === 'magazine' && target.magazineItem) {
+    const magName = target.magazineItem.name ?? '';
+    const free = Math.max(0, Number(target.free) || 0);
+    label = free > 0
+      ? `${magName} (${free})`
+      : magName;
+  } else {
+    const weaponName = target.weaponItem?.name ?? '';
+    const lineName = String(target.line?.name ?? '').trim();
+    const showLine = _weaponLineCount(target.weaponItem) > 1 && lineName;
+    label = showLine ? `${weaponName} · ${lineName}` : weaponName;
+  }
+  return `
+    <button type="button" class="spaceholder-weapon-interact-menu__action spaceholder-weapon-interact-menu__charge-item" data-load-target-index="${index}" role="menuitem">
+      <span class="spaceholder-weapon-interact-menu__label">${_escapeHTML(label)}</span>
+    </button>
+  `;
+}
+
+function _renderBoltTargetRow(target, index, apShort) {
+  const can = !!target?.can;
+  return `
+    <button type="button" class="spaceholder-weapon-interact-menu__action" data-bolt-target-index="${index}" role="menuitem" ${can ? '' : 'disabled'}>
+      <span class="spaceholder-weapon-interact-menu__label">${_escapeHTML(target.label)}</span>
+      <span class="spaceholder-weapon-interact-menu__ap">${Math.max(0, Number(target.apCost) || 0)} ${_escapeHTML(apShort)}</span>
+    </button>
+  `;
 }
 
 /**
@@ -942,21 +1287,52 @@ async function _showWeaponInteractMenu(actor, weaponItem, interactActions, ctx) 
   _closeWeaponInteractMenu(false);
 
   const apShort = _t('SPACEHOLDER.WeaponV3.Chain.ApShort');
+  const lineCount = _weaponLineCount(weaponItem);
+  const singleLineName = lineCount === 1
+    ? String(getWeaponData(weaponItem).lines?.[0]?.name || _t('SPACEHOLDER.WeaponV3.Line.Default')).trim()
+    : '';
+  const groups = _groupWeaponInteractActions(visible).map((group) => ({
+    ...group,
+    name: (singleLineName && group.name === singleLineName) ? '' : group.name,
+  }));
+
   const menu = document.createElement('nav');
   menu.id = 'spaceholder-weapon-interact-menu';
   menu.className = 'spaceholder-weapon-interact-menu';
   menu.setAttribute('role', 'menu');
   menu.innerHTML = `
     <div class="spaceholder-weapon-interact-menu__title">${_escapeHTML(weaponItem.name)}</div>
-    ${_groupWeaponInteractActions(visible).map((group) => `
+    ${groups.map((group) => `
       <section class="spaceholder-weapon-interact-menu__group">
         ${group.name ? `<div class="spaceholder-weapon-interact-menu__group-title">${_escapeHTML(group.name)}</div>` : ''}
-        ${group.actions.map((action) => `
-          <button type="button" class="spaceholder-weapon-interact-menu__action" data-action-id="${_escapeHTML(action.id)}" role="menuitem" ${typeof action.enabled === 'function' && !action.enabled(ctx) ? 'disabled' : ''}>
-            <span class="spaceholder-weapon-interact-menu__label">${_escapeHTML(action.menuLabel || action.label)}</span>
-            <span class="spaceholder-weapon-interact-menu__ap">${Math.max(0, Number(action.apCost) || 0)} ${_escapeHTML(apShort)}</span>
-          </button>
-        `).join('')}
+        ${group.actions.map((action) => {
+          const hasSub = Array.isArray(action.submenuItems) && action.submenuItems.length > 0;
+          if (hasSub) {
+            const isLoadInto = action.submenuKind === 'loadInto';
+            const isBolt = action.submenuKind === 'bolt';
+            return `
+              <div class="spaceholder-weapon-interact-menu__flyout" data-has-submenu="1">
+                <button type="button" class="spaceholder-weapon-interact-menu__action spaceholder-weapon-interact-menu__flyout-trigger" data-action-id="${_escapeHTML(action.id)}" role="menuitem" aria-haspopup="true" ${typeof action.enabled === 'function' && !action.enabled(ctx) ? 'disabled' : ''}>
+                  <span class="spaceholder-weapon-interact-menu__label">${_escapeHTML(action.menuLabel || action.label)}</span>
+                  <span class="spaceholder-weapon-interact-menu__flyout-caret"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                </button>
+                <div class="spaceholder-weapon-interact-menu__submenu" role="menu">
+                  ${isLoadInto
+                    ? action.submenuItems.map((target, index) => _renderLoadTargetRow(target, index)).join('')
+                    : isBolt
+                      ? action.submenuItems.map((target, index) => _renderBoltTargetRow(target, index, apShort)).join('')
+                      : action.submenuItems.map((candidate) => _renderChargeCandidateRow(candidate)).join('')}
+                </div>
+              </div>
+            `;
+          }
+          return `
+            <button type="button" class="spaceholder-weapon-interact-menu__action" data-action-id="${_escapeHTML(action.id)}" role="menuitem" ${typeof action.enabled === 'function' && !action.enabled(ctx) ? 'disabled' : ''}>
+              <span class="spaceholder-weapon-interact-menu__label">${_escapeHTML(action.menuLabel || action.label)}</span>
+              <span class="spaceholder-weapon-interact-menu__ap">${Math.max(0, Number(action.apCost) || 0)} ${_escapeHTML(apShort)}</span>
+            </button>
+          `;
+        }).join('')}
       </section>
     `).join('')}
   `;
@@ -964,11 +1340,13 @@ async function _showWeaponInteractMenu(actor, weaponItem, interactActions, ctx) 
   document.body.appendChild(menu);
   _weaponInteractMenuEl = menu;
   _positionWeaponInteractMenu(menu, ctx);
+  const disposeFlyoutAim = _bindWeaponInteractFlyoutAim(menu);
 
   return new Promise((resolve) => {
     const finish = (value) => {
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
+      try { disposeFlyoutAim?.(); } catch (_) { /* ignore */ }
       try { menu.remove(); } catch (_) { /* ignore */ }
       if (_weaponInteractMenuEl === menu) _weaponInteractMenuEl = null;
       resolve(!!value);
@@ -990,18 +1368,74 @@ async function _showWeaponInteractMenu(actor, weaponItem, interactActions, ctx) 
       ev.stopPropagation();
     });
     menu.addEventListener('click', async (ev) => {
-      const btn = ev.target?.closest?.('[data-action-id]');
+      const chargeBtn = ev.target?.closest?.('[data-charge-item-id]');
+      const loadBtn = ev.target?.closest?.('[data-load-target-index]');
+      const boltBtn = ev.target?.closest?.('[data-bolt-target-index]');
+      const flyoutTrigger = ev.target?.closest?.('.spaceholder-weapon-interact-menu__flyout-trigger');
+      if (flyoutTrigger && !chargeBtn && !loadBtn && !boltBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const flyout = flyoutTrigger.closest('.spaceholder-weapon-interact-menu__flyout');
+        if (flyout) {
+          for (const f of menu.querySelectorAll('.spaceholder-weapon-interact-menu__flyout')) {
+            const open = f === flyout;
+            f.classList.toggle('is-open', open);
+            const t = f.querySelector('.spaceholder-weapon-interact-menu__flyout-trigger');
+            if (t) t.setAttribute('aria-expanded', open ? 'true' : 'false');
+          }
+        }
+        return;
+      }
+
+      const btn = chargeBtn || loadBtn || boltBtn || ev.target?.closest?.('[data-action-id]');
       if (!btn) return;
       ev.preventDefault();
       ev.stopPropagation();
-      const action = visible.find((a) => a.id === btn.dataset.actionId);
-      if (!action) return;
+
+      let action = null;
+      let runCtx = ctx;
+      if (chargeBtn) {
+        const flyout = chargeBtn.closest('.spaceholder-weapon-interact-menu__flyout');
+        const parentId = flyout?.querySelector?.('[data-action-id]')?.dataset?.actionId;
+        action = visible.find((a) => a.id === parentId);
+        const itemId = chargeBtn.dataset.chargeItemId;
+        const candidate = action?.submenuItems?.find((c) => String(c.item?.id) === String(itemId));
+        if (!action || !candidate) return;
+        runCtx = { ...ctx, chargeCandidate: candidate };
+      } else if (loadBtn) {
+        const flyout = loadBtn.closest('.spaceholder-weapon-interact-menu__flyout');
+        const parentId = flyout?.querySelector?.('[data-action-id]')?.dataset?.actionId;
+        action = visible.find((a) => a.id === parentId);
+        const idx = Number(loadBtn.dataset.loadTargetIndex);
+        const target = action?.submenuItems?.[idx];
+        if (!action || !target) return;
+        runCtx = { ...ctx, loadTarget: target };
+      } else if (boltBtn) {
+        const flyout = boltBtn.closest('.spaceholder-weapon-interact-menu__flyout');
+        const parentId = flyout?.querySelector?.('[data-action-id]')?.dataset?.actionId;
+        const parent = visible.find((a) => a.id === parentId);
+        const idx = Number(boltBtn.dataset.boltTargetIndex);
+        const target = parent?.submenuItems?.[idx];
+        if (!parent || !target?.can) return;
+        action = {
+          ...parent,
+          apCost: Math.max(0, Number(target.apCost) || 0),
+          label: `${parent.label}: ${target.label}`,
+        };
+        runCtx = { ...ctx, boltTarget: target };
+      } else {
+        action = visible.find((a) => a.id === btn.dataset.actionId);
+        if (!action) return;
+        if (Array.isArray(action.submenuItems) && action.submenuItems.length) return;
+      }
+
       _weaponInteractMenuCleanup = null;
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
+      try { disposeFlyoutAim?.(); } catch (_) { /* ignore */ }
       try { menu.remove(); } catch (_) { /* ignore */ }
       if (_weaponInteractMenuEl === menu) _weaponInteractMenuEl = null;
-      const result = await executeActorAction(actor, action, ctx);
+      const result = await executeActorAction(actor, action, runCtx);
       resolve(!!result);
     });
 
@@ -1012,18 +1446,98 @@ async function _showWeaponInteractMenu(actor, weaponItem, interactActions, ctx) 
   });
 }
 
+function _collectAmmoChargeIntoActions(actor, item, ctx) {
+  if (!item?.system?.itemTags?.isAmmo) return [];
+  const weaponTargets = findCompatibleWeaponLoadTargets(actor, item).map((t) => ({
+    ...t,
+    targetKind: 'weapon',
+  }));
+  const magTargets = findCompatibleMagazineLoadTargets(actor, item).map((t) => ({
+    magazineItem: t.magazineItem,
+    free: t.free,
+    targetKind: 'magazine',
+  }));
+  const targets = [...weaponTargets, ...magTargets];
+  if (!targets.length) return [];
+  const isMag = !!item.system?.weapon?.ammo?.connector?.enabled;
+  return [{
+    id: `item.${item.uuid}.chargeInto`,
+    source: 'item',
+    sourceItemName: item.name,
+    label: _t('SPACEHOLDER.WeaponV3.Interact.ChargeInto'),
+    menuGroup: _t(ITEM_STANDARD_GROUP_KEY),
+    menuLabel: _t('SPACEHOLDER.WeaponV3.Interact.ChargeIntoShort'),
+    icon: 'fa-solid fa-gun',
+    apCost: 0,
+    description: '',
+    showInCombat: false,
+    showInQuickbar: false,
+    interactMenuOnly: true,
+    weaponInteract: true,
+    submenuKind: 'loadInto',
+    submenuItems: targets,
+    visible: () => true,
+    enabled: () => !!ctx.editable,
+    disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
+    run: async (runCtx) => {
+      const target = runCtx?.loadTarget;
+      if (!target) return false;
+
+      if (target.targetKind === 'magazine' && target.magazineItem) {
+        const free = Math.max(1, Number(target.free) || 1);
+        const qty = Math.min(free, Math.max(1, Number(item.system?.quantity) || 1));
+        if (!target.magazineItem.system?.itemTags?.isContainer) {
+          await target.magazineItem.update({ 'system.itemTags.isContainer': true }, { render: false });
+        }
+        const moved = await moveQtyIntoMagazineContainer(actor, target.magazineItem, item, qty);
+        if (!moved?.ok) {
+          ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed'));
+          return false;
+        }
+        return true;
+      }
+
+      if (!target?.weaponItem || !target?.line || !target?.block) return false;
+      const w = getWeaponData(target.weaponItem);
+      const b = getAmmoBlock(w, target.line.id, target.block.id);
+      if (!b) return false;
+      let res;
+      if (isMag || target.mode === 'magazine') {
+        res = await attachMagazine({ actor, weaponItem: target.weaponItem, block: b, magazineItem: item });
+      } else {
+        res = await loadBlock({ actor, weaponItem: target.weaponItem, block: b, count: Infinity, ammoItem: item });
+      }
+      if (!res?.ok) {
+        ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed'));
+        return false;
+      }
+      await persistWeaponData(target.weaponItem, w);
+      return true;
+    },
+  }];
+}
+
 function _collectItemInteractActions(actor, item, ctx) {
   const interactActions = [];
   interactActions.push(..._collectWearableToggleActions(actor, ctx).filter((a) => _actionBelongsToItem(a, item)));
   interactActions.push(..._collectCustomActions(actor, ctx).filter((a) => _actionBelongsToItem(a, item)));
+  interactActions.push(..._collectAmmoChargeIntoActions(actor, item, ctx));
+  interactActions.push(..._collectMagazineUnloadActions(actor, item, ctx));
 
   if (item?.system?.itemTags?.isWeapon) {
     const weapon = getWeaponData(item);
+    let blockCount = 0;
+    for (const line of weapon.lines ?? []) {
+      blockCount += (line.ammoBlocks ?? []).length;
+    }
     for (const line of weapon.lines ?? []) {
       for (const block of line.ammoBlocks ?? []) {
-        interactActions.push(..._buildWeaponBlockActions(actor, item, line, block));
+        interactActions.push(..._buildWeaponBlockActions(actor, item, line, block, { blockCount }));
       }
     }
+    interactActions.push(..._buildWeaponBoltActions(actor, item));
+    interactActions.push(..._buildWeaponEmptyAction(actor, item));
+    interactActions.push(..._buildWeaponDetachSubmenu(actor, item));
   }
 
   return interactActions;
@@ -1060,13 +1574,387 @@ export async function openWeaponInteractMenu(actor, item, partialCtx = {}) {
 }
 
 /**
- * Build atomic ammo-block action descriptors for one weapon block.
+ * Unload live rounds from a magazine item (ammo + connector) back to inventory root.
  * @returns {ActionDescriptor[]}
  */
-function _buildWeaponBlockActions(actor, item, line, block) {
+function _collectMagazineUnloadActions(actor, item, ctx) {
+  if (!item?.system?.itemTags?.isAmmo) return [];
+  if (!item.system?.weapon?.ammo?.connector?.enabled) return [];
+  const childIds = getOrderedDirectChildItemIds(actor, item.id);
+  if (!childIds.length) return [];
+  const ammoGroup = _t('SPACEHOLDER.WeaponV3.Interact.AmmoGroup');
+  return [{
+    id: `item.${item.uuid}.unloadRounds`,
+    source: 'item',
+    sourceItemName: item.name,
+    label: _t('SPACEHOLDER.WeaponV3.Interact.UnloadRounds'),
+    menuGroup: ammoGroup,
+    menuLabel: _t('SPACEHOLDER.WeaponV3.Interact.UnloadRoundsShort'),
+    icon: 'fa-solid fa-box-open',
+    apCost: 0,
+    description: '',
+    showInCombat: false,
+    showInQuickbar: false,
+    interactMenuOnly: true,
+    weaponInteract: true,
+    visible: () => getOrderedDirectChildItemIds(actor, item.id).length > 0,
+    enabled: () => !!ctx.editable && getOrderedDirectChildItemIds(actor, item.id).length > 0,
+    disabledReason: () => (ctx.editable ? null : _t('SPACEHOLDER.ActionsSystem.Common.NotEditable')),
+    run: async () => {
+      const ids = getOrderedDirectChildItemIds(actor, item.id);
+      if (!ids.length) return false;
+      let any = false;
+      for (const id of ids) {
+        const ok = await removeActorItemFromContainer(actor, item, id);
+        if (!ok) continue;
+        const child = actor.items.get(id);
+        if (child) {
+          try {
+            await child.update({ 'system.held': true }, { render: false });
+          } catch (_) { /* ignore */ }
+        }
+        any = true;
+      }
+      if (!any) {
+        ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed'));
+        return false;
+      }
+      return true;
+    },
+  }];
+}
+
+/**
+ * Menu group / label prefix for one ammo block.
+ * @param {object} line
+ * @param {object} block
+ * @param {{blockCount?: number}} [opts]
+ * @returns {string}
+ */
+function _blockMenuPrefix(line, block, opts = {}) {
+  const lineName = String(line?.name || _t('SPACEHOLDER.WeaponV3.Line.Default')).trim();
+  const blockCount = Math.max(0, Number(opts.blockCount) || 0);
+  if (blockCount <= 1) return lineName;
+  const label = _blockLabel(block);
+  return label ? `${lineName} · ${label}` : lineName;
+}
+
+/**
+ * Short disambiguator for an ammo block (connector / caliber / localized type).
+ * @param {object} block
+ * @returns {string}
+ */
+function _blockLabel(block) {
+  if (!block) return '';
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
+    const connector = String(block.connector ?? '').trim();
+    if (connector) return connector;
+    return _t('SPACEHOLDER.WeaponV3.Block.Types.externalMagazine');
+  }
+  const caliber = String(block.caliber ?? '').trim();
+  if (caliber) return caliber;
+  const typeKey = `SPACEHOLDER.WeaponV3.Block.Types.${block.type}`;
+  const typed = _t(typeKey);
+  return typed && typed !== typeKey ? typed : String(block.type ?? '').trim();
+}
+
+/**
+ * Weapon-level flyout: detach attached magazines / batteries / charge units.
+ * @returns {ActionDescriptor[]}
+ */
+function _buildWeaponDetachSubmenu(actor, item) {
   const out = [];
-  const lineName = line.name || _t('SPACEHOLDER.WeaponV3.Line.Default');
-  const prefix = `${lineName}`;
+  if (!item?.system?.itemTags?.isWeapon) return out;
+
+  const collect = () => {
+    const next = [];
+    const w = getWeaponData(item);
+    for (const line of w.lines ?? []) {
+      for (const block of line.ammoBlocks ?? []) {
+        if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
+          if (!canDetachMagazine(block)) continue;
+          const mag = getAttachedMagazineItem(actor, block);
+          if (!mag) continue;
+          next.push({
+            item: mag,
+            line,
+            block,
+            mode: 'detachMagazine',
+            group: _blockMenuPrefix(line, block, { blockCount: 2 }),
+          });
+          continue;
+        }
+        if (block.type !== AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) continue;
+        const chamber = getChamberItem(actor, block);
+        if (chamber) {
+          next.push({
+            item: chamber,
+            line,
+            block,
+            mode: 'detachChargeUnit',
+            slot: 'chamber',
+            group: _blockMenuPrefix(line, block, { blockCount: 2 }),
+          });
+        }
+        for (const unit of getBlockContentItems(actor, block)) {
+          next.push({
+            item: unit,
+            line,
+            block,
+            mode: 'detachChargeUnit',
+            slot: 'content',
+            group: _blockMenuPrefix(line, block, { blockCount: 2 }),
+          });
+        }
+      }
+    }
+    return next;
+  };
+
+  const submenuItems = collect();
+  if (!submenuItems.length) return out;
+  const ammoGroup = _t('SPACEHOLDER.WeaponV3.Interact.AmmoGroup');
+  out.push({
+    id: `item.${item.uuid}.detachMenu`,
+    source: 'item',
+    sourceItemName: item.name,
+    label: _t('SPACEHOLDER.WeaponV3.Interact.DetachMenu'),
+    menuGroup: ammoGroup,
+    menuLabel: _t('SPACEHOLDER.WeaponV3.Interact.DetachMenuShort'),
+    icon: 'fa-solid fa-box-open',
+    apCost: 0,
+    description: ammoGroup,
+    showInCombat: true,
+    showInQuickbar: false,
+    weaponInteract: true,
+    submenuKind: 'charge',
+    submenuItems,
+    visible: () => collect().length > 0,
+    enabled: () => collect().length > 0,
+    run: async (runCtx) => {
+      const candidate = runCtx?.chargeCandidate;
+      const line = candidate?.line;
+      const blockRef = candidate?.block;
+      const unit = candidate?.item;
+      if (!line || !blockRef) return false;
+      const w = getWeaponData(item);
+      const b = getAmmoBlock(w, line.id, blockRef.id);
+      if (!b) return false;
+
+      if (candidate.mode === 'detachMagazine') {
+        const res = await detachMagazine({ actor, weaponItem: item, block: b });
+        if (!res?.ok) {
+          ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed'));
+          return false;
+        }
+        await persistWeaponData(item, w);
+        return true;
+      }
+
+      if (candidate.mode === 'detachChargeUnit' && unit) {
+        const rt = b.runtime ?? {};
+        if (String(rt.chamberItemId ?? '') === unit.id) rt.chamberItemId = '';
+        if (Array.isArray(rt.contentItemIds)) {
+          rt.contentItemIds = rt.contentItemIds.filter((id) => String(id) !== unit.id);
+        }
+        await unparentActorItemFromHost(actor, unit.id, { held: true });
+        await persistWeaponData(item, w);
+        return true;
+      }
+
+      return false;
+    },
+  });
+  return out;
+}
+
+/**
+ * Weapon-level bolt: single «Затвор» or flyout «Затвор…» when several chamber blocks.
+ * @returns {ActionDescriptor[]}
+ */
+function _buildWeaponBoltActions(actor, item) {
+  const out = [];
+  if (!item?.system?.itemTags?.isWeapon) return out;
+
+  const collect = () => {
+    const w = getWeaponData(item);
+    let blockCount = 0;
+    for (const line of w.lines ?? []) blockCount += (line.ammoBlocks ?? []).length;
+    const targets = [];
+    for (const line of w.lines ?? []) {
+      for (const block of line.ammoBlocks ?? []) {
+        if (!block?.chamberEnabled || !block.apActions?.bolt?.enabled) continue;
+        targets.push({
+          lineId: line.id,
+          blockId: block.id,
+          line,
+          block,
+          label: _blockMenuPrefix(line, block, { blockCount }),
+          apCost: Math.max(0, Number(block.apActions.bolt.value) || 0),
+          can: canBoltBlock(block, actor),
+        });
+      }
+    }
+    return targets;
+  };
+
+  const targets = collect();
+  if (!targets.length) return out;
+  const ammoGroup = _t('SPACEHOLDER.WeaponV3.Interact.AmmoGroup');
+
+  if (targets.length === 1) {
+    const only = targets[0];
+    out.push({
+      id: `item.${item.uuid}.weaponBolt`,
+      source: 'item',
+      sourceItemName: item.name,
+      label: _t('SPACEHOLDER.WeaponV3.BlockActions.Bolt'),
+      menuGroup: ammoGroup,
+      menuLabel: _t('SPACEHOLDER.WeaponV3.BlockActions.Bolt'),
+      icon: 'fa-solid fa-rotate',
+      apCost: only.apCost,
+      description: ammoGroup,
+      showInCombat: true,
+      showInQuickbar: false,
+      weaponInteract: true,
+      visible: () => true,
+      enabled: () => canBoltBlock(
+        getAmmoBlock(getWeaponData(item), only.lineId, only.blockId) ?? only.block,
+        actor,
+      ),
+      run: async () => {
+        const w = getWeaponData(item);
+        const b = getAmmoBlock(w, only.lineId, only.blockId);
+        if (!b) return false;
+        const res = await operateBolt({ actor, weaponItem: item, block: b });
+        if (!res?.ok) {
+          ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed'));
+          return false;
+        }
+        await persistWeaponData(item, w);
+        return true;
+      },
+    });
+    return out;
+  }
+
+  out.push({
+    id: `item.${item.uuid}.weaponBoltMenu`,
+    source: 'item',
+    sourceItemName: item.name,
+    label: _t('SPACEHOLDER.WeaponV3.Interact.BoltMenu'),
+    menuGroup: ammoGroup,
+    menuLabel: _t('SPACEHOLDER.WeaponV3.Interact.BoltMenuShort'),
+    icon: 'fa-solid fa-rotate',
+    apCost: 0,
+    description: ammoGroup,
+    showInCombat: true,
+    showInQuickbar: false,
+    weaponInteract: true,
+    submenuKind: 'bolt',
+    submenuItems: targets,
+    visible: () => collect().length > 1,
+    enabled: () => collect().some((t) => t.can),
+    run: async (runCtx) => {
+      const target = runCtx?.boltTarget;
+      const lineId = target?.lineId ?? target?.line?.id;
+      const blockId = target?.blockId ?? target?.block?.id;
+      if (!lineId || !blockId) return false;
+      const w = getWeaponData(item);
+      const b = getAmmoBlock(w, lineId, blockId);
+      if (!b) return false;
+      const res = await operateBolt({ actor, weaponItem: item, block: b });
+      if (!res?.ok) {
+        ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed'));
+        return false;
+      }
+      await persistWeaponData(item, w);
+      return true;
+    },
+  });
+  return out;
+}
+
+/**
+ * Weapon-level «Опустошить»: empty every ammo block that supports it.
+ * @returns {ActionDescriptor[]}
+ */
+function _buildWeaponEmptyAction(actor, item) {
+  const out = [];
+  if (!item?.system?.itemTags?.isWeapon) return out;
+
+  const listEmptyable = () => {
+    const w = getWeaponData(item);
+    const rows = [];
+    for (const line of w.lines ?? []) {
+      for (const block of line.ammoBlocks ?? []) {
+        if (!block?.apActions?.empty?.enabled) continue;
+        rows.push({
+          lineId: line.id,
+          blockId: block.id,
+          block,
+          apCost: Math.max(0, Number(block.apActions.empty.value) || 0),
+          can: canEmptyBlock(block, actor),
+        });
+      }
+    }
+    return rows;
+  };
+
+  const rows = listEmptyable();
+  if (!rows.length) return out;
+  const ammoGroup = _t('SPACEHOLDER.WeaponV3.Interact.AmmoGroup');
+  const apCost = rows.reduce((sum, row) => (row.can ? sum + row.apCost : sum), 0);
+
+  out.push({
+    id: `item.${item.uuid}.weaponEmpty`,
+    source: 'item',
+    sourceItemName: item.name,
+    label: _t('SPACEHOLDER.WeaponV3.BlockActions.Empty'),
+    menuGroup: ammoGroup,
+    menuLabel: _t('SPACEHOLDER.WeaponV3.BlockActions.Empty'),
+    icon: 'fa-solid fa-box-open',
+    apCost,
+    description: ammoGroup,
+    showInCombat: true,
+    showInQuickbar: false,
+    weaponInteract: true,
+    visible: () => listEmptyable().length > 0,
+    enabled: () => listEmptyable().some((row) => row.can),
+    run: async () => {
+      const w = getWeaponData(item);
+      let any = false;
+      for (const line of w.lines ?? []) {
+        for (const block of line.ammoBlocks ?? []) {
+          if (!block?.apActions?.empty?.enabled) continue;
+          if (!canEmptyBlock(block, actor)) continue;
+          const res = await emptyBlock({ actor, weaponItem: item, block });
+          if (res?.ok) any = true;
+        }
+      }
+      if (!any) {
+        ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed'));
+        return false;
+      }
+      await persistWeaponData(item, w);
+      return true;
+    },
+  });
+  return out;
+}
+
+/**
+ * Build atomic ammo-block action descriptors for one weapon block.
+ * @param {Actor} actor
+ * @param {Item} item
+ * @param {object} line
+ * @param {object} block
+ * @param {{blockCount?: number}} [opts]
+ * @returns {ActionDescriptor[]}
+ */
+function _buildWeaponBlockActions(actor, item, line, block, opts = {}) {
+  const out = [];
+  const prefix = _blockMenuPrefix(line, block, opts);
 
   const pushAction = ({ id, labelKey, labelData, icon, apKey, canFn, runFn }) => {
     const cfg = block.apActions?.[apKey];
@@ -1086,7 +1974,7 @@ function _buildWeaponBlockActions(actor, item, line, block) {
       showInQuickbar: false,
       weaponInteract: true,
       visible: () => canFn(),
-      enabled: () => !!item.system?.held && canFn(),
+      enabled: () => canFn(),
       run: runFn,
     });
   };
@@ -1100,7 +1988,7 @@ function _buildWeaponBlockActions(actor, item, line, block) {
       const w = getWeaponData(item);
       const b = getAmmoBlock(w, line.id, block.id);
       if (!b) return false;
-      const res = await loadBlock({ actor, block: b, count: 1 });
+      const res = await loadBlock({ actor, weaponItem: item, block: b, count: 1 });
       if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
       await persistWeaponData(item, w);
       return true;
@@ -1108,7 +1996,11 @@ function _buildWeaponBlockActions(actor, item, line, block) {
   });
 
   const loadXAmount = Math.max(0, Number(block.loadAmount) || 0);
-  if (block.apActions?.loadX?.enabled && loadXAmount > 0) {
+  // Avoid duplicate "Зарядить 1" when loadOne already covers a single round.
+  const showLoadX = block.apActions?.loadX?.enabled
+    && loadXAmount > 0
+    && !(block.apActions?.loadOne?.enabled && loadXAmount === 1);
+  if (showLoadX) {
     pushAction({
       id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.loadX`,
       labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.LoadX',
@@ -1119,7 +2011,7 @@ function _buildWeaponBlockActions(actor, item, line, block) {
         const w = getWeaponData(item);
         const b = getAmmoBlock(w, line.id, block.id);
         if (!b) return false;
-        const res = await loadBlock({ actor, block: b, count: loadXAmount });
+        const res = await loadBlock({ actor, weaponItem: item, block: b, count: loadXAmount });
         if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
         await persistWeaponData(item, w);
         return true;
@@ -1136,113 +2028,81 @@ function _buildWeaponBlockActions(actor, item, line, block) {
       const w = getWeaponData(item);
       const b = getAmmoBlock(w, line.id, block.id);
       if (!b) return false;
-      const res = await reloadBlock({ actor, block: b });
+      const res = await reloadBlock({ actor, weaponItem: item, block: b });
       if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
       await persistWeaponData(item, w);
       return true;
     },
   });
 
-  if (block.chamberEnabled) {
-    pushAction({
-      id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.bolt`,
-      labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.Bolt',
-      apKey: 'bolt',
-      icon: 'fa-solid fa-rotate',
-      canFn: () => canBoltBlock(block),
-      runFn: async () => {
-        const w = getWeaponData(item);
-        const b = getAmmoBlock(w, line.id, block.id);
-        if (!b) return false;
-        const res = await operateBolt({ actor, block: b });
-        if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
-        await persistWeaponData(item, w);
-        return true;
-      },
-    });
-  }
-
-  pushAction({
-    id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.unload`,
-    labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.Unload',
-    apKey: 'unload',
-    canFn: () => canUnloadBlock(block),
-    runFn: async () => {
-      const w = getWeaponData(item);
-      const b = getAmmoBlock(w, line.id, block.id);
-      if (!b) return false;
-      const res = await unloadBlock({ actor, block: b });
-      if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
-      await persistWeaponData(item, w);
-      return true;
-    },
-  });
-
-  pushAction({
-    id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.empty`,
-    labelKey: 'SPACEHOLDER.WeaponV3.BlockActions.Empty',
-    apKey: 'empty',
-    canFn: () => canEmptyBlock(block),
-    runFn: async () => {
-      const w = getWeaponData(item);
-      const b = getAmmoBlock(w, line.id, block.id);
-      if (!b) return false;
-      const res = await emptyBlock({ actor, block: b });
-      if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
-      await persistWeaponData(item, w);
-      return true;
-    },
-  });
+  // Unload / Empty / Bolt are weapon-level (Detach… / Empty / Bolt or Bolt…).
 
   if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
-    if (canAttachMagazine(actor, block)) {
+    const chargeCandidates = findChargeCandidatesForBlock(actor, block);
+    if (chargeCandidates.length) {
+      const apCost = block.apActions?.reload?.enabled ? Math.max(0, block.apActions.reload.value) : 0;
       out.push({
-        id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.attachMagazine`,
+        id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.charge`,
         source: 'item',
         sourceItemName: item.name,
-        label: `${prefix}: ${_t('SPACEHOLDER.WeaponV3.BlockActions.AttachMagazine')}`,
+        label: `${prefix}: ${_t('SPACEHOLDER.WeaponV3.Interact.Charge')}`,
         menuGroup: prefix,
-        menuLabel: _t('SPACEHOLDER.WeaponV3.BlockActions.AttachMagazine'),
+        menuLabel: _t('SPACEHOLDER.WeaponV3.Interact.ChargeShort'),
         icon: 'fa-solid fa-box',
-        apCost: block.apActions?.reload?.enabled ? Math.max(0, block.apActions.reload.value) : 0,
+        apCost,
         description: prefix,
         showInCombat: true,
         showInQuickbar: false,
         weaponInteract: true,
-        visible: () => canAttachMagazine(actor, block),
-        enabled: () => !!item.system?.held && canAttachMagazine(actor, block),
-        run: async () => {
+        submenuKind: 'charge',
+        submenuItems: chargeCandidates,
+        visible: () => findChargeCandidatesForBlock(actor, block).length > 0,
+        enabled: () => findChargeCandidatesForBlock(actor, block).length > 0,
+        run: async (runCtx) => {
+          const candidate = runCtx?.chargeCandidate;
+          const magItem = candidate?.item;
+          if (!magItem) return false;
           const w = getWeaponData(item);
           const b = getAmmoBlock(w, line.id, block.id);
           if (!b) return false;
-          const res = await attachMagazine({ actor, block: b });
+          const res = await attachMagazine({ actor, weaponItem: item, block: b, magazineItem: magItem });
           if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
           await persistWeaponData(item, w);
           return true;
         },
       });
     }
-    if (canDetachMagazine(block)) {
+  } else if (block.type !== AMMO_BLOCK_TYPES.INTERNAL_CHARGE) {
+    const chargeCandidates = findChargeCandidatesForBlock(actor, block);
+    if (chargeCandidates.length) {
+      const apCost = block.apActions?.loadOne?.enabled
+        ? Math.max(0, block.apActions.loadOne.value)
+        : (block.apActions?.reload?.enabled ? Math.max(0, block.apActions.reload.value) : 0);
       out.push({
-        id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.detachMagazine`,
+        id: `item.${item.uuid}.weaponBlock.${line.id}.${block.id}.charge`,
         source: 'item',
         sourceItemName: item.name,
-        label: `${prefix}: ${_t('SPACEHOLDER.WeaponV3.BlockActions.DetachMagazine')}`,
+        label: `${prefix}: ${_t('SPACEHOLDER.WeaponV3.Interact.Charge')}`,
         menuGroup: prefix,
-        menuLabel: _t('SPACEHOLDER.WeaponV3.BlockActions.DetachMagazine'),
-        icon: 'fa-solid fa-box',
-        apCost: 0,
+        menuLabel: _t('SPACEHOLDER.WeaponV3.Interact.ChargeShort'),
+        icon: 'fa-solid fa-box-open',
+        apCost,
         description: prefix,
         showInCombat: true,
         showInQuickbar: false,
         weaponInteract: true,
-        visible: () => canDetachMagazine(block),
-        enabled: () => !!item.system?.held && canDetachMagazine(block),
-        run: async () => {
+        submenuKind: 'charge',
+        submenuItems: chargeCandidates,
+        visible: () => findChargeCandidatesForBlock(actor, block).length > 0,
+        enabled: () => findChargeCandidatesForBlock(actor, block).length > 0,
+        run: async (runCtx) => {
+          const candidate = runCtx?.chargeCandidate;
+          const ammoItem = candidate?.item;
+          if (!ammoItem) return false;
           const w = getWeaponData(item);
           const b = getAmmoBlock(w, line.id, block.id);
           if (!b) return false;
-          const res = await detachMagazine({ actor, block: b });
+          const res = await loadBlock({ actor, weaponItem: item, block: b, count: Infinity, ammoItem });
           if (!res?.ok) { ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.BlockActions.Failed')); return false; }
           await persistWeaponData(item, w);
           return true;
@@ -1305,8 +2165,6 @@ function _collectWeaponV3Actions(actor, ctx) {
       });
     }
 
-    if (!item.system?.held) continue;
-
     const interactActions = [];
     for (const line of weapon.lines) {
       for (const block of line.ammoBlocks ?? []) {
@@ -1324,10 +2182,9 @@ function _collectWeaponV3Actions(actor, ctx) {
       description: '',
       showInCombat: true,
       showInQuickbar: true,
-      requiresHolding: true,
       skipPostCombatLog: true,
       visible: () => true,
-      enabled: () => !!item.system?.held,
+      enabled: () => true,
       run: async (runCtx) => openItemInteractMenu(actor, item, runCtx),
     });
   }
@@ -1343,6 +2200,7 @@ export function filterActions(list, ctx) {
   const inCombat = !!ctx.inCombat;
   return (Array.isArray(list) ? list : []).filter((a) => {
     if (!a) return false;
+    if (a.interactMenuOnly) return false;
     if (typeof a.visible === 'function' && !a.visible(ctx)) return false;
     // MVP filters: showInCombat if explicitly false in combat context.
     if (inCombat && a.showInCombat === false) return false;

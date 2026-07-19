@@ -1,0 +1,213 @@
+{
+  "name": "Граната (тест)",
+  "type": "item",
+  "_id": "shtest4grenade00",
+  "img": "icons/svg/bomb.svg",
+  "system": {
+    "description": "<p>Метательное оружие-заглушка: атака = взрывной урон по линии. Метание траектории не трогаем.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 0.5,
+    "formula": "d20 + @dex.mod + ceil(@lvl / 2)",
+    "equipped": false,
+    "held": false,
+    "anatomyId": null,
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": true,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isWeapon": true,
+      "isAmmo": false,
+      "isContainer": false
+    },
+    "weapon": {
+      "version": 3,
+      "ergonomics": {
+        "overall": 100,
+        "zones": {
+          "enabled": false,
+          "green": 100,
+          "yellow": 100,
+          "orange": 100,
+          "red": 100
+        },
+        "deadZone": {
+          "enabled": false,
+          "value": 100
+        },
+        "aimPenalty": {
+          "enabled": false,
+          "value": 100
+        },
+        "critZoneBonus": {
+          "enabled": false,
+          "value": 0
+        },
+        "critZoneSize": {
+          "enabled": false,
+          "value": 100
+        },
+        "readying": {
+          "enabled": true,
+          "value": 2
+        }
+      },
+      "lines": [
+        {
+          "id": "lineGrenadeMain0",
+          "name": "Взрыв",
+          "trajectoryKind": "simple",
+          "simpleLimit": {
+            "enabled": true,
+            "value": 3,
+            "unit": "grid"
+          },
+          "payloadId": "",
+          "aiming": 12,
+          "trigger": 2,
+          "energyMult": {
+            "enabled": false,
+            "value": 100
+          },
+          "spread": {
+            "enabled": true,
+            "value": 5
+          },
+          "recoil": {
+            "enabled": false,
+            "value": 0
+          },
+          "enterCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "exitCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "damage": [
+            {
+              "enabled": true,
+              "damageType": "explosive",
+              "damage": 40,
+              "armorPen": 30,
+              "hardness": 1,
+              "armorDamageFactor": 100,
+              "armorDamageReduction": 100,
+              "speed": 0,
+              "payloadId": ""
+            }
+          ],
+          "ammoBlocks": [],
+          "modes": [
+            {
+              "id": "modeGrenadeThrow",
+              "name": "Метать",
+              "fireMode": "single",
+              "burstCount": 3,
+              "fireDelayAp": 5,
+              "ammoCost": 1,
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "state": {
+        "activeLineId": "lineGrenadeMain0",
+        "activeModeId": "modeGrenadeThrow",
+        "ready": false
+      },
+      "ammo": {
+        "damage": [],
+        "caliber": "",
+        "connector": {
+          "enabled": false,
+          "value": ""
+        },
+        "charge": {
+          "enabled": false,
+          "max": 0,
+          "current": 0,
+          "allowFractional": false,
+          "clampNonNegative": true,
+          "scaleDamageFromSpent": false,
+          "overheatNotify": false,
+          "changePerShot": {
+            "sign": "-",
+            "formula": "1"
+          },
+          "changePerSecond": {
+            "sign": "+",
+            "formula": "0"
+          }
+        },
+        "capacity": 0,
+        "consume": true
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shtest4fldwpn000",
+  "sort": 160000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.180",
+    "createdTime": 1782000000000,
+    "modifiedTime": 1782000000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shtest4grenade00"
+}

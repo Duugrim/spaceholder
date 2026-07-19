@@ -78,6 +78,15 @@ import {
   ensureCharacterApSynced,
   installTransactionLedgerHooks,
 } from './helpers/actions/transaction-ledger.mjs';
+import {
+  apToSeconds,
+  secondsToAp,
+  advancePersonalTime,
+  getPersonalTimeTotal,
+  openSkipPersonalTimeDialog,
+  REFERENCE_TURN_SECONDS,
+} from './helpers/actions/personal-time.mjs';
+import { registerChargePersonalTimeHooks } from './helpers/weapon/charge-personal-time.mjs';
 import { installActionChatJournalHooks } from './helpers/actions/action-chat-journal.mjs';
 import { MovementManager } from './helpers/actions/movement-manager.mjs';
 import { CombatSessionManager } from './helpers/combat/combat-session-manager.mjs';
@@ -163,6 +172,14 @@ Hooks.once('init', function () {
     spendAp: (actor, cost, meta = {}) => spendAp(actor, cost, meta),
     undoTransaction: (opts = {}) => undoTransaction(opts),
     getStoredActionPoints: (actor) => getStoredActionPoints(actor),
+    apToSeconds: (actor, ap) => apToSeconds(actor, ap),
+    secondsToAp: (actor, seconds) => secondsToAp(actor, seconds),
+    advancePersonalTime: (actor, seconds, meta = {}) => advancePersonalTime(actor, seconds, meta),
+    getPersonalTimeTotal: (actor) => getPersonalTimeTotal(actor),
+    openSkipPersonalTimeDialog: () => openSkipPersonalTimeDialog(),
+    openHackMinigame: () => import('./helpers/minigames/hack/hack-generate-dialog.mjs')
+      .then(({ openHackGenerateDialog }) => openHackGenerateDialog()),
+    REFERENCE_TURN_SECONDS,
     ensureCharacterApSynced: (actor) => ensureCharacterApSynced(actor),
     nestedItemStorage: {
       addItemToNestedStorage,
@@ -875,6 +892,12 @@ Handlebars.registerHelper('eq', function (a, b) {
 /* -------------------------------------------- */
 
 Hooks.once('ready', async function () {
+  try {
+    registerChargePersonalTimeHooks();
+  } catch (e) {
+    console.error('SpaceHolder | charge personal-time hooks failed', e);
+  }
+
   // Migrate existing baked icons to match current SVG bake behavior.
   // (GM-only; best-effort; runs once per world)
   try {

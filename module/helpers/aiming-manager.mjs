@@ -738,7 +738,7 @@ export class AimingManager {
     try {
       const ctx = await this._resolveWeaponV3Context();
       if (!ctx) return false;
-      const { weaponItem, weapon, eff, lineId } = ctx;
+      const { weaponItem, weapon, eff, lineId, modeId } = ctx;
       const actor = this.currentToken?.actor ?? null;
 
       const preflight = await preflightLineShotReadiness(actor, weapon, lineId);
@@ -772,7 +772,7 @@ export class AimingManager {
       }
 
       // --- Боеприпас (все блоки линии) ----------------------------------
-      const consumed = await consumeShotFromLine({ actor, weapon, lineId });
+      const consumed = await consumeShotFromLine({ actor, weapon, weaponItem, lineId, modeId });
       if (!consumed.ok) {
         const key = consumed.reason === 'needBolt'
           ? 'SPACEHOLDER.WeaponV3.Ammo.NeedBolt'

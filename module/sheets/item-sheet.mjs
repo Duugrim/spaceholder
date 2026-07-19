@@ -1270,18 +1270,41 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       context.containerOnActor = !!actor;
       context.containerWorldMode = !actor;
       context.containerReadOnly = !this.isEditable;
-      context.containerUsesNestedStorage = !!(context.hasAmmoTag && system.itemTags.isContainer);
-      if (context.containerUsesNestedStorage) {
-        const panel = this._buildNestedStorageContainerPanelContext(system);
-        context.containerStorageRows = panel.containerStorageRows;
-        context.containerTotalWeight = panel.containerTotalWeight;
-        context.containerTotalItems = panel.containerTotalItems;
-        context.containerLimitMaxItems = panel.containerLimitMaxItems;
-        context.containerLimitMaxWeight = panel.containerLimitMaxWeight;
-        context.containerLimitItemsEnabled = panel.containerLimitMaxItems > 0;
-        context.containerLimitWeightEnabled = panel.containerLimitMaxWeight > 0;
-        context.containerLimitItemsSourceAmmo = true;
-      } else {
+      // Magazines (ammo+container) use live actor-container children, same as bandoliers.
+      // Nested storage is legacy; migrate when the item sits on an actor.
+      context.containerUsesNestedStorage = false;
+      if (actor && context.hasAmmoTag && system.itemTags.isContainer) {
+        const ammo = normalizeAmmoConfig(system.weapon?.ammo);
+        if (ammo.connector?.enabled) {
+          const cap = Math.max(0, Number(ammo.capacity) || 0);
+          if (cap > 0 && icFields.container.limits.maxItems !== cap) {
+            try {
+              await this.item.update({ 'system.container.limits.maxItems': cap }, { render: false });
+              icFields.container.limits.maxItems = cap;
+            } catch (_) { /* ignore */ }
+          }
+          const storage = normalizeNestedStorage(system.storage);
+          if (storage.contents.length) {
+            try {
+              const { extractNestedItemToActor } = await import('../helpers/item-nested-storage.mjs');
+              const { moveActorItemIntoContainer } = await import('../helpers/item-container.mjs');
+              while (normalizeNestedStorage(this.item.system?.storage).contents.length) {
+                const head = normalizeNestedStorage(this.item.system.storage).contents[0];
+                const created = await extractNestedItemToActor({
+                  containerItem: this.item,
+                  path: [head.id],
+                  quantity: Math.max(1, Number(head?.system?.quantity) || 1),
+                });
+                if (!created) break;
+                await moveActorItemIntoContainer(actor, this.item, created.id);
+              }
+            } catch (e) {
+              console.warn('SpaceHolder | magazine nested→container migrate failed', e);
+            }
+          }
+        }
+      }
+      {
         const panel = await this._buildContainerPanelContext(actor);
         context.containerGear = panel.containerGear;
         context.containerTotalWeight = panel.containerTotalWeight;
@@ -1290,7 +1313,8 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         context.containerLimitMaxWeight = icFields.container.limits.maxWeight;
         context.containerLimitItemsEnabled = icFields.container.limits.maxItems > 0;
         context.containerLimitWeightEnabled = icFields.container.limits.maxWeight > 0;
-        context.containerLimitItemsSourceAmmo = false;
+        context.containerLimitItemsSourceAmmo = !!(context.hasAmmoTag && system.itemTags.isContainer
+          && normalizeAmmoConfig(system.weapon?.ammo).connector?.enabled);
       }
       context.containerItemsFillPercent = context.containerLimitItemsEnabled
         ? Math.min(100, Math.max(0, Math.round((Number(context.containerTotalItems) / context.containerLimitMaxItems) * 100)))
@@ -1720,7 +1744,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
           index: bi,
           path: bp,
           typeLabel: L(`SPACEHOLDER.WeaponV3.Block.Types.${block.type}`),
-          counter: formatAmmoCounter(block),
+          counter: formatAmmoCounter(block, this.item?.parent?.documentName === 'Actor' ? this.item.parent : null),
           isInternalCharge,
           isExternalMagazine,
           isItemFed,
@@ -1897,6 +1921,13 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         line.modes.splice(Number(ds.mode), 1);
         return true;
       }
+      case 'toggle-change-sign': {
+        const path = String(ds.signPath ?? '').trim();
+        if (!path) return false;
+        const cur = foundry.utils.getProperty(w, path);
+        foundry.utils.setProperty(w, path, cur === '+' ? '-' : '+');
+        return true;
+      }
       case 'block-add': {
         const line = lineAt();
         if (!line) return false;
@@ -1955,6 +1986,8 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
    */
   async _handleWeaponV3Action(action, ds) {
     const w = this._getWeaponData();
+    const root = this.element?.querySelector?.('[data-sh-weapon-v3-root]');
+    if (root) this._applyWeaponV3FormFromRoot(root, w);
     if (!this._mutateWeaponV3Draft(action, ds, w)) return;
     await this._setWeaponData(w);
   }

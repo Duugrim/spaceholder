@@ -1,0 +1,110 @@
+<div class="sh-hack-minigame">
+  <header class="sh-hack-minigame__hud">
+    <div class="sh-hack-minigame__hud-item" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Seed'}}">
+      <i class="fa-solid fa-seedling" aria-hidden="true"></i>
+      <span class="sh-hack-minigame__seed">{{seed}}</span>
+    </div>
+    <div class="sh-hack-minigame__hud-item {{#if actionOver}}is-over{{/if}}" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Actions'}}">
+      <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+      <span>{{actionUsed}} / {{actionLimit}}</span>
+    </div>
+    {{#if antivirusEnabled}}
+      <div class="sh-hack-minigame__hud-item {{#if antivirusActive}}is-av-active{{/if}}" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Antivirus'}}">
+        <i class="fa-solid fa-virus" aria-hidden="true"></i>
+        <span>{{#if antivirusActive}}{{localize 'SPACEHOLDER.HackMinigame.Hud.AntivirusActive'}}{{else}}{{localize 'SPACEHOLDER.HackMinigame.Hud.AntivirusIdle'}}{{/if}}</span>
+      </div>
+    {{/if}}
+    {{#if visionEnabled}}
+      <div class="sh-hack-minigame__hud-item" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Vision'}}">
+        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+        <span>{{localize 'SPACEHOLDER.HackMinigame.Hud.VisionOn'}}</span>
+      </div>
+    {{/if}}
+    {{#if won}}
+      <div class="sh-hack-minigame__won">
+        <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
+        <span>{{localize 'SPACEHOLDER.HackMinigame.Hud.Won'}}</span>
+      </div>
+    {{/if}}
+    <button
+      type="button"
+      class="sh-hack-minigame__undo"
+      data-action="undo"
+      title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Undo'}}"
+      {{#unless canUndo}}disabled{{/unless}}
+    >
+      <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+      <span>{{localize 'SPACEHOLDER.HackMinigame.Hud.Undo'}}</span>
+    </button>
+  </header>
+
+  <div class="sh-hack-minigame__board-wrap" data-cols="{{cols}}" data-rows="{{rows}}">
+    <button
+      type="button"
+      class="sh-hack-minigame__start-edge"
+      data-action="start-edge"
+      title="{{localize 'SPACEHOLDER.HackMinigame.Hud.StartEdge'}}"
+      {{#if won}}disabled{{/if}}
+    >
+      <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+    </button>
+
+    <svg class="sh-hack-minigame__paths" aria-hidden="true"></svg>
+
+    <div class="sh-hack-minigame__grid" style="--sh-hack-cols: {{cols}}; --sh-hack-rows: {{rows}};">
+      {{#each flatCells}}
+        <button
+          type="button"
+          class="sh-hack-minigame__cell
+            status-{{this.status}}
+            {{#if this.fogged}}is-fogged{{/if}}
+            {{#if this.scannable}}is-scannable{{/if}}
+            {{#if this.activeAntivirus}}is-active-av{{/if}}
+            {{#if this.antivirusImmune}}is-av-immune{{/if}}
+            {{#if this.previewCapture}}is-preview-capture{{/if}}
+            {{#if this.previewTraversed}}is-preview-traversed{{/if}}
+            {{#if this.previewSource}}is-preview-source{{/if}}"
+          data-action="cell"
+          data-r="{{this.r}}"
+          data-c="{{this.c}}"
+          data-key="{{this.key}}"
+          {{#if ../won}}disabled{{/if}}
+        >
+          {{#unless this.fogged}}
+            {{#if this.edgeN}}<span class="sh-hack-minigame__edge-arrow edge-n bonus-{{this.edgeN}}" aria-hidden="true">&gt;</span>{{/if}}
+            {{#if this.edgeE}}<span class="sh-hack-minigame__edge-arrow edge-e bonus-{{this.edgeE}}" aria-hidden="true">&gt;</span>{{/if}}
+            {{#if this.edgeS}}<span class="sh-hack-minigame__edge-arrow edge-s bonus-{{this.edgeS}}" aria-hidden="true">&gt;</span>{{/if}}
+            {{#if this.edgeW}}<span class="sh-hack-minigame__edge-arrow edge-w bonus-{{this.edgeW}}" aria-hidden="true">&gt;</span>{{/if}}
+            {{#if this.hasRing}}
+              <span class="sh-hack-minigame__ring rings-{{this.ringRings}} bonus-{{this.ringType}}" aria-hidden="true"></span>
+            {{/if}}
+            <span class="sh-hack-minigame__cell-value">{{this.value}}</span>
+          {{/unless}}
+        </button>
+      {{/each}}
+    </div>
+
+    <button
+      type="button"
+      class="sh-hack-minigame__win-edge
+        {{#if winPreview}}is-preview-capture{{/if}}
+        {{#if winHover}}is-hover{{/if}}"
+      data-action="win-edge"
+      title="{{localize 'SPACEHOLDER.HackMinigame.Hud.WinEdge'}}"
+      {{#if won}}disabled{{/if}}
+    >
+      <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <aside class="sh-hack-minigame__cell-info" data-cell-info>
+    <div class="sh-hack-minigame__cell-info-empty">{{localize 'SPACEHOLDER.HackMinigame.CellInfo.Empty'}}</div>
+  </aside>
+
+  {{#if multiPath}}
+    <footer class="sh-hack-minigame__hint">
+      {{localize 'SPACEHOLDER.HackMinigame.Hud.MultiPathHint'}}
+      <span class="sh-hack-minigame__path-index">{{activePathLabel}}</span>
+    </footer>
+  {{/if}}
+</div>

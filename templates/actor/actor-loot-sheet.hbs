@@ -4,7 +4,7 @@
     <div class="sh-character-header__card sh-loot-header__card" style="--sh-character-header-accent: #7d71af;">
       <div class="sh-character-header__top">
         <div class="sh-portrait sh-character-header__portrait">
-          <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="150" width="150" alt=""/>
+          <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="166" width="166" alt=""/>
           {{#if editable}}
             <button
               type="button"
@@ -15,16 +15,18 @@
             ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
           {{/if}}
         </div>
-        <div class="sh-character-header__factionIconWrap" aria-hidden="true">
-          <span class="sh-character-header__factionIconPh"><i class="fa-solid fa-box-open"></i></span>
+        <div class="sh-character-header__factionCluster">
+          <div class="sh-character-header__factionIconWrap" aria-hidden="true">
+            <span class="sh-character-header__factionIconPh"><i class="fa-solid fa-box-open"></i></span>
+          </div>
+          <div class="sh-character-header__caption">
+            <span class="sh-character-header__captionFactionName">{{localize "SPACEHOLDER.ItemPilesSh.Container.LootTitle"}}</span>
+          </div>
         </div>
       </div>
-      <div class="sh-character-header__caption">
-        <span class="sh-character-header__captionFactionName">{{localize "SPACEHOLDER.ItemPilesSh.Container.LootTitle"}}</span>
-      </div>
     </div>
-    <div class="sh-character-header__aside">
-      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'SPACEHOLDER.Placeholder.Name'}}"/></h1>
+    <div class="sh-character-header__nameRow">
+      <h1 class="charname sh-character-header__name">{{actor.name}}</h1>
     </div>
   </header>
 

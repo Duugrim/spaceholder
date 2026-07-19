@@ -1528,6 +1528,43 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .sh-wv3-icon-btn:hover {
   box-shadow: 0 0 4px var(--color-shadow-primary, #ff0000);
 }
+.window-app.spaceholder .sh-wv3-change-row,
+.spaceholder .sh-wv3-change-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+.window-app.spaceholder .sh-wv3-change-row > input[type=text],
+.spaceholder .sh-wv3-change-row > input[type=text] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.window-app.spaceholder .sh-wv3-sign-btn,
+.spaceholder .sh-wv3-sign-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  min-width: 28px;
+  padding: 0;
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--color-border-light-tertiary, #b5b3a4);
+  cursor: pointer;
+  align-self: stretch;
+}
+.window-app.spaceholder .sh-wv3-sign-btn:hover:not(:disabled),
+.spaceholder .sh-wv3-sign-btn:hover:not(:disabled) {
+  box-shadow: 0 0 4px var(--color-shadow-primary, #ff0000);
+}
+.window-app.spaceholder .sh-wv3-sign-btn:disabled,
+.spaceholder .sh-wv3-sign-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .window-app.spaceholder .sh-wv3-icon-btn--danger:hover,
 .spaceholder .sh-wv3-icon-btn--danger:hover {
   color: #a83232;
@@ -8372,7 +8409,7 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   max-width: min(22rem, 100vw - 1rem);
   max-height: min(32rem, 100vh - 1rem);
   padding: 0.35rem;
-  overflow-y: auto;
+  overflow: visible;
   color: rgba(255, 255, 255, 0.92);
   background: rgba(18, 27, 42, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -8449,6 +8486,115 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   color: rgba(255, 255, 255, 0.62);
   font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.spaceholder-weapon-interact-menu__flyout {
+  position: relative;
+}
+.spaceholder-weapon-interact-menu__flyout.is-open > .spaceholder-weapon-interact-menu__submenu, .spaceholder-weapon-interact-menu__flyout:focus-within > .spaceholder-weapon-interact-menu__submenu {
+  display: flex;
+}
+.spaceholder-weapon-interact-menu__flyout.is-open > .spaceholder-weapon-interact-menu__flyout-trigger, .spaceholder-weapon-interact-menu__flyout:focus-within > .spaceholder-weapon-interact-menu__flyout-trigger {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.spaceholder-weapon-interact-menu__flyout-trigger {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.spaceholder-weapon-interact-menu__flyout-caret {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+}
+
+.spaceholder-weapon-interact-menu__submenu {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(100% - 0.4rem);
+  z-index: 2;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 15rem;
+  max-width: min(22rem, 100vw - 1rem);
+  max-height: min(24rem, 100vh - 1rem);
+  padding: 0.3rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(18, 27, 42, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.spaceholder-weapon-interact-menu__charge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  height: auto;
+  min-height: 0;
+  padding: 0.35rem 0.45rem;
+}
+
+.spaceholder-weapon-interact-menu__charge-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.spaceholder-weapon-interact-menu__charge-info {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spaceholder-weapon-interact-menu__charge-info.is-empty {
+  color: rgba(255, 180, 120, 0.78);
+  font-style: italic;
+}
+
+.spaceholder-weapon-interact-menu__charge-fill-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.spaceholder-weapon-interact-menu__charge-bar,
+.spaceholder-weapon-interact-menu__charge-bar-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.spaceholder-weapon-interact-menu__charge-bar {
+  display: block;
+  height: 0.35rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.spaceholder-weapon-interact-menu__charge-bar-fill {
+  display: block;
+  height: 100%;
+  background: rgba(120, 190, 255, 0.85);
+  border-radius: inherit;
+}
+
+.spaceholder-weapon-interact-menu__charge-count {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.62);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.72rem;
   white-space: nowrap;
 }
 
@@ -11499,56 +11645,101 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .spaceholder .sheet-header.sh-character-header {
   position: relative;
   z-index: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 12px;
+  display: block;
   padding: 0 0 10px 0;
   margin: 0 0 10px 0;
   background: transparent;
   border-bottom: 1px solid var(--sh-border);
-  min-height: 0;
+  min-height: 166px;
+  box-sizing: border-box;
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__card,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__card {
-  flex: 0 0 auto;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
   width: max-content;
   max-width: 100%;
-  min-width: calc(150px + 75px + 8px + 12px);
-  padding: 8px 12px 8px 8px;
+  min-width: calc(166px + 75px - 40px + 8px);
+  padding: 0 12px 0 0;
   border-radius: 0;
   border: 1px solid color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 50%, var(--sh-border));
+  border-left: none;
+  border-top: none;
   background: linear-gradient(155deg, color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 38%, #0e1014) 0%, color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 20%, #12151c) 100%);
   color: rgba(255, 255, 255, 0.95);
   box-sizing: border-box;
+  overflow: hidden;
   clip-path: polygon(0% 0%, 84% 0%, 100% 100%, 0% 100%);
 }
-.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__card--factionDrop,
-.spaceholder .sheet-header.sh-character-header .sh-character-header__card--factionDrop {
-  cursor: copy;
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__nameRow,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__nameRow {
+  position: absolute;
+  z-index: 3;
+  left: 166px;
+  right: 0;
+  top: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  height: 42px;
+  box-sizing: border-box;
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__edit.icon-btn,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__edit.icon-btn {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 100%;
+  min-width: 42px;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: var(--sh-surface-1);
+  border: 1px solid var(--sh-border);
+  border-top: none;
+  border-right: none;
+  color: var(--sh-text);
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__edit.icon-btn i,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__edit.icon-btn i {
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__edit.icon-btn:hover,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__edit.icon-btn:hover {
+  background: color-mix(in srgb, var(--sh-surface-1) 82%, var(--sh-accent-strong) 18%);
+  border-color: var(--sh-border-strong);
+  color: var(--sh-text);
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__top,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__top {
-  display: grid;
-  grid-template-columns: 150px 75px;
-  grid-template-rows: 150px;
-  column-gap: 0;
-  align-items: end;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
   position: relative;
+  min-height: 166px;
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__portrait.sh-portrait,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__portrait.sh-portrait {
   position: relative;
   z-index: 1;
-  flex: 0 0 150px;
-  width: 150px;
-  height: 150px;
+  flex: 0 0 calc(166px + 1px);
+  width: calc(166px + 1px);
+  height: calc(166px + 2px);
+  margin: -1px 0 -1px -1px;
+  overflow: hidden;
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__portrait.sh-portrait .profile-img,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__portrait.sh-portrait .profile-img {
+  display: block;
   flex: 0 0 auto;
   width: 100%;
   height: 100%;
@@ -11556,6 +11747,16 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   border: none;
   background: transparent;
   object-fit: cover;
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__factionCluster,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__factionCluster {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  align-self: flex-end;
+  min-width: 0;
+  margin-left: -40px;
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__factionIconWrap,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__factionIconWrap {
@@ -11567,9 +11768,6 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   min-width: 0;
   min-height: 0;
   flex-shrink: 0;
-  justify-self: start;
-  align-self: end;
-  margin-left: -40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11616,15 +11814,15 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__caption,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__caption {
-  margin-top: 4px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  align-self: stretch;
-  width: 100%;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
+  margin: 0 0 0 8px;
+  padding: 0 4px 0 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 2px;
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__captionRow,
@@ -11633,9 +11831,8 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   box-sizing: border-box;
-  width: 100%;
   max-width: 100%;
   line-height: 1;
   min-height: 0;
@@ -11645,31 +11842,23 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   font-family: "Exo 2", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", sans-serif;
   font-size: 10px;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.2;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.74);
-  text-align: center;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   transform: scaleX(1.045);
-  transform-origin: center;
+  transform-origin: left center;
   font-stretch: semi-expanded;
-}
-.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__caption > .sh-character-header__captionFactionName,
-.spaceholder .sheet-header.sh-character-header .sh-character-header__caption > .sh-character-header__captionFactionName {
-  box-sizing: border-box;
-  display: block;
-  width: 100%;
-  text-align: center;
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__captionRow .sh-character-header__captionFactionName,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__captionRow .sh-character-header__captionFactionName {
   flex: 0 1 auto;
-  width: max-content;
   max-width: 100%;
-  padding: 0 22px;
+  padding: 0 20px 0 0;
   box-sizing: border-box;
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__factionUuidInput,
@@ -11711,51 +11900,43 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   opacity: 1;
   pointer-events: auto;
 }
-.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__aside,
-.spaceholder .sheet-header.sh-character-header .sh-character-header__aside {
+.window-app.spaceholder .sheet-header.sh-character-header h1.charname.sh-character-header__name,
+.spaceholder .sheet-header.sh-character-header h1.charname.sh-character-header__name {
   flex: 1 1 auto;
   min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 0;
-}
-.window-app.spaceholder .sheet-header.sh-character-header h1.charname,
-.spaceholder .sheet-header.sh-character-header h1.charname {
-  position: absolute;
-  z-index: 3;
-  left: 169px;
-  right: 0;
-  top: 8px;
-  margin: 0;
-  align-self: stretch;
-  border: none;
-  box-sizing: border-box;
-}
-.window-app.spaceholder .sheet-header.sh-character-header h1.charname input,
-.spaceholder .sheet-header.sh-character-header h1.charname input {
-  width: 100%;
-  height: 42px;
+  align-items: center;
+  height: 100%;
   padding: 4px 10px;
-  margin: 0;
   font-size: 24px;
+  font-weight: 700;
   line-height: 1.1;
-  box-sizing: border-box;
+  border-radius: 0;
   background: var(--sh-surface-1);
   border: 1px solid var(--sh-border);
+  border-top: none;
+  border-right: none;
   color: var(--sh-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__nameRow:has(.sh-character-header__edit) .sh-character-header__name,
+.spaceholder .sheet-header.sh-character-header .sh-character-header__nameRow:has(.sh-character-header__edit) .sh-character-header__name {
+  border-right: 1px solid var(--sh-border);
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__ap,
 .spaceholder .sheet-header.sh-character-header .sh-character-header__ap {
   position: absolute;
   z-index: 3;
-  left: 169px;
+  left: 166px;
   right: 0;
-  top: calc(8px + 42px + 6px);
+  top: 42px;
   display: flex;
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-start;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -11768,9 +11949,11 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
   gap: 8px;
   max-width: 100%;
   padding: 5px 12px;
-  border-radius: var(--sh-radius-sm);
+  border-radius: 0 0 0 var(--sh-radius-sm);
   background: linear-gradient(145deg, color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 22%, rgba(14, 16, 20, 0.92)) 0%, rgba(10, 12, 16, 0.88) 100%);
   border: 1px solid color-mix(in srgb, var(--sh-character-header-accent, #3d4a5c) 35%, var(--sh-border));
+  border-top: none;
+  border-right: none;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
 }
 .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__ap-label,
@@ -11794,15 +11977,9 @@ body.game #context-menu [role=menuitem][aria-disabled=true] {
 .window-app.spaceholder.sheet.actor .sheet-header.sh-character-header,
 .spaceholder.sheet.actor .sheet-header.sh-character-header {
   flex: 0 0 auto;
-  min-height: 0;
+  min-height: 166px;
 }
 
-@supports (clip-path: path("M0 0 L1 0 L1 1 L0 1 Z")) {
-  .window-app.spaceholder .sheet-header.sh-character-header .sh-character-header__card,
-  .spaceholder .sheet-header.sh-character-header .sh-character-header__card {
-    clip-path: path("M 0 6px A 6px 6px 0 0 1 6px 0 L 84% 0 L 100% 100% L 6px 100% A 6px 6px 0 0 1 0 calc(100% - 6px) L 0 6px Z");
-  }
-}
 .window-app.spaceholder .sheet-header.sh-item-header,
 .spaceholder .sheet-header.sh-item-header {
   position: relative;
@@ -13387,4 +13564,534 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 #spaceholder-armor-penetration-tester .sh-armor-tester__empty {
   color: var(--sh-text-muted);
   margin: 0.35rem 0;
+}
+
+/* Hacking minigame */
+.spaceholder-hack-generate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.spaceholder-hack-generate .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.spaceholder-hack-generate__seed-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.spaceholder-hack-generate__seed-row input {
+  flex: 1;
+}
+.spaceholder-hack-generate__random {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+.spaceholder-hack-generate__size {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 0.4rem 0.5rem;
+  align-items: center;
+}
+.spaceholder-hack-generate__size label {
+  margin: 0;
+}
+.spaceholder-hack-generate__toggles {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+}
+.spaceholder-hack-generate__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.application.hack-minigame .window-content {
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+
+.sh-hack-minigame {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0.85rem 0.55rem 0.55rem;
+  box-sizing: border-box;
+  width: var(--sh-hack-shell-w, max-content);
+  max-width: 100%;
+  margin: 0 auto;
+  font-family: var(--font-primary, inherit);
+}
+.sh-hack-minigame__hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.sh-hack-minigame__hud-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0.9;
+}
+.sh-hack-minigame__hud-item.is-over {
+  color: #c45c26;
+  font-weight: 600;
+}
+.sh-hack-minigame__hud-item.is-av-active {
+  color: #e03535;
+  font-weight: 600;
+}
+.sh-hack-minigame__seed {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.02em;
+}
+.sh-hack-minigame__won {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #2f9e44;
+  font-weight: 600;
+}
+.sh-hack-minigame__undo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(160, 180, 210, 0.35);
+  border-radius: 4px;
+  background: rgba(40, 48, 62, 0.75);
+  color: rgba(210, 220, 235, 0.92);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.2;
+}
+.sh-hack-minigame__undo:hover:not(:disabled) {
+  border-color: rgba(140, 190, 255, 0.7);
+  background: rgba(50, 65, 90, 0.9);
+}
+.sh-hack-minigame__undo:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.sh-hack-minigame__board-wrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: 1fr;
+  gap: 8px;
+  align-items: stretch;
+  user-select: none;
+  flex: 0 0 auto;
+  margin: 0 auto 1rem;
+}
+.sh-hack-minigame__paths {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: visible;
+}
+.sh-hack-minigame__path-line {
+  stroke: rgba(80, 160, 220, 0.35);
+  stroke-width: 3;
+  stroke-linecap: round;
+  fill: none;
+}
+.sh-hack-minigame__path-line.is-active {
+  stroke: rgba(70, 190, 255, 0.95);
+  stroke-width: 4;
+}
+.sh-hack-minigame__aim-shape {
+  fill: rgba(90, 170, 255, 0.18);
+  stroke: rgba(110, 190, 255, 0.55);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.sh-hack-minigame__aim-shape.is-soft {
+  fill: rgba(90, 170, 255, 0.07);
+  stroke: rgba(110, 190, 255, 0.25);
+  stroke-dasharray: 4 3;
+}
+.sh-hack-minigame__aim-shape.is-line {
+  fill: none;
+  stroke: rgba(90, 170, 255, 0.35);
+  stroke-linecap: round;
+}
+.sh-hack-minigame__aim-shape.is-win {
+  fill: rgba(80, 200, 120, 0.22);
+  stroke: rgba(100, 220, 140, 0.65);
+}
+.sh-hack-minigame__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--sh-hack-cols, 8), 44px);
+  grid-template-rows: repeat(var(--sh-hack-rows, 6), 44px);
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+.sh-hack-minigame__cell {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 24, 30, 0.85);
+  color: #e8eef5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
+  overflow: hidden;
+}
+.sh-hack-minigame__cell:hover:not(:disabled) {
+  border-color: rgba(120, 180, 255, 0.55);
+}
+.sh-hack-minigame__cell:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+.sh-hack-minigame__cell.status-captured {
+  background: rgba(40, 90, 70, 0.9);
+  border-color: rgba(90, 200, 140, 0.55);
+}
+.sh-hack-minigame__cell.status-traversed {
+  background: rgba(45, 45, 52, 0.9);
+  color: rgba(200, 200, 210, 0.35);
+  border-style: dashed;
+}
+.sh-hack-minigame__cell.is-fogged {
+  background: rgba(12, 14, 18, 0.92);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: transparent;
+}
+.sh-hack-minigame__cell.is-scannable {
+  background: rgba(140, 28, 28, 0.55);
+  border-color: rgba(200, 70, 70, 0.35);
+}
+.sh-hack-minigame__cell.is-active-av {
+  box-shadow: inset 0 0 0 3px rgba(255, 40, 40, 0.95);
+  border-color: rgba(255, 70, 70, 0.9);
+}
+.sh-hack-minigame__cell.is-av-immune.status-untouched, .sh-hack-minigame__cell.is-av-immune:not(.status-captured):not(.status-traversed) {
+  background: rgba(110, 55, 160, 0.62);
+  border-color: rgba(181, 107, 255, 0.55);
+}
+.sh-hack-minigame__cell.is-av-immune.is-scannable.status-untouched {
+  background: rgba(110, 55, 160, 0.62);
+}
+.sh-hack-minigame__cell.is-preview-capture {
+  box-shadow: 0 0 0 2px rgba(80, 200, 120, 0.85);
+}
+.sh-hack-minigame__cell.is-preview-traversed {
+  box-shadow: 0 0 0 2px rgba(200, 120, 80, 0.7);
+  background: rgba(70, 45, 30, 0.75);
+}
+.sh-hack-minigame__cell.is-preview-source {
+  box-shadow: 0 0 0 2px rgba(90, 170, 255, 0.9);
+}
+.sh-hack-minigame__cell.is-aim-source {
+  box-shadow: 0 0 0 2px rgba(160, 200, 255, 0.95);
+  border-color: rgba(160, 200, 255, 0.75);
+}
+.sh-hack-minigame__cell.is-bonus-preview {
+  position: relative;
+  z-index: 3;
+}
+.sh-hack-minigame__cell.is-bonus-preview .sh-hack-minigame__cell-value {
+  font-weight: 700;
+}
+.sh-hack-minigame__cell.bonus-preview-purple .sh-hack-minigame__cell-value {
+  color: #d4a4ff;
+}
+.sh-hack-minigame__cell.bonus-preview-orange .sh-hack-minigame__cell-value {
+  color: #ffb06a;
+}
+.sh-hack-minigame__cell.bonus-preview-green .sh-hack-minigame__cell-value {
+  color: #7dffab;
+}
+.sh-hack-minigame__cell.bonus-preview-blue .sh-hack-minigame__cell-value {
+  color: #9cbcff;
+}
+.sh-hack-minigame__cell.bonus-preview-yellow .sh-hack-minigame__cell-value {
+  color: #ffe066;
+}
+.sh-hack-minigame__cell.is-bonus-preview-restore {
+  border-style: solid;
+}
+.sh-hack-minigame__cell.is-active-av.is-preview-capture, .sh-hack-minigame__cell.is-active-av.is-preview-traversed, .sh-hack-minigame__cell.is-active-av.is-bonus-preview {
+  box-shadow: inset 0 0 0 3px rgba(255, 40, 40, 0.95), 0 0 0 2px rgba(80, 200, 120, 0.75);
+}
+.sh-hack-minigame__bonus-shape {
+  pointer-events: none;
+  fill: rgba(180, 180, 190, 0.18);
+  stroke: rgba(220, 220, 230, 0.55);
+  stroke-width: 1.5;
+}
+.sh-hack-minigame__bonus-shape.bonus-purple {
+  fill: rgba(181, 107, 255, 0.28);
+  stroke: rgba(181, 107, 255, 0.9);
+}
+.sh-hack-minigame__bonus-shape.bonus-orange {
+  fill: rgba(240, 138, 58, 0.28);
+  stroke: rgba(240, 138, 58, 0.95);
+}
+.sh-hack-minigame__bonus-shape.bonus-green {
+  fill: rgba(61, 206, 110, 0.28);
+  stroke: rgba(61, 206, 110, 0.95);
+}
+.sh-hack-minigame__bonus-shape.bonus-blue {
+  fill: rgba(76, 141, 255, 0.28);
+  stroke: rgba(76, 141, 255, 0.95);
+}
+.sh-hack-minigame__bonus-shape.bonus-yellow {
+  fill: rgba(230, 200, 60, 0.28);
+  stroke: rgba(230, 200, 60, 0.95);
+}
+.sh-hack-minigame__cell-value {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+.sh-hack-minigame__edge-arrow {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  font-family: Consolas, "Courier New", monospace;
+}
+.sh-hack-minigame__edge-arrow.edge-n {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(-90deg);
+}
+.sh-hack-minigame__edge-arrow.edge-e {
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.sh-hack-minigame__edge-arrow.edge-s {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(90deg);
+}
+.sh-hack-minigame__edge-arrow.edge-w {
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+.sh-hack-minigame__edge-arrow.bonus-purple {
+  color: #b56bff;
+}
+.sh-hack-minigame__edge-arrow.bonus-orange {
+  color: #f08a3a;
+}
+.sh-hack-minigame__edge-arrow.bonus-green {
+  color: #3dce6e;
+}
+.sh-hack-minigame__edge-arrow.bonus-blue {
+  color: #4c8dff;
+}
+.sh-hack-minigame__edge-arrow.bonus-yellow {
+  color: #e6c83c;
+}
+.sh-hack-minigame__ring {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  border-style: solid;
+  border-width: 2px;
+  inset: 9px;
+}
+.sh-hack-minigame__ring.bonus-purple {
+  border-color: rgba(181, 107, 255, 0.9);
+  color: rgba(181, 107, 255, 0.55);
+}
+.sh-hack-minigame__ring.bonus-orange {
+  border-color: rgba(240, 138, 58, 0.9);
+  color: rgba(240, 138, 58, 0.55);
+}
+.sh-hack-minigame__ring.bonus-green {
+  border-color: rgba(61, 206, 110, 0.9);
+  color: rgba(61, 206, 110, 0.55);
+}
+.sh-hack-minigame__ring.bonus-blue {
+  border-color: rgba(76, 141, 255, 0.9);
+  color: rgba(76, 141, 255, 0.55);
+}
+.sh-hack-minigame__ring.bonus-yellow {
+  border-color: rgba(230, 200, 60, 0.9);
+  color: rgba(230, 200, 60, 0.55);
+}
+.sh-hack-minigame__ring.rings-2 {
+  box-shadow: 0 0 0 3px transparent, inset 0 0 0 3px currentColor;
+}
+.sh-hack-minigame__ring.rings-3 {
+  inset: 7px;
+  box-shadow: inset 0 0 0 3px currentColor, inset 0 0 0 6px transparent, inset 0 0 0 8px currentColor;
+}
+.sh-hack-minigame__ring.rings-4 {
+  inset: 5px;
+  box-shadow: inset 0 0 0 2px currentColor, inset 0 0 0 5px transparent, inset 0 0 0 7px currentColor, inset 0 0 0 10px transparent, inset 0 0 0 12px currentColor;
+}
+.sh-hack-minigame__start-edge, .sh-hack-minigame__win-edge {
+  width: 36px;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+.sh-hack-minigame__start-edge:disabled, .sh-hack-minigame__win-edge:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.sh-hack-minigame__start-edge {
+  border: 1px dashed rgba(120, 170, 220, 0.45);
+  background: rgba(28, 40, 55, 0.55);
+  color: rgba(140, 190, 240, 0.85);
+}
+.sh-hack-minigame__start-edge:hover:not(:disabled) {
+  border-color: rgba(120, 190, 255, 0.85);
+  background: rgba(40, 60, 85, 0.75);
+}
+.sh-hack-minigame__start-edge.is-preview-capture, .sh-hack-minigame__start-edge.is-hover {
+  box-shadow: 0 0 0 2px rgba(90, 170, 255, 0.85);
+  background: rgba(45, 75, 110, 0.85);
+}
+.sh-hack-minigame__win-edge {
+  border: 1px dashed rgba(120, 200, 140, 0.45);
+  background: rgba(30, 50, 40, 0.55);
+  color: rgba(140, 220, 160, 0.85);
+}
+.sh-hack-minigame__win-edge:hover:not(:disabled) {
+  border-color: rgba(120, 220, 160, 0.85);
+  background: rgba(40, 80, 55, 0.75);
+}
+.sh-hack-minigame__win-edge.is-preview-capture, .sh-hack-minigame__win-edge.is-hover {
+  box-shadow: 0 0 0 2px rgba(80, 200, 120, 0.85);
+  background: rgba(45, 100, 65, 0.85);
+}
+.sh-hack-minigame__cell-info {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 5.75rem;
+  box-sizing: border-box;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(16, 18, 24, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sh-hack-minigame__cell-info-empty {
+  opacity: 0.55;
+}
+.sh-hack-minigame__cell-info-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.25rem;
+}
+.sh-hack-minigame__cell-info-coord {
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+}
+.sh-hack-minigame__cell-info-value {
+  font-weight: 700;
+  color: rgba(200, 220, 255, 0.95);
+}
+.sh-hack-minigame__cell-info-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.25rem;
+}
+.sh-hack-minigame__cell-info-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.75rem;
+}
+.sh-hack-minigame__cell-info-tag.is-scannable {
+  border-color: rgba(220, 80, 80, 0.45);
+  color: #e88;
+}
+.sh-hack-minigame__cell-info-tag.is-av {
+  border-color: rgba(255, 70, 70, 0.7);
+  color: #f66;
+}
+.sh-hack-minigame__cell-info-tag.is-immune {
+  border-color: rgba(181, 107, 255, 0.55);
+  color: #d4a4ff;
+}
+.sh-hack-minigame__cell-info-tag.bonus-purple {
+  border-color: rgba(181, 107, 255, 0.55);
+  color: #d4a4ff;
+}
+.sh-hack-minigame__cell-info-tag.bonus-orange {
+  border-color: rgba(240, 138, 58, 0.55);
+  color: #ffb06a;
+}
+.sh-hack-minigame__cell-info-tag.bonus-green {
+  border-color: rgba(61, 206, 110, 0.55);
+  color: #7dffab;
+}
+.sh-hack-minigame__cell-info-tag.bonus-blue {
+  border-color: rgba(76, 141, 255, 0.55);
+  color: #9cbcff;
+}
+.sh-hack-minigame__cell-info-tag.bonus-yellow {
+  border-color: rgba(230, 200, 60, 0.55);
+  color: #ffe066;
+}
+.sh-hack-minigame__cell-info-help {
+  opacity: 0.8;
+}
+.sh-hack-minigame__hint {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+.sh-hack-minigame__path-index {
+  font-family: ui-monospace, monospace;
+  color: rgba(120, 200, 255, 0.95);
 }

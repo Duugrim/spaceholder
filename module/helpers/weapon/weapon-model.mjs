@@ -29,6 +29,20 @@ import {
   buildProjectileFromDamageEntries,
 } from './damage-profile.mjs';
 import { normalizeTrajectoryKind, normalizeSimpleLimit } from './trajectory.mjs';
+import {
+  normalizeChargeChange,
+  roundChargeValue,
+} from './charge-change.mjs';
+
+export {
+  normalizeChargeChange,
+  evalChargeFormula,
+  computeChargeDelta,
+  applyChargeChange,
+  applyChargeDelta,
+  roundChargeMagnitude,
+  roundChargeValue,
+} from './charge-change.mjs';
 
 export const SH_WEAPON_VERSION = 3;
 
@@ -182,6 +196,7 @@ export function createWeaponMode(seed = {}) {
     fireMode: FIRE_MODES.SINGLE,
     burstCount: 3,
     fireDelayAp: 5,
+    ammoCost: 1,
     enterCost: { enabled: false, value: 0 },
     exitCost: { enabled: false, value: 0 },
     modifiers: [],
@@ -308,6 +323,7 @@ export function normalizeWeaponMode(raw) {
     fireMode,
     burstCount: Math.max(2, shInt(raw.burstCount, 3, 2)),
     fireDelayAp: Math.max(0, shNum(raw.fireDelayAp, 5)),
+    ammoCost: Math.max(1, shInt(raw.ammoCost, 1, 1)),
     enterCost: _toggleable(raw.enterCost, { enabled: false, value: 0 }),
     exitCost: _toggleable(raw.exitCost, { enabled: false, value: 0 }),
     modifiers: Array.isArray(raw.modifiers) ? raw.modifiers.map(normalizeModeModifier) : [],
@@ -339,10 +355,23 @@ function _normalizeAmmoSearch(raw) {
 
 function _normalizeBlockRuntime(raw, type) {
   const src = raw && typeof raw === 'object' ? raw : {};
+  const attachedItemId = shStr(src.attachedItemId)
+    || (typeof src.magazineItemId === 'string' ? shStr(src.magazineItemId) : '');
+  const chamberItemId = shStr(src.chamberItemId);
+  const contentItemIds = Array.isArray(src.contentItemIds)
+    ? src.contentItemIds.map((id) => shStr(id)).filter(Boolean)
+    : [];
   const out = {
     charge: Math.max(0, shInt(src.charge, 0, 0)),
     chamberCharge: _bool(src.chamberCharge, false),
-    chamberItem: src.chamberItem && typeof src.chamberItem === 'object' ? src.chamberItem : null,
+    // Live Actor Item ids (preferred).
+    attachedItemId,
+    chamberItemId,
+    contentItemIds,
+    // Legacy snapshot fields — kept until lazy-migrate clears them.
+    chamberItem: src.chamberItem && typeof src.chamberItem === 'object' && !Array.isArray(src.chamberItem)
+      ? src.chamberItem
+      : null,
     contents: Array.isArray(src.contents) ? src.contents.filter((e) => e && typeof e === 'object') : [],
     magazine: src.magazine && typeof src.magazine === 'object' ? src.magazine : null,
   };
@@ -350,10 +379,16 @@ function _normalizeBlockRuntime(raw, type) {
     out.chamberItem = null;
     out.contents = [];
     out.magazine = null;
+    out.attachedItemId = '';
+    out.chamberItemId = '';
+    out.contentItemIds = [];
   } else {
     out.charge = 0;
     out.chamberCharge = false;
-    if (type !== AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) out.magazine = null;
+    if (type !== AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
+      out.magazine = null;
+      out.attachedItemId = '';
+    }
   }
   return out;
 }
@@ -425,6 +460,9 @@ function _normalizeWeaponState(raw) {
 export function normalizeAmmoConfig(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
   const chargeRaw = src.charge && typeof src.charge === 'object' ? src.charge : {};
+  const allowFractional = _bool(chargeRaw.allowFractional, false);
+  const max = roundChargeValue(Math.max(0, shNum(chargeRaw.max, 0)), allowFractional);
+  const current = roundChargeValue(Math.max(0, shNum(chargeRaw.current, 0)), allowFractional);
   return {
     damage: normalizeDamageEntries(src.damage),
     caliber: shStr(src.caliber),
@@ -434,8 +472,14 @@ export function normalizeAmmoConfig(raw) {
     },
     charge: {
       enabled: _bool(chargeRaw.enabled, false),
-      max: Math.max(0, shInt(chargeRaw.max, 0, 0)),
-      current: Math.max(0, shInt(chargeRaw.current, 0, 0)),
+      max,
+      current: Math.min(current, max || current),
+      allowFractional,
+      clampNonNegative: _bool(chargeRaw.clampNonNegative, true),
+      scaleDamageFromSpent: _bool(chargeRaw.scaleDamageFromSpent, false),
+      overheatNotify: _bool(chargeRaw.overheatNotify, false),
+      changePerShot: normalizeChargeChange(chargeRaw.changePerShot, { sign: '-', formula: '1' }),
+      changePerSecond: normalizeChargeChange(chargeRaw.changePerSecond, { sign: '+', formula: '0' }),
     },
     /** Magazine container round capacity (when connector.enabled). */
     capacity: Math.max(0, shInt(src.capacity, 0, 0)),
@@ -687,12 +731,15 @@ export function applyErgonomicsToArcs(base, ergo) {
  * Effective reserve capacity `N` for an ammo block.
  * External magazines prefer attached magazine item capacity, then block fallback.
  * @param {object} block normalized ammo block
+ * @param {Actor|null} [actor]
  * @returns {number}
  */
-export function resolveBlockCapacity(block) {
+export function resolveBlockCapacity(block, actor = null) {
   if (!block) return 0;
   if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
-    const mag = block.runtime?.magazine;
+    const magId = String(block.runtime?.attachedItemId ?? '').trim();
+    const mag = (magId && actor?.items?.get?.(magId))
+      || (block.runtime?.magazine && typeof block.runtime.magazine === 'object' ? block.runtime.magazine : null);
     if (mag) {
       const fromMag = Math.max(0, Number(normalizeAmmoConfig(mag.system?.weapon?.ammo).capacity) || 0);
       if (fromMag > 0) return fromMag;
@@ -704,32 +751,193 @@ export function resolveBlockCapacity(block) {
 
 /**
  * Ammo counter for a block: `[камера]+резерв/N` or `резерв/N`.
+ * External charge with battery/heat items shows charge current/max, not slot count.
  * @param {object} block normalized ammo block
+ * @param {Actor|null} [actor]
  * @returns {string}
  */
-export function formatAmmoCounter(block) {
+export function formatAmmoCounter(block, actor = null) {
   if (!block) return '';
-  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE && !block.runtime?.magazine) {
+  const hasMag = !!(String(block.runtime?.attachedItemId ?? '').trim() || block.runtime?.magazine);
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE && !hasMag) {
     return game?.i18n?.localize?.('SPACEHOLDER.WeaponV3.Ammo.NoMagazineAttached') ?? '—';
   }
-  const n = resolveBlockCapacity(block);
-  let reserve = 0;
-  let chamber = 0;
-  if (block.type === AMMO_BLOCK_TYPES.INTERNAL_CHARGE) {
-    reserve = Math.max(0, Number(block.runtime?.charge) || 0);
-    chamber = block.runtime?.chamberCharge ? 1 : 0;
-  } else if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
-    const mag = block.runtime?.magazine;
-    reserve = Array.isArray(mag?.system?.storage?.contents)
-      ? mag.system.storage.contents.reduce((sum, e) => sum + Math.max(0, Number(e?.system?.quantity) || 0), 0)
-      : 0;
-    chamber = block.runtime?.chamberItem ? 1 : 0;
-  } else {
-    reserve = (block.runtime?.contents ?? []).reduce((sum, e) => sum + Math.max(0, Number(e?.system?.quantity) || 0), 0);
-    chamber = block.runtime?.chamberItem ? 1 : 0;
+  const fill = getBlockFillPreview(block, actor);
+  if (fill.mode === 'charge') {
+    const cur = fill.allowFractional
+      ? Math.round(fill.current * 100) / 100
+      : Math.round(fill.current);
+    const max = fill.allowFractional
+      ? Math.round(fill.max * 100) / 100
+      : Math.round(fill.max);
+    if (block.chamberEnabled && fill.chamber) return `${fill.chamber}+${cur}/${max}`;
+    return `${cur}/${max}`;
   }
+  const n = fill.max;
+  const reserve = fill.current;
+  const chamber = fill.chamber;
   if (block.chamberEnabled) return `${chamber}+${reserve}/${n}`;
   return `${reserve}/${n}`;
+}
+
+/**
+ * Fill preview for UI gauges / counters.
+ * @param {object} block
+ * @param {Actor|null} [actor]
+ * @returns {{current: number, max: number, chamber: number, mode: 'charge'|'slots'|'empty', allowFractional: boolean}}
+ */
+export function getBlockFillPreview(block, actor = null) {
+  const empty = { current: 0, max: 0, chamber: 0, mode: 'empty', allowFractional: false };
+  if (!block) return empty;
+
+  const hasMag = !!(String(block.runtime?.attachedItemId ?? '').trim() || block.runtime?.magazine);
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE && !hasMag) {
+    return empty;
+  }
+
+  if (block.type === AMMO_BLOCK_TYPES.INTERNAL_CHARGE) {
+    return {
+      current: Math.max(0, Number(block.runtime?.charge) || 0),
+      max: Math.max(0, Number(block.capacity) || 0),
+      chamber: block.runtime?.chamberCharge ? 1 : 0,
+      mode: 'slots',
+      allowFractional: false,
+    };
+  }
+
+  const chamberId = String(block.runtime?.chamberItemId ?? '').trim();
+  const chamberLive = chamberId && actor?.items?.get?.(chamberId)
+    ? actor.items.get(chamberId)
+    : null;
+  const chamberSnap = block.runtime?.chamberItem && typeof block.runtime.chamberItem === 'object'
+    ? block.runtime.chamberItem
+    : null;
+  const chamberItem = chamberLive || chamberSnap;
+  const chamberLoaded = !!(chamberLive || chamberSnap || (block.type === AMMO_BLOCK_TYPES.INTERNAL_CHARGE && block.runtime?.chamberCharge));
+
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) {
+    const items = [];
+    if (chamberItem) items.push(chamberItem);
+    const ids = Array.isArray(block.runtime?.contentItemIds) ? block.runtime.contentItemIds : [];
+    for (const id of ids) {
+      const it = actor?.items?.get?.(String(id ?? '').trim());
+      if (it) items.push(it);
+    }
+    if (!items.length) {
+      if (block.runtime?.chamberItem) items.push(block.runtime.chamberItem);
+      for (const e of block.runtime?.contents ?? []) {
+        if (e) items.push(e);
+      }
+    }
+    let chargeCurrent = 0;
+    let chargeMax = 0;
+    let hasCharge = false;
+    let allowFractional = false;
+    for (const snap of items) {
+      const cfg = normalizeAmmoConfig(snap?.system?.weapon?.ammo);
+      if (!cfg.charge?.enabled) continue;
+      hasCharge = true;
+      allowFractional = allowFractional || !!cfg.charge.allowFractional;
+      chargeCurrent += Math.max(0, Number(cfg.charge.current) || 0);
+      chargeMax += Math.max(0, Number(cfg.charge.max) || 0);
+    }
+    if (hasCharge && chargeMax > 0) {
+      return {
+        current: chargeCurrent,
+        max: chargeMax,
+        chamber: 0,
+        mode: 'charge',
+        allowFractional,
+      };
+    }
+    const reserve = items.reduce((sum, e) => sum + Math.max(0, Number(e?.system?.quantity) || 0), 0);
+    return {
+      current: reserve,
+      max: Math.max(0, Number(block.capacity) || 0),
+      chamber: chamberLoaded ? 1 : 0,
+      mode: 'slots',
+      allowFractional: false,
+    };
+  }
+
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
+    const magId = String(block.runtime?.attachedItemId ?? '').trim();
+    const magLive = magId && actor?.items?.get?.(magId) ? actor.items.get(magId) : null;
+    let reserve = 0;
+    if (magLive && actor) {
+      for (const cid of getOrderedChildIdsForMagazine(actor, magLive)) {
+        const child = actor.items.get(cid);
+        reserve += Math.max(0, Number(child?.system?.quantity) || 0);
+      }
+    } else {
+      const mag = block.runtime?.magazine;
+      reserve = Array.isArray(mag?.system?.storage?.contents)
+        ? mag.system.storage.contents.reduce((sum, e) => sum + Math.max(0, Number(e?.system?.quantity) || 0), 0)
+        : 0;
+    }
+    return {
+      current: reserve,
+      max: resolveBlockCapacity(block, actor),
+      chamber: chamberLoaded ? 1 : 0,
+      mode: 'slots',
+      allowFractional: false,
+    };
+  }
+
+  // internalMagazine
+  let reserve = 0;
+  const ids = Array.isArray(block.runtime?.contentItemIds) ? block.runtime.contentItemIds : [];
+  if (ids.length && actor) {
+    for (const id of ids) {
+      const it = actor.items.get(String(id ?? '').trim());
+      reserve += Math.max(0, Number(it?.system?.quantity) || 0);
+    }
+  } else {
+    reserve = (block.runtime?.contents ?? []).reduce(
+      (sum, e) => sum + Math.max(0, Number(e?.system?.quantity) || 0),
+      0,
+    );
+  }
+  return {
+    current: reserve,
+    max: Math.max(0, Number(block.capacity) || 0),
+    chamber: chamberLoaded ? 1 : 0,
+    mode: 'slots',
+    allowFractional: false,
+  };
+}
+
+/**
+ * @param {Actor} actor
+ * @param {Item} magItem
+ * @returns {string[]}
+ */
+function getOrderedChildIdsForMagazine(actor, magItem) {
+  try {
+    // Lazy import avoided — duplicate thin walk by containerHostId order.
+    const hostId = String(magItem?.id ?? '').trim();
+    const ordered = [];
+    const seen = new Set();
+    const contents = Array.isArray(magItem?.system?.container?.contents)
+      ? magItem.system.container.contents
+      : [];
+    for (const el of contents) {
+      const id = typeof el === 'string' ? el : String(el?.itemId ?? '').trim();
+      if (!id || seen.has(id)) continue;
+      if (String(actor.items.get(id)?.system?.containerHostId ?? '') !== hostId) continue;
+      seen.add(id);
+      ordered.push(id);
+    }
+    for (const it of actor.items ?? []) {
+      if (it.type !== 'item') continue;
+      if (String(it.system?.containerHostId ?? '') !== hostId) continue;
+      if (seen.has(it.id)) continue;
+      ordered.push(it.id);
+    }
+    return ordered;
+  } catch (_) {
+    return [];
+  }
 }
 
 /**

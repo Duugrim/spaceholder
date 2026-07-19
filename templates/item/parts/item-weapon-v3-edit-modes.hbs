@@ -25,6 +25,10 @@
     </div>
 
     <div class="sh-wv3-grid">
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.AmmoCostHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.AmmoCost'}}</span>
+        <input type="number" min="1" step="1" data-wpath="{{mode.path}}.ammoCost" data-wdtype="Int" value="{{mode.ammoCost}}" />
+      </label>
       {{#if mode.isBurst}}
       <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.BurstCountHint'}}">
         <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.BurstCount'}}</span>

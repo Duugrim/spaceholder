@@ -269,6 +269,43 @@
     }
   }
 
+  .sh-wv3-change-row {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+
+    > input[type='text'] {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  .sh-wv3-sign-btn {
+    flex: 0 0 auto;
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 4px;
+    background: transparent;
+    border: 1px solid var(--color-border-light-tertiary, #b5b3a4);
+    cursor: pointer;
+    align-self: stretch;
+
+    &:hover:not(:disabled) {
+      box-shadow: 0 0 4px var(--color-shadow-primary, #ff0000);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
   .sh-wv3-icon-btn--danger:hover {
     color: #a83232;
   }

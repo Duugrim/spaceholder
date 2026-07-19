@@ -209,7 +209,7 @@ function _collectHeldItems(actor) {
       const activeLineId = weapon.state?.activeLineId || lines[0]?.id;
       const line = lines.find((l) => l.id === activeLineId) ?? lines[0];
       const readiness = line ? lineShotReadiness(weapon, line.id) : { ready: false };
-      const counters = (line?.ammoBlocks ?? []).map((b) => formatAmmoCounter(b)).filter(Boolean);
+      const counters = (line?.ammoBlocks ?? []).map((b) => formatAmmoCounter(b, actor)).filter(Boolean);
       const counter = counters.join(' · ');
       const lineName = String(line?.name ?? '').trim();
       const detailParts = [];

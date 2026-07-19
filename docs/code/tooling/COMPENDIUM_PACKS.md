@@ -73,7 +73,7 @@ tags:
 | `npm run pack:sh-test-items` | Основная сборка в **`packs/sh-test-items`**. **Foundry должен быть закрыт.** |
 | `npm run pack:sh-test-items:next` | Сборка в **`packs/sh-test-items-next`** (обход LOCK на основном каталоге, пока клиент открыт). Потом вручную: закрыть Foundry, заменить каталог пака или перенести содержимое. |
 | `npm run unpack:sh-test-items` | Выгрузить текущий LevelDB из **`packs/sh-test-items`** в **`pack-src/sh-test-items`** (с `-c` очищает цель). **Предпочтительно при закрытом Foundry.** Удобно подтянуть правки, сделанные в UI компендиума, обратно в исходники. |
-| `npm run generate:sh-test-actors` | Перегенерировать `pack-src/sh-test-actors/*.json` из `data/anatomy/humanoid.json` и `pack-src/sh-test-items/SH_Test_Ammo_*.json`. Запускать после изменения этих источников, перед `pack:sh-test-actors`. |
+| `npm run generate:sh-test-actors` | Перегенерировать `pack-src/sh-test-actors/*.json` из `data/anatomy/humanoid.json` и `pack-src/sh-test-items/SH_Test4_*.json`. Запускать после изменения этих источников, перед `pack:sh-test-actors`. |
 | `npm run pack:sh-test-actors` | Основная сборка в **`packs/sh-test-actors`**. **Foundry должен быть закрыт.** |
 | `npm run pack:sh-test-actors:next` | Сборка в **`packs/sh-test-actors-next`** (обход LOCK на основном каталоге, пока клиент открыт). |
 | `npm run unpack:sh-test-actors` | Выгрузить текущий LevelDB из **`packs/sh-test-actors`** в **`pack-src/sh-test-actors`** (с `-c` очищает цель). |

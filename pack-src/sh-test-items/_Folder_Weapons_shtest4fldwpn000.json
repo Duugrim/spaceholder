@@ -1,0 +1,23 @@
+{
+  "name": "Weapons",
+  "type": "Item",
+  "_id": "shtest4fldwpn000",
+  "sorting": "a",
+  "folder": null,
+  "description": "Test4 weapons (Новые предметы)",
+  "color": "#3d6b8a",
+  "sort": 260000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.180",
+    "createdTime": 1782000000000,
+    "modifiedTime": 1782000000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shtest4fldwpn000"
+}

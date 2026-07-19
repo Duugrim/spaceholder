@@ -319,7 +319,7 @@ export async function executeAttackChain({ actor, weaponItem, token, lineId, mod
       case 'reload': {
         const weapon = getWeaponData(weaponItem);
         const block = getAmmoBlock(weapon, lineId, step.blockId);
-        const res = await reloadBlock({ actor, block });
+        const res = await reloadBlock({ actor, weaponItem, block });
         if (!res.ok) {
           ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.Ammo.NoCandidates'));
           return false;
@@ -330,7 +330,7 @@ export async function executeAttackChain({ actor, weaponItem, token, lineId, mod
       case 'bolt': {
         const weapon = getWeaponData(weaponItem);
         const block = getAmmoBlock(weapon, lineId, step.blockId);
-        const res = await operateBolt({ actor, block });
+        const res = await operateBolt({ actor, weaponItem, block });
         if (!res.ok) {
           ui.notifications?.warn?.(_t('SPACEHOLDER.WeaponV3.Ammo.BoltFailed'));
           return false;
