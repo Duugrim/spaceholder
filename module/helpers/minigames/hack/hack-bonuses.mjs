@@ -32,9 +32,8 @@ export function approachEdges(move) {
 }
 
 /**
- * Purge antivirus from cells and mark untouched ones AV-immune (purple ward).
- * Captured/traversed cells are never warded — status must stay visually clear.
- * Does not disable antivirus globally.
+ * Purge antivirus from cells and defuse scanners. No permanent AV immunity.
+ * Does not by itself activate antivirus (callers exclude purple cells from trip).
  * @param {import('./hack-board.mjs').HackSession} session
  * @param {{ r: number, c: number }[]} cells
  */
@@ -44,26 +43,30 @@ export function applyPurpleWard(session, cells) {
     if (!cell) continue;
     cell.scannable = false;
     cell.activeAntivirus = false;
+    cell.antivirusSecondary = false;
     cell.antivirusFatigue = false;
-    // Ward only untouched — captured/traversed keep their status styling.
-    if (cell.status === 'untouched') cell.antivirusImmune = true;
+    cell.antivirusImmune = false;
   }
-  // Keep session.antivirusActive in sync if we wiped the last agents.
-  let any = false;
-  for (let r = 0; r < session.rows; r++) {
-    for (let c = 0; c < session.cols; c++) {
-      if (session.cells[r][c].activeAntivirus) {
-        any = true;
-        break;
-      }
-    }
-    if (any) break;
+  if (!hasAnyAntivirus(session) && session.antivirusActive) {
+    session.antivirusActive = false;
   }
-  if (!any && session.antivirusActive) session.antivirusActive = false;
 }
 
 /**
- * Clear purple ward when a cell leaves untouched status.
+ * @param {import('./hack-board.mjs').HackSession} session
+ */
+function hasAnyAntivirus(session) {
+  for (let r = 0; r < session.rows; r++) {
+    for (let c = 0; c < session.cols; c++) {
+      const cell = session.cells[r][c];
+      if (cell.activeAntivirus || cell.antivirusSecondary) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Legacy no-op: purple no longer grants sticky immunity.
  * @param {object} cell
  */
 export function clearPurpleWard(cell) {
@@ -313,6 +316,41 @@ export function previewCaptureBonuses(session, move) {
   if (!pulses.length) return { purple: false, cells: new Map() };
   const { read } = simulateMoveState(session, move);
   return buildPreviewFromPulses(pulses, (r, c) => read(r, c), { simulateEffects: true });
+}
+
+/**
+ * All cells in bonus pulse areas for a capture (before markers are cleared).
+ * Used for AV trip detection — a scannable cell is "touched" even if the
+ * effect skips it or leaves value/status unchanged.
+ * @param {import('./hack-board.mjs').HackSession} session
+ * @param {import('./hack-moves.mjs').HackMove} move
+ * @returns {{ r: number, c: number }[]}
+ */
+export function listBonusTouchedCells(session, move) {
+  /** @type {Map<string, { r: number, c: number }>} */
+  const map = new Map();
+  for (const pulse of listBonusPulses(session, move)) {
+    for (const pos of pulse.cells) {
+      map.set(cellKey(pos.r, pos.c), { r: pos.r, c: pos.c });
+    }
+  }
+  return [...map.values()];
+}
+
+/**
+ * Cells hit by purple pulses — these must not trip AV activation (scanners defused).
+ * @param {import('./hack-board.mjs').HackSession} session
+ * @param {import('./hack-moves.mjs').HackMove} move
+ * @returns {Set<string>}
+ */
+export function listPurpleTouchedKeys(session, move) {
+  /** @type {Set<string>} */
+  const keys = new Set();
+  for (const pulse of listBonusPulses(session, move)) {
+    if (pulse.type !== 'purple') continue;
+    for (const pos of pulse.cells) keys.add(cellKey(pos.r, pos.c));
+  }
+  return keys;
 }
 
 /**

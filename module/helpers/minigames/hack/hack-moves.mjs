@@ -10,6 +10,8 @@
  * @property {number} c
  * @property {number} value
  * @property {CellStatus} status
+ * @property {boolean} [activeAntivirus]
+ * @property {boolean} [antivirusSecondary]
  */
 
 /**
@@ -52,14 +54,16 @@ function inBounds(board, r, c) {
 }
 
 /**
- * Target is capturable only if untouched (or win edge).
+ * Target is capturable only if untouched and free of antivirus.
  * @param {HackBoardView} board
  * @param {number} r
  * @param {number} c
  */
 function isCapturable(board, r, c) {
   const cell = getCell(board, r, c);
-  return !!cell && cell.status === 'untouched';
+  if (!cell || cell.status !== 'untouched') return false;
+  if (cell.activeAntivirus || cell.antivirusSecondary) return false;
+  return true;
 }
 
 /**
@@ -430,6 +434,95 @@ export function listMovesFrom(board, fromR, fromC) {
 }
 
 /**
+ * Geometric capture-zone cells from a captured digit (no capturable / AV checks).
+ * Used by vision: reveal anything in reach, even if currently inactive.
+ * Digit 8 returns [] — vision intentionally skips its global zone.
+ * @param {HackBoardView} board
+ * @param {number} fromR
+ * @param {number} fromC
+ * @returns {{ r: number, c: number }[]}
+ */
+export function listReachCellsFrom(board, fromR, fromC) {
+  const cell = getCell(board, fromR, fromC);
+  if (!cell || cell.status !== 'captured') return [];
+  const value = Math.max(0, Math.min(9, Number(cell.value) || 0));
+  /** @type {{ r: number, c: number }[]} */
+  const out = [];
+  const add = (r, c) => {
+    if (!inBounds(board, r, c)) return;
+    if (r === fromR && c === fromC) return;
+    out.push({ r, c });
+  };
+
+  switch (value) {
+    case 0:
+      break;
+    case 1:
+      add(fromR, fromC + 1);
+      break;
+    case 2:
+      add(fromR - 1, fromC + 1);
+      add(fromR + 1, fromC + 1);
+      break;
+    case 3:
+      add(fromR, fromC + 1);
+      add(fromR - 1, fromC);
+      add(fromR + 1, fromC);
+      break;
+    case 4:
+      for (const dRow of [-1, 1, -2, 2]) add(fromR + dRow, fromC + 1);
+      break;
+    case 5:
+      add(fromR, fromC + 1);
+      add(fromR, fromC + 2);
+      break;
+    case 6:
+      for (const dRow of [-1, 1]) {
+        let r = fromR + dRow;
+        let c = fromC - 1;
+        while (r >= 0 && r < board.rows && c >= 0) {
+          add(r, c);
+          r += dRow;
+          c -= 1;
+        }
+      }
+      break;
+    case 7:
+      for (let r = 0; r < board.rows; r++) {
+        if (r !== fromR) add(r, fromC);
+      }
+      break;
+    case 8:
+      break;
+    case 9:
+      for (let r = 0; r < board.rows; r++) {
+        for (let c = 0; c < board.cols; c++) {
+          if (r === fromR && c === fromC) continue;
+          if (getCell(board, r, c)?.value === 9) add(r, c);
+        }
+      }
+      add(fromR - 1, fromC);
+      add(fromR + 1, fromC);
+      break;
+    default:
+      break;
+  }
+  return out;
+}
+
+/**
+ * Left-edge start zone: every cell in column 0 (no capturable check).
+ * @param {HackBoardView} board
+ * @returns {{ r: number, c: number }[]}
+ */
+export function listStartReachCells(board) {
+  /** @type {{ r: number, c: number }[]} */
+  const out = [];
+  for (let r = 0; r < board.rows; r++) out.push({ r, c: 0 });
+  return out;
+}
+
+/**
  * Start moves: capture any untouched cell in the leftmost column.
  * @param {HackBoardView} board
  * @returns {HackMove[]}
@@ -469,7 +562,7 @@ export function hasCaptured(board) {
 
 /**
  * All valid paths that can capture a given target (or win edge).
- * Sorted by source value descending (higher first).
+ * Sorted by source value ascending (lower digit first).
  * Entry from the left edge stays available for every untouched cell in column 0.
  * @param {HackBoardView} board
  * @param {{ toR?: number|null, toC?: number|null, toWin?: boolean }} target
@@ -506,10 +599,11 @@ export function listPathsTo(board, target) {
   }
 
   paths.sort((a, b) => {
-    const dv = (b.sourceValue ?? 0) - (a.sourceValue ?? 0);
-    if (dv !== 0) return dv;
-    // Prefer digit-sourced paths over left-edge entry when values tie.
+    // Prefer digit-sourced paths over left-edge entry.
     if (!!a.isStart !== !!b.isStart) return a.isStart ? 1 : -1;
+    // Lower source digit first (e.g. 1 before 8).
+    const dv = (a.sourceValue ?? 0) - (b.sourceValue ?? 0);
+    if (dv !== 0) return dv;
     const dr = (a.fromR ?? a.toR ?? 0) - (b.fromR ?? b.toR ?? 0);
     if (dr !== 0) return dr;
     return (a.fromC ?? a.toC ?? 0) - (b.fromC ?? b.toC ?? 0);

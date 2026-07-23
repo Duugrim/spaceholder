@@ -1,4 +1,4 @@
-<div class="sh-hack-minigame">
+<div class="sh-hack-minigame {{#if debugRevealMap}}is-debug-reveal{{/if}} {{#if isObserve}}is-observe{{/if}} {{#unless canInteract}}is-readonly{{/unless}}">
   <header class="sh-hack-minigame__hud">
     <div class="sh-hack-minigame__hud-item" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Seed'}}">
       <i class="fa-solid fa-seedling" aria-hidden="true"></i>
@@ -17,7 +17,25 @@
     {{#if visionEnabled}}
       <div class="sh-hack-minigame__hud-item" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Vision'}}">
         <i class="fa-solid fa-eye" aria-hidden="true"></i>
-        <span>{{localize 'SPACEHOLDER.HackMinigame.Hud.VisionOn'}}</span>
+        <span>{{visionModeLabel}}</span>
+      </div>
+    {{/if}}
+    {{#if debugRevealMap}}
+      <div class="sh-hack-minigame__hud-item is-debug-reveal" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.DebugReveal'}}">
+        <i class="fa-solid fa-ghost" aria-hidden="true"></i>
+        <span>{{localize 'SPACEHOLDER.HackMinigame.Hud.DebugReveal'}}</span>
+      </div>
+    {{/if}}
+    {{#if showParticipate}}
+      <label class="sh-hack-minigame__hud-item sh-hack-minigame__participate" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.ParticipateHint'}}">
+        <input type="checkbox" data-action="toggleParticipate" {{#if participate}}checked{{/if}} />
+        <span>{{localize 'SPACEHOLDER.HackMinigame.Hud.Participate'}}</span>
+      </label>
+    {{/if}}
+    {{#if isObserve}}
+      <div class="sh-hack-minigame__hud-item is-observe" title="{{localize 'SPACEHOLDER.HackMinigame.Hud.Observing'}}">
+        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+        <span>{{localize 'SPACEHOLDER.HackMinigame.Hud.Observing'}}</span>
       </div>
     {{/if}}
     {{#if won}}
@@ -45,6 +63,7 @@
       data-action="start-edge"
       title="{{localize 'SPACEHOLDER.HackMinigame.Hud.StartEdge'}}"
       {{#if won}}disabled{{/if}}
+      {{#unless canInteract}}disabled{{/unless}}
     >
       <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
     </button>
@@ -58,9 +77,11 @@
           class="sh-hack-minigame__cell
             status-{{this.status}}
             {{#if this.fogged}}is-fogged{{/if}}
-            {{#if this.scannable}}is-scannable{{/if}}
+            {{#if this.debugGhost}}is-debug-ghost{{/if}}
             {{#if this.activeAntivirus}}is-active-av{{/if}}
-            {{#if this.antivirusImmune}}is-av-immune{{/if}}
+            {{#if this.antivirusSecondary}}is-secondary-av{{/if}}
+            {{#if this.scannable}}is-scannable{{/if}}
+            {{#if this.debugScannable}}is-debug-scannable{{/if}}
             {{#if this.previewCapture}}is-preview-capture{{/if}}
             {{#if this.previewTraversed}}is-preview-traversed{{/if}}
             {{#if this.previewSource}}is-preview-source{{/if}}"
@@ -69,17 +90,31 @@
           data-c="{{this.c}}"
           data-key="{{this.key}}"
           {{#if ../won}}disabled{{/if}}
+          {{#unless ../canInteract}}disabled{{/unless}}
         >
-          {{#unless this.fogged}}
-            {{#if this.edgeN}}<span class="sh-hack-minigame__edge-arrow edge-n bonus-{{this.edgeN}}" aria-hidden="true">&gt;</span>{{/if}}
-            {{#if this.edgeE}}<span class="sh-hack-minigame__edge-arrow edge-e bonus-{{this.edgeE}}" aria-hidden="true">&gt;</span>{{/if}}
-            {{#if this.edgeS}}<span class="sh-hack-minigame__edge-arrow edge-s bonus-{{this.edgeS}}" aria-hidden="true">&gt;</span>{{/if}}
-            {{#if this.edgeW}}<span class="sh-hack-minigame__edge-arrow edge-w bonus-{{this.edgeW}}" aria-hidden="true">&gt;</span>{{/if}}
-            {{#if this.hasRing}}
-              <span class="sh-hack-minigame__ring rings-{{this.ringRings}} bonus-{{this.ringType}}" aria-hidden="true"></span>
-            {{/if}}
-            <span class="sh-hack-minigame__cell-value">{{this.value}}</span>
-          {{/unless}}
+          {{#if this.debugGhost}}
+            <span class="sh-hack-minigame__debug-ghost" aria-hidden="true">
+              {{#if this.edgeN}}<span class="sh-hack-minigame__edge-arrow edge-n bonus-{{this.edgeN}}">&gt;</span>{{/if}}
+              {{#if this.edgeE}}<span class="sh-hack-minigame__edge-arrow edge-e bonus-{{this.edgeE}}">&gt;</span>{{/if}}
+              {{#if this.edgeS}}<span class="sh-hack-minigame__edge-arrow edge-s bonus-{{this.edgeS}}">&gt;</span>{{/if}}
+              {{#if this.edgeW}}<span class="sh-hack-minigame__edge-arrow edge-w bonus-{{this.edgeW}}">&gt;</span>{{/if}}
+              {{#if this.hasRing}}
+                <span class="sh-hack-minigame__ring rings-{{this.ringRings}} bonus-{{this.ringType}}"></span>
+              {{/if}}
+              <span class="sh-hack-minigame__cell-value">{{this.value}}</span>
+            </span>
+          {{else}}
+            {{#unless this.fogged}}
+              {{#if this.edgeN}}<span class="sh-hack-minigame__edge-arrow edge-n bonus-{{this.edgeN}}" aria-hidden="true">&gt;</span>{{/if}}
+              {{#if this.edgeE}}<span class="sh-hack-minigame__edge-arrow edge-e bonus-{{this.edgeE}}" aria-hidden="true">&gt;</span>{{/if}}
+              {{#if this.edgeS}}<span class="sh-hack-minigame__edge-arrow edge-s bonus-{{this.edgeS}}" aria-hidden="true">&gt;</span>{{/if}}
+              {{#if this.edgeW}}<span class="sh-hack-minigame__edge-arrow edge-w bonus-{{this.edgeW}}" aria-hidden="true">&gt;</span>{{/if}}
+              {{#if this.hasRing}}
+                <span class="sh-hack-minigame__ring rings-{{this.ringRings}} bonus-{{this.ringType}}" aria-hidden="true"></span>
+              {{/if}}
+              <span class="sh-hack-minigame__cell-value">{{this.value}}</span>
+            {{/unless}}
+          {{/if}}
         </button>
       {{/each}}
     </div>
@@ -92,6 +127,7 @@
       data-action="win-edge"
       title="{{localize 'SPACEHOLDER.HackMinigame.Hud.WinEdge'}}"
       {{#if won}}disabled{{/if}}
+      {{#unless canInteract}}disabled{{/unless}}
     >
       <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
     </button>

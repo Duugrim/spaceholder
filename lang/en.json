@@ -1306,6 +1306,10 @@
     },
     "HackMinigame": {
       "WindowTitle": "Hack",
+      "Header": {
+        "RevealMap": "Reveal map",
+        "HideMapReveal": "Hide map reveal"
+      },
       "Generate": {
         "Title": "Hack minigame",
         "Seed": "Seed",
@@ -1315,8 +1319,24 @@
         "Antivirus": "Antivirus",
         "Bonuses": "Bonuses",
         "Vision": "Vision",
+        "VisionOff": "Off",
+        "VisionNeighbors": "Neighbors",
+        "VisionAvailable": "Available only",
         "RandomSeed": "Random",
-        "Start": "Start"
+        "Start": "Start",
+        "ToChat": "Send to chat"
+      },
+      "Chat": {
+        "InviteTitle": "Minigame created:",
+        "HackLabel": "Hack",
+        "HackButton": "Hack",
+        "Started": "Started hack",
+        "ObserveButton": "Observe",
+        "ResultWon": "Hack succeeded",
+        "ResultFailed": "Hack failed",
+        "ActionsStat": "Actions: {used} / {limit}",
+        "AntivirusYes": "Antivirus activated",
+        "AntivirusNo": "Antivirus not activated"
       },
       "Hud": {
         "Seed": "Seed",
@@ -1326,12 +1346,18 @@
         "AntivirusActive": "Active",
         "Vision": "Vision fog",
         "VisionOn": "Vision",
+        "VisionNeighbors": "Neighbors",
+        "VisionAvailable": "Available only",
+        "DebugReveal": "Debug reveal",
         "Won": "Breached",
         "WinEdge": "System edge",
         "StartEdge": "Entry edge",
         "Undo": "Undo",
         "MultiPathHint": "Scroll to choose path",
-        "StartSource": "start"
+        "StartSource": "start",
+        "Participate": "Participate",
+        "ParticipateHint": "Join as a co-solver",
+        "Observing": "Observing"
       },
       "CellInfo": {
         "Empty": "Hover a cell",
@@ -1342,9 +1368,10 @@
         "Value": "Digit {value}",
         "StatusUntouched": "Untouched",
         "StatusCaptured": "Captured",
-        "StatusTraversed": "Traversed",
+        "StatusTraversed": "Disabled",
         "Scannable": "Scannable",
         "ActiveAv": "Active AV",
+        "SecondaryAv": "Secondary AV",
         "Immune": "AV-immune",
         "Edge": "{dir}: {type}",
         "Ring": "Ring ×{rings}: {type}",
@@ -1352,20 +1379,20 @@
         "DirE": "E",
         "DirS": "S",
         "DirW": "W",
-        "BonusPurple": "Purple (AV ward)",
+        "BonusPurple": "Purple (purge AV / defuse scanners)",
         "BonusOrange": "Orange (−1)",
         "BonusGreen": "Green (+1)",
-        "BonusBlue": "Blue (restore)",
-        "BonusYellow": "Yellow (traverse)",
+        "BonusBlue": "Blue (enable)",
+        "BonusYellow": "Yellow (disable)",
         "Digits": {
           "0": "No outgoing paths.",
           "1": "Move one cell forward.",
           "2": "Diagonal one cell forward.",
           "3": "One cell forward, or one cell vertically.",
           "4": "Right +1 and up/down 1 or 2 (diagonal or knight).",
-          "5": "Right 1–2 cells; skip-over creates a traversed cell.",
-          "6": "Diagonal left any distance; cells between become traversed.",
-          "7": "Vertical any distance; cells between become traversed.",
+          "5": "Right 1–2 cells; skip-over disables the cell between.",
+          "6": "Diagonal left any distance; cells between are disabled.",
+          "7": "Vertical any distance; cells between are disabled.",
           "8": "Backdoor: capture almost anywhere except the last two columns; wipes 3×3 around source and target.",
           "9": "Capture another 9, or the cell above/below."
         }
@@ -1376,7 +1403,10 @@
         "NoSession": "No hack session.",
         "PathNotSelected": "Path not selected.",
         "InvalidMove": "Invalid move.",
-        "Won": "System breached."
+        "Won": "System breached.",
+        "PostedToChat": "Hack minigame posted to chat.",
+        "PostFailed": "Failed to post hack minigame to chat.",
+        "SyncFailed": "Failed to sync hack state."
       }
     },
     "AimingArc": {

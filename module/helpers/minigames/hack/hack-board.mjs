@@ -3,9 +3,9 @@
  */
 
 import { activateAntivirus, maybeActivateAntivirus, tickAntivirus } from './hack-antivirus.mjs';
-import { applyCaptureBonuses, clearPurpleWard } from './hack-bonuses.mjs';
+import { applyCaptureBonuses, clearPurpleWard, listBonusTouchedCells, listPurpleTouchedKeys } from './hack-bonuses.mjs';
 import { cellKey, getCell, listPathsTo } from './hack-moves.mjs';
-import { updateVision } from './hack-vision.mjs';
+import { updateVision, isVisionFogOn, normalizeVisionMode } from './hack-vision.mjs';
 
 /** @typedef {import('./hack-moves.mjs').HackCell} HackCell */
 /** @typedef {import('./hack-moves.mjs').HackMove} HackMove */
@@ -19,8 +19,9 @@ import { updateVision } from './hack-vision.mjs';
  * @property {number} value
  * @property {'untouched'|'captured'|'traversed'} status
  * @property {boolean} [scannable]
- * @property {boolean} [activeAntivirus]
- * @property {boolean} [antivirusImmune] purple ward — AV cannot touch this cell
+ * @property {boolean} [activeAntivirus] primary AV (moves left)
+ * @property {boolean} [antivirusSecondary] secondary AV (moves right, dashed)
+ * @property {boolean} [antivirusImmune] legacy — unused (purple no longer grants immunity)
  * @property {boolean} [revealed] vision fog — sticky once true
  * @property {Partial<Record<EdgeDir, BonusType>>} [edgeBonuses]
  * @property {{ type: BonusType, rings: number }|null} [ringBonus]
@@ -38,7 +39,7 @@ import { updateVision } from './hack-vision.mjs';
  * @property {boolean} won
  * @property {boolean} antivirusEnabled
  * @property {boolean} bonusesEnabled
- * @property {boolean} visionEnabled
+ * @property {import('./hack-vision.mjs').HackVisionMode} visionMode
  * @property {boolean} antivirusActive
  */
 
@@ -51,7 +52,8 @@ import { updateVision } from './hack-vision.mjs';
  * @param {number[][]} opts.values
  * @param {boolean} [opts.antivirusEnabled]
  * @param {boolean} [opts.bonusesEnabled]
- * @param {boolean} [opts.visionEnabled]
+ * @param {import('./hack-vision.mjs').HackVisionMode|boolean} [opts.visionMode]
+ * @param {boolean} [opts.visionEnabled] legacy alias — true→neighbors, false→off
  * @param {Array<{ r: number, c: number, scannable?: boolean, edgeBonuses?: object, ringBonus?: object|null }>} [opts.overlays]
  * @returns {HackSession}
  */
@@ -63,7 +65,8 @@ export function createSession({
   values,
   antivirusEnabled = false,
   bonusesEnabled = false,
-  visionEnabled = false,
+  visionMode = undefined,
+  visionEnabled = undefined,
   overlays = [],
 }) {
   /** @type {HackCellExt[][]} */
@@ -80,6 +83,7 @@ export function createSession({
         status: 'untouched',
         scannable: false,
         activeAntivirus: false,
+        antivirusSecondary: false,
         antivirusFatigue: false,
         antivirusImmune: false,
         revealed: false,
@@ -110,7 +114,9 @@ export function createSession({
     won: false,
     antivirusEnabled: !!antivirusEnabled,
     bonusesEnabled: !!bonusesEnabled,
-    visionEnabled: !!visionEnabled,
+    visionMode: normalizeVisionMode(
+      visionMode !== undefined ? visionMode : (visionEnabled !== undefined ? visionEnabled : 'available')
+    ),
     antivirusActive: false,
   };
   updateVision(session);
@@ -129,27 +135,69 @@ export function asBoardView(session) {
 }
 
 /**
+ * Candidate paths for a capture target (stable order from listPathsTo).
  * @param {HackSession} session
- * @param {HackMove} move
- * @returns {{ ok: true, session: HackSession } | { ok: false, reason: string }}
+ * @param {{ toR?: number|null, toC?: number|null, toWin?: boolean }} target
+ * @returns {HackMove[]}
+ */
+export function listCaptureCandidates(session, target) {
+  const board = asBoardView(session);
+  if (target?.toWin) return listPathsTo(board, { toWin: true });
+  return listPathsTo(board, {
+    toR: target?.toR,
+    toC: target?.toC,
+    toWin: false,
+  });
+}
+
+/**
+ * Resolve which path applyCapture should use.
+ * Prefer explicit pathIndex (index into listCaptureCandidates); fall back to from/to match.
+ * @param {HackSession} session
+ * @param {HackMove & { pathIndex?: number }} move
+ * @returns {HackMove|null}
+ */
+export function resolveCaptureMove(session, move) {
+  if (!session || !move) return null;
+  const paths = listCaptureCandidates(session, {
+    toR: move.toR,
+    toC: move.toC,
+    toWin: !!move.toWin,
+  });
+  if (!paths.length) return null;
+
+  const idx = Number(move.pathIndex);
+  if (Number.isInteger(idx) && idx >= 0 && idx < paths.length) {
+    return paths[idx];
+  }
+
+  if (move.isStart) {
+    return paths.find((m) => m.isStart)
+      ?? paths.find((m) => m.toR === move.toR && m.toC === move.toC)
+      ?? null;
+  }
+  if (move.toWin) {
+    return paths.find((m) => m.fromR === move.fromR && m.fromC === move.fromC && m.toWin)
+      ?? paths[0]
+      ?? null;
+  }
+  return paths.find((m) => m.fromR === move.fromR && m.fromC === move.fromC && !m.isStart)
+    ?? paths[0]
+    ?? null;
+}
+
+/**
+ * @param {HackSession} session
+ * @param {HackMove & { pathIndex?: number }} move
+ * @returns {{ ok: true, session: HackSession, activatedAntivirus: boolean } | { ok: false, reason: string }}
  */
 export function applyCapture(session, move) {
   if (!session || session.won) return { ok: false, reason: 'finished' };
   if (!move) return { ok: false, reason: 'no-move' };
 
-  const board = asBoardView(session);
-  let valid = null;
-  if (move.isStart) {
-    valid = listPathsTo(board, { toR: move.toR, toC: move.toC, toWin: false })
-      .find((m) => m.isStart);
-  } else if (move.toWin) {
-    valid = listPathsTo(board, { toWin: true })
-      .find((m) => m.fromR === move.fromR && m.fromC === move.fromC && m.toWin);
-  } else {
-    valid = listPathsTo(board, { toR: move.toR, toC: move.toC, toWin: false })
-      .find((m) => m.fromR === move.fromR && m.fromC === move.fromC && !m.isStart);
-  }
+  const valid = resolveCaptureMove(session, move);
   if (!valid) return { ok: false, reason: 'invalid' };
+  const avWasActive = !!session.antivirusActive;
 
   /** @type {HackSession} */
   const next = cloneSession(session);
@@ -177,11 +225,16 @@ export function applyCapture(session, move) {
     const activatedOnWin = maybeActivateAntivirus(next, touched);
     if (next.antivirusActive && !activatedOnWin) tickAntivirus(next);
     updateVision(next);
-    return { ok: true, session: next };
+    return {
+      ok: true,
+      session: next,
+      activatedAntivirus: !avWasActive && !!next.antivirusActive,
+    };
   }
 
   const target = getCell(next, valid.toR, valid.toC);
   if (!target || target.status !== 'untouched') return { ok: false, reason: 'invalid-target' };
+  if (target.activeAntivirus || target.antivirusSecondary) return { ok: false, reason: 'antivirus' };
 
   const captureValue = Math.max(0, Number(valid.captureValue ?? target.value) || 0);
   target.status = 'captured';
@@ -200,16 +253,32 @@ export function applyCapture(session, move) {
     next.pathEdges.push(`${cellKey(valid.fromR, valid.fromC)}>${cellKey(valid.toR, valid.toC)}`);
   }
 
-  // Spawn turn: only place seeds. Later turns: one tick after the player move.
-  const activatedNow = maybeActivateAntivirus(next, touched);
+  // Bonus areas count as AV trips even when the effect no-ops, except purple:
+  // purple defuses scanners / purges AV and must not activate.
+  const bonusTouched = listBonusTouchedCells(next, valid);
+  const purpleKeys = listPurpleTouchedKeys(next, valid);
+  /** @type {Map<string, { r: number, c: number }>} */
+  const tripMap = new Map();
+  for (const pos of touched) tripMap.set(cellKey(pos.r, pos.c), pos);
+  for (const pos of bonusTouched) {
+    const key = cellKey(pos.r, pos.c);
+    if (purpleKeys.has(key)) continue;
+    tripMap.set(key, pos);
+  }
+
+  // Spawn turn: occupy right column + scan. Later turns: move + scan.
+  const activatedNow = maybeActivateAntivirus(next, [...tripMap.values()]);
   if (next.antivirusActive && !activatedNow) tickAntivirus(next);
 
-  // Bonuses after AV tick so value/status changes stick immediately this turn
-  // (purple wards purge AV on affected cells and block future AV there).
+  // Bonuses after AV tick (purple can purge agents spawned/moved this turn).
   applyCaptureBonuses(next, valid);
   updateVision(next);
 
-  return { ok: true, session: next };
+  return {
+    ok: true,
+    session: next,
+    activatedAntivirus: !avWasActive && !!next.antivirusActive,
+  };
 }
 
 /**
@@ -226,7 +295,7 @@ export function cloneSession(session) {
     won: session.won,
     antivirusEnabled: !!session.antivirusEnabled,
     bonusesEnabled: !!session.bonusesEnabled,
-    visionEnabled: !!session.visionEnabled,
+    visionMode: normalizeVisionMode(session.visionMode),
     antivirusActive: !!session.antivirusActive,
     pathEdges: [...(session.pathEdges ?? [])],
     cells: session.cells.map((row) => row.map((cell) => ({
@@ -234,7 +303,8 @@ export function cloneSession(session) {
       edgeBonuses: { ...(cell.edgeBonuses ?? {}) },
       ringBonus: cell.ringBonus ? { ...cell.ringBonus } : null,
       antivirusFatigue: !!cell.antivirusFatigue,
-      antivirusImmune: !!cell.antivirusImmune,
+      antivirusImmune: false,
+      antivirusSecondary: !!cell.antivirusSecondary,
       revealed: !!cell.revealed,
     }))),
   };
@@ -243,8 +313,9 @@ export function cloneSession(session) {
 /**
  * @param {HackSession} session
  * @param {object} [preview]
+ * @param {{ debugReveal?: boolean }} [opts]
  */
-export function sessionToView(session, preview = null) {
+export function sessionToView(session, preview = null, opts = {}) {
   const limit = session.actionLimit;
   const used = session.actionUsed;
   const over = limit > 0 && used >= limit;
@@ -254,28 +325,35 @@ export function sessionToView(session, preview = null) {
     source: new Set(preview?.sourceKeys ?? []),
   };
 
-  const visionOn = !!session.visionEnabled;
+  const visionOn = isVisionFogOn(session);
+  const visionMode = normalizeVisionMode(session.visionMode);
+  const debugReveal = !!opts.debugReveal;
 
   const rows = session.cells.map((row) => row.map((cell) => {
     const key = cellKey(cell.r, cell.c);
     const revealed = !visionOn || !!cell.revealed;
-    const edges = revealed ? (cell.edgeBonuses ?? {}) : {};
-    const ring = revealed ? cell.ringBonus : null;
+    const fogged = visionOn && !cell.revealed;
+    const debugGhost = debugReveal && fogged;
+    const showContents = revealed || debugGhost;
+    const edges = showContents ? (cell.edgeBonuses ?? {}) : {};
+    const ring = showContents ? cell.ringBonus : null;
     return {
       r: cell.r,
       c: cell.c,
       key,
-      value: revealed ? cell.value : '',
+      value: showContents ? cell.value : '',
       status: cell.status,
       isCaptured: cell.status === 'captured',
       isTraversed: cell.status === 'traversed',
       isUntouched: cell.status === 'untouched',
       revealed,
-      fogged: visionOn && !cell.revealed,
+      fogged,
+      debugGhost,
       scannable: revealed && !!cell.scannable,
+      debugScannable: debugGhost && !!cell.scannable,
       activeAntivirus: !!cell.activeAntivirus,
-      // Ward styling only while untouched — never compete with captured/traversed.
-      antivirusImmune: revealed && !!cell.antivirusImmune && cell.status === 'untouched',
+      antivirusSecondary: !!cell.antivirusSecondary,
+      antivirusImmune: false,
       edgeN: edges.n ?? '',
       edgeE: edges.e ?? '',
       edgeS: edges.s ?? '',
@@ -301,6 +379,8 @@ export function sessionToView(session, preview = null) {
     antivirusEnabled: !!session.antivirusEnabled,
     bonusesEnabled: !!session.bonusesEnabled,
     visionEnabled: visionOn,
+    visionMode,
+    debugRevealMap: debugReveal,
     antivirusActive: !!session.antivirusActive,
     grid: rows,
   };

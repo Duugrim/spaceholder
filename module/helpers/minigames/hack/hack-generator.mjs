@@ -3,8 +3,9 @@
  */
 
 import { BONUS_TYPES, EDGE_DIRS } from './hack-bonuses.mjs';
-import { createSession } from './hack-board.mjs';
+import { applyCapture, createSession } from './hack-board.mjs';
 import { createRng, rngInt, rngWeighted } from './rng.mjs';
+import { HACK_VISION_AVAILABLE, normalizeVisionMode } from './hack-vision.mjs';
 
 /**
  * Baseline weights at the right edge of the board.
@@ -139,6 +140,51 @@ function generateBonuses(rng, rows, cols) {
 }
 
 /**
+ * Digit 9 needs peers to be useful — guarantee a minimum count.
+ * Prefers the right half of the board (where 9s naturally spawn).
+ * @param {() => number} rng
+ * @param {number[][]} values
+ * @param {number} rows
+ * @param {number} cols
+ * @param {number} minimum
+ */
+function ensureMinimumNines(rng, values, rows, cols, minimum) {
+  /** @type {{ r: number, c: number }[]} */
+  const nines = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (values[r][c] === 9) nines.push({ r, c });
+    }
+  }
+  let need = Math.max(0, minimum - nines.length);
+  if (need <= 0) return;
+
+  const mid = Math.floor(cols / 2);
+  /** @type {{ r: number, c: number }[]} */
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = mid; c < cols; c++) {
+      if (values[r][c] !== 9) candidates.push({ r, c });
+    }
+  }
+  // Fallback: whole board if the right half is somehow full of 9s already.
+  if (candidates.length < need) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < mid; c++) {
+        if (values[r][c] !== 9) candidates.push({ r, c });
+      }
+    }
+  }
+
+  while (need > 0 && candidates.length) {
+    const idx = rngInt(rng, 0, candidates.length - 1);
+    const pick = candidates.splice(idx, 1)[0];
+    values[pick.r][pick.c] = 9;
+    need -= 1;
+  }
+}
+
+/**
  * @param {object} [opts]
  * @param {string|number} [opts.seed]
  * @param {number} [opts.rows]
@@ -146,7 +192,8 @@ function generateBonuses(rng, rows, cols) {
  * @param {number} [opts.actionLimit]
  * @param {boolean} [opts.antivirus]
  * @param {boolean} [opts.bonuses]
- * @param {boolean} [opts.vision]
+ * @param {import('./hack-vision.mjs').HackVisionMode|boolean} [opts.vision]
+ * @param {import('./hack-vision.mjs').HackVisionMode|boolean} [opts.visionMode]
  * @returns {import('./hack-board.mjs').HackSession}
  */
 export function generateHackSession(opts = {}) {
@@ -156,7 +203,11 @@ export function generateHackSession(opts = {}) {
   const actionLimit = clampInt(opts.actionLimit, 1, 999, DEFAULT_HACK_ACTION_LIMIT);
   const antivirusEnabled = opts.antivirus !== false;
   const bonusesEnabled = opts.bonuses !== false;
-  const visionEnabled = opts.vision !== false;
+  const visionMode = normalizeVisionMode(
+    opts.visionMode !== undefined
+      ? opts.visionMode
+      : (opts.vision !== undefined ? opts.vision : HACK_VISION_AVAILABLE)
+  );
   const rng = createRng(`${seed}|${rows}x${cols}|av${antivirusEnabled ? 1 : 0}|bn${bonusesEnabled ? 1 : 0}`);
 
   /** @type {number[][]} */
@@ -179,6 +230,8 @@ export function generateHackSession(opts = {}) {
   if (!hasWinDigit) {
     values[Math.floor(rows / 2)][cols - 1] = 1;
   }
+
+  ensureMinimumNines(rng, values, rows, cols, 2);
 
   /** @type {Array<object>} */
   const overlays = [];
@@ -209,7 +262,7 @@ export function generateHackSession(opts = {}) {
     values,
     antivirusEnabled,
     bonusesEnabled,
-    visionEnabled,
+    visionMode,
     overlays: [...merged.values()],
   });
 }
@@ -233,4 +286,66 @@ export function randomHackSeed() {
   const a = Math.floor(Math.random() * 1e9).toString(36);
   const b = Math.floor(Math.random() * 1e9).toString(36);
   return `${a}${b}`.slice(0, 12);
+}
+
+/**
+ * @typedef {object} HackLoggedMove
+ * @property {number|null} [fromR]
+ * @property {number|null} [fromC]
+ * @property {number|null} [toR]
+ * @property {number|null} [toC]
+ * @property {boolean} [toWin]
+ * @property {boolean} [isStart]
+ * @property {number} [pathIndex]
+ */
+
+/**
+ * Rebuild a session from generation params + ordered move log.
+ * @param {object} params
+ * @param {HackLoggedMove[]} [moves]
+ * @returns {{
+ *   session: import('./hack-board.mjs').HackSession,
+ *   stats: { actionUsed: number, actionLimit: number, antivirusTriggered: boolean },
+ *   ok: boolean,
+ *   failedAt: number
+ * }}
+ */
+export function replayHackSession(params, moves = []) {
+  let session = generateHackSession(params);
+  let antivirusTriggered = false;
+  const list = Array.isArray(moves) ? moves : [];
+  let failedAt = -1;
+
+  for (let i = 0; i < list.length; i += 1) {
+    const logged = list[i] || {};
+    const result = applyCapture(session, {
+      fromR: logged.fromR ?? null,
+      fromC: logged.fromC ?? null,
+      toR: logged.toR ?? null,
+      toC: logged.toC ?? null,
+      toWin: !!logged.toWin,
+      isStart: !!logged.isStart,
+      pathIndex: Number.isInteger(Number(logged.pathIndex)) ? Number(logged.pathIndex) : undefined,
+      traversed: [],
+    });
+    if (!result.ok) {
+      failedAt = i;
+      break;
+    }
+    session = result.session;
+    if (result.activatedAntivirus) antivirusTriggered = true;
+  }
+
+  if (session.antivirusActive) antivirusTriggered = true;
+
+  return {
+    session,
+    stats: {
+      actionUsed: session.actionUsed,
+      actionLimit: session.actionLimit,
+      antivirusTriggered,
+    },
+    ok: failedAt < 0,
+    failedAt,
+  };
 }

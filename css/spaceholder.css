@@ -13606,6 +13606,14 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   flex-wrap: wrap;
   gap: 0.75rem 1.25rem;
 }
+.spaceholder-hack-generate__vision {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.spaceholder-hack-generate__vision select {
+  max-width: 16rem;
+}
 .spaceholder-hack-generate__check {
   display: inline-flex;
   align-items: center;
@@ -13656,6 +13664,10 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 .sh-hack-minigame__hud-item.is-av-active {
   color: #e03535;
   font-weight: 600;
+}
+.sh-hack-minigame__hud-item.is-debug-reveal {
+  color: rgba(180, 200, 230, 0.85);
+  opacity: 0.75;
 }
 .sh-hack-minigame__seed {
   font-family: ui-monospace, monospace;
@@ -13787,6 +13799,13 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   border-color: rgba(255, 255, 255, 0.06);
   color: transparent;
 }
+.sh-hack-minigame__cell.is-fogged.is-debug-ghost {
+  color: inherit;
+}
+.sh-hack-minigame__cell.is-debug-scannable {
+  background: linear-gradient(rgba(140, 28, 28, 0.22), rgba(140, 28, 28, 0.22)), rgba(12, 14, 18, 0.92);
+  border-color: rgba(200, 70, 70, 0.22);
+}
 .sh-hack-minigame__cell.is-scannable {
   background: rgba(140, 28, 28, 0.55);
   border-color: rgba(200, 70, 70, 0.35);
@@ -13795,12 +13814,13 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   box-shadow: inset 0 0 0 3px rgba(255, 40, 40, 0.95);
   border-color: rgba(255, 70, 70, 0.9);
 }
-.sh-hack-minigame__cell.is-av-immune.status-untouched, .sh-hack-minigame__cell.is-av-immune:not(.status-captured):not(.status-traversed) {
-  background: rgba(110, 55, 160, 0.62);
-  border-color: rgba(181, 107, 255, 0.55);
+.sh-hack-minigame__cell.is-secondary-av {
+  box-shadow: inset 0 0 0 3px rgba(255, 40, 40, 0.95);
+  border: 2px dashed rgba(255, 70, 70, 0.95);
 }
-.sh-hack-minigame__cell.is-av-immune.is-scannable.status-untouched {
-  background: rgba(110, 55, 160, 0.62);
+.sh-hack-minigame__cell.is-active-av.is-secondary-av {
+  box-shadow: inset 0 0 0 3px rgba(255, 40, 40, 0.95);
+  border: 2px dashed rgba(255, 90, 90, 0.95);
 }
 .sh-hack-minigame__cell.is-preview-capture {
   box-shadow: 0 0 0 2px rgba(80, 200, 120, 0.85);
@@ -13874,6 +13894,18 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   position: relative;
   z-index: 2;
   pointer-events: none;
+}
+.sh-hack-minigame__debug-ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0.38;
+}
+.sh-hack-minigame__debug-ghost .sh-hack-minigame__cell-value {
+  color: rgba(210, 220, 235, 0.95);
 }
 .sh-hack-minigame__edge-arrow {
   position: absolute;
@@ -14032,6 +14064,9 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   font-weight: 700;
   color: rgba(200, 220, 255, 0.95);
 }
+.sh-hack-minigame__cell-info-value.is-debug-ghost {
+  opacity: 0.55;
+}
 .sh-hack-minigame__cell-info-tags {
   display: flex;
   flex-wrap: wrap;
@@ -14048,6 +14083,11 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.75rem;
 }
+.sh-hack-minigame__cell-info-tag.is-debug {
+  border-color: rgba(160, 190, 230, 0.4);
+  color: rgba(180, 200, 230, 0.75);
+  opacity: 0.85;
+}
 .sh-hack-minigame__cell-info-tag.is-scannable {
   border-color: rgba(220, 80, 80, 0.45);
   color: #e88;
@@ -14055,6 +14095,11 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 .sh-hack-minigame__cell-info-tag.is-av {
   border-color: rgba(255, 70, 70, 0.7);
   color: #f66;
+}
+.sh-hack-minigame__cell-info-tag.is-av-secondary {
+  border-color: rgba(255, 70, 70, 0.45);
+  color: #f99;
+  border-style: dashed;
 }
 .sh-hack-minigame__cell-info-tag.is-immune {
   border-color: rgba(181, 107, 255, 0.55);
@@ -14094,4 +14139,61 @@ body.game #chat-popout .chat-message .message-content .spaceholder-action-journa
 .sh-hack-minigame__path-index {
   font-family: ui-monospace, monospace;
   color: rgba(120, 200, 255, 0.95);
+}
+.sh-hack-minigame__participate {
+  cursor: pointer;
+  user-select: none;
+}
+.sh-hack-minigame__participate input {
+  margin: 0;
+  accent-color: rgba(100, 180, 255, 0.95);
+}
+.sh-hack-minigame__hud-item.is-observe {
+  color: rgba(160, 200, 255, 0.9);
+}
+.sh-hack-minigame.is-readonly .sh-hack-minigame__cell:disabled,
+.sh-hack-minigame.is-readonly .sh-hack-minigame__start-edge:disabled,
+.sh-hack-minigame.is-readonly .sh-hack-minigame__win-edge:disabled {
+  cursor: default;
+}
+
+.spaceholder-hack-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.spaceholder-hack-chat__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+.spaceholder-hack-chat__text.is-won {
+  color: rgba(120, 220, 140, 0.95);
+}
+.spaceholder-hack-chat__text.is-failed {
+  color: rgba(230, 120, 120, 0.95);
+}
+.spaceholder-hack-chat__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+.spaceholder-hack-chat__label i {
+  opacity: 0.9;
+}
+.spaceholder-hack-chat__stats {
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+.spaceholder-hack-chat__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.spaceholder-hack-chat__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
 }

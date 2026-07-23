@@ -1,11 +1,24 @@
 /**
  * Antivirus state machine for the hacking minigame.
+ *
+ * Activation: primary AV occupies the rightmost column, then immediately scans
+ * each of those cells.
+ *
+ * Each later tick: every agent moves (primary ← left, secondary → right) and
+ * scans the destination on arrival.
+ *
+ * Primary that would leave past the leftmost column respawns on the rightmost
+ * column of the same row (and scans there).
+ *
+ * Scan:
+ * - captured → value 0, status untouched; primary also spawns a secondary here
+ * - disabled (traversed) → untouched
+ * Secondary never spawns further AV, and is removed after it zeros a captured cell.
  */
 
 import { cellKey, getCell } from './hack-moves.mjs';
 
 /**
- * After a capture: if any newly touched scannable cell was hit, activate AV.
  * @param {import('./hack-board.mjs').HackSession} session
  * @param {{ r: number, c: number }[]} touched
  * @returns {boolean} true if AV was newly activated this call
@@ -15,7 +28,7 @@ export function maybeActivateAntivirus(session, touched) {
 
   for (const pos of touched) {
     const cell = getCell(session, pos.r, pos.c);
-    if (cell?.scannable && !cell.antivirusImmune) {
+    if (cell?.scannable) {
       activateAntivirus(session);
       return true;
     }
@@ -24,14 +37,7 @@ export function maybeActivateAntivirus(session, touched) {
 }
 
 /**
- * @param {object} cell
- * @returns {boolean}
- */
-function isAvBlocked(cell) {
-  return !!cell?.antivirusImmune;
-}
-
-/**
+ * Occupy the rightmost column with primary AV and scan each cell.
  * @param {import('./hack-board.mjs').HackSession} session
  */
 export function activateAntivirus(session) {
@@ -41,41 +47,64 @@ export function activateAntivirus(session) {
       const cell = session.cells[r][c];
       cell.scannable = false;
       cell.activeAntivirus = false;
-      cellClearFatigue(cell);
+      cell.antivirusSecondary = false;
+      cell.antivirusFatigue = false;
     }
   }
-  const top = getCell(session, 0, session.cols - 1);
-  const bot = getCell(session, session.rows - 1, session.cols - 1);
-  if (top && !isAvBlocked(top)) top.activeAntivirus = true;
-  if (bot && session.rows > 1 && !isAvBlocked(bot)) bot.activeAntivirus = true;
+
+  const rightCol = session.cols - 1;
+  /** @type {Set<string>} */
+  const secondaryKeys = new Set();
+  for (let r = 0; r < session.rows; r++) {
+    const cell = getCell(session, r, rightCol);
+    if (!cell) continue;
+    cell.activeAntivirus = true;
+    scanCell(session, cell, true, secondaryKeys);
+  }
+  for (const key of secondaryKeys) {
+    const [rs, cs] = key.split(',').map(Number);
+    const cell = getCell(session, rs, cs);
+    if (cell) cell.antivirusSecondary = true;
+  }
   syncAntivirusActiveFlag(session);
 }
 
 /**
+ * @param {import('./hack-board.mjs').HackSession} session
  * @param {object} cell
+ * @param {boolean} canSpawnSecondary
+ * @param {Set<string>} secondaryKeys
+ * @returns {boolean} true if a captured cell was zeroed
  */
-function cellClearFatigue(cell) {
-  cell.antivirusFatigue = false;
+function scanCell(session, cell, canSpawnSecondary, secondaryKeys) {
+  if (!cell) return false;
+  if (cell.status === 'captured') {
+    cell.value = 0;
+    cell.status = 'untouched';
+    if (canSpawnSecondary) secondaryKeys.add(cellKey(cell.r, cell.c));
+    return true;
+  }
+  if (cell.status === 'traversed') {
+    cell.status = 'untouched';
+  }
+  return false;
 }
 
 /**
- * One antivirus tick after a player capture.
- * Not run on the spawn turn (activation only places corner seeds).
- *
- * Simultaneous snapshot resolution.
- * Cells that die gain one-tick fatigue so holes are not instantly refilled
- * (prevents perpetual fringe churn).
- *
+ * One antivirus tick after a player capture (not on the spawn turn).
+ * Simultaneous snapshot: move, then scan destinations.
  * @param {import('./hack-board.mjs').HackSession} session
  */
 export function tickAntivirus(session) {
   if (!session.antivirusEnabled || !session.antivirusActive) return;
 
-  /** @type {{ r: number, c: number }[]} */
+  /** @type {{ r: number, c: number, secondary: boolean }[]} */
   const agents = [];
   for (let r = 0; r < session.rows; r++) {
     for (let c = 0; c < session.cols; c++) {
-      if (session.cells[r][c].activeAntivirus) agents.push({ r, c });
+      const cell = session.cells[r][c];
+      if (cell.activeAntivirus) agents.push({ r, c, secondary: false });
+      if (cell.antivirusSecondary) agents.push({ r, c, secondary: true });
     }
   }
   if (!agents.length) {
@@ -83,71 +112,87 @@ export function tickAntivirus(session) {
     return;
   }
 
-  const agentKeys = new Set(agents.map((p) => cellKey(p.r, p.c)));
+  const rightCol = session.cols - 1;
 
-  /** @type {{ r: number, c: number, kind: 'traverse'|'zero' }[]} */
-  const scans = [];
-  /** @type {Map<string, { r: number, c: number }>} */
-  const spreadMap = new Map();
-  /** @type {{ r: number, c: number }[]} */
-  const dies = [];
+  /** @type {Set<string>} */
+  const nextPrimary = new Set();
+  /** @type {Set<string>} */
+  const nextSecondary = new Set();
+  /** @type {{ r: number, c: number, secondary: boolean }[]} */
+  const arrivals = [];
 
-  for (const pos of agents) {
-    const cell = getCell(session, pos.r, pos.c);
-    if (!cell) continue;
-
-    // Purple-warded cells purge any AV presence and never act.
-    if (isAvBlocked(cell)) {
-      dies.push(pos);
+  for (const agent of agents) {
+    if (agent.secondary) {
+      const nr = agent.r;
+      const nc = agent.c + 1;
+      const dest = getCell(session, nr, nc);
+      if (!dest) continue; // secondary left the board on the right
+      const key = cellKey(nr, nc);
+      nextSecondary.add(key);
+      arrivals.push({ r: nr, c: nc, secondary: true });
       continue;
     }
 
-    if (cell.status === 'traversed') {
-      scans.push({ r: pos.r, c: pos.c, kind: 'traverse' });
-      continue;
-    }
-    // On a captured cell: zero its value (spread still treats captured ≡ untouched).
-    if (cell.status === 'captured' && cell.value > 0) {
-      scans.push({ r: pos.r, c: pos.c, kind: 'zero' });
-      continue;
-    }
-
-    const targets = collectSpreadTargets(session, pos.r, pos.c, agentKeys);
-    if (targets.length) {
-      for (const t of targets) spreadMap.set(cellKey(t.r, t.c), t);
-      continue;
-    }
-
-    dies.push(pos);
+    // Primary: step left; past the left edge → respawn on the rightmost column.
+    const nr = agent.r;
+    let nc = agent.c - 1;
+    if (nc < 0) nc = rightCol;
+    const dest = getCell(session, nr, nc);
+    if (!dest) continue;
+    const key = cellKey(nr, nc);
+    nextPrimary.add(key);
+    arrivals.push({ r: nr, c: nc, secondary: false });
   }
 
-  for (const scan of scans) {
-    const cell = getCell(session, scan.r, scan.c);
-    if (!cell || isAvBlocked(cell)) continue;
-    if (scan.kind === 'traverse') cell.status = 'untouched';
-    else cell.value = 0;
-  }
-
-  for (const pos of spreadMap.values()) {
-    const cell = getCell(session, pos.r, pos.c);
-    if (!cell || isAvBlocked(cell)) continue;
-    cell.activeAntivirus = true;
-    cell.antivirusFatigue = false;
-  }
-
-  // Clear prior fatigue, then mark this tick's deaths as fatigued (blocked next tick)
+  // Clear old presence, apply moves.
   for (let r = 0; r < session.rows; r++) {
     for (let c = 0; c < session.cols; c++) {
       const cell = session.cells[r][c];
-      if (!cell.activeAntivirus) cell.antivirusFatigue = false;
+      cell.activeAntivirus = false;
+      cell.antivirusSecondary = false;
     }
   }
+  for (const key of nextPrimary) {
+    const [r, c] = key.split(',').map(Number);
+    const cell = getCell(session, r, c);
+    if (cell) cell.activeAntivirus = true;
+  }
+  for (const key of nextSecondary) {
+    const [r, c] = key.split(',').map(Number);
+    const cell = getCell(session, r, c);
+    if (cell) cell.antivirusSecondary = true;
+  }
 
-  for (const pos of dies) {
-    const cell = getCell(session, pos.r, pos.c);
+  // Scan each arrival (dedupe per cell: prefer primary scan so it can spawn).
+  /** @type {Map<string, boolean>} key → canSpawnSecondary */
+  const scanSpawn = new Map();
+  for (const arrival of arrivals) {
+    const key = cellKey(arrival.r, arrival.c);
+    const canSpawn = !arrival.secondary;
+    scanSpawn.set(key, (scanSpawn.get(key) ?? false) || canSpawn);
+  }
+  /** @type {Set<string>} */
+  const spawnedSecondary = new Set();
+  /** @type {Set<string>} */
+  const secondaryExhausted = new Set();
+  for (const [key, canSpawn] of scanSpawn) {
+    const [r, c] = key.split(',').map(Number);
+    const cell = getCell(session, r, c);
     if (!cell) continue;
-    cell.activeAntivirus = false;
-    cell.antivirusFatigue = true;
+    const didZero = scanCell(session, cell, canSpawn, spawnedSecondary);
+    // Secondary that zeros a captured cell disappears after that one zeroing.
+    if (didZero && !canSpawn) secondaryExhausted.add(key);
+  }
+  for (const key of spawnedSecondary) {
+    const [r, c] = key.split(',').map(Number);
+    const cell = getCell(session, r, c);
+    if (cell) cell.antivirusSecondary = true;
+  }
+  for (const key of secondaryExhausted) {
+    if (spawnedSecondary.has(key)) continue;
+    const [r, c] = key.split(',').map(Number);
+    const cell = getCell(session, r, c);
+    if (cell) cell.antivirusSecondary = false;
   }
 
   syncAntivirusActiveFlag(session);
@@ -159,7 +204,8 @@ export function tickAntivirus(session) {
 function syncAntivirusActiveFlag(session) {
   for (let r = 0; r < session.rows; r++) {
     for (let c = 0; c < session.cols; c++) {
-      if (session.cells[r][c].activeAntivirus) {
+      const cell = session.cells[r][c];
+      if (cell.activeAntivirus || cell.antivirusSecondary) {
         session.antivirusActive = true;
         return;
       }
@@ -169,46 +215,15 @@ function syncAntivirusActiveFlag(session) {
 }
 
 /**
- * Spread priority: (untouched | captured) → traversed.
- * For AV, captured cells are treated exactly like untouched.
+ * Whether any AV agent remains on the board.
  * @param {import('./hack-board.mjs').HackSession} session
- * @param {number} r
- * @param {number} c
- * @param {Set<string>} agentKeys
  */
-function collectSpreadTargets(session, r, c, agentKeys) {
-  const open = neighborsMatching(session, r, c, agentKeys, (cell) => (
-    cell.status === 'untouched' || cell.status === 'captured'
-  ));
-  if (open.length) return open;
-  return neighborsMatching(session, r, c, agentKeys, (cell) => cell.status === 'traversed');
-}
-
-/**
- * @param {import('./hack-board.mjs').HackSession} session
- * @param {number} r
- * @param {number} c
- * @param {Set<string>} agentKeys
- * @param {(cell: object) => boolean} pred
- */
-function neighborsMatching(session, r, c, agentKeys, pred) {
-  const dirs = [
-    { dr: -1, dc: 0 },
-    { dr: 1, dc: 0 },
-    { dr: 0, dc: -1 },
-  ];
-  /** @type {{ r: number, c: number }[]} */
-  const out = [];
-  for (const { dr, dc } of dirs) {
-    const nr = r + dr;
-    const nc = c + dc;
-    const neighbor = getCell(session, nr, nc);
-    if (!neighbor) continue;
-    if (agentKeys.has(cellKey(nr, nc))) continue;
-    if (isAvBlocked(neighbor)) continue;
-    if (neighbor.antivirusFatigue) continue;
-    if (!pred(neighbor)) continue;
-    out.push({ r: nr, c: nc });
+export function hasAntivirusAgents(session) {
+  for (let r = 0; r < session.rows; r++) {
+    for (let c = 0; c < session.cols; c++) {
+      const cell = session.cells[r][c];
+      if (cell.activeAntivirus || cell.antivirusSecondary) return true;
+    }
   }
-  return out;
+  return false;
 }

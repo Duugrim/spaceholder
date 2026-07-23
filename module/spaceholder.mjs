@@ -88,6 +88,7 @@ import {
 } from './helpers/actions/personal-time.mjs';
 import { registerChargePersonalTimeHooks } from './helpers/weapon/charge-personal-time.mjs';
 import { installActionChatJournalHooks } from './helpers/actions/action-chat-journal.mjs';
+import { installHackChatHooks } from './helpers/minigames/hack/hack-chat.mjs';
 import { MovementManager } from './helpers/actions/movement-manager.mjs';
 import { CombatSessionManager } from './helpers/combat/combat-session-manager.mjs';
 import { installTurnPickOverlay } from './helpers/combat/turn-pick-overlay.mjs';
@@ -998,6 +999,7 @@ Hooks.once('ready', async function () {
 
   installTransactionLedgerHooks();
   installActionChatJournalHooks();
+  installHackChatHooks();
   (async () => {
     for (const a of game.actors ?? []) {
       if (a?.type !== "character") continue;

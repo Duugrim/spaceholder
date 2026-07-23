@@ -10,6 +10,7 @@ import {
   previewCellBonusAreas,
 } from './hack-bonuses.mjs';
 import { cellKey, getCell, listPathsTo, listStartMoves } from './hack-moves.mjs';
+import { isVisionFogOn, normalizeVisionMode } from './hack-vision.mjs';
 
 const BONUS_PREVIEW_CLASSES = [
   'is-bonus-preview',
@@ -70,22 +71,36 @@ const EDGE_DIR_KEYS = Object.freeze({
 });
 
 /**
- * @param {import('./hack-board.mjs').HackSession} session
+ * @returns {HackMinigameApp|null}
  */
-export function openHackMinigameApp(session) {
+export function getHackMinigameApp() {
+  return _singleton;
+}
+
+/**
+ * @param {import('./hack-board.mjs').HackSession} session
+ * @param {object} [options]
+ * @param {'local'|'play'|'observe'} [options.mode]
+ * @param {string|null} [options.runMessageId]
+ * @param {string|null} [options.runId]
+ * @param {boolean} [options.participate]
+ * @param {boolean} [options.antivirusTriggered]
+ * @param {number} [options.remoteRevision]
+ */
+export function openHackMinigameApp(session, options = {}) {
   if (!session) {
     ui.notifications?.warn?.(L('SPACEHOLDER.HackMinigame.Messages.NoSession', 'No hack session.'));
     return null;
   }
 
   if (_singleton) {
-    _singleton.setSession(session);
+    _singleton.setSession(session, options);
     _singleton.render(true);
     _singleton.bringToFront?.();
     return _singleton;
   }
 
-  _singleton = new HackMinigameApp(session);
+  _singleton = new HackMinigameApp(session, options);
   _singleton.render(true);
   return _singleton;
 }
@@ -113,8 +128,18 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       title: 'SPACEHOLDER.HackMinigame.WindowTitle',
       resizable: false,
       icon: 'fa-solid fa-laptop-code',
+      controls: [
+        {
+          icon: 'fa-solid fa-eye',
+          label: 'SPACEHOLDER.HackMinigame.Header.RevealMap',
+          action: 'revealMap',
+        },
+      ],
     },
     position: { width: 400, height: 300 },
+    actions: {
+      revealMap: HackMinigameApp.#onRevealMap,
+    },
   };
 
   static PARTS = {
@@ -123,12 +148,15 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
 
   /**
    * @param {import('./hack-board.mjs').HackSession} session
+   * @param {object} [options]
    */
-  constructor(session) {
+  constructor(session, options = {}) {
     super();
     this._session = session;
     /** @type {import('./hack-board.mjs').HackSession[]} */
     this._history = [];
+    /** Debug X-ray overlay — shows fogged cell contents without setting revealed. */
+    this._debugRevealMap = false;
     /** @type {{ toR: number|null, toC: number|null, toWin: boolean }|null} */
     this._hoverTarget = null;
     /** @type {import('./hack-moves.mjs').HackMove[]} */
@@ -142,27 +170,184 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
     this._cursorCell = null;
     /** @type {AbortController|null} */
     this._domAbort = null;
+    /** @type {'local'|'play'|'observe'} */
+    this._mode = 'local';
+    this._runMessageId = null;
+    this._runId = null;
+    this._participate = false;
+    this._antivirusTriggered = false;
+    this._remoteRevision = 0;
+    /** @type {import('./hack-generator.mjs').HackLoggedMove[]} */
+    this._moveLog = [];
+    this._pushing = false;
+    this._closingRun = false;
+    this._applyRunOptions(options);
+  }
+
+  /**
+   * @param {object} [options]
+   */
+  _applyRunOptions(options = {}) {
+    const mode = options.mode;
+    this._mode = mode === 'play' || mode === 'observe' ? mode : (options.runMessageId ? 'play' : 'local');
+    this._runMessageId = options.runMessageId ?? this._runMessageId ?? null;
+    this._runId = options.runId ?? this._runId ?? null;
+    if (options.participate != null) this._participate = !!options.participate;
+    else if (this._mode === 'play') this._participate = true;
+    else if (this._mode === 'local') this._participate = true;
+    if (options.antivirusTriggered != null) this._antivirusTriggered = !!options.antivirusTriggered;
+    if (options.remoteRevision != null) this._remoteRevision = Math.max(0, Number(options.remoteRevision) || 0);
+    if (Array.isArray(options.moveLog)) this._moveLog = options.moveLog.slice();
   }
 
   /**
    * @param {import('./hack-board.mjs').HackSession} session
+   * @param {object} [options]
    */
-  setSession(session) {
+  setSession(session, options = {}) {
     this._session = session;
     this._history = [];
+    this._debugRevealMap = false;
     this._hoverTarget = null;
     this._hoverPaths = [];
     this._activePathIndex = 0;
     this._aimCell = null;
     this._inspectBonusCell = null;
     this._cursorCell = null;
+    this._moveLog = [];
+    this._antivirusTriggered = false;
+    this._remoteRevision = 0;
+    this._applyRunOptions(options);
+  }
+
+  /**
+   * Soft board update for observers — keeps Reveal map / does not wipe UI chrome.
+   * @param {import('./hack-board.mjs').HackSession} session
+   * @param {object} [meta]
+   */
+  applySyncedSession(session, meta = {}) {
+    if (!session) return;
+    this._session = session;
+    if (meta.antivirusTriggered != null) this._antivirusTriggered = !!meta.antivirusTriggered;
+    if (meta.remoteRevision != null) this._remoteRevision = Math.max(0, Number(meta.remoteRevision) || 0);
+    if (Array.isArray(meta.moveLog)) this._moveLog = meta.moveLog.slice();
+    // History is local-only; remote sync replaces authoritative state.
+    if (meta.resetHistory) this._history = [];
+    this._clearHover();
+    this.render(false);
+  }
+
+  /**
+   * @param {object} run
+   * @param {string} [messageId]
+   */
+  applyRemoteRun(run, messageId) {
+    if (!run || this._pushing) return;
+    if (this._runId && run.runId && this._runId !== run.runId) return;
+    if (messageId) this._runMessageId = messageId;
+    this._runId = run.runId || this._runId;
+    // Skip echoes / older snapshots (own push updates revision before the hook).
+    if (run.revision <= this._remoteRevision) return;
+    void import('./hack-chat.mjs').then(({ replayHackSession }) => {
+      const { session, stats } = replayHackSession(run.params, run.moves);
+      this.applySyncedSession(session, {
+        antivirusTriggered: stats.antivirusTriggered,
+        remoteRevision: run.revision,
+        moveLog: run.moves,
+        resetHistory: true,
+      });
+      if (run.status === 'won' || run.status === 'failed') {
+        this._mode = this._isRunOwner() ? 'play' : 'observe';
+        this._participate = this._isRunOwner();
+      }
+    }).catch((err) => {
+      console.error('SpaceHolder | hack remote sync failed', err);
+    });
+  }
+
+  _isRunOwner() {
+    if (!this._runMessageId) return this._mode === 'local';
+    try {
+      // Lazy: owner identity lives on the message flag
+      const msg = game.messages?.get?.(this._runMessageId);
+      const ownerId = msg?.flags?.spaceholder?.hackRun?.ownerUserId;
+      return String(ownerId || '') === String(game.user?.id || '');
+    } catch (_) {
+      return this._mode === 'play';
+    }
+  }
+
+  _canInteract() {
+    if (this._session?.won) return false;
+    if (this._mode === 'local' || this._mode === 'play') return true;
+    return this._mode === 'observe' && this._participate;
+  }
+
+  /**
+   * Toggle label / icon for the debug map-reveal header control.
+   * @override
+   */
+  _getHeaderControls() {
+    return super._getHeaderControls().map((control) => {
+      if (control?.action !== 'revealMap') return control;
+      return {
+        ...control,
+        icon: this._debugRevealMap ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye',
+        label: this._debugRevealMap
+          ? 'SPACEHOLDER.HackMinigame.Header.HideMapReveal'
+          : 'SPACEHOLDER.HackMinigame.Header.RevealMap',
+      };
+    });
   }
 
   async close(options = {}) {
+    if (!this._closingRun && this._runMessageId && this._isRunOwner() && !this._session?.won) {
+      const status = game.messages?.get?.(this._runMessageId)?.flags?.spaceholder?.hackRun?.status;
+      if (!status || status === 'active') {
+        this._closingRun = true;
+        try {
+          await this._finalizeRun('failed');
+        } catch (err) {
+          console.error('SpaceHolder | hack abandon failed', err);
+        }
+      }
+    }
     this._domAbort?.abort();
     this._domAbort = null;
     await super.close(options);
     if (_singleton === this) _singleton = null;
+  }
+
+  /**
+   * Header menu (⋯): toggle semi-transparent debug overlay on fogged cells.
+   * @this {HackMinigameApp}
+   */
+  static #onRevealMap() {
+    this._toggleDebugRevealMap();
+  }
+
+  /**
+   * @param {boolean} participate
+   */
+  async _setParticipate(participate) {
+    this._participate = !!participate;
+    if (this._participate && this._runMessageId) {
+      try {
+        const { joinHackRun } = await import('./hack-chat.mjs');
+        await joinHackRun(this._runMessageId, String(game.user?.id || ''));
+      } catch (err) {
+        console.warn('SpaceHolder | hack join failed', err);
+      }
+    }
+    this.render(false);
+  }
+
+  /**
+   * Debug X-ray: show values/bonuses on fogged cells without clearing vision fog.
+   */
+  _toggleDebugRevealMap() {
+    this._debugRevealMap = !this._debugRevealMap;
+    this.render(false);
   }
 
   _geom() {
@@ -258,9 +443,15 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
   }
 
   async _prepareContext() {
-    const view = sessionToView(this._session, null);
+    const view = sessionToView(this._session, null, { debugReveal: this._debugRevealMap });
     const flatCells = view.grid.flat();
     const { boardW, boardH } = computeBoardSize(view.cols, view.rows);
+    const visionMode = normalizeVisionMode(this._session?.visionMode);
+    const visionModeLabel = visionMode === 'available'
+      ? L('SPACEHOLDER.HackMinigame.Hud.VisionAvailable', 'Available only')
+      : L('SPACEHOLDER.HackMinigame.Hud.VisionNeighbors', 'Neighbors');
+    const canInteract = this._canInteract();
+    const showParticipate = this._mode === 'observe' && !!this._runMessageId;
 
     return {
       ...view,
@@ -270,10 +461,60 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       winHover: false,
       multiPath: false,
       activePathLabel: '',
-      canUndo: this._history.length > 0,
+      canUndo: canInteract && this._history.length > 0,
+      canInteract,
+      showParticipate,
+      participate: this._participate,
+      isObserve: this._mode === 'observe',
+      visionMode,
+      visionModeLabel,
       boardW,
       boardH,
     };
+  }
+
+  _buildStats() {
+    return {
+      actionUsed: this._session?.actionUsed ?? 0,
+      actionLimit: this._session?.actionLimit ?? 0,
+      antivirusTriggered: !!this._antivirusTriggered || !!this._session?.antivirusActive,
+    };
+  }
+
+  /**
+   * @param {'active'|'won'|'failed'} status
+   */
+  async _pushRunState(status = 'active') {
+    if (!this._runMessageId || this._mode === 'local') return;
+    const { pushHackRunState, serializeHackMove } = await import('./hack-chat.mjs');
+    // ensure moves are plain
+    const moves = this._moveLog.map((m) => serializeHackMove(m, m.pathIndex));
+    this._pushing = true;
+    try {
+      const next = await pushHackRunState(
+        this._runMessageId,
+        {
+          moves,
+          status,
+          stats: this._buildStats(),
+        },
+        {
+          expectedRevision: this._remoteRevision,
+          refreshContent: status !== 'active',
+        }
+      );
+      if (next?.revision != null) this._remoteRevision = next.revision;
+    } finally {
+      this._pushing = false;
+    }
+  }
+
+  /**
+   * @param {'won'|'failed'} status
+   */
+  async _finalizeRun(status) {
+    if (!this._runMessageId) return;
+    await this._pushRunState(status);
   }
 
   /**
@@ -543,7 +784,8 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       return;
     }
 
-    const fogged = !!this._session.visionEnabled && !cell.revealed;
+    const fogged = isVisionFogOn(this._session) && !cell.revealed;
+    const debugPeek = fogged && this._debugRevealMap;
     const esc = (s) => foundry.utils.escapeHTML(String(s));
     const statusKey = {
       untouched: 'SPACEHOLDER.HackMinigame.CellInfo.StatusUntouched',
@@ -553,7 +795,7 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
     const statusFallback = {
       untouched: 'Untouched',
       captured: 'Captured',
-      traversed: 'Traversed',
+      traversed: 'Disabled',
     }[cell.status] ?? 'Untouched';
 
     const head = [
@@ -565,7 +807,7 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       `<span>${esc(L(statusKey, statusFallback))}</span>`,
     ];
 
-    if (fogged) {
+    if (fogged && !debugPeek) {
       head.push(`<span class="sh-hack-minigame__cell-info-value">${esc(L(
         'SPACEHOLDER.HackMinigame.CellInfo.Fogged',
         'Hidden'
@@ -574,7 +816,14 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       return;
     }
 
-    head.push(`<span class="sh-hack-minigame__cell-info-value">${esc(Lf(
+    if (debugPeek) {
+      head.push(`<span class="sh-hack-minigame__cell-info-tag is-debug">${esc(L(
+        'SPACEHOLDER.HackMinigame.CellInfo.Fogged',
+        'Hidden'
+      ))} · ${esc(L('SPACEHOLDER.HackMinigame.Hud.DebugReveal', 'Debug reveal'))}</span>`);
+    }
+
+    head.push(`<span class="sh-hack-minigame__cell-info-value${debugPeek ? ' is-debug-ghost' : ''}">${esc(Lf(
       'SPACEHOLDER.HackMinigame.CellInfo.Value',
       { value: cell.value },
       `Digit ${cell.value}`
@@ -594,10 +843,10 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
         'Active AV'
       ))}</span>`);
     }
-    if (cell.antivirusImmune && cell.status === 'untouched') {
-      tags.push(`<span class="sh-hack-minigame__cell-info-tag is-immune">${esc(L(
-        'SPACEHOLDER.HackMinigame.CellInfo.Immune',
-        'AV-immune'
+    if (cell.antivirusSecondary) {
+      tags.push(`<span class="sh-hack-minigame__cell-info-tag is-av-secondary">${esc(L(
+        'SPACEHOLDER.HackMinigame.CellInfo.SecondaryAv',
+        'Secondary AV'
       ))}</span>`);
     }
 
@@ -732,7 +981,7 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
     const board = asBoardView(this._session);
     const cell = getCell(board, r, c);
     const paths = listPathsTo(board, { toR: r, toC: c, toWin: false });
-    const revealed = !this._session.visionEnabled || !!cell?.revealed;
+    const revealed = !isVisionFogOn(this._session) || !!cell?.revealed;
 
     // Aim zone only for revealed digits — fogged cells must not leak targets.
     this._aimCell = revealed && cell && cell.value > 0 ? { r, c } : null;
@@ -805,6 +1054,7 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
 
   _tryCapture() {
     if (this._session?.won) return;
+    if (!this._canInteract()) return;
 
     if (!this._hoverPaths.length) return;
 
@@ -816,7 +1066,8 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       return;
     }
 
-    const result = applyCapture(this._session, move);
+    const pathIndex = this._activePathIndex;
+    const result = applyCapture(this._session, { ...move, pathIndex });
     if (!result.ok) {
       ui.notifications?.warn?.(
         L('SPACEHOLDER.HackMinigame.Messages.InvalidMove', 'Invalid move.')
@@ -826,20 +1077,62 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
 
     this._history.push(cloneSession(this._session));
     this._session = result.session;
+    if (result.activatedAntivirus) this._antivirusTriggered = true;
+    this._moveLog.push({
+      fromR: move.fromR ?? null,
+      fromC: move.fromC ?? null,
+      toR: move.toR ?? null,
+      toC: move.toC ?? null,
+      toWin: !!move.toWin,
+      isStart: !!move.isStart,
+      pathIndex,
+    });
     this._clearHover();
 
     if (this._session.won) {
       ui.notifications?.info?.(L('SPACEHOLDER.HackMinigame.Messages.Won', 'System breached.'));
+      void this._finalizeRun('won');
+    } else if (this._runMessageId) {
+      void this._pushRunState('active').catch((err) => {
+        console.warn('SpaceHolder | hack push failed', err);
+        ui.notifications?.warn?.(
+          L('SPACEHOLDER.HackMinigame.Messages.SyncFailed', 'Failed to sync hack state.')
+        );
+        void this._resyncFromMessage();
+      });
     }
 
     this.render(false);
   }
 
   _undo() {
+    if (!this._canInteract()) return;
     if (!this._history.length) return;
     this._session = this._history.pop();
+    this._moveLog.pop();
+    this._antivirusTriggered = !!this._session?.antivirusActive;
     this._clearHover();
+    if (this._runMessageId) {
+      void this._pushRunState('active').catch((err) => {
+        console.warn('SpaceHolder | hack undo sync failed', err);
+        void this._resyncFromMessage();
+      });
+    }
     this.render(false);
+  }
+
+  async _resyncFromMessage() {
+    if (!this._runMessageId) return;
+    try {
+      const { getHackRun } = await import('./hack-chat.mjs');
+      const msg = game.messages?.get?.(this._runMessageId);
+      const run = getHackRun(msg);
+      if (!run) return;
+      this._remoteRevision = Math.max(-1, run.revision - 1);
+      this.applyRemoteRun(run, msg.id);
+    } catch (err) {
+      console.warn('SpaceHolder | hack resync failed', err);
+    }
   }
 
   async _onRender(context, options) {
@@ -878,6 +1171,7 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
 
       btn.addEventListener('click', (event) => {
         event.preventDefault();
+        if (!this._canInteract()) return;
         this._hoverCell(r, c);
         this._tryCapture();
       }, { signal });
@@ -908,9 +1202,17 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       }, { signal });
       winBtn.addEventListener('click', (event) => {
         event.preventDefault();
+        if (!this._canInteract()) return;
         this._cursorCell = { kind: 'win' };
         this._setHoverTarget({ toWin: true });
         this._tryCapture();
+      }, { signal });
+    }
+
+    const participateToggle = el.querySelector('[data-action="toggleParticipate"]');
+    if (participateToggle) {
+      participateToggle.addEventListener('change', () => {
+        void this._setParticipate(!!participateToggle.checked);
       }, { signal });
     }
 
