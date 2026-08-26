@@ -1,0 +1,23 @@
+{
+  "name": "Одежда",
+  "type": "Item",
+  "_id": "shcf98a4e23d0e8f",
+  "sorting": "a",
+  "folder": "shc820babedb3906",
+  "description": "",
+  "color": "#78716c",
+  "sort": 8000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shcf98a4e23d0e8f"
+}

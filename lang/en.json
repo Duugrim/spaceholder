@@ -1275,6 +1275,9 @@
       "HackMinigame": {
         "Title": "Hack minigame"
       },
+      "LockpickMinigame": {
+        "Title": "Lockpick minigame"
+      },
       "SkipTime": {
         "Title": "Skip time",
         "DialogTitle": "Skip personal time",
@@ -1407,6 +1410,69 @@
         "PostedToChat": "Hack minigame posted to chat.",
         "PostFailed": "Failed to post hack minigame to chat.",
         "SyncFailed": "Failed to sync hack state."
+      }
+    },
+    "LockpickMinigame": {
+      "WindowTitle": "Lockpick",
+      "Generate": {
+        "Title": "Lockpick minigame",
+        "Seed": "Seed",
+        "Pins": "Pins",
+        "Segment": "Segment (°)",
+        "ToleranceMin": "Tolerance min",
+        "ToleranceMax": "Tolerance max",
+        "PinHp": "Pin HP",
+        "FailJump": "Jump target on fail",
+        "FailJumpMax": "Max jump",
+        "SoundNoise": "Sound noise",
+        "SoundNoisePct": "Noise %",
+        "SoundHot": "Hot segment",
+        "SoundCold": "Cold segment",
+        "SoundPassed": "Pin passed",
+        "SoundReset": "Pin reset",
+        "VolumePct": "Vol %",
+        "PreviewSound": "Preview",
+        "SoundsButton": "Sounds…",
+        "SoundsTitle": "Sounds",
+        "SoundsOk": "OK",
+        "RandomSeed": "Random",
+        "Start": "Start",
+        "ToChat": "Send to chat"
+      },
+      "Chat": {
+        "InviteTitle": "Minigame created:",
+        "LockpickLabel": "Lockpick",
+        "StartButton": "Pick lock",
+        "Started": "Started lockpick",
+        "ObserveButton": "Observe",
+        "ResultWon": "Lock opened",
+        "ResultFailed": "Lockpick failed",
+        "PinsStat": "Pins: {unlocked} / {total}",
+        "ChecksStat": "Checks: {count}"
+      },
+      "Hud": {
+        "Seed": "Seed",
+        "Checks": "Checks",
+        "Segment": "Segment size",
+        "Front": "Front view",
+        "Cutaway": "Cutaway",
+        "Won": "Opened",
+        "Undo": "Undo",
+        "Observing": "Observing",
+        "ToleranceLow": "Low",
+        "ToleranceMid": "Mid",
+        "ToleranceHigh": "High",
+        "ControlsHint": "Wheel: rotate pick · LMB front: check · LMB pin: select",
+        "FrontHint": "Scroll to rotate · click to check"
+      },
+      "Messages": {
+        "DialogUnavailable": "Dialog API unavailable.",
+        "OpenFailed": "Failed to open lockpick minigame.",
+        "NoSession": "No lockpick session.",
+        "Won": "Lock opened.",
+        "PostedToChat": "Lockpick minigame posted to chat.",
+        "PostFailed": "Failed to post lockpick minigame to chat.",
+        "SyncFailed": "Failed to sync lockpick state."
       }
     },
     "AimingArc": {

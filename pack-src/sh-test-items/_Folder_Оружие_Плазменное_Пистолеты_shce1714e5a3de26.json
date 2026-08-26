@@ -1,0 +1,23 @@
+{
+  "name": "Пистолеты",
+  "type": "Item",
+  "_id": "shce1714e5a3de26",
+  "sorting": "a",
+  "folder": "shcb209f5750201c",
+  "description": "",
+  "color": "#b91c1c",
+  "sort": 66000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shce1714e5a3de26"
+}

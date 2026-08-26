@@ -10,6 +10,10 @@ import {
   applyDamageModifiers,
   buildProjectileFromDamageEntries,
   resolveEffectiveAttackParams,
+  normalizeMultishot,
+  normalizeOnHitSplash,
+  uniformConeDirections,
+  normalizeAmmoConfig,
 } from './weapon/weapon-model.mjs';
 import {
   getWeaponData,
@@ -21,6 +25,7 @@ import { spendAp } from './actions/transaction-ledger.mjs';
 import {
   normalizeTrajectoryKind,
   resolveWeaponLinePayload,
+  applyOnHitSplashToPayload,
   TRAJECTORY_KINDS,
 } from './weapon/trajectory.mjs';
 
@@ -159,6 +164,8 @@ export class AimingManager {
     // Авто-режим (v3): таймер серии, пока зажата ЛКМ.
     this._autoFireTimer = null;
     this._fireBusy = false;
+    /** True while primary button is held during aiming (stops AUTO race on release). */
+    this._lmbHeld = false;
   }
 
   _normalizePayloadId(id) {
@@ -477,6 +484,7 @@ export class AimingManager {
     if (!this.isAiming) return;
     
     console.log('AimingManager: Stopping aiming');
+    this._lmbHeld = false;
     this._stopAutoFire();
     const currentToken = this.currentToken;
     const aimingType = _normalizeAimingType(this.currentOptions?.type);
@@ -488,6 +496,7 @@ export class AimingManager {
     
     // Убираем визуализацию
     this._clearPointer();
+    try { game.spaceholder?.drawManager?.clearAll?.(); } catch (_) { /* ignore */ }
     
     // Отвязываем события
     this._unbindEvents();
@@ -671,10 +680,16 @@ export class AimingManager {
       const delayMs = Math.max(60, (ctx.eff.mode.fireDelayAp / AP_PER_SECOND) * 1000);
       const first = await this._fireWeaponV3Single({ first: true });
       if (!first) return;
+      // Release during the first (async) shot must not start a stuck interval.
+      if (!this._lmbHeld || !this.isAiming) return;
       this._autoFireTimer = setInterval(() => {
+        if (!this._lmbHeld || !this.isAiming) {
+          this._stopAutoFire();
+          return;
+        }
         if (this._fireBusy) return;
         void this._fireWeaponV3Single({ first: false }).then((cont) => {
-          if (!cont) this._stopAutoFire();
+          if (!cont || !this._lmbHeld) this._stopAutoFire();
         });
       }, delayMs);
       return;
@@ -784,7 +799,12 @@ export class AimingManager {
 
       // --- Снаряд: модификаторы урона + множитель энергии ----------------
       const entries = applyDamageModifiers(consumed.damageEntries, eff.damageMods, eff.line.energyMult);
-      const projectile = buildProjectileFromDamageEntries(entries, { payloadId: consumed.payloadId });
+      const firstRound = consumed.rounds.find((r) => r.round)?.round ?? null;
+      const ammoCfg = normalizeAmmoConfig(firstRound?.system?.weapon?.ammo);
+      const projectile = buildProjectileFromDamageEntries(entries, {
+        payloadId: consumed.payloadId,
+        falloff: ammoCfg.falloff,
+      });
 
       let payload = this.currentPayload;
       const wantedPayloadId = String(projectile?.payloadId ?? consumed.payloadId ?? '').trim();
@@ -799,38 +819,55 @@ export class AimingManager {
         payload = await this.getPayloadById(wantedPayloadId) ?? payload;
       }
 
-      // --- Направление: дуги (с эргономикой) + независимый Разброс -------
+      const splash = normalizeOnHitSplash(ammoCfg.onHitSplash);
+      if (splash.enabled) {
+        payload = applyOnHitSplashToPayload(payload, splash, this.currentToken?.scene ?? canvas?.scene);
+      }
+
+      // Multishot: mode > line > ammo; barrel may widen fan via line.coneDegrees without enabling multishot
+      const msMode = normalizeMultishot(eff.mode?.multishot);
+      const msLine = normalizeMultishot(eff.line?.multishot);
+      const msAmmo = normalizeMultishot(ammoCfg.multishot);
+      let multishot = msMode.enabled ? msMode : (msLine.enabled ? msLine : msAmmo);
+      if (multishot.enabled && !msMode.enabled && msLine.coneDegrees > 0) {
+        multishot = { ...multishot, coneDegrees: msLine.coneDegrees };
+      }
+
+      // --- Направление: дуги + равномерный веер + per-ray spread jitter ---
       const baseDirection = this._getCurrentDirection();
       const standardInfo = _applyStandardAimingDeviation(this.currentToken, baseDirection, eff.ergonomics);
-      let direction = standardInfo.direction;
-      if (eff.line.spread?.enabled && eff.line.spread.value > 0) {
-        // Разброс НЕ суммируется с отклонением дуг — независимый random.
-        direction += (Math.random() * 2 - 1) * eff.line.spread.value;
-      }
+      const coneDirs = multishot.enabled && multishot.count > 1
+        ? uniformConeDirections(standardInfo.direction, multishot.count, multishot.coneDegrees)
+        : [standardInfo.direction];
 
       const shotManager = game.spaceholder?.shotManager;
-      const uid = shotManager.createShot(this.currentToken, payload, direction);
+      const builderContext = {
+        shooterActorUuid: actor?.uuid ?? null,
+        weaponItemUuid: weaponItem.uuid,
+        weaponName: weaponItem.name,
+        ammoName: firstRound?.name ?? null,
+      };
 
-      if (this.currentOptions?.autoRender) {
-        const shotResult = shotManager.getShotResult(uid);
-        if (shotResult && game.spaceholder?.drawManager) {
-          game.spaceholder.drawManager.drawShot(shotResult);
+      for (const coneDir of coneDirs) {
+        let direction = coneDir;
+        if (eff.line.spread?.enabled && eff.line.spread.value > 0) {
+          direction += (Math.random() * 2 - 1) * eff.line.spread.value;
         }
-      }
-
-      if (projectile) {
-        const firstRound = consumed.rounds.find((r) => r.round)?.round ?? null;
-        await this._applyResolvedProjectileDamage(uid, {
-          projectile,
-          weaponItem,
-          ammoItem: firstRound,
-          builderContext: {
-            shooterActorUuid: actor?.uuid ?? null,
-            weaponItemUuid: weaponItem.uuid,
-            weaponName: weaponItem.name,
-            ammoName: firstRound?.name ?? null,
-          },
-        });
+        const uid = shotManager.createShot(this.currentToken, payload, direction);
+        if (this.currentOptions?.autoRender) {
+          const shotResult = shotManager.getShotResult(uid);
+          if (shotResult && game.spaceholder?.drawManager) {
+            game.spaceholder.drawManager.drawShot(shotResult);
+          }
+        }
+        if (projectile) {
+          await this._applyResolvedProjectileDamage(uid, {
+            projectile,
+            weaponItem,
+            ammoItem: firstRound,
+            builderContext,
+          });
+        }
       }
 
       // Камера осталась пустой без автоподачи → серия прерывается затвором.
@@ -1190,8 +1227,12 @@ export class AimingManager {
     canvas.stage.on('mousemove', this._boundEvents.onMouseMove);
     canvas.stage.on('mousedown', this._boundEvents.onMouseDown);
     canvas.stage.on('mouseup', this._boundEvents.onMouseUp);
+    canvas.stage.on('mouseupoutside', this._boundEvents.onMouseUp);
+    canvas.stage.on('pointerupoutside', this._boundEvents.onMouseUp);
+    canvas.stage.on('pointercancel', this._boundEvents.onMouseUp);
     document.addEventListener('contextmenu', this._boundEvents.onContextMenu);
     document.addEventListener('keydown', this._boundEvents.onKeyDown);
+    document.addEventListener('pointerup', this._boundEvents.onMouseUp);
   }
   
   /**
@@ -1202,8 +1243,12 @@ export class AimingManager {
     canvas.stage.off('mousemove', this._boundEvents.onMouseMove);
     canvas.stage.off('mousedown', this._boundEvents.onMouseDown);
     canvas.stage.off('mouseup', this._boundEvents.onMouseUp);
+    canvas.stage.off('mouseupoutside', this._boundEvents.onMouseUp);
+    canvas.stage.off('pointerupoutside', this._boundEvents.onMouseUp);
+    canvas.stage.off('pointercancel', this._boundEvents.onMouseUp);
     document.removeEventListener('contextmenu', this._boundEvents.onContextMenu);
     document.removeEventListener('keydown', this._boundEvents.onKeyDown);
+    document.removeEventListener('pointerup', this._boundEvents.onMouseUp);
   }
   
   /**
@@ -1224,6 +1269,7 @@ export class AimingManager {
     
     if (event.data.button === 0) { // ЛКМ
       event.stopPropagation();
+      this._lmbHeld = true;
       void this._fire();
     }
   }
@@ -1233,7 +1279,12 @@ export class AimingManager {
    * @private
    */
   _onMouseUp(event) {
-    if (event?.data?.button === 0) this._stopAutoFire();
+    const btn = event?.data?.button ?? event?.button;
+    // PIXI events use data.button; document pointerup uses button. Treat missing as primary release.
+    if (btn == null || btn === 0) {
+      this._lmbHeld = false;
+      this._stopAutoFire();
+    }
   }
 
   /**

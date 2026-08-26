@@ -1,0 +1,105 @@
+{
+  "name": "Боевая броня (торс)",
+  "type": "item",
+  "_id": "shc689503b70ec82",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar-vest.svg",
+  "system": {
+    "description": "<p>Композит на торс; шлем отдельно.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 14,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          {
+            "material": "combat-composite",
+            "thickness": 6
+          }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          {
+            "material": "combat-composite",
+            "thickness": 6
+          }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          {
+            "material": "combat-composite",
+            "thickness": 6
+          }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shc9f341d5b6ff26",
+  "sort": 150000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc689503b70ec82"
+}

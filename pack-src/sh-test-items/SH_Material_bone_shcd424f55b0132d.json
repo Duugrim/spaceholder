@@ -1,0 +1,63 @@
+{
+  "name": "Кость",
+  "type": "material",
+  "_id": "shcd424f55b0132d",
+  "img": "systems/spaceholder/assets/icons/armor.svg/metal-scales.svg",
+  "system": {
+    "description": "<p>Кость (bone)</p>",
+    "materialId": "bone",
+    "category": "biological",
+    "hardness": 8,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.8,
+    "resistance": {
+      "ballistic": 60,
+      "concussive": 70,
+      "piercing": 55,
+      "cutting": 50,
+      "thermal": 50,
+      "laser": 40,
+      "plasma": 35,
+      "electric": 20,
+      "sonic": 60,
+      "radiation": 15,
+      "chemical": 40
+    },
+    "wear": {
+      "ballistic": 40,
+      "concussive": 25,
+      "piercing": 45,
+      "cutting": 50,
+      "thermal": 50,
+      "laser": 60,
+      "plasma": 80,
+      "electric": 5,
+      "sonic": 10,
+      "radiation": 0,
+      "chemical": 50
+    },
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shc0b5ae83ba6f50",
+  "sort": 140000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shcd424f55b0132d"
+}

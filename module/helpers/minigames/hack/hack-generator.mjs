@@ -2,7 +2,7 @@
  * Seeded board generation for the hacking minigame.
  */
 
-import { BONUS_TYPES, EDGE_DIRS } from './hack-bonuses.mjs';
+import { EDGE_DIRS } from './hack-bonuses.mjs';
 import { applyCapture, createSession } from './hack-board.mjs';
 import { createRng, rngInt, rngWeighted } from './rng.mjs';
 import { HACK_VISION_AVAILABLE, normalizeVisionMode } from './hack-vision.mjs';
@@ -89,9 +89,32 @@ function generateScannable(rng, rows, cols) {
  * @param {() => number} rng
  * @returns {import('./hack-bonuses.mjs').BonusType}
  */
-function pickBonusType(rng) {
+function pickEdgeBonusType(rng) {
+  // Yellow (disable) is rarer and edge-only — see pickRingBonusType.
   return /** @type {import('./hack-bonuses.mjs').BonusType} */ (
-    rngWeighted(rng, BONUS_TYPES.map((value) => ({ value, weight: 1 })))
+    rngWeighted(rng, [
+      { value: 'purple', weight: 1 },
+      { value: 'orange', weight: 1 },
+      { value: 'green', weight: 1 },
+      { value: 'blue', weight: 1 },
+      { value: 'yellow', weight: 0.3 },
+    ])
+  );
+}
+
+/**
+ * Ring pool excludes yellow — disable is line-only.
+ * @param {() => number} rng
+ * @returns {import('./hack-bonuses.mjs').BonusType}
+ */
+function pickRingBonusType(rng) {
+  return /** @type {import('./hack-bonuses.mjs').BonusType} */ (
+    rngWeighted(rng, [
+      { value: 'purple', weight: 1 },
+      { value: 'orange', weight: 1 },
+      { value: 'green', weight: 1 },
+      { value: 'blue', weight: 1 },
+    ])
   );
 }
 
@@ -103,6 +126,7 @@ const RING_BONUS_P = 0.07;
 /**
  * Each edge and the ring are rolled independently so "has a bonus" no longer
  * clusters many markers onto the same cell.
+ * Yellow (disable) only appears on edges, at reduced weight.
  * @param {() => number} rng
  * @param {number} rows
  * @param {number} cols
@@ -123,7 +147,7 @@ function generateBonuses(rng, rows, cols) {
       for (const edge of EDGE_DIRS) {
         if (rng() >= EDGE_BONUS_P) continue;
         if (!entry) entry = ensure(r, c);
-        entry.edgeBonuses[edge] = pickBonusType(rng);
+        entry.edgeBonuses[edge] = pickEdgeBonusType(rng);
       }
       if (rng() < RING_BONUS_P) {
         if (!entry) entry = ensure(r, c);
@@ -131,7 +155,7 @@ function generateBonuses(rng, rows, cols) {
         if (rng() < 0.35) rings = 2;
         if (rings === 2 && rng() < 0.25) rings = 3;
         if (rings === 3 && rng() < 0.15) rings = 4;
-        entry.ringBonus = { type: pickBonusType(rng), rings };
+        entry.ringBonus = { type: pickRingBonusType(rng), rings };
       }
     }
   }

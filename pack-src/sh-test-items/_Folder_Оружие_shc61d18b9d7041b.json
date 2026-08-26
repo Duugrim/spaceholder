@@ -1,0 +1,23 @@
+{
+  "name": "Оружие",
+  "type": "Item",
+  "_id": "shc61d18b9d7041b",
+  "sorting": "a",
+  "folder": null,
+  "description": "",
+  "color": "#b91c1c",
+  "sort": 49000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc61d18b9d7041b"
+}

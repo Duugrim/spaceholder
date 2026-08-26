@@ -1,5 +1,5 @@
 import { collectActorActions, executeActorAction, getActorActionPoints, openItemInteractMenu } from './actions/action-service.mjs';
-import { getWeaponData, lineShotReadiness } from './weapon/weapon-ammo-runtime.mjs';
+import { getWeaponData, lineShotReadiness, syncExternalChargeHostedRuntime } from './weapon/weapon-ammo-runtime.mjs';
 import { formatAmmoCounter } from './weapon/weapon-model.mjs';
 
 const UI_ID = 'spaceholder-token-quick-hud';
@@ -208,7 +208,10 @@ function _collectHeldItems(actor) {
       const lines = Array.isArray(weapon.lines) ? weapon.lines : [];
       const activeLineId = weapon.state?.activeLineId || lines[0]?.id;
       const line = lines.find((l) => l.id === activeLineId) ?? lines[0];
-      const readiness = line ? lineShotReadiness(weapon, line.id) : { ready: false };
+      for (const block of line?.ammoBlocks ?? []) {
+        syncExternalChargeHostedRuntime(actor, item, block);
+      }
+      const readiness = line ? lineShotReadiness(weapon, line.id, actor) : { ready: false };
       const counters = (line?.ammoBlocks ?? []).map((b) => formatAmmoCounter(b, actor)).filter(Boolean);
       const counter = counters.join(' · ');
       const lineName = String(line?.name ?? '').trim();

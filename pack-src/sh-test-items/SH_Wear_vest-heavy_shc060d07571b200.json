@@ -1,0 +1,129 @@
+{
+  "name": "Бронежилет (тяжёлый)",
+  "type": "item",
+  "_id": "shc060d07571b200",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar-vest.svg",
+  "system": {
+    "description": "<p>Сталь + кевлар + пена.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 12,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          {
+            "material": "steel-plate",
+            "thickness": 5
+          },
+          {
+            "material": "kevlar",
+            "thickness": 1
+          },
+          {
+            "material": "foam",
+            "thickness": 4
+          }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          {
+            "material": "steel-plate",
+            "thickness": 5
+          },
+          {
+            "material": "kevlar",
+            "thickness": 1
+          },
+          {
+            "material": "foam",
+            "thickness": 4
+          }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          {
+            "material": "steel-plate",
+            "thickness": 5
+          },
+          {
+            "material": "kevlar",
+            "thickness": 1
+          },
+          {
+            "material": "foam",
+            "thickness": 4
+          }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shc9f341d5b6ff26",
+  "sort": 130000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc060d07571b200"
+}

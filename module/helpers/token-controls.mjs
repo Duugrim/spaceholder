@@ -114,8 +114,16 @@ function addCustomButtons(tokenControls) {
     button: true,
     order: 14,
   });
+  const addedLockpickMinigame = upsertTool(tokenControls, {
+    name: 'lockpick-minigame',
+    title: game.i18n.localize('SPACEHOLDER.TokenControls.LockpickMinigame.Title'),
+    icon: 'fas fa-key',
+    onChange: () => openLockpickMinigame(),
+    button: true,
+    order: 15,
+  });
 
-  if (addedAiming || addedAimingArcHover || addedArmorTester || addedSkipTime || addedHackMinigame) {
+  if (addedAiming || addedAimingArcHover || addedArmorTester || addedSkipTime || addedHackMinigame || addedLockpickMinigame) {
     console.log('SpaceHolder | Added custom Token Control buttons');
   }
 }
@@ -248,6 +256,15 @@ function openHackMinigame() {
     .catch((err) => {
       console.error('SpaceHolder | Failed to open hack minigame:', err);
       ui.notifications?.error?.(game.i18n.localize('SPACEHOLDER.HackMinigame.Messages.OpenFailed'));
+    });
+}
+
+function openLockpickMinigame() {
+  import('./minigames/lockpick/lockpick-generate-dialog.mjs')
+    .then(({ openLockpickGenerateDialog }) => openLockpickGenerateDialog())
+    .catch((err) => {
+      console.error('SpaceHolder | Failed to open lockpick minigame:', err);
+      ui.notifications?.error?.(game.i18n.localize('SPACEHOLDER.LockpickMinigame.Messages.OpenFailed'));
     });
 }
 

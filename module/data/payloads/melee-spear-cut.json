@@ -1,0 +1,23 @@
+{
+  "id": "melee_spear_cut",
+  "name": "Копьё — рез",
+  "description": "Узкая дуга на выносе (~15°).",
+  "type": "complex",
+  "trajectory": {
+    "segments": [
+      {
+        "type": "swing",
+        "direction": 0,
+        "range": 2,
+        "cut": 1.75,
+        "angle": 15,
+        "side": "right",
+        "collision": {
+          "walls": true,
+          "tokens": { "owner": true, "ally": true, "other": true }
+        },
+        "onHit": "next"
+      }
+    ]
+  }
+}

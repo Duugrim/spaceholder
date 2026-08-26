@@ -89,6 +89,7 @@ import {
 import { registerChargePersonalTimeHooks } from './helpers/weapon/charge-personal-time.mjs';
 import { installActionChatJournalHooks } from './helpers/actions/action-chat-journal.mjs';
 import { installHackChatHooks } from './helpers/minigames/hack/hack-chat.mjs';
+import { installLockpickChatHooks } from './helpers/minigames/lockpick/lockpick-chat.mjs';
 import { MovementManager } from './helpers/actions/movement-manager.mjs';
 import { CombatSessionManager } from './helpers/combat/combat-session-manager.mjs';
 import { installTurnPickOverlay } from './helpers/combat/turn-pick-overlay.mjs';
@@ -180,6 +181,8 @@ Hooks.once('init', function () {
     openSkipPersonalTimeDialog: () => openSkipPersonalTimeDialog(),
     openHackMinigame: () => import('./helpers/minigames/hack/hack-generate-dialog.mjs')
       .then(({ openHackGenerateDialog }) => openHackGenerateDialog()),
+    openLockpickMinigame: () => import('./helpers/minigames/lockpick/lockpick-generate-dialog.mjs')
+      .then(({ openLockpickGenerateDialog }) => openLockpickGenerateDialog()),
     REFERENCE_TURN_SECONDS,
     ensureCharacterApSynced: (actor) => ensureCharacterApSynced(actor),
     nestedItemStorage: {
@@ -1000,6 +1003,7 @@ Hooks.once('ready', async function () {
   installTransactionLedgerHooks();
   installActionChatJournalHooks();
   installHackChatHooks();
+  installLockpickChatHooks();
   (async () => {
     for (const a of game.actors ?? []) {
       if (a?.type !== "character") continue;

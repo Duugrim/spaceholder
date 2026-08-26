@@ -45,6 +45,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/damage/armor-penetration-tester-app.hbs',
     // Minigames
     'systems/spaceholder/templates/minigames/hack-minigame-app.hbs',
+    'systems/spaceholder/templates/minigames/lockpick-minigame-app.hbs',
     // HUD: Hotbar faction selector
     'systems/spaceholder/templates/hud/hotbar-faction-ui.hbs',
     'systems/spaceholder/templates/hud/token-quick-hud.hbs',

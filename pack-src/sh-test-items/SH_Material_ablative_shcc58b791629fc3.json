@@ -1,0 +1,70 @@
+{
+  "name": "Аблятивное покрытие",
+  "type": "material",
+  "_id": "shcc58b791629fc3",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar.svg",
+  "system": {
+    "description": "<p>Аблятивное покрытие (ablative)</p>",
+    "materialId": "ablative",
+    "category": "ablative",
+    "hardness": 12,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.8,
+    "resistance": {
+      "ballistic": 20,
+      "concussive": 30,
+      "piercing": 25,
+      "cutting": 30,
+      "thermal": 90,
+      "laser": 120,
+      "plasma": 80,
+      "electric": 20,
+      "sonic": 20,
+      "radiation": 15,
+      "chemical": 40
+    },
+    "wear": {
+      "ballistic": 150,
+      "concussive": 80,
+      "piercing": 120,
+      "cutting": 100,
+      "thermal": 40,
+      "laser": 30,
+      "plasma": 50,
+      "electric": 10,
+      "sonic": 10,
+      "radiation": 0,
+      "chemical": 60
+    },
+    "conductance": {
+      "laser": [
+        {
+          "type": "thermal",
+          "fraction": 0.4
+        }
+      ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shc7c52a941ed8a3",
+  "sort": 100000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shcc58b791629fc3"
+}

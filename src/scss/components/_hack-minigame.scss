@@ -395,6 +395,42 @@
     position: relative;
     z-index: 2;
     pointer-events: none;
+    transition: color 0.15s ease;
+
+    &.is-delta-preview {
+      font-size: 0.78em;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+
+    &.is-delta-minus {
+      color: #ffb06a;
+    }
+
+    &.is-delta-plus {
+      color: #7dffab;
+    }
+
+    &.is-delta-anim {
+      animation: sh-hack-delta-pop 0.32s ease-out;
+    }
+  }
+
+  @keyframes sh-hack-delta-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.72) translateY(2px);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.08) translateY(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
   }
 
   &__debug-ghost {
@@ -671,13 +707,24 @@
 
   &__actions {
     display: flex;
+    flex-direction: column;
     gap: 0.4rem;
+    width: 100%;
   }
 
   &__btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.35rem;
+    width: 100%;
+    box-sizing: border-box;
     cursor: pointer;
+    color: #fff;
+
+    span,
+    i {
+      color: inherit;
+    }
   }
 }

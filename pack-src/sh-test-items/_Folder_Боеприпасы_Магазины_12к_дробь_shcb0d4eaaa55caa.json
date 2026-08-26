@@ -1,0 +1,23 @@
+{
+  "name": "12к дробь",
+  "type": "Item",
+  "_id": "shcb0d4eaaa55caa",
+  "sorting": "a",
+  "folder": "shc646bf2bf61b7f",
+  "description": "",
+  "color": "#a16207",
+  "sort": 30000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shcb0d4eaaa55caa"
+}

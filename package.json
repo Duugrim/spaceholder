@@ -8,6 +8,7 @@
     "pack:sh-test-items": "node scripts/compile-sh-test-items.mjs --in-place",
     "pack:sh-test-items:next": "node scripts/compile-sh-test-items.mjs",
     "unpack:sh-test-items": "npx --yes @foundryvtt/foundryvtt-cli package unpack -n sh-test-items --inputDirectory ./packs --outputDirectory ./pack-src/sh-test-items -c",
+    "generate:sh-catalog": "node scripts/generate-sh-catalog.mjs",
     "generate:sh-test-actors": "node scripts/generate-sh-test-actors.mjs",
     "pack:sh-test-actors": "node scripts/compile-sh-test-actors.mjs --in-place",
     "pack:sh-test-actors:next": "node scripts/compile-sh-test-actors.mjs",

@@ -1,0 +1,141 @@
+{
+  "name": "Кожаный комплект",
+  "type": "item",
+  "_id": "shc64b0e6d394bfd",
+  "img": "systems/spaceholder/assets/icons/armor.svg/leather-armor.svg",
+  "system": {
+    "description": "<p>Кожаная куртка + штаны.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 2.8,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          {
+            "material": "leather",
+            "thickness": 2
+          }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          {
+            "material": "leather",
+            "thickness": 2
+          }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          {
+            "material": "leather",
+            "thickness": 2
+          }
+        ]
+      },
+      {
+        "slotRef": "leftThigh",
+        "layers": [
+          {
+            "material": "leather",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "rightThigh",
+        "layers": [
+          {
+            "material": "leather",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "leftShin",
+        "layers": [
+          {
+            "material": "leather",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "rightShin",
+        "layers": [
+          {
+            "material": "leather",
+            "thickness": 1
+          }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shc0b88e842575d0",
+  "sort": 60000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc64b0e6d394bfd"
+}

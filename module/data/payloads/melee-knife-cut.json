@@ -1,0 +1,23 @@
+{
+  "id": "melee_knife_cut",
+  "name": "Нож — рез",
+  "description": "Короткий обрезанный конус, грань не останавливается на первом (next).",
+  "type": "complex",
+  "trajectory": {
+    "segments": [
+      {
+        "type": "swing",
+        "direction": 0,
+        "range": 0.75,
+        "cut": 0.5,
+        "angle": 90,
+        "side": "right",
+        "collision": {
+          "walls": true,
+          "tokens": { "owner": true, "ally": true, "other": true }
+        },
+        "onHit": "next"
+      }
+    ]
+  }
+}

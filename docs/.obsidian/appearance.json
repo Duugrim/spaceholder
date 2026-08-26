@@ -7,5 +7,6 @@
   "interfaceFontFamily": "Rubik",
   "enabledCssSnippets": [
     "things-bold-obsidianite-gradient"
-  ]
+  ],
+  "showViewHeader": true
 }

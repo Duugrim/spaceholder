@@ -1,0 +1,100 @@
+<div class="sh-lockpick-minigame {{#if isObserve}}is-observe{{/if}} {{#unless canInteract}}is-readonly{{/unless}}">
+  <div class="sh-lockpick-minigame__left">
+    <header class="sh-lockpick-minigame__hud">
+      <div class="sh-lockpick-minigame__hud-item">
+        <i class="fa-solid fa-seedling" aria-hidden="true"></i>
+        <span class="sh-lockpick-minigame__seed">{{seed}}</span>
+      </div>
+      <div class="sh-lockpick-minigame__hud-item">
+        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+        <span>{{checkCount}}</span>
+      </div>
+      <div class="sh-lockpick-minigame__hud-item">
+        <i class="fa-solid fa-circle-notch" aria-hidden="true"></i>
+        <span>{{segmentDegrees}}°</span>
+      </div>
+      {{#if isObserve}}
+        <div class="sh-lockpick-minigame__hud-item is-observe">
+          <i class="fa-solid fa-eye" aria-hidden="true"></i>
+          <span>{{localize 'SPACEHOLDER.LockpickMinigame.Hud.Observing'}}</span>
+        </div>
+      {{/if}}
+      {{#if won}}
+        <div class="sh-lockpick-minigame__won">
+          <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
+          <span>{{localize 'SPACEHOLDER.LockpickMinigame.Hud.Won'}}</span>
+        </div>
+      {{/if}}
+      <button
+        type="button"
+        class="sh-lockpick-minigame__undo"
+        data-action="undo"
+        aria-label="{{localize 'SPACEHOLDER.LockpickMinigame.Hud.Undo'}}"
+        {{#unless canUndo}}disabled{{/unless}}
+      >
+        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <section
+      class="sh-lockpick-minigame__front"
+      style="--sh-lp-front: {{frontSize}}px;"
+      aria-label="{{localize 'SPACEHOLDER.LockpickMinigame.Hud.Front'}}"
+      data-action="front-view"
+    >
+      <div class="sh-lockpick-minigame__ring">
+        {{#each ticks}}
+          <span class="sh-lockpick-minigame__tick" style="--sh-lp-tick: {{this.deg}}deg;"></span>
+        {{/each}}
+        <div class="sh-lockpick-minigame__keyhole">
+          <div class="sh-lockpick-minigame__keyhole-pill"></div>
+        </div>
+        <div class="sh-lockpick-minigame__pick" style="--sh-lp-pick: {{pickRotation}}deg;">
+          <span class="sh-lockpick-minigame__pick-shaft"></span>
+          <span class="sh-lockpick-minigame__pick-tip"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section
+    class="sh-lockpick-minigame__cutaway"
+    style="--sh-lp-cut-w: {{cutW}}px; --sh-lp-pin-count: {{pinCount}};"
+    aria-label="{{localize 'SPACEHOLDER.LockpickMinigame.Hud.Cutaway'}}"
+  >
+    <div class="sh-lockpick-minigame__barrel">
+      <div class="sh-lockpick-minigame__channel" aria-hidden="true"></div>
+      <div class="sh-lockpick-minigame__housing" aria-hidden="true"></div>
+
+      <div class="sh-lockpick-minigame__pins">
+        {{#each pinsTopFirst}}
+          <button
+            type="button"
+            class="sh-lockpick-minigame__pin
+              tip-{{this.toleranceBand}}
+              {{#if this.active}}is-active{{/if}}
+              {{#if this.unlocked}}is-unlocked{{/if}}"
+            style="--sh-lp-extend: {{this.extend}};"
+            data-action="select-pin"
+            data-pin-index="{{this.index}}"
+            aria-label="{{this.toleranceLabel}}"
+            {{#unless ../canInteract}}disabled{{/unless}}
+          >
+            <span class="sh-lockpick-minigame__pin-body">
+              <span class="sh-lockpick-minigame__pin-tip" aria-hidden="true"></span>
+            </span>
+          </button>
+        {{/each}}
+      </div>
+
+      <div
+        class="sh-lockpick-minigame__cut-pick"
+        style="--sh-lp-pick-row: {{activeFromTop}};"
+        aria-hidden="true"
+      >
+        <span class="sh-lockpick-minigame__cut-pick-shaft"></span>
+        <span class="sh-lockpick-minigame__cut-pick-hook"></span>
+      </div>
+    </div>
+  </section>
+</div>

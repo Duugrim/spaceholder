@@ -24,7 +24,9 @@ import {
   reloadBlock,
   operateBolt,
   canReloadBlock,
+  syncExternalChargeHostedRuntime,
 } from './weapon-ammo-runtime.mjs';
+import { unparentActorItemFromHost } from '../item-weapon-host.mjs';
 import { spendAp, ensureCharacterApSynced } from '../actions/transaction-ledger.mjs';
 
 /** MVP: «Открыть рюкзак» + взять предмет в руки. */
@@ -118,8 +120,14 @@ export function buildAttackChain({ actor, weaponItem, lineId, modeId }) {
     }
   }
 
-  // 3. Ammo readiness per block.
-  const readiness = lineShotReadiness(weapon, lineId);
+  // 3. Ammo readiness per block (actor required to resolve live contentItemIds / charge).
+  for (const line of weapon.lines ?? []) {
+    if (line.id !== lineId) continue;
+    for (const block of line.ammoBlocks ?? []) {
+      syncExternalChargeHostedRuntime(actor, weaponItem, block);
+    }
+  }
+  const readiness = lineShotReadiness(weapon, lineId, actor);
   for (const blockInfo of readiness.blocks) {
     if (blockInfo.ready) continue;
     const block = getAmmoBlock(weapon, lineId, blockInfo.blockId);
@@ -304,6 +312,7 @@ export async function executeAttackChain({ actor, weaponItem, token, lineId, mod
         weapon.state.activeModeId = '';
         weapon.state.activeLineId = '';
         await persistWeaponData(weaponItem, weapon);
+        if (step.apCost > 0) await _announceModeStep(actor, weaponItem, step);
         break;
       }
       case 'enterLine':
@@ -314,6 +323,7 @@ export async function executeAttackChain({ actor, weaponItem, token, lineId, mod
         weapon.state.activeLineId = lineId;
         weapon.state.activeModeId = modeId;
         await persistWeaponData(weaponItem, weapon);
+        if (step.apCost > 0) await _announceModeStep(actor, weaponItem, step);
         break;
       }
       case 'reload': {
@@ -387,6 +397,28 @@ async function _ensureAimingManager() {
 }
 
 /**
+ * Optional chat ping when switching fire modes with a real AP enter/exit cost.
+ * @param {Actor|null} actor
+ * @param {Item} weaponItem
+ * @param {AttackChainStep} step
+ */
+async function _announceModeStep(actor, weaponItem, step) {
+  const label = String(step?.label || '').trim();
+  if (!label) return;
+  const weaponName = String(weaponItem?.name || '');
+  const content = weaponName ? `${weaponName}: ${label}` : label;
+  try {
+    ui.notifications?.info?.(content);
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: actor ?? null }),
+      content: `<div>${foundry.utils.escapeHTML(content)}</div>`,
+    });
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+/**
  * Full attack flow: build chain → confirm → execute.
  *
  * @param {object} args
@@ -398,6 +430,24 @@ async function _ensureAimingManager() {
  * @returns {Promise<boolean>}
  */
 export async function runWeaponAttack({ actor, weaponItem, token, lineId, modeId }) {
+  // Persist EXTERNAL_CHARGE host reconciliation before building the chain so
+  // readiness / detach menus share the same contentItemIds as live items.
+  {
+    const weapon = getWeaponData(weaponItem);
+    let synced = false;
+    for (const line of weapon.lines ?? []) {
+      for (const block of line.ammoBlocks ?? []) {
+        const sync = syncExternalChargeHostedRuntime(actor, weaponItem, block);
+        if (sync.changed) synced = true;
+        for (const extraId of sync.extraIds) {
+          await unparentActorItemFromHost(actor, extraId, { held: true });
+          synced = true;
+        }
+      }
+    }
+    if (synced) await persistWeaponData(weaponItem, weapon);
+  }
+
   const chain = buildAttackChain({ actor, weaponItem, lineId, modeId });
   if (!chain.ok) {
     ui.notifications?.warn?.(_t(`SPACEHOLDER.WeaponV3.Chain.Blocked.${chain.reason ?? 'unknown'}`));

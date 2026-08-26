@@ -1,0 +1,23 @@
+{
+  "name": "Пулемёты",
+  "type": "Item",
+  "_id": "shc56aecf9003a51",
+  "sorting": "a",
+  "folder": "shc7ba08c8ae5290",
+  "description": "",
+  "color": "#b91c1c",
+  "sort": 56000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc56aecf9003a51"
+}

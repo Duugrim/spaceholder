@@ -1,0 +1,63 @@
+{
+  "name": "Танковый композит",
+  "type": "material",
+  "_id": "shcb17f91341a40b",
+  "img": "systems/spaceholder/assets/icons/armor.svg/metal-scales.svg",
+  "system": {
+    "description": "<p>Танковый композит (tank-composite)</p>",
+    "materialId": "tank-composite",
+    "category": "composite",
+    "hardness": 25,
+    "integrityPerThickness": 100,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 12,
+    "resistance": {
+      "ballistic": 140,
+      "concussive": 110,
+      "piercing": 130,
+      "cutting": 140,
+      "thermal": 70,
+      "laser": 55,
+      "plasma": 50,
+      "electric": 30,
+      "sonic": 100,
+      "radiation": 80,
+      "chemical": 50
+    },
+    "wear": {
+      "ballistic": 20,
+      "concussive": 15,
+      "piercing": 20,
+      "cutting": 15,
+      "thermal": 40,
+      "laser": 45,
+      "plasma": 120,
+      "electric": 5,
+      "sonic": 5,
+      "radiation": 0,
+      "chemical": 60
+    },
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shc9e278c885c93b",
+  "sort": 110000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shcb17f91341a40b"
+}

@@ -1,0 +1,292 @@
+{
+  "name": "Станнер",
+  "type": "item",
+  "_id": "shcb1c37d343d755",
+  "img": "systems/spaceholder/assets/icons/weapon.svg/laser-gun.svg",
+  "system": {
+    "description": "<p>Станнер. Боеприпас — теплообменник (без батареи).</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 0.7,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "",
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isWeapon": true,
+      "isAmmo": false,
+      "isContainer": false
+    },
+    "weapon": {
+      "version": 3,
+      "ergonomics": {
+        "overall": 145,
+        "zones": {
+          "enabled": false,
+          "green": 100,
+          "yellow": 100,
+          "orange": 100,
+          "red": 100
+        },
+        "deadZone": {
+          "enabled": false,
+          "value": 100
+        },
+        "aimPenalty": {
+          "enabled": false,
+          "value": 100
+        },
+        "critZoneBonus": {
+          "enabled": false,
+          "value": 0
+        },
+        "critZoneSize": {
+          "enabled": false,
+          "value": 100
+        },
+        "readying": {
+          "enabled": true,
+          "value": 5
+        }
+      },
+      "lines": [
+        {
+          "id": "shcc201e6642a425",
+          "name": "Излучатель",
+          "trajectoryKind": "simple",
+          "simpleLimit": {
+            "enabled": false,
+            "value": 0,
+            "unit": "grid"
+          },
+          "payloadId": "",
+          "aiming": 8,
+          "trigger": 3,
+          "energyMult": {
+            "enabled": false,
+            "value": 100
+          },
+          "spread": {
+            "enabled": true,
+            "value": 1
+          },
+          "recoil": {
+            "enabled": true,
+            "value": 0
+          },
+          "enterCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "exitCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "damage": [
+            {
+              "enabled": true,
+              "damageType": "laser",
+              "damage": 50,
+              "armorPen": 35,
+              "hardness": 1,
+              "armorDamageFactor": 100,
+              "armorDamageReduction": 100,
+              "speed": 0,
+              "payloadId": ""
+            }
+          ],
+          "ammoBlocks": [
+            {
+              "id": "shc3dca3dd5f2075",
+              "type": "externalCharge",
+              "capacity": 1,
+              "loadAmount": 1,
+              "chamberEnabled": false,
+              "autoFeed": false,
+              "caliber": "laser-heat-xs",
+              "connector": "",
+              "search": {
+                "hands": true,
+                "worn": true,
+                "inventory": true,
+                "containers": true,
+                "mode": "auto"
+              },
+              "apActions": {
+                "loadOne": {
+                  "enabled": true,
+                  "value": 5
+                },
+                "loadX": {
+                  "enabled": true,
+                  "value": 10
+                },
+                "reload": {
+                  "enabled": true,
+                  "value": 15
+                },
+                "bolt": {
+                  "enabled": false,
+                  "value": 0
+                },
+                "unload": {
+                  "enabled": true,
+                  "value": 5
+                },
+                "empty": {
+                  "enabled": true,
+                  "value": 10
+                }
+              },
+              "damage": [],
+              "runtime": {
+                "charge": 0,
+                "chamberCharge": false,
+                "attachedItemId": "",
+                "chamberItemId": "",
+                "contentItemIds": [],
+                "chamberItem": null,
+                "contents": [],
+                "magazine": null
+              }
+            }
+          ],
+          "modes": [
+            {
+              "id": "shc189fa841ffb34",
+              "name": "Одиночный",
+              "fireMode": "single",
+              "burstCount": 3,
+              "fireDelayAp": 5,
+              "ammoCost": 1,
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "modifiers": [],
+              "multishot": {
+                "enabled": false,
+                "count": 1,
+                "coneDegrees": 0
+              }
+            }
+          ],
+          "multishot": {
+            "enabled": false,
+            "count": 1,
+            "coneDegrees": 0
+          }
+        }
+      ],
+      "state": {
+        "activeLineId": "shcc201e6642a425",
+        "activeModeId": "shc189fa841ffb34",
+        "ready": false
+      },
+      "ammo": {
+        "damage": [],
+        "caliber": "",
+        "connector": {
+          "enabled": false,
+          "value": ""
+        },
+        "charge": {
+          "enabled": false,
+          "max": 0,
+          "current": 0,
+          "allowFractional": false,
+          "clampNonNegative": true,
+          "scaleDamageFromSpent": false,
+          "overheatNotify": false,
+          "changePerShot": {
+            "sign": "-",
+            "formula": "1"
+          },
+          "changePerSecond": {
+            "sign": "+",
+            "formula": "0"
+          }
+        },
+        "capacity": 0,
+        "consume": true,
+        "falloff": {
+          "enabled": false,
+          "halfDistance": 0
+        },
+        "multishot": {
+          "enabled": false,
+          "count": 1,
+          "coneDegrees": 0
+        },
+        "onHitSplash": {
+          "enabled": false,
+          "radius": 0,
+          "unit": "grid"
+        }
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shc17c219f858087",
+  "sort": 230000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shcb1c37d343d755"
+}

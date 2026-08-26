@@ -1,0 +1,63 @@
+{
+  "name": "Кожа (ткань тела)",
+  "type": "material",
+  "_id": "shc2341584733eac",
+  "img": "systems/spaceholder/assets/icons/clothing.svg/clothes.svg",
+  "system": {
+    "description": "<p>Кожа (ткань тела) (skin)</p>",
+    "materialId": "skin",
+    "category": "biological",
+    "hardness": 1,
+    "integrityPerThickness": 5,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1,
+    "resistance": {
+      "ballistic": 15,
+      "concussive": 40,
+      "piercing": 20,
+      "cutting": 25,
+      "thermal": 40,
+      "laser": 30,
+      "plasma": 25,
+      "electric": 30,
+      "sonic": 40,
+      "radiation": 10,
+      "chemical": 30
+    },
+    "wear": {
+      "ballistic": 100,
+      "concussive": 40,
+      "piercing": 100,
+      "cutting": 120,
+      "thermal": 80,
+      "laser": 90,
+      "plasma": 120,
+      "electric": 20,
+      "sonic": 10,
+      "radiation": 5,
+      "chemical": 100
+    },
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shc0b5ae83ba6f50",
+  "sort": 120000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc2341584733eac"
+}

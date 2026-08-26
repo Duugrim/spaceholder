@@ -1,0 +1,23 @@
+{
+  "name": "Ячейки",
+  "type": "Item",
+  "_id": "shc700b41632d132",
+  "sorting": "a",
+  "folder": "shc85305cc310cde",
+  "description": "",
+  "color": "#a16207",
+  "sort": 45000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc700b41632d132"
+}

@@ -1,0 +1,70 @@
+{
+  "name": "Кожа",
+  "type": "material",
+  "_id": "shc56e083ac050b6",
+  "img": "systems/spaceholder/assets/icons/armor.svg/leather-armor.svg",
+  "system": {
+    "description": "<p>Кожа (leather)</p>",
+    "materialId": "leather",
+    "category": "fabric",
+    "hardness": 3,
+    "integrityPerThickness": 12,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.9,
+    "resistance": {
+      "ballistic": 25,
+      "concussive": 35,
+      "piercing": 30,
+      "cutting": 55,
+      "thermal": 35,
+      "laser": 20,
+      "plasma": 15,
+      "electric": 15,
+      "sonic": 15,
+      "radiation": 0,
+      "chemical": 25
+    },
+    "wear": {
+      "ballistic": 120,
+      "concussive": 50,
+      "piercing": 100,
+      "cutting": 80,
+      "thermal": 200,
+      "laser": 250,
+      "plasma": 300,
+      "electric": 5,
+      "sonic": 10,
+      "radiation": 0,
+      "chemical": 120
+    },
+    "conductance": {
+      "ballistic": [
+        {
+          "type": "concussive",
+          "fraction": 0.3
+        }
+      ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shce6f677d730eb8",
+  "sort": 30000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc56e083ac050b6"
+}

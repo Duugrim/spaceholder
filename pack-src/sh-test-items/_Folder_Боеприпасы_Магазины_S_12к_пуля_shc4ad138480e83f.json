@@ -1,0 +1,23 @@
+{
+  "name": "12к пуля",
+  "type": "Item",
+  "_id": "shc4ad138480e83f",
+  "sorting": "a",
+  "folder": "shc46d80fe4f7a13",
+  "description": "",
+  "color": "#a16207",
+  "sort": 28000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc4ad138480e83f"
+}

@@ -201,9 +201,51 @@ export function applyCapture(session, move) {
 
   /** @type {HackSession} */
   const next = cloneSession(session);
+
+  // Validate target before any mutations. AV cells cannot be captured.
+  if (!valid.toWin) {
+    const preTarget = getCell(next, valid.toR, valid.toC);
+    if (!preTarget || preTarget.status !== 'untouched') return { ok: false, reason: 'invalid-target' };
+    if (preTarget.activeAntivirus || preTarget.antivirusSecondary) {
+      return { ok: false, reason: 'antivirus' };
+    }
+  }
+
   /** @type {{ r: number, c: number }[]} */
   const touched = [];
 
+  // 1) Capture from the source first (while it is still captured / unscanned).
+  if (valid.toWin) {
+    next.won = true;
+    next.pathEdges.push(`${cellKey(valid.fromR, valid.fromC)}>win`);
+    const src = getCell(next, valid.fromR, valid.fromC);
+    if (src) {
+      if (valid.zeroSource) src.value = 0;
+      else src.value = Math.max(0, src.value - 1);
+    }
+  } else {
+    const target = getCell(next, valid.toR, valid.toC);
+    if (!target || target.status !== 'untouched') return { ok: false, reason: 'invalid-target' };
+
+    const captureValue = Math.max(0, Number(valid.captureValue ?? target.value) || 0);
+    target.status = 'captured';
+    clearPurpleWard(target);
+    next.actionUsed += captureValue;
+    touched.push({ r: valid.toR, c: valid.toC });
+
+    if (valid.isStart) {
+      next.pathEdges.push(`start>${cellKey(valid.toR, valid.toC)}`);
+    } else {
+      const src = getCell(next, valid.fromR, valid.fromC);
+      if (src) {
+        if (valid.zeroSource) src.value = 0;
+        else src.value = Math.max(0, src.value - 1);
+      }
+      next.pathEdges.push(`${cellKey(valid.fromR, valid.fromC)}>${cellKey(valid.toR, valid.toC)}`);
+    }
+  }
+
+  // 2) Path disables (e.g. digit 5 middle cell). Do not strip AV — it stays until its tick.
   for (const p of valid.traversed ?? []) {
     const cell = getCell(next, p.r, p.c);
     if (!cell) continue;
@@ -213,50 +255,10 @@ export function applyCapture(session, move) {
     touched.push({ r: p.r, c: p.c });
   }
 
-  if (valid.toWin) {
-    next.won = true;
-    next.pathEdges.push(`${cellKey(valid.fromR, valid.fromC)}>win`);
-    const src = getCell(next, valid.fromR, valid.fromC);
-    if (src) {
-      if (valid.zeroSource) src.value = 0;
-      else src.value = Math.max(0, src.value - 1);
-    }
-    // Win still trips AV; tick only if AV was already running (not the spawn turn)
-    const activatedOnWin = maybeActivateAntivirus(next, touched);
-    if (next.antivirusActive && !activatedOnWin) tickAntivirus(next);
-    updateVision(next);
-    return {
-      ok: true,
-      session: next,
-      activatedAntivirus: !avWasActive && !!next.antivirusActive,
-    };
-  }
-
-  const target = getCell(next, valid.toR, valid.toC);
-  if (!target || target.status !== 'untouched') return { ok: false, reason: 'invalid-target' };
-  if (target.activeAntivirus || target.antivirusSecondary) return { ok: false, reason: 'antivirus' };
-
-  const captureValue = Math.max(0, Number(valid.captureValue ?? target.value) || 0);
-  target.status = 'captured';
-  clearPurpleWard(target);
-  next.actionUsed += captureValue;
-  touched.push({ r: valid.toR, c: valid.toC });
-
-  if (valid.isStart) {
-    next.pathEdges.push(`start>${cellKey(valid.toR, valid.toC)}`);
-  } else {
-    const src = getCell(next, valid.fromR, valid.fromC);
-    if (src) {
-      if (valid.zeroSource) src.value = 0;
-      else src.value = Math.max(0, src.value - 1);
-    }
-    next.pathEdges.push(`${cellKey(valid.fromR, valid.fromC)}>${cellKey(valid.toR, valid.toC)}`);
-  }
-
   // Bonus areas count as AV trips even when the effect no-ops, except purple:
   // purple defuses scanners / purges AV and must not activate.
-  const bonusTouched = listBonusTouchedCells(next, valid);
-  const purpleKeys = listPurpleTouchedKeys(next, valid);
+  const bonusTouched = valid.toWin ? [] : listBonusTouchedCells(next, valid);
+  const purpleKeys = valid.toWin ? new Set() : listPurpleTouchedKeys(next, valid);
   /** @type {Map<string, { r: number, c: number }>} */
   const tripMap = new Map();
   for (const pos of touched) tripMap.set(cellKey(pos.r, pos.c), pos);
@@ -266,12 +268,12 @@ export function applyCapture(session, move) {
     tripMap.set(key, pos);
   }
 
-  // Spawn turn: occupy right column + scan. Later turns: move + scan.
+  // 3) Antivirus only after the capture from the source has fully applied.
   const activatedNow = maybeActivateAntivirus(next, [...tripMap.values()]);
   if (next.antivirusActive && !activatedNow) tickAntivirus(next);
 
-  // Bonuses after AV tick (purple can purge agents spawned/moved this turn).
-  applyCaptureBonuses(next, valid);
+  // 4) Other effects.
+  if (!valid.toWin) applyCaptureBonuses(next, valid);
   updateVision(next);
 
   return {

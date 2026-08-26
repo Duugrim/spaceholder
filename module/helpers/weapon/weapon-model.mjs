@@ -27,6 +27,13 @@ import {
   computeProjectileEnergy,
   damageEntriesToApplications,
   buildProjectileFromDamageEntries,
+  normalizeFalloff,
+  defaultFalloff,
+  normalizeMultishot,
+  defaultMultishot,
+  normalizeOnHitSplash,
+  defaultOnHitSplash,
+  uniformConeDirections,
 } from './damage-profile.mjs';
 import { normalizeTrajectoryKind, normalizeSimpleLimit } from './trajectory.mjs';
 import {
@@ -261,7 +268,19 @@ export function createWeaponLine(seed = {}) {
   });
 }
 
-export { defaultDamageEntry, normalizeDamageEntry, normalizeDamageEntries, activeDamageEntries, computeProjectileEnergy, damageEntriesToApplications, buildProjectileFromDamageEntries };
+export {
+  defaultDamageEntry,
+  normalizeDamageEntry,
+  normalizeDamageEntries,
+  activeDamageEntries,
+  computeProjectileEnergy,
+  damageEntriesToApplications,
+  buildProjectileFromDamageEntries,
+  normalizeMultishot,
+  normalizeOnHitSplash,
+  uniformConeDirections,
+  normalizeFalloff,
+};
 
 /* ================================================================== *
  *  Normalizers                                                        *
@@ -327,6 +346,7 @@ export function normalizeWeaponMode(raw) {
     enterCost: _toggleable(raw.enterCost, { enabled: false, value: 0 }),
     exitCost: _toggleable(raw.exitCost, { enabled: false, value: 0 }),
     modifiers: Array.isArray(raw.modifiers) ? raw.modifiers.map(normalizeModeModifier) : [],
+    multishot: normalizeMultishot(raw.multishot ?? defaultMultishot()),
   };
 }
 
@@ -440,6 +460,7 @@ export function normalizeWeaponLine(raw) {
     damage: normalizeDamageEntries(raw.damage),
     ammoBlocks: Array.isArray(raw.ammoBlocks) ? raw.ammoBlocks.map(normalizeAmmoBlock) : [],
     modes,
+    multishot: normalizeMultishot(raw.multishot ?? defaultMultishot()),
   };
 }
 
@@ -484,6 +505,12 @@ export function normalizeAmmoConfig(raw) {
     /** Magazine container round capacity (when connector.enabled). */
     capacity: Math.max(0, shInt(src.capacity, 0, 0)),
     consume: _bool(src.consume, true),
+    /** Exponential damage/AP falloff vs scene distance (half-distance). */
+    falloff: normalizeFalloff(src.falloff ?? defaultFalloff()),
+    /** Multi-ray fan (buckshot). */
+    multishot: normalizeMultishot(src.multishot ?? defaultMultishot()),
+    /** Append splash circle after line hit (rockets). */
+    onHitSplash: normalizeOnHitSplash(src.onHitSplash ?? defaultOnHitSplash()),
   };
 }
 

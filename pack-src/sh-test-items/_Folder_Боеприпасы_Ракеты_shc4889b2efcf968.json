@@ -1,0 +1,23 @@
+{
+  "name": "Ракеты",
+  "type": "Item",
+  "_id": "shc4889b2efcf968",
+  "sorting": "a",
+  "folder": "shc8d26d6f89e1b7",
+  "description": "",
+  "color": "#a16207",
+  "sort": 47000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc4889b2efcf968"
+}

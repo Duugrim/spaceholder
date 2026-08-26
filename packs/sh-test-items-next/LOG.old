@@ -1,0 +1,5 @@
+2026/04/15-22:09:58.798 1c64 Delete type=3 #1
+2026/04/15-22:09:58.802 2dd4 Level-0 table #5: started
+2026/04/15-22:09:58.809 2dd4 Level-0 table #5: 2558 bytes OK
+2026/04/15-22:09:58.811 2dd4 Delete type=0 #3
+2026/04/15-22:09:58.811 2dd4 Manual compaction at level-0 from '!items!shtest01medkit00' @ 72057594037927935 : 1 .. '!items!yC6lzm9QmQiYYTc3' @ 0 : 0; will stop at (end)

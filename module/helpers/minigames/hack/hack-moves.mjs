@@ -55,6 +55,7 @@ function inBounds(board, r, c) {
 
 /**
  * Target is capturable only if untouched and free of antivirus.
+ * Digit 5 may jump *over* an AV cell (middle is path-disabled, not captured).
  * @param {HackBoardView} board
  * @param {number} r
  * @param {number} c

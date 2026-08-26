@@ -1,0 +1,117 @@
+{
+  "name": "Бронежилет (керамика)",
+  "type": "item",
+  "_id": "shceff2047842d21",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar-vest.svg",
+  "system": {
+    "description": "<p>Керамические плиты + кевлар.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 9,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          {
+            "material": "ceramic-plate",
+            "thickness": 4
+          },
+          {
+            "material": "kevlar",
+            "thickness": 2
+          }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          {
+            "material": "ceramic-plate",
+            "thickness": 4
+          },
+          {
+            "material": "kevlar",
+            "thickness": 2
+          }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          {
+            "material": "ceramic-plate",
+            "thickness": 4
+          },
+          {
+            "material": "kevlar",
+            "thickness": 2
+          }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shc9f341d5b6ff26",
+  "sort": 140000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shceff2047842d21"
+}

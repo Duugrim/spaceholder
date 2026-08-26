@@ -1,0 +1,91 @@
+{
+  "name": "Шлем (тяжёлый)",
+  "type": "item",
+  "_id": "shcd90cf657bf335",
+  "img": "systems/spaceholder/assets/icons/hat.svg/visored-helm.svg",
+  "system": {
+    "description": "<p>Композит + аблятив.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 3.2,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "head",
+        "layers": [
+          {
+            "material": "combat-composite",
+            "thickness": 3
+          },
+          {
+            "material": "ablative",
+            "thickness": 2
+          }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shc9987980ceef1c",
+  "sort": 230000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shcd90cf657bf335"
+}

@@ -30,7 +30,7 @@ tags:
 Примеры паков:
 
 - **`sh-test-items`** (`SpaceHolder Test Items`) — исходники в **`pack-src/sh-test-items/`**, тип `Item`.
-- **`sh-test-actors`** (`SpaceHolder Test Actors`) — исходники в **`pack-src/sh-test-actors/`**, тип `Actor`. Содержит `Стрелок` (character с гуманоидной анатомией и набором тестовых патронов в инвентаре) и `Мишень` (character с кастомной анатомией из одной части `chest` для тестов брони/стрельбы). Файлы генерируются из `data/anatomy/humanoid.json` скриптом `scripts/generate-sh-test-actors.mjs` — после правок анатомии прогнать `npm run generate:sh-test-actors` и пересобрать пак.
+- **`sh-test-actors`** (`SpaceHolder Test Actors`) — исходники в **`pack-src/sh-test-actors/`**, тип `Actor`. Содержит `Стрелок` (humanoid + стартовый каталог: АК, Глок, лазер, броня) и `Мишень` (одна часть `chest`). Предметы: `npm run generate:sh-catalog`; актёры: `npm run generate:sh-test-actors` (после каталога / правок анатомии), затем пересобрать паки.
 
 ## Обязательные поля в JSON исходника (Item)
 
@@ -73,7 +73,8 @@ tags:
 | `npm run pack:sh-test-items` | Основная сборка в **`packs/sh-test-items`**. **Foundry должен быть закрыт.** |
 | `npm run pack:sh-test-items:next` | Сборка в **`packs/sh-test-items-next`** (обход LOCK на основном каталоге, пока клиент открыт). Потом вручную: закрыть Foundry, заменить каталог пака или перенести содержимое. |
 | `npm run unpack:sh-test-items` | Выгрузить текущий LevelDB из **`packs/sh-test-items`** в **`pack-src/sh-test-items`** (с `-c` очищает цель). **Предпочтительно при закрытом Foundry.** Удобно подтянуть правки, сделанные в UI компендиума, обратно в исходники. |
-| `npm run generate:sh-test-actors` | Перегенерировать `pack-src/sh-test-actors/*.json` из `data/anatomy/humanoid.json` и `pack-src/sh-test-items/SH_Test4_*.json`. Запускать после изменения этих источников, перед `pack:sh-test-actors`. |
+| `npm run generate:sh-catalog` | Перегенерировать весь `pack-src/sh-test-items/*.json` (материалы, броня, патроны, оружие). **Стирает** предыдущие JSON в этой папке. |
+| `npm run generate:sh-test-actors` | Перегенерировать `pack-src/sh-test-actors/*.json` из `data/anatomy/humanoid.json` и текущего каталога предметов. Запускать после `generate:sh-catalog`, перед `pack:sh-test-actors`. |
 | `npm run pack:sh-test-actors` | Основная сборка в **`packs/sh-test-actors`**. **Foundry должен быть закрыт.** |
 | `npm run pack:sh-test-actors:next` | Сборка в **`packs/sh-test-actors-next`** (обход LOCK на основном каталоге, пока клиент открыт). |
 | `npm run unpack:sh-test-actors` | Выгрузить текущий LevelDB из **`packs/sh-test-actors`** в **`pack-src/sh-test-actors`** (с `-c` очищает цель). |

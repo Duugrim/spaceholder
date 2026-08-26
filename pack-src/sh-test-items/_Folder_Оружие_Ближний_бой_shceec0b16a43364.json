@@ -1,0 +1,23 @@
+{
+  "name": "Ближний бой",
+  "type": "Item",
+  "_id": "shceec0b16a43364",
+  "sorting": "a",
+  "folder": "shc61d18b9d7041b",
+  "description": "",
+  "color": "#b91c1c",
+  "sort": 69000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shceec0b16a43364"
+}

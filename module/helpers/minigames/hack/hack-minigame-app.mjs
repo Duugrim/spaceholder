@@ -398,6 +398,7 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
     const geom = this._geom();
     const cellPitch = HACK_CELL_SIZE + HACK_CELL_GAP;
     const ox = geom.gridOriginX;
+    const inset = HACK_CELL_SIZE / 2;
     const centerOf = (r, c) => ({
       x: ox + c * cellPitch + HACK_CELL_SIZE / 2,
       y: r * cellPitch + HACK_CELL_SIZE / 2,
@@ -411,6 +412,24 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       y: (fromR ?? Math.floor(session.rows / 2)) * cellPitch + HACK_CELL_SIZE / 2,
     });
 
+    /** Shorten a segment by half a cell at each end so it doesn't cover digits. */
+    const withEndInsets = (x1, y1, x2, y2) => {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      if (len <= 1) return { x1, y1, x2, y2 };
+      const maxInset = Math.max(0, (len - 2) / 2);
+      const pad = Math.min(inset, maxInset);
+      const ux = dx / len;
+      const uy = dy / len;
+      return {
+        x1: x1 + ux * pad,
+        y1: y1 + uy * pad,
+        x2: x2 - ux * pad,
+        y2: y2 - uy * pad,
+      };
+    };
+
     return this._hoverPaths.map((move, idx) => {
       let x1;
       let y1;
@@ -419,24 +438,15 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
       if (move.isStart) {
         const from = startCenter(move.toR);
         const to = centerOf(move.toR, move.toC);
-        x1 = from.x;
-        y1 = from.y;
-        x2 = to.x;
-        y2 = to.y;
+        ({ x1, y1, x2, y2 } = withEndInsets(from.x, from.y, to.x, to.y));
       } else if (move.toWin) {
         const from = centerOf(move.fromR, move.fromC);
         const to = winCenter(move.fromR);
-        x1 = from.x;
-        y1 = from.y;
-        x2 = to.x;
-        y2 = to.y;
+        ({ x1, y1, x2, y2 } = withEndInsets(from.x, from.y, to.x, to.y));
       } else {
         const from = centerOf(move.fromR, move.fromC);
         const to = centerOf(move.toR, move.toC);
-        x1 = from.x;
-        y1 = from.y;
-        x2 = to.x;
-        y2 = to.y;
+        ({ x1, y1, x2, y2 } = withEndInsets(from.x, from.y, to.x, to.y));
       }
       return { x1, y1, x2, y2, active: idx === this._activePathIndex };
     });
@@ -569,11 +579,43 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
     el.querySelectorAll('.sh-hack-minigame__cell').forEach((btn) => {
       btn.classList.remove(...BONUS_PREVIEW_CLASSES);
       const valEl = btn.querySelector('.sh-hack-minigame__cell-value');
-      if (valEl && btn.dataset.baseValue != null) {
+      if (!valEl) return;
+      if (btn.dataset.baseValue != null) {
         valEl.textContent = btn.dataset.baseValue;
         delete btn.dataset.baseValue;
       }
+      valEl.classList.remove('is-delta-preview', 'is-delta-minus', 'is-delta-plus', 'is-delta-anim');
     });
+  }
+
+  /**
+   * Show a value delta preview like "6-1" / "3+1" with a short pop-in animation.
+   * @param {HTMLElement} btn
+   * @param {HTMLElement} valEl
+   * @param {number} from
+   * @param {number} to
+   */
+  _paintValueDelta(btn, valEl, from, to) {
+    const a = Math.max(0, Number(from) || 0);
+    const b = Math.max(0, Number(to) || 0);
+    if (btn.dataset.baseValue == null) {
+      btn.dataset.baseValue = valEl.textContent || String(a);
+    }
+    let text = String(b);
+    let kind = '';
+    if (b < a) {
+      text = `${a}-${a - b}`;
+      kind = 'is-delta-minus';
+    } else if (b > a) {
+      text = `${a}+${b - a}`;
+      kind = 'is-delta-plus';
+    }
+    valEl.classList.remove('is-delta-anim', 'is-delta-minus', 'is-delta-plus');
+    // Restart CSS animation when the preview text changes.
+    void valEl.offsetWidth;
+    valEl.textContent = text;
+    valEl.classList.add('is-delta-preview', 'is-delta-anim');
+    if (kind) valEl.classList.add(kind);
   }
 
   /**
@@ -670,26 +712,35 @@ export class HackMinigameApp extends foundry.applications.api.HandlebarsApplicat
         btn.classList.add('is-preview-traversed');
       }
       const valEl = btn.querySelector('.sh-hack-minigame__cell-value');
-      // Live capture path: show resulting values in effect color.
-      if (valEl && bonusPrev.live && (bonus.valueChanged || bonus.statusChanged)) {
-        if (btn.dataset.baseValue == null) btn.dataset.baseValue = valEl.textContent;
-        valEl.textContent = String(bonus.value);
+      // Live capture path: show deltas like "4-1" / "2+1" in effect color.
+      if (valEl && bonusPrev.live && bonus.valueChanged) {
+        const from = Number(btn.dataset.baseValue ?? valEl.textContent) || 0;
+        // Prefer session digit when base wasn't stored yet.
+        const cell = getCell(asBoardView(this._session), r, c);
+        const base = btn.dataset.baseValue != null
+          ? Number(btn.dataset.baseValue) || 0
+          : (Number(cell?.value) || from);
+        this._paintValueDelta(btn, valEl, base, Number(bonus.value) || 0);
       }
     });
 
-    // Rule 5: show source digit after −1 on the active path.
+    // Rule 5: source digit preview as "6-1" (not the bare result).
+    // If orange/green also hits the source, prefer the combined final from bonus preview.
     const activeMove = this._activeMove();
-    if (activeMove && !activeMove.isStart && !activeMove.toWin
+    if (activeMove && !activeMove.isStart
       && activeMove.fromR != null && activeMove.fromC != null) {
       const srcBtn = el.querySelector(
         `.sh-hack-minigame__cell[data-r="${activeMove.fromR}"][data-c="${activeMove.fromC}"]`
       );
       const srcVal = srcBtn?.querySelector?.('.sh-hack-minigame__cell-value');
-      if (srcVal) {
+      if (srcBtn && srcVal) {
         const srcCell = getCell(asBoardView(this._session), activeMove.fromR, activeMove.fromC);
-        const nextVal = Math.max(0, (Number(srcCell?.value) || 0) - 1);
-        if (srcBtn.dataset.baseValue == null) srcBtn.dataset.baseValue = srcVal.textContent;
-        srcVal.textContent = String(nextVal);
+        const cur = Math.max(0, Number(srcCell?.value) || 0);
+        const srcKey = `${activeMove.fromR},${activeMove.fromC}`;
+        const srcBonus = bonusPrev.cells.get(srcKey);
+        let nextVal = activeMove.zeroSource ? 0 : Math.max(0, cur - 1);
+        if (srcBonus?.valueChanged) nextVal = Math.max(0, Number(srcBonus.value) || 0);
+        if (nextVal !== cur) this._paintValueDelta(srcBtn, srcVal, cur, nextVal);
       }
     }
 

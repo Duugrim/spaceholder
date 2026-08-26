@@ -1,0 +1,5 @@
+2026/07/31-22:04:34.421 6fb0 Delete type=3 #1
+2026/07/31-22:04:34.425 1284 Level-0 table #5: started
+2026/07/31-22:04:34.428 1284 Level-0 table #5: 17877 bytes OK
+2026/07/31-22:04:34.430 1284 Delete type=0 #3
+2026/07/31-22:04:34.430 1284 Manual compaction at level-0 from '!actors!shcactshooter000' @ 72057594037927935 : 1 .. '!actors.items!shcactshooter000.eer000b833e03306' @ 0 : 0; will stop at (end)

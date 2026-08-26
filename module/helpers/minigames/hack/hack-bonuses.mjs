@@ -218,6 +218,12 @@ function simulateMoveState(session, move) {
     const st = read(move.toR, move.toC);
     st.status = 'captured';
   }
+  // Rule 5: source digit drops before bonuses so preview matches commit order.
+  if (!move.isStart && move.fromR != null && move.fromC != null) {
+    const src = read(move.fromR, move.fromC);
+    if (move.zeroSource) src.value = 0;
+    else src.value = Math.max(0, (Number(src.value) || 0) - 1);
+  }
   return { read };
 }
 
@@ -262,9 +268,9 @@ function buildPreviewFromPulses(pulses, read, opts = {}) {
       const base = beforeBonus.get(key) ?? { value: st.value, status: st.status };
 
       if (simulateEffects) {
-        if (pulse.type === 'orange' && st.status !== 'captured') {
+        if (pulse.type === 'orange') {
           st.value = Math.max(0, (Number(st.value) || 0) - 1);
-        } else if (pulse.type === 'green' && st.status !== 'captured') {
+        } else if (pulse.type === 'green') {
           st.value = Math.min(9, (Number(st.value) || 0) + 1);
         } else if (pulse.type === 'blue' && st.status === 'traversed') {
           st.status = 'untouched';
@@ -370,10 +376,9 @@ export function applyCaptureBonuses(session, move) {
     for (const pos of pulse.cells) {
       const cell = getCell(session, pos.r, pos.c);
       if (!cell) continue;
-      if (pulse.type === 'orange' && cell.status !== 'captured') {
-        // −1 on untouched/traversed only — captured digits stay readable as path sources.
+      if (pulse.type === 'orange') {
         cell.value = Math.max(0, (Number(cell.value) || 0) - 1);
-      } else if (pulse.type === 'green' && cell.status !== 'captured') {
+      } else if (pulse.type === 'green') {
         cell.value = Math.min(9, (Number(cell.value) || 0) + 1);
       } else if (pulse.type === 'blue' && cell.status === 'traversed') {
         cell.status = 'untouched';

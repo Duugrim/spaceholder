@@ -1,0 +1,23 @@
+{
+  "name": "Композиты",
+  "type": "Item",
+  "_id": "shc9e278c885c93b",
+  "sorting": "a",
+  "folder": "shc33e2093e9d5f2",
+  "description": "",
+  "color": "#6b7280",
+  "sort": 3000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc9e278c885c93b"
+}

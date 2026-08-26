@@ -1,0 +1,159 @@
+{
+  "name": "Рабочая одежда",
+  "type": "item",
+  "_id": "shc0c08c46095627",
+  "img": "systems/spaceholder/assets/icons/clothing.svg/lab-coat.svg",
+  "system": {
+    "description": "<p>Плотный рабочий комплект.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 2,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "humanoid",
+    "coveredParts": [
+      {
+        "slotRef": "chest",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "abdomen",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "back",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "leftThigh",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "rightThigh",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "leftShin",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "rightShin",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "leftArm",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      },
+      {
+        "slotRef": "rightArm",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ]
+      }
+    ],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": true,
+      "isActions": false,
+      "isModifiers": false
+    }
+  },
+  "effects": [],
+  "folder": "shc0b88e842575d0",
+  "sort": 20000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc0c08c46095627"
+}

@@ -1,0 +1,23 @@
+{
+  "name": "7.62×39",
+  "type": "Item",
+  "_id": "shcd15fe70ff01e3",
+  "sorting": "a",
+  "folder": "shc0d2782997d715",
+  "description": "",
+  "color": "#a16207",
+  "sort": 32000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shcd15fe70ff01e3"
+}

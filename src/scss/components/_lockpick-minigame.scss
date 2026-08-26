@@ -1,0 +1,497 @@
+/* Lockpick minigame */
+
+.spaceholder-lockpick-generate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+
+  .form-group {
+    margin: 0;
+  }
+
+  &__seed-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+
+    input {
+      flex: 1;
+    }
+  }
+
+  &__random {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+
+  &__row,
+  &__checks {
+    display: grid;
+    grid-template-columns: auto 1fr auto 1fr;
+    gap: 0.35rem 0.5rem;
+    align-items: center;
+  }
+
+  &__checks {
+    grid-template-columns: 1fr auto 4.5rem;
+  }
+
+  &__sounds-entry {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  &__sounds-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__sounds {
+    display: grid;
+    grid-template-columns: minmax(7rem, auto) 1fr auto 4.5rem auto;
+    gap: 0.3rem 0.5rem;
+    align-items: center;
+  }
+
+  &__sounds-head {
+    font-weight: 600;
+  }
+
+  &__vol-label {
+    opacity: 0.8;
+    white-space: nowrap;
+  }
+
+  &__preview {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    padding: 0.2rem 0.4rem;
+  }
+}
+
+.application.lockpick-minigame {
+  overflow: visible;
+
+  .window-content {
+    padding: 0;
+    /* Allow pick shaft to extend past the bottom edge of the window. */
+    overflow-x: hidden;
+    overflow-y: visible;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  button.sh-lockpick-minigame__pin {
+    background: transparent;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+  }
+}
+
+.sh-lockpick-minigame {
+  --sh-lp-accent: #c9a227;
+  --sh-lp-metal: #8a9099;
+  --sh-lp-metal-dark: #3a3f46;
+  --sh-lp-ok: #4caf70;
+  --sh-lp-warn: #d4a017;
+  --sh-lp-cut-w: 160px;
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  outline: none;
+  color: var(--color-text-primary, #ddd);
+  font-family: var(--font-primary);
+
+  &.is-readonly {
+    .sh-lockpick-minigame__pin {
+      cursor: default;
+    }
+  }
+
+  &__left {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px 12px;
+    box-sizing: border-box;
+  }
+
+  &__hud {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem 0.85rem;
+    min-height: 28px;
+    margin-bottom: 10px;
+  }
+
+  &__hud-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    opacity: 0.9;
+
+    &.is-observe {
+      color: #7eb6ff;
+    }
+  }
+
+  &__seed {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__won {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--sh-lp-ok);
+    font-weight: 600;
+  }
+
+  &__undo {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    padding-inline: 0.45rem;
+  }
+
+  &__front {
+    width: var(--sh-lp-front, 280px);
+    height: var(--sh-lp-front, 280px);
+    flex: 0 0 auto;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+  }
+
+  &.is-readonly &__front {
+    cursor: default;
+  }
+
+  &__ring {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 3px solid var(--sh-lp-metal);
+    background:
+      radial-gradient(circle at 50% 45%, #4a5058 0%, var(--sh-lp-metal-dark) 62%, #222 100%);
+    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.45);
+  }
+
+  &__tick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 10px;
+    margin-left: -1px;
+    margin-top: -5px;
+    background: rgba(220, 220, 220, 0.4);
+    transform: rotate(var(--sh-lp-tick, 0deg)) translateY(calc(var(--sh-lp-front, 280px) / -2 + 8px));
+    pointer-events: none;
+  }
+
+  &__keyhole {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+  }
+
+  &__keyhole-pill {
+    width: 28px;
+    height: 72px;
+    border-radius: 14px;
+    background: #121417;
+    border: 2px solid #6a7078;
+    box-shadow: inset 0 0 8px #000;
+  }
+
+  &__pick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    transform: rotate(var(--sh-lp-pick, 0deg));
+    transform-origin: 50% 50%;
+    pointer-events: none;
+  }
+
+  &__pick-shaft {
+    position: absolute;
+    left: -3px;
+    bottom: 0;
+    width: 6px;
+    height: calc(var(--sh-lp-front, 280px) * 0.38);
+    background: linear-gradient(180deg, #e8e4d8, #9a9588);
+    border-radius: 2px 2px 0 0;
+    transform-origin: 50% 100%;
+    transform: translateY(-8px);
+  }
+
+  &__pick-tip {
+    position: absolute;
+    left: -7px;
+    bottom: calc(var(--sh-lp-front, 280px) * 0.38 - 4px);
+    width: 14px;
+    height: 14px;
+    border-radius: 50% 50% 40% 40%;
+    background: #ddd8cc;
+    transform: translateY(-8px);
+  }
+
+  &__cutaway {
+    flex: 0 0 var(--sh-lp-cut-w, 160px);
+    width: var(--sh-lp-cut-w, 160px);
+    max-width: var(--sh-lp-cut-w, 160px);
+    align-self: stretch;
+    border: 0;
+    border-left: 2px solid var(--sh-lp-metal);
+    border-radius: 0;
+    background: #121417;
+    padding: 0;
+    box-sizing: border-box;
+    overflow: visible;
+  }
+
+  &__barrel {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  &__channel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 38%;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.03) 0 1px,
+        transparent 1px 8px
+      ),
+      linear-gradient(90deg, #0e1013, #1b2026);
+  }
+
+  &__housing {
+    position: absolute;
+    left: 38%;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, #343a42, #2a3038 40%, #22272e);
+  }
+
+  &__pins {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 3;
+  }
+
+  &__pin {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    color: inherit;
+    cursor: pointer;
+    overflow: visible;
+
+    &:hover,
+    &:focus,
+    &:focus-visible,
+    &:active {
+      background: transparent;
+      background-image: none;
+      box-shadow: none;
+      outline: none;
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+
+    &.is-active .sh-lockpick-minigame__pin-body {
+      box-shadow: 0 0 0 1px var(--sh-lp-accent), 0 0 8px rgba(201, 162, 39, 0.35);
+    }
+  }
+
+  &__pin-body {
+    --pin-w: 52%;
+    position: absolute;
+    top: 14%;
+    bottom: 14%;
+    /* Rest (extend=0): fully in housing. extend=1: tip reaches into channel. */
+    left: calc(38% + (62% - var(--pin-w)) * (1 - var(--sh-lp-extend, 1)));
+    width: var(--pin-w);
+    transition: left 0.18s ease-out;
+    display: block;
+    background: linear-gradient(180deg, #9aa0a8, #6a7078 45%, #4a5058);
+    border-radius: 0 3px 3px 0;
+    border: 1px solid #b8bec6;
+    border-left: none;
+    box-sizing: border-box;
+  }
+
+  &__pin-tip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 16px;
+    transform: translateX(-100%);
+    background: linear-gradient(180deg, #c0c6ce, #7a8088);
+    border: 1px solid #d0d6de;
+    border-right: none;
+    box-sizing: border-box;
+  }
+
+  /* High tolerance — flat face toward the pick */
+  &__pin.tip-high .sh-lockpick-minigame__pin-tip {
+    border-radius: 1px 0 0 1px;
+    clip-path: none;
+  }
+
+  /* Mid — mild taper */
+  &__pin.tip-mid .sh-lockpick-minigame__pin-tip {
+    clip-path: polygon(100% 0, 100% 100%, 30% 100%, 0 50%, 30% 0);
+  }
+
+  /* Low — sharp taper */
+  &__pin.tip-low .sh-lockpick-minigame__pin-tip {
+    clip-path: polygon(100% 0, 100% 100%, 40% 100%, 0 50%, 40% 0);
+  }
+
+  &__pin.is-unlocked .sh-lockpick-minigame__pin-body {
+    background: linear-gradient(180deg, #7a9a7e, #4a6a50 45%, #355038);
+    border-color: #8fbf94;
+  }
+
+  &__pin.is-unlocked .sh-lockpick-minigame__pin-tip {
+    background: linear-gradient(180deg, #9bbb9f, #5a7a5e);
+    border-color: #a8d0ac;
+  }
+
+  /* Г-shaped cutaway pick: horizontal hook, shaft only below bend */
+  &__cut-pick {
+    --row-h: calc(100% / max(var(--sh-lp-pin-count, 1), 1));
+    --bend-y: calc(var(--sh-lp-pick-row, 0) * var(--row-h) + var(--row-h) * 0.5);
+    position: absolute;
+    inset: 0;
+    width: 38%;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  &__cut-pick-shaft {
+    position: absolute;
+    left: 22%;
+    top: var(--bend-y);
+    /* Extend past the cutaway / window bottom edge. */
+    bottom: -48px;
+    width: 5px;
+    background: linear-gradient(180deg, #e8e4d8, #9a9588 70%, #6a665c);
+    border-radius: 0;
+    opacity: 0.85;
+    transition: top 0.15s ease-out;
+  }
+
+  &__cut-pick-hook {
+    position: absolute;
+    left: 22%;
+    top: var(--bend-y);
+    width: 70%;
+    height: 5px;
+    margin-top: -2px;
+    background: linear-gradient(90deg, #e8e4d8, #c9a227);
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 6px rgba(201, 162, 39, 0.45);
+    transition: top 0.15s ease-out;
+  }
+}
+
+.spaceholder-lockpick-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+  }
+
+  &__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 600;
+  }
+
+  &__text {
+    &.is-won {
+      color: #4caf70;
+    }
+
+    &.is-failed {
+      color: #e07070;
+    }
+  }
+
+  &__stats {
+    font-size: 0.85rem;
+    opacity: 0.85;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+}

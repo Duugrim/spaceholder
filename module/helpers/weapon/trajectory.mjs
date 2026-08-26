@@ -6,7 +6,7 @@
  * One grid cell = grid.distance measurement units.
  */
 
-import { shNum } from './damage-profile.mjs';
+import { shNum, normalizeOnHitSplash } from './damage-profile.mjs';
 
 export const TRAJECTORY_KINDS = Object.freeze({
   SIMPLE: 'simple',
@@ -122,6 +122,95 @@ export async function resolveWeaponLinePayload(line, tokenLike, getPayloadById) 
  * @param {(key: string) => string} L i18n helper
  * @returns {string}
  */
+/**
+ * Clone a payload and ensure a trailing splash circle after the primary line.
+ * Line onHit becomes `need` so the circle only runs on a hit (rocket pattern).
+ *
+ * @param {object} payload
+ * @param {object} splashRaw normalizeOnHitSplash input
+ * @param {object|null|undefined} scene
+ * @returns {object}
+ */
+export function applyOnHitSplashToPayload(payload, splashRaw, scene = null) {
+  const splash = normalizeOnHitSplash(splashRaw);
+  if (!splash.enabled || !(splash.radius > 0) || !payload?.trajectory?.segments?.length) {
+    return payload;
+  }
+
+  let clone;
+  try {
+    clone = foundry.utils.deepClone(payload);
+  } catch (_) {
+    clone = JSON.parse(JSON.stringify(payload));
+  }
+
+  const segments = Array.isArray(clone.trajectory?.segments) ? clone.trajectory.segments : [];
+  const distancePerCell = Math.max(0.0001, Number(scene?.grid?.distance) || 1);
+  const radiusMeasure = splash.unit === 'measure'
+    ? splash.radius
+    : splash.radius * distancePerCell;
+
+  // Circle segment `range` is in grid cells (see _processCircleSegment: range * defSize).
+  const radiusGrid = splash.unit === 'measure'
+    ? splash.radius / distancePerCell
+    : splash.radius;
+
+  for (const seg of segments) {
+    if (seg?.type === 'line' && (seg.onHit === 'stop' || !seg.onHit)) {
+      seg.onHit = 'need';
+    }
+  }
+
+  segments.push({
+    type: 'circle',
+    direction: 0,
+    range: Math.max(0.01, radiusGrid),
+    collision: {
+      walls: true,
+      tokens: { owner: true, ally: true, other: true },
+    },
+    onHit: 'stop',
+    _splashMeasure: radiusMeasure,
+  });
+  clone.trajectory.segments = segments;
+  return clone;
+}
+
+/**
+ * Build a short-range swing payload (new edge-sweep segment).
+ * Lengths in grid cells; cut is inner radius in grid cells.
+ */
+export function buildSwingPayload({
+  id = 'weapon_swing',
+  name = 'Swing',
+  range = 1,
+  cut = 0,
+  angle = 90,
+  side = 'right',
+  onHit = 'stop',
+} = {}) {
+  return {
+    id,
+    name,
+    type: 'complex',
+    trajectory: {
+      segments: [{
+        type: 'swing',
+        direction: 0,
+        range,
+        cut,
+        angle,
+        side,
+        collision: {
+          walls: true,
+          tokens: { owner: true, ally: true, other: true },
+        },
+        onHit,
+      }],
+    },
+  };
+}
+
 export function formatTrajectorySummary(line, L) {
   const kind = normalizeTrajectoryKind(line?.trajectoryKind);
   if (kind === TRAJECTORY_KINDS.COMPLEX) {

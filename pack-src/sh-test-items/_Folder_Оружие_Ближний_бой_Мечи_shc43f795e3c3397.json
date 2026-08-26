@@ -1,0 +1,23 @@
+{
+  "name": "Мечи",
+  "type": "Item",
+  "_id": "shc43f795e3c3397",
+  "sorting": "a",
+  "folder": "shceec0b16a43364",
+  "description": "",
+  "color": "#b91c1c",
+  "sort": 71000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc43f795e3c3397"
+}

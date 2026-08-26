@@ -1,0 +1,23 @@
+{
+  "name": "Броня",
+  "type": "Item",
+  "_id": "shc820babedb3906",
+  "sorting": "a",
+  "folder": null,
+  "description": "",
+  "color": "#78716c",
+  "sort": 7000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc820babedb3906"
+}

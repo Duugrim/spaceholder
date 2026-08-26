@@ -11,5 +11,6 @@
   "readableLineLength": false,
   "strictLineBreaks": true,
   "newFileLocation": "root",
-  "showLineNumber": true
+  "showLineNumber": true,
+  "showInlineTitle": true
 }

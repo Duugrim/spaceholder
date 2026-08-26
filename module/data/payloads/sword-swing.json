@@ -7,7 +7,7 @@
   "trajectory": {
     "segments": [
       {
-        "type": "swing",
+        "type": "swingFan",
         "direction": 90,
         "range": 1,
         "angle": 15,

@@ -259,6 +259,92 @@ export function hasAttachedMagazine(block) {
   return !!(String(block?.runtime?.attachedItemId ?? '').trim() || block?.runtime?.magazine);
 }
 
+/**
+ * Whether a live ammo item can still feed a shot (charge pack or loose rounds).
+ * @param {Item|object|null|undefined} itemLike
+ * @returns {boolean}
+ */
+function _itemHasSpendableAmmo(itemLike) {
+  if (!_isAmmoItem(itemLike) || _qty(itemLike) <= 0) return false;
+  const cfg = _ammoConfigOf(itemLike);
+  if (cfg.charge.enabled) return Math.max(0, Number(cfg.charge.current) || 0) > 0;
+  return true;
+}
+
+/**
+ * EXTERNAL_CHARGE / content FIFO: any chamber or reserve unit still has shots.
+ * @param {object|null|undefined} block
+ * @param {Actor|null|undefined} actor
+ * @returns {boolean}
+ */
+function _blockHasSpendableContent(block, actor = null) {
+  if (!block || !actor) return false;
+  if (block.chamberEnabled) {
+    const chamber = getChamberItem(actor, block);
+    if (chamber && _itemHasSpendableAmmo(chamber)) return true;
+  }
+  for (const it of getBlockContentItems(actor, block)) {
+    if (_itemHasSpendableAmmo(it)) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether an item is a charge/ammo pack for this EXTERNAL_CHARGE block by caliber.
+ * Unlike `_isCompatibleAmmo`, depleted packs still match (needed for host sync / unload).
+ * @param {Item|object|null|undefined} itemLike
+ * @param {object} block
+ * @returns {boolean}
+ */
+function _isChargePackForBlock(itemLike, block) {
+  if (!_isAmmoItem(itemLike) || _qty(itemLike) <= 0) return false;
+  const cfg = _ammoConfigOf(itemLike);
+  if (cfg.connector.enabled) return false;
+  return compatMatches(block?.caliber, cfg.caliber);
+}
+
+/**
+ * Reconcile EXTERNAL_CHARGE `contentItemIds` with ammo items hosted on the weapon.
+ * Mutates `block.runtime`. Caller may unparent `extraIds` (over capacity).
+ *
+ * @param {Actor|null|undefined} actor
+ * @param {Item|null|undefined} weaponItem
+ * @param {object|null|undefined} block
+ * @returns {{changed: boolean, extraIds: string[]}}
+ */
+export function syncExternalChargeHostedRuntime(actor, weaponItem, block) {
+  if (!actor?.items || !weaponItem?.id || block?.type !== AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) {
+    return { changed: false, extraIds: [] };
+  }
+  const rt = _ensureRuntime(block);
+  const weaponId = String(weaponItem.id);
+  const chamberId = String(rt.chamberItemId ?? '').trim();
+  const hostedIds = [];
+  for (const it of actor.items) {
+    if (String(it.system?.containerHostId ?? '') !== weaponId) continue;
+    if (chamberId && it.id === chamberId) continue;
+    // Keep depleted packs in runtime so reload/unload can detach them.
+    if (!_isChargePackForBlock(it, block)) continue;
+    hostedIds.push(it.id);
+  }
+  const hostedSet = new Set(hostedIds);
+  const prev = Array.isArray(rt.contentItemIds) ? rt.contentItemIds.map((id) => String(id ?? '').trim()).filter(Boolean) : [];
+  let next = prev.filter((id) => hostedSet.has(id) && !!actor.items.get(id));
+  for (const id of hostedIds) {
+    if (!next.includes(id)) next.push(id);
+  }
+  const cap = resolveBlockCapacity(block, actor);
+  /** @type {string[]} */
+  let extraIds = [];
+  if (cap > 0 && next.length > cap) {
+    extraIds = next.slice(cap);
+    next = next.slice(0, cap);
+  }
+  const changed = prev.length !== next.length || prev.some((id, i) => id !== next[i]);
+  rt.contentItemIds = next;
+  return { changed, extraIds };
+}
+
 /** Number of rounds currently in the block reserve (without chamber). */
 export function blockReserveCount(block, actor = null) {
   if (!block) return 0;
@@ -325,20 +411,75 @@ export function blockReserveFreeSlots(block, actor = null) {
 export function blockShotReadiness(block, actor = null) {
   if (!block) return { ready: false, reason: 'noBlock' };
   if (block.chamberEnabled) {
-    return blockChamberLoaded(block, actor)
-      ? { ready: true, reason: '' }
-      : { ready: false, reason: blockReserveCount(block, actor) > 0 ? 'needBolt' : 'needReload' };
+    if (blockChamberLoaded(block, actor)) {
+      // Charge packs in chamber must still have remaining charge.
+      if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_CHARGE && actor) {
+        const chamber = getChamberItem(actor, block);
+        if (chamber && !_itemHasSpendableAmmo(chamber)) {
+          return { ready: false, reason: blockReserveCount(block, actor) > 0 ? 'needBolt' : 'needReload' };
+        }
+      }
+      return { ready: true, reason: '' };
+    }
+    return { ready: false, reason: blockReserveCount(block, actor) > 0 ? 'needBolt' : 'needReload' };
   }
   if (block.capacity <= 0 && block.type === AMMO_BLOCK_TYPES.INTERNAL_MAGAZINE) {
     return { ready: true, reason: 'onTheFly' };
+  }
+  // EXTERNAL_CHARGE (-S packs / batteries): readiness is spendable charge, not item qty.
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) {
+    return _blockHasSpendableContent(block, actor)
+      ? { ready: true, reason: '' }
+      : { ready: false, reason: 'needReload' };
   }
   return blockReserveCount(block, actor) > 0
     ? { ready: true, reason: '' }
     : { ready: false, reason: 'needReload' };
 }
 
-function _hasCompatibleAmmo(actor, block) {
-  return findAmmoCandidates(actor, { caliber: block.caliber, search: block.search }).length > 0;
+/**
+ * Spendable fill amount used to prefer the fullest charge pack / stack.
+ * @param {Item|object|null|undefined} itemLike
+ * @returns {number}
+ */
+function _ammoSpendableAmount(itemLike) {
+  if (!itemLike) return 0;
+  const cfg = _ammoConfigOf(itemLike);
+  if (cfg.charge.enabled) return Math.max(0, Number(cfg.charge.current) || 0);
+  return _qty(itemLike);
+}
+
+/**
+ * Ids of charge packs currently loaded on this EXTERNAL_CHARGE block (runtime + host orphans).
+ * @param {Actor|null|undefined} actor
+ * @param {object|null|undefined} block
+ * @returns {Set<string>}
+ */
+function _collectExternalChargeLoadedIds(actor, block) {
+  const ids = new Set();
+  if (!block) return ids;
+  for (const raw of block.runtime?.contentItemIds ?? []) {
+    const id = String(raw ?? '').trim();
+    if (id) ids.add(id);
+  }
+  const chamberId = String(block.runtime?.chamberItemId ?? '').trim();
+  if (chamberId) ids.add(chamberId);
+  const weapon = _findWeaponItemForBlock(actor, block);
+  if (weapon?.id && actor?.items) {
+    for (const it of actor.items) {
+      if (String(it.system?.containerHostId ?? '') !== weapon.id) continue;
+      if (_isChargePackForBlock(it, block)) ids.add(it.id);
+    }
+  }
+  return ids;
+}
+
+function _hasCompatibleAmmo(actor, block, { excludeIds = null } = {}) {
+  return findAmmoCandidates(actor, {
+    caliber: block.caliber,
+    search: block.search,
+    excludeIds,
+  }).length > 0;
 }
 
 function _hasCompatibleMagazine(actor, block) {
@@ -376,6 +517,11 @@ export function canReloadBlock(actor, block) {
   }
   if (block.type === AMMO_BLOCK_TYPES.INTERNAL_CHARGE) {
     return blockReserveCount(block, actor) < resolveBlockCapacity(block, actor);
+  }
+  // EXTERNAL_CHARGE (-S): swap when a different non-empty spare pack exists.
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) {
+    const excludeIds = _collectExternalChargeLoadedIds(actor, block);
+    return _hasCompatibleAmmo(actor, block, { excludeIds });
   }
   if (blockReserveFreeSlots(block, actor) <= 0) return false;
   return _hasCompatibleAmmo(actor, block);
@@ -431,10 +577,10 @@ async function _maybeBoltAfterReload({ actor, weaponItem, block }) {
 const SEARCH_GROUP_ORDER = Object.freeze(['hands', 'worn', 'inventory', 'containers']);
 
 function _isCompatibleAmmo(itemLike, caliber) {
-  if (!_isAmmoItem(itemLike)) return false;
-  if (_qty(itemLike) <= 0) return false;
+  // Charge packs (-S / batteries): depleted charge must not be auto-picked on reload.
+  if (!_itemHasSpendableAmmo(itemLike)) return false;
   const cfg = _ammoConfigOf(itemLike);
-  if (cfg.connector.enabled) return false; // magazines are not loose rounds
+  if (cfg.connector.enabled) return false; // container magazines are not loose rounds
   return compatMatches(caliber, cfg.caliber);
 }
 
@@ -461,12 +607,23 @@ function _hostIsWeapon(actor, hostId) {
  * @param {string} args.caliber weapon block caliber string
  * @param {object} [args.search] block search config (group checkboxes)
  * @param {(item: Item) => boolean} [args.predicate] custom compatibility test
+ * @param {Iterable<string>|Set<string>|null} [args.excludeIds] item ids to skip
+ * @param {boolean} [args.preferFullest=false] sort by remaining charge/qty (desc)
  * @returns {Array<{group: string, item: Item}>} flat, priority-ordered
  */
-export function findAmmoCandidates(actor, { caliber = '', search = null, predicate = null } = {}) {
+export function findAmmoCandidates(actor, {
+  caliber = '',
+  search = null,
+  predicate = null,
+  excludeIds = null,
+  preferFullest = false,
+} = {}) {
   const items = Array.from(actor?.items ?? []);
   const test = predicate ?? ((it) => _isCompatibleAmmo(it, caliber));
   const enabled = (g) => (search ? !!search[g] : true);
+  const exclude = excludeIds instanceof Set
+    ? excludeIds
+    : new Set(Array.from(excludeIds ?? []).map((id) => String(id ?? '').trim()).filter(Boolean));
 
   const wornContainerIds = new Set(
     items
@@ -476,6 +633,7 @@ export function findAmmoCandidates(actor, { caliber = '', search = null, predica
 
   const groups = { hands: [], worn: [], inventory: [], containers: [] };
   for (const it of items) {
+    if (exclude.has(it.id)) continue;
     if (!test(it)) continue;
     const hostId = String(it.system?.containerHostId ?? '').trim();
     if (hostId && _hostIsWeapon(actor, hostId)) continue;
@@ -489,6 +647,13 @@ export function findAmmoCandidates(actor, { caliber = '', search = null, predica
   for (const g of SEARCH_GROUP_ORDER) {
     if (!enabled(g)) continue;
     for (const item of groups[g]) out.push({ group: g, item });
+  }
+  if (preferFullest && out.length > 1) {
+    out.sort((a, b) => {
+      const fillDiff = _ammoSpendableAmount(b.item) - _ammoSpendableAmount(a.item);
+      if (fillDiff !== 0) return fillDiff;
+      return SEARCH_GROUP_ORDER.indexOf(a.group) - SEARCH_GROUP_ORDER.indexOf(b.group);
+    });
   }
   return out;
 }
@@ -648,14 +813,28 @@ export function findChargeCandidatesForBlock(actor, block) {
  *
  * @returns {Promise<Item|null>}
  */
-export async function pickAmmoCandidate(actor, { caliber = '', search = null, predicate = null, title = '' } = {}) {
+export async function pickAmmoCandidate(actor, {
+  caliber = '',
+  search = null,
+  predicate = null,
+  title = '',
+  excludeIds = null,
+  preferFullest = false,
+} = {}) {
   const mode = search?.mode ?? AMMO_SEARCH_MODES.AUTO;
-  const candidates = findAmmoCandidates(actor, { caliber, search, predicate });
+  const candidates = findAmmoCandidates(actor, {
+    caliber,
+    search,
+    predicate,
+    excludeIds,
+    preferFullest,
+  });
 
   if (mode === AMMO_SEARCH_MODES.AUTO) return candidates[0]?.item ?? null;
 
   if (mode === AMMO_SEARCH_MODES.SEMI) {
     if (!candidates.length) return null;
+    if (preferFullest) return candidates[0].item;
     const topGroup = candidates[0].group;
     const sameGroup = candidates.filter((c) => c.group === topGroup);
     if (sameGroup.length === 1) return sameGroup[0].item;
@@ -800,6 +979,17 @@ export async function ensureLiveBlockRuntime(actor, weaponItem, block) {
     }
   }
 
+  // EXTERNAL_CHARGE: adopt ammo already parented to the weapon into contentItemIds
+  // (covers fixtures that stored the pack id in attachedItemId, which normalize clears).
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) {
+    const sync = syncExternalChargeHostedRuntime(actor, weaponItem, block);
+    if (sync.changed) changed = true;
+    for (const extraId of sync.extraIds) {
+      await unparentActorItemFromHost(actor, extraId, { held: true });
+      changed = true;
+    }
+  }
+
   return changed;
 }
 
@@ -907,13 +1097,18 @@ async function _takeOneFromReserveToChamber(actor, weaponItem, block) {
 }
 
 /**
- * Unparent all reserve items for a block back to actor root (held).
+ * Unparent all reserve items for a block back to actor root.
+ * @param {Actor} actor
+ * @param {object} block
+ * @param {{ held?: boolean }} [opts] when set, force held for all units; otherwise
+ *   spendable packs → hands, depleted → inventory.
  * @returns {Promise<number>} unloaded quantity
  */
-async function _unloadReserveToRoot(actor, block) {
+async function _unloadReserveToRoot(actor, block, opts = {}) {
   if (!actor || !block) return 0;
   const rt = _ensureRuntime(block);
   let unloaded = 0;
+  const forceHeld = Object.prototype.hasOwnProperty.call(opts, 'held');
 
   if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_MAGAZINE) {
     const mag = getAttachedMagazineItem(actor, block);
@@ -923,17 +1118,27 @@ async function _unloadReserveToRoot(actor, block) {
       const child = actor.items.get(id);
       if (!child) continue;
       unloaded += _qty(child);
-      await unparentActorItemFromHost(actor, id, { held: true });
+      await unparentActorItemFromHost(actor, id, { held: forceHeld ? !!opts.held : true });
     }
     return unloaded;
   }
 
-  const ids = [...(rt.contentItemIds ?? [])];
-  for (const id of ids) {
-    const it = actor.items.get(String(id ?? '').trim());
+  // Prefer runtime FIFO, but also detach any caliber-matching orphans still on the weapon host.
+  const weaponItem = _findWeaponItemForBlock(actor, block);
+  const idSet = new Set((rt.contentItemIds ?? []).map((id) => String(id ?? '').trim()).filter(Boolean));
+  if (weaponItem?.id) {
+    for (const it of actor.items) {
+      if (String(it.system?.containerHostId ?? '') !== weaponItem.id) continue;
+      if (!_isChargePackForBlock(it, block)) continue;
+      idSet.add(it.id);
+    }
+  }
+  for (const id of idSet) {
+    const it = actor.items.get(id);
     if (!it) continue;
     unloaded += _qty(it);
-    await unparentActorItemFromHost(actor, it.id, { held: true });
+    const held = forceHeld ? !!opts.held : _itemHasSpendableAmmo(it);
+    await unparentActorItemFromHost(actor, it.id, { held });
   }
   rt.contentItemIds = [];
   rt.contents = [];
@@ -1122,7 +1327,7 @@ async function _loadOntoWeaponHost({ actor, weaponItem, block, want, ammoItem })
  * chamber untouched. Internal charge → reserve to 0.
  * @returns {Promise<{ok: boolean, unloaded: number}>}
  */
-export async function unloadBlock({ actor, weaponItem = null, block }) {
+export async function unloadBlock({ actor, weaponItem = null, block, held } = {}) {
   if (!block) return { ok: false, unloaded: 0 };
   await _ensureLiveIfPossible(actor, weaponItem, block);
 
@@ -1132,7 +1337,8 @@ export async function unloadBlock({ actor, weaponItem = null, block }) {
     return { ok: true, unloaded: had };
   }
 
-  const unloaded = await _unloadReserveToRoot(actor, block);
+  const unloadOpts = held !== undefined ? { held: !!held } : {};
+  const unloaded = await _unloadReserveToRoot(actor, block, unloadOpts);
   return { ok: true, unloaded };
 }
 
@@ -1248,6 +1454,27 @@ export async function reloadBlock({ actor, weaponItem = null, block }) {
     if (!att.ok) return att;
     return _maybeBoltAfterReload({ actor, weaponItem: w, block });
   }
+
+  // EXTERNAL_CHARGE (-S): always swap — unload current pack(s), then install the fullest spare
+  // (never re-pick the just-removed pack).
+  if (block.type === AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) {
+    const excludeIds = _collectExternalChargeLoadedIds(actor, block);
+    // Drop into inventory (not hands) so search priority cannot prefer the just-removed pack.
+    const unloaded = await unloadBlock({ actor, weaponItem: w, block, held: false });
+    if (!unloaded.ok) return { ok: false, reason: 'unloadFailed' };
+    const source = await pickAmmoCandidate(actor, {
+      caliber: block.caliber,
+      search: block.search,
+      excludeIds,
+      preferFullest: true,
+      title: _t('SPACEHOLDER.WeaponV3.Ammo.PickMagazineTitle'),
+    });
+    if (!source) return { ok: false, reason: 'noMagazineFound' };
+    const load = await loadBlock({ actor, weaponItem: w, block, count: Infinity, ammoItem: source });
+    if (!load.ok) return load;
+    return _maybeBoltAfterReload({ actor, weaponItem: w, block });
+  }
+
   const load = await loadBlock({ actor, weaponItem: w, block, count: Infinity });
   if (!load.ok) return load;
   return _maybeBoltAfterReload({ actor, weaponItem: w, block });
@@ -1775,9 +2002,15 @@ export async function consumeShotFromLine({ actor, weapon, weaponItem = null, li
       const fromRound = activeDamageEntries(ammoCfg.damage);
       const isChargeBlock = block.type === AMMO_BLOCK_TYPES.EXTERNAL_CHARGE
         || block.type === AMMO_BLOCK_TYPES.INTERNAL_CHARGE;
-      if (!isChargeBlock && fromRound.length) {
+      // Nested magazine rounds always supply damage. Charge items (-S mags,
+      // plasma cells) also may carry a damage profile — unless this shot
+      // scales damage from spent charge (LASS batteries).
+      const useRoundDamage = fromRound.length && (
+        !isChargeBlock || !ammoCfg.charge?.scaleDamageFromSpent
+      );
+      if (useRoundDamage) {
         damageEntries = fromRound;
-        damageFromMagazineRound = true;
+        damageFromMagazineRound = !isChargeBlock;
         const roundPayload = fromRound.find((e) => e.payloadId)?.payloadId ?? '';
         if (roundPayload) payloadId = roundPayload;
         break;

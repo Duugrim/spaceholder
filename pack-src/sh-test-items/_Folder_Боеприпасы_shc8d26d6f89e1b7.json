@@ -1,0 +1,23 @@
+{
+  "name": "Боеприпасы",
+  "type": "Item",
+  "_id": "shc8d26d6f89e1b7",
+  "sorting": "a",
+  "folder": null,
+  "description": "",
+  "color": "#a16207",
+  "sort": 12000,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!folders!shc8d26d6f89e1b7"
+}

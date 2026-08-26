@@ -1,0 +1,70 @@
+{
+  "name": "Керамическая плита",
+  "type": "material",
+  "_id": "shc1e104c171f19f",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar.svg",
+  "system": {
+    "description": "<p>Керамическая плита (ceramic-plate)</p>",
+    "materialId": "ceramic-plate",
+    "category": "composite",
+    "hardness": 22,
+    "integrityPerThickness": 25,
+    "breachCapacityPerThickness": 20,
+    "weightPerThickness": 3.2,
+    "resistance": {
+      "ballistic": 120,
+      "concussive": 40,
+      "piercing": 100,
+      "cutting": 80,
+      "thermal": 50,
+      "laser": 45,
+      "plasma": 40,
+      "electric": 15,
+      "sonic": 30,
+      "radiation": 10,
+      "chemical": 30
+    },
+    "wear": {
+      "ballistic": 80,
+      "concussive": 120,
+      "piercing": 70,
+      "cutting": 60,
+      "thermal": 80,
+      "laser": 70,
+      "plasma": 180,
+      "electric": 5,
+      "sonic": 20,
+      "radiation": 0,
+      "chemical": 80
+    },
+    "conductance": {
+      "ballistic": [
+        {
+          "type": "concussive",
+          "fraction": 0.35
+        }
+      ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shc9e278c885c93b",
+  "sort": 80000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc1e104c171f19f"
+}

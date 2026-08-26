@@ -40,6 +40,131 @@ export function defaultDamageEntry() {
 }
 
 /**
+ * Distance falloff for ammo / projectiles.
+ * At `halfDistance` scene units, damage and armorPen drop to 50% (exponential).
+ * @returns {{ enabled: boolean, halfDistance: number }}
+ */
+export function defaultFalloff() {
+  return { enabled: false, halfDistance: 0 };
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {{ enabled: boolean, halfDistance: number }}
+ */
+export function normalizeFalloff(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  return {
+    enabled: !!src.enabled,
+    halfDistance: Math.max(0, shNum(src.halfDistance, 0)),
+  };
+}
+
+/**
+ * @param {number} distanceSceneUnits
+ * @param {{ enabled?: boolean, halfDistance?: number }|null|undefined} falloff
+ * @returns {number} multiplier in (0, 1]
+ */
+export function falloffMultiplier(distanceSceneUnits, falloff) {
+  const f = normalizeFalloff(falloff);
+  if (!f.enabled) return 1;
+  const half = f.halfDistance;
+  if (!(half > 0)) return 1;
+  const d = Math.max(0, Number(distanceSceneUnits) || 0);
+  return Math.pow(0.5, d / half);
+}
+
+/**
+ * Scale phased applications by falloff (damage + armorPen; energy recomputed).
+ * armorPen on applications is a multiplier (1 = 100%).
+ * @param {Array<{mode:string, items:object[]}>} phases
+ * @param {number} multiplier
+ * @returns {Array<{mode:string, items:object[]}>}
+ */
+/**
+ * Multi-ray fan (shotgun / laser scatter).
+ * @returns {{ enabled: boolean, count: number, coneDegrees: number }}
+ */
+export function defaultMultishot() {
+  return { enabled: false, count: 1, coneDegrees: 0 };
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {{ enabled: boolean, count: number, coneDegrees: number }}
+ */
+export function normalizeMultishot(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  return {
+    enabled: !!src.enabled,
+    count: Math.max(1, Math.floor(shNum(src.count, 1))),
+    coneDegrees: Math.max(0, shNum(src.coneDegrees, 0)),
+  };
+}
+
+/**
+ * Uniform angles across a cone centered on `baseDirection` (degrees).
+ * @param {number} baseDirection
+ * @param {number} count
+ * @param {number} coneDegrees
+ * @returns {number[]}
+ */
+export function uniformConeDirections(baseDirection, count, coneDegrees) {
+  const n = Math.max(1, Math.floor(Number(count) || 1));
+  const base = Number(baseDirection) || 0;
+  if (n === 1) return [base];
+  const cone = Math.max(0, Number(coneDegrees) || 0);
+  const half = cone / 2;
+  const out = [];
+  for (let i = 0; i < n; i += 1) {
+    const t = i / (n - 1);
+    out.push(base - half + t * cone);
+  }
+  return out;
+}
+
+/**
+ * On-hit splash circle appended after a simple line (rockets).
+ * @returns {{ enabled: boolean, radius: number, unit: string }}
+ */
+export function defaultOnHitSplash() {
+  return { enabled: false, radius: 0, unit: 'grid' };
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {{ enabled: boolean, radius: number, unit: string }}
+ */
+export function normalizeOnHitSplash(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const unit = String(src.unit ?? '').trim().toLowerCase() === 'measure' ? 'measure' : 'grid';
+  return {
+    enabled: !!src.enabled,
+    radius: Math.max(0, shNum(src.radius, 0)),
+    unit,
+  };
+}
+
+export function applyFalloffToApplications(phases, multiplier) {
+  const m = Math.max(0, Number(multiplier) || 0);
+  if (!(Array.isArray(phases)) || Math.abs(m - 1) < EPSILON) return phases;
+  return phases.map((phase) => ({
+    ...phase,
+    items: (Array.isArray(phase?.items) ? phase.items : []).map((it) => {
+      const damage = Math.max(0, Number(it?.damage) || 0) * m;
+      const armorPen = Math.max(0, Number(it?.armorPen) || 0) * m;
+      const hardness = shPositiveHardness(it?.hardness);
+      return {
+        ...it,
+        damage,
+        armorPen,
+        energy: damage * armorPen * armorPen * hardness,
+      };
+    }),
+  }));
+}
+
+/**
  * Normalize a stored list of damage entries. Incomplete entries (no type /
  * zero damage) are kept so the sheet can edit them; consumers filter via
  * {@link activeDamageEntries}.
@@ -137,6 +262,7 @@ export function buildProjectileFromDamageEntries(entries, extras = {}) {
     energy: computeProjectileEnergy(first),
     applications: damageEntriesToApplications(list),
     builderId: shStr(extras.builderId),
+    falloff: normalizeFalloff(extras.falloff),
   };
 }
 

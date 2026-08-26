@@ -100,6 +100,7 @@ import {
   getBlockContentItems,
   getChamberItem,
   hasAttachedMagazine,
+  syncExternalChargeHostedRuntime,
 } from '../weapon/weapon-ammo-runtime.mjs';
 import { moveQtyIntoMagazineContainer, unparentActorItemFromHost } from '../item-weapon-host.mjs';
 import {
@@ -1685,6 +1686,7 @@ function _buildWeaponDetachSubmenu(actor, item) {
           continue;
         }
         if (block.type !== AMMO_BLOCK_TYPES.EXTERNAL_CHARGE) continue;
+        syncExternalChargeHostedRuntime(actor, item, block);
         const chamber = getChamberItem(actor, block);
         if (chamber) {
           next.push({
@@ -1696,9 +1698,27 @@ function _buildWeaponDetachSubmenu(actor, item) {
             group: _blockMenuPrefix(line, block, { blockCount: 2 }),
           });
         }
+        const seen = new Set(chamber ? [chamber.id] : []);
         for (const unit of getBlockContentItems(actor, block)) {
+          if (seen.has(unit.id)) continue;
+          seen.add(unit.id);
           next.push({
             item: unit,
+            line,
+            block,
+            mode: 'detachChargeUnit',
+            slot: 'content',
+            group: _blockMenuPrefix(line, block, { blockCount: 2 }),
+          });
+        }
+        // Also list any compatible host children not yet in contentItemIds (orphans).
+        for (const it of actor?.items ?? []) {
+          if (String(it.system?.containerHostId ?? '') !== item.id) continue;
+          if (seen.has(it.id)) continue;
+          if (!it.system?.itemTags?.isAmmo) continue;
+          seen.add(it.id);
+          next.push({
+            item: it,
             line,
             block,
             mode: 'detachChargeUnit',

@@ -1736,6 +1736,9 @@
       "HackMinigame": {
         "Title": "Миниигра взлома"
       },
+      "LockpickMinigame": {
+        "Title": "Миниигра взлома замков"
+      },
       "SkipTime": {
         "Title": "Пропустить время",
         "DialogTitle": "Пропуск личного времени",
@@ -1868,6 +1871,69 @@
         "PostedToChat": "Миниигра взлома отправлена в чат.",
         "PostFailed": "Не удалось отправить миниигру в чат.",
         "SyncFailed": "Не удалось синхронизировать состояние взлома."
+      }
+    },
+    "LockpickMinigame": {
+      "WindowTitle": "Взлом замка",
+      "Generate": {
+        "Title": "Миниигра взлома замков",
+        "Seed": "Сид",
+        "Pins": "Штырьки",
+        "Segment": "Сегмент (°)",
+        "ToleranceMin": "Допуск мин.",
+        "ToleranceMax": "Допуск макс.",
+        "PinHp": "HP штырька",
+        "FailJump": "Прыжок цели при провале",
+        "FailJumpMax": "Макс. прыжок",
+        "SoundNoise": "Шум звука",
+        "SoundNoisePct": "Шум %",
+        "SoundHot": "Горячий сегмент",
+        "SoundCold": "Холодный сегмент",
+        "SoundPassed": "Штырёк пройден",
+        "SoundReset": "Штырёк сброшен",
+        "VolumePct": "Громк. %",
+        "PreviewSound": "Прослушать",
+        "SoundsButton": "Звуки…",
+        "SoundsTitle": "Звуки",
+        "SoundsOk": "OK",
+        "RandomSeed": "Случайный",
+        "Start": "Старт",
+        "ToChat": "В чат"
+      },
+      "Chat": {
+        "InviteTitle": "Миниигра создана:",
+        "LockpickLabel": "Замок",
+        "StartButton": "Взломать",
+        "Started": "Начат взлом замка",
+        "ObserveButton": "Наблюдать",
+        "ResultWon": "Замок открыт",
+        "ResultFailed": "Взлом провален",
+        "PinsStat": "Штырьки: {unlocked} / {total}",
+        "ChecksStat": "Проверки: {count}"
+      },
+      "Hud": {
+        "Seed": "Сид",
+        "Checks": "Проверки",
+        "Segment": "Размер сегмента",
+        "Front": "Фронтальный вид",
+        "Cutaway": "Разрез",
+        "Won": "Открыто",
+        "Undo": "Отмена",
+        "Observing": "Наблюдение",
+        "ToleranceLow": "Низкий",
+        "ToleranceMid": "Средний",
+        "ToleranceHigh": "Высокий",
+        "ControlsHint": "Колёсико: поворот · ЛКМ по фронту: проверка · ЛКМ по штырьку: выбор",
+        "FrontHint": "Колёсико — поворот · клик — проверка"
+      },
+      "Messages": {
+        "DialogUnavailable": "Диалог недоступен.",
+        "OpenFailed": "Не удалось открыть миниигру взлома замков.",
+        "NoSession": "Нет сессии взлома замка.",
+        "Won": "Замок открыт.",
+        "PostedToChat": "Миниигра взлома замков отправлена в чат.",
+        "PostFailed": "Не удалось отправить миниигру в чат.",
+        "SyncFailed": "Не удалось синхронизировать состояние взлома замка."
       }
     },
     "AimingArc": {

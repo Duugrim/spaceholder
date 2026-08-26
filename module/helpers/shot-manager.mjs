@@ -4,6 +4,7 @@
  */
 
 import { composeProjectileApplications } from '../documents/item.mjs';
+import { applyFalloffToApplications, falloffMultiplier, normalizeFalloff } from './weapon/damage-profile.mjs';
 
 /**
  * ShotSystem - центральное хранилище выстрелов
@@ -123,8 +124,9 @@ export class ShotManager {
   async applyImpactsToActors(shot, projectile, options = {}) {
     if (!shot || !Array.isArray(shot.actualHits) || !shot.actualHits.length) return [];
     if (!projectile || typeof projectile !== 'object') return [];
-    const phases = composeProjectileApplications(projectile, options.builderContext ?? {});
-    if (!phases.length) return [];
+    const basePhases = composeProjectileApplications(projectile, options.builderContext ?? {});
+    if (!basePhases.length) return [];
+    const falloff = normalizeFalloff(projectile.falloff);
 
     const sourceSnapshot = await this._buildInjurySourceSnapshot({
       shot, projectile, builderContext: options.builderContext, override: options.source
@@ -136,6 +138,11 @@ export class ShotManager {
       const actor = token?.actor ?? hit?.actor ?? null;
       if (!actor || typeof actor.applyDamagePackage !== 'function') continue;
       const partId = options.partId ?? hit?.details?.partId ?? hit?.partId ?? 'core';
+      const sceneDist = this._hitDistanceSceneUnits(hit);
+      const phases = applyFalloffToApplications(
+        basePhases,
+        falloffMultiplier(sceneDist, falloff),
+      );
       try {
         const out = await actor.applyDamagePackage({
           partId,
@@ -150,6 +157,23 @@ export class ShotManager {
       }
     }
     return results;
+  }
+
+  /**
+   * Convert hit distance (pixels) to scene distance units (e.g. meters).
+   * @private
+   * @param {object} hit
+   * @returns {number}
+   */
+  _hitDistanceSceneUnits(hit) {
+    const px = Number(hit?.distance) || 0;
+    try {
+      const grid = canvas?.grid;
+      const size = Number(grid?.size) || 100;
+      const unit = Number(grid?.distance) || 1;
+      if (size > 0) return (px / size) * unit;
+    } catch (_) { /* ignore */ }
+    return px / 100;
   }
 
   /**
@@ -1301,7 +1325,10 @@ export class ShotManager {
       case 'cone':
         return this._processConeSegment(segment, context);
       case 'swing':
-        return this._processSwingSegment(segment, context);
+        return this._processEdgeSwingSegment(segment, context);
+      case 'swingFan':
+      case 'legacySwing':
+        return this._processSwingFanSegment(segment, context);
       case 'complexLine':
         return this._processComplexLineSegment(segment, context);
       default:
@@ -1514,84 +1541,171 @@ export class ShotManager {
    * @param {object} context - Контекст выстрела
    * @returns {object} Результат {endPos, direction, shouldContinue}
    */
-  _processSwingSegment(segment, context) {
+  /**
+   * Legacy stepped-cone swing (formerly `swing`). Prefer `swingFan` in payloads.
+   * @private
+   */
+  _processSwingFanSegment(segment, context) {
     const { lastPos, direction, defSize, whitelist, shot } = context;
-    
-    // Параметры swing
-    const count = segment.count || 1;  // Количество конусов
-    const directionStep = segment.directionStep || 0;  // Шаг направления
-    const rangeStep = segment.rangeStep || 0;  // Шаг дальности
-    
-    // Начальные параметры конуса
+
+    const count = segment.count || 1;
+    const directionStep = segment.directionStep || 0;
+    const rangeStep = segment.rangeStep || 0;
+
     let currentDirection = segment.direction || 0;
     let currentRange = segment.range;
     const angle = segment.angle || 90;
     const cut = segment.cut || 0;
-    
+
     let shouldContinue = true;
     let finalDirection = direction + currentDirection;
-    
-    // Определяем onHit для обработки попаданий
-    const onHit = segment.onHit || "next";
-    
-    // Генерируем серию конусов
+    const onHit = segment.onHit || 'next';
+
     for (let i = 0; i < count; i++) {
-      // Сохраняем текущее количество попаданий до конуса
       const hitsBefore = shot.actualHits.length;
-      
-      // Создаём конус с текущими параметрами
       const coneSegment = {
         type: 'cone',
         direction: currentDirection,
         range: currentRange,
-        angle: angle,
-        cut: cut,
+        angle,
+        cut,
         collision: segment.collision,
         props: segment.props,
-        onHit: 'next',  // Внутренние конусы всегда используют 'next'
-        hitOrder: segment.hitOrder,  // Передаём hitOrder из swing
-        hitAmount: segment.hitAmount  // Передаём hitAmount из swing
+        onHit: 'next',
+        hitOrder: segment.hitOrder,
+        hitAmount: segment.hitAmount,
       };
-      
-      // Обрабатываем конус через стандартный метод
       const result = this._processConeSegment(coneSegment, context);
-      
-      // Сохраняем последнее направление
       finalDirection = result.direction;
-      
-      // Проверяем, было ли попадание в этом конусе
-      const hitsAfter = shot.actualHits.length;
-      const hadHitInThisCone = hitsAfter > hitsBefore;
-      
+      const hadHitInThisCone = shot.actualHits.length > hitsBefore;
+
       if (hadHitInThisCone) {
-        // Обрабатываем onHit для swing
-        if (onHit === "stop") {
-          // Останавливаем весь выстрел
+        if (onHit === 'stop') {
           shouldContinue = false;
           break;
-        } else if (onHit === "skip") {
-          // Пропускаем оставшуюся часть swing и переходим к следующему сегменту в payload
+        }
+        if (onHit === 'skip') {
           shouldContinue = true;
           break;
-        } else if (onHit === "next" || onHit === "need") {
-          // Продолжаем к следующему конусу в swing (поведение по умолчанию)
-          // Просто продолжаем цикл
         }
-      } else if (onHit === "need") {
-        // Если в этом конусе не было попадания, а оно требовалось - останавливаем
+      } else if (onHit === 'need') {
         shouldContinue = false;
         break;
       }
-      
-      // Изменяем параметры для следующего конуса
+
       currentDirection += directionStep;
       currentRange += rangeStep;
     }
-    
+
     return {
       endPos: lastPos,
       direction: finalDirection,
-      shouldContinue: shouldContinue
+      shouldContinue,
+    };
+  }
+
+  /**
+   * New swing: cone volume + rotating edge line from origin.
+   * Hits when the sweeping edge intersects a token hitbox.
+   * @private
+   */
+  _processEdgeSwingSegment(segment, context) {
+    const { lastPos, direction, defSize, whitelist, shot, shooterToken } = context;
+
+    const absoluteDirection = direction + (segment.direction || 0);
+    const rangePx = (segment.range || 1) * defSize;
+    const cutPx = segment.cut ? segment.cut * defSize : 0;
+    const angle = segment.angle || 90;
+    const side = String(segment.side || 'right').toLowerCase();
+    const onHit = segment.onHit || 'stop';
+    const samples = Math.max(8, Math.min(48, Math.ceil(angle / 3)));
+
+    const half = angle / 2;
+    const startDeg = absoluteDirection - half;
+    const endDeg = absoluteDirection + half;
+    // Sweep from far edge toward the other; "right" starts at -half → +half.
+    const fromDeg = side === 'left' ? endDeg : startDeg;
+    const toDeg = side === 'left' ? startDeg : endDeg;
+
+    // Visual path: cone guide for draw-manager
+    shot.shotResult.shotPaths.push({
+      start: { ...lastPos },
+      range: rangePx,
+      angle,
+      direction: absoluteDirection,
+      cut: cutPx,
+      type: 'swing',
+      side,
+    });
+
+    const seen = new Set();
+    let shouldContinue = true;
+
+    for (let i = 0; i <= samples; i += 1) {
+      const t = i / samples;
+      const deg = fromDeg + (toDeg - fromDeg) * t;
+      const rad = (deg * Math.PI) / 180;
+      const inner = {
+        x: lastPos.x + Math.cos(rad) * cutPx,
+        y: lastPos.y + Math.sin(rad) * cutPx,
+      };
+      const outer = {
+        x: lastPos.x + Math.cos(rad) * rangePx,
+        y: lastPos.y + Math.sin(rad) * rangePx,
+      };
+
+      const testSegment = {
+        start: inner,
+        end: outer,
+        type: 'line',
+        collision: segment.collision,
+        props: segment.props,
+        onHit: 'next',
+      };
+      const collisions = this.isHit(testSegment, whitelist).filter((c) => {
+        if (c.type === 'wall') return false;
+        return !this._shouldIgnoreByDisposition(c.object, segment, shooterToken);
+      });
+
+      for (const collision of collisions) {
+        const key = collision.object?.id || collision.object?.document?.id || JSON.stringify(collision.point);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        shot.shotResult.shotHits.push({
+          point: collision.point,
+          type: collision.type,
+          object: collision.object,
+          ...collision.details,
+        });
+        shot.actualHits.push(collision);
+        if (onHit === 'stop') {
+          shouldContinue = false;
+          break;
+        }
+      }
+      if (!shouldContinue && onHit === 'stop') break;
+    }
+
+    // Edge line visual at end of sweep
+    {
+      const rad = (toDeg * Math.PI) / 180;
+      shot.shotResult.shotPaths.push({
+        start: {
+          x: lastPos.x + Math.cos(rad) * cutPx,
+          y: lastPos.y + Math.sin(rad) * cutPx,
+        },
+        end: {
+          x: lastPos.x + Math.cos(rad) * rangePx,
+          y: lastPos.y + Math.sin(rad) * rangePx,
+        },
+        type: 'line',
+      });
+    }
+
+    return {
+      endPos: lastPos,
+      direction: absoluteDirection,
+      shouldContinue: onHit === 'stop' ? shouldContinue : true,
     };
   }
 
