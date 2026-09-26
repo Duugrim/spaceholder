@@ -4,6 +4,7 @@ import {
 } from '../helpers/effects.mjs';
 import { enrichHTMLWithFactionIcons } from '../helpers/faction-display.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
+import { getCoverageFace } from '../helpers/body-part-coverage.mjs';
 import { pickIcon } from '../helpers/icon-picker/icon-picker.mjs';
 import { migrateItemWeaponData } from '../documents/item.mjs';
 import { materialsManager } from '../helpers/damage/materials-manager.mjs';
@@ -17,6 +18,7 @@ import {
 import {
   AMMO_BLOCK_TYPES,
   AMMO_BLOCK_TYPE_LIST,
+  AMMO_DISPLAY_STYLE_LIST,
   AMMO_SEARCH_MODES,
   FIRE_MODES,
   MOD_OPS,
@@ -1222,10 +1224,14 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
         const m = String(slotRef).match(/#(\d+)$/);
         const dupIndex = hasDup && m ? Number(m[1]) : null;
         const uiName = dupIndex ? `${baseName} (${dupIndex})` : baseName;
+        const face = getCoverageFace(entry);
+        const faceLabel = face === 'back'
+          ? (game.i18n?.localize?.('SPACEHOLDER.AnatomyGroups.FaceBack') ?? 'back')
+          : (game.i18n?.localize?.('SPACEHOLDER.AnatomyGroups.FaceFront') ?? 'front');
         const layers = Array.isArray(entry?.layers) ? entry.layers : [];
         return {
           partId: slotRef,
-          partName: uiName,
+          partName: `${uiName} (${faceLabel})`,
           layerCount: layers.length,
           layersSummary: formatCoverageLayersSummary(layers)
         };
@@ -1723,6 +1729,10 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       value: m,
       label: L(`SPACEHOLDER.WeaponV3.Block.SearchModes.${m}`),
     }));
+    const ammoDisplayStyleOptions = AMMO_DISPLAY_STYLE_LIST.map((st) => ({
+      value: st,
+      label: L(`SPACEHOLDER.WeaponV3.Block.DisplayStyles.${st}`),
+    }));
     const modOpOptions = Object.values(MOD_OPS).map((op) => ({
       value: op,
       label: L(`SPACEHOLDER.WeaponV3.Mode.ModOps.${op}`),
@@ -1819,6 +1829,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       blockTypeOptions,
       fireModeOptions,
       searchModeOptions,
+      ammoDisplayStyleOptions,
       modOpOptions,
       modParamOptions,
       trajectoryKindOptions: [

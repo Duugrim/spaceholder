@@ -1,0 +1,6 @@
+/* Standard aiming: hide the system cursor over the canvas only. */
+#board.spaceholder-aiming-standard,
+#board.spaceholder-aiming-standard canvas,
+#board.spaceholder-aiming-standard * {
+  cursor: none;
+}

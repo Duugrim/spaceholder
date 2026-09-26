@@ -18,8 +18,13 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/actor/parts/actor-action-dialog.hbs',
     'systems/spaceholder/templates/actor/parts/actor-held-items.hbs',
     'systems/spaceholder/templates/actor/parts/actor-aiming-arc.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-abilities-dialog.hbs',
     'systems/spaceholder/templates/actor/parts/actor-stats-derived-physical-resources.hbs',
     'systems/spaceholder/templates/actor/parts/actor-stats-derived-coordination-mental.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-skills.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-skills-node.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-skills-extra.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-skills-extra-dialog.hbs',
     'systems/spaceholder/templates/actor/parts/actor-character-header.hbs',
     'systems/spaceholder/templates/partials/sh-tab-banner.hbs',
     // Item partials
@@ -49,5 +54,6 @@ export const preloadHandlebarsTemplates = async function () {
     // HUD: Hotbar faction selector
     'systems/spaceholder/templates/hud/hotbar-faction-ui.hbs',
     'systems/spaceholder/templates/hud/token-quick-hud.hbs',
+    'systems/spaceholder/templates/global-map/terrain-look-from.hbs',
   ]);
 };

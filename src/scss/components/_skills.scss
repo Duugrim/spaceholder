@@ -1,0 +1,413 @@
+// Skills tab (character sheet)
+
+.window-app.spaceholder,
+.spaceholder {
+  --sh-skill-metric-level: 50px;
+  --sh-skill-metric-effect: 52px;
+  --sh-skill-fold-ms: 150ms;
+  --sh-skill-tree-indent: 16px;
+  --sh-skill-tree-line: color-mix(in srgb, var(--sh-sheet-tab-accent) 58%, var(--sh-border));
+
+  .spaceholder-sheet-stack > .sheet-body.sheet-body--character-primary > .tab.active.skills {
+    overflow: hidden;
+  }
+
+  .tab.skills {
+    min-height: 0;
+
+    > .sh-tab-banner {
+      flex: 0 0 auto;
+    }
+
+    > .sh-skills {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #141414;
+    }
+  }
+
+  .sh-skills-layout {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .sh-skills-panel {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: #141414;
+  }
+
+  .sh-skills-panel--physical {
+    border-right: 1px solid var(--sh-border);
+  }
+
+  .sh-skills-secondary {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .sh-skills-panel--mixed {
+    border-bottom: 1px solid var(--sh-border);
+  }
+
+  .sh-skills-panel__head {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--sh-skill-metric-level) var(--sh-skill-metric-effect);
+    align-items: center;
+    column-gap: 4px;
+    min-height: 38px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--sh-border);
+    background: color-mix(in srgb, var(--sh-surface-2) 94%, var(--sh-sheet-tab-accent));
+    cursor: context-menu;
+  }
+
+  .sh-skills-panel__title {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    color: var(--sh-text);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    > i {
+      flex: 0 0 auto;
+      width: 16px;
+      margin-right: 5px;
+      color: color-mix(in srgb, var(--sh-sheet-tab-accent) 74%, var(--sh-text-muted));
+      font-size: 12px;
+      text-align: center;
+    }
+  }
+
+  .sh-skills-panel__title-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-skills-panel__add {
+    appearance: none;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 0 auto;
+    padding: 0;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--sh-text-muted);
+    box-shadow: none;
+    cursor: pointer;
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--sh-sheet-tab-accent) 75%, var(--sh-border));
+      background: color-mix(in srgb, var(--sh-sheet-tab-accent) 14%, rgba(255, 255, 255, 0.05));
+      color: #fff;
+    }
+
+    i {
+      margin: 0;
+      font-size: 10px;
+      line-height: 1;
+    }
+  }
+
+  .sh-skills-panel__metric {
+    color: var(--sh-text-dim);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .sh-skills-panel__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 6px;
+    scrollbar-gutter: stable;
+  }
+
+  .sh-skill-tree,
+  .sh-skill-children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sh-skill-tree + .sh-skill-tree {
+    margin-top: 7px;
+  }
+
+  .sh-skill-tree--extras {
+    padding-top: 6px;
+    border-top: 1px solid color-mix(in srgb, var(--sh-sheet-tab-accent) 25%, var(--sh-border));
+  }
+
+  .sh-skill-node {
+    position: relative;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .sh-skill-children {
+    position: relative;
+    margin-left: 9px;
+    padding-left: var(--sh-skill-tree-indent);
+  }
+
+  // Every child draws a continuous vertical stem and its own horizontal elbow.
+  // The final child truncates the stem at row center, making the dependency chain explicit.
+  .sh-skill-children > .sh-skill-node {
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      left: calc(-1 * var(--sh-skill-tree-indent));
+      pointer-events: none;
+    }
+
+    &::before {
+      top: 0;
+      bottom: 0;
+      border-left: 1px solid var(--sh-skill-tree-line);
+    }
+
+    &::after {
+      top: 15px;
+      width: calc(var(--sh-skill-tree-indent) - 4px);
+      border-top: 1px solid var(--sh-skill-tree-line);
+    }
+
+    &:last-child::before {
+      bottom: auto;
+      height: 16px;
+    }
+  }
+
+  .sh-skill-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--sh-skill-metric-level) var(--sh-skill-metric-effect);
+    align-items: center;
+    column-gap: 4px;
+    min-height: 31px;
+    padding: 2px 4px;
+    border-radius: 5px;
+    cursor: context-menu;
+    transition: background 100ms ease;
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: 4px;
+      bottom: 0;
+      left: 25px;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.035);
+      pointer-events: none;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--sh-sheet-tab-accent) 10%, rgba(255, 255, 255, 0.045));
+    }
+  }
+
+  .sh-skill-node:not([data-collapsed]) > .sh-skill-row:has(+ .sh-skill-children)::before {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    bottom: -3px;
+    border-left: 1px solid var(--sh-skill-tree-line);
+    pointer-events: none;
+  }
+
+  .sh-skill-node[data-depth='0'] > .sh-skill-row {
+    min-height: 39px;
+    margin-bottom: 2px;
+    padding-right: 6px;
+    border-left: 2px solid color-mix(in srgb, var(--sh-sheet-tab-accent) 68%, var(--sh-border));
+    background: color-mix(in srgb, var(--sh-sheet-tab-accent) 12%, var(--sh-surface-2));
+
+    &::after {
+      display: none;
+    }
+
+    .sh-skill-row__label {
+      font-size: 14px;
+      font-weight: 700;
+    }
+  }
+
+  .sh-skill-row__name {
+    appearance: none;
+    min-width: 0;
+    width: auto;
+    min-height: 27px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    justify-self: stretch;
+    gap: 8px;
+    margin: 0;
+    padding: 0 4px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sh-text);
+    font: inherit;
+    line-height: 1.2;
+    text-align: left;
+    box-shadow: none;
+    user-select: none;
+
+    &.is-branch {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    &.is-branch:hover {
+      color: #fff;
+    }
+
+    &.is-branch:focus-visible {
+      outline: 1px solid color-mix(in srgb, var(--sh-sheet-tab-accent) 75%, #fff);
+      outline-offset: -1px;
+    }
+  }
+
+  .sh-skill-row__label {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-skill-row__chevron {
+    flex: 0 0 auto;
+    width: 10px;
+    color: color-mix(in srgb, var(--sh-sheet-tab-accent) 75%, var(--sh-text-muted));
+    font-size: 9px;
+    text-align: center;
+    transform: rotate(0deg);
+    transition: transform var(--sh-skill-fold-ms) ease;
+  }
+
+  .sh-skill-node:not([data-collapsed]) > .sh-skill-row .sh-skill-row__chevron {
+    transform: rotate(90deg);
+  }
+
+  .sh-skill-row__leaf-mark {
+    flex: 0 0 auto;
+    width: 5px;
+    height: 5px;
+    margin-left: 3px;
+    border: 1px solid color-mix(in srgb, var(--sh-sheet-tab-accent) 72%, var(--sh-text-dim));
+    border-radius: 50%;
+  }
+
+  .sh-skill-row__name--empty .sh-skill-row__label {
+    color: var(--sh-text-muted);
+    font-style: italic;
+  }
+
+  .sh-skill-row__level,
+  .sh-skill-row__effect {
+    justify-self: center;
+    min-width: 36px;
+    padding: 2px 6px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: $font-mono;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
+    user-select: none;
+  }
+
+  .sh-skill-row__level {
+    &.is-zero {
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--sh-text-dim);
+    }
+  }
+
+  .sh-skill-row__effect {
+    color: var(--sh-text);
+  }
+
+  .sh-skill-node--extra {
+    > .sh-skill-row .sh-skill-row__label {
+      font-style: italic;
+    }
+
+    > .sh-skill-row .sh-skill-row__leaf-mark {
+      border-radius: 1px;
+      transform: rotate(45deg);
+    }
+  }
+
+  .sh-skills-empty {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 20px;
+    color: var(--sh-text-dim);
+    font-size: 13px;
+    text-align: center;
+
+    i {
+      color: color-mix(in srgb, var(--sh-sheet-tab-accent) 54%, var(--sh-text-dim));
+      font-size: 24px;
+      opacity: 0.72;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sh-skill-row,
+    .sh-skill-row__chevron {
+      transition: none;
+    }
+  }
+}

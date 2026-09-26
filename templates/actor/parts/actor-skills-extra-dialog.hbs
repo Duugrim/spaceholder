@@ -1,0 +1,23 @@
+<div class="sh-skill-extra-dialog">
+  {{#if showName}}
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Skills.ExtraName'}}</label>
+    <div class="form-fields">
+      <input
+        type="text"
+        name="name"
+        value="{{name}}"
+        placeholder="{{localize 'SPACEHOLDER.Skills.ExtraName'}}"
+        autocomplete="off"
+        autofocus
+      />
+    </div>
+  </div>
+  {{/if}}
+  <div class="form-group">
+    <label>{{localize 'SPACEHOLDER.Skills.Level'}}</label>
+    <div class="form-fields">
+      <input type="number" name="level" min="0" max="{{maxLevel}}" step="1" value="{{level}}" {{#unless showName}}autofocus{{/unless}} />
+    </div>
+  </div>
+</div>

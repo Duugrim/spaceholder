@@ -15,31 +15,34 @@
     "anatomyId": "humanoid",
     "coveredParts": [
       {
-        "slotRef": "chest",
+        "slotRef": "upperTorso",
         "layers": [
           {
             "material": "cloth-heavy",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
-        "slotRef": "abdomen",
+        "slotRef": "lowerTorso",
         "layers": [
           {
             "material": "cloth-heavy",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
-        "slotRef": "back",
+        "slotRef": "upperTorso",
         "layers": [
           {
             "material": "cloth-heavy",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "back"
       },
       {
         "slotRef": "leftThigh",
@@ -48,7 +51,8 @@
             "material": "cloth-heavy",
             "thickness": 1
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "rightThigh",
@@ -57,7 +61,8 @@
             "material": "cloth-heavy",
             "thickness": 1
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "leftShin",
@@ -66,7 +71,8 @@
             "material": "cloth-heavy",
             "thickness": 1
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "rightShin",
@@ -75,7 +81,8 @@
             "material": "cloth-heavy",
             "thickness": 1
           }
-        ]
+        ],
+        "face": "front"
       }
     ],
     "defaultActions": {

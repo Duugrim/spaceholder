@@ -14,6 +14,7 @@
 
 import {
   getWeaponLineMode,
+  resolveActiveWeaponAttack,
   resolveEffectiveAttackParams,
 } from './weapon-model.mjs';
 import {
@@ -58,6 +59,54 @@ function _t(key, data = undefined) {
  */
 
 /**
+ * Steps that move the weapon from its stored line/mode to `line × mode`.
+ * We track the active mode; the previous line is NOT stored per ТЗ — its
+ * exit cost is never charged here. The last step is always `enterMode`,
+ * which is the one that persists the new state.
+ *
+ * @param {object} weapon normalized v3 weapon
+ * @param {object} line target line
+ * @param {object} mode target mode
+ * @returns {AttackChainStep[]}
+ */
+function _buildModeSwitchSteps(weapon, line, mode) {
+  const steps = [];
+  const state = weapon.state ?? {};
+  const sameMode = state.activeModeId === mode.id && state.activeLineId === line.id;
+  if (sameMode) return steps;
+
+  if (state.activeModeId) {
+    const { mode: oldMode } = getWeaponLineMode(weapon, state.activeLineId, state.activeModeId);
+    if (oldMode?.exitCost?.enabled) {
+      steps.push({
+        kind: 'exitMode',
+        label: _t('SPACEHOLDER.WeaponV3.Chain.ExitMode', { name: oldMode.name || oldMode.id }),
+        apCost: Math.max(0, oldMode.exitCost.value),
+      });
+    }
+  }
+  if (line.enterCost?.enabled) {
+    steps.push({
+      kind: 'enterLine',
+      label: _t('SPACEHOLDER.WeaponV3.Chain.EnterLine', { name: line.name || _t('SPACEHOLDER.WeaponV3.Line.Default') }),
+      apCost: Math.max(0, line.enterCost.value),
+    });
+  }
+  if (mode.enterCost?.enabled) {
+    steps.push({
+      kind: 'enterMode',
+      label: _t('SPACEHOLDER.WeaponV3.Chain.EnterMode', { name: mode.name || mode.id }),
+      apCost: Math.max(0, mode.enterCost.value),
+    });
+  } else {
+    // No enter cost — still need a zero-cost step so the new state is persisted
+    // (exitMode clears it, enterLine only carries the cost).
+    steps.push({ kind: 'enterMode', label: _t('SPACEHOLDER.WeaponV3.Chain.SwitchMode'), apCost: 0 });
+  }
+  return steps;
+}
+
+/**
  * Build the missing-step chain for an attack (line × mode).
  *
  * @param {object} args
@@ -84,41 +133,9 @@ export function buildAttackChain({ actor, weaponItem, lineId, modeId }) {
     });
   }
 
-  // 2. Mode switch. We track the active mode; the previous line is NOT
-  //    stored per ТЗ — its exit cost is never charged here.
+  // 2. Mode switch.
   const state = weapon.state ?? {};
-  const sameMode = state.activeModeId === modeId && state.activeLineId === lineId;
-  if (!sameMode) {
-    if (state.activeModeId) {
-      const { mode: oldMode } = getWeaponLineMode(weapon, state.activeLineId, state.activeModeId);
-      if (oldMode?.exitCost?.enabled) {
-        steps.push({
-          kind: 'exitMode',
-          label: _t('SPACEHOLDER.WeaponV3.Chain.ExitMode', { name: oldMode.name || oldMode.id }),
-          apCost: Math.max(0, oldMode.exitCost.value),
-        });
-      }
-    }
-    if (line.enterCost?.enabled) {
-      steps.push({
-        kind: 'enterLine',
-        label: _t('SPACEHOLDER.WeaponV3.Chain.EnterLine', { name: line.name || _t('SPACEHOLDER.WeaponV3.Line.Default') }),
-        apCost: Math.max(0, line.enterCost.value),
-      });
-    }
-    if (mode.enterCost?.enabled) {
-      steps.push({
-        kind: 'enterMode',
-        label: _t('SPACEHOLDER.WeaponV3.Chain.EnterMode', { name: mode.name || mode.id }),
-        apCost: Math.max(0, mode.enterCost.value),
-      });
-    }
-    if (!steps.some((s) => ['exitMode', 'enterLine', 'enterMode'].includes(s.kind))) {
-      // All costs disabled — still need a zero-cost switch step so the
-      // weapon state is updated during execution.
-      steps.push({ kind: 'enterMode', label: _t('SPACEHOLDER.WeaponV3.Chain.SwitchMode'), apCost: 0 });
-    }
-  }
+  steps.push(..._buildModeSwitchSteps(weapon, line, mode));
 
   // 3. Ammo readiness per block (actor required to resolve live contentItemIds / charge).
   for (const line of weapon.lines ?? []) {
@@ -458,4 +475,112 @@ export async function runWeaponAttack({ actor, weaponItem, token, lineId, modeId
   const confirmed = await confirmAttackChain({ actor, steps: chain.steps, totalAp: chain.totalAp, title });
   if (!confirmed) return false;
   return executeAttackChain({ actor, weaponItem, token, lineId, modeId, steps: chain.steps });
+}
+
+/* ================================================================== *
+ *  Item-level attack API                                              *
+ * ================================================================== */
+
+/**
+ * Whether the item can be used to attack. Today only v3 weapons with at
+ * least one line; later any item (improvised blunt attack).
+ * @param {Item} item
+ * @returns {boolean}
+ */
+export function canAttackWithItem(item) {
+  if (item?.type !== 'item' || !item.system?.itemTags?.isWeapon) return false;
+  const weapon = getWeaponData(item);
+  return Array.isArray(weapon.lines) && weapon.lines.length > 0;
+}
+
+/**
+ * AP cost of switching the weapon to `line × mode` (0 when already active).
+ * @param {Item} weaponItem
+ * @param {string} lineId
+ * @param {string} modeId
+ * @returns {number}
+ */
+export function previewModeSwitchAp(weaponItem, lineId, modeId) {
+  const weapon = getWeaponData(weaponItem);
+  const { line, mode } = getWeaponLineMode(weapon, lineId, modeId);
+  if (!line || !mode) return 0;
+  return _buildModeSwitchSteps(weapon, line, mode)
+    .reduce((sum, s) => sum + Math.max(0, Number(s.apCost) || 0), 0);
+}
+
+/**
+ * Explicitly switch the weapon's active line/mode (no aiming). Charges the
+ * same exit/enter costs as the attack chain and asks for confirmation when
+ * the switch is not free.
+ *
+ * @param {object} args
+ * @param {Actor} args.actor
+ * @param {Item} args.weaponItem
+ * @param {string} args.lineId
+ * @param {string} args.modeId
+ * @returns {Promise<boolean>}
+ */
+export async function switchWeaponMode({ actor, weaponItem, lineId, modeId }) {
+  const weapon = getWeaponData(weaponItem);
+  const { line, mode } = getWeaponLineMode(weapon, lineId, modeId);
+  if (!line || !mode) return false;
+
+  const steps = _buildModeSwitchSteps(weapon, line, mode);
+  if (!steps.length) return true;
+
+  const totalAp = steps.reduce((sum, s) => sum + Math.max(0, Number(s.apCost) || 0), 0);
+  if (totalAp > 0) {
+    const title = `${weaponItem.name}: ${line.name || _t('SPACEHOLDER.WeaponV3.Line.Default')} / ${mode.name || _t('SPACEHOLDER.WeaponV3.Mode.Default')}`;
+    const confirmed = await confirmAttackChain({ actor, steps, totalAp, title });
+    if (!confirmed) return false;
+  }
+  return executeAttackChain({ actor, weaponItem, token: null, lineId, modeId, steps });
+}
+
+/**
+ * Cost preview for attacking with the item's active line/mode: missing chain
+ * steps plus the first shot (aiming + trigger). Burst/auto follow-up shots
+ * are not included.
+ *
+ * @param {object} args
+ * @param {Actor} args.actor
+ * @param {Item} args.item
+ * @returns {{ok: boolean, reason?: string, totalAp: number, lineName: string, modeName: string}}
+ */
+export function previewItemAttack({ actor, item }) {
+  if (!canAttackWithItem(item)) return { ok: false, reason: 'noAttack', totalAp: 0, lineName: '', modeName: '' };
+  const weapon = getWeaponData(item);
+  const attack = resolveActiveWeaponAttack(weapon);
+  const lineName = String(attack.line?.name || _t('SPACEHOLDER.WeaponV3.Line.Default'));
+  const modeName = String(attack.mode?.name || _t('SPACEHOLDER.WeaponV3.Mode.Default'));
+
+  const chain = buildAttackChain({ actor, weaponItem: item, lineId: attack.lineId, modeId: attack.modeId });
+  if (!chain.ok) return { ok: false, reason: chain.reason, totalAp: 0, lineName, modeName };
+
+  const eff = resolveEffectiveAttackParams(weapon, attack.lineId, attack.modeId);
+  const shotAp = eff
+    ? Math.ceil(Math.max(0, Number(eff.line.aiming) || 0) + Math.max(0, Number(eff.line.trigger) || 0))
+    : 0;
+  return { ok: true, totalAp: chain.totalAp + shotAp, lineName, modeName };
+}
+
+/**
+ * Attack with the item's active line/mode (switching nothing explicitly —
+ * the chain enters the default mode when state is empty).
+ *
+ * @param {object} args
+ * @param {Actor} args.actor
+ * @param {Item} args.item
+ * @param {Token|null} args.token
+ * @returns {Promise<boolean>}
+ */
+export async function attackWithItem({ actor, item, token }) {
+  if (!canAttackWithItem(item)) return false;
+  if (!token) {
+    ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming'));
+    return false;
+  }
+  const attack = resolveActiveWeaponAttack(getWeaponData(item));
+  if (!attack.lineId || !attack.modeId) return false;
+  return runWeaponAttack({ actor, weaponItem: item, token, lineId: attack.lineId, modeId: attack.modeId });
 }

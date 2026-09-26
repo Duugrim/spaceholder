@@ -1,0 +1,37 @@
+{{!-- Skill tree node (preset or extra). Toggle branches with LMB; actions via RMB. --}}
+<li
+  class="sh-skill-node {{#if isExtra}}sh-skill-node--extra{{/if}} {{#unless hasChildren}}sh-skill-node--leaf{{/unless}}"
+  data-node-id="{{id}}"
+  data-depth="{{depth}}"
+  data-category="{{category}}"
+  {{#if isExtra}}data-extra="1"{{/if}}
+  {{#if collapsed}}data-collapsed="1"{{/if}}
+>
+  <div class="sh-skill-row">
+    {{#if hasChildren}}
+    <button
+      type="button"
+      class="sh-skill-row__name is-branch {{#if nameEmpty}}sh-skill-row__name--empty{{/if}}"
+      data-node-id="{{id}}"
+      aria-expanded="{{#if collapsed}}false{{else}}true{{/if}}"
+    >
+      <i class="fas fa-chevron-right sh-skill-row__chevron" aria-hidden="true"></i>
+      <span class="sh-skill-row__label">{{label}}</span>
+    </button>
+    {{else}}
+    <span class="sh-skill-row__name {{#if nameEmpty}}sh-skill-row__name--empty{{/if}}">
+      <span class="sh-skill-row__leaf-mark" aria-hidden="true"></span>
+      <span class="sh-skill-row__label">{{label}}</span>
+    </span>
+    {{/if}}
+    <span class="sh-skill-row__level {{#unless level}}is-zero{{/unless}}">{{level}}</span>
+    <span class="sh-skill-row__effect">{{effect}}</span>
+  </div>
+  {{#if hasChildren}}
+  <ul class="sh-skill-children" {{#if collapsed}}hidden{{/if}}>
+    {{#each children}}
+      {{> "systems/spaceholder/templates/actor/parts/actor-skills-node.hbs"}}
+    {{/each}}
+  </ul>
+  {{/if}}
+</li>

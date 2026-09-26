@@ -3,31 +3,19 @@
  * one or more anatomy body parts, delegating per-part layer resolution to
  * {@link resolveDamagePackage}. Orchestrates:
  *
- *  1. **Entry** — for an external hit with `exposure[D] > 0`, the package
- *     goes through `armor(D)_forward → bodyLayers_forward` before reaching
- *     the part centre. For an internal entry (coming in via another part's
- *     `relations.behind`) or when `exposure[D] === 0`, the package skips
- *     straight to the centre.
+ *  1. **Entry** — incoming-face armour, then the part's catalog `material`.
  *  2. **Centre accumulation** — damage reaching the centre is recorded as
  *     `bodyDamageBySlot[slotRef]`.
  *  3. **Transfer vs. exit** — if the part has a `relations.behind` with
- *     `direction === D`, we roll against the cumulative `chance` (weighted
- *     pick across competing behinds) and either:
- *      - transfer the centre damage to the next part as an **internal**
- *        entry (keeping direction D), or
- *      - exit through the back: if `exposure[opposite(D)] > 0`, the shards
- *        go through `bodyLayers_reversed → armor(opposite)_reversed` and
- *        whatever remains dissipates into the environment.
+ *     matching `direction`, we roll against `chance` and either transfer
+ *     to the next part as an internal entry, or exit through the opposite
+ *     face (armour on that face, if the part actually has it).
  *
- * `bodyLayers` are **virtual** in v1 (no persistent integrity). The
- * resolver reads their stack from the body part itself (see
- * [module/helpers/damage/body-layers-defaults.mjs]) and re-instantiates a
- * fresh state for every pass. Mutations to `layer.integrity` within the
- * pass are discarded; only armour layers are reconstituted in the output.
+ * Tissue is a single catalog material on the part. Legacy `bodyLayers`
+ * stacks are still honoured when tests pass them without a material slug.
  *
  * The resolver is pure — it does not import Foundry. See
- * [docs/code/reference/ANATOMY_SYSTEM.md] «Слои тела» and
- * [rulebook/ARMOR_PENETRATION.md] §11 for the design writeup.
+ * [docs/code/reference/ANATOMY_SYSTEM.md].
  */
 
 import {
@@ -36,16 +24,63 @@ import {
   normalizeApplications
 } from './damage-resolver.mjs';
 import { ensureLayerDefaults } from './materials-manager.mjs';
-import {
-  sanitizeBodyLayers,
-  getDefaultBodyLayersForType
-} from './body-layers-defaults.mjs';
+import { sanitizeBodyLayers } from './body-layers-defaults.mjs';
 import { isDamageType } from './damage-types.mjs';
-import { SPACEHOLDER } from '../config.mjs';
+import {
+  resolveIncomingFace,
+  resolveOppositeFace,
+  sanitizePartMaterial,
+} from '../anatomy-groups.mjs';
 
-/* ================================================================== *
- *  Direction helpers                                                  *
- * ================================================================== */
+/**
+ * Tissue stack for a part: catalog `material` as a single layer, or legacy
+ * `bodyLayers` when tests still pass an explicit stack and no material slug.
+ * @param {object} part
+ * @returns {Array<{material:string, thickness:number}>}
+ */
+function partTissueLayers(part) {
+  const mat = String(part?.material ?? '').trim();
+  if (mat && mat !== 'biological' && mat !== 'bionic' && mat !== 'flesh' && mat !== 'cybernetic') {
+    return [{ material: sanitizePartMaterial(mat), thickness: 1 }];
+  }
+  const sanitized = sanitizeBodyLayers(part?.bodyLayers);
+  return Array.isArray(sanitized) ? sanitized : [];
+}
+
+function sourcesForFace(raw, face) {
+  const list = Array.isArray(raw) ? raw : [];
+  const wanted = String(face ?? '').trim();
+  if (!wanted) return list;
+  return list.filter((src) => {
+    const f = String(src?.face ?? '').trim();
+    if (!f) return true;
+    return f === wanted;
+  });
+}
+
+function cloneArmorSources(raw) {
+  return (Array.isArray(raw) ? raw : []).map((src) => ({
+    itemId: String(src?.itemId ?? ''),
+    coverageIdx: Number(src?.coverageIdx ?? 0) || 0,
+    face: String(src?.face ?? ''),
+    layers: Array.isArray(src?.layers) ? src.layers.map((l) => ({ ...l })) : []
+  }));
+}
+
+function applyArmorScale(sources, armorScale) {
+  const s = Number(armorScale);
+  const scale = Number.isFinite(s) && s > 0 ? s : 1;
+  if (scale === 1) return sources;
+  const thickMul = Math.sqrt(scale);
+  return sources.map((src) => ({
+    ...src,
+    layers: src.layers.map((l) => {
+      const t = Number(l.thickness);
+      if (!Number.isFinite(t) || t <= 0) return { ...l };
+      return { ...l, thickness: t * thickMul };
+    })
+  }));
+}
 
 const DIRECTIONS = Object.freeze(['front', 'back', 'left', 'right', 'top', 'bottom']);
 
@@ -223,6 +258,7 @@ function reconstituteArmor(originalSources, resolvedLayers) {
   return originalSources.map((src) => ({
     itemId: src.itemId,
     coverageIdx: src.coverageIdx,
+    face: src.face ?? '',
     layers: bucket.get(`${src.itemId}:${src.coverageIdx}`) ?? []
   }));
 }
@@ -306,6 +342,7 @@ export function resolveBodyTraversal({
   hitDirection = 'front',
   applications,
   armorBySlot = {},
+  armorScale = 1,
   resolveMaterial,
   random
 } = {}) {
@@ -337,38 +374,22 @@ export function resolveBodyTraversal({
     if (!part) continue;
 
     const D = node.incomingDirection;
-    const Dopp = OPPOSITE_DIRECTION[D] ?? 'back';
-    const exposure = part.exposure && typeof part.exposure === 'object' ? part.exposure : {};
-    const expFwd = Math.max(0, Number(exposure[D] ?? 0));
-    const expBack = Math.max(0, Number(exposure[Dopp] ?? 0));
+    const incomingFace = resolveIncomingFace(part, D);
+    const oppositeFace = resolveOppositeFace(part, incomingFace);
 
-    const rawArmorSrcs = Array.isArray(armorBySlot?.[slotRef]) ? armorBySlot[slotRef] : [];
-    let currentArmorSrcs = rawArmorSrcs.map((src) => ({
-      itemId: String(src?.itemId ?? ''),
-      coverageIdx: Number(src?.coverageIdx ?? 0) || 0,
-      layers: Array.isArray(src?.layers) ? src.layers.map((l) => ({ ...l })) : []
-    }));
+    const rawArmorSrcs = cloneArmorSources(armorBySlot?.[slotRef]);
+    let currentArmorSrcs = applyArmorScale(rawArmorSrcs, armorScale);
+    const entryArmor = sourcesForFace(currentArmorSrcs, incomingFace);
+    const tissue = partTissueLayers(part);
 
-    const sanitizedLayers = sanitizeBodyLayers(part.bodyLayers);
-    // `sanitizeBodyLayers` returns `null` iff the input wasn't an array
-    // at all — in that case we genuinely lack data and fall back to the
-    // preset defaults. An explicit empty array (`bodyLayers: []`) means
-    // «this body part has no tissue stack on purpose», and we honour it.
-    let rawBodyLayers = Array.isArray(sanitizedLayers)
-      ? sanitizedLayers
-      : getDefaultBodyLayersForType(String(part.id ?? slotRef));
-    if (SPACEHOLDER.anatomyBodyLayersInDamage === false) {
-      rawBodyLayers = [];
-    }
-
-    // ---- 1. Entry ------------------------------------------------------
+    // ---- 1. Entry: incoming-face armour → part material ----------------
     let centerHits;
-    const wantsEntryStack = node.entryKind === 'external' && expFwd > 0
-      && (currentArmorSrcs.length > 0 || rawBodyLayers.length > 0);
+    const wantsEntryStack = node.entryKind === 'external'
+      && (entryArmor.length > 0 || tissue.length > 0);
     if (wantsEntryStack) {
       const flat = buildFlatStack({
-        sources: currentArmorSrcs,
-        bodyLayers: rawBodyLayers,
+        sources: entryArmor,
+        bodyLayers: tissue,
         order: 'fwd',
         slotRef,
         passId: 'entry',
@@ -415,26 +436,28 @@ export function resolveBodyTraversal({
       }
     }
 
-    // ---- 4. Exit via back exposure (if not transferred) ---------------
+    // ---- 4. Exit via opposite-face armour (if not transferred) ---------
     let exited = false;
-    if (!transferredTo && centerHits.length && expBack > 0
-      && (currentArmorSrcs.length > 0 || rawBodyLayers.length > 0)) {
-      const flat = buildFlatStack({
-        sources: currentArmorSrcs,
-        bodyLayers: rawBodyLayers,
-        order: 'rev',
-        slotRef,
-        passId: 'exit',
-        resolveMaterial: mat
-      });
-      const res = resolveDamagePackage({
-        layers: flat,
-        applications: bodyHitsToApplications(centerHits),
-        resolveMaterial: mat,
-        random: rng
-      });
-      currentArmorSrcs = reconstituteArmor(currentArmorSrcs, res.layers);
-      for (const entry of res.trace) trace.push({ ...entry, slotRef, phase: 'exit' });
+    const exitArmor = oppositeFace ? sourcesForFace(currentArmorSrcs, oppositeFace) : [];
+    if (!transferredTo && centerHits.length && oppositeFace) {
+      if (exitArmor.length > 0) {
+        const flat = buildFlatStack({
+          sources: exitArmor,
+          bodyLayers: [],
+          order: 'rev',
+          slotRef,
+          passId: 'exit',
+          resolveMaterial: mat
+        });
+        const res = resolveDamagePackage({
+          layers: flat,
+          applications: bodyHitsToApplications(centerHits),
+          resolveMaterial: mat,
+          random: rng
+        });
+        currentArmorSrcs = reconstituteArmor(currentArmorSrcs, res.layers);
+        for (const entry of res.trace) trace.push({ ...entry, slotRef, phase: 'exit' });
+      }
       exited = true;
     }
 
@@ -443,7 +466,8 @@ export function resolveBodyTraversal({
       slotRef,
       entryKind: node.entryKind,
       incomingDirection: D,
-      exposure: { fwd: expFwd, back: expBack },
+      incomingFace,
+      oppositeFace,
       transferredTo,
       exited
     });

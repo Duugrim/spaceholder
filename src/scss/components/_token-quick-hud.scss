@@ -1,376 +1,977 @@
-// Hotbar: token quick HUD (fixed overlay above #hotbar, does not affect hotbar layout)
+// Hotbar: readable token HUD stacked above Foundry's action bar.
 
 #spaceholder-token-quick-hud,
 .spaceholder.sh-token-quick-hud {
-  --sh-token-quick-hud-width: clamp(18rem, 44vw, 92vw);
-  --sh-token-quick-hud-rail-width: clamp(4.5rem, 10vw, 7.5rem);
-  --sh-token-quick-hud-panel-min-h: clamp(6rem, 12vh, 14vh);
-  --sh-token-quick-hud-segment-expand-max-h: 50vh;
-  --sh-token-quick-hud-portrait: clamp(3.25rem, 8vmin, 5rem);
-  --sh-token-quick-hud-gap: clamp(0.35rem, 0.8vw, 0.6rem);
-  --sh-token-quick-hud-pad: clamp(0.35rem, 0.8vw, 0.6rem);
+  --sh-token-quick-hud-width: clamp(36rem, var(--sh-token-quick-hud-anchor-width, 68vw), 70rem);
+  --sh-token-quick-hud-portrait: 72px;
+  --sh-token-quick-hud-control: 36px;
+  --sh-token-quick-hud-gap: 6px;
+  --sh-token-quick-hud-held-card-h: 44px;
+  --sh-token-quick-hud-held-max-rows: 5;
+  --sh-token-quick-hud-preview-rows: 2;
+  --sh-token-quick-hud-tool: 22px;
+  --sh-token-quick-hud-active-bg: rgba(74, 110, 74, 0.35);
+  --sh-token-quick-hud-active-border: rgba(74, 110, 74, 0.9);
+  --sh-token-quick-hud-active-text: #9fe39f;
 
   position: fixed;
   z-index: 71;
-  pointer-events: auto;
-  box-sizing: border-box;
-
   width: var(--sh-token-quick-hud-width);
-  min-width: 16rem;
+  min-width: 0;
+  max-width: calc(100vw - 24px);
   padding: 0;
+  border: 0;
   background: transparent;
-  border: none;
   box-shadow: none;
+  color: var(--sh-text);
+  pointer-events: auto;
 
   &.is-empty {
-    opacity: 0.72;
+    width: max-content;
   }
 
-  .sh-token-quick-hud__layout {
+  .sh-token-quick-hud__stack {
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--sh-token-quick-hud-gap);
     width: 100%;
-    overflow: visible;
+    min-width: 0;
   }
 
-  .sh-token-quick-hud__rail {
-    flex: 0 1 auto;
-    width: var(--sh-token-quick-hud-rail-width);
-    min-width: var(--sh-token-quick-hud-rail-width);
+  .sh-token-quick-hud__dock {
     display: flex;
-    flex-direction: column;
-    gap: var(--sh-token-quick-hud-gap);
     align-items: stretch;
-    overflow: visible;
+    gap: var(--sh-token-quick-hud-gap);
+    width: 100%;
+    min-width: 0;
+    min-height: calc(var(--sh-token-quick-hud-portrait) + 12px);
+    padding: 6px;
+    overflow: hidden;
+    border: 1px solid var(--sh-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--sh-surface-1) 94%, transparent);
+    box-shadow:
+      0 6px 22px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(5px);
   }
 
-  .sh-token-quick-hud__identity-card {
-    box-sizing: border-box;
-    align-self: flex-start;
-    width: max-content;
-    min-width: 100%;
-    max-width: none;
-    padding: 0.3rem 0.5rem;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.78);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
-    position: relative;
-    z-index: 2;
-    overflow: visible;
-  }
+  // --- Identity: portrait, name, AP/effects, tool buttons -----------------
 
-  .sh-token-quick-hud__title {
-    font-size: clamp(0.72rem, 1.6vw, 0.88rem);
-    font-weight: 600;
-    line-height: 1.15;
-    color: rgba(255, 255, 255, 0.96);
-    white-space: nowrap;
-  }
-
-  .sh-token-quick-hud__stats-block {
-    box-sizing: border-box;
-    flex: 0 0 auto;
-    min-height: var(--sh-token-quick-hud-panel-min-h);
-    padding: var(--sh-token-quick-hud-pad);
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  .sh-token-quick-hud__identity {
     display: flex;
-    flex-direction: column;
+    flex: 0 0 auto;
     align-items: center;
-    justify-content: center;
-    gap: clamp(0.35rem, 1vh, 0.55rem);
+    gap: 8px;
+    min-width: 0;
+    max-width: 17rem;
+    padding-right: var(--sh-token-quick-hud-gap);
+    overflow: hidden;
+    border-right: 1px solid var(--sh-border);
   }
 
   .sh-token-quick-hud__portrait-wrap {
     flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: none;
+    line-height: 0;
+    cursor: var(--cursor-pointer, pointer);
+
+    &:hover,
+    &:focus {
+      background: transparent;
+      box-shadow: none;
+    }
+
+    &:hover .sh-token-quick-hud__portrait {
+      border-color: var(--sh-border-focus);
+    }
+
+    &:focus-visible {
+      @include sh-focus-ring;
+    }
   }
 
   .sh-token-quick-hud__portrait {
+    display: block;
     width: var(--sh-token-quick-hud-portrait);
     height: var(--sh-token-quick-hud-portrait);
+    min-width: 56px;
+    min-height: 56px;
+    border: 1px solid var(--sh-border);
     border-radius: 10px;
-    object-fit: cover;
-    display: block;
+    object-fit: contain;
+    background: var(--sh-surface-2);
+    transition: border-color 140ms ease;
   }
 
   .sh-token-quick-hud__portrait--placeholder {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--sh-text-muted);
 
     i {
-      font-size: clamp(1.2rem, 3.5vmin, 1.75rem);
+      font-size: 28px;
     }
   }
 
-  .sh-token-quick-hud__stat {
+  .sh-token-quick-hud__identity-meta {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.12rem;
-    width: 100%;
-    padding: 0.35rem 0.45rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-  }
-
-  .sh-token-quick-hud__stat-label {
-    font-size: clamp(0.55rem, 1vw, 0.62rem);
-    line-height: 1;
-    color: rgba(255, 255, 255, 0.62);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .sh-token-quick-hud__stat-value {
-    font-family: $font-mono;
-    font-size: clamp(0.85rem, 1.8vw, 1rem);
-    line-height: 1.1;
-    color: rgba(255, 255, 255, 0.95);
-  }
-
-  .sh-token-quick-hud__block {
-    box-sizing: border-box;
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: var(--sh-token-quick-hud-panel-min-h);
-    height: var(--sh-token-quick-hud-block-h, auto);
-    padding: var(--sh-token-quick-hud-pad);
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    &--actions {
-      flex: 2 1 0;
-
-      .sh-token-quick-hud__block-body {
-        padding-bottom: 2px;
-      }
-    }
-
-    &.is-expanded {
-      height: auto;
-      min-height: var(--sh-token-quick-hud-block-h, var(--sh-token-quick-hud-panel-min-h));
-      overflow: visible;
-
-      .sh-token-quick-hud__block-toggle i {
-        transform: rotate(180deg);
-      }
-    }
-  }
-
-  .sh-token-quick-hud__block-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.25rem;
-    min-height: 0.95rem;
-    padding: 0 0.1rem 0.25rem;
-    margin-bottom: 0.15rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    flex: 0 0 auto;
-  }
-
-  .sh-token-quick-hud__block-title {
-    font-size: clamp(0.72rem, 1.5vw, 0.82rem);
-    font-weight: 400;
-    line-height: 1.1;
-    color: rgba(255, 255, 255, 0.55);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .sh-token-quick-hud__block-toggle {
-    width: 1rem;
-    height: 1rem;
-    padding: 0;
-    border-radius: 4px;
-    flex: 0 0 auto;
-
-    i {
-      font-size: 0.58rem;
-      transition: transform 120ms ease;
-    }
-  }
-
-  .sh-token-quick-hud__block-body {
     flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .sh-token-quick-hud__title {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--sh-text);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-token-quick-hud__status {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .sh-token-quick-hud__ap {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 3px 7px;
+    border: 1px solid var(--sh-border);
+    border-radius: 999px;
+    background: var(--sh-surface-2);
+    color: var(--sh-text-muted);
+    font-size: 11px;
+    line-height: 1;
+
+    i {
+      color: var(--sh-accent-strong);
+      font-size: 10px;
+    }
+
+    &.is-empty {
+      border-color: color-mix(in srgb, var(--sh-warning) 55%, var(--sh-border));
+      color: var(--sh-warning);
+
+      i {
+        color: currentColor;
+      }
+    }
+  }
+
+  .sh-token-quick-hud__ap-value {
+    overflow: hidden;
+    font-family: $font-mono;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-token-quick-hud__effect {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 4px;
+    object-fit: contain;
+    background: var(--sh-surface-3);
+  }
+
+  .sh-token-quick-hud__effect-more {
+    flex: 0 0 auto;
+    color: var(--sh-text-dim);
+    font-family: $font-mono;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .sh-token-quick-hud__identity-tools {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .sh-token-quick-hud__tool {
+    display: inline-flex;
+    flex: 0 0 var(--sh-token-quick-hud-tool);
+    align-items: center;
+    justify-content: center;
+    width: var(--sh-token-quick-hud-tool);
+    min-width: var(--sh-token-quick-hud-tool);
+    height: var(--sh-token-quick-hud-tool);
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--sh-border);
+    border-radius: 6px;
+    background: var(--sh-surface-2);
+    color: var(--sh-text-muted);
+
+    i {
+      font-size: 10px;
+    }
+
+    &:hover {
+      border-color: var(--sh-border-focus);
+      background: var(--sh-surface-3);
+      color: var(--sh-text);
+    }
+
+    &:focus-visible {
+      @include sh-focus-ring;
+    }
+  }
+
+  // --- Attack button ---------------------------------------------------------
+
+  .sh-token-quick-hud__attack {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 11rem;
+    min-width: 0;
+    height: auto;
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid rgba(74, 110, 74, 0.8);
+    border-radius: 9px;
+    background: linear-gradient(135deg, rgba(74, 110, 74, 0.32) 0%, var(--sh-surface-3) 100%);
+    box-shadow: none;
+    color: var(--sh-text);
+    cursor: var(--cursor-pointer, pointer);
+    text-align: left;
+
+    &:hover:not(.is-disabled) {
+      border-color: rgba(143, 185, 143, 0.9);
+      background: linear-gradient(135deg, rgba(74, 110, 74, 0.45) 0%, var(--sh-surface-3) 100%);
+    }
+
+    &:focus-visible {
+      @include sh-focus-ring;
+    }
+
+    &.is-disabled {
+      border-color: var(--sh-border);
+      background: var(--sh-surface-2);
+      cursor: var(--cursor-default, default);
+
+      .sh-token-quick-hud__attack-head {
+        opacity: 0.5;
+      }
+    }
+  }
+
+  .sh-token-quick-hud__attack-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+
+    i {
+      color: var(--sh-accent-strong);
+      font-size: 13px;
+    }
+  }
+
+  .sh-token-quick-hud__attack-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .sh-token-quick-hud__attack-ap {
+    flex: 0 0 auto;
+    color: var(--sh-text-muted);
+    font-family: $font-mono;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .sh-token-quick-hud__attack-sub {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--sh-text-muted);
+    font-size: 10px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // --- General actions: flowing chips, fixed number of visible rows ---------
+
+  .sh-token-quick-hud__preview.sh-actions-grid {
+    --sh-action-grid-gap: 4px;
+    --sh-action-control-gap: 6px;
+    --sh-action-control-min-height: var(--sh-token-quick-hud-control);
+    --sh-action-control-padding: 6px 9px;
+    --sh-action-control-radius: 8px;
+    --sh-action-label-size: 11px;
+    --sh-action-cost-size: 10px;
+
+    flex: 1 1 auto;
+    align-content: flex-start;
+    min-width: 0;
+    max-height: calc(
+      var(--sh-token-quick-hud-preview-rows) * var(--sh-token-quick-hud-control) +
+      (var(--sh-token-quick-hud-preview-rows) - 1) * 4px
+    );
+    overflow: hidden;
+
+    .sh-action-btn i {
+      font-size: 11px;
+    }
+
+    .sh-action-chip.is-clipped {
+      visibility: hidden;
+    }
+  }
+
+  // --- Held item cards --------------------------------------------------------
+
+  .sh-token-quick-hud__held-islands,
+  .sh-token-quick-hud__selected,
+  .sh-token-quick-hud__drawer {
+    min-width: 0;
+    padding: 6px;
+    border: 1px solid var(--sh-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--sh-surface-1) 94%, transparent);
+    box-shadow:
+      0 6px 22px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(5px);
+  }
+
+  .sh-token-quick-hud__held-islands {
+    display: flex;
+    flex-wrap: wrap-reverse;
+    gap: var(--sh-token-quick-hud-gap);
+    justify-content: flex-start;
+    align-content: flex-end;
+    max-height: calc(
+      var(--sh-token-quick-hud-held-max-rows) *
+      (var(--sh-token-quick-hud-held-card-h) + var(--sh-token-quick-hud-gap)) -
+      var(--sh-token-quick-hud-gap) + 12px
+    );
     overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: var(--sh-border-strong) transparent;
     scrollbar-width: thin;
   }
 
-  .sh-token-quick-hud__held-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .sh-token-quick-hud__actions-grid.sh-actions-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    align-items: stretch;
-    align-content: flex-start;
-  }
-
-  .sh-token-quick-hud__actions-grid {
-    .sh-action-chip {
-      position: relative;
-      display: inline-flex;
-      max-width: 100%;
-      vertical-align: top;
-    }
-
-    .sh-action-chip.is-favorite .sh-action-chip__main {
-      border-color: rgba(218, 165, 32, 0.92);
-      box-shadow:
-        0 0 0 1px rgba(218, 165, 32, 0.5),
-        inset 0 0 0 1px rgba(218, 165, 32, 0.18);
-    }
-
-    .sh-action-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      width: auto;
-      max-width: 100%;
-      padding: 0.35rem 0.5rem;
-      border-radius: 8px;
-      border: 1px solid rgba(74, 110, 74, 0.60);
-      background: linear-gradient(135deg, rgba(28, 28, 28, 1) 0%, rgba(40, 40, 40, 1) 100%);
-      color: #ffffff;
-      cursor: var(--cursor-pointer, pointer);
-      text-align: left;
-
-      &:hover:not(:disabled) {
-        border-color: rgba(143, 185, 143, 0.70);
-        background: linear-gradient(135deg, rgba(32, 32, 32, 1) 0%, rgba(44, 44, 44, 1) 100%);
-      }
-
-      &:disabled {
-        opacity: 0.45;
-        cursor: var(--cursor-default, default);
-      }
-
-      i {
-        color: rgba(143, 185, 143, 0.95);
-        font-size: clamp(0.65rem, 1.3vw, 0.75rem);
-        flex: 0 0 auto;
-      }
-    }
-
-    .sh-action-btn__label {
-      flex: 0 1 auto;
-      text-align: left;
-      font-weight: 700;
-      font-size: clamp(0.65rem, 1.3vw, 0.72rem);
-      min-width: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .sh-action-btn__cost {
-      flex: 0 0 auto;
-      font-family: $font-mono;
-      font-weight: 800;
-      font-size: clamp(0.58rem, 1.1vw, 0.65rem);
-      color: rgba(255, 255, 255, 0.62);
-    }
+  .sh-token-quick-hud__held-divider {
+    flex: 0 0 1px;
+    align-self: stretch;
+    height: var(--sh-token-quick-hud-held-card-h);
+    margin: 0 2px;
+    background: var(--sh-border-strong);
   }
 
   .sh-token-quick-hud__held-item {
+    position: relative;
     display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    width: 100%;
-    padding: 0.25rem 0.4rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(120, 200, 120, 0.28);
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: var(--cursor-pointer, pointer);
+    flex: 0 1 auto;
+    align-items: stretch;
+    min-width: 9.5rem;
+    max-width: 16rem;
+    height: var(--sh-token-quick-hud-held-card-h);
+    overflow: hidden;
+    border: 1px solid var(--sh-border);
+    border-radius: 9px;
+    background: var(--sh-surface-2);
+    transition:
+      border-color 140ms ease,
+      background-color 140ms ease,
+      box-shadow 140ms ease,
+      opacity 140ms ease;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--sh-border-strong);
+      background: var(--sh-surface-3);
+    }
+
+    &.is-stowed {
+      border-style: dashed;
+      opacity: 0.6;
+
+      &:hover,
+      &.is-selected {
+        opacity: 1;
+      }
     }
 
     &.is-selected {
-      border-color: rgba(143, 185, 143, 0.85);
-      box-shadow: 0 0 0 1px rgba(143, 185, 143, 0.45);
-      background: rgba(143, 185, 143, 0.12);
+      border-color: var(--sh-border-focus);
+      background: color-mix(in srgb, var(--sh-accent) 16%, var(--sh-surface-2));
+      box-shadow:
+        0 0 0 1px var(--sh-focus-ring),
+        inset 3px 0 0 var(--sh-accent-strong);
+    }
+  }
+
+  .sh-token-quick-hud__held-select {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding: 4px 8px 4px 6px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    cursor: var(--cursor-pointer, pointer);
+    font: inherit;
+    text-align: left;
+
+    &:hover,
+    &:focus {
+      background: transparent;
+      box-shadow: none;
     }
 
-    &.is-not-ready {
-      border-color: rgba(220, 120, 80, 0.45);
+    &:focus-visible {
+      box-shadow: inset 0 0 0 2px var(--sh-border-focus);
     }
   }
 
   .sh-token-quick-hud__held-img {
-    width: clamp(1.4rem, 3.5vmin, 1.75rem);
-    height: clamp(1.4rem, 3.5vmin, 1.75rem);
-    border-radius: 6px;
-    object-fit: cover;
-    flex: 0 0 auto;
     display: block;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    object-fit: contain;
+    background: color-mix(in srgb, var(--sh-surface-3) 82%, white 3%);
   }
 
   .sh-token-quick-hud__held-img--placeholder {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--sh-text-muted);
 
     i {
-      font-size: 0.72rem;
+      font-size: 12px;
     }
   }
 
   .sh-token-quick-hud__held-meta {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
-    gap: 0.12rem;
+    justify-content: center;
+    gap: 2px;
     min-width: 0;
   }
 
-  .sh-token-quick-hud__held-name {
-    font-size: clamp(0.65rem, 1.3vw, 0.72rem);
-    line-height: 1.15;
-    color: rgba(255, 255, 255, 0.92);
-    white-space: nowrap;
+  .sh-token-quick-hud__held-name,
+  .sh-token-quick-hud__held-detail {
+    display: block;
+    min-width: 0;
     overflow: hidden;
+    line-height: 1.1;
     text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-token-quick-hud__held-name {
+    color: var(--sh-text);
+    font-size: 11px;
+    font-weight: 700;
   }
 
   .sh-token-quick-hud__held-detail {
-    font-size: clamp(0.58rem, 1.1vw, 0.65rem);
-    line-height: 1.1;
-    color: rgba(255, 255, 255, 0.58);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--sh-text-muted);
+    font-size: 10px;
   }
 
-  .sh-token-quick-hud__empty {
-    font-size: clamp(0.65rem, 1.3vw, 0.72rem);
-    color: rgba(255, 255, 255, 0.55);
-    padding: 0.35rem 0.25rem;
+  .sh-token-quick-hud__readiness {
+    flex: 0 0 auto;
+    color: var(--sh-warning);
+    font-size: 11px;
+  }
+
+  .sh-token-quick-hud__ammo {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    padding-left: 6px;
+    border-left: 1px solid var(--sh-border);
+  }
+
+  .sh-token-quick-hud__ammo-count {
+    color: var(--sh-text);
+    font-family: $font-mono;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .is-not-ready .sh-token-quick-hud__ammo-count {
+    color: var(--sh-warning);
+  }
+
+  .sh-token-quick-hud__ammo-bar {
+    display: block;
+    width: 34px;
+    height: 6px;
+    overflow: hidden;
+    border: 1px solid var(--sh-border-strong);
+    border-radius: 3px;
+    background: var(--sh-surface-3);
+
+    > span {
+      display: block;
+      height: 100%;
+      background: var(--sh-accent-strong);
+    }
+  }
+
+  .sh-token-quick-hud__ammo-pips {
+    display: grid;
+    grid-template-columns: repeat(6, 5px);
+    gap: 2px;
+
+    > span {
+      width: 5px;
+      height: 5px;
+      border: 1px solid var(--sh-border-strong);
+      border-radius: 50%;
+
+      &.is-filled {
+        border-color: var(--sh-accent-strong);
+        background: var(--sh-accent-strong);
+      }
+    }
+  }
+
+  .is-not-ready .sh-token-quick-hud__ammo-bar,
+  .is-not-ready .sh-token-quick-hud__ammo-pips > span {
+    border-color: color-mix(in srgb, var(--sh-warning) 55%, var(--sh-border));
+  }
+
+  .sh-token-quick-hud__held-select,
+  .sh-token-quick-hud__deselect,
+  .sh-token-quick-hud__drawer-toggle,
+  .sh-token-quick-hud__mode-btn {
+    margin: 0;
+
+    &:focus-visible {
+      @include sh-focus-ring;
+    }
+  }
+
+  // --- Selected items: chip + mode selector + item actions --------------------
+
+  .sh-token-quick-hud__selected {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-x: hidden;
+  }
+
+  .sh-token-quick-hud__selected-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+
+    & + & {
+      padding-top: 6px;
+      border-top: 1px solid var(--sh-border);
+    }
+  }
+
+  .sh-token-quick-hud__selected-chip {
+    display: inline-flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 16rem;
+    height: var(--sh-token-quick-hud-control);
+    padding: 0 2px 0 5px;
+    border: 1px solid var(--sh-border-focus);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--sh-accent) 16%, var(--sh-surface-2));
+
+    > i {
+      color: var(--sh-text-muted);
+      font-size: 12px;
+    }
+  }
+
+  .sh-token-quick-hud__selected-img {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 6px;
+    object-fit: contain;
+  }
+
+  .sh-token-quick-hud__selected-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-token-quick-hud__deselect {
+    display: inline-flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--sh-text-muted);
+
+    &:hover {
+      background: var(--sh-surface-3);
+      color: var(--sh-text);
+    }
+
+    i {
+      font-size: 12px;
+    }
+  }
+
+  .sh-token-quick-hud__mode-selector {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 3px;
+    border: 1px solid var(--sh-border);
+    border-radius: 8px;
+    background: var(--sh-surface-2);
+  }
+
+  .sh-token-quick-hud__mode-line {
+    padding: 0 4px;
+    color: var(--sh-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .sh-token-quick-hud__mode-btn {
+    width: auto;
+    height: 28px;
+    padding: 0 9px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--sh-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+
+    &:hover {
+      border-color: var(--sh-border-strong);
+      background: var(--sh-surface-3);
+      color: var(--sh-text);
+    }
+
+    &.is-active {
+      border-color: var(--sh-token-quick-hud-active-border);
+      background: var(--sh-token-quick-hud-active-bg);
+      color: var(--sh-token-quick-hud-active-text);
+    }
+  }
+
+  .sh-token-quick-hud__selected-actions.sh-actions-grid,
+  .sh-token-quick-hud__drawer-actions.sh-actions-grid {
+    --sh-action-grid-gap: 6px;
+    --sh-action-control-gap: 6px;
+    --sh-action-control-min-height: var(--sh-token-quick-hud-control);
+    --sh-action-control-padding: 6px 9px;
+    --sh-action-control-radius: 8px;
+    --sh-action-label-size: 11px;
+    --sh-action-cost-size: 10px;
+
+    overflow-x: hidden;
+    overflow-y: visible;
+
+    .sh-action-chip {
+      max-width: 100%;
+    }
+  }
+
+  .sh-token-quick-hud__selected-actions.sh-actions-grid {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sh-token-quick-hud__empty-text {
+    min-width: 0;
+    color: var(--sh-text-muted);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  // --- Drawer with all general actions ---------------------------------------
+
+  .sh-token-quick-hud__drawer-toggle {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 42px;
+    align-self: center;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid var(--sh-border);
+    border-radius: 9px;
+    background: var(--sh-surface-2);
+    color: var(--sh-text-muted);
+
+    &[hidden] {
+      display: none;
+    }
+
+    &:hover {
+      border-color: var(--sh-border-focus);
+      background: var(--sh-surface-3);
+      color: var(--sh-text);
+    }
+
+    > i {
+      font-size: 11px;
+      transition: transform 140ms ease;
+    }
+  }
+
+  .sh-token-quick-hud__overflow-count {
+    position: absolute;
+    right: 3px;
+    bottom: 2px;
+    color: var(--sh-text-dim);
+    font-family: $font-mono;
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  &[data-expanded='true'] {
+    .sh-token-quick-hud__drawer-toggle {
+      border-color: var(--sh-border-focus);
+      background: color-mix(in srgb, var(--sh-accent) 16%, var(--sh-surface-2));
+      color: var(--sh-text);
+
+      > i {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .sh-token-quick-hud__drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: min(36vh, 22rem);
+    overflow: hidden;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  .sh-token-quick-hud__drawer-header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 2px 5px;
+    border-bottom: 1px solid var(--sh-border);
+  }
+
+  .sh-token-quick-hud__drawer-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--sh-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+
+    > i {
+      color: var(--sh-accent-strong);
+      font-size: 11px;
+    }
+  }
+
+  .sh-token-quick-hud__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: var(--sh-surface-3);
+    color: var(--sh-text-dim);
+    font-family: $font-mono;
+    font-size: 9px;
+  }
+
+  .sh-token-quick-hud__drawer-actions.sh-actions-grid {
+    flex: 1 1 auto;
+    align-content: flex-start;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-color: var(--sh-border-strong) transparent;
+    scrollbar-width: thin;
+  }
+
+  .sh-token-quick-hud__empty-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 7px 11px;
+    border: 1px solid var(--sh-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--sh-surface-1) 92%, transparent);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.36);
+    color: var(--sh-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+
+    i {
+      color: var(--sh-text-dim);
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  #spaceholder-token-quick-hud,
+  .spaceholder.sh-token-quick-hud {
+    --sh-token-quick-hud-portrait: 64px;
+
+    max-width: calc(100vw - 16px);
+
+    .sh-token-quick-hud__identity {
+      max-width: 13rem;
+    }
+
+    .sh-token-quick-hud__attack {
+      width: 9rem;
+    }
+
+    .sh-token-quick-hud__held-item {
+      min-width: 8.5rem;
+    }
+  }
+}
+
+@media (max-width: 680px) {
+  #spaceholder-token-quick-hud,
+  .spaceholder.sh-token-quick-hud {
+    --sh-token-quick-hud-portrait: 56px;
+
+    .sh-token-quick-hud__dock {
+      gap: 4px;
+      padding: 5px;
+    }
+
+    .sh-token-quick-hud__identity {
+      max-width: 10.5rem;
+      gap: 6px;
+      padding-right: 4px;
+    }
+
+    .sh-token-quick-hud__title {
+      font-size: 12px;
+    }
+
+    .sh-token-quick-hud__attack {
+      width: 7.5rem;
+    }
+
+    .sh-token-quick-hud__held-item {
+      min-width: calc(50% - var(--sh-token-quick-hud-gap));
+      max-width: 100%;
+    }
+
+    .sh-token-quick-hud__drawer-toggle {
+      flex-basis: 38px;
+      width: 38px;
+      min-width: 38px;
+      height: 38px;
+    }
+  }
+}
+
+@media (max-height: 700px) {
+  #spaceholder-token-quick-hud,
+  .spaceholder.sh-token-quick-hud {
+    --sh-token-quick-hud-portrait: 56px;
+    --sh-token-quick-hud-held-max-rows: 3;
+
+    .sh-token-quick-hud__drawer {
+      max-height: 28vh;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #spaceholder-token-quick-hud,
+  .spaceholder.sh-token-quick-hud {
+    .sh-token-quick-hud__drawer-toggle > i,
+    .sh-token-quick-hud__held-item,
+    .sh-token-quick-hud__portrait {
+      transition: none;
+    }
   }
 }

@@ -1,12 +1,10 @@
 /**
- * Визуализатор анатомии для предмета Wearable: круги частей тела, клик переключает «покрыто/не покрыто».
+ * Визуализатор анатомии для предмета Wearable: круги частей тела, клик переключает покрытие по стороне.
  * Не редактирует структуру анатомии — только выбор зон покрытия.
  */
 import { coerceAnatomyGridCoord } from "../anatomy-manager.mjs";
-import { getExposurePlanar4 } from "./anatomy-relations.mjs";
-import { createExposureRingSvg } from "./anatomy-exposure-ring.mjs";
-
-const EXPOSURE_RING_OUTER_SCALE = 1.32;
+import { sanitizeFaces } from "./anatomy-groups.mjs";
+import { coverageKey, parseCoverageKey } from "./body-part-coverage.mjs";
 
 const DEFAULT_CELL_SIZE = 42;
 const DEFAULT_CIRCLE_RADIUS = 15;
@@ -24,13 +22,22 @@ function toPx(x, y, wrapW, wrapH, centerX, centerY, cellSize, circleRadius) {
   };
 }
 
+function facesCoveredForPart(armorByPart, partId) {
+  const out = [];
+  for (const key of Object.keys(armorByPart ?? {})) {
+    const parsed = parseCoverageKey(key);
+    if (parsed.slotRef === partId) out.push(parsed.face);
+  }
+  return out;
+}
+
 /**
  * @param {HTMLElement} container
  * @param {Object} options
  * @param {{ bodyParts: Object, grid?: { width?: number, height?: number } }} options.anatomyData
- * @param {Object} options.armorByPart - { [slotRef]: { value: number } }
- * @param {(armorByPart: Object) => void} options.onChange - вызывается после переключения покрытия части
- * @param {boolean} [options.showOnlyCovered] - если true, показывать только выбранные (покрытые) части без голубой пометки и без клика
+ * @param {Object} options.armorByPart - { [`${slotRef}::${face}`]: { face, layers? } }
+ * @param {(armorByPart: Object) => void} options.onChange
+ * @param {boolean} [options.showOnlyCovered]
  */
 export class WearableCoverageEditor {
   constructor(container, options = {}) {
@@ -57,12 +64,13 @@ export class WearableCoverageEditor {
     for (const [slotRef, part] of Object.entries(bodyParts)) {
       const x = coerceAnatomyGridCoord(part.x ?? 0);
       const y = coerceAnatomyGridCoord(part.y ?? 0);
-      partsById[slotRef] = { ...part, id: slotRef, x, y };
+      partsById[slotRef] = { ...part, id: slotRef, x, y, faces: sanitizeFaces(part.faces) };
     }
 
-    const partIdsToShow = this.showOnlyCovered
-      ? Object.keys(this.armorByPart).filter((id) => partsById[id])
-      : partIds;
+    const coveredPartIds = [...new Set(
+      Object.keys(this.armorByPart).map((k) => parseCoverageKey(k).slotRef).filter((id) => partsById[id])
+    )];
+    const partIdsToShow = this.showOnlyCovered ? coveredPartIds : partIds;
 
     if (partIdsToShow.length === 0) {
       const empty = document.createElement("div");
@@ -137,45 +145,43 @@ export class WearableCoverageEditor {
     }
     inner.appendChild(svg);
 
+    const L = (k, fallback) => (typeof game !== "undefined" && game.i18n?.localize?.(k)) || fallback;
+
     for (const partId of partIdsToShow) {
       const part = partsById[partId];
       if (!part) continue;
       const px = toPx(part.x, part.y, wrapW, wrapH, centerX, centerY, cellSize, circleRadius);
       const node = document.createElement("div");
       node.className = "anatomy-editor-part anatomy-editor-part-circle";
-      if (!this.showOnlyCovered) {
-        const covered = Object.prototype.hasOwnProperty.call(this.armorByPart, partId);
-        if (covered) node.classList.add("wearable-coverage-part--covered");
-      }
+      const coveredFaces = facesCoveredForPart(this.armorByPart, partId);
+      if (coveredFaces.length) node.classList.add("wearable-coverage-part--covered");
       node.dataset.partId = partId;
       node.style.left = `${px.left}px`;
       node.style.top = `${px.top}px`;
       node.style.width = `${circleRadius * 2}px`;
       node.style.height = `${circleRadius * 2}px`;
-      node.title = part.displayName || part.name || partId;
-      node.classList.add("anatomy-editor-part-circle--exposure-viz");
-      const planar = getExposurePlanar4(part.exposure);
-      const ringVariant =
-        !this.showOnlyCovered && Object.prototype.hasOwnProperty.call(this.armorByPart, partId)
-          ? "neighbor"
-          : "default";
-      const innerD = circleRadius * 2;
-      const outerD = Math.round(innerD * EXPOSURE_RING_OUTER_SCALE);
-      const ringSvg = createExposureRingSvg(outerD, planar, {
-        innerDiameterPx: innerD,
-        variant: ringVariant
-      });
-      if (ringSvg) node.appendChild(ringSvg);
+      const faceHint = coveredFaces.length
+        ? ` [${coveredFaces.join(", ")}]`
+        : "";
+      node.title = `${part.displayName || part.name || partId}${faceHint}`;
       inner.appendChild(node);
 
       if (!this.showOnlyCovered) {
         node.addEventListener("click", (e) => {
           e.stopPropagation();
+          const faces = sanitizeFaces(part.faces);
           const next = { ...this.armorByPart };
-          if (Object.prototype.hasOwnProperty.call(next, partId)) {
-            delete next[partId];
+          const currently = facesCoveredForPart(next, partId);
+          if (faces.length <= 1) {
+            const face = faces[0] || "front";
+            const key = coverageKey(partId, face);
+            if (Object.prototype.hasOwnProperty.call(next, key)) delete next[key];
+            else next[key] = { face };
+          } else if (currently.length >= faces.length) {
+            for (const face of faces) delete next[coverageKey(partId, face)];
           } else {
-            next[partId] = { value: next[partId]?.value ?? 0 };
+            const missing = faces.find((f) => !currently.includes(f));
+            if (missing) next[coverageKey(partId, missing)] = { face: missing };
           }
           this.armorByPart = next;
           this.onChange(next);

@@ -49,6 +49,15 @@
       <div class="sh-gm-edge__rightCluster" role="group" aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.Visibility"}}">
         <button
           type="button"
+          class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__view3dBtn"
+          data-action="toggle-view-3d"
+          aria-pressed="false"
+          aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.View3d"}}"
+          data-tooltip="{{localize "SPACEHOLDER.GlobalMap.Edge.View3d"}}"
+        ><i class="fa-solid fa-mountain" aria-hidden="true"></i></button>
+
+        <button
+          type="button"
           class="icon-btn sh-gm-edge__iconBtn sh-gm-edge__refreshBtn"
           data-action="load-map"
           aria-label="{{localize "SPACEHOLDER.GlobalMap.Edge.RefreshMap"}}"

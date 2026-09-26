@@ -59,6 +59,14 @@
         <input type="text" data-wpath="{{block.path}}.connector" data-wdtype="String" value="{{block.connector}}" />
       </label>
       {{/if}}
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.DisplayStyleHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Block.DisplayStyle'}}</span>
+        <select data-wpath="{{block.path}}.displayStyle" data-wdtype="String">
+          {{#each ../w.ammoDisplayStyleOptions as |opt|}}
+          <option value="{{opt.value}}" {{#if (eq opt.value block.displayStyle)}}selected{{/if}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+      </label>
       {{#if block.isInternalCharge}}
       <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Block.ChargeHint'}}">
         <span>{{localize 'SPACEHOLDER.WeaponV3.Block.Charge'}}</span>

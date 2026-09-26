@@ -70,6 +70,11 @@
               </div>
               {{/each}}
             </div>
+            {{#if editable}}
+            <button type="button" class="sh-abilities-edit" data-action="sh-abilities-edit">
+              {{localize 'SPACEHOLDER.Character.AbilitiesEditButton'}}
+            </button>
+            {{/if}}
           </div>
         </div>
         <div class="sh-stats-column sh-stats-column--derived-col-b">
@@ -79,6 +84,15 @@
           {{> "systems/spaceholder/templates/actor/parts/actor-stats-derived-coordination-mental.hbs"}}
         </div>
       </div>
+    </div>
+
+    <div class="tab skills flexcol" data-group="primary" data-tab="skills">
+      {{#each sheetPrimaryTabs}}
+        {{#if (eq id "skills")}}
+          {{> "systems/spaceholder/templates/partials/sh-tab-banner.hbs" tab=id group="primary" icon=icon labelKey=labelKey}}
+        {{/if}}
+      {{/each}}
+      {{> "systems/spaceholder/templates/actor/parts/actor-skills.hbs"}}
     </div>
 
     <div class="tab health flexcol" data-group="primary" data-tab="health">

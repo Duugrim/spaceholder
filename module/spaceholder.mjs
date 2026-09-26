@@ -62,15 +62,22 @@ import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
 import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edge-ui.mjs';
 import { installGlobalMapFactionVision } from './helpers/global-map/global-map-faction-vision.mjs';
+import { createGlobalMapTerrain3D } from './helpers/global-map/terrain3d/terrain3d.mjs';
 // Hotbar: faction selector + PP indicator
 import { installHotbarFactionUiHooks } from './helpers/hotbar-faction-ui.mjs';
-import { installTokenQuickHudHooks } from './helpers/token-quick-hud.mjs';
+import { installTokenQuickHudHooks, registerTokenQuickHudSettings } from './helpers/token-quick-hud.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
 import { registerTokenControlButtons, installTokenControlsHooks } from './helpers/token-controls.mjs';
 import { installAimingArcOverlayHooks } from './helpers/aiming-arc-overlay.mjs';
 // Actions system (MVP)
-import { collectActorActions, executeActorAction } from './helpers/actions/action-service.mjs';
+import {
+  ACTION_DRAG_TYPE,
+  collectActorActions,
+  createActorActionMacro,
+  executeActorAction,
+  runActorActionById,
+} from './helpers/actions/action-service.mjs';
 import {
   spendAp,
   undoTransaction,
@@ -102,7 +109,23 @@ import {
   getNestedStorage,
   normalizeNestedStorage,
 } from './helpers/item-nested-storage.mjs';
-import { registerHealthAnatomyViewerSettings } from './helpers/health-anatomy-viewer-settings.mjs';
+import {
+  getSkillEffect,
+  getSkillLevel,
+  getSkillPath,
+} from './helpers/skills/skills.mjs';
+import {
+  getGroupAbility,
+  getAnatomyGroups,
+  getGroupsByType,
+  getPartGroups,
+} from './helpers/anatomy-groups.mjs';
+import {
+  HIT_LUCK_SETTING_KEY,
+  HIT_LUCK_COMBINE_MULTIPLIER,
+  HIT_LUCK_COMBINE_PENALTY,
+} from './helpers/hit-luck.mjs';
+import { coverageKey, getCoverageFace, parseCoverageKey } from './helpers/body-part-coverage.mjs';
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
@@ -122,7 +145,20 @@ Hooks.once('init', function () {
   registerProgressionPointsSettings();
   registerTimelineV2Settings();
   registerItemPilesShSettings();
-  registerHealthAnatomyViewerSettings();
+  registerTokenQuickHudSettings();
+  game.settings.register('spaceholder', HIT_LUCK_SETTING_KEY, {
+    name: 'SPACEHOLDER.Settings.HitLuckCombine.Name',
+    hint: 'SPACEHOLDER.Settings.HitLuckCombine.Hint',
+    scope: 'world',
+    config: true,
+    type: String,
+    choices: {
+      [HIT_LUCK_COMBINE_MULTIPLIER]: 'multiplier',
+      [HIT_LUCK_COMBINE_PENALTY]: 'penalty',
+    },
+    default: HIT_LUCK_COMBINE_MULTIPLIER,
+    restricted: true,
+  });
   installTokenPointerTabs();
   // Legacy world anatomy keys: used only for one-time migration into world folder files
   // World anatomies live in: worlds/<worldId>/spaceholder/anatomy/*.json (FilePicker upload/browse)
@@ -171,6 +207,7 @@ Hooks.once('init', function () {
     // Actions system (MVP)
     collectActorActions: (actor, ctx = {}) => collectActorActions(actor, ctx),
     executeActorAction: (actor, action, ctx = {}) => executeActorAction(actor, action, ctx),
+    runActorAction: (actorUuid, actionId) => runActorActionById(actorUuid, actionId),
     spendAp: (actor, cost, meta = {}) => spendAp(actor, cost, meta),
     undoTransaction: (opts = {}) => undoTransaction(opts),
     getStoredActionPoints: (actor) => getStoredActionPoints(actor),
@@ -196,8 +233,14 @@ Hooks.once('init', function () {
     pickCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.pickTurn?.(args),
     undoCombatAction: (args = {}) => game.spaceholder.combatSessionManager?.undoLastAction?.(args),
     // Global map helpers (new system)
-    // TODO: Add new global map helpers when ready
-    
+    openLookFromPoint: (opts = {}) => game.spaceholder.globalMapTerrain?.openLookFrom?.(opts),
+    getSkillEffect: (actor, nodeId) => getSkillEffect(actor, nodeId),
+    getSkillLevel: (actor, nodeId) => getSkillLevel(actor, nodeId),
+    getSkillPath: (nodeId) => getSkillPath(nodeId),
+    getGroupAbility: (actor, groupId) => getGroupAbility(actor, groupId),
+    getAnatomyGroups: (actor) => getAnatomyGroups(actor),
+    getGroupsByType: (actor, type) => getGroupsByType(actor, type),
+    getPartGroups: (actor, slotRef) => getPartGroups(actor, slotRef), 
     // DEPRECATED: Old height/biome map helpers - no longer used
     // (kept structure for reference during migration)
     // item-piles-sh API is attached in ready hook after bootstrap.
@@ -239,6 +282,8 @@ Hooks.once('init', function () {
   game.spaceholder.globalMapProcessing = new GlobalMapProcessing();
   game.spaceholder.globalMapRenderer = new GlobalMapRenderer();
   game.spaceholder.globalMapTools = new GlobalMapTools(game.spaceholder.globalMapRenderer, game.spaceholder.globalMapProcessing);
+  game.spaceholder.globalMapTerrain = createGlobalMapTerrain3D();
+  game.spaceholder.globalMapTerrain.install();
   
   // Initialize asynchronously (load configs)
   (async () => {
@@ -411,7 +456,8 @@ Hooks.once('init', function () {
           coveredParts.map((c) => {
             const slotRef = String(c.slotRef ?? c.partId ?? "").trim();
             if (!slotRef) return null;
-            return [slotRef, {}];
+            const face = getCoverageFace(c);
+            return [coverageKey(slotRef, face), { face, layers: c.layers }];
           }).filter(Boolean)
         );
         const showOnlyCovered = !doc.flags?.spaceholder?.wearableCoverageEditMode;
@@ -422,15 +468,17 @@ Hooks.once('init', function () {
           onChange: showOnlyCovered ? undefined : async (next) => {
             // Preserve any existing per-part data (e.g. layers) when toggling coverage.
             const prev = Array.isArray(doc.system?.coveredParts) ? doc.system.coveredParts : [];
-            const prevBySlot = new Map();
+            const prevByKey = new Map();
             for (const c of prev) {
               const ref = String(c?.slotRef ?? c?.partId ?? '').trim();
-              if (ref) prevBySlot.set(ref, c);
+              if (!ref) continue;
+              prevByKey.set(coverageKey(ref, getCoverageFace(c)), c);
             }
-            const nextCoveredParts = Object.keys(next).map((slotRef) => {
-              const existing = prevBySlot.get(slotRef);
-              if (existing) return { ...existing, slotRef };
-              return { slotRef, layers: [] };
+            const nextCoveredParts = Object.keys(next).map((key) => {
+              const { slotRef, face } = parseCoverageKey(key);
+              const existing = prevByKey.get(key);
+              if (existing) return { ...existing, slotRef, face };
+              return { slotRef, face, layers: [] };
             });
             const keepAnatomyId = doc.system?.anatomyId ?? null;
             // Item DataModel: обновление только coveredParts может сбросить anatomyId — явно сохраняем.
@@ -996,7 +1044,13 @@ Hooks.once('ready', async function () {
   // game.spaceholder.heightMapManager, heightMapRenderer, etc are disabled
   
   // Wait to register hotbar drop hook on ready so that modules could register earlier if they want to
-  Hooks.on('hotbarDrop', (bar, data, slot) => createItemMacro(data, slot));
+  Hooks.on('hotbarDrop', (bar, data, slot) => {
+    if (data?.type === ACTION_DRAG_TYPE) {
+      if (!bar?.locked) createActorActionMacro(data, slot);
+      return false;
+    }
+    return createItemMacro(data, slot);
+  });
   // item-piles-sh: primary item drop-on-canvas path for SpaceHolder
   initializeItemPilesSh();
 

@@ -25,7 +25,8 @@
             "material": "ablative",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       }
     ],
     "defaultActions": {

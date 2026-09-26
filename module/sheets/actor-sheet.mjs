@@ -4,7 +4,6 @@ import {
 } from '../helpers/effects.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
 import { AnatomyEditor } from '../helpers/anatomy-editor.mjs';
-import { getHealthAnatomy3dEnabled } from '../helpers/health-anatomy-viewer-settings.mjs';
 import { promptPickAndApplyIconToActorOrToken } from '../helpers/icon-picker/icon-apply.mjs';
 import {
   isProgressionEnabled,
@@ -13,10 +12,23 @@ import {
 } from '../helpers/progression-points.mjs';
 import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
 import { getWorldFactionActors } from '../helpers/user-factions.mjs';
-import { collectActorActions, executeActorAction, getActorActionPoints, openItemInteractMenu } from '../helpers/actions/action-service.mjs';
+import { collectActorActions, executeActorAction, getActorActionPoints, openItemInteractMenu, resolveActionToken, getFavoriteActionIds, toggleFavoriteAction } from '../helpers/actions/action-service.mjs';
 import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
+import { openSimpleContextMenu, closeSimpleContextMenu } from '../helpers/simple-context-menu.mjs';
+import {
+  SKILL_CATEGORIES,
+  SKILL_LEVEL_MAX,
+  addSkillExtra,
+  clampSkillLevel,
+  buildSkillsSheetContext,
+  getSkillLevel,
+  getSkillParentId,
+  readActorSkills,
+  removeSkillExtra,
+  setSkillLevel,
+} from '../helpers/skills/skills.mjs';
 import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/held-drop-resolve.mjs';
-import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
+import { resolveCoverageEntryToActorSlots, getCoverageFace, coverageKey } from '../helpers/body-part-coverage.mjs';
 import { materialsManager } from '../helpers/damage/materials-manager.mjs';
 import {
   calculateActorContainerUsage,
@@ -69,10 +81,13 @@ const CHARACTER_SHEET_PRIMARY_TABS = Object.freeze([
   { id: 'overview', icon: 'fas fa-border-all', labelKey: 'SPACEHOLDER.Tabs.Overview' },
   { id: 'actions', icon: 'fas fa-bolt', labelKey: 'SPACEHOLDER.Tabs.Actions' },
   { id: 'stats', icon: 'fas fa-dumbbell', labelKey: 'SPACEHOLDER.Tabs.Stats' },
+  { id: 'skills', icon: 'fas fa-layer-group', labelKey: 'SPACEHOLDER.Tabs.Skills' },
   { id: 'health', icon: 'fas fa-heart-pulse', labelKey: 'SPACEHOLDER.Tabs.Health' },
   { id: 'injuries', icon: 'fas fa-bandage', labelKey: 'SPACEHOLDER.Tabs.Injuries' },
   { id: 'inventory', icon: 'fas fa-box-open', labelKey: 'SPACEHOLDER.Tabs.Inventory' },
 ]);
+
+const CHARACTER_ABILITY_IDS = Object.freeze(['end', 'str', 'dex', 'cor', 'per', 'int', 'luc']);
 
 const ACTOR_ACTION_MODE_LABEL_KEYS = Object.freeze({
   chat: 'SPACEHOLDER.ActionsSystem.UI.ModeChat',
@@ -259,6 +274,11 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       context.characterDispositionLabel = game.i18n.localize(this._characterDispositionLabelKey(this.actor));
       context.characterDispositionIconClass = this._characterDispositionIconClass(this.actor);
       context.sheetPrimaryTabs = CHARACTER_SHEET_PRIMARY_TABS;
+      this._skillFold ??= {};
+      context.skillsUi = buildSkillsSheetContext(this.actor, {
+        editable: this.isEditable,
+        fold: this._skillFold,
+      });
     } else if (actorData.type === 'npc' || actorData.type === 'loot') {
       await this._prepareItems(context);
       context.sheetPrimaryTabs = actorData.type === 'loot' ? LOOT_SHEET_PRIMARY_TABS : NPC_SHEET_PRIMARY_TABS;
@@ -297,7 +317,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
       const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
       const collected = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
-      const favoriteIds = this._getFavoriteActionIdSet();
+      const favoriteIds = new Set(getFavoriteActionIds(this.actor));
       context.availableActions = collected.actions.map((a) => this._enrichActionForSheet(a, favoriteIds));
       context.favoriteActions = collected.actions
         .filter((a) => favoriteIds.has(String(a?.id ?? '').trim()))
@@ -591,6 +611,71 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   }
 
   /**
+   * Edit base character abilities. Read source values so equipped-item
+   * modifiers are never persisted back into the actor as base scores.
+   */
+  async _openAbilitiesEditDialog() {
+    if (this.actor?.type !== 'character' || !this.isEditable) return;
+    const sourceAbilities = this.actor?._source?.system?.abilities ?? {};
+    const abilities = CHARACTER_ABILITY_IDS.map((id) => {
+      const sourceValue = Number(sourceAbilities?.[id]?.value);
+      const preparedValue = Number(this.actor?.system?.abilities?.[id]?.value);
+      return {
+        id,
+        label: game.i18n.localize(CONFIG.SPACEHOLDER.abilities[id]),
+        abbr: game.i18n.localize(CONFIG.SPACEHOLDER.abilityAbbreviations[id]),
+        value: Number.isFinite(sourceValue)
+          ? Math.max(0, Math.round(sourceValue))
+          : Math.max(0, Math.round(Number.isFinite(preparedValue) ? preparedValue : 0)),
+      };
+    });
+
+    const content = await foundry.applications.handlebars.renderTemplate(
+      'systems/spaceholder/templates/actor/parts/actor-abilities-dialog.hbs',
+      { abilities },
+    );
+
+    await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: game.i18n.localize('SPACEHOLDER.Character.AbilitiesEditDialogTitle'),
+        icon: 'fa-solid fa-dumbbell',
+      },
+      position: { width: 440 },
+      content,
+      buttons: [
+        {
+          action: 'apply',
+          label: game.i18n.localize('SPACEHOLDER.Actions.Apply'),
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const updates = {};
+            for (const ability of abilities) {
+              const raw = String(root?.querySelector?.(`[name="ability.${ability.id}"]`)?.value ?? '').trim();
+              const value = Number(raw);
+              if (!raw || !Number.isFinite(value)) continue;
+              updates[`system.abilities.${ability.id}.value`] = Math.max(0, Math.round(value));
+            }
+            if (Object.keys(updates).length) await this.actor.update(updates);
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n.localize('SPACEHOLDER.Actions.Cancel'),
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+  }
+
+  /**
    * Prepare anatomy data for UI
    * @param {object} context The context object to mutate
    */
@@ -622,8 +707,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
    * @param {object} context The context object to mutate
    */
   _prepareHealthData(context) {
-    context.healthAnatomy3dEnabled = getHealthAnatomy3dEnabled();
-
     // Принудительно обновляем актёра для получения свежих данных
     const freshActorData = this.actor.system;
     const bodyParts = freshActorData.health?.bodyParts;
@@ -671,88 +754,15 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     this._prepareHealthEquippedGear(context, bodyParts);
   }
 
-  /** @returns {void} */
-  _refreshAnatomy3dPreview() {
-    if (!getHealthAnatomy3dEnabled() || !this._anatomyEditor3d) return;
-    try {
-      void this._anatomyEditor3d.refresh();
-    } catch (_) {
-      /* ignore */
-    }
-  }
+  /**
+   * @deprecated 3D Health viewer removed.
+   */
+  _refreshAnatomy3dPreview() {}
 
   /**
-   * Вкладка «Здоровье»: при включённой мировой опции 3D загрузить Three.js и показать сцену;
-   * при ошибке WebGL или `editing` — только 2D (класс на колонке).
-   * @param {HTMLElement} el — корень вкладки health
-   * @param {{ editing?: boolean }} [opts]
-   * @returns {Promise<void>}
+   * @deprecated 3D Health viewer removed.
    */
-  async _activateHealthAnatomy3dView(el, opts = {}) {
-    const editing = Boolean(opts.editing);
-    const col = el.querySelector("[data-sh-health-anatomy-col]");
-    const container3d = el.querySelector('[data-anatomy-3d="container"]');
-
-    if (!getHealthAnatomy3dEnabled()) {
-      col?.classList.remove(
-        "health-anatomy-editor-column--3d-capable",
-        "health-anatomy-editor-column--force-2d"
-      );
-      if (this._anatomyEditor3d) {
-        try {
-          this._anatomyEditor3d.dispose();
-        } catch (_) {
-          /* ignore */
-        }
-        this._anatomyEditor3d = null;
-      }
-      return;
-    }
-
-    if (!col || !container3d) return;
-
-    if (this._anatomyEditor3d) {
-      try {
-        this._anatomyEditor3d.dispose();
-      } catch (_) {
-        /* ignore */
-      }
-      this._anatomyEditor3d = null;
-    }
-
-    col.classList.add("health-anatomy-editor-column--3d-capable");
-
-    if (editing) {
-      col.classList.add("health-anatomy-editor-column--force-2d");
-      return;
-    }
-
-    col.classList.remove("health-anatomy-editor-column--force-2d");
-
-    try {
-      const { AnatomyEditor3D } = await import("../helpers/anatomy-editor-3d.mjs");
-      this._anatomyEditor3d = new AnatomyEditor3D(container3d, {
-        actor: this.actor,
-        getSelectedPartId: () => this._anatomyEditor?.selectedPartId ?? null,
-        onSelectPartId: (id) => {
-          if (this._anatomyEditor) this._anatomyEditor.setSelectedPartId(id);
-        },
-      });
-      const ok = await this._anatomyEditor3d.refresh();
-      if (!ok) throw new Error("AnatomyEditor3D.refresh returned false");
-    } catch (e) {
-      console.warn("SpaceHolder | Health anatomy 3D unavailable, using 2D grid", e);
-      col.classList.add("health-anatomy-editor-column--force-2d");
-      if (this._anatomyEditor3d) {
-        try {
-          this._anatomyEditor3d.dispose();
-        } catch (_) {
-          /* ignore */
-        }
-        this._anatomyEditor3d = null;
-      }
-    }
-  }
+  async _activateHealthAnatomy3dView() {}
 
   /**
    * Подпись слота части тела для UI (дубликаты типа — с индексом из #n в slotRef).
@@ -798,17 +808,21 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const bySlotRef = new Map();
       let matchedCoverageCount = 0;
       for (const entry of coveredParts) {
-        const { slotRefs } = resolveCoverageEntryToActorSlots(bodyParts, entry);
+        const { slotRefs, face } = resolveCoverageEntryToActorSlots(bodyParts, entry);
         if (!slotRefs.length) continue;
         matchedCoverageCount += 1;
         const layersSummary = formatCoverageLayersSummary(entry?.layers);
+        const faceLabel = face === 'back'
+          ? (game.i18n?.localize?.('SPACEHOLDER.AnatomyGroups.FaceBack') ?? 'back')
+          : (game.i18n?.localize?.('SPACEHOLDER.AnatomyGroups.FaceFront') ?? 'front');
         for (const slotRef of slotRefs) {
-          const prev = bySlotRef.get(slotRef) || {
-            partName: this._bodyPartSlotLabel(bodyParts, slotRef),
+          const mapKey = coverageKey(slotRef, getCoverageFace(entry));
+          const prev = bySlotRef.get(mapKey) || {
+            partName: `${this._bodyPartSlotLabel(bodyParts, slotRef)} (${faceLabel})`,
             layersSummary: ''
           };
           prev.layersSummary = [prev.layersSummary, layersSummary].filter(Boolean).join(' + ');
-          bySlotRef.set(slotRef, prev);
+          bySlotRef.set(mapKey, prev);
         }
       }
       const coverageLines = Array.from(bySlotRef.values());
@@ -1358,6 +1372,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       name: String(item?.name ?? '').trim() || (game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.UntitledAction') ?? 'Unnamed'),
       img: item?.img || Item.DEFAULT_ICON,
       typeLabel: game.i18n?.localize?.('SPACEHOLDER.ItemTypes.Item') ?? 'Item',
+      canAttack: !!item?.canAttack,
     }));
     context.heldItemsSummary = heldNames
       ? (game.i18n?.format?.('SPACEHOLDER.Inventory.HeldSummaryWithItems', { name: actorName, items: heldNames }) ?? `${actorName} holds ${heldNames}.`)
@@ -1699,32 +1714,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     return '';
   }
 
-  _normalizeFavoriteActionIds(raw) {
-    if (!Array.isArray(raw)) return [];
-    return raw.map((id) => String(id ?? '').trim()).filter(Boolean);
-  }
-
-  _getFavoriteActionIdSet() {
-    const raw = this.actor?.getFlag?.('spaceholder', 'favoriteActionIds');
-    return new Set(this._normalizeFavoriteActionIds(raw));
-  }
-
-  async _toggleFavoriteActionId(actionId) {
-    const id = String(actionId ?? '').trim();
-    if (!id) return;
-    const next = new Set(this._getFavoriteActionIdSet());
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    try {
-      await this.actor?.setFlag?.('spaceholder', 'favoriteActionIds', [...next]);
-    } catch (e) {
-      console.warn('SpaceHolder | failed to persist favorite actions', e);
-      ui.notifications?.warn?.(
-        game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.FavoritePersistFailed') ?? 'Could not update favorites'
-      );
-    }
-  }
-
   _enrichActionForSheet(action, favoriteIds) {
     if (!action) return action;
     const isFavorite = favoriteIds.has(String(action.id ?? '').trim());
@@ -1912,6 +1901,10 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const desiredTab = this._activeTabPrimary ?? this.tabGroups?.primary ?? (hasAnyParts ? 'overview' : 'health');
     try { this.changeTab(desiredTab, 'primary', { updatePosition: false, force: true }); } catch (e) { /* ignore */ }
 
+    if (this.actor?.type === 'character') {
+      this._bindSkillsSheet(el);
+    }
+
     // Tabs: use native ApplicationV2 changeTab via [data-action=\"tab\"] in templates.
 
     // Render the item sheet for viewing/editing prior to the editable check.
@@ -1997,6 +1990,19 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           openHealthEquippedItem(ev.currentTarget);
         });
       }
+    });
+
+    el.querySelectorAll('[data-action="sh-held-item-attack"]').forEach((node) => {
+      node.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (!this.isEditable) return;
+        const item = getHeldItemFromControl(ev.currentTarget);
+        if (!item?.canAttack) return;
+        const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+        const token = resolveActionToken({ tokenDoc }, this.actor);
+        await item.attack({ token });
+      });
     });
 
     el.querySelectorAll('[data-action="sh-held-item-stow"]').forEach((node) => {
@@ -2311,6 +2317,14 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         });
       });
 
+      el.querySelectorAll('[data-action="sh-abilities-edit"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          await this._openAbilitiesEditDialog();
+          this.render(false);
+        });
+      });
+
       el.querySelectorAll('[data-action="sh-actions-mode-set"]').forEach((btn) => {
         btn.addEventListener('click', async (ev) => {
           ev.preventDefault();
@@ -2372,7 +2386,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           ev.stopPropagation();
           const actionId = String(btn.dataset.actionId ?? '').trim();
           if (!actionId) return;
-          await this._toggleFavoriteActionId(actionId);
+          await toggleFavoriteAction(this.actor, actionId);
           this.render(false);
         });
       });
@@ -2583,15 +2597,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     // Anatomy: управление через кнопку текущей анатомии и панель инструментов редактора
     el.querySelector('.anatomy-current-btn')?.addEventListener('click', (e) => this._onAnatomyManageClick(e));
 
-    if (this._anatomyEditor3d) {
-      try {
-        this._anatomyEditor3d.dispose();
-      } catch (_) {
-        /* ignore */
-      }
-      this._anatomyEditor3d = null;
-    }
-
     const editorContainer = el.querySelector('[data-anatomy-editor="container"]');
     const selectedPanel = el.querySelector('[data-anatomy-editor="panel"]');
     if (editorContainer) {
@@ -2616,6 +2621,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const editBtn = el.querySelector('.anatomy-editor-edit-btn');
       const linkModeBtn = el.querySelector('.anatomy-editor-link-mode-btn');
       const addPartBtn = el.querySelector('.anatomy-editor-add-part-btn');
+      const groupsBtn = el.querySelector('.anatomy-editor-groups-btn');
       const gridBtn = el.querySelector('.anatomy-editor-grid-btn');
       const anatomyBtn = el.querySelector('.anatomy-current-btn');
 
@@ -2627,6 +2633,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           if (!isEditing) linkModeBtn.classList.remove('active');
         }
         if (addPartBtn) addPartBtn.style.display = isEditing ? '' : 'none';
+        if (groupsBtn) groupsBtn.style.display = isEditing ? '' : 'none';
         if (gridBtn) gridBtn.style.display = isEditing ? '' : 'none';
         if (anatomyBtn) {
           anatomyBtn.disabled = !isEditing || !this.isEditable;
@@ -2638,7 +2645,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           this._anatomyEditor.setEditMode(!this._anatomyEditor.editMode);
           this._anatomyEditor.render();
           applyEditState();
-          void this._activateHealthAnatomy3dView(el, { editing: this._anatomyEditor.editMode });
         });
       }
 
@@ -2658,6 +2664,13 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         });
       }
 
+      if (groupsBtn) {
+        groupsBtn.addEventListener('click', () => {
+          if (!this._anatomyEditor.editMode) return;
+          this._anatomyEditor.openGroupsDialog();
+        });
+      }
+
       if (gridBtn) {
         gridBtn.addEventListener('click', () => {
           if (!this._anatomyEditor.editMode) return;
@@ -2666,8 +2679,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       }
 
       applyEditState();
-
-      void this._activateHealthAnatomy3dView(el, { editing: preserveEdit });
     }
 
     this._setupAnatomyListPointer(el, editorContainer);
@@ -3372,7 +3383,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
             const height = Math.max(1, Math.min(99, parseInt(document.querySelector("#ag-height")?.value ?? "10", 10) || 10));
             await this.actor.update({ "system.health.anatomyGrid": { width, height } });
             if (this._anatomyEditor) this._anatomyEditor.render();
-            this._refreshAnatomy3dPreview();
           }
         },
         { action: "cancel", label: "Отмена", icon: "fa-solid fa-times" }
@@ -3909,6 +3919,215 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const bb = to255(b);
     return (rr << 16) + (gg << 8) + bb;
   }
+
+  /**
+   * Dialog to add a free-form skill (name + level) or change a level.
+   * @param {{ title?: string, extra?: object|null, parentId?: string|null, category?: string, showName?: boolean, maxLevel?: number }} opts
+   * @returns {Promise<{ name?: string, level: number }|null>}
+   * @private
+   */
+  async _openSkillExtraDialog({
+    title,
+    extra = null,
+    parentId = null,
+    category = 'physical',
+    showName = true,
+    maxLevel = null,
+  } = {}) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait) {
+      ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.FreeAction.DialogUnavailable') ?? 'Dialog is unavailable');
+      return null;
+    }
+
+    const resolvedParent = String(extra?.parentId ?? parentId ?? '').trim() || null;
+    const parsedMax = Number(maxLevel);
+    const cap = Number.isFinite(parsedMax)
+      ? Math.min(SKILL_LEVEL_MAX, Math.max(0, parsedMax))
+      : (resolvedParent ? getSkillLevel(this.actor, resolvedParent) : SKILL_LEVEL_MAX);
+    const content = await foundry.applications.handlebars.renderTemplate(
+      'systems/spaceholder/templates/actor/parts/actor-skills-extra-dialog.hbs',
+      {
+        name: String(extra?.name ?? '').trim(),
+        level: extra ? extra.level : 0,
+        maxLevel: cap,
+        category,
+        showName,
+      },
+    );
+
+    const titleText = title
+      || (showName
+        ? (resolvedParent
+          ? (game.i18n?.localize?.('SPACEHOLDER.Skills.AddChild') ?? 'Add child')
+          : (game.i18n?.localize?.('SPACEHOLDER.Skills.AddSkill') ?? 'Add skill'))
+        : (game.i18n?.localize?.('SPACEHOLDER.Skills.ChangeValue') ?? 'Change'));
+
+    let outcome = null;
+    await DialogV2.wait({
+      classes: ['spaceholder'],
+      window: { title: titleText, icon: showName ? 'fa-solid fa-plus' : 'fa-solid fa-pen' },
+      position: { width: 420 },
+      content,
+      buttons: [
+        {
+          action: 'save',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Save') ?? 'Save',
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const name = String(root?.querySelector?.('[name="name"]')?.value ?? '').trim();
+            if (showName && !name) {
+              ui.notifications?.warn?.(game.i18n?.localize?.('SPACEHOLDER.Skills.NameRequired') ?? 'Name is required');
+              return;
+            }
+            const level = Math.min(clampSkillLevel(root?.querySelector?.('[name="level"]')?.value), cap);
+            outcome = showName ? { name, level } : { level };
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n?.localize?.('SPACEHOLDER.Actions.Cancel') ?? 'Cancel',
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+    return outcome;
+  }
+
+  /**
+   * Skills tab: branch folding and RMB actions.
+   * @param {HTMLElement} el
+   * @private
+   */
+  _bindSkillsSheet(el) {
+    if (!el || this.actor?.type !== 'character') return;
+    this._skillFold ??= {};
+    closeSimpleContextMenu();
+    const root = el.querySelector('.sh-skills');
+    if (!root) return;
+
+    root.addEventListener('click', async (ev) => {
+      const addButton = ev.target?.closest?.('[data-action="sh-skill-add"]');
+      if (addButton && root.contains(addButton)) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        if (!this.isEditable) return;
+        const category = String(addButton.dataset.category ?? '').trim();
+        if (!SKILL_CATEGORIES.includes(category)) return;
+        const draft = await this._openSkillExtraDialog({ parentId: null, category, showName: true });
+        if (!draft) return;
+        await addSkillExtra(this.actor, { parentId: null, category, name: draft.name, level: draft.level });
+        this.render(false);
+        return;
+      }
+
+      const name = ev.target?.closest?.('.sh-skill-row__name.is-branch');
+      if (!name || !root.contains(name)) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      const node = name.closest('.sh-skill-node');
+      const id = String(node?.dataset?.nodeId ?? name.dataset.nodeId ?? '').trim();
+      if (!id || !node) return;
+      const wasCollapsed = node.hasAttribute('data-collapsed');
+      this._skillFold[id] = !wasCollapsed;
+      const kids = node.querySelector(':scope > .sh-skill-children');
+      if (wasCollapsed) {
+        node.removeAttribute('data-collapsed');
+        kids?.removeAttribute('hidden');
+        name.setAttribute('aria-expanded', 'true');
+      } else {
+        node.setAttribute('data-collapsed', '1');
+        kids?.setAttribute('hidden', '');
+        name.setAttribute('aria-expanded', 'false');
+      }
+    }, true);
+
+    root.addEventListener('contextmenu', (ev) => {
+      const header = ev.target?.closest?.('.sh-skills-panel__head');
+      if (header && root.contains(header)) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        if (!this.isEditable) return;
+        const category = String(header.dataset.category ?? '').trim() || 'mixed';
+        const title = header.querySelector('.sh-skills-panel__title')?.textContent?.trim()
+          || (game.i18n?.localize?.('SPACEHOLDER.Skills.AddSkill') ?? 'Add skill');
+        openSimpleContextMenu(ev, {
+          title,
+          items: [{
+            id: 'add',
+            label: game.i18n?.localize?.('SPACEHOLDER.Skills.AddSkill') ?? 'Add skill',
+            run: async () => {
+              const draft = await this._openSkillExtraDialog({ parentId: null, category, showName: true });
+              if (!draft) return;
+              await addSkillExtra(this.actor, { parentId: null, category, name: draft.name, level: draft.level });
+              this.render(false);
+            },
+          }],
+        });
+        return;
+      }
+
+      const row = ev.target?.closest?.('.sh-skill-row');
+      if (!row || !root.contains(row)) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      if (!this.isEditable) return;
+      const node = row.closest('.sh-skill-node');
+      const id = String(node?.dataset?.nodeId ?? '').trim();
+      if (!id || !node) return;
+      const isExtra = node.hasAttribute('data-extra');
+      const category = String(node.dataset.category ?? '').trim() || 'physical';
+      const label = row.querySelector('.sh-skill-row__label')?.textContent?.trim() || id;
+      const extra = isExtra ? readActorSkills(this.actor).extras.find((e) => e.id === id) : null;
+      const parentId = extra?.parentId || getSkillParentId(id);
+      const items = [
+        {
+          id: 'change',
+          label: game.i18n?.localize?.('SPACEHOLDER.Skills.ChangeValue') ?? 'Change',
+          run: async () => {
+            const cap = parentId ? getSkillLevel(this.actor, parentId) : SKILL_LEVEL_MAX;
+            const draft = await this._openSkillExtraDialog({
+              extra: { level: getSkillLevel(this.actor, id) },
+              showName: false,
+              maxLevel: cap,
+            });
+            if (!draft) return;
+            await setSkillLevel(this.actor, id, draft.level);
+            this.render(false);
+          },
+        },
+        {
+          id: 'add',
+          label: game.i18n?.localize?.('SPACEHOLDER.Skills.AddChild') ?? 'Add child',
+          run: async () => {
+            const draft = await this._openSkillExtraDialog({ parentId: id, category, showName: true });
+            if (!draft) return;
+            this._skillFold[id] = false;
+            await addSkillExtra(this.actor, { parentId: id, category, name: draft.name, level: draft.level });
+            this.render(false);
+          },
+        },
+      ];
+      if (isExtra) {
+        items.push({
+          id: 'remove',
+          label: game.i18n?.localize?.('SPACEHOLDER.Skills.RemoveExtra') ?? 'Remove',
+          run: async () => {
+            await removeSkillExtra(this.actor, id);
+            this.render(false);
+          },
+        });
+      }
+      openSimpleContextMenu(ev, { title: label, items });
+    }, true);
+  }
 }
 
 // Character-specific sheet (Application V2)
@@ -3918,18 +4137,20 @@ export class SpaceHolderCharacterSheet extends SpaceHolderBaseActorSheet {
     window: { resizable: false },
   };
 
-  // Native tabs for character sheet: overview, stats, health, injuries, inventory
+  // Native tabs for character sheet
   static TABS = {
     primary: {
       tabs: [
         { id: 'overview' },
+        { id: 'actions' },
         { id: 'stats' },
+        { id: 'skills' },
         { id: 'health' },
         { id: 'injuries' },
         { id: 'inventory' },
       ],
       initial: 'overview'
-    }
+    },
   };
   static PARTS = {
     body: { root: true, template: 'systems/spaceholder/templates/actor/actor-character-sheet.hbs' }

@@ -35,17 +35,84 @@
     .sh-stats-columns {
       flex: 1 1 auto;
       min-height: 0;
+      overflow: hidden;
     }
 
     .sh-stats-column {
       display: flex;
       flex-direction: column;
       min-height: 0;
+      overflow: hidden;
     }
 
     .stats-panel {
       flex: 1 1 auto;
       min-height: 0;
+      padding: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      border-top: 0;
+      border-bottom: 0;
+      border-left: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: #141414;
+    }
+
+    .sh-stats-column--abilities .stats-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sh-stats-column--abilities .capacities-list {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .sh-abilities-edit {
+      appearance: none;
+      flex: 0 0 auto;
+      width: 100%;
+      min-height: 32px;
+      margin: 0;
+      padding: 6px 8px;
+      border: 0;
+      border-top: 1px solid var(--sh-border);
+      border-radius: 0;
+      background: color-mix(in srgb, var(--sh-sheet-tab-accent) 14%, #141414);
+      color: var(--sh-text);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+      text-align: center;
+      text-transform: uppercase;
+      box-shadow: none;
+      cursor: pointer;
+
+      &:hover {
+        background: color-mix(in srgb, var(--sh-sheet-tab-accent) 24%, #141414);
+        color: #fff;
+      }
+    }
+
+    .sh-stats-column:last-child .stats-panel {
+      border-right: 0;
+    }
+
+    .sh-derived-groups {
+      gap: 0;
+    }
+
+    .spaceholder-derived-group {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .spaceholder-derived-group + .spaceholder-derived-group {
+      border-top: 1px solid var(--sh-border);
     }
   }
 
@@ -133,7 +200,7 @@
   .sh-derived-groups {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
   }
 
   .spaceholder-derived-group {
@@ -419,6 +486,69 @@
       font-weight: 700;
       color: #ffffff;
     }
+  }
+
+  .sh-abilities-dialog {
+    > .hint {
+      margin: 0 0 10px;
+    }
+  }
+
+  .sh-abilities-dialog__list {
+    overflow: hidden;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+  }
+
+  .sh-abilities-dialog__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    align-items: center;
+    gap: 12px;
+    min-height: 42px;
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    input {
+      width: 72px;
+      margin: 0;
+      text-align: center;
+      font-family: $font-mono;
+      font-weight: 700;
+    }
+  }
+
+  .sh-abilities-dialog__identity {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .sh-abilities-dialog__abbr {
+    flex: 0 0 42px;
+    padding: 2px 5px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    font-family: $font-mono;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .sh-abilities-dialog__name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--sh-text);
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   // Actions panel (Character sheet)
@@ -998,27 +1128,6 @@
     min-height: 34px;
   }
 
-  .sh-actions-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: stretch;
-  }
-
-  .sh-action-chip {
-    position: relative;
-    display: inline-flex;
-    max-width: 100%;
-    vertical-align: top;
-  }
-
-  .sh-action-chip.is-favorite .sh-action-chip__main {
-    border-color: rgba(218, 165, 32, 0.92);
-    box-shadow:
-      0 0 0 1px rgba(218, 165, 32, 0.5),
-      inset 0 0 0 1px rgba(218, 165, 32, 0.18);
-  }
-
   .sh-action-chip--fav-toggle .sh-action-chip__main {
     position: relative;
     z-index: 0;
@@ -1111,47 +1220,6 @@
       background: rgba(218, 165, 32, 0.14);
       color: #fff;
     }
-  }
-
-  .sh-action-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    width: auto;
-    max-width: 100%;
-    padding: 8px 10px;
-    border-radius: var(--sh-radius-md);
-    border: 1px solid rgba(74, 110, 74, 0.60);
-    background: linear-gradient(135deg, var(--sh-surface-2) 0%, var(--sh-surface-3) 100%);
-    color: #ffffff;
-    cursor: pointer;
-
-    &:hover {
-      border-color: rgba(143, 185, 143, 0.70);
-      background: linear-gradient(135deg, rgba(32, 32, 32, 1) 0%, rgba(44, 44, 44, 1) 100%);
-    }
-
-    i {
-      color: var(--sh-accent-strong);
-    }
-  }
-
-  .sh-action-btn__label {
-    flex: 0 1 auto;
-    text-align: left;
-    font-weight: 700;
-    font-size: 12px;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .sh-action-btn__cost {
-    flex: 0 0 auto;
-    font-family: $font-mono;
-    font-weight: 800;
-    color: var(--sh-text-muted);
   }
 
   .sh-custom-action-flag {

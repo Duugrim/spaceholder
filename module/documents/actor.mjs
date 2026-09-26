@@ -1,12 +1,17 @@
 import { anatomyManager, resolveBodyPartDisplayName } from '../anatomy-manager.mjs';
 import { getMaxApFromAbilities } from '../helpers/actions/transaction-ledger.mjs';
-import { resolveCoverageEntryToActorSlots } from '../helpers/body-part-coverage.mjs';
+import { resolveCoverageEntryToActorSlots, coverageEntryMatchesSlotFace } from '../helpers/body-part-coverage.mjs';
 import { ensureActorPartRelationsSynced } from '../helpers/anatomy-relations.mjs';
 import { normalizeApplications } from '../helpers/damage/damage-resolver.mjs';
 import { resolveBodyTraversal } from '../helpers/damage/body-traversal-resolver.mjs';
-import { ensureActorPartBodyLayersSynced } from '../helpers/damage/body-layers-defaults.mjs';
 import { materialsManager, ensureLayerDefaults } from '../helpers/damage/materials-manager.mjs';
 import { describeInjury } from '../helpers/damage/injury-description.mjs';
+import { normalizeSkillsData } from '../helpers/skills/skills.mjs';
+import {
+  sanitizeAnatomyGroups,
+  DEFAULT_ANATOMY_HEIGHT_M,
+  injuryCategoryForPart,
+} from '../helpers/anatomy-groups.mjs';
 import { buildProjectileApplications, composeProjectileApplications } from './item.mjs';
 
 function _sanitizeAimingArcSystemData(systemData) {
@@ -119,6 +124,8 @@ export class SpaceHolderActor extends Actor {
 
     this._prepareDerivedCharacterStats(systemData);
     _sanitizeAimingArcSystemData(systemData);
+    normalizeSkillsData(systemData);
+    this._prepareAnatomyMeta(systemData);
 
     // Process body parts health system (always based on health)
     this._prepareBodyParts(systemData);
@@ -246,7 +253,6 @@ export class SpaceHolderActor extends Actor {
     // Обновляем производные поля частей тела (typed relations + производные links; попадания — в shot-manager)
     for (const [partId, bodyPart] of Object.entries(bodyParts)) {
       ensureActorPartRelationsSynced(bodyPart);
-      ensureActorPartBodyLayersSynced(bodyPart);
       const typeId = String(bodyPart?.id ?? "").trim();
       if (typeId) {
         bodyPart.displayName = resolveBodyPartDisplayName(typeId, bodyPart.name);
@@ -261,12 +267,33 @@ export class SpaceHolderActor extends Actor {
       const sumAmt = sumDamageByPart[partId] || 0;
       const dmgUnits = Math.floor(sumAmt / 100); // Масштаб: x100 => целые единицы HP
       const currentHpDerived = Math.max(0, bodyPart.maxHp - dmgUnits);
+      bodyPart.currentHp = currentHpDerived;
 
-      // Процент здоровья и статус — производные
+      // Процент здоровья и статус — производные (status больше не хранится в JSON)
       bodyPart.healthPercentage = bodyPart.maxHp > 0 ? Math.floor((currentHpDerived * 100) / bodyPart.maxHp) : 100;
-      if (!bodyPart.status || bodyPart.status === 'healthy') {
-        bodyPart.status = this._getBodyPartStatus({ healthPercentage: bodyPart.healthPercentage });
-      }
+      bodyPart.status = this._getBodyPartStatus({ healthPercentage: bodyPart.healthPercentage });
+    }
+  }
+
+  /**
+   * Groups / height from the anatomy preset. Runtime-only fill when the actor
+   * still has an older document without `system.anatomy.groups`.
+   * @param {object} systemData
+   */
+  _prepareAnatomyMeta(systemData) {
+    if (!systemData || typeof systemData !== 'object') return;
+    const anatomy = (systemData.anatomy && typeof systemData.anatomy === 'object')
+      ? systemData.anatomy
+      : (systemData.anatomy = {});
+    const bodyParts = systemData.health?.bodyParts ?? {};
+    const slotRefs = Object.keys(bodyParts);
+    anatomy.groups = sanitizeAnatomyGroups(anatomy.groups, [
+      ...slotRefs,
+      ...Object.values(bodyParts).map((p) => String(p?.id ?? '')).filter(Boolean),
+    ]);
+    const h = Number(systemData.heightM);
+    if (!Number.isFinite(h) || h <= 0) {
+      systemData.heightM = DEFAULT_ANATOMY_HEIGHT_M;
     }
   }
 
@@ -470,24 +497,13 @@ export class SpaceHolderActor extends Actor {
 
   /**
    * Материал части тела (для выбора словаря описателя травмы).
-   * Нормализует legacy-значения MVP-редактора (`flesh` / `cybernetic` /
-   * `armor` / `other`) в канонические категории описателей:
-   *   — `biological` — ветка кровотечения/заживления;
-   *   — `bionic`     — ветка повреждения/ремонта.
-   * Всё незнакомое трактуется как `biological`, чтобы описатели никогда
-   * не получали неизвестный ключ. Слои тела `part.bodyLayers` сюда не
-   * участвуют — это именно категория самой части, а не её тканей.
+   * Категория описателя травмы: из каталога материалов части (`skin`/`muscle`/`bone` →
+   * biological) либо legacy `biological`/`bionic`/`cybernetic`.
    * @param {Object} part
    * @returns {'biological'|'bionic'}
    */
   getPartMaterial(part) {
-    if (!part || typeof part !== 'object') return 'biological';
-    const raw = String(part.material ?? '').trim();
-    if (!raw) return 'biological';
-    if (raw === 'biological' || raw === 'bionic') return raw;
-    if (raw === 'cybernetic') return 'bionic';
-    // flesh / armor / other и любые неизвестные legacy-значения
-    return 'biological';
+    return injuryCategoryForPart(part, (id) => materialsManager.getMaterial(id));
   }
 
   /**
@@ -541,10 +557,8 @@ export class SpaceHolderActor extends Actor {
    *   resulting injury entry. Either a legacy string label or a structured
    *   object with `attackerName`/`weaponName`/`ammoName`/uuids/etc. See
    *   `addInjury` docstring for the accepted shape.
-   * @param {string} [options.hitDirection='front'] - side of the body the
-   *   projectile enters from. The v1 runtime does not yet read a real
-   *   direction from the shot pipeline, but callers (and tests) may
-   *   override it to exercise through-and-through behaviour.
+   * @param {string} [options.hitDirection='front'] - incoming face (`front`/`back`),
+   *   typically from hit clock via `clockToHitFace`.
    * @param {() => number} [options.random]    - injectable RNG.
    * @returns {Promise<{
    *   bodyDamage: Array<{type:string, amount:number}>,
@@ -567,6 +581,7 @@ export class SpaceHolderActor extends Actor {
     builderContext,
     source = '',
     hitDirection = 'front',
+    armorScale = 1,
     random
   } = {}) {
     const bodyParts = this.system?.health?.bodyParts || {};
@@ -587,6 +602,7 @@ export class SpaceHolderActor extends Actor {
       hitDirection,
       applications: package_,
       armorBySlot,
+      armorScale: Number.isFinite(Number(armorScale)) ? Math.max(0, Number(armorScale)) : 1,
       resolveMaterial: (id) => materialsManager.getMaterial(id),
       random
     });
@@ -623,6 +639,11 @@ export class SpaceHolderActor extends Actor {
    */
   _resolveSlotRef({ partId, partUuid, bodyParts }) {
     if (partId && bodyParts[partId]) return partId;
+    if (partId) {
+      const typeId = String(partId).trim();
+      const match = Object.entries(bodyParts).find(([, part]) => String(part?.id ?? '') === typeId);
+      if (match) return match[0];
+    }
     if (partUuid) {
       for (const [slotRef, part] of Object.entries(bodyParts)) {
         if (part?.uuid === partUuid) return slotRef;
@@ -673,19 +694,17 @@ export class SpaceHolderActor extends Actor {
    * contributes layers.
    *
    * @param {string} slotRef
-   * @returns {Array<{itemId: string, coverageIdx: number, layers: Array<Object>}>}
+   * @param {string} [face]
+   * @returns {Array<{itemId: string, coverageIdx: number, face: string, layers: Array<Object>}>}
    */
-  _collectLayerSourcesForSlot(slotRef) {
+  _collectLayerSourcesForSlot(slotRef, face) {
     const wearables = this.items?.filter?.((i) => i.type === 'item' && i.system?.equipped && i.system?.itemTags?.isArmor) ?? [];
     const sources = [];
     for (const item of wearables) {
       const coveredParts = Array.isArray(item.system?.coveredParts) ? item.system.coveredParts : [];
       for (let i = 0; i < coveredParts.length; i += 1) {
         const entry = coveredParts[i];
-        const direct = String(entry?.slotRef ?? entry?.partId ?? '').trim();
-        const matches = direct === slotRef
-          || resolveCoverageEntryToActorSlots(this.system?.health?.bodyParts || {}, entry).slotRefs.includes(slotRef);
-        if (!matches) continue;
+        if (!coverageEntryMatchesSlotFace(this.system?.health?.bodyParts || {}, entry, slotRef, face)) continue;
         const rawLayers = Array.isArray(entry?.layers) ? entry.layers : [];
         const layers = rawLayers
           .map((layer) => {
@@ -694,7 +713,8 @@ export class SpaceHolderActor extends Actor {
           })
           .filter((l) => l.thickness > 0);
         if (!layers.length) continue;
-        sources.push({ itemId: item.id, coverageIdx: i, layers });
+        const entryFace = String(entry?.face ?? '').trim() || '';
+        sources.push({ itemId: item.id, coverageIdx: i, face: entryFace, layers });
       }
     }
     return sources;
@@ -806,7 +826,7 @@ export class SpaceHolderActor extends Actor {
   getRootBodyPart() {
     const bodyParts = this.system.health?.bodyParts;
     if (!bodyParts || !Object.keys(bodyParts).length) return null;
-    const sorted = Object.entries(bodyParts).sort((a, b) => (b[1].weight ?? 0) - (a[1].weight ?? 0));
+    const sorted = Object.entries(bodyParts).sort((a, b) => (b[1].maxHp ?? 0) - (a[1].maxHp ?? 0));
     return sorted[0][0];
   }
 
@@ -899,6 +919,10 @@ export class SpaceHolderActor extends Actor {
         delUpdate['delta.system.anatomy.id'] = anatomyId;
         delUpdate['delta.system.anatomy.name'] = displayName;
         delUpdate['delta.system.anatomy.type'] = anatomyId;
+        delUpdate['delta.system.anatomy.groups'] = Array.isArray(anatomy.groups) ? anatomy.groups : [];
+        if (Number(anatomy.heightM) > 0) {
+          delUpdate['delta.system.heightM'] = anatomy.heightM;
+        }
         // Записываем bodyParts по ключам, чтобы избежать merge целого объекта в ActorDelta.
         for (const [slotRef, partData] of Object.entries(anatomy.bodyParts ?? {})) {
           delUpdate[`delta.system.health.bodyParts.${slotRef}`] = partData;
@@ -917,10 +941,14 @@ export class SpaceHolderActor extends Actor {
           'system.anatomy.id': anatomyId,
           'system.anatomy.name': displayName,
           'system.anatomy.type': anatomyId,
+          'system.anatomy.groups': Array.isArray(anatomy.groups) ? anatomy.groups : [],
           'system.health.bodyParts': anatomy.bodyParts,
           // Травмы привязаны к slotRef/uuid старой анатомии, очищаем при полной замене.
           'system.health.injuries': []
         };
+        if (Number(anatomy.heightM) > 0) {
+          update['system.heightM'] = anatomy.heightM;
+        }
         if (anatomy.grid && typeof anatomy.grid.width === 'number' && typeof anatomy.grid.height === 'number') {
           update['system.health.anatomyGrid'] = { width: anatomy.grid.width, height: anatomy.grid.height };
         }

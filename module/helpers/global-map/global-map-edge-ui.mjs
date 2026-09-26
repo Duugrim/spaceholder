@@ -323,6 +323,13 @@ class GlobalMapEdgeUI {
 
     const inspector = root.querySelector('.sh-gm-edge__inspector');
     if (inspector) inspector.setAttribute('aria-hidden', inspectorOpen ? 'false' : 'true');
+
+    const view3d = root.querySelector('[data-action="toggle-view-3d"]');
+    if (view3d) {
+      const on = Boolean(game.spaceholder?.globalMapTerrain?.enabled);
+      view3d.classList.toggle('is-active', on);
+      view3d.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
   }
 
   _togglePressed(btn) {
@@ -1844,6 +1851,16 @@ class GlobalMapEdgeUI {
     }
 
     // ===== Existing controls =====
+    if (action === 'toggle-view-3d') {
+      event.preventDefault();
+      try {
+        await game.spaceholder?.globalMapTerrain?.toggle?.();
+      } catch (e) {
+        console.error('SpaceHolder | Global map edge UI: toggle 3d failed', e);
+      }
+      return;
+    }
+
     if (action === 'load-map') {
       event.preventDefault();
       await this._loadMapFromFile();
@@ -1942,6 +1959,15 @@ class GlobalMapEdgeUI {
       const okGrid = await processing?.saveGridToFile?.(scene);
       if (!okGrid) errors.push(_t('SPACEHOLDER.GlobalMap.Save.Parts.Map'));
 
+      try {
+        const okTerrain = await game.spaceholder?.globalMapTerrain?.save?.();
+        if (game.spaceholder?.globalMapTerrain?.data && okTerrain === false) {
+          errors.push(_t('SPACEHOLDER.GlobalMap.Terrain3d.Tools.Save'));
+        }
+      } catch (e) {
+        errors.push(_t('SPACEHOLDER.GlobalMap.Terrain3d.Tools.Save'));
+      }
+
       // Save vector rivers/regions (stored in scene flags)
       const saveFlagSafe = async (key, value) => {
         if (!scene?.setFlag) return false;
@@ -2020,6 +2046,10 @@ class GlobalMapEdgeUI {
       try {
         const result = processing.createBiomeTestGrid(canvas.scene);
         await renderer.render(result.gridData, result.metadata);
+        await game.spaceholder?.globalMapTerrain?.syncFromUnifiedGrid?.({
+          grid: result.gridData,
+          metadata: result.metadata,
+        });
         ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.TestGridCreated'));
       } catch (e) {
         console.error('SpaceHolder | Global map edge UI: create-test-grid failed', e);
@@ -2047,6 +2077,8 @@ class GlobalMapEdgeUI {
         if (tools.isActive) {
           await tools.deactivate();
         } else {
+          const terrain = sh.globalMapTerrain;
+          if (terrain?.enabled) await terrain.setEnabled(false);
           tools.activate();
         }
       } catch (e) {
@@ -2240,6 +2272,14 @@ class GlobalMapEdgeUI {
         }
 
         ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Warnings.MapFileNotFound'));
+      }
+
+      try {
+        const terrain = sh.globalMapTerrain;
+        if (terrain?.enabled && terrain.data) await terrain.view.rebuild(terrain.data);
+        else terrain?.view?.clear2dBake?.();
+      } catch (_) {
+        /* ignore */
       }
     } catch (e) {
       console.error('SpaceHolder | Global map edge UI: load-map failed', e);

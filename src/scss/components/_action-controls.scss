@@ -1,0 +1,79 @@
+// Shared action chips used by sheets and compact HUD surfaces.
+
+.window-app.spaceholder,
+.spaceholder {
+  .sh-actions-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sh-action-grid-gap, 8px);
+    align-items: stretch;
+  }
+
+  .sh-action-chip {
+    position: relative;
+    display: inline-flex;
+    max-width: 100%;
+    vertical-align: top;
+  }
+
+  .sh-action-chip.is-favorite .sh-action-chip__main {
+    border-color: rgba(218, 165, 32, 0.92);
+    box-shadow:
+      0 0 0 1px rgba(218, 165, 32, 0.5),
+      inset 0 0 0 1px rgba(218, 165, 32, 0.18);
+  }
+
+  .sh-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sh-action-control-gap, 8px);
+    width: auto;
+    max-width: 100%;
+    min-height: var(--sh-action-control-min-height, auto);
+    padding: var(--sh-action-control-padding, 8px 10px);
+    border: 1px solid rgba(74, 110, 74, 0.60);
+    border-radius: var(--sh-action-control-radius, var(--sh-radius-md));
+    background: linear-gradient(135deg, var(--sh-surface-2) 0%, var(--sh-surface-3) 100%);
+    color: #ffffff;
+    cursor: var(--cursor-pointer, pointer);
+    text-align: left;
+
+    &:hover:not(:disabled) {
+      border-color: rgba(143, 185, 143, 0.70);
+      background: linear-gradient(135deg, rgba(32, 32, 32, 1) 0%, rgba(44, 44, 44, 1) 100%);
+    }
+
+    &:focus-visible {
+      @include sh-focus-ring;
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: var(--cursor-default, default);
+    }
+
+    i {
+      flex: 0 0 auto;
+      color: var(--sh-accent-strong);
+    }
+  }
+
+  .sh-action-btn__label {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--sh-action-label-size, 12px);
+    font-weight: 700;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sh-action-btn__cost {
+    flex: 0 0 auto;
+    color: var(--sh-text-muted);
+    font-family: $font-mono;
+    font-size: var(--sh-action-cost-size, inherit);
+    font-weight: 800;
+  }
+}

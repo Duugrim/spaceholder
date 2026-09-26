@@ -22,10 +22,6 @@ import { resolveBodyTraversal } from './body-traversal-resolver.mjs';
 import { ensureLayerDefaults } from './materials-manager.mjs';
 import { TEST_MATERIAL_FIXTURES } from './__fixtures__/test-materials.mjs';
 import { DEGRADATION_MODES } from './damage-types.mjs';
-import { SPACEHOLDER } from '../config.mjs';
-
-/** Defaults in `config.mjs` may disable tissue layers; tests cover that system. */
-SPACEHOLDER.anatomyBodyLayersInDamage = true;
 
 let failed = 0;
 
@@ -74,7 +70,7 @@ function oneSidedAnatomy(slotRef = 'body') {
     bodyParts: {
       [slotRef]: {
         id: '__test_onesided__',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
+        faces: ['front'],
         bodyLayers: [],
         relations: []
       }
@@ -335,18 +331,18 @@ runRegression('Regression Case11 (legacy)', {
  *   front (exposure.front=100, back=0, behind→back dir=front chance=X)
  *   back  (exposure.front=0,  back=100, no relations)
  */
-function frontBackAnatomy({ frontLayers, backLayers, chance = 100 }) {
+function frontBackAnatomy({ frontLayers, backLayers, chance = 100, backFaces = ['front', 'back'] }) {
   return {
     bodyParts: {
       front: {
         id: 'abdomen',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
+        faces: ['front'],
         bodyLayers: frontLayers,
         relations: [{ kind: 'behind', direction: 'front', target: 'back', chance }]
       },
       back: {
         id: 'back',
-        exposure: { front: 0, back: 100, left: 0, right: 0, top: 0, bottom: 0 },
+        faces: backFaces,
         bodyLayers: backLayers,
         relations: []
       }
@@ -549,7 +545,7 @@ function frontBackAnatomy({ frontLayers, backLayers, chance = 100 }) {
       bodyParts: {
         head: {
           id: 'head',
-          exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
+          faces: ['front'],
           bodyLayers: layers,
           relations: []
         }
@@ -573,7 +569,7 @@ function frontBackAnatomy({ frontLayers, backLayers, chance = 100 }) {
       bodyParts: {
         head: {
           id: 'head',
-          exposure: { front: 100, back: 100, left: 0, right: 0, top: 0, bottom: 0 },
+          faces: ['front', 'back'],
           bodyLayers: layers,
           relations: []
         }
@@ -593,11 +589,6 @@ function frontBackAnatomy({ frontLayers, backLayers, chance = 100 }) {
     exitedOne === false, JSON.stringify(oneSided.path));
   assert('B3: symmetric head records an exit pass',
     exitedSym === true, JSON.stringify(symmetric.path));
-  const oneTrace = oneSided.trace.filter((e) => e.phase === 'exit');
-  const symTrace = symmetric.trace.filter((e) => e.phase === 'exit');
-  assert('B3: only the symmetric part produces exit-phase trace entries',
-    oneTrace.length === 0 && symTrace.length > 0,
-    `one=${oneTrace.length} sym=${symTrace.length}`);
 }
 
 /* Case B4 — abdomen → back exits to outside (behind has no further transfer) */
@@ -621,7 +612,7 @@ function frontBackAnatomy({ frontLayers, backLayers, chance = 100 }) {
       && (res.bodyDamageBySlot.back?.length ?? 0) > 0,
     JSON.stringify(res.bodyDamageBySlot));
   const backEntry = res.path.find((p) => p.slotRef === 'back');
-  assert('B4: back exited via its own back exposure',
+  assert('B4: back exited via opposite face',
     !!backEntry && backEntry.exited === true && backEntry.transferredTo === null,
     JSON.stringify(backEntry));
 }
@@ -632,13 +623,13 @@ function frontBackAnatomy({ frontLayers, backLayers, chance = 100 }) {
     bodyParts: {
       front: {
         id: 'abdomen',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
+        faces: ['front'],
         bodyLayers: [{ material: 'muscle', thickness: 2 }],
         relations: [{ kind: 'behind', direction: 'front', target: 'back', chance: 100 }]
       },
       back: {
         id: 'back',
-        exposure: { front: 0, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
+        faces: ['front'],
         bodyLayers: [{ material: 'muscle', thickness: 2 }],
         relations: []
       }
@@ -654,7 +645,7 @@ function frontBackAnatomy({ frontLayers, backLayers, chance = 100 }) {
     random: determRandom
   });
   const backEntry = res.path.find((p) => p.slotRef === 'back');
-  assert('B5: back receives damage but cannot exit (no back exposure)',
+  assert('B5: back receives damage but cannot exit (no opposite face)',
     (res.bodyDamageBySlot.back?.length ?? 0) > 0
       && backEntry?.exited === false
       && backEntry?.transferredTo === null,

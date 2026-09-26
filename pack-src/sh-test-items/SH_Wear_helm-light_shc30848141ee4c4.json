@@ -25,7 +25,8 @@
             "material": "kevlar",
             "thickness": 1
           }
-        ]
+        ],
+        "face": "front"
       }
     ],
     "defaultActions": {

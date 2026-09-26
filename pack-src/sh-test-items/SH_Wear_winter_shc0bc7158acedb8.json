@@ -15,7 +15,7 @@
     "anatomyId": "humanoid",
     "coveredParts": [
       {
-        "slotRef": "chest",
+        "slotRef": "upperTorso",
         "layers": [
           {
             "material": "cloth-heavy",
@@ -25,10 +25,11 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
-        "slotRef": "abdomen",
+        "slotRef": "lowerTorso",
         "layers": [
           {
             "material": "cloth-heavy",
@@ -38,10 +39,11 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
-        "slotRef": "back",
+        "slotRef": "upperTorso",
         "layers": [
           {
             "material": "cloth-heavy",
@@ -51,7 +53,8 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "back"
       },
       {
         "slotRef": "leftThigh",
@@ -64,7 +67,8 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "rightThigh",
@@ -77,7 +81,8 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "leftShin",
@@ -90,7 +95,8 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "rightShin",
@@ -103,7 +109,8 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "leftArm",
@@ -116,7 +123,8 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       },
       {
         "slotRef": "rightArm",
@@ -129,7 +137,8 @@
             "material": "foam",
             "thickness": 2
           }
-        ]
+        ],
+        "face": "front"
       }
     ],
     "defaultActions": {

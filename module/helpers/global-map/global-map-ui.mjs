@@ -66,6 +66,10 @@ export async function showGlobalMapImportDialog(processing, renderer) {
 
                 // Render the grid
                 await renderer.render(result.gridData, result.metadata, { mode: 'heights' });
+                await game.spaceholder?.globalMapTerrain?.syncFromUnifiedGrid?.({
+                  grid: result.gridData,
+                  metadata: result.metadata,
+                });
 
                 ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.MapCreated'));
                 resolve(true);
@@ -479,6 +483,10 @@ export function registerGlobalMapUI(controls, spaceholder) {
             ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.CreatingBiomeTestGrid'));
             const result = spaceholder.globalMapProcessing.createBiomeTestGrid(canvas.scene);
             await spaceholder.globalMapRenderer.render(result.gridData, result.metadata, { mode: 'heights' });
+            await spaceholder.globalMapTerrain?.syncFromUnifiedGrid?.({
+              grid: result.gridData,
+              metadata: result.metadata,
+            });
             ui.notifications?.info?.(_t('SPACEHOLDER.GlobalMap.Notifications.TestGridCreated'));
           } catch (error) {
             console.error('GlobalMapUI | Error creating test grid:', error);
@@ -662,6 +670,9 @@ export function registerGlobalMapUI(controls, spaceholder) {
           if (spaceholder.globalMapTools.isActive) {
             await spaceholder.globalMapTools.deactivate();
           } else {
+            if (spaceholder.globalMapTerrain?.enabled) {
+              await spaceholder.globalMapTerrain.setEnabled(false);
+            }
             spaceholder.globalMapTools.activate();
           }
         },

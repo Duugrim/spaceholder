@@ -72,6 +72,10 @@ export class GlobalMapRenderer {
 
     // Client-side fade animations (displayObject -> {cancelled:boolean})
     this._fadeJobs = new Map();
+
+    /** @type {PIXI.Sprite|null} */
+    this._terrainBakeSprite = null;
+    this.terrainBakeEnabled = false;
   }
 
   /**
@@ -148,17 +152,19 @@ export class GlobalMapRenderer {
     // Without this, the map disappears after canvas rebuild until something else triggers render().
     if (this.currentGrid && this.currentMetadata) {
       await this.render(this.currentGrid, this.currentMetadata);
-      return;
-    }
-
-    // Otherwise, if a grid is already rendered but we don't want to re-render the whole map, at least redraw overlays on top
-    if (this.currentMetadata) {
+    } else if (this.currentMetadata) {
       if (this.vectorRegionsData) {
         this.renderVectorRegions(this.vectorRegionsData, this.currentMetadata);
       }
       if (this.vectorRiversData) {
         this.renderVectorRivers(this.vectorRiversData, this.currentMetadata);
       }
+    }
+
+    try {
+      await game.spaceholder?.globalMapTerrain?.onRendererReady?.();
+    } catch (_) {
+      /* ignore */
     }
   }
 
@@ -247,6 +253,26 @@ export class GlobalMapRenderer {
   }
 
   /**
+   * Use a 2D albedo bake from the canonical 3D heightmap instead of cell biomes/heights.
+   * @param {PIXI.Sprite|null} sprite
+   */
+  setTerrainBake(sprite) {
+    this._terrainBakeSprite = sprite || null;
+    this.terrainBakeEnabled = Boolean(sprite);
+    if (!this.mapLayer) return;
+    for (const ch of [...this.mapLayer.children]) {
+      if (ch?.name === 'globalMapTerrainBake') {
+        try {
+          this.mapLayer.removeChild(ch);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+    if (sprite) this.mapLayer.addChild(sprite);
+  }
+
+  /**
    * Set heights render mode
    * @param {string} mode - 'contours-bw', 'contours', 'cells', 'off'
    */
@@ -325,14 +351,18 @@ export class GlobalMapRenderer {
     // Clear previous map rendering (keep rivers/labels/overlays)
     this.mapLayer.removeChildren();
 
-    // Render biomes layer
-    if (this.biomesMode !== 'off') {
-      this._renderBiomesLayer(gridData, metadata);
-    }
+    if (this.terrainBakeEnabled && this._terrainBakeSprite) {
+      this.mapLayer.addChild(this._terrainBakeSprite);
+    } else {
+      // Render biomes layer
+      if (this.biomesMode !== 'off') {
+        this._renderBiomesLayer(gridData, metadata);
+      }
 
-    // Render heights layer
-    if (this.heightsMode !== 'off') {
-      this._renderHeightsLayer(gridData, metadata);
+      // Render heights layer
+      if (this.heightsMode !== 'off') {
+        this._renderHeightsLayer(gridData, metadata);
+      }
     }
 
     // Legacy rivers layer (cell-mask) is disabled by default

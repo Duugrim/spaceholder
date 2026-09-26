@@ -2,7 +2,7 @@
   "id": "arachnid",
   "name": "Arachnid",
   "description": "Eight-legged spider-like creature anatomy",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "grid": {
     "width": 9,
     "height": 7
@@ -10,7 +10,6 @@
   "bodyParts": {
     "cephalothorax": {
       "id": "cephalothorax",
-      "weight": 6000,
       "maxHp": 55,
       "x": 4,
       "y": 3,
@@ -57,30 +56,16 @@
           "target": "rightLeg4"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 85,
-        "back": 85,
-        "left": 85
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 2
-        },
-        {
-          "material": "bone",
-          "thickness": 2
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front",
+        "back"
+      ],
+      "heightFrac": 0.55,
+      "inners": []
     },
     "abdomenSegment": {
       "id": "abdomenSegment",
-      "weight": 4500,
       "maxHp": 45,
       "x": 4,
       "y": 4,
@@ -98,30 +83,16 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 60,
-        "right": 80,
-        "back": 100,
-        "left": 80
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 3
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front",
+        "back"
+      ],
+      "heightFrac": 0.4,
+      "inners": []
     },
     "leftLeg1": {
       "id": "leftLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 2,
       "y": 2,
@@ -141,30 +112,15 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 30,
-        "back": 30,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "leftLeg2": {
       "id": "leftLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 2,
       "y": 3,
@@ -184,30 +140,15 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 30,
-        "back": 30,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "leftLeg3": {
       "id": "leftLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 2,
       "y": 4,
@@ -227,30 +168,15 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 30,
-        "back": 30,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "leftLeg4": {
       "id": "leftLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 2,
       "y": 5,
@@ -270,30 +196,15 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 30,
-        "back": 30,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "rightLeg1": {
       "id": "rightLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 6,
       "y": 2,
@@ -313,30 +224,15 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 30,
-        "left": 30
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "rightLeg2": {
       "id": "rightLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 6,
       "y": 3,
@@ -356,30 +252,15 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 30,
-        "left": 30
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "rightLeg3": {
       "id": "rightLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 6,
       "y": 4,
@@ -399,30 +280,15 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 30,
-        "left": 30
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "rightLeg4": {
       "id": "rightLeg",
-      "weight": 1200,
       "maxHp": 18,
       "x": 6,
       "y": 5,
@@ -442,26 +308,12 @@
           "target": "cephalothorax"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 30,
-        "left": 30
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     }
   },
   "links": [
@@ -500,6 +352,41 @@
     {
       "from": "cephalothorax",
       "to": "rightLeg4"
+    }
+  ],
+  "heightM": 0.4,
+  "groups": [
+    {
+      "id": "walk",
+      "type": "movement",
+      "name": "Walk",
+      "parts": [
+        "leftLeg1",
+        "leftLeg2",
+        "leftLeg3",
+        "leftLeg4",
+        "rightLeg1",
+        "rightLeg2",
+        "rightLeg3",
+        "rightLeg4"
+      ]
+    },
+    {
+      "id": "senses",
+      "type": "sensory",
+      "name": "Senses",
+      "parts": [
+        "cephalothorax"
+      ]
+    },
+    {
+      "id": "vitals",
+      "type": "critical",
+      "name": "Vitals",
+      "parts": [
+        "cephalothorax",
+        "abdomenSegment"
+      ]
     }
   ]
 }

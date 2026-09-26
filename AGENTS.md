@@ -4,6 +4,14 @@
 
 > Источник истины по архитектуре в этом репозитории — код в `module/`. Этот документ обновлён на основе `WARP.md` и текущей структуры `module/**`.
 
+# ВАЖНО!
+
+Always think, reason, and plan in English. 
+Even if the user asks a question in another language, execute all internal reasoning, steps, tool calls, and final responses strictly in English. 
+Keep technical explanations concise and aligned with official documentation.
+
+---
+
 ## Проект в двух словах
 
 SpaceHolder — игровая система (Foundry VTT v14+) с ES-модулями. Точка входа — `module/spaceholder.mjs`. Система регистрирует кастомные Document-классы (Actor/Item), Application V2 листы, набор хуков/настроек и публикует вспомогательный API в `game.spaceholder`.
@@ -33,6 +41,7 @@ SpaceHolder — игровая система (Foundry VTT v14+) с ES-моду�
     - `icon-picker/*` — UI выбора, перекраска и применение к Actor/Token.
   - Глобальная карта:
     - `global-map/*` — обработка/рендер/инструменты/Editor UI.
+    - `global-map/terrain3d/*` — канонический heightmap + Three.js вид сверху / осмотр из точки.
   - Пользователи и фракции:
     - `user-factions.mjs` — привязка пользователей/токенов/акторов к фракциям (через флаги).
     - `faction-display.mjs`, `hotbar-faction-ui.mjs` — UI-хелперы для фракций.
@@ -45,9 +54,13 @@ SpaceHolder — игровая система (Foundry VTT v14+) с ES-моду�
   - Прочее:
     - `effects.mjs` — управление ActiveEffect.
     - `settings-menus.mjs`, `token-controls.mjs`, `journal-directory.mjs`, `journal-update-log-app.mjs` и др.
+    - `skills/*` — дерево физических навыков, extras, `getSkillEffect` (пока не в формуле попадания).
+    - `anatomy-groups.mjs` — группы, faces, inners, `getGroupAbility`.
+    - `hit-luck.mjs` — combine зоны дуги × центровость, пояса, диалог группы.
   - **`helpers/legacy/`** — старый/экспериментальный код (не расширять без причины).
 - **`module/data/`** — данные системы (JSON): `data/payloads/*`, `data/globalmaps/*` (анатомии см. ниже).
 - **`data/anatomy/`** (в корне системы) — стандартные анатомии: `registry.json` и JSON-файлы шаблонов (тот же формат для всех). Путь в рантайме: `systems/spaceholder/data/anatomy/`.
+- **`data/skills/`** — пресет дерева физических навыков (`physical-tree.json`; рантайм — `module/helpers/skills/physical-tree.mjs`).
 - Анатомии, созданные в мире, хранятся **только в папке мира** как JSON-файлы: `worlds/<worldId>/spaceholder/anatomy/<id>.json` (тот же формат, что и в `data/anatomy/`). Загрузка по необходимости через `loadWorldPresets()` (FilePicker browse + fetch).
 
 ## Остальные ключевые папки проекта
@@ -73,24 +86,30 @@ npm run watch   # авто-пересборка SCSS
 Компендиумы (после правок в `pack-src/`): закрыть Foundry, затем `npm run pack:sh-test-items` (см. `docs/code/tooling/COMPENDIUM_PACKS.md`).
 
 ### File Search: Avoid Glob/Grep, prefer rg
+
 The `Glob` and `Grep` tools are broken in this workspace — they hang indefinitely and must not be used.
 For text search, prefer `rg` (ripgrep).
 **Use Shell commands for file/directory discovery:**
+
 - **Find files by name/pattern:**
-`cmd /c "dir /S /B E:\FoundryVTT\Data\systems\spaceholder<subfolder>*.ext"`
+  `cmd /c "dir /S /B E:\FoundryVTT\Data\systems\spaceholder<subfolder>*.ext"`
 
 Add `| cmd /c "findstr pattern"` to filter results.
+
 - **List directory contents:**
-`cmd /c "dir E:\FoundryVTT\Data\systems\spaceholder<subfolder>"`
+  `cmd /c "dir E:\FoundryVTT\Data\systems\spaceholder<subfolder>"`
 
 - **Search text in files (preferred):**
-`rg -n --glob "*.mjs" "pattern" E:\FoundryVTT\Data\systems\spaceholder<subfolder>`
+  `rg -n --glob "*.mjs" "pattern" E:\FoundryVTT\Data\systems\spaceholder<subfolder>`
+
 - **Fallback search text in files (if needed):**
-`cmd /c "findstr /S /I /N /M "pattern" E:\FoundryVTT\Data\systems\spaceholder<subfolder>*.mjs"`
+  `cmd /c "findstr /S /I /N /M "pattern" E:\FoundryVTT\Data\systems\spaceholder<subfolder>*.mjs"`
 
 - **Read a known file:** use the `Read` tool directly with the full path — never use Glob to locate files whose path can be inferred from AGENTS.md or the conversation context.
-**Never use:**
+  **Never use:**
+
 - `Glob` — hangs indefinitely
+
 - `Grep` — hangs indefinitely
 
 ## Инициализация и публичный API
@@ -98,6 +117,7 @@ Add `| cmd /c "findstr pattern"` to filter results.
 ### Инициализация
 
 В `module/spaceholder.mjs` система в основном делает:
+
 - `Hooks.once('init')`:
   - настраивает `CONFIG.SPACEHOLDER` и базовые вещи (инициатива и т.п.);
   - регистрирует documentClass для Actor/Item;
@@ -152,6 +172,19 @@ Add `| cmd /c "findstr pattern"` to filter results.
     - Доступ к инстансам/подсистемам (если экспортируются):
     - `game.spaceholder.tokenpointer`, `drawManager`, `shotManager`, `influenceManager`
     - `game.spaceholder.globalMapProcessing`, `globalMapRenderer`, `globalMapTools`
+    - `game.spaceholder.globalMapTerrain` — 3D-рельеф (heightmap/splat, overlay, редактор)
+    - `await game.spaceholder.openLookFromPoint({ x, y } | { token })` — окно осмотра с точки на террейне
+- Действия и атака:
+  - `game.spaceholder.collectActorActions(actor, ctx?)`, `executeActorAction(actor, action, ctx?)`
+  - `await game.spaceholder.runActorAction(actorUuid, actionId)` — выполнить действие по id (макросы хотбара)
+  - `item.canAttack` / `await item.attack({ token })` (`SpaceHolderItem`) — атака предметом активными линией/режимом
+- Навыки (структура; в aiming/shot не подключено):
+  - `game.spaceholder.getSkillEffect(actor, nodeId)` — взвешенное среднее 0–10 по цепочке от корня (нули не схлопываются)
+  - `game.spaceholder.getSkillLevel(actor, nodeId)` — уровень узла пресета или extra (0–10)
+  - `game.spaceholder.getSkillPath(nodeId)` — предки пресет-узла от корня
+- Анатомия / группы:
+  - `game.spaceholder.getGroupAbility(actor, groupId)` — sum currentHp / sum maxHp (0–1)
+  - `game.spaceholder.getAnatomyGroups(actor)`, `getGroupsByType(actor, type)`, `getPartGroups(actor, slotRef)`
 
 Если добавляете новый публичный метод, считайте это как изменение внешнего API: документируйте в этом файле и старайтесь держать сигнатуру стабильной.
 
@@ -174,12 +207,14 @@ Add `| cmd /c "findstr pattern"` to filter results.
 
 Пример:
 Допустим, есть метод `drawRedCircle()`, который рисует красный круг на указанных координатах. Когда понадобится зелёный круг:
+
 - **НЕ ДЕЛАЕМ** новый метод `drawGreenCircle()`, дублирующий логику `drawRedCircle()` с мелкими специфичными отличиями.
 - **ДОРАБАТЫВАЕМ** `drawRedCircle()` до общего `drawCircle()`, в который передаётся нужный `color` (и при необходимости другие параметры).
 
 Проще говоря: прежде чем писать новую функцию/метод/класс рядом с существующим — посмотри, нельзя ли обобщить существующий и переиспользовать его.
 
 ### JavaScript / ES Modules
+
 - ES6+ синтаксис (import/export).
 - Классы: `PascalCase`, функции/переменные: `camelCase`.
 - Константы: `UPPER_SNAKE_CASE`.
@@ -187,11 +222,13 @@ Add `| cmd /c "findstr pattern"` to filter results.
 - Для публичных функций/классов: JSDoc.
 
 ### UI/шаблоны
+
 - Handlebars: `.hbs` в `templates/`.
 - Любой новый UI-текст — через i18n:
   - добавляйте ключи в `lang/en.json` и `lang/ru.json`.
 
 ### SCSS/CSS
+
 - Правим `src/scss/`, результат — `css/spaceholder.css`.
 - Префиксуйте классы `spaceholder-*`.
 - Стараемся не использовать `!important`
@@ -240,6 +277,7 @@ Add `| cmd /c "findstr pattern"` to filter results.
 ## Листы Application V2 (шпаргалка)
 
 При задачах и багах, связанных с листами документов (Item/Actor) в Application V2:
+
 - **Сначала сверяться с `docs/code/guides/APP_V2_SHEET_PATTERNS.md`**: там описаны проверенные решения (кнопки, сохранение вкладки, удаление ключей в документе).
 - Если после дебага проблемы вида «кнопка должна нажиматься, а не нажимается», «вкладка сбрасывается», «удаление не сохраняется» и т.п. найдено решение, которого **нет** в этой доке — **предложить пользователю добавить его в `docs/code/guides/APP_V2_SHEET_PATTERNS.md`**, чтобы нарабатывать шпаргалку под специфику проекта.
 

@@ -1,0 +1,238 @@
+{
+  "trees": [
+    {
+      "id": "combat",
+      "weight": 1,
+      "labelKey": "SPACEHOLDER.Skills.Nodes.combat",
+      "children": [
+        {
+          "id": "combat.melee",
+          "weight": 1.5,
+          "labelKey": "SPACEHOLDER.Skills.Nodes.combat_melee",
+          "children": [
+            {
+              "id": "combat.melee.blade",
+              "weight": 2.5,
+              "labelKey": "SPACEHOLDER.Skills.Nodes.combat_melee_blade",
+              "children": [
+                {
+                  "id": "combat.melee.blade.knife",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_melee_blade_knife",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.melee.blade.sword",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_melee_blade_sword",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.melee.blade.spear",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_melee_blade_spear",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                }
+              ]
+            },
+            {
+              "id": "combat.melee.thrown",
+              "weight": 2.5,
+              "labelKey": "SPACEHOLDER.Skills.Nodes.combat_melee_thrown",
+              "children": [
+                {
+                  "id": "combat.melee.thrown.dart",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_melee_thrown_dart",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "combat.ranged",
+          "weight": 1.5,
+          "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged",
+          "children": [
+            {
+              "id": "combat.ranged.firearms",
+              "weight": 2.5,
+              "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_firearms",
+              "children": [
+                {
+                  "id": "combat.ranged.firearms.pistol",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_firearms_pistol",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.firearms.smg",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_firearms_smg",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.firearms.shotgun",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_firearms_shotgun",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.firearms.rifle",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_firearms_rifle",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.firearms.sniper",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_firearms_sniper",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.firearms.mg",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_firearms_mg",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                }
+              ]
+            },
+            {
+              "id": "combat.ranged.laser",
+              "weight": 2.5,
+              "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_laser",
+              "children": [
+                {
+                  "id": "combat.ranged.laser.pistol",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_laser_pistol",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.laser.smg",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_laser_smg",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.laser.shotgun",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_laser_shotgun",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.laser.rifle",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_laser_rifle",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.laser.heavy",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_laser_heavy",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                }
+              ]
+            },
+            {
+              "id": "combat.ranged.plasma",
+              "weight": 2.5,
+              "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_plasma",
+              "children": [
+                {
+                  "id": "combat.ranged.plasma.pistol",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_plasma_pistol",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.plasma.rifle",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_plasma_rifle",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                },
+                {
+                  "id": "combat.ranged.plasma.heavy",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_plasma_heavy",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                }
+              ]
+            },
+            {
+              "id": "combat.ranged.heavy",
+              "weight": 2.5,
+              "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_heavy",
+              "children": [
+                {
+                  "id": "combat.ranged.heavy.rocket",
+                  "weight": 4,
+                  "labelKey": "SPACEHOLDER.Skills.Nodes.combat_ranged_heavy_rocket",
+                  "children": [],
+                  "allowCustom": true,
+                  "customWeight": 5
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "physdev",
+      "weight": 1,
+      "labelKey": "SPACEHOLDER.Skills.Nodes.physdev",
+      "children": [
+        {
+          "id": "physdev.light",
+          "weight": 1.5,
+          "labelKey": "SPACEHOLDER.Skills.Nodes.physdev_light",
+          "children": []
+        },
+        {
+          "id": "physdev.heavy",
+          "weight": 1.5,
+          "labelKey": "SPACEHOLDER.Skills.Nodes.physdev_heavy",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

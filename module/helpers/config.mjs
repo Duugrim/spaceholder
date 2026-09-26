@@ -97,6 +97,26 @@ SPACEHOLDER.aimingArc = {
   overlayAlpha: 0.56,
 };
 
+/**
+ * Standard aiming (wander reticle + turning laser). Luck is stamped on the
+ * shot but does not yet change damage / hit location.
+ */
+SPACEHOLDER.aiming = {
+  accuracyRefScore: 10,
+  wanderDurationMs: 2000,
+  turnRateDegPerSec: 180,
+  turnRateMinDegPerSec: 30,
+  laserLengthCells: 6,
+  laserColor: 0xff4444,
+  laserWidth: 2,
+  laserSegments: 14,
+  zoneDebugAlpha: 0.22,
+  zoneDebugColor: 0x88c8ff,
+  reticleRadiusPx: 5,
+  reticleColor: 0xff6666,
+  boardAimingClass: 'spaceholder-aiming-standard',
+};
+
 SPACEHOLDER.abilityAbbreviations = {
   end: 'SPACEHOLDER.Ability.End.abbr',
   str: 'SPACEHOLDER.Ability.Str.abbr',
@@ -132,10 +152,8 @@ SPACEHOLDER.characterModifierTargets = {
 SPACEHOLDER.bodyPartDictionary = [
   'head',
   'neck',
-  'back',
-  'chest',
-  'abdomen',
-  'groin',
+  'upperTorso',
+  'lowerTorso',
   'leftShoulder',
   'rightShoulder',
   'leftArm',
@@ -148,6 +166,7 @@ SPACEHOLDER.bodyPartDictionary = [
   'rightShin',
   'leftFoot',
   'rightFoot',
+  'torso',
   'cephalothorax',
   'abdomenSegment',
   'leftLeg',
@@ -158,14 +177,4 @@ SPACEHOLDER.bodyPartDictionary = [
  * Fallback anatomy for wearable coverage editor when item has no anatomy selected.
  */
 SPACEHOLDER.wearableCoverageReferenceAnatomyId = 'humanoid';
-
-/**
- * When `true`, each body part’s tissue stack (`bodyLayers` / defaults for
- * `part.id`) participates in {@link resolveBodyTraversal} together with
- * worn armour. When `false`, tissue layers are skipped — only armour items
- * resolve structurally; unarmoured hits apply straight to the part centre.
- * Temporary toggle: set back to `true` to restore full body-layer simulation.
- * @type {boolean}
- */
-SPACEHOLDER.anatomyBodyLayersInDamage = false;
 

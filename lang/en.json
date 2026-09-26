@@ -31,7 +31,61 @@
       "Modifiers": "Modifiers",
       "Tags": "Tags",
       "Settings": "Settings",
-      "Ammo": "Ammo"
+      "Ammo": "Ammo",
+      "Skills": "Skills"
+    },
+    "Skills": {
+      "Subtabs": {
+        "Physical": "Physical",
+        "Mixed": "Mixed",
+        "Knowledge": "Knowledge"
+      },
+      "ToggleBranch": "Expand or collapse",
+      "AddModel": "Add specific weapon",
+      "AddSkill": "Add skill",
+      "AddChild": "Add child",
+      "EditSkill": "Edit skill",
+      "ChangeValue": "Change",
+      "RemoveExtra": "Remove",
+      "ExtraName": "Name",
+      "Level": "Level",
+      "Effect": "Effect",
+      "EmptyCategory": "No skills in this category",
+      "NameRequired": "Enter a name",
+      "EffectHint": "Skill effect along the branch (0–10)",
+      "Nodes": {
+        "combat": "Combat",
+        "combat_melee": "Melee",
+        "combat_melee_blade": "Blades",
+        "combat_melee_blade_knife": "Knives",
+        "combat_melee_blade_sword": "Swords",
+        "combat_melee_blade_spear": "Spears",
+        "combat_melee_thrown": "Thrown",
+        "combat_melee_thrown_dart": "Darts",
+        "combat_ranged": "Ranged",
+        "combat_ranged_firearms": "Firearms",
+        "combat_ranged_firearms_pistol": "Pistols",
+        "combat_ranged_firearms_smg": "SMGs",
+        "combat_ranged_firearms_shotgun": "Shotguns",
+        "combat_ranged_firearms_rifle": "Rifles",
+        "combat_ranged_firearms_sniper": "Sniper rifles",
+        "combat_ranged_firearms_mg": "Machine guns",
+        "combat_ranged_laser": "Laser",
+        "combat_ranged_laser_pistol": "Pistols",
+        "combat_ranged_laser_smg": "SMGs",
+        "combat_ranged_laser_shotgun": "Shotguns",
+        "combat_ranged_laser_rifle": "Rifles",
+        "combat_ranged_laser_heavy": "Heavy",
+        "combat_ranged_plasma": "Plasma",
+        "combat_ranged_plasma_pistol": "Pistols",
+        "combat_ranged_plasma_rifle": "Rifles",
+        "combat_ranged_plasma_heavy": "Heavy",
+        "combat_ranged_heavy": "Heavy weapons",
+        "combat_ranged_heavy_rocket": "Rocket launchers",
+        "physdev": "Physical development",
+        "physdev_light": "Light athletics",
+        "physdev_heavy": "Heavy athletics"
+      }
     },
     "ItemTags": {
       "SectionTitle": "Feature groups",
@@ -192,6 +246,13 @@
         "Charge": "Charge",
         "ChargeHint": "Current internal charge (no items consumed)",
         "CounterHint": "[chamber]+reserve/capacity",
+        "DisplayStyle": "Ammo display",
+        "DisplayStyleHint": "How the quick HUD shows this block's ammo. Pips apply to slot blocks up to 12 slots, otherwise the number is shown.",
+        "DisplayStyles": {
+          "number": "Number",
+          "bar": "Bar",
+          "pips": "Pips"
+        },
         "Search": "Ammo search",
         "SearchHint": "Where to look for ammunition, in priority order: hands → worn → inventory → containers",
         "SearchModes": {
@@ -322,6 +383,7 @@
       },
       "Interact": {
         "ActionLabel": "{name}: Interact",
+        "FireModeGroup": "Fire mode",
         "Title": "Actions: {name}",
         "Hint": "Choose a standard weapon action.",
         "NoActions": "No actions available for this weapon.",
@@ -628,7 +690,10 @@
       "HeaderEditDisposition": "Disposition",
       "HeaderEditFaction": "Faction",
       "HeaderEditFactionNone": "No faction",
-      "HeaderEditApply": "Apply"
+      "HeaderEditApply": "Apply",
+      "AbilitiesEditButton": "Edit abilities",
+      "AbilitiesEditDialogTitle": "Edit abilities",
+      "AbilitiesEditHint": "Base values before equipment modifiers."
     },
     "Units": {
       "Kg": "kg",
@@ -727,18 +792,20 @@
       }
     },
     "Settings": {
-      "HealthAnatomy3d": {
-        "Name": "Use 3D anatomy preview on the Health tab",
-        "Hint": "GM only. When enabled, the sheet loads WebGL and tries 3D first, then falls back to the 2D grid (for example while editing the layout). Turning this on or off requires a reload so the client can load or skip 3D code."
+      "HitLuckCombine": {
+        "Name": "Hit luck combine",
+        "Hint": "How aiming-arc zone combines with token centrality. Multiplier (default): zone × centrality. Penalty: centrality + zone offset."
       }
     },
     "BodyParts": {
       "head": "Head",
       "neck": "Neck",
-      "back": "Back",
-      "chest": "Chest",
-      "abdomen": "Abdomen",
-      "groin": "Groin",
+      "back": "Back (legacy)",
+      "chest": "Chest (legacy)",
+      "abdomen": "Abdomen (legacy)",
+      "groin": "Groin (legacy)",
+      "upperTorso": "Upper Torso",
+      "lowerTorso": "Lower Torso",
       "leftShoulder": "Left Shoulder",
       "rightShoulder": "Right Shoulder",
       "leftArm": "Left Arm",
@@ -750,12 +817,32 @@
       "leftShin": "Left Shin",
       "rightShin": "Right Shin",
       "leftFoot": "Left Foot",
-      "rightFoot": "Right Foot"
-      ,
+      "rightFoot": "Right Foot",
       "cephalothorax": "Cephalothorax",
       "abdomenSegment": "Abdomen",
       "leftLeg": "Left Leg",
       "rightLeg": "Right Leg"
+    },
+    "AnatomyGroups": {
+      "Title": "Anatomy groups",
+      "TypeManipulation": "Manipulation",
+      "TypeMovement": "Movement",
+      "TypeSensory": "Sensory",
+      "TypeCritical": "Critical",
+      "FaceFront": "Front",
+      "FaceBack": "Back",
+      "HitDialogTitle": "Hit group",
+      "HitLuck": "Hit luck: {value} ({band})",
+      "BandPartOrGroup": "pick group or part",
+      "BandGroup": "group only",
+      "BandGroup45": "group, armor at 45°",
+      "BandGraze": "graze",
+      "BandContinue": "continues",
+      "PickGroup": "Group",
+      "PickPart": "Specific part",
+      "AnyPart": "— group (any part) —",
+      "Confirm": "Hit",
+      "Override": "Always this group when possible"
     },
     "IconPicker": {
       "Title": "Icon Picker",
@@ -858,6 +945,26 @@
       "HeldWeapons": "Held weapons",
       "ExpandSegment": "Expand segment",
       "CollapseSegment": "Collapse segment",
+      "ExpandActions": "Show all quick actions",
+      "CollapseActions": "Collapse quick actions",
+      "NotReady": "Not ready",
+      "SelectedItems": "Selected items",
+      "DeselectItem": "Deselect: {name}",
+      "StowedHint": "quick access, not in hands",
+      "Attack": "Attack",
+      "AttackNeedsSelection": "Select a weapon",
+      "AttackMultiUnsupported": "Attacking with several items is not supported yet",
+      "AttackTooltip": "Attack: {item} ({ap})",
+      "ViewPortrait": "View portrait",
+      "PanToToken": "Center on token",
+      "OpenSheet": "Open character sheet",
+      "OpenTokenConfig": "Token settings",
+      "Settings": {
+        "HideActionsOfHeldItems": {
+          "Name": "Hide actions of held items",
+          "Hint": "In the token quick HUD, omit actions of items that have a card (held or quick access) from the general action list. Selecting a card still shows its actions in a separate row."
+        }
+      },
       "SourceSelected": "Selected token",
       "SourceFallback": "Your character",
       "SourceLastSelected": "Last selected"
@@ -926,6 +1033,12 @@
       },
       "ItemMenu": {
         "StandardGroup": "Standard actions"
+      },
+      "QuickAccess": {
+        "Add": "{item}: add to quick access",
+        "Remove": "{item}: remove from quick access",
+        "AddShort": "Add to quick access",
+        "RemoveShort": "Remove from quick access"
       },
       "Wearable": {
         "Equip": "Equip: {item}",
@@ -1043,6 +1156,7 @@
         "OverflowHint": "See gauges below"
       },
       "HeldActions": {
+        "AttackTooltip": "Attack",
         "StowTooltip": "Stow in backpack",
         "DropTooltip": "Discard on the ground",
         "ThrowTooltip": "Hurl",
@@ -1519,11 +1633,18 @@
       "Messages": {
         "TokenNotSelected": "Token not selected",
         "AimingActivated": "Aiming mode activated. LMB - shoot, RMB/ESC - cancel",
-        "StandardShotInfo": "Standard aiming: zone {zone}, deviation {deviation} deg",
+        "StandardShotInfo": "Standard aiming: {zone}{clamped}",
+        "LuckClamped": "clamped",
         "WeaponNotFound": "Weapon not found: {uuid}",
         "NoAmmoForWeapon": "{weapon}: no ammunition ({reason})",
         "PayloadNotFound": "Payload not found: {payload}",
-        "ProjectileShotResolved": "{shooter} fires {weapon} ({ammo}); impacts: {hits}"
+        "ProjectileShotResolved": "{shooter} fires {weapon} ({ammo}); impacts: {hits}",
+        "DiagnosticLuck": "{zone}{clamped}",
+        "DiagnosticLuckLine": "Luck: {value}",
+        "DiagnosticSpread": "{delta}",
+        "DiagnosticSpreadLine": "Spread: {value}",
+        "DiagnosticHit": "{name} · {clock}h · {centrality} · luck {hitLuck} ({band})",
+        "DiagnosticMiss": "miss"
       },
       "Errors": {
         "PayloadManifestLoad": "Error loading payloads manifest:",
@@ -2127,6 +2248,7 @@
         "Visibility": "Visibility",
         "Timeline": "Timeline",
         "RefreshMap": "Refresh map",
+        "View3d": "3D terrain",
         "Selection": {
           "MultipleTokens": "Multiple tokens",
           "MultipleFactions": "Multiple factions"
@@ -2194,6 +2316,41 @@
           "Influence": "Influence",
           "InfluenceJournal": "Influence journal",
           "OpenInfluenceJournal": "Open influence journal"
+        }
+      },
+      "Terrain3d": {
+        "Setting": {
+          "Name": "3D terrain view",
+          "Hint": "Show the global map as a 3D heightfield"
+        },
+        "Tools": {
+          "Select": "Select / move tokens",
+          "Look": "Look from point",
+          "Raise": "Raise",
+          "Lower": "Lower",
+          "Smooth": "Smooth",
+          "Flatten": "Flatten",
+          "Noise": "Noise",
+          "Paint": "Paint biome",
+          "Radius": "Radius",
+          "Strength": "Strength",
+          "FlattenTo": "Flatten to",
+          "Biome": "Biome",
+          "Save": "Save terrain",
+          "Hint": "Drag the handle to move. Sculpt on the 3D map.",
+          "Drag": "Drag to move panel"
+        },
+        "LookFrom": {
+          "Title": "Look from point",
+          "Hint": "Drag to look. WASD to move.",
+          "NeedPoint": "Select a token or click the terrain"
+        },
+        "Notifications": {
+          "Saved": "Terrain saved"
+        },
+        "Errors": {
+          "NoData": "No terrain data",
+          "SaveFailed": "Failed to save terrain: {message}"
         }
       }
     },

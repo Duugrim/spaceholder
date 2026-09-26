@@ -23,6 +23,9 @@
           </div>
 
           <div class="sh-held-item-card__controls">
+            {{#if entry.canAttack}}
+              <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-attack" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.AttackTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.AttackTooltip'}}"><i class="fa-solid fa-crosshairs"></i></button>
+            {{/if}}
             <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-stow" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.StowTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.StowTooltip'}}"><i class="fa-solid fa-box-open"></i></button>
             <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-drop" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.DropTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.DropTooltip'}}"><i class="fa-solid fa-arrow-down"></i></button>
             <button type="button" class="icon-btn" data-item-id="{{entry.id}}" data-action="sh-held-item-throw" title="{{localize 'SPACEHOLDER.Inventory.HeldActions.ThrowTooltip'}}" aria-label="{{localize 'SPACEHOLDER.Inventory.HeldActions.ThrowTooltip'}}"><i class="fa-solid fa-hand-back-fist"></i></button>

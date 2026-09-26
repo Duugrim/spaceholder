@@ -2,7 +2,7 @@
   "id": "quadruped",
   "name": "Quadruped",
   "description": "Four-legged creature anatomy",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "grid": {
     "width": 9,
     "height": 7
@@ -11,18 +11,14 @@
     "torso": {
       "id": "torso",
       "name": "Torso",
-      "weight": 10000,
       "maxHp": 60,
       "x": 4,
       "y": 3,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "core",
         "vital",
         "armor_body"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -49,41 +45,24 @@
           "target": "tail"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 90,
-        "back": 90,
-        "left": 90
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 4
-        },
-        {
-          "material": "bone",
-          "thickness": 2
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front",
+        "back"
+      ],
+      "heightFrac": 0.55,
+      "inners": []
     },
     "neck": {
       "id": "neck",
       "name": "Neck",
-      "weight": 1200,
       "maxHp": 20,
       "x": 4,
       "y": 2,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "vital",
         "armor_neck"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -98,43 +77,25 @@
           "target": "torso"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 85,
-        "back": 100,
-        "left": 85
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 2
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "muscle",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.88,
+      "inners": []
     },
     "head": {
       "id": "head",
       "name": "Head",
-      "weight": 8000,
       "maxHp": 30,
       "x": 4,
       "y": 1,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "vital",
         "brain",
         "sensory",
         "armor_head"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -145,43 +106,25 @@
           "target": "neck"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 100,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 3
-        }
-      ]
+      "material": "bone",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.93,
+      "inners": []
     },
     "frontLeftShoulder": {
       "id": "frontLeftShoulder",
       "name": "Front Left Shoulder",
-      "weight": 1000,
       "maxHp": 18,
       "x": 3,
       "y": 2,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "joint",
         "left_side",
         "front",
         "armor_shoulder"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -196,36 +139,19 @@
           "target": "torso"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 30,
-        "back": 50,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 2
-        },
-        {
-          "material": "bone",
-          "thickness": 2
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "frontLeftLeg": {
       "id": "frontLeftLeg",
       "name": "Front Left Leg",
-      "weight": 8500,
       "maxHp": 25,
       "x": 2,
       "y": 2,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "limb",
         "left_side",
@@ -233,7 +159,6 @@
         "locomotion",
         "armor_leg"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -248,36 +173,19 @@
           "target": "frontLeftShoulder"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 30,
-        "back": 30,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 3
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "frontLeftPaw": {
       "id": "frontLeftPaw",
       "name": "Front Left Paw",
-      "weight": 1500,
       "maxHp": 12,
       "x": 1,
       "y": 2,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "extremity",
         "left_side",
@@ -285,7 +193,6 @@
         "locomotion",
         "armor_paw"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -296,43 +203,25 @@
           "target": "frontLeftLeg"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 20,
-        "back": 0,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "frontRightShoulder": {
       "id": "frontRightShoulder",
       "name": "Front Right Shoulder",
-      "weight": 1000,
       "maxHp": 18,
       "x": 5,
       "y": 2,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "joint",
         "right_side",
         "front",
         "armor_shoulder"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -347,36 +236,19 @@
           "target": "torso"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 50,
-        "left": 30
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 2
-        },
-        {
-          "material": "bone",
-          "thickness": 2
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "frontRightLeg": {
       "id": "frontRightLeg",
       "name": "Front Right Leg",
-      "weight": 8500,
       "maxHp": 25,
       "x": 6,
       "y": 2,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "limb",
         "right_side",
@@ -384,7 +256,6 @@
         "locomotion",
         "armor_leg"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -399,36 +270,19 @@
           "target": "frontRightShoulder"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 30,
-        "left": 30
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 3
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "frontRightPaw": {
       "id": "frontRightPaw",
       "name": "Front Right Paw",
-      "weight": 1500,
       "maxHp": 12,
       "x": 7,
       "y": 2,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "extremity",
         "right_side",
@@ -436,7 +290,6 @@
         "locomotion",
         "armor_paw"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -447,43 +300,25 @@
           "target": "frontRightLeg"
         }
       ],
-      "exposure": {
-        "front": 100,
-        "right": 100,
-        "back": 0,
-        "left": 20
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "backLeftHip": {
       "id": "backLeftHip",
       "name": "Back Left Hip",
-      "weight": 1000,
       "maxHp": 20,
       "x": 3,
       "y": 4,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "joint",
         "left_side",
         "back",
         "armor_hip"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -498,36 +333,19 @@
           "target": "torso"
         }
       ],
-      "exposure": {
-        "front": 0,
-        "right": 40,
-        "back": 100,
-        "left": 100
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 2
-        },
-        {
-          "material": "bone",
-          "thickness": 2
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "backLeftLeg": {
       "id": "backLeftLeg",
       "name": "Back Left Leg",
-      "weight": 8500,
       "maxHp": 28,
       "x": 2,
       "y": 4,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "limb",
         "left_side",
@@ -535,7 +353,6 @@
         "locomotion",
         "armor_leg"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -550,36 +367,19 @@
           "target": "backLeftHip"
         }
       ],
-      "exposure": {
-        "front": 40,
-        "right": 30,
-        "back": 100,
-        "left": 90
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 3
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "backLeftPaw": {
       "id": "backLeftPaw",
       "name": "Back Left Paw",
-      "weight": 1500,
       "maxHp": 12,
       "x": 1,
       "y": 4,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "extremity",
         "left_side",
@@ -587,7 +387,6 @@
         "locomotion",
         "armor_paw"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -598,43 +397,25 @@
           "target": "backLeftLeg"
         }
       ],
-      "exposure": {
-        "front": 30,
-        "right": 20,
-        "back": 90,
-        "left": 80
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "backRightHip": {
       "id": "backRightHip",
       "name": "Back Right Hip",
-      "weight": 1000,
       "maxHp": 20,
       "x": 5,
       "y": 4,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "joint",
         "right_side",
         "back",
         "armor_hip"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -649,36 +430,19 @@
           "target": "torso"
         }
       ],
-      "exposure": {
-        "front": 0,
-        "right": 100,
-        "back": 100,
-        "left": 40
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 2
-        },
-        {
-          "material": "bone",
-          "thickness": 2
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "backRightLeg": {
       "id": "backRightLeg",
       "name": "Back Right Leg",
-      "weight": 8500,
       "maxHp": 28,
       "x": 6,
       "y": 4,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "limb",
         "right_side",
@@ -686,7 +450,6 @@
         "locomotion",
         "armor_leg"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -701,36 +464,19 @@
           "target": "backRightHip"
         }
       ],
-      "exposure": {
-        "front": 40,
-        "right": 90,
-        "back": 100,
-        "left": 30
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 3
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "backRightPaw": {
       "id": "backRightPaw",
       "name": "Back Right Paw",
-      "weight": 1500,
       "maxHp": 12,
       "x": 7,
       "y": 4,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "extremity",
         "right_side",
@@ -738,7 +484,6 @@
         "locomotion",
         "armor_paw"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -749,42 +494,24 @@
           "target": "backRightLeg"
         }
       ],
-      "exposure": {
-        "front": 30,
-        "right": 80,
-        "back": 90,
-        "left": 20
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.25,
+      "inners": []
     },
     "tail": {
       "id": "tail",
       "name": "Tail",
-      "weight": 800,
       "maxHp": 10,
       "x": 4,
       "y": 5,
-      "status": "healthy",
-      "internal": false,
       "tags": [
         "extremity",
         "balance",
         "armor_tail"
       ],
-      "organs": [],
       "relations": [
         {
           "kind": "adjacent",
@@ -795,26 +522,12 @@
           "target": "torso"
         }
       ],
-      "exposure": {
-        "front": 0,
-        "right": 50,
-        "back": 100,
-        "left": 50
-      },
-      "bodyLayers": [
-        {
-          "material": "skin",
-          "thickness": 1
-        },
-        {
-          "material": "muscle",
-          "thickness": 1
-        },
-        {
-          "material": "bone",
-          "thickness": 1
-        }
-      ]
+      "material": "skin",
+      "faces": [
+        "front"
+      ],
+      "heightFrac": 0.45,
+      "inners": []
     }
   },
   "links": [
@@ -877,6 +590,46 @@
     {
       "from": "backRightLeg",
       "to": "backRightPaw"
+    }
+  ],
+  "heightM": 0.9,
+  "groups": [
+    {
+      "id": "walk",
+      "type": "movement",
+      "name": "Walk",
+      "parts": [
+        "frontLeftShoulder",
+        "frontLeftLeg",
+        "frontLeftPaw",
+        "frontRightShoulder",
+        "frontRightLeg",
+        "frontRightPaw",
+        "backLeftHip",
+        "backLeftLeg",
+        "backLeftPaw",
+        "backRightHip",
+        "backRightLeg",
+        "backRightPaw"
+      ]
+    },
+    {
+      "id": "senses",
+      "type": "sensory",
+      "name": "Senses",
+      "parts": [
+        "head"
+      ]
+    },
+    {
+      "id": "vitals",
+      "type": "critical",
+      "name": "Vitals",
+      "parts": [
+        "torso",
+        "neck",
+        "head"
+      ]
     }
   ]
 }

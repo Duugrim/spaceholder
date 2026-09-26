@@ -7,6 +7,7 @@ $sh-sheet-tabs-item-gap: 6px;
 $sh-tab-accents: (
   'overview': #5c8f7a,
   'stats': #5385ab,
+  'skills': #6b8a6e,
   'health': #b65360,
   'injuries': #b68c3c,
   'inventory': #7d71af,
@@ -277,6 +278,30 @@ $sh-tab-accents: (
       line-height: 1;
       color: inherit;
       opacity: 0.935;
+    }
+
+    .sh-tab-banner__action {
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      min-height: 30px;
+      margin: 0 0 0 auto;
+      padding: 0;
+      border: 1px solid color-mix(in srgb, var(--banner-accent) 65%, var(--sh-border));
+      border-radius: var(--sh-radius-sm);
+      background: rgba(0, 0, 0, 0.2);
+      color: inherit;
+      box-shadow: none;
+
+      &:hover {
+        background: color-mix(in srgb, var(--banner-accent) 22%, rgba(0, 0, 0, 0.3));
+        border-color: color-mix(in srgb, var(--banner-accent) 82%, #fff);
+      }
+
+      i {
+        font-size: 12px;
+      }
     }
   }
 

@@ -33,6 +33,8 @@
  * @property {(ctx: ActionContext)=>string|null} [disabledReason]
  * @property {(ctx: ActionContext)=>Promise<boolean|void>|boolean|void} run
  * @property {boolean} [skipPostCombatLog] - if true, `executeActorAction` skips AP log + combat journal after `run` (run handles it)
+ * @property {boolean} [uiOnly] - UI toggle, not a game action: `executeActorAction` runs it without AP, turn start or logging
+ * @property {number} [previewApCost] - AP shown in menus when `run` spends AP itself (descriptor `apCost` stays 0)
  */
  
 /**
@@ -75,7 +77,7 @@ function _normalizeAimingType(v) {
  
 import { ensureCharacterApSynced, getStoredActionPoints, spendAp } from './transaction-ledger.mjs';
 import { appendCombatActionJournalLine } from './action-chat-journal.mjs';
-import { listWeaponAttacks, AMMO_BLOCK_TYPES } from '../weapon/weapon-model.mjs';
+import { listWeaponAttacks, resolveActiveWeaponAttack, AMMO_BLOCK_TYPES } from '../weapon/weapon-model.mjs';
 import {
   getWeaponData,
   persistWeaponData,
@@ -107,7 +109,7 @@ import {
   getOrderedDirectChildItemIds,
   removeActorItemFromContainer,
 } from '../item-container.mjs';
-import { runWeaponAttack } from '../weapon/attack-chain.mjs';
+import { canAttackWithItem, switchWeaponMode, previewModeSwitchAp } from '../weapon/attack-chain.mjs';
 import { findNearestPileDropPointWithinCells } from '../item-piles-sh/held-drop-resolve.mjs';
 
 async function _ensureAimingManager() {
@@ -126,7 +128,14 @@ async function _ensureAimingManager() {
   }
 }
 
-function _resolveActionToken(ctx, actor) {
+/**
+ * Token to act with: explicit ctx token, else a controlled token of the actor,
+ * else its first active token on the scene.
+ * @param {Partial<ActionContext>|null} ctx
+ * @param {Actor} actor
+ * @returns {Token|null}
+ */
+export function resolveActionToken(ctx, actor) {
   const direct = ctx?.tokenDoc?.object ?? null;
   if (direct) return direct;
   const controlled = canvas?.tokens?.controlled || [];
@@ -156,6 +165,40 @@ function _getCombatantForActor(actor, tokenDoc = null, combat = _activeCombat())
 
 const SYSTEM_FREE_ACTION_ID = 'system.freeAction';
 const ITEM_STANDARD_GROUP_KEY = 'SPACEHOLDER.ActionsSystem.ItemMenu.StandardGroup';
+const FAVORITE_ACTION_IDS_FLAG = 'favoriteActionIds';
+
+/**
+ * Favorite action ids of the actor, in the order they were added.
+ * @param {Actor} actor
+ * @returns {string[]}
+ */
+export function getFavoriteActionIds(actor) {
+  const raw = actor?.getFlag?.('spaceholder', FAVORITE_ACTION_IDS_FLAG);
+  if (!Array.isArray(raw)) return [];
+  return raw.map((id) => String(id ?? '').trim()).filter(Boolean);
+}
+
+/**
+ * Add the action to favorites or remove it from them.
+ * @param {Actor} actor
+ * @param {string} actionId
+ * @returns {Promise<boolean>} whether the action is a favorite afterwards
+ */
+export async function toggleFavoriteAction(actor, actionId) {
+  const id = String(actionId ?? '').trim();
+  const current = getFavoriteActionIds(actor);
+  if (!id || !actor) return current.includes(id);
+  const isFavorite = current.includes(id);
+  const next = isFavorite ? current.filter((x) => x !== id) : [...current, id];
+  try {
+    await actor.setFlag('spaceholder', FAVORITE_ACTION_IDS_FLAG, next);
+    return !isFavorite;
+  } catch (e) {
+    console.warn('SpaceHolder | failed to persist favorite actions', e);
+    ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.UI.FavoritePersistFailed'));
+    return isFavorite;
+  }
+}
 
 function _itemActionPrefix(item) {
   return `item.${item?.uuid ?? ''}.`;
@@ -777,7 +820,7 @@ function _collectCustomActions(actor, ctx) {
             return item.roll?.();
           }
           if (a.mode === "aimShot") {
-            const token = _resolveActionToken(ctx, actor);
+            const token = resolveActionToken(ctx, actor);
             if (!token) {
               ui.notifications?.warn?.(_t("SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming"));
               return false;
@@ -1330,7 +1373,7 @@ async function _showWeaponInteractMenu(actor, weaponItem, interactActions, ctx) 
           return `
             <button type="button" class="spaceholder-weapon-interact-menu__action" data-action-id="${_escapeHTML(action.id)}" role="menuitem" ${typeof action.enabled === 'function' && !action.enabled(ctx) ? 'disabled' : ''}>
               <span class="spaceholder-weapon-interact-menu__label">${_escapeHTML(action.menuLabel || action.label)}</span>
-              <span class="spaceholder-weapon-interact-menu__ap">${Math.max(0, Number(action.apCost) || 0)} ${_escapeHTML(apShort)}</span>
+              ${action.uiOnly ? '' : `<span class="spaceholder-weapon-interact-menu__ap">${Math.max(0, Number(action.previewApCost ?? action.apCost) || 0)} ${_escapeHTML(apShort)}</span>`}
             </button>
           `;
         }).join('')}
@@ -1518,14 +1561,83 @@ function _collectAmmoChargeIntoActions(actor, item, ctx) {
   }];
 }
 
+/**
+ * Weapon fire mode switch rows (line × mode) for the item interact menu.
+ * @param {Actor} actor
+ * @param {Item} item
+ * @returns {ActionDescriptor[]}
+ */
+function _buildWeaponModeActions(actor, item) {
+  const weapon = getWeaponData(item);
+  const attacks = listWeaponAttacks(weapon);
+  if (attacks.length < 2) return [];
+  const active = resolveActiveWeaponAttack(weapon);
+  const multiLine = (weapon.lines ?? []).length > 1;
+  const group = _t('SPACEHOLDER.WeaponV3.Interact.FireModeGroup');
+  return attacks.map(({ lineId, modeId, line, mode }) => {
+    const lineName = line.name || _t('SPACEHOLDER.WeaponV3.Line.Default');
+    const modeName = mode.name || _t('SPACEHOLDER.WeaponV3.Mode.Default');
+    const modeLabel = multiLine ? `${lineName} / ${modeName}` : modeName;
+    const isActive = lineId === active.lineId && modeId === active.modeId;
+    return {
+      id: `item.${item.uuid}.fireMode.${lineId}.${modeId}`,
+      source: 'item',
+      sourceItemName: item.name,
+      label: `${item.name}: ${modeLabel}`,
+      menuGroup: group,
+      menuLabel: modeLabel,
+      icon: 'fa-solid fa-sliders',
+      apCost: 0,
+      previewApCost: isActive ? 0 : previewModeSwitchAp(item, lineId, modeId),
+      showInQuickbar: false,
+      interactMenuOnly: true,
+      skipPostCombatLog: true,
+      visible: () => true,
+      enabled: (ctx) => !isActive && !!ctx?.editable,
+      run: async () => switchWeaponMode({ actor, weaponItem: item, lineId, modeId }),
+    };
+  });
+}
+
+/**
+ * «Quick access» toggle: attack-capable items not in hands still get a HUD card.
+ * @param {Item} item
+ * @returns {ActionDescriptor[]}
+ */
+function _buildQuickAccessAction(item) {
+  if (!canAttackWithItem(item)) return [];
+  const on = !!item.system?.quickAccess;
+  return [{
+    id: `item.${item.uuid}.quickAccess`,
+    source: 'item',
+    sourceItemName: item.name,
+    label: _t(on ? 'SPACEHOLDER.ActionsSystem.QuickAccess.Remove' : 'SPACEHOLDER.ActionsSystem.QuickAccess.Add', { item: item.name }),
+    menuGroup: _t(ITEM_STANDARD_GROUP_KEY),
+    menuLabel: _t(on ? 'SPACEHOLDER.ActionsSystem.QuickAccess.RemoveShort' : 'SPACEHOLDER.ActionsSystem.QuickAccess.AddShort'),
+    icon: 'fa-solid fa-bolt',
+    apCost: 0,
+    showInQuickbar: false,
+    interactMenuOnly: true,
+    uiOnly: true,
+    visible: () => true,
+    enabled: (ctx) => !!ctx?.editable,
+    run: async () => {
+      await item.update({ 'system.quickAccess': !on });
+      return true;
+    },
+  }];
+}
+
 function _collectItemInteractActions(actor, item, ctx) {
   const interactActions = [];
   interactActions.push(..._collectWearableToggleActions(actor, ctx).filter((a) => _actionBelongsToItem(a, item)));
+  interactActions.push(..._buildQuickAccessAction(item));
   interactActions.push(..._collectCustomActions(actor, ctx).filter((a) => _actionBelongsToItem(a, item)));
   interactActions.push(..._collectAmmoChargeIntoActions(actor, item, ctx));
   interactActions.push(..._collectMagazineUnloadActions(actor, item, ctx));
 
   if (item?.system?.itemTags?.isWeapon) {
+    interactActions.push(..._buildWeaponModeActions(actor, item));
     const weapon = getWeaponData(item);
     let blockCount = 0;
     for (const line of weapon.lines ?? []) {
@@ -2135,7 +2247,8 @@ function _buildWeaponBlockActions(actor, item, line, block, opts = {}) {
 }
 
 /**
- * Weapon v3: attacks (line × mode) + interact menu for atomic ammo actions.
+ * Weapon v3: interact menu entry for atomic ammo actions. Attacks are not
+ * actions — they are an item capability (`item.canAttack` / `item.attack()`).
  *
  * @param {Actor} actor
  * @param {ActionContext} ctx
@@ -2151,47 +2264,6 @@ function _collectWeaponV3Actions(actor, ctx) {
     const weapon = getWeaponData(item);
     if (!Array.isArray(weapon.lines) || !weapon.lines.length) continue;
 
-    for (const attack of listWeaponAttacks(weapon)) {
-      const lineName = attack.line.name || _t('SPACEHOLDER.WeaponV3.Line.Default');
-      const modeName = attack.mode.name || _t('SPACEHOLDER.WeaponV3.Mode.Default');
-      out.push({
-        id: `item.${item.uuid}.weaponAttack.${attack.lineId}.${attack.modeId}`,
-        source: 'item',
-        sourceItemName: item.name,
-        label: `${item.name}: ${lineName} / ${modeName}`,
-        icon: 'fa-solid fa-crosshairs',
-        apCost: 0,
-        description: '',
-        showInCombat: true,
-        showInQuickbar: true,
-        requiresHolding: false,
-        skipPostCombatLog: true,
-        visible: () => true,
-        enabled: () => true,
-        run: async (runCtx) => {
-          const token = _resolveActionToken(runCtx, actor);
-          if (!token) {
-            ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming'));
-            return false;
-          }
-          return runWeaponAttack({
-            actor,
-            weaponItem: item,
-            token,
-            lineId: attack.lineId,
-            modeId: attack.modeId,
-          });
-        },
-      });
-    }
-
-    const interactActions = [];
-    for (const line of weapon.lines) {
-      for (const block of line.ammoBlocks ?? []) {
-        interactActions.push(..._buildWeaponBlockActions(actor, item, line, block));
-      }
-    }
-
     out.push({
       id: `item.${item.uuid}.weaponInteract`,
       source: 'item',
@@ -2201,7 +2273,8 @@ function _collectWeaponV3Actions(actor, ctx) {
       apCost: 0,
       description: '',
       showInCombat: true,
-      showInQuickbar: true,
+      // Same menu as RMB on the item card — keep it out of quick panels.
+      showInQuickbar: false,
       skipPostCombatLog: true,
       visible: () => true,
       enabled: () => true,
@@ -2277,6 +2350,10 @@ export async function executeActorAction(actor, action, partialCtx = {}) {
     if (reason) ui.notifications?.warn?.(reason);
     return false;
   }
+
+  if (action.uiOnly) {
+    return (await action.run(ctx)) !== false;
+  }
  
   const baseCost = Math.floor(_num(action.apCost, 0));
   const cost = getEffectiveActionCost(actor, baseCost);
@@ -2331,3 +2408,66 @@ export async function executeActorAction(actor, action, partialCtx = {}) {
   return true;
 }
  
+
+/**
+ * Run an actor action by id (hotbar action macros). Uses a controlled token of
+ * the actor, else its first active token on the scene.
+ * @param {string} actorUuid
+ * @param {string} actionId
+ * @returns {Promise<boolean>}
+ */
+export async function runActorActionById(actorUuid, actionId) {
+  let actor = null;
+  try {
+    actor = await fromUuid(String(actorUuid ?? ''));
+  } catch (_) {
+    actor = null;
+  }
+  if (!(actor instanceof Actor)) {
+    ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.Errors.ActionNotFound'));
+    return false;
+  }
+
+  const token = resolveActionToken(null, actor);
+  const tokenDoc = token?.document ?? null;
+  const editable = !!actor.isOwner || !!game.user?.isGM;
+  const { actions } = collectActorActions(actor, { tokenDoc, editable });
+  const id = String(actionId ?? '').trim();
+  const action = actions.find((a) => String(a?.id ?? '') === id);
+  if (!action) {
+    ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.Errors.ActionNotFound'));
+    return false;
+  }
+  return executeActorAction(actor, action, { tokenDoc, editable });
+}
+
+/** Drag data `type` for an actor action dragged onto the macro hotbar. */
+export const ACTION_DRAG_TYPE = 'SpaceholderAction';
+
+/**
+ * Create (or reuse) a script macro that runs an actor action and put it into
+ * the hotbar slot. Drop data: `{ type: ACTION_DRAG_TYPE, actorUuid, actionId, label, img }`.
+ * @param {object} data
+ * @param {number} slot
+ * @returns {Promise<boolean>}
+ */
+export async function createActorActionMacro(data, slot) {
+  const actorUuid = String(data?.actorUuid ?? '').trim();
+  const actionId = String(data?.actionId ?? '').trim();
+  if (!actorUuid || !actionId) return false;
+
+  const command = `game.spaceholder.runActorAction(${JSON.stringify(actorUuid)}, ${JSON.stringify(actionId)});`;
+  let macro = game.macros?.find?.((m) => m.command === command && m.isOwner) ?? null;
+  if (!macro) {
+    macro = await Macro.create({
+      name: String(data?.label ?? '').trim() || actionId,
+      type: 'script',
+      img: String(data?.img ?? '').trim() || Macro.DEFAULT_ICON,
+      command,
+      flags: { spaceholder: { actionMacro: { actorUuid, actionId } } },
+    });
+  }
+  if (!macro) return false;
+  await game.user.assignHotbarMacro(macro, slot);
+  return true;
+}

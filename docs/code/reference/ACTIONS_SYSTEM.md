@@ -43,7 +43,10 @@ tags:
 - `id`: стабильный идентификатор действия (используется UI).
 - `label`: отображаемое имя (i18n или user-defined).
 - `apCost`: стоимость в ОД (для большинства действий списывается сразу; для движения — при confirm).
-- `showInCombat`, `showInQuickbar`: фильтры видимости.
+- `showInCombat`, `showInQuickbar`: фильтры видимости. `showInQuickbar === false` — действие не показывается в быстром HUD токена (лист персонажа его не читает).
+- `interactMenuOnly`: только в меню ПКМ предмета (`openItemInteractMenu`), не в списках действий.
+- `uiOnly`: UI-переключатель, а не игровое действие — `executeActorAction` вызывает `run` без ОД, старта хода и журнала (пример: «быстрый доступ»).
+- `previewApCost`: стоимость для показа в меню, когда `run` сам списывает ОД (у дескриптора `apCost` = 0; пример: смена режима стрельбы).
 - `visible(ctx)`, `enabled(ctx)`, `disabledReason(ctx)`: условия доступности.
 - `run(ctx)`: выполнение.
 
@@ -56,6 +59,10 @@ tags:
 - **Base actor actions**: `Движение` для `character` при `speed > 0`.
 - **Предмет (тип `item`)**: стандартные `Надеть/Снять` только если `item.system.itemTags.isArmor === true`, в зависимости от `item.system.equipped`.
 - **Custom actions**: `actor.system.actions[]` и `item.system.actions[]` (для предметов — только при `item.system.itemTags.isActions === true`).
+- **Оружие v3**: только «Взаимодействовать» (`weaponInteract`, `showInQuickbar: false` — дубль ПКМ). Атака **не является действием**: это возможность предмета `item.canAttack` / `item.attack({ token })` (`module/helpers/weapon/attack-chain.mjs`: `canAttackWithItem`, `attackWithItem`, `previewItemAttack`). Атака идёт активными линией/режимом из `system.weapon.state`.
+- **Меню ПКМ предмета** дополнительно содержит группу «Режим стрельбы» (`switchWeaponMode`: явная смена линии/режима с ценами exit/enter, без прицеливания) и переключатель `system.quickAccess` (оружие не в руках получает карточку в быстром HUD).
+
+Избранное: `flags.spaceholder.favoriteActionIds` — `getFavoriteActionIds(actor)` / `toggleFavoriteAction(actor, actionId)` (лист и HUD).
 
 ## Movement tracking (боевое движение)
 
@@ -80,5 +87,6 @@ Lifecycle:
 
 - `collectActorActions(actor, ctx?)`
 - `executeActorAction(actor, action, ctx?)`
+- `runActorAction(actorUuid, actionId)` — выполнить действие по id (макросы хотбара; токен — выбранный токен актёра или первый активный). Макрос создаётся перетаскиванием чипа действия из быстрого HUD на хотбар (`ACTION_DRAG_TYPE`, `createActorActionMacro`).
 - `combatSessionManager` (turn/side/action tables/undo; events applied on `Combat` flags)
 

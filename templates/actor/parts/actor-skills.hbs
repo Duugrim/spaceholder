@@ -1,0 +1,95 @@
+<div class="sh-skills">
+  <div class="sh-skills-layout">
+    <section class="sh-skills-panel sh-skills-panel--physical" data-category="physical">
+      <header class="sh-skills-panel__head" data-category="physical">
+        <div class="sh-skills-panel__title">
+          <i class="fas fa-hand-fist" aria-hidden="true"></i>
+          <span class="sh-skills-panel__title-label">{{localize 'SPACEHOLDER.Skills.Subtabs.Physical'}}</span>
+          {{#if skillsUi.editable}}
+          <button type="button" class="sh-skills-panel__add" data-action="sh-skill-add" data-category="physical" data-tooltip="{{localize 'SPACEHOLDER.Skills.AddSkill'}}" aria-label="{{localize 'SPACEHOLDER.Skills.AddSkill'}}">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+          </button>
+          {{/if}}
+        </div>
+        <span class="sh-skills-panel__metric">{{localize 'SPACEHOLDER.Skills.Level'}}</span>
+        <span class="sh-skills-panel__metric">{{localize 'SPACEHOLDER.Skills.Effect'}}</span>
+      </header>
+      <div class="sh-skills-panel__body">
+        {{#each skillsUi.physicalTrees}}
+        <ul class="sh-skill-tree">
+          {{> "systems/spaceholder/templates/actor/parts/actor-skills-node.hbs"}}
+        </ul>
+        {{/each}}
+        {{#if skillsUi.physicalExtras.length}}
+        <ul class="sh-skill-tree sh-skill-tree--extras">
+          {{#each skillsUi.physicalExtras}}
+            {{> "systems/spaceholder/templates/actor/parts/actor-skills-node.hbs"}}
+          {{/each}}
+        </ul>
+        {{/if}}
+      </div>
+    </section>
+
+    <div class="sh-skills-secondary">
+      <section class="sh-skills-panel sh-skills-panel--mixed" data-category="mixed">
+        <header class="sh-skills-panel__head" data-category="mixed">
+          <div class="sh-skills-panel__title">
+            <i class="fas fa-hammer" aria-hidden="true"></i>
+            <span class="sh-skills-panel__title-label">{{localize 'SPACEHOLDER.Skills.Subtabs.Mixed'}}</span>
+            {{#if skillsUi.editable}}
+            <button type="button" class="sh-skills-panel__add" data-action="sh-skill-add" data-category="mixed" data-tooltip="{{localize 'SPACEHOLDER.Skills.AddSkill'}}" aria-label="{{localize 'SPACEHOLDER.Skills.AddSkill'}}">
+              <i class="fas fa-plus" aria-hidden="true"></i>
+            </button>
+            {{/if}}
+          </div>
+          <span class="sh-skills-panel__metric">{{localize 'SPACEHOLDER.Skills.Level'}}</span>
+          <span class="sh-skills-panel__metric">{{localize 'SPACEHOLDER.Skills.Effect'}}</span>
+        </header>
+        <div class="sh-skills-panel__body">
+          {{#if skillsUi.mixedExtras.length}}
+          <ul class="sh-skill-tree sh-skill-tree--extras">
+            {{#each skillsUi.mixedExtras}}
+              {{> "systems/spaceholder/templates/actor/parts/actor-skills-node.hbs"}}
+            {{/each}}
+          </ul>
+          {{else}}
+          <div class="sh-skills-empty">
+            <i class="fas fa-hammer" aria-hidden="true"></i>
+            <span>{{localize 'SPACEHOLDER.Skills.EmptyCategory'}}</span>
+          </div>
+          {{/if}}
+        </div>
+      </section>
+
+      <section class="sh-skills-panel sh-skills-panel--knowledge" data-category="knowledge">
+        <header class="sh-skills-panel__head" data-category="knowledge">
+          <div class="sh-skills-panel__title">
+            <i class="fas fa-book" aria-hidden="true"></i>
+            <span class="sh-skills-panel__title-label">{{localize 'SPACEHOLDER.Skills.Subtabs.Knowledge'}}</span>
+            {{#if skillsUi.editable}}
+            <button type="button" class="sh-skills-panel__add" data-action="sh-skill-add" data-category="knowledge" data-tooltip="{{localize 'SPACEHOLDER.Skills.AddSkill'}}" aria-label="{{localize 'SPACEHOLDER.Skills.AddSkill'}}">
+              <i class="fas fa-plus" aria-hidden="true"></i>
+            </button>
+            {{/if}}
+          </div>
+          <span class="sh-skills-panel__metric">{{localize 'SPACEHOLDER.Skills.Level'}}</span>
+          <span class="sh-skills-panel__metric">{{localize 'SPACEHOLDER.Skills.Effect'}}</span>
+        </header>
+        <div class="sh-skills-panel__body">
+          {{#if skillsUi.knowledgeExtras.length}}
+          <ul class="sh-skill-tree sh-skill-tree--extras">
+            {{#each skillsUi.knowledgeExtras}}
+              {{> "systems/spaceholder/templates/actor/parts/actor-skills-node.hbs"}}
+            {{/each}}
+          </ul>
+          {{else}}
+          <div class="sh-skills-empty">
+            <i class="fas fa-book" aria-hidden="true"></i>
+            <span>{{localize 'SPACEHOLDER.Skills.EmptyCategory'}}</span>
+          </div>
+          {{/if}}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

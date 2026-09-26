@@ -3,24 +3,29 @@
  * Центрирование по bounding box, Drag&Drop позиции в режиме редактирования.
  * Под сеткой — панель выбранной части (органы, импланты) без всплывающих окон.
  */
-import { anatomyManager, coerceAnatomyGridCoord, sanitizePosition3d } from '../anatomy-manager.mjs';
+import { anatomyManager, coerceAnatomyGridCoord } from '../anatomy-manager.mjs';
 import {
-  sanitizeExposure,
   sanitizeRelation,
   dedupeRelations,
   deriveAdjacentLinksFromRelations,
   enforceSingleParentRelation,
   legacyLinksToAdjacentRelations,
-  getExposurePlanar4,
-  ANATOMY_EXPOSURE_DIRECTIONS
+  ANATOMY_EXPOSURE_DIRECTIONS,
 } from './anatomy-relations.mjs';
-import { createExposureRingSvg } from './anatomy-exposure-ring.mjs';
-import {
-  sanitizeBodyLayers,
-  getDefaultBodyLayersForType
-} from './damage/body-layers-defaults.mjs';
 import { materialsManager } from './damage/materials-manager.mjs';
 import { resolveCoverageEntryToActorSlots } from './body-part-coverage.mjs';
+import {
+  ANATOMY_GROUP_TYPES,
+  ANATOMY_FACES,
+  DEFAULT_PART_MATERIAL,
+  sanitizeFaces,
+  sanitizeInners,
+  innersFromPart,
+  sanitizePartMaterial,
+  sanitizeHeightFrac,
+  sanitizeAnatomyGroups,
+  stripDeprecatedPartFields,
+} from './anatomy-groups.mjs';
 
 const DEFAULT_CELL_SIZE = 42;
 const DEFAULT_CIRCLE_RADIUS = 15;
@@ -28,13 +33,11 @@ const DEFAULT_CIRCLE_RADIUS = 15;
 const FIXED_DISPLAY_WIDTH = 378;
 const FIXED_DISPLAY_HEIGHT = 420;
 const PADDING = 1;
-/** Множитель: SVG экспозиции крупнее тела, дуги снаружи основного круга */
-const EXPOSURE_RING_OUTER_SCALE = 1.32;
 
 /**
  * Категория ткани части тела (используется описателями травм:
  * `biological` → стандартная модель кровотечения; `bionic` → damage/repair).
- * Это НЕ материал слоёв `bodyLayers` — те живут отдельно и задаются ниже.
+ * Категория берётся из каталога материалов части (`part.material`).
  */
 const MATERIAL_CATEGORY_OPTIONS = [
   { id: "biological", label: "Биологическая", icon: "fa-hand" },
@@ -80,7 +83,12 @@ const MATERIAL_COLORS = {
 function materialColorFor(raw) {
   const v = String(raw ?? "").trim();
   if (!v) return null;
-  return MATERIAL_COLORS[v] ?? MATERIAL_COLORS[normalizeMaterialCategory(v)] ?? null;
+  try {
+    const md = materialsManager.getMaterial(v);
+    const cat = String(md?.category ?? "").toLowerCase();
+    if (cat === "bionic" || cat === "mechanical" || cat === "synthetic") return MATERIAL_COLORS.bionic;
+  } catch (_) { /* ignore */ }
+  return MATERIAL_COLORS[v] ?? MATERIAL_COLORS[normalizeMaterialCategory(v)] ?? MATERIAL_COLORS.biological;
 }
 
 /**
@@ -139,31 +147,21 @@ const RELATION_KIND_LABELS = {
   parent: "Родитель"
 };
 
-const EXPOSURE_DIRECTION_LABELS = {
-  front: "Спереди",
-  back: "Сзади",
-  left: "Слева",
-  right: "Справа"
-};
-
 const PANEL_PROTECTION_TABS = Object.freeze([
   { id: "items", label: "Предметы" },
-  { id: "layers", label: "Слои" }
+  { id: "layers", label: "Броня" }
 ]);
 
 const PANEL_META_TABS = Object.freeze([
-  { id: "organs", label: "Органы" },
+  { id: "inners", label: "Органы" },
   { id: "relations", label: "Связи" },
-  { id: "layers", label: "Слои" },
   { id: "info", label: "Инфо" }
 ]);
 
 const EDIT_DIALOG_TABS = Object.freeze([
   { id: "basic", label: "Основное" },
-  { id: "exposure", label: "Экспозиция" },
   { id: "relations", label: "Связи" },
-  { id: "layers", label: "Слои тела" },
-  { id: "organs", label: "Органы" },
+  { id: "inners", label: "Органы" },
   { id: "danger", label: "Удалить" }
 ]);
 
@@ -179,7 +177,7 @@ export class AnatomyEditor {
     this.fixedDisplayWidth = options.fixedDisplayWidth ?? null;
     this.fixedDisplayHeight = options.fixedDisplayHeight ?? null;
     /** Активные мини-вкладки панели выбранной части — переживают re-render. */
-    this.panelTabs = options.panelTabs ?? { protection: "items", meta: "organs" };
+    this.panelTabs = options.panelTabs ?? { protection: "items", meta: "inners" };
     this._boundRender = this.render.bind(this);
   }
 
@@ -417,17 +415,6 @@ export class AnatomyEditor {
       node.title = this.linkMode ? `Связь: перетащите на другую часть (${part.name || partId})` : (part.name || partId);
       node.draggable = this.editMode && this.editable;
       if (this.linkMode) node.classList.add("anatomy-editor-part--link-mode");
-      node.classList.add("anatomy-editor-part-circle--exposure-viz");
-      const ringVariant =
-        this.selectedPartId === partId ? "selected" : selectedLinks.includes(partId) ? "neighbor" : "default";
-      const planar = getExposurePlanar4(bodyParts[partId]?.exposure);
-      const innerD = circleRadius * 2;
-      const outerD = Math.round(innerD * EXPOSURE_RING_OUTER_SCALE);
-      const ringSvg = createExposureRingSvg(outerD, planar, {
-        innerDiameterPx: innerD,
-        variant: ringVariant
-      });
-      if (ringSvg) node.appendChild(ringSvg);
       inner.appendChild(node);
 
       node.addEventListener("click", (e) => {
@@ -586,14 +573,11 @@ export class AnatomyEditor {
   _buildMetaColumn(partId, bodyPart) {
     return this._buildMiniTabsColumn("meta", PANEL_META_TABS, (tabId, content) => {
       switch (tabId) {
-        case "organs":
+        case "inners":
           this._renderOrgansReadonly(content, bodyPart);
           break;
         case "relations":
           this._renderRelationsReadonly(content, bodyPart);
-          break;
-        case "layers":
-          this._renderBodyLayersReadonly(content, bodyPart);
           break;
         case "info":
           this._renderInfoReadonly(content, partId, bodyPart);
@@ -628,13 +612,15 @@ export class AnatomyEditor {
 
     const propsCol = document.createElement("div");
     propsCol.className = "anatomy-editor-panel-center-props";
-    const materialLabel = materialCategoryLabel(bodyPart.material);
+    const materialLabel = materialDisplayName(bodyPart.material) || sanitizePartMaterial(bodyPart.material);
+    const facesLabel = sanitizeFaces(bodyPart.faces).join(", ");
     const propsBlock = document.createElement("div");
     propsBlock.className = "anatomy-editor-panel-props";
     propsBlock.innerHTML = `
-      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Вес</span><span class="anatomy-editor-panel-value">${bodyPart.weight ?? 0}</span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Max HP</span><span class="anatomy-editor-panel-value">${bodyPart.maxHp ?? 0}</span></div>
-      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Категория</span><span class="anatomy-editor-panel-value">${materialLabel}</span></div>`;
+      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Материал</span><span class="anatomy-editor-panel-value">${materialLabel}</span></div>
+      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Стороны</span><span class="anatomy-editor-panel-value">${facesLabel}</span></div>
+      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Высота</span><span class="anatomy-editor-panel-value">${sanitizeHeightFrac(bodyPart.heightFrac).toFixed(2)}</span></div>`;
     propsCol.appendChild(propsBlock);
 
     const itemCollection = this.actor?.items;
@@ -662,40 +648,13 @@ export class AnatomyEditor {
     }
     grid.appendChild(propsCol);
 
-    const expCol = document.createElement("div");
-    expCol.className = "anatomy-editor-panel-center-exposure";
-    const expHead = document.createElement("div");
-    expHead.className = "anatomy-editor-panel-section-title";
-    expHead.textContent = "Экспозиция";
-    expCol.appendChild(expHead);
-    const exposure = sanitizeExposure(bodyPart.exposure);
-    const expKeys = ANATOMY_EXPOSURE_DIRECTIONS.filter((d) => Object.prototype.hasOwnProperty.call(exposure, d));
-    if (!expKeys.length) {
-      const empty = document.createElement("p");
-      empty.className = "anatomy-editor-panel-empty-hint";
-      empty.textContent = "—";
-      expCol.appendChild(empty);
-    } else {
-      const expList = document.createElement("div");
-      expList.className = "anatomy-editor-panel-exposure-list";
-      for (const dir of expKeys) {
-        const row = document.createElement("div");
-        row.className = "anatomy-editor-panel-exposure-row";
-        const label = EXPOSURE_DIRECTION_LABELS[dir] || dir;
-        row.innerHTML = `<span class="anatomy-editor-panel-label">${label}</span><span class="anatomy-editor-panel-value">${exposure[dir]}</span>`;
-        expList.appendChild(row);
-      }
-      expCol.appendChild(expList);
-    }
-    grid.appendChild(expCol);
-
     col.appendChild(grid);
     return col;
   }
 
   _renderOrgansReadonly(container, bodyPart) {
-    const organs = Array.isArray(bodyPart.organs) ? bodyPart.organs : [];
-    if (!organs.length) {
+    const inners = innersFromPart(bodyPart);
+    if (!inners.length) {
       const empty = document.createElement("p");
       empty.className = "anatomy-editor-panel-empty-hint";
       empty.textContent = "—";
@@ -704,9 +663,10 @@ export class AnatomyEditor {
     }
     const list = document.createElement("ul");
     list.className = "anatomy-editor-panel-list";
-    for (const o of organs) {
+    for (const o of inners) {
       const li = document.createElement("li");
-      li.textContent = o.name || o.slotKey || o.id || "—";
+      const pct = Number(o.occupancyPct) ? ` ${o.occupancyPct}%` : "";
+      li.textContent = `${o.name || o.id}${pct}`;
       list.appendChild(li);
     }
     container.appendChild(list);
@@ -738,54 +698,16 @@ export class AnatomyEditor {
     container.appendChild(list);
   }
 
-  _renderBodyLayersReadonly(container, bodyPart) {
-    const layers = this._getBodyLayersForPart(bodyPart);
-    if (!layers.length) {
-      const empty = document.createElement("p");
-      empty.className = "anatomy-editor-panel-empty-hint";
-      empty.textContent = "Слои не заданы.";
-      container.appendChild(empty);
-      return;
-    }
-    const list = document.createElement("div");
-    list.className = "anatomy-editor-panel-body-layers-list";
-    layers.forEach((layer, idx) => {
-      const row = document.createElement("div");
-      row.className = "anatomy-editor-panel-body-layer-row";
-      const meta = document.createElement("div");
-      meta.className = "anatomy-editor-panel-body-layer-meta";
-      const name = document.createElement("span");
-      name.className = "anatomy-editor-panel-body-layer-name";
-      name.textContent = `${idx + 1}. ${materialDisplayName(layer.material)}`;
-      const md = materialsManager.getMaterial(layer.material);
-      const cat = categoryDisplayName(md?.category);
-      if (cat) name.title = cat;
-      meta.appendChild(name);
-      const thick = document.createElement("span");
-      thick.className = "anatomy-editor-panel-body-layer-thickness";
-      thick.textContent = `× ${Number(layer.thickness) || 0}`;
-      meta.appendChild(thick);
-      row.appendChild(meta);
-      list.appendChild(row);
-    });
-    container.appendChild(list);
-  }
-
   _renderInfoReadonly(container, partId, bodyPart) {
     const props = document.createElement("div");
     props.className = "anatomy-editor-panel-props";
     const slotRefCode = String(partId).replace(/</g, "&lt;");
     const typeIdCode = String(bodyPart.id ?? "—").replace(/</g, "&lt;");
     const uuidCode = String(bodyPart.uuid ?? "—").replace(/</g, "&lt;");
-    const p3 = sanitizePosition3d(bodyPart.position3d);
-    const pos3dLabel = p3
-      ? `(${p3.x}, ${p3.y}, ${p3.z})`
-      : "— (авто из сетки)";
     props.innerHTML = `
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Слот</span><span class="anatomy-editor-panel-value"><code>${slotRefCode}</code></span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Тип</span><span class="anatomy-editor-panel-value"><code>${typeIdCode}</code></span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Сетка</span><span class="anatomy-editor-panel-value">(${bodyPart.x ?? 0}, ${bodyPart.y ?? 0})</span></div>
-      <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">3D</span><span class="anatomy-editor-panel-value">${pos3dLabel}</span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">UUID</span><span class="anatomy-editor-panel-value"><code>${uuidCode}</code></span></div>`;
     container.appendChild(props);
   }
@@ -960,16 +882,10 @@ export class AnatomyEditor {
         case "basic":
           body.appendChild(this._buildEditBasicSection(state, currentPart));
           break;
-        case "exposure":
-          body.appendChild(this._buildEditExposureSection(state, currentPart));
-          break;
         case "relations":
           body.appendChild(this._buildEditRelationsSection(state, currentPart, refresh));
           break;
-        case "layers":
-          body.appendChild(this._buildEditLayersSection(state, currentPart, refresh));
-          break;
-        case "organs":
+        case "inners":
           body.appendChild(this._buildEditOrgansSection(state, currentPart, refresh));
           break;
         case "danger":
@@ -1000,11 +916,11 @@ export class AnatomyEditor {
       buttons: [
         {
           action: "save",
-          label: "Сохранить основное",
+          label: "Сохранить",
           icon: "fa-solid fa-check",
           default: true,
           callback: async () => {
-            await this._saveBasicAndExposureFromDialog(state, dialogRoot);
+            await this._saveBasicFromDialog(state, dialogRoot);
           }
         },
         { action: "close", label: "Закрыть", icon: "fa-solid fa-times" }
@@ -1013,14 +929,12 @@ export class AnatomyEditor {
   }
 
   /**
-   * Собрать и сохранить значения вкладок «Основное» и «Экспозиция».
-   * Поля читаются из DOM; отсутствующие (например, если вкладка не была
-   * открыта) просто пропускаются — значения остаются как были.
+   * Собрать и сохранить значения вкладки «Основное».
    *
    * @param {{ currentPartId: string }} state
    * @param {HTMLElement|null} dialogRoot
    */
-  async _saveBasicAndExposureFromDialog(state, dialogRoot) {
+  async _saveBasicFromDialog(state, dialogRoot) {
     if (!dialogRoot) return;
     const bodyParts = this.actor?.system?.health?.bodyParts ?? {};
     const partId = state.currentPartId;
@@ -1028,59 +942,38 @@ export class AnatomyEditor {
     if (!part) return;
 
     const basicForm = dialogRoot.querySelector("[data-edit-part-basic-form]");
-    const expForm = dialogRoot.querySelector("[data-edit-part-exposure-form]");
-
     const readField = (scope, selector) => scope?.querySelector(selector);
 
     const newIdRaw = readField(basicForm, "#ep-id")?.value;
     const newId = newIdRaw !== undefined ? (String(newIdRaw).trim().replace(/\s+/g, "") || partId) : partId;
     const nameRaw = readField(basicForm, "#ep-name")?.value;
     const name = nameRaw !== undefined ? (String(nameRaw).trim() || newId) : part.name;
-    const weightRaw = readField(basicForm, "#ep-weight")?.value;
-    const weight = weightRaw !== undefined ? Math.max(0, parseInt(weightRaw, 10) || 0) : (part.weight ?? 0);
     const maxHpRaw = readField(basicForm, "#ep-maxHp")?.value;
     const maxHp = maxHpRaw !== undefined ? Math.max(0, parseInt(maxHpRaw, 10) || 0) : (part.maxHp ?? 0);
     const materialRaw = readField(basicForm, "#ep-material")?.value;
-    const material = materialRaw !== undefined ? (normalizeMaterialCategory(materialRaw) || null) : (part.material ?? null);
+    const material = materialRaw !== undefined
+      ? sanitizePartMaterial(materialRaw)
+      : sanitizePartMaterial(part.material);
     const xRaw = readField(basicForm, "#ep-x")?.value;
     const x = xRaw !== undefined ? (parseInt(xRaw, 10) || 0) : (part.x ?? 0);
     const yRaw = readField(basicForm, "#ep-y")?.value;
     const y = yRaw !== undefined ? (parseInt(yRaw, 10) || 0) : (part.y ?? 0);
+    const hfRaw = readField(basicForm, "#ep-heightFrac")?.value;
+    const heightFrac = hfRaw !== undefined ? sanitizeHeightFrac(hfRaw, 0.5) : sanitizeHeightFrac(part.heightFrac, 0.5);
 
-    const x3El = readField(basicForm, "#ep-x3");
-    const y3El = readField(basicForm, "#ep-y3");
-    const z3El = readField(basicForm, "#ep-z3");
-    let position3dUpdate = undefined;
-    if (x3El && y3El && z3El) {
-      const sx = String(x3El.value ?? "").trim();
-      const sy = String(y3El.value ?? "").trim();
-      const sz = String(z3El.value ?? "").trim();
-      if (sx === "" && sy === "" && sz === "") {
-        position3dUpdate = null;
-      } else {
-        const nx = Number(sx);
-        const ny = Number(sy);
-        const nz = Number(sz);
-        if (Number.isFinite(nx) && Number.isFinite(ny) && Number.isFinite(nz)) {
-          position3dUpdate = { x: nx, y: ny, z: nz };
-        } else {
-          ui.notifications.warn("3D: укажите три числа (X, Y, Z) или очистите все три поля.");
-          return;
-        }
-      }
-    }
+    const faceChecks = ANATOMY_FACES.filter((face) => readField(basicForm, `#ep-face-${face}`)?.checked);
+    const faces = sanitizeFaces(faceChecks.length ? faceChecks : part.faces);
 
-    /** @type {Record<string, number>|undefined} */
-    let newExposure;
-    if (expForm) {
-      newExposure = {};
-      for (const dir of ANATOMY_EXPOSURE_DIRECTIONS) {
-        const raw = expForm.querySelector(`#ep-exp-${dir}`)?.value;
-        if (raw === undefined || String(raw).trim() === "") continue;
-        const n = Number(raw);
-        if (Number.isFinite(n) && n >= 0) newExposure[dir] = n;
-      }
-    }
+    const applyFields = (partData) => {
+      partData.name = name;
+      partData.maxHp = maxHp;
+      partData.material = material;
+      partData.x = x;
+      partData.y = y;
+      partData.heightFrac = heightFrac;
+      partData.faces = faces;
+      stripDeprecatedPartFields(partData);
+    };
 
     const updated = foundry.utils.deepClone(bodyParts);
     if (newId !== partId) {
@@ -1090,30 +983,14 @@ export class AnatomyEditor {
       }
       const partData = updated[partId];
       delete updated[partId];
-      partData.name = name;
-      partData.weight = weight;
-      partData.maxHp = maxHp;
-      partData.material = material;
-      partData.x = x;
-      partData.y = y;
-      if (position3dUpdate === null) delete partData.position3d;
-      else if (position3dUpdate) partData.position3d = position3dUpdate;
-      if (newExposure !== undefined) partData.exposure = sanitizeExposure(newExposure);
+      applyFields(partData);
       partData.slotRef = newId;
       updated[newId] = partData;
       this._remapRelationTargetsInAll(updated, partId, newId);
       this.selectedPartId = newId;
       state.currentPartId = newId;
     } else {
-      updated[partId].name = name;
-      updated[partId].weight = weight;
-      updated[partId].maxHp = maxHp;
-      updated[partId].material = material;
-      updated[partId].x = x;
-      updated[partId].y = y;
-      if (position3dUpdate === null) delete updated[partId].position3d;
-      else if (position3dUpdate) updated[partId].position3d = position3dUpdate;
-      if (newExposure !== undefined) updated[partId].exposure = sanitizeExposure(newExposure);
+      applyFields(updated[partId]);
     }
     this._normalizeAllBodyPartRelations(updated);
     await this.actor.update({ "system.health.bodyParts": updated });
@@ -1125,52 +1002,34 @@ export class AnatomyEditor {
     const section = document.createElement("section");
     section.className = "anatomy-edit-part-section";
     section.dataset.tabContent = "basic";
-    const materialVal = normalizeMaterialCategory(part.material);
-    const materialOptionsHtml = MATERIAL_CATEGORY_OPTIONS.map(
+    const materialVal = sanitizePartMaterial(part.material);
+    const materialOptionsHtml = collectMaterialOptions(materialVal).map(
       (m) => `<option value="${m.id}" ${m.id === materialVal ? "selected" : ""}>${m.label}</option>`
     ).join("");
     const esc = (s) => String(s ?? "").replace(/"/g, "&quot;");
-    const p3 = sanitizePosition3d(part.position3d);
-    const x3v = p3 ? esc(p3.x) : "";
-    const y3v = p3 ? esc(p3.y) : "";
-    const z3v = p3 ? esc(p3.z) : "";
+    const faces = sanitizeFaces(part.faces);
+    const faceChecks = ANATOMY_FACES.map((face) => {
+      const checked = faces.includes(face) ? "checked" : "";
+      const label = face === "front" ? "Спереди" : "Сзади";
+      return `<label class="anatomy-edit-face-check"><input type="checkbox" id="ep-face-${face}" ${checked}/> ${label}</label>`;
+    }).join("");
     section.innerHTML = `
       <form data-edit-part-basic-form class="anatomy-edit-part-form">
         <div class="anatomy-edit-part-form-grid">
           <div class="form-group"><label>ID</label><input type="text" id="ep-id" value="${esc(partId)}" placeholder="например leftArm"/></div>
           <div class="form-group"><label>Название</label><input type="text" id="ep-name" value="${esc(part.name || "")}" placeholder="Название части"/></div>
-          <div class="form-group"><label>Вес</label><input type="number" id="ep-weight" value="${part.weight ?? 0}" min="0"/></div>
           <div class="form-group"><label>Max HP</label><input type="number" id="ep-maxHp" value="${part.maxHp ?? 0}" min="0"/></div>
+          <div class="form-group"><label>Высота (0–1)</label><input type="number" id="ep-heightFrac" value="${sanitizeHeightFrac(part.heightFrac)}" min="0" max="1" step="0.01"/></div>
           <div class="form-group"><label>Сетка X</label><input type="number" id="ep-x" value="${part.x ?? 0}"/></div>
           <div class="form-group"><label>Сетка Y</label><input type="number" id="ep-y" value="${part.y ?? 0}"/></div>
-          <div class="form-group"><label>3D X</label><input type="number" step="any" id="ep-x3" value="${x3v}" placeholder="авто"/></div>
-          <div class="form-group"><label>3D Y</label><input type="number" step="any" id="ep-y3" value="${y3v}" placeholder="авто"/></div>
-          <div class="form-group"><label>3D Z</label><input type="number" step="any" id="ep-z3" value="${z3v}" placeholder="авто"/></div>
         </div>
-        <p class="notes">Сетка X/Y — только 2D-редактор. 3D X/Y/Z — опционально для просмотра 3D; пустые три поля — позиция считается из сетки.</p>
         <div class="form-group">
-          <label>Категория ткани</label>
-          <select id="ep-material"><option value="">—</option>${materialOptionsHtml}</select>
-          <p class="notes">Определяет стиль описания травм (биологическая кровоточит, бионика «ломается»). Слои тела задаются отдельно.</p>
+          <label>Материал</label>
+          <select id="ep-material">${materialOptionsHtml}</select>
         </div>
-      </form>`;
-    return section;
-  }
-
-  _buildEditExposureSection(state, part) {
-    const section = document.createElement("section");
-    section.className = "anatomy-edit-part-section";
-    section.dataset.tabContent = "exposure";
-    const exp = sanitizeExposure(part.exposure);
-    const expRows = ANATOMY_EXPOSURE_DIRECTIONS.map((dir) => {
-      const label = EXPOSURE_DIRECTION_LABELS[dir] || dir;
-      return `<div class="form-group anatomy-editor-exp-row"><label>${label}</label><input type="number" id="ep-exp-${dir}" min="0" step="1" value="${exp[dir] ?? ""}" placeholder="—"/></div>`;
-    }).join("");
-    section.innerHTML = `
-      <form data-edit-part-exposure-form class="anatomy-edit-part-form">
-        <p class="notes">Веса по направлениям. Пустое поле — направление не задано.</p>
-        <div class="anatomy-edit-part-form-grid anatomy-edit-part-form-grid--exposure">
-          ${expRows}
+        <div class="form-group">
+          <label>Стороны (слоты брони)</label>
+          <div class="anatomy-edit-faces">${faceChecks}</div>
         </div>
       </form>`;
     return section;
@@ -1231,122 +1090,26 @@ export class AnatomyEditor {
     return section;
   }
 
-  _buildEditLayersSection(state, part, refresh) {
-    const partId = state.currentPartId;
-    const section = document.createElement("section");
-    section.className = "anatomy-edit-part-section";
-    section.dataset.tabContent = "layers";
-    const layers = this._getBodyLayersForPart(part);
-    const list = document.createElement("div");
-    list.className = "anatomy-editor-panel-body-layers-list";
-    if (!layers.length) {
-      const empty = document.createElement("p");
-      empty.className = "anatomy-editor-panel-empty-hint";
-      empty.textContent = "Слои не заданы.";
-      list.appendChild(empty);
-    } else {
-      const hint = document.createElement("p");
-      hint.className = "anatomy-editor-panel-placeholder-hint";
-      hint.innerHTML = "<em>Снаружи → к центру. Резолвер инвертирует порядок для выхода.</em>";
-      section.appendChild(hint);
-      layers.forEach((layer, idx) =>
-        list.appendChild(this._buildEditableBodyLayerRow(partId, layer, idx, layers.length, refresh))
-      );
-    }
-    section.appendChild(list);
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.className = "anatomy-editor-panel-add-link";
-    addBtn.innerHTML = '<i class="fas fa-plus"></i> Добавить слой';
-    addBtn.addEventListener("click", async () => {
-      await this._openAddBodyLayerDialog(partId);
-      refresh();
-    });
-    section.appendChild(addBtn);
-    return section;
-  }
-
-  _buildEditableBodyLayerRow(partId, layer, index, total, refresh) {
-    const row = document.createElement("div");
-    row.className = "anatomy-editor-panel-body-layer-row";
-    row.dataset.layerIndex = String(index);
-    const meta = document.createElement("div");
-    meta.className = "anatomy-editor-panel-body-layer-meta";
-    const name = document.createElement("span");
-    name.className = "anatomy-editor-panel-body-layer-name";
-    name.textContent = `${index + 1}. ${materialDisplayName(layer.material)}`;
-    const md = materialsManager.getMaterial(layer.material);
-    const cat = categoryDisplayName(md?.category);
-    if (cat) name.title = cat;
-    meta.appendChild(name);
-    const thick = document.createElement("span");
-    thick.className = "anatomy-editor-panel-body-layer-thickness";
-    thick.textContent = `× ${Number(layer.thickness) || 0}`;
-    meta.appendChild(thick);
-    row.appendChild(meta);
-
-    const controls = document.createElement("div");
-    controls.className = "anatomy-editor-panel-body-layer-controls";
-
-    const mkBtn = (title, iconClass, disabled, handler) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "anatomy-editor-panel-link-remove";
-      btn.title = title;
-      if (disabled) btn.disabled = true;
-      btn.innerHTML = `<i class="fas ${iconClass}"></i>`;
-      btn.addEventListener("click", handler);
-      return btn;
-    };
-
-    controls.appendChild(
-      mkBtn("Выше", "fa-arrow-up", index === 0, async () => {
-        await this._moveBodyLayer(partId, index, -1);
-        refresh();
-      })
-    );
-    controls.appendChild(
-      mkBtn("Ниже", "fa-arrow-down", index >= total - 1, async () => {
-        await this._moveBodyLayer(partId, index, +1);
-        refresh();
-      })
-    );
-    controls.appendChild(
-      mkBtn("Редактировать", "fa-pencil-alt", false, async () => {
-        await this._openEditBodyLayerDialog(partId, index);
-        refresh();
-      })
-    );
-    controls.appendChild(
-      mkBtn("Удалить", "fa-minus", false, async () => {
-        await this._removeBodyLayer(partId, index);
-        refresh();
-      })
-    );
-    row.appendChild(controls);
-    return row;
-  }
-
   _buildEditOrgansSection(state, part, refresh) {
     const partId = state.currentPartId;
     const section = document.createElement("section");
     section.className = "anatomy-edit-part-section";
-    section.dataset.tabContent = "organs";
-    const organs = Array.isArray(part.organs) ? part.organs : [];
+    section.dataset.tabContent = "inners";
+    const inners = innersFromPart(part);
     const list = document.createElement("div");
     list.className = "anatomy-editor-panel-organs-list";
-    if (!organs.length) {
+    if (!inners.length) {
       const empty = document.createElement("p");
       empty.className = "anatomy-editor-panel-empty-hint";
       empty.textContent = "Органов нет.";
       list.appendChild(empty);
     } else {
-      organs.forEach((o, i) => {
+      inners.forEach((o, i) => {
         const row = document.createElement("div");
         row.className = "anatomy-editor-panel-organ-row";
         const nameSpan = document.createElement("span");
         nameSpan.className = "anatomy-editor-panel-organ-name";
-        nameSpan.textContent = o.name || o.slotKey || o.id || "—";
+        nameSpan.textContent = `${o.name || o.id} · ${o.occupancyPct || 0}% · ${o.material || ""}`;
         row.appendChild(nameSpan);
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
@@ -1505,17 +1268,26 @@ export class AnatomyEditor {
   async _removeOrgan(partId, index) {
     const bodyParts = foundry.utils.deepClone(this.actor?.system?.health?.bodyParts ?? {});
     const part = bodyParts[partId];
-    if (!part || !Array.isArray(part.organs) || index < 0 || index >= part.organs.length) return;
-    part.organs.splice(index, 1);
+    if (!part) return;
+    const inners = innersFromPart(part);
+    if (index < 0 || index >= inners.length) return;
+    inners.splice(index, 1);
+    part.inners = sanitizeInners(inners);
+    delete part.organs;
     await this.actor.update({ "system.health.bodyParts": bodyParts });
     this.render();
   }
 
   async _addOrgan(partId) {
+    const matOpts = collectMaterialOptions(DEFAULT_PART_MATERIAL).map(
+      (m) => `<option value="${m.id}" ${m.id === DEFAULT_PART_MATERIAL ? "selected" : ""}>${m.label}</option>`
+    ).join("");
     const content = `
       <div class="anatomy-add-organ-dialog">
-        <div class="form-group"><label>Ключ слота (ID)</label><input type="text" id="ao-slot" placeholder="например eye" style="width:100%;"/></div>
+        <div class="form-group"><label>ID</label><input type="text" id="ao-slot" placeholder="например eye" style="width:100%;"/></div>
         <div class="form-group"><label>Название</label><input type="text" id="ao-name" placeholder="Глаз" style="width:100%;"/></div>
+        <div class="form-group"><label>Доля %</label><input type="number" id="ao-pct" value="10" min="0" max="100" style="width:100%;"/></div>
+        <div class="form-group"><label>Материал</label><select id="ao-mat" style="width:100%;">${matOpts}</select></div>
       </div>`;
     await foundry.applications.api.DialogV2.wait({
       window: { title: "Добавить орган / слот", icon: "fa-solid fa-sitemap" },
@@ -1527,171 +1299,21 @@ export class AnatomyEditor {
           label: "Добавить",
           icon: "fa-solid fa-check",
           default: true,
-          callback: async () => {
-            const slotKey = (document.querySelector("#ao-slot")?.value ?? "").trim() || "organ";
-            const name = (document.querySelector("#ao-name")?.value ?? "").trim() || slotKey;
+          callback: async (ev) => {
+            const root = ev?.currentTarget ?? document;
+            const slotKey = (root.querySelector("#ao-slot")?.value ?? "").trim() || "organ";
+            const name = (root.querySelector("#ao-name")?.value ?? "").trim() || slotKey;
+            const occupancyPct = Math.max(0, Number(root.querySelector("#ao-pct")?.value) || 0);
+            const material = sanitizePartMaterial(root.querySelector("#ao-mat")?.value);
             const bodyParts = foundry.utils.deepClone(this.actor?.system?.health?.bodyParts ?? {});
             const part = bodyParts[partId];
             if (!part) return;
-            if (!Array.isArray(part.organs)) part.organs = [];
-            part.organs.push({ slotKey, name });
+            const inners = innersFromPart(part);
+            inners.push({ id: slotKey, name, occupancyPct, material, statuses: [] });
+            part.inners = sanitizeInners(inners);
+            delete part.organs;
             await this.actor.update({ "system.health.bodyParts": bodyParts });
             this.render();
-          }
-        },
-        { action: "cancel", label: "Отмена", icon: "fa-solid fa-times" }
-      ]
-    });
-  }
-
-  /* ------------------------------------------------------------------ *
-   *  bodyLayers — стек тканей части тела                                 *
-   *  Поле `bodyPart.bodyLayers` хранится как массив { material, thickness } *
-   *  в порядке «снаружи → к центру». Резолвер сам инвертирует при выходе. *
-   * ------------------------------------------------------------------ */
-
-  _getBodyLayersForPart(bodyPart) {
-    const sanitized = sanitizeBodyLayers(bodyPart?.bodyLayers);
-    if (Array.isArray(sanitized)) return sanitized;
-    return getDefaultBodyLayersForType(String(bodyPart?.id ?? ""));
-  }
-
-  /**
-   * Записать нормализованный список слоёв в актёра. Пустой массив —
-   * валидная конфигурация (означает «у части нет стека тканей»), он
-   * сохраняется как есть и блокирует фолбэк на дефолты.
-   */
-  async _saveBodyLayers(partId, nextLayers) {
-    const sanitized = sanitizeBodyLayers(nextLayers) ?? [];
-    await this.actor.update({
-      [`system.health.bodyParts.${partId}.bodyLayers`]: sanitized
-    });
-    this.render();
-  }
-
-  async _removeBodyLayer(partId, index) {
-    const bodyPart = this.actor?.system?.health?.bodyParts?.[partId];
-    if (!bodyPart) return;
-    const current = this._getBodyLayersForPart(bodyPart).slice();
-    if (index < 0 || index >= current.length) return;
-    current.splice(index, 1);
-    await this._saveBodyLayers(partId, current);
-  }
-
-  async _moveBodyLayer(partId, index, delta) {
-    const bodyPart = this.actor?.system?.health?.bodyParts?.[partId];
-    if (!bodyPart) return;
-    const current = this._getBodyLayersForPart(bodyPart).slice();
-    const next = index + delta;
-    if (index < 0 || index >= current.length || next < 0 || next >= current.length) return;
-    const [pick] = current.splice(index, 1);
-    current.splice(next, 0, pick);
-    await this._saveBodyLayers(partId, current);
-  }
-
-  _buildBodyLayerDialogContent({ currentMaterial = "", currentThickness = 1 } = {}) {
-    const opts = collectMaterialOptions(currentMaterial);
-    let currentCategory = "";
-    const byCat = new Map();
-    for (const o of opts) {
-      if (!byCat.has(o.category)) byCat.set(o.category, []);
-      byCat.get(o.category).push(o);
-    }
-    const rankCategory = (c) => (c === "biological" ? 0 : 1);
-    const catKeys = Array.from(byCat.keys()).sort((a, b) => (rankCategory(a) - rankCategory(b)) || a.localeCompare(b));
-    const optsHtml = catKeys
-      .map((cat) => {
-        const label = categoryDisplayName(cat) || cat;
-        const inner = byCat
-          .get(cat)
-          .map((o) => {
-            const selected = o.id === currentMaterial ? " selected" : "";
-            if (o.id === currentMaterial) currentCategory = cat;
-            return `<option value="${foundry.utils.escapeHTML(o.id)}"${selected}>${foundry.utils.escapeHTML(o.label)}</option>`;
-          })
-          .join("");
-        return `<optgroup label="${foundry.utils.escapeHTML(label)}">${inner}</optgroup>`;
-      })
-      .join("");
-    const fallback = currentMaterial && !currentCategory
-      ? `<option value="${foundry.utils.escapeHTML(currentMaterial)}" selected>${foundry.utils.escapeHTML(currentMaterial)}</option>`
-      : "";
-    return `
-      <div class="anatomy-body-layer-dialog">
-        <div class="form-group"><label>Материал</label><select id="bl-material" style="width:100%;">${fallback}${optsHtml}</select></div>
-        <div class="form-group"><label>Толщина</label><input type="number" id="bl-thickness" min="0" step="0.1" value="${Number(currentThickness) || 1}" style="width:100%;"/></div>
-        <p class="notes">Толщина определяет стартовую прочность (integrity) слоя в каждом проходе. В bodyLayers прочность виртуальная и не сохраняется между попаданиями.</p>
-      </div>`;
-  }
-
-  _readBodyLayerDialogValues() {
-    const material = String(document.querySelector("#bl-material")?.value ?? "").trim();
-    const thicknessRaw = document.querySelector("#bl-thickness")?.value;
-    const thickness = Number(thicknessRaw);
-    if (!material) {
-      ui.notifications?.warn("Выберите материал слоя.");
-      return null;
-    }
-    if (!Number.isFinite(thickness) || thickness <= 0) {
-      ui.notifications?.warn("Толщина должна быть положительным числом.");
-      return null;
-    }
-    return { material, thickness };
-  }
-
-  async _openAddBodyLayerDialog(partId) {
-    const content = this._buildBodyLayerDialogContent({ currentMaterial: "", currentThickness: 1 });
-    await foundry.applications.api.DialogV2.wait({
-      window: { title: "Добавить слой тела", icon: "fa-solid fa-layer-group" },
-      position: { width: 320 },
-      content,
-      buttons: [
-        {
-          action: "add",
-          label: "Добавить",
-          icon: "fa-solid fa-check",
-          default: true,
-          callback: async () => {
-            const values = this._readBodyLayerDialogValues();
-            if (!values) return;
-            const bodyPart = this.actor?.system?.health?.bodyParts?.[partId];
-            if (!bodyPart) return;
-            const current = this._getBodyLayersForPart(bodyPart).slice();
-            current.push(values);
-            await this._saveBodyLayers(partId, current);
-          }
-        },
-        { action: "cancel", label: "Отмена", icon: "fa-solid fa-times" }
-      ]
-    });
-  }
-
-  async _openEditBodyLayerDialog(partId, index) {
-    const bodyPart = this.actor?.system?.health?.bodyParts?.[partId];
-    if (!bodyPart) return;
-    const layers = this._getBodyLayersForPart(bodyPart);
-    if (index < 0 || index >= layers.length) return;
-    const layer = layers[index];
-    const content = this._buildBodyLayerDialogContent({
-      currentMaterial: String(layer.material ?? ""),
-      currentThickness: Number(layer.thickness) || 1
-    });
-    await foundry.applications.api.DialogV2.wait({
-      window: { title: "Редактировать слой тела", icon: "fa-solid fa-layer-group" },
-      position: { width: 320 },
-      content,
-      buttons: [
-        {
-          action: "save",
-          label: "Сохранить",
-          icon: "fa-solid fa-check",
-          default: true,
-          callback: async () => {
-            const values = this._readBodyLayerDialogValues();
-            if (!values) return;
-            const next = layers.slice();
-            next[index] = values;
-            await this._saveBodyLayers(partId, next);
           }
         },
         { action: "cancel", label: "Отмена", icon: "fa-solid fa-times" }
@@ -1726,14 +1348,15 @@ export class AnatomyEditor {
 
   async addPart() {
     if (!this.actor) return;
-    const addMaterialOptionsHtml = MATERIAL_CATEGORY_OPTIONS.map((m) => `<option value="${m.id}">${m.label}</option>`).join("");
+    const addMaterialOptionsHtml = collectMaterialOptions(DEFAULT_PART_MATERIAL).map(
+      (m) => `<option value="${m.id}" ${m.id === DEFAULT_PART_MATERIAL ? "selected" : ""}>${m.label}</option>`
+    ).join("");
     const content = `
       <div class="anatomy-add-part-dialog">
         <div class="form-group"><label>ID</label><input type="text" id="ap-id" placeholder="например leftArm" style="width:100%;"/></div>
         <div class="form-group"><label>Название</label><input type="text" id="ap-name" placeholder="Левая рука" style="width:100%;"/></div>
-        <div class="form-group"><label>Вес</label><input type="number" id="ap-weight" value="500" min="1" style="width:100%;"/></div>
         <div class="form-group"><label>Max HP</label><input type="number" id="ap-maxHp" value="20" min="1" style="width:100%;"/></div>
-        <div class="form-group"><label>Категория ткани</label><select id="ap-material" style="width:100%;"><option value="">—</option>${addMaterialOptionsHtml}</select><p class="notes">Слои тела (skin / muscle / bone и т. д.) подтянутся из дефолтов по ID после создания.</p></div>
+        <div class="form-group"><label>Материал</label><select id="ap-material" style="width:100%;">${addMaterialOptionsHtml}</select></div>
         <div class="form-group"><label>X</label><input type="number" id="ap-x" value="0" style="width:100%;"/></div>
         <div class="form-group"><label>Y</label><input type="number" id="ap-y" value="0" style="width:100%;"/></div>
       </div>`;
@@ -1751,9 +1374,8 @@ export class AnatomyEditor {
             const root = e.currentTarget;
             const id = (root.querySelector("#ap-id")?.value ?? "").trim().replace(/\s+/g, "") || foundry.utils.randomID();
             const name = (root.querySelector("#ap-name")?.value ?? "").trim() || "";
-            const weight = Math.max(1, parseInt(root.querySelector("#ap-weight")?.value ?? "500", 10));
             const maxHp = Math.max(1, parseInt(root.querySelector("#ap-maxHp")?.value ?? "20", 10));
-            const material = normalizeMaterialCategory(root.querySelector("#ap-material")?.value) || null;
+            const material = sanitizePartMaterial(root.querySelector("#ap-material")?.value);
             const x = parseInt(root.querySelector("#ap-x")?.value ?? "0", 10) || 0;
             const y = parseInt(root.querySelector("#ap-y")?.value ?? "0", 10) || 0;
             const bodyParts = foundry.utils.deepClone(this.actor.system.health?.bodyParts ?? {});
@@ -1771,25 +1393,123 @@ export class AnatomyEditor {
               name: name || undefined,
               uuid,
               slotRef,
-              weight,
               maxHp,
               material,
               x,
               y,
-              status: "healthy",
-              internal: false,
+              heightFrac: 0.5,
+              faces: ["front"],
               tags: [],
-              exposure: {},
               relations: [],
               links: [],
-              organs: [],
-              bodyLayers: getDefaultBodyLayersForType(id)
+              inners: []
             };
             await this.actor.update({ "system.health.bodyParts": bodyParts });
             this.render();
           }
         },
         { action: "cancel", label: "Отмена", icon: "fa-solid fa-times" }
+      ]
+    });
+  }
+
+  async openGroupsDialog() {
+    if (!this.actor) return;
+    const bodyParts = this.actor.system?.health?.bodyParts ?? {};
+    const partOptions = Object.entries(bodyParts).map(([slot, p]) => {
+      const label = p.displayName || p.name || p.id || slot;
+      return { slot, label };
+    });
+    const typeLabels = {
+      manipulation: game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.TypeManipulation") ?? "manipulation",
+      movement: game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.TypeMovement") ?? "movement",
+      sensory: game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.TypeSensory") ?? "sensory",
+      critical: game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.TypeCritical") ?? "critical",
+    };
+    const groups = sanitizeAnatomyGroups(this.actor.system?.anatomy?.groups, [
+      ...Object.keys(bodyParts),
+      ...Object.values(bodyParts).map((p) => String(p?.id ?? "")).filter(Boolean),
+    ]);
+    const override = String(this.actor.system?.anatomy?.hitGroupOverride ?? "").trim();
+    const groupRows = groups.map((g, i) => {
+      const typeOpts = ANATOMY_GROUP_TYPES.map((t) =>
+        `<option value="${t}" ${g.type === t ? "selected" : ""}>${typeLabels[t] || t}</option>`
+      ).join("");
+      const partsVal = (g.parts ?? []).join(", ");
+      return `<div class="form-group anatomy-group-row" data-idx="${i}">
+        <input type="text" data-g="id" value="${g.id}" placeholder="id"/>
+        <input type="text" data-g="name" value="${g.name}" placeholder="name"/>
+        <select data-g="type">${typeOpts}</select>
+        <input type="text" data-g="parts" value="${partsVal}" placeholder="part ids, comma-separated"/>
+      </div>`;
+    }).join("");
+    const overrideOpts = [`<option value="">—</option>`]
+      .concat(groups.map((g) => `<option value="${g.id}" ${g.id === override ? "selected" : ""}>${g.name}</option>`))
+      .join("");
+    const partHint = partOptions.map((p) => p.slot).join(", ");
+    const content = `
+      <div class="anatomy-groups-dialog">
+        <p class="notes">${game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.Title") ?? "Groups"}</p>
+        ${groupRows || "<p class='notes'>—</p>"}
+        <button type="button" data-add-group><i class="fas fa-plus"></i></button>
+        <div class="form-group">
+          <label>${game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.Override") ?? "Override"}</label>
+          <select id="ag-override">${overrideOpts}</select>
+        </div>
+        <p class="notes">${partHint}</p>
+      </div>`;
+    await foundry.applications.api.DialogV2.wait({
+      window: { title: game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.Title") ?? "Groups", icon: "fa-solid fa-layer-group" },
+      position: { width: 560 },
+      content,
+      render: (_ev, dialog) => {
+        dialog?.element?.querySelector("[data-add-group]")?.addEventListener("click", () => {
+          const wrap = dialog.element.querySelector(".anatomy-groups-dialog");
+          if (!wrap) return;
+          const row = document.createElement("div");
+          row.className = "form-group anatomy-group-row";
+          const typeOpts = ANATOMY_GROUP_TYPES.map((t) => `<option value="${t}">${typeLabels[t] || t}</option>`).join("");
+          row.innerHTML = `<input type="text" data-g="id" placeholder="id"/>
+            <input type="text" data-g="name" placeholder="name"/>
+            <select data-g="type">${typeOpts}</select>
+            <input type="text" data-g="parts" placeholder="part ids"/>`;
+          wrap.querySelector("[data-add-group]")?.before(row);
+        });
+      },
+      buttons: [
+        {
+          action: "save",
+          label: "Сохранить",
+          icon: "fa-solid fa-check",
+          default: true,
+          callback: async (ev) => {
+            const root = ev?.currentTarget ?? document;
+            const next = [];
+            for (const row of root.querySelectorAll(".anatomy-group-row")) {
+              const id = String(row.querySelector('[data-g="id"]')?.value ?? "").trim();
+              if (!id) continue;
+              next.push({
+                id,
+                name: String(row.querySelector('[data-g="name"]')?.value ?? "").trim() || id,
+                type: String(row.querySelector('[data-g="type"]')?.value ?? "").trim(),
+                parts: String(row.querySelector('[data-g="parts"]')?.value ?? "")
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              });
+            }
+            const hitGroupOverride = String(root.querySelector("#ag-override")?.value ?? "").trim();
+            await this.actor.update({
+              "system.anatomy.groups": sanitizeAnatomyGroups(next, [
+                ...Object.keys(bodyParts),
+                ...Object.values(bodyParts).map((p) => String(p?.id ?? "")).filter(Boolean),
+              ]),
+              "system.anatomy.hitGroupOverride": hitGroupOverride,
+            });
+            this.render();
+          }
+        },
+        { action: "close", label: "Закрыть", icon: "fa-solid fa-times" }
       ]
     });
   }
@@ -1808,6 +1528,8 @@ export class AnatomyEditor {
       id,
       name,
       grid: grid ? { width: grid.width, height: grid.height } : null,
+      heightM: this.actor?.system?.heightM,
+      groups: this.actor?.system?.anatomy?.groups ?? [],
       bodyParts: foundry.utils.deepClone(bodyParts),
       links: this._buildLinksFromBodyParts(bodyParts)
     });

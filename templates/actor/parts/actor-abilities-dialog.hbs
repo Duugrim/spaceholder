@@ -1,0 +1,14 @@
+<div class="sh-abilities-dialog">
+  <p class="hint">{{localize 'SPACEHOLDER.Character.AbilitiesEditHint'}}</p>
+  <div class="sh-abilities-dialog__list">
+    {{#each abilities}}
+    <label class="sh-abilities-dialog__row" for="sh-ability-edit-{{id}}">
+      <span class="sh-abilities-dialog__identity">
+        <span class="sh-abilities-dialog__abbr">{{abbr}}</span>
+        <span class="sh-abilities-dialog__name">{{label}}</span>
+      </span>
+      <input id="sh-ability-edit-{{id}}" name="ability.{{id}}" type="number" min="0" step="1" value="{{value}}" required />
+    </label>
+    {{/each}}
+  </div>
+</div>

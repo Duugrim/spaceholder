@@ -80,6 +80,8 @@
 
   // When flyout is open, give the main button a subtle accent like core UI states.
   &[data-open="true"] {
+    z-index: 72;
+
     .sh-hotbar-faction__btn {
       border-color: var(--color-warm-1, rgba(255, 255, 255, 0.25));
     }

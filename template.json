@@ -5,7 +5,9 @@
       "base": {
         "anatomy": {
           "type": null,
-          "bodyParts": {}
+          "bodyParts": {},
+          "groups": [],
+          "hitGroupOverride": ""
         },
         "health": {
           "injuries": []
@@ -24,6 +26,7 @@
         "value": 100
       },
       "speed": 1,
+      "heightM": 1.75,
       "gFaction": "",
       "actions": [],
       "aimingArc": {
@@ -41,6 +44,10 @@
         "per": { "value": 10 },
         "int": { "value": 10 },
         "luc": { "value": 10 }
+      },
+      "skills": {
+        "levels": {},
+        "extras": []
       }
     },
     "npc": {
@@ -126,6 +133,7 @@
       "formula": "d20 + @str.mod + ceil(@lvl / 2)",
       "equipped": false,
       "held": false,
+      "quickAccess": false,
       "anatomyId": null,
       "coveredParts": [],
       "containerHostId": "",

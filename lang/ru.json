@@ -31,7 +31,61 @@
       "Modifiers": "Модификаторы",
       "Tags": "Теги",
       "Settings": "Настройки",
-      "Ammo": "Боеприпас"
+      "Ammo": "Боеприпас",
+      "Skills": "Навыки"
+    },
+    "Skills": {
+      "Subtabs": {
+        "Physical": "Физические",
+        "Mixed": "Смешанные",
+        "Knowledge": "Знания"
+      },
+      "ToggleBranch": "Свернуть или развернуть",
+      "AddModel": "Добавить конкретное оружие",
+      "AddSkill": "Добавить навык",
+      "AddChild": "Добавить ребёнка",
+      "EditSkill": "Изменить навык",
+      "ChangeValue": "Изменить",
+      "RemoveExtra": "Удалить",
+      "ExtraName": "Название",
+      "Level": "Уровень",
+      "Effect": "Эффект",
+      "EmptyCategory": "В этой категории пока нет навыков",
+      "NameRequired": "Введите название",
+      "EffectHint": "Эффект навыка по ветке (0–10)",
+      "Nodes": {
+        "combat": "Бой",
+        "combat_melee": "Ближний бой",
+        "combat_melee_blade": "Клинковое",
+        "combat_melee_blade_knife": "Ножи",
+        "combat_melee_blade_sword": "Мечи",
+        "combat_melee_blade_spear": "Копья",
+        "combat_melee_thrown": "Метательное",
+        "combat_melee_thrown_dart": "Дротики",
+        "combat_ranged": "Дальний бой",
+        "combat_ranged_firearms": "Огнестрельное",
+        "combat_ranged_firearms_pistol": "Пистолеты",
+        "combat_ranged_firearms_smg": "ПП",
+        "combat_ranged_firearms_shotgun": "Дробовики",
+        "combat_ranged_firearms_rifle": "Винтовки",
+        "combat_ranged_firearms_sniper": "Снайперское",
+        "combat_ranged_firearms_mg": "Пулемёты",
+        "combat_ranged_laser": "Лазерное",
+        "combat_ranged_laser_pistol": "Пистолеты",
+        "combat_ranged_laser_smg": "ПП",
+        "combat_ranged_laser_shotgun": "Дробовики",
+        "combat_ranged_laser_rifle": "Винтовки",
+        "combat_ranged_laser_heavy": "Тяжёлое",
+        "combat_ranged_plasma": "Плазменное",
+        "combat_ranged_plasma_pistol": "Пистолеты",
+        "combat_ranged_plasma_rifle": "Винтовки",
+        "combat_ranged_plasma_heavy": "Тяжёлое",
+        "combat_ranged_heavy": "Тяжёлое",
+        "combat_ranged_heavy_rocket": "Ракетницы",
+        "physdev": "Физическое развитие",
+        "physdev_light": "Лёгкая атлетика",
+        "physdev_heavy": "Тяжёлая атлетика"
+      }
     },
     "ItemTags": {
       "SectionTitle": "Группы функционала",
@@ -192,6 +246,13 @@
         "Charge": "Заряд",
         "ChargeHint": "Текущий внутренний заряд (предметы не тратятся)",
         "CounterHint": "[камера]+резерв/ёмкость",
+        "DisplayStyle": "Отображение патронов",
+        "DisplayStyleHint": "Как быстрый HUD показывает патроны этого блока. Точки — для блоков с ячейками до 12 штук, иначе показывается число.",
+        "DisplayStyles": {
+          "number": "Числом",
+          "bar": "Полосой",
+          "pips": "Точками"
+        },
         "Search": "Поиск патронов",
         "SearchHint": "Где искать боеприпас, по приоритету: в руках → надетое → инвентарь → контейнеры",
         "SearchModes": {
@@ -322,6 +383,7 @@
       },
       "Interact": {
         "ActionLabel": "{name}: Взаимодействовать",
+        "FireModeGroup": "Режим стрельбы",
         "Title": "Действия: {name}",
         "Hint": "Выберите стандартное действие с оружием.",
         "NoActions": "Нет доступных действий с этим оружием.",
@@ -628,7 +690,10 @@
       "HeaderEditDisposition": "Диспозиция",
       "HeaderEditFaction": "Фракция",
       "HeaderEditFactionNone": "Без фракции",
-      "HeaderEditApply": "Применить"
+      "HeaderEditApply": "Применить",
+      "AbilitiesEditButton": "Редактировать характеристики",
+      "AbilitiesEditDialogTitle": "Редактирование характеристик",
+      "AbilitiesEditHint": "Базовые значения без модификаторов экипировки."
     },
     "Units": {
       "Kg": "кг",
@@ -727,18 +792,20 @@
       }
     },
     "Settings": {
-      "HealthAnatomy3d": {
-        "Name": "Использовать 3D-визуализацию анатомий",
-        "Hint": "Только для ГМ. При включении лист загружает WebGL и сначала пытается показать 3D, при необходимости откатывается на 2D-сетку (например в режиме редактирования). Смена значения требует перезагрузки клиента, чтобы подгрузить или не загружать код 3D."
+      "HitLuckCombine": {
+        "Name": "Совмещение удачности попадания",
+        "Hint": "Как зона дуги совмещается с центровостью токена. Множитель (по умолчанию): зона × центровость. Штраф: центровость + смещение зоны."
       }
     },
     "BodyParts": {
       "head": "Голова",
       "neck": "Шея",
-      "back": "Спина",
-      "chest": "Грудь",
-      "abdomen": "Живот",
-      "groin": "Пах",
+      "back": "Спина (legacy)",
+      "chest": "Грудь (legacy)",
+      "abdomen": "Живот (legacy)",
+      "groin": "Пах (legacy)",
+      "upperTorso": "Верхний торс",
+      "lowerTorso": "Нижний торс",
       "leftShoulder": "Левое плечо",
       "rightShoulder": "Правое плечо",
       "leftArm": "Левая рука",
@@ -750,12 +817,32 @@
       "leftShin": "Левая голень",
       "rightShin": "Правая голень",
       "leftFoot": "Левая ступня",
-      "rightFoot": "Правая ступня"
-      ,
+      "rightFoot": "Правая ступня",
       "cephalothorax": "Головогрудь",
       "abdomenSegment": "Брюшко",
       "leftLeg": "Левая нога",
       "rightLeg": "Правая нога"
+    },
+    "AnatomyGroups": {
+      "Title": "Группы анатомии",
+      "TypeManipulation": "Манипуляция",
+      "TypeMovement": "Передвижение",
+      "TypeSensory": "Сенсорная",
+      "TypeCritical": "Критическая",
+      "FaceFront": "Спереди",
+      "FaceBack": "Сзади",
+      "HitDialogTitle": "Группа попадания",
+      "HitLuck": "Удачность: {value} ({band})",
+      "BandPartOrGroup": "группа или часть",
+      "BandGroup": "только группа",
+      "BandGroup45": "группа, броня 45°",
+      "BandGraze": "задел",
+      "BandContinue": "летит дальше",
+      "PickGroup": "Группа",
+      "PickPart": "Конкретная часть",
+      "AnyPart": "— группа (любая часть) —",
+      "Confirm": "Попадание",
+      "Override": "Всегда в эту группу, если можно"
     },
     "IconPicker": {
       "Title": "Выбор иконки",
@@ -858,6 +945,26 @@
       "HeldWeapons": "Удерживаемое оружие",
       "ExpandSegment": "Развернуть сегмент",
       "CollapseSegment": "Свернуть сегмент",
+      "ExpandActions": "Показать все быстрые действия",
+      "CollapseActions": "Свернуть быстрые действия",
+      "NotReady": "Не готово",
+      "SelectedItems": "Выбранные предметы",
+      "DeselectItem": "Снять выбор: {name}",
+      "StowedHint": "быстрый доступ, не в руках",
+      "Attack": "Атаковать",
+      "AttackNeedsSelection": "Выберите оружие",
+      "AttackMultiUnsupported": "Атака несколькими предметами пока не поддерживается",
+      "AttackTooltip": "Атаковать: {item} ({ap})",
+      "ViewPortrait": "Показать портрет",
+      "PanToToken": "Центрировать на токене",
+      "OpenSheet": "Открыть лист персонажа",
+      "OpenTokenConfig": "Настройки токена",
+      "Settings": {
+        "HideActionsOfHeldItems": {
+          "Name": "Скрывать действия удерживаемых предметов",
+          "Hint": "В быстром HUD не показывать в общем списке действия предметов, у которых есть карточка (в руках или в быстром доступе). Выбор карточки по-прежнему открывает её действия отдельной строкой."
+        }
+      },
       "SourceSelected": "Выбранный токен",
       "SourceFallback": "Ваш персонаж",
       "SourceLastSelected": "Последний выбранный"
@@ -926,6 +1033,12 @@
       },
       "ItemMenu": {
         "StandardGroup": "Стандартные действия"
+      },
+      "QuickAccess": {
+        "Add": "{item}: в быстрый доступ",
+        "Remove": "{item}: убрать из быстрого доступа",
+        "AddShort": "В быстрый доступ",
+        "RemoveShort": "Убрать из быстрого доступа"
       },
       "Wearable": {
         "Equip": "Надеть: {item}",
@@ -1043,6 +1156,7 @@
         "OverflowHint": "Смотрите индикаторы ниже"
       },
       "HeldActions": {
+        "AttackTooltip": "Атаковать",
         "StowTooltip": "Убрать в рюкзак",
         "DropTooltip": "Выкинуть на землю",
         "ThrowTooltip": "Метнуть",
@@ -1610,6 +1724,7 @@
         "Visibility": "Отображение",
         "Timeline": "Хронология",
         "RefreshMap": "Обновить карту",
+        "View3d": "3D-рельеф",
         "Selection": {
           "MultipleTokens": "Несколько токенов",
           "MultipleFactions": "Несколько фракций"
@@ -1677,6 +1792,41 @@
           "Influence": "Влияние",
           "InfluenceJournal": "Журнал влияния",
           "OpenInfluenceJournal": "Открыть журнал влияния"
+        }
+      },
+      "Terrain3d": {
+        "Setting": {
+          "Name": "3D-вид рельефа",
+          "Hint": "Показывать глобальную карту как 3D-рельеф"
+        },
+        "Tools": {
+          "Select": "Выбор / перенос токенов",
+          "Look": "Осмотр из точки",
+          "Raise": "Поднять",
+          "Lower": "Опустить",
+          "Smooth": "Сгладить",
+          "Flatten": "Выровнять",
+          "Noise": "Шум",
+          "Paint": "Красить биом",
+          "Radius": "Радиус",
+          "Strength": "Сила",
+          "FlattenTo": "Выровнять до",
+          "Biome": "Биом",
+          "Save": "Сохранить рельеф",
+          "Hint": "Потяните за полоску, чтобы сдвинуть. Лепите прямо по 3D-карте.",
+          "Drag": "Перетащить панель"
+        },
+        "LookFrom": {
+          "Title": "Осмотр из точки",
+          "Hint": "Тяните мышью, чтобы смотреть. WASD — движение.",
+          "NeedPoint": "Выберите токен или кликните по рельефу"
+        },
+        "Notifications": {
+          "Saved": "Рельеф сохранён"
+        },
+        "Errors": {
+          "NoData": "Нет данных рельефа",
+          "SaveFailed": "Не удалось сохранить рельеф: {message}"
         }
       }
     },
@@ -1980,11 +2130,18 @@
       "Messages": {
         "TokenNotSelected": "Токен не выбран",
         "AimingActivated": "Режим прицеливания активирован. ЛКМ - выстрел, ПКМ/ESC - отмена",
-        "StandardShotInfo": "Стандартное прицеливание: зона {zone}, отклонение {deviation} град.",
+        "StandardShotInfo": "Стандартное прицеливание: {zone}{clamped}",
+        "LuckClamped": "кламп",
         "WeaponNotFound": "Оружие не найдено: {uuid}",
         "NoAmmoForWeapon": "{weapon}: нет боеприпаса ({reason})",
         "PayloadNotFound": "Payload не найден: {payload}",
-        "ProjectileShotResolved": "{shooter} стреляет из {weapon} ({ammo}); попаданий: {hits}"
+        "ProjectileShotResolved": "{shooter} стреляет из {weapon} ({ammo}); попаданий: {hits}",
+        "DiagnosticLuck": "{zone}{clamped}",
+        "DiagnosticLuckLine": "Удачность: {value}",
+        "DiagnosticSpread": "{delta}",
+        "DiagnosticSpreadLine": "Разброс: {value}",
+        "DiagnosticHit": "{name} · {clock}ч · {centrality} · удачн. {hitLuck} ({band})",
+        "DiagnosticMiss": "мимо"
       },
       "Errors": {
         "PayloadManifestLoad": "Ошибка загрузки манифеста боеприпасов:",

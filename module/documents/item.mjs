@@ -12,6 +12,7 @@
 import { normalizeNestedStorage } from '../helpers/item-nested-storage.mjs';
 import { migratePersistedContainerContents, releaseDirectContainerChildrenToRoot } from '../helpers/item-container.mjs';
 import { normalizeWeaponV3 } from '../helpers/weapon/weapon-model.mjs';
+import { canAttackWithItem, attackWithItem } from '../helpers/weapon/attack-chain.mjs';
 
 function _shPositiveHardness(v) {
   const n = Number(v);
@@ -250,6 +251,7 @@ export class SpaceHolderItem extends Item {
       const s = source.system;
       if (s.equipped === undefined) s.equipped = false;
       if (s.held === undefined) s.held = false;
+      if (s.quickAccess === undefined) s.quickAccess = false;
       if (s.equipped) s.held = false;
       if (s.anatomyId === undefined) s.anatomyId = null;
       if (!Array.isArray(s.coveredParts)) s.coveredParts = [];
@@ -387,6 +389,26 @@ export class SpaceHolderItem extends Item {
     rollData.actor = this.actor.getRollData();
 
     return rollData;
+  }
+
+  /**
+   * Whether this item can be used to attack (today: v3 weapons with lines).
+   * @type {boolean}
+   */
+  get canAttack() {
+    return canAttackWithItem(this);
+  }
+
+  /**
+   * Attack with this item using its active line/mode (attack chain → aiming).
+   * @param {object} [options]
+   * @param {Token|null} [options.token] attacking token; required for aiming
+   * @returns {Promise<boolean>}
+   */
+  async attack({ token = null } = {}) {
+    const actor = this.actor;
+    if (!actor) return false;
+    return attackWithItem({ actor, item: this, token });
   }
 
   /**

@@ -15,7 +15,7 @@
     "anatomyId": "humanoid",
     "coveredParts": [
       {
-        "slotRef": "chest",
+        "slotRef": "upperTorso",
         "layers": [
           {
             "material": "steel-plate",
@@ -29,10 +29,11 @@
             "material": "foam",
             "thickness": 4
           }
-        ]
+        ],
+        "face": "front"
       },
       {
-        "slotRef": "abdomen",
+        "slotRef": "lowerTorso",
         "layers": [
           {
             "material": "steel-plate",
@@ -46,10 +47,11 @@
             "material": "foam",
             "thickness": 4
           }
-        ]
+        ],
+        "face": "front"
       },
       {
-        "slotRef": "back",
+        "slotRef": "upperTorso",
         "layers": [
           {
             "material": "steel-plate",
@@ -63,7 +65,8 @@
             "material": "foam",
             "thickness": 4
           }
-        ]
+        ],
+        "face": "back"
       }
     ],
     "defaultActions": {

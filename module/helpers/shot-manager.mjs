@@ -5,6 +5,7 @@
 
 import { composeProjectileApplications } from '../documents/item.mjs';
 import { applyFalloffToApplications, falloffMultiplier, normalizeFalloff } from './weapon/damage-profile.mjs';
+import { clockToHitFace } from './hit-luck.mjs';
 
 /**
  * ShotSystem - центральное хранилище выстрелов
@@ -111,7 +112,7 @@ export class ShotManager {
    *   substitution etc.)
    * @param {Object} [options]
    * @param {string} [options.partId] - body slot to target; if omitted, the
-   *   per-hit `details.partId` is used (or fallback `'core'`).
+   *   per-hit `details.partId` is used. Hits without a part id are skipped.
    * @param {Object} [options.builderContext] - extra context forwarded to
    *   `applyDamagePackage` when the projectile uses a builderId.
    * @param {string|Object} [options.source] - либо строка-легаси, либо
@@ -137,12 +138,16 @@ export class ShotManager {
       const token = hit?.object?.document ? hit.object : hit?.token ?? hit?.target ?? null;
       const actor = token?.actor ?? hit?.actor ?? null;
       if (!actor || typeof actor.applyDamagePackage !== 'function') continue;
-      const partId = options.partId ?? hit?.details?.partId ?? hit?.partId ?? 'core';
+      const partId = options.partId ?? hit?.details?.partId ?? hit?.partId ?? null;
+      if (!partId) continue;
       const sceneDist = this._hitDistanceSceneUnits(hit);
       const phases = applyFalloffToApplications(
         basePhases,
         falloffMultiplier(sceneDist, falloff),
       );
+      const hitDirection = options.hitDirection
+        ?? hit?.details?.hitDirection
+        ?? clockToHitFace(hit?.details?.clock);
       try {
         const out = await actor.applyDamagePackage({
           partId,
@@ -150,6 +155,8 @@ export class ShotManager {
           builderContext: options.builderContext,
           source: sourceSnapshot,
           random: options.random,
+          hitDirection: hitDirection || undefined,
+          armorScale: options.armorScale,
         });
         results.push({ actorId: actor.id, slotRef: out.slotRef, bodyDamage: out.bodyDamage });
       } catch (e) {
@@ -274,6 +281,35 @@ export class ShotManager {
     if (typeof dex !== 'number' || dex <= 0) return 1.0;
     
     return dex / 10;
+  }
+
+  /**
+   * Facing of a token pointer (degrees, canvas atan2). Default 90 = down.
+   * @private
+   * @param {Token} token
+   * @returns {number}
+   */
+  _tokenPointerDeg(token) {
+    return Number(token?.document?.getFlag?.('spaceholder', 'tokenpointerDirection') ?? 90);
+  }
+
+  /**
+   * Clock position of a point on the token circle vs the target pointer.
+   * 12 = facing, increasing clockwise (1…12].
+   * @private
+   * @param {Token} token
+   * @param {{x: number, y: number}} point
+   * @param {{x: number, y: number}} center
+   * @returns {number}
+   */
+  _hitClockHours(token, point, center) {
+    const pointerDeg = this._tokenPointerDeg(token);
+    const hitDeg = Math.atan2(point.y - center.y, point.x - center.x) * (180 / Math.PI);
+    let rel = hitDeg - pointerDeg;
+    while (rel < 0) rel += 360;
+    while (rel >= 360) rel -= 360;
+    const hours = rel / 30;
+    return hours === 0 ? 12 : hours;
   }
 
   /**
@@ -902,11 +938,13 @@ export class ShotManager {
             segment.end,
             { x: centerX, y: centerY }
           );
-          
-          // Рассчитываем closeness: 1.0 = точно в центр, 0.0 = касательное попадание
-          const closeness = 1 - Math.min(Math.max(distanceToCenter / effectiveRadius, 0), 1);
-          
-          // Рассчитываем угол между векторами SH и HC (опционально)
+
+          // centrality: 1 = center, →0 at grazing. Orthographic: 1 - d/R = 1 - sin(α).
+          const radiusSafe = effectiveRadius > 0 ? effectiveRadius : 1;
+          const centrality = 1 - Math.min(Math.max(distanceToCenter / radiusSafe, 0), 1);
+          const clock = this._hitClockHours(token, intersection, { x: centerX, y: centerY });
+
+          // Угол луч ↔ радиус BC (0° в центре, 90° на краю) — для отладки, в чат не идёт.
           const vecSH_x = intersection.x - segment.start.x;
           const vecSH_y = intersection.y - segment.start.y;
           const vecHC_x = centerX - intersection.x;
@@ -930,7 +968,8 @@ export class ShotManager {
             distance: distance,
             details: {
               distanceToCenter: distanceToCenter,
-              closeness: closeness,
+              centrality: centrality,
+              clock: clock,
               angleDeg: angleDeg
             }
           });

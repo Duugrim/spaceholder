@@ -28,6 +28,17 @@ import {
   applyOnHitSplashToPayload,
   TRAJECTORY_KINDS,
 } from './weapon/trajectory.mjs';
+import {
+  resolveHitLuck,
+  clockToHitFace,
+  upgradeLuckZoneTowardGreen,
+  isContinueBand,
+  isGrazeBand,
+  canPickSpecificPart,
+  promptHitGroupDialog,
+  localizeHitLuckBand,
+} from './hit-luck.mjs';
+import { availableHitGroups, groupSlotRefs } from './anatomy-groups.mjs';
 
 let _payloadLibraryCache = null;
 
@@ -44,6 +55,65 @@ function _normalizeAngleDeltaDeg(a, b) {
   while (delta > 360) delta -= 360;
   if (delta > 180) delta = 360 - delta;
   return delta;
+}
+
+function _aimingCfg() {
+  return CONFIG?.SPACEHOLDER?.aiming ?? {};
+}
+
+function _gridSizePx() {
+  return Math.max(1, Number(canvas?.grid?.size) || 100);
+}
+
+function _signedDeltaDeg(fromDeg, toDeg) {
+  let d = Number(toDeg) - Number(fromDeg);
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return d;
+}
+
+function _rotateTowardDeg(currentDeg, targetDeg, maxStepDeg) {
+  const step = Math.max(0, Number(maxStepDeg) || 0);
+  const delta = _signedDeltaDeg(currentDeg, targetDeg);
+  if (Math.abs(delta) <= step) return targetDeg;
+  return Number(currentDeg) + Math.sign(delta) * step;
+}
+
+function _pointerDeg(token) {
+  return Number(token?.document?.getFlag?.('spaceholder', 'tokenpointerDirection') ?? 90);
+}
+
+function _accuracyScore(actor) {
+  const n = Number(actor?.system?.derivedStats?.accuracyScore);
+  return Number.isFinite(n) && n > 0 ? n : 10;
+}
+
+function _wanderRadiusPx(actor) {
+  const cfg = _aimingCfg();
+  const ref = Math.max(0.001, Number(cfg.accuracyRefScore) || 10);
+  const score = Math.max(1, _accuracyScore(actor));
+  return _gridSizePx() * (ref / score);
+}
+
+function _turnRateDegPerSec(ergo) {
+  const cfg = _aimingCfg();
+  const base = Math.max(0, Number(cfg.turnRateDegPerSec) || 180);
+  const min = Math.max(0, Number(cfg.turnRateMinDegPerSec) || 30);
+  const overall = Math.max(0, Number(ergo?.overall ?? 100) || 100);
+  return Math.max(min, base * (overall / 100));
+}
+
+function _laserLengthPx() {
+  const cells = Math.max(0.1, Number(_aimingCfg().laserLengthCells) || 6);
+  return cells * _gridSizePx();
+}
+
+function _randomPointInDisk(radius) {
+  const rMax = Math.max(0, Number(radius) || 0);
+  if (rMax <= 0) return { x: 0, y: 0 };
+  const t = Math.random() * Math.PI * 2;
+  const r = rMax * Math.sqrt(Math.random());
+  return { x: Math.cos(t) * r, y: Math.sin(t) * r };
 }
 
 function _resolveAimingArcConfig(actor, ergo = null) {
@@ -76,7 +146,6 @@ function _resolveAimingArcConfig(actor, ergo = null) {
     ? Math.max(0, deadRaw)
     : Math.max(0, Number(cfg.defaultDeadZoneDeg) || 0);
 
-  // Weapon ergonomics modify the character's base arcs (v3 refactor).
   const arcs = applyErgonomicsToArcs(
     { purpleZoneDeg, totalArcDeg, weights, deadZoneDeg },
     ergo
@@ -89,11 +158,10 @@ function _resolveAimingArcConfig(actor, ergo = null) {
     standardZones.push(Math.max(0, Number(zone) || 0));
   }
   const zones = [arcs.purpleZoneDeg, ...standardZones];
-  const baseDevRaw = Number(actor?.system?.aimingArc?.deviationBaseDeg);
-  const defaultBase = Math.max(0, Number(cfg.defaultDeviationBaseDeg) || 1);
-  const deviationBaseDeg = (Number.isFinite(baseDevRaw) ? Math.max(0, baseDevRaw) : defaultBase) * arcs.aimPenaltyMult;
-  const multipliers = Array.isArray(cfg.deviationMultipliers) ? cfg.deviationMultipliers : [0, 0, 1, 2, 4];
-  return { zones, deviationBaseDeg, multipliers };
+  const visiblePerSideDeg = Math.max(0, 180 - arcs.deadZoneDeg);
+  const zoneSum = zones.reduce((sum, z) => sum + Math.max(0, Number(z) || 0), 0);
+  const allowedPerSideDeg = Math.min(visiblePerSideDeg, zoneSum > 0 ? zoneSum : visiblePerSideDeg);
+  return { zones, visiblePerSideDeg, allowedPerSideDeg, deadZoneDeg: arcs.deadZoneDeg };
 }
 
 function _resolveAimingArcZoneIndex(deltaDeg, zones) {
@@ -111,6 +179,16 @@ function _resolveAimingArcZoneIndex(deltaDeg, zones) {
   return safeZones.length - 1;
 }
 
+function _zoneIdByIndex(zoneIndex) {
+  switch (Number(zoneIndex)) {
+    case 0: return 'purple';
+    case 1: return 'green';
+    case 2: return 'yellow';
+    case 3: return 'orange';
+    default: return 'red';
+  }
+}
+
 function _zoneKeyByIndex(zoneIndex) {
   switch (Number(zoneIndex)) {
     case 0: return 'SPACEHOLDER.AimingArc.Zones.Purple';
@@ -121,21 +199,35 @@ function _zoneKeyByIndex(zoneIndex) {
   }
 }
 
-function _applyStandardAimingDeviation(token, baseDirectionDeg, ergo = null) {
-  const { zones, deviationBaseDeg, multipliers } = _resolveAimingArcConfig(token?.actor, ergo);
-  const pointerDeg = Number(token?.document?.getFlag?.('spaceholder', 'tokenpointerDirection') ?? 90);
-  const deltaFromPointer = _normalizeAngleDeltaDeg(baseDirectionDeg, pointerDeg);
-  const zoneIndex = _resolveAimingArcZoneIndex(deltaFromPointer, zones);
-  const multiplier = Math.max(0, Number(multipliers[zoneIndex] ?? 0));
-  const randomOffset = (!deviationBaseDeg || !multiplier)
-    ? 0
-    : (Math.random() * 2 - 1) * deviationBaseDeg * multiplier;
-  const zoneLabel = game.i18n?.localize?.(_zoneKeyByIndex(zoneIndex)) ?? String(zoneIndex);
+function _clampDesiredToArcs(pointerDeg, desiredDeg, allowedPerSideDeg) {
+  const max = Math.max(0, Number(allowedPerSideDeg) || 0);
+  const delta = _signedDeltaDeg(pointerDeg, desiredDeg);
+  const clampedDelta = Math.max(-max, Math.min(max, delta));
   return {
-    direction: baseDirectionDeg + randomOffset,
+    deg: Number(pointerDeg) + clampedDelta,
+    clamped: Math.abs(delta) > max + 1e-6,
+  };
+}
+
+/**
+ * Luck from the technical line vs the token pointer. Arcs no longer jitter
+ * the shot direction. Clamped-behind shots are always red.
+ */
+function _sampleShotLuck(token, lineDeg, ergo = null, clamped = false) {
+  const { zones } = _resolveAimingArcConfig(token?.actor, ergo);
+  const pointerDeg = _pointerDeg(token);
+  const deltaFromPointer = _normalizeAngleDeltaDeg(lineDeg, pointerDeg);
+  const zoneIndex = clamped ? Math.max(4, zones.length - 1) : _resolveAimingArcZoneIndex(deltaFromPointer, zones);
+  const zone = clamped ? 'red' : _zoneIdByIndex(zoneIndex);
+  const labelIndex = clamped ? 4 : zoneIndex;
+  const zoneLabel = game.i18n?.localize?.(_zoneKeyByIndex(labelIndex)) ?? zone;
+  return {
+    zone,
     zoneIndex,
     zoneLabel,
-    deviationDeg: randomOffset,
+    lineDeg: Number(lineDeg) || 0,
+    pointerDeg,
+    clamped: !!clamped,
   };
 }
 
@@ -151,7 +243,12 @@ export class AimingManager {
     this.currentPayload = null;
     this.currentOptions = null;
     this.pointerGraphics = null;
-    
+    /** @type {object|null} wander reticle + turning laser for standard aiming */
+    this._standardState = null;
+    this._aimingErgo = null;
+    this._savedCanvasCursor = undefined;
+    this._tickerFn = this._onAimingTick.bind(this);
+
     // Привязки событий
     this._boundEvents = {
       onMouseMove: this._onMouseMove.bind(this),
@@ -263,9 +360,9 @@ export class AimingManager {
       autoRender: true,
       actorUuid: String(actor?.uuid ?? token?.actor?.uuid ?? '').trim() || null,
       weaponItemUuid: String(weaponItem.uuid ?? '').trim() || null,
+      ergonomics: eff.ergonomics,
       weaponV3: { weaponItemUuid: weaponItem.uuid, lineId, modeId },
     });
-    // Перерисовать дуги с учётом эргономики оружия (с модификаторами режима).
     setForcedAimingArcOverlay(token, true, eff.ergonomics);
     return true;
   }
@@ -466,13 +563,13 @@ export class AimingManager {
     this.currentToken = token;
     this.currentPayload = payload;
     this.currentOptions = options;
-    
-    // Запускаем режим прицеливания в зависимости от типа
+    this._aimingErgo = options?.ergonomics ?? null;
+
     const aimingType = _normalizeAimingType(options?.type);
     if (aimingType === 'standard') {
-      setForcedAimingArcOverlay(token, true);
-    }
-    if (aimingType === 'simple' || aimingType === 'standard') {
+      setForcedAimingArcOverlay(token, true, this._aimingErgo);
+      this._startStandardAiming();
+    } else {
       this._startSimpleAiming();
     }
   }
@@ -493,15 +590,15 @@ export class AimingManager {
     this.currentToken = null;
     this.currentPayload = null;
     this.currentOptions = null;
-    
-    // Убираем визуализацию
+    this._aimingErgo = null;
+    this._standardState = null;
+
+    this._stopAimingTicker();
     this._clearPointer();
     try { game.spaceholder?.drawManager?.clearAll?.(); } catch (_) { /* ignore */ }
-    
-    // Отвязываем события
+
     this._unbindEvents();
-    
-    // Возвращаем курсор
+    this._setStandardCursorHidden(false);
     document.body.style.cursor = '';
 
     if (aimingType === 'standard' && currentToken) {
@@ -514,19 +611,135 @@ export class AimingManager {
    * @private
    */
   _startSimpleAiming() {
-    // Меняем курсор
     document.body.style.cursor = 'crosshair';
-    
-    // Создаём графику для указателя
     this._createPointer();
-    
-    // Привязываем события
     this._bindEvents();
-    
+    this._updatePointer();
     ui.notifications.info(game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.AimingActivated')
       ?? 'Aiming mode activated. LMB - shoot, RMB/ESC - cancel');
   }
-  
+
+  /**
+   * Standard aiming: hidden cursor, wander reticle, turning laser clamped to arcs.
+   * @private
+   */
+  _startStandardAiming() {
+    this._setStandardCursorHidden(true);
+    this._initStandardState();
+    this._createPointer();
+    this._bindEvents();
+    this._startAimingTicker();
+    this._updatePointer();
+    ui.notifications.info(game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.AimingActivated')
+      ?? 'Aiming mode activated. LMB - shoot, RMB/ESC - cancel');
+  }
+
+  _setStandardCursorHidden(hidden) {
+    const cls = String(_aimingCfg().boardAimingClass || 'spaceholder-aiming-standard');
+    const board = document.getElementById('board');
+    const canvasEl = canvas?.app?.canvas ?? canvas?.app?.view ?? canvas?.element ?? null;
+    if (hidden) {
+      board?.classList?.add(cls);
+      if (canvasEl) {
+        this._savedCanvasCursor = canvasEl.style?.cursor ?? '';
+        canvasEl.style.cursor = 'none';
+      }
+    } else {
+      board?.classList?.remove(cls);
+      if (canvasEl) {
+        canvasEl.style.cursor = this._savedCanvasCursor ?? '';
+        this._savedCanvasCursor = undefined;
+      }
+    }
+  }
+
+  _initStandardState() {
+    const pointerDeg = _pointerDeg(this.currentToken);
+    const radius = _wanderRadiusPx(this.currentToken?.actor);
+    const duration = Math.max(200, Number(_aimingCfg().wanderDurationMs) || 2000);
+    const from = { x: 0, y: 0 };
+    const to = _randomPointInDisk(radius);
+    this._standardState = {
+      localX: 0,
+      localY: 0,
+      fromX: from.x,
+      fromY: from.y,
+      toX: to.x,
+      toY: to.y,
+      wanderStartedAt: Date.now(),
+      wanderDurationMs: duration,
+      lineDeg: pointerDeg,
+      clamped: false,
+      radius,
+    };
+  }
+
+  _startAimingTicker() {
+    this._stopAimingTicker();
+    try {
+      canvas?.app?.ticker?.add?.(this._tickerFn);
+    } catch (_) { /* ignore */ }
+  }
+
+  _stopAimingTicker() {
+    try {
+      canvas?.app?.ticker?.remove?.(this._tickerFn);
+    } catch (_) { /* ignore */ }
+  }
+
+  _onAimingTick(ticker) {
+    if (!this.isAiming) return;
+    if (_normalizeAimingType(this.currentOptions?.type) !== 'standard') return;
+    const dt = Math.min(0.1, Math.max(0, Number(ticker?.deltaMS ?? 16.6) / 1000));
+    this._tickStandardAiming(dt);
+    this._updatePointer();
+  }
+
+  _tickStandardAiming(dt) {
+    const state = this._standardState;
+    const token = this.currentToken;
+    if (!state || !token) return;
+
+    state.radius = _wanderRadiusPx(token.actor);
+    const duration = Math.max(200, Number(state.wanderDurationMs) || 2000);
+    const elapsed = Date.now() - Number(state.wanderStartedAt || 0);
+    let t = duration > 0 ? elapsed / duration : 1;
+    if (t >= 1) {
+      state.localX = state.toX;
+      state.localY = state.toY;
+      state.fromX = state.localX;
+      state.fromY = state.localY;
+      const next = _randomPointInDisk(state.radius);
+      state.toX = next.x;
+      state.toY = next.y;
+      state.wanderStartedAt = Date.now();
+      t = 0;
+    } else {
+      state.localX = state.fromX + (state.toX - state.fromX) * t;
+      state.localY = state.fromY + (state.toY - state.fromY) * t;
+    }
+    const mag = Math.hypot(state.localX, state.localY);
+    if (mag > state.radius && mag > 1e-6) {
+      const s = state.radius / mag;
+      state.localX *= s;
+      state.localY *= s;
+    }
+
+    const mouse = canvas?.mousePosition ?? { x: 0, y: 0 };
+    const center = token.center;
+    const reticleX = mouse.x + state.localX;
+    const reticleY = mouse.y + state.localY;
+    const desiredDeg = Math.atan2(reticleY - center.y, reticleX - center.x) * (180 / Math.PI);
+    const pointerDeg = _pointerDeg(token);
+    const { allowedPerSideDeg } = _resolveAimingArcConfig(token.actor, this._aimingErgo);
+    const clampedAim = _clampDesiredToArcs(pointerDeg, desiredDeg, allowedPerSideDeg);
+    state.clamped = clampedAim.clamped;
+    const rate = _turnRateDegPerSec(this._aimingErgo);
+    state.lineDeg = _rotateTowardDeg(state.lineDeg, clampedAim.deg, rate * dt);
+    const lineClamp = _clampDesiredToArcs(pointerDeg, state.lineDeg, allowedPerSideDeg);
+    state.lineDeg = lineClamp.deg;
+  }
+
   /**
    * Создать графику указателя
    * @private
@@ -535,11 +748,13 @@ export class AimingManager {
     if (this.pointerGraphics) {
       this.pointerGraphics.destroy();
     }
-    
+
     this.pointerGraphics = new PIXI.Graphics();
+    this.pointerGraphics.eventMode = 'none';
+    this.pointerGraphics.interactive = false;
     canvas.controls.addChild(this.pointerGraphics);
   }
-  
+
   /**
    * Очистить указатель
    * @private
@@ -550,30 +765,79 @@ export class AimingManager {
       this.pointerGraphics = null;
     }
   }
-  
+
   /**
    * Обновить визуализацию указателя
    * @private
    */
   _updatePointer() {
     if (!this.isAiming || !this.currentToken || !this.pointerGraphics) return;
-    
+
+    const aimingType = _normalizeAimingType(this.currentOptions?.type);
+    if (aimingType === 'standard') {
+      this._drawStandardPointer();
+      return;
+    }
+
     const mousePos = canvas.mousePosition;
     const tokenCenter = this.currentToken.center;
-    
-    // Очищаем предыдущую графику
     this.pointerGraphics.clear();
-    
-    // Рисуем линию от токена к курсору
     this.pointerGraphics.lineStyle(2, 0x00ff00, 0.8);
     this.pointerGraphics.moveTo(tokenCenter.x, tokenCenter.y);
     this.pointerGraphics.lineTo(mousePos.x, mousePos.y);
-    
-    // Рисуем круг в точке курсора
     this.pointerGraphics.lineStyle(2, 0x00ff00, 1);
     this.pointerGraphics.drawCircle(mousePos.x, mousePos.y, 10);
   }
-  
+
+  _drawStandardPointer() {
+    const g = this.pointerGraphics;
+    const token = this.currentToken;
+    const state = this._standardState;
+    if (!g || !token || !state) return;
+
+    const mouse = canvas?.mousePosition ?? { x: 0, y: 0 };
+    const center = token.center;
+    const zoneR = Math.max(0, Number(state.radius) || 0);
+    const reticleX = mouse.x + state.localX;
+    const reticleY = mouse.y + state.localY;
+    const cfg = _aimingCfg();
+    const laserLen = _laserLengthPx();
+    const rad = (Number(state.lineDeg) * Math.PI) / 180;
+    const endX = center.x + Math.cos(rad) * laserLen;
+    const endY = center.y + Math.sin(rad) * laserLen;
+    const color = Number(cfg.laserColor) || 0xff4444;
+    const width = Math.max(1, Number(cfg.laserWidth) || 2);
+    const segments = Math.max(4, Math.floor(Number(cfg.laserSegments) || 14));
+    const zoneAlpha = Math.max(0, Math.min(1, Number(cfg.zoneDebugAlpha) || 0));
+    const zoneColor = Number(cfg.zoneDebugColor) || 0x88c8ff;
+    const reticleR = Math.max(2, Number(cfg.reticleRadiusPx) || 5);
+    const reticleColor = Number(cfg.reticleColor) || 0xff6666;
+
+    g.clear();
+
+    if (zoneAlpha > 0 && zoneR > 0) {
+      const debugColor = state.clamped ? 0xe05252 : zoneColor;
+      g.lineStyle(1, debugColor, Math.max(zoneAlpha, state.clamped ? 0.45 : 0));
+      g.drawCircle(mouse.x, mouse.y, zoneR);
+    }
+
+    for (let i = 0; i < segments; i += 1) {
+      const t0 = i / segments;
+      const t1 = (i + 1) / segments;
+      const a = 0.9 * (1 - t0);
+      g.lineStyle(width, color, a);
+      g.moveTo(center.x + (endX - center.x) * t0, center.y + (endY - center.y) * t0);
+      g.lineTo(center.x + (endX - center.x) * t1, center.y + (endY - center.y) * t1);
+    }
+
+    g.lineStyle(2, reticleColor, 1);
+    g.drawCircle(reticleX, reticleY, reticleR);
+    g.moveTo(reticleX - reticleR - 3, reticleY);
+    g.lineTo(reticleX + reticleR + 3, reticleY);
+    g.moveTo(reticleX, reticleY - reticleR - 3);
+    g.lineTo(reticleX, reticleY + reticleR + 3);
+  }
+
   /**
    * Получить текущее направление прицеливания
    * @private
@@ -581,14 +845,122 @@ export class AimingManager {
    */
   _getCurrentDirection() {
     if (!this.currentToken) return 0;
-    
+
+    if (_normalizeAimingType(this.currentOptions?.type) === 'standard' && this._standardState) {
+      return Number(this._standardState.lineDeg) || 0;
+    }
+
     const mousePos = canvas.mousePosition;
     const tokenCenter = this.currentToken.center;
-    
     const dx = mousePos.x - tokenCenter.x;
     const dy = mousePos.y - tokenCenter.y;
-    
     return Math.atan2(dy, dx) * (180 / Math.PI);
+  }
+
+  _currentShotLuck() {
+    if (_normalizeAimingType(this.currentOptions?.type) !== 'standard') return null;
+    const lineDeg = this._getCurrentDirection();
+    const clamped = !!this._standardState?.clamped;
+    return _sampleShotLuck(this.currentToken, lineDeg, this._aimingErgo, clamped);
+  }
+
+  _attachShotDiagnostics(uid, { luck = null, spread = null } = {}) {
+    if (!uid) return;
+    try {
+      const shot = game.spaceholder?.shotManager?.shotSystem?.getShot?.(uid);
+      if (!shot) return;
+      if (luck) shot.luck = { ...luck };
+      if (spread) {
+        const d = Number(spread.spreadDeltaDeg);
+        const m = Number(spread.spreadMaxDeg);
+        shot.spread = {
+          spreadDeltaDeg: Number.isFinite(d) ? d : 0,
+          spreadMaxDeg: Number.isFinite(m) ? m : 0,
+        };
+      }
+    } catch (_) { /* ignore */ }
+  }
+
+  _fmtClock(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '?';
+    let hours = v;
+    while (hours < 0) hours += 12;
+    while (hours >= 12) hours -= 12;
+    const r = Math.round(hours * 10) / 10;
+    if (r === 0) return '12';
+    return String(r);
+  }
+
+  async _postShotDiagnosticChat(uid) {
+    const shot = uid ? game.spaceholder?.shotManager?.shotSystem?.getShot?.(uid) : null;
+    if (!shot) return;
+
+    const E = foundry.utils.escapeHTML;
+    const lines = [];
+
+    const luck = shot.luck ?? null;
+    if (luck) {
+      const clampedBit = luck.clamped
+        ? ` (${game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.LuckClamped') ?? 'clamped'})`
+        : '';
+      const luckValue = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticLuck', {
+        zone: String(luck.zoneLabel ?? luck.zone ?? ''),
+        clamped: clampedBit,
+      }) || `${luck.zoneLabel ?? luck.zone ?? ''}${clampedBit}`;
+      lines.push(game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticLuckLine', {
+        value: luckValue,
+      }) || luckValue);
+    }
+
+    const spread = shot.spread ?? { spreadDeltaDeg: 0, spreadMaxDeg: 0 };
+    const delta = Number(spread.spreadDeltaDeg);
+    const deltaSafe = Number.isFinite(delta) ? delta : 0;
+    const signed = `${deltaSafe > 0 ? '+' : ''}${this._fmt(deltaSafe)}°`;
+    const max = Number(spread.spreadMaxDeg);
+    const maxSafe = Number.isFinite(max) ? max : 0;
+    const spreadCore = maxSafe > 0 ? `${signed} / ${this._fmt(maxSafe)}°` : signed;
+    const spreadValue = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticSpread', {
+      delta: spreadCore,
+    }) || spreadCore;
+    lines.push(game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticSpreadLine', {
+      value: spreadValue,
+    }) || spreadValue);
+
+    const tokenHits = (Array.isArray(shot.actualHits) ? shot.actualHits : [])
+      .filter((h) => h?.type === 'token' && h?.object);
+    if (!tokenHits.length) {
+      const miss = game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.DiagnosticMiss') ?? 'miss';
+      lines.push(miss);
+    } else {
+      for (const hit of tokenHits) {
+        const name = String(hit.object?.name ?? hit.object?.actor?.name ?? '');
+        const clock = this._fmtClock(hit.details?.clock);
+        const centrality = this._fmt(hit.details?.centrality);
+        const luckInfo = resolveHitLuck({
+          centrality: hit.details?.centrality,
+          zone: luck?.zone,
+        });
+        const hitLine = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticHit', {
+          name,
+          clock,
+          centrality,
+          hitLuck: this._fmt(luckInfo.hitLuck),
+          band: localizeHitLuckBand(luckInfo.band),
+        }) || `${name} · ${clock}h · ${centrality} · ${this._fmt(luckInfo.hitLuck)}`;
+        lines.push(hitLine);
+      }
+    }
+
+    const content = `<div>${lines.map((line) => `<div>${E(line)}</div>`).join('')}</div>`;
+    try {
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.currentToken?.actor ?? null }),
+        content,
+      });
+    } catch (_) {
+      /* ignore chat errors */
+    }
   }
   
   /**
@@ -612,40 +984,23 @@ export class AimingManager {
     }
     
     const payload = this.currentPayload;
-    const baseDirection = this._getCurrentDirection();
-    const aimingType = _normalizeAimingType(this.currentOptions?.type);
-    const standardInfo = aimingType === 'standard'
-      ? _applyStandardAimingDeviation(this.currentToken, baseDirection)
-      : null;
-    const direction = standardInfo?.direction ?? baseDirection;
-    
+    const direction = this._getCurrentDirection();
+    const luck = this._currentShotLuck();
+
     console.log('AimingManager: Firing with direction', direction);
-    
-    // Создаём выстрел через глобальный shot-manager
+
     const uid = shotManager.createShot(
       this.currentToken,
       payload,
       direction
     );
-    
+    this._attachShotDiagnostics(uid, {
+      luck,
+      spread: { spreadDeltaDeg: 0, spreadMaxDeg: 0 },
+    });
+
     console.log('AimingManager: Shot created with UID', uid);
 
-    if (standardInfo) {
-      const deviationRounded = Math.round((standardInfo.deviationDeg || 0) * 100) / 100;
-      const message = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.StandardShotInfo', {
-        zone: String(standardInfo.zoneLabel ?? ''),
-        deviation: String(deviationRounded),
-      }) || `Standard aiming: zone=${standardInfo.zoneLabel}, deviation=${deviationRounded}`;
-      try {
-        await ChatMessage.create({
-          speaker: ChatMessage.getSpeaker({ actor: this.currentToken?.actor ?? null }),
-          content: `<div>${foundry.utils.escapeHTML(message)}</div>`,
-        });
-      } catch (_) {
-        /* ignore chat errors */
-      }
-    }
-    
     // Если включена автоматическая отрисовка, вызываем draw-manager
     if (this.currentOptions.autoRender) {
       const shotResult = shotManager.getShotResult(uid);
@@ -657,12 +1012,9 @@ export class AimingManager {
       }
     }
 
-    if (this.currentOptions?.useAmmo && this.currentOptions?.ammoUuid) {
-      await this._applyAmmoDamage(uid);
-    } else {
-      await this._applyFirstTokenHitDamage(uid);
-    }
-    
+    await this._postShotDiagnosticChat(uid);
+    await this._resolveHitLuckImpacts(uid, { projectile: payload });
+
     // Не останавливаем прицеливание автоматически - пользователь может продолжить
   }
 
@@ -738,7 +1090,7 @@ export class AimingManager {
 
   /**
    * Один выстрел v3: трата ОД, расход боеприпаса по всем блокам линии,
-   * отклонение по дугам + независимый Разброс линии, создание снаряда.
+   * направление по техлинии + независимый Разброс линии, создание снаряда.
    *
    * Стоимость первого выстрела серии — Прицеливание + Спуск линии;
    * последующих — задержка режима (Скорострельность, 10 ОД = 1 с).
@@ -833,41 +1185,42 @@ export class AimingManager {
         multishot = { ...multishot, coneDegrees: msLine.coneDegrees };
       }
 
-      // --- Направление: дуги + равномерный веер + per-ray spread jitter ---
+      // --- Направление: техлиния + удачность дуги + веер + per-ray spread ---
       const baseDirection = this._getCurrentDirection();
-      const standardInfo = _applyStandardAimingDeviation(this.currentToken, baseDirection, eff.ergonomics);
+      const luck = this._currentShotLuck();
       const coneDirs = multishot.enabled && multishot.count > 1
-        ? uniformConeDirections(standardInfo.direction, multishot.count, multishot.coneDegrees)
-        : [standardInfo.direction];
+        ? uniformConeDirections(baseDirection, multishot.count, multishot.coneDegrees)
+        : [baseDirection];
 
       const shotManager = game.spaceholder?.shotManager;
-      const builderContext = {
-        shooterActorUuid: actor?.uuid ?? null,
-        weaponItemUuid: weaponItem.uuid,
-        weaponName: weaponItem.name,
-        ammoName: firstRound?.name ?? null,
-      };
 
       for (const coneDir of coneDirs) {
         let direction = coneDir;
-        if (eff.line.spread?.enabled && eff.line.spread.value > 0) {
-          direction += (Math.random() * 2 - 1) * eff.line.spread.value;
+        let spreadDeltaDeg = 0;
+        const spreadMaxDeg = (eff.line.spread?.enabled && eff.line.spread.value > 0)
+          ? Number(eff.line.spread.value) || 0
+          : 0;
+        if (spreadMaxDeg > 0) {
+          spreadDeltaDeg = (Math.random() * 2 - 1) * spreadMaxDeg;
+          direction += spreadDeltaDeg;
         }
         const uid = shotManager.createShot(this.currentToken, payload, direction);
+        this._attachShotDiagnostics(uid, {
+          luck,
+          spread: { spreadDeltaDeg, spreadMaxDeg },
+        });
         if (this.currentOptions?.autoRender) {
           const shotResult = shotManager.getShotResult(uid);
           if (shotResult && game.spaceholder?.drawManager) {
             game.spaceholder.drawManager.drawShot(shotResult);
           }
         }
-        if (projectile) {
-          await this._applyResolvedProjectileDamage(uid, {
-            projectile,
-            weaponItem,
-            ammoItem: firstRound,
-            builderContext,
-          });
-        }
+        await this._postShotDiagnosticChat(uid);
+        await this._resolveHitLuckImpacts(uid, {
+          projectile,
+          weaponItem,
+          ammoItem: firstRound,
+        });
       }
 
       // Камера осталась пустой без автоподачи → серия прерывается затвором.
@@ -875,6 +1228,111 @@ export class AimingManager {
       return true;
     } finally {
       this._fireBusy = false;
+    }
+  }
+
+  async _resolveHitLuckImpacts(shotUid, shotContext = {}) {
+    const shotManager = game.spaceholder?.shotManager;
+    if (!shotManager || !shotUid) return;
+    const shot = shotManager.shotSystem?.getShot?.(shotUid);
+    if (!shot) return;
+
+    const tokenHits = (Array.isArray(shot.actualHits) ? shot.actualHits : [])
+      .filter((h) => h?.type === 'token' && h?.object?.actor);
+    if (!tokenHits.length) return;
+
+    const shooterActor = this.currentToken?.actor ?? null;
+    const injurySource = {
+      attackerUuid: shooterActor?.uuid ?? null,
+      attackerName: shooterActor?.name ?? this.currentToken?.name ?? null,
+      weaponUuid: shotContext.weaponItem?.uuid ?? null,
+      weaponName: shotContext.weaponItem?.name ?? null,
+      ammoUuid: shotContext.ammoItem?.uuid ?? shotContext.ammoItem?.sourceUuid ?? null,
+      ammoName: shotContext.ammoItem?.name ?? null,
+      verbKey: 'fire',
+      shotUid,
+    };
+
+    for (const hit of tokenHits) {
+      const targetActor = hit.object.actor;
+      if (typeof targetActor.applyDamagePackage !== 'function') continue;
+      const bodyParts = targetActor.system?.health?.bodyParts ?? {};
+      const partIds = Object.keys(bodyParts);
+      if (!partIds.length) continue;
+
+      const resolved = resolveHitLuck({
+        centrality: hit.details?.centrality,
+        zone: shot.luck?.zone,
+      });
+      if (!hit.details || typeof hit.details !== 'object') hit.details = {};
+      hit.details.hitLuck = resolved.hitLuck;
+      hit.details.hitLuckBand = resolved.band;
+
+      if (isContinueBand(resolved.band)) {
+        if (shot.luck) {
+          shot.luck = {
+            ...shot.luck,
+            zone: upgradeLuckZoneTowardGreen(shot.luck.zone),
+          };
+        }
+        continue;
+      }
+
+      const groups = availableHitGroups(targetActor);
+      const override = String(targetActor.system?.anatomy?.hitGroupOverride ?? '').trim();
+      let groupId = null;
+      let partId = null;
+
+      if (isGrazeBand(resolved.band)) {
+        groupId = groups.length
+          ? groups[Math.floor(Math.random() * groups.length)].id
+          : null;
+      } else if (override && groups.some((g) => g.id === override)) {
+        groupId = override;
+      } else if (groups.length) {
+        const choice = await promptHitGroupDialog({
+          actor: targetActor,
+          resolved,
+          groups,
+          allowPart: canPickSpecificPart(resolved.band),
+        });
+        groupId = choice.groupId;
+        partId = choice.partId;
+      }
+
+      if (!partId && groupId) {
+        const group = groups.find((g) => g.id === groupId);
+        const slots = groupSlotRefs(bodyParts, group);
+        partId = slots.length ? slots[Math.floor(Math.random() * slots.length)] : null;
+      }
+      if (!partId) {
+        partId = partIds[Math.floor(Math.random() * partIds.length)];
+      }
+
+      const projectile = shotContext.projectile;
+      const canApply = projectile && typeof projectile === 'object'
+        && (Number(projectile.damage) > 0
+          || (Array.isArray(projectile.applications) && projectile.applications.length)
+          || projectile.builderId);
+      if (!canApply) continue;
+
+      const hitDirection = clockToHitFace(hit.details?.clock);
+      try {
+        await targetActor.applyDamagePackage({
+          partId,
+          projectile,
+          builderContext: {
+            shooterActorUuid: shooterActor?.uuid ?? null,
+            weaponItemUuid: shotContext.weaponItem?.uuid ?? null,
+            ammoItemUuid: injurySource.ammoUuid,
+          },
+          source: injurySource,
+          hitDirection,
+          armorScale: resolved.armorScale,
+        });
+      } catch (e) {
+        console.error('AimingManager: applyDamagePackage failed', e);
+      }
     }
   }
 
@@ -910,12 +1368,17 @@ export class AimingManager {
     const weaponName = String(shotContext.weaponItem?.name ?? '');
     const ammoName = String(shotContext.ammoItem?.name ?? '');
     const count = Array.isArray(results) ? results.length : 0;
-    const content = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.ProjectileShotResolved', {
+    const luck = shotContext.luck ?? shot?.luck ?? null;
+    const luckBit = luck
+      ? ` · ${String(luck.zoneLabel ?? luck.zone ?? '')}`
+        + (luck.clamped ? ` (${game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.LuckClamped') ?? 'clamped'})` : '')
+      : '';
+    const content = (game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.ProjectileShotResolved', {
       shooter: shooterName,
       weapon: weaponName,
       ammo: ammoName,
       hits: String(count),
-    }) || `${shooterName} fires ${weaponName} (${ammoName}); impacts: ${count}`;
+    }) || `${shooterName} fires ${weaponName} (${ammoName}); impacts: ${count}`) + luckBit;
     try {
       await ChatMessage.create({
         speaker: ChatMessage.getSpeaker({ actor: this.currentToken?.actor ?? null }),

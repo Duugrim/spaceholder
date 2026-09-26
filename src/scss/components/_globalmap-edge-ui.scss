@@ -272,6 +272,13 @@
     border-radius: var(--sh-radius-sm);
   }
 
+  .sh-gm-edge__iconBtn.is-active,
+  .sh-gm-edge__view3dBtn.is-active {
+    background: rgba(74, 110, 74, 0.35);
+    border: 1px solid rgba(74, 110, 74, 0.90);
+    color: #9fe39f;
+  }
+
   // Status icon (non-clickable)
   .sh-gm-edge__statusIcon {
     width: 30px;

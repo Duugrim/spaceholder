@@ -65,6 +65,18 @@ export const AMMO_BLOCK_TYPES = Object.freeze({
 
 export const AMMO_BLOCK_TYPE_LIST = Object.freeze(Object.values(AMMO_BLOCK_TYPES));
 
+/** How the HUD renders a block's ammo counter. */
+export const AMMO_DISPLAY_STYLES = Object.freeze({
+  NUMBER: 'number',
+  BAR: 'bar',
+  PIPS: 'pips',
+});
+
+export const AMMO_DISPLAY_STYLE_LIST = Object.freeze(Object.values(AMMO_DISPLAY_STYLES));
+
+/** Above this many slots pips fall back to the numeric counter. */
+const AMMO_PIPS_MAX = 12;
+
 /** Blocks that consume item documents (vs internal counters). */
 export const ITEM_FED_BLOCK_TYPES = Object.freeze([
   AMMO_BLOCK_TYPES.INTERNAL_MAGAZINE,
@@ -236,6 +248,7 @@ export function createAmmoBlock(type = AMMO_BLOCK_TYPES.INTERNAL_MAGAZINE, seed 
     loadAmount: 1,
     chamberEnabled: false,
     autoFeed: false,
+    displayStyle: AMMO_DISPLAY_STYLES.NUMBER,
     caliber: '',
     connector: '',
     search: { hands: true, worn: true, inventory: true, containers: true, mode: AMMO_SEARCH_MODES.AUTO },
@@ -427,6 +440,7 @@ export function normalizeAmmoBlock(raw) {
     loadAmount: Math.max(0, shInt(raw.loadAmount, 1, 0)),
     chamberEnabled: _bool(raw.chamberEnabled, false),
     autoFeed: _bool(raw.autoFeed, false),
+    displayStyle: AMMO_DISPLAY_STYLE_LIST.includes(raw.displayStyle) ? raw.displayStyle : AMMO_DISPLAY_STYLES.NUMBER,
     caliber: shStr(raw.caliber),
     connector: shStr(raw.connector),
     search: _normalizeAmmoSearch(raw.search),
@@ -577,6 +591,40 @@ export function getWeaponLineMode(weapon, lineId, modeId) {
   return { line, mode };
 }
 
+/**
+ * Resolve the weapon's current/last attack from persisted state.
+ * Empty or stale ids fall back to the first valid line and mode.
+ *
+ * @param {object} weapon normalized v3 weapon
+ * @returns {{
+ *   lineId: string,
+ *   modeId: string,
+ *   line: object|null,
+ *   mode: object|null,
+ *   hasMultipleLines: boolean,
+ *   hasMultipleModes: boolean,
+ * }}
+ */
+export function resolveActiveWeaponAttack(weapon) {
+  const lines = Array.isArray(weapon?.lines) ? weapon.lines : [];
+  const requestedLineId = String(weapon?.state?.activeLineId ?? '').trim();
+  const line = getWeaponLine(weapon, requestedLineId) ?? lines[0] ?? null;
+  const modes = Array.isArray(line?.modes) ? line.modes : [];
+  const requestedModeId = String(weapon?.state?.activeModeId ?? '').trim();
+  const mode = (line
+    ? (line.modes ?? []).find((m) => m.id === requestedModeId) ?? null
+    : null) ?? modes[0] ?? null;
+
+  return {
+    lineId: String(line?.id ?? ''),
+    modeId: String(mode?.id ?? ''),
+    line,
+    mode,
+    hasMultipleLines: lines.length > 1,
+    hasMultipleModes: modes.length > 1,
+  };
+}
+
 function _applyModToValue(value, mod) {
   switch (mod.op) {
     case MOD_OPS.MULT: return value * (mod.value / 100);
@@ -707,7 +755,8 @@ export function applyDamageModifiers(entries, damageMods = [], energyMult = null
  *    fixed at `base × overall`.
  *  - Crit (purple) zone: flat bonus first, then the size multiplier.
  *  - Dead zone: multiplier on the character's dead zone.
- *  - «Помеха прицеливания» multiplies the deviation penalty.
+ *  - «Помеха прицеливания» retained on ergo (unused for shot direction; luck
+ *    comes from the technical line vs pointer).
  *
  * @param {object} base
  * @param {number} base.purpleZoneDeg
@@ -805,6 +854,43 @@ export function formatAmmoCounter(block, actor = null) {
   const chamber = fill.chamber;
   if (block.chamberEnabled) return `${chamber}+${reserve}/${n}`;
   return `${reserve}/${n}`;
+}
+
+/**
+ * Ammo counter view model for compact UI (HUD) honoring `block.displayStyle`.
+ * Pips only apply to slot blocks with at most AMMO_PIPS_MAX slots; otherwise
+ * the numeric counter is used. The bar works for charge blocks too.
+ *
+ * @param {object} block
+ * @param {Actor|null} [actor]
+ * @returns {{style: string, text: string, fillPct: number, pips: Array<{filled: boolean}>}}
+ */
+export function buildAmmoDisplay(block, actor = null) {
+  const text = formatAmmoCounter(block, actor);
+  const numeric = { style: AMMO_DISPLAY_STYLES.NUMBER, text, fillPct: 0, pips: [] };
+  const style = block?.displayStyle ?? AMMO_DISPLAY_STYLES.NUMBER;
+  if (!block || style === AMMO_DISPLAY_STYLES.NUMBER) return numeric;
+
+  const fill = getBlockFillPreview(block, actor);
+  if (fill.mode === 'empty') return numeric;
+  const isCharge = fill.mode === 'charge';
+  const chamberSlots = !isCharge && block.chamberEnabled ? 1 : 0;
+  const current = fill.current + (chamberSlots ? fill.chamber : 0);
+  const max = fill.max + chamberSlots;
+  if (max <= 0) return numeric;
+  const fillPct = Math.max(0, Math.min(100, Math.round((current / max) * 100)));
+
+  if (style === AMMO_DISPLAY_STYLES.PIPS) {
+    if (isCharge || max > AMMO_PIPS_MAX) return numeric;
+    const filled = Math.max(0, Math.min(max, Math.round(current)));
+    return {
+      style,
+      text,
+      fillPct,
+      pips: Array.from({ length: max }, (_, i) => ({ filled: i < filled })),
+    };
+  }
+  return { style: AMMO_DISPLAY_STYLES.BAR, text, fillPct, pips: [] };
 }
 
 /**

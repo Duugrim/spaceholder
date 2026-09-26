@@ -10,7 +10,9 @@ tags:
 
 ## Обзор
 
-Система позволяет использовать различные типы анатомий для актёров вместо жёстко прописанной структуры. У каждой части тела задаются **экспозиция по направлениям** (взвешенная) и **типизированные связи** (`relations`): рядом (`adjacent`), за (`behind`), родитель (`parent`).
+Система позволяет использовать различные типы анатомий для актёров вместо жёстко прописанной структуры. У каждой части тела своё HP на 2D-сетке, **стороны** (`faces`) для брони, **материал** из каталога, **группы** (манипуляция / передвижение / сенсорная / критическая) и типизированные связи (`relations`): рядом (`adjacent`), за (`behind` между разными частями), родитель (`parent`).
+
+Выстрел сначала попадает в токен; `hitLuck = combine(centrality, зона дуги)` задаёт пояс (часть или группа / только группа / угол брони / задел / снаряд летит дальше). Диалог группы — после хита. См. `module/helpers/hit-luck.mjs`, `module/helpers/anatomy-groups.mjs`.
 
 ## Где лежат файлы
 
@@ -23,7 +25,8 @@ tags:
 
 - Загрузка и кэширование анатомий из `data/anatomy/`
 - Валидация структуры (`validateAnatomyStructure`)
-- Нормализация для актёра: ключи слотов `typeId#N`, `uuid`, ремап целей `relations` и производное поле `links` (только `adjacent`)
+- Нормализация для актёра: ключи слотов `typeId#N`, `uuid`, ремап `relations`/`groups`, производное `links` (только `adjacent`)
+- Поля части: `material`, `faces`, `inners`, `heightFrac` (не `exposure` / `bodyLayers` / `position3d` / `weight` / `status`)
 
 ### 2. Anatomy relations helper (`module/helpers/anatomy-relations.mjs`)
 
@@ -37,7 +40,7 @@ tags:
 
 ### 4. Anatomy Editor (`module/helpers/anatomy-editor.mjs`)
 
-- Редактирование `exposure` и `relations` на листе (режим правки)
+- Редактирование `faces`, `material`, `heightFrac`, `inners`, `relations`, групп на листе (режим правки)
 - Режим связи перетаскиванием добавляет только **`adjacent`** (в обе стороны)
 
 ### 5. ActorSheet (`module/sheets/actor-sheet.mjs`)
@@ -51,44 +54,37 @@ tags:
 | Поле | Описание |
 |------|-----------|
 | `id`, `name`, `description`, `version` | Идентификация |
+| `heightM` | Ожидаемый рост (м); у персонажа `system.heightM` |
+| `groups` | `{ id, type, name, parts[] }` — type: manipulation / movement / sensory / critical |
 | `grid` | `{ width, height }` сетки редактора |
 | `bodyParts` | Объект частей; **ключи** — стабильные id в пресете (до применения к актёру) |
-| `links` | Опционально: массив `{ from, to }` только по **`adjacent`** (дубль для экспорта/чтения; источник истины — `bodyParts[].relations`) |
+| `links` | Опционально: массив `{ from, to }` только по **`adjacent`** |
 
 ### Часть тела (`bodyParts.<key>`)
 
-Обязательные поля: `id`, `weight`, `maxHp`. Частые: `name`, `x`, `y`, `position3d`, `status`, `internal`, `tags`, `organs`, `material`, `bodyLayers`.
+Обязательные поля: `id`, `maxHp`, `material` (slug каталога, не пустой). Частые: `name`, `x`, `y`, `tags`, `faces`, `inners`, `heightFrac`, `relations`.
 
-**Сетка (`x`, `y`):** целые координаты ячейки для **2D**-редактора на вкладке «Здоровье» (и связей на схеме). Не влияют на резолвер урона.
+**Сетка (`x`, `y`):** целые координаты ячейки для **2D**-редактора на вкладке «Здоровье». Не влияют на резолвер урона.
 
-**Позиция 3D (`position3d`, опционально):** объект `{ "x": number, "y": number, "z": number }` в тех же мировых единицах, что и внутренний лейаут 3D-просмотра (см. `computeAnatomy3DLayout` / `AnatomyEditor3D`). Позволяет, например, вынести спину **сзади** груди на 3D, оставив на сетке читаемую раскладку. Если поле отсутствует или неполное — для 3D координаты выводятся из `x`/`y` эвристикой.
+**Стороны (`faces`):** `front` и/или `back` — слоты брони, не HP. Торс: оба. Конечность: обычно `["front"]`. Броня: `coveredParts` `{ slotRef, face, layers }`. Legacy `chest`/`back`/`abdomen` ремапятся в `upperTorso`/`lowerTorso` + face.
 
-**Экспозиция (направления «куда обращена» зона):**
+**Материал:** один slug на часть (`skin` / `muscle` / `bone` …). В траверсе это единственный тканевой слой после брони входящей стороны.
 
-```json
-"exposure": {
-  "front": 100,
-  "back": 0,
-  "left": 0,
-  "right": 0
-}
-```
+**Внутренности (`inners`):** `{ id, name, material, occupancyPct, statuses[] }`, сумма долей ≤ 100. Не клетка сетки и не сторона.
 
-Ключи: только `front` | `back` | `left` | `right` (азимут в плоскости боя). Значения — неотрицательные числа (веса; не обязаны суммироваться в 100). Пустой объект `{}` — нейтральная / не заданная экспозиция.
+**Высота:** `heightFrac` 0–1 от `actor.system.heightM`. Высота части от пола = `heightFrac * heightM` (укрытие токенами — не этот срез).
 
-**Визуализация на сетке (2D):** круг части тела делится на 4 квадранта — **перед**, **право**, **зад**, **лево**. Толщина «ободка» в каждом квадранте по радиусу пропорциональна весу; при весе 0 сегмент не рисуется.
+Человек: `upperTorso` / `lowerTorso` вместо груди+спины+живота. Отдельного кружка «спина» нет.
 
 **Авторинг сетки (`x`, `y`):** не размещайте **разные** части тела в **одной и той же** клетке `(x, y)`, если это можно избежать — так проще читать схему и редактор. Это рекомендация по данным; движок **не** валидирует уникальность координат.
-
-**Legacy:** в старых JSON могли быть `top` / `bottom`. При загрузке `sanitizeExposure` прибавляет `top` к `front`, `bottom` к `back` и дальше работает только с четырьмя осями.
 
 **Связи:**
 
 ```json
 "relations": [
-  { "kind": "adjacent", "target": "abdomen" },
-  { "kind": "behind", "target": "back", "chance": 80, "direction": "front" },
-  { "kind": "parent", "target": "chest" }
+  { "kind": "adjacent", "target": "lowerTorso" },
+  { "kind": "behind", "target": "neck", "chance": 20, "direction": "front" },
+  { "kind": "parent", "target": "upperTorso" }
 ]
 ```
 
@@ -100,64 +96,29 @@ tags:
 
 `target` в файле пресета — **ключ** другой части в том же `bodyParts` (не slotRef).
 
-### Слои тела (`bodyLayers`)
+### Ткань части и броня по сторонам
 
-Часть тела может иметь собственный **стек тканей** — массив
-`{ material, thickness }`. Резолвер урона
-(`body-traversal-resolver.mjs`) применяет эти слои **как ещё один
-кусок брони**: сначала внешняя броня, затем `bodyLayers`, и только
-после этого — «центр» части, где копится `bodyDamage`.
+У части один `material` (каталог). Резолвер (`body-traversal-resolver.mjs`): броня **входящей** стороны → материал части → HP центра → при пробитии броня **противоположной** стороны (если `faces` её содержит) → `behind` / дальше.
 
 ```json
-"chest": {
-  "id": "chest",
-  "name": "Chest",
-  "weight": 2,
+"upperTorso": {
+  "id": "upperTorso",
+  "name": "Upper Torso",
   "maxHp": 50,
-  "exposure": { "front": 100, "back": 0, "left": 20, "right": 20 },
-  "bodyLayers": [
-    { "material": "skin",   "thickness": 1 },
-    { "material": "muscle", "thickness": 3 },
-    { "material": "bone",   "thickness": 2 }
+  "material": "muscle",
+  "faces": ["front", "back"],
+  "heightFrac": 0.7,
+  "inners": [
+    { "id": "heart", "name": "Heart", "material": "muscle", "occupancyPct": 15, "statuses": [] }
   ]
 }
 ```
 
-**Правило порядка:** стек **однонаправленный** — от внешней
-поверхности части тела к её геометрическому центру. **Не
-дублируйте** слои «туда-обратно». Когда снаряд выходит наружу (по
-задней экспозиции после прохождения через центр), резолвер сам
-инвертирует стек на лету. Это избавляет анатомию от громоздкого
-mirroring и оставляет JSON читаемым.
+**Органы** (`inners`) не слои брони и не имеют своего HP.
 
-**Материалы:** `skin` / `muscle` / `bone` (категория
-`biological`) живут как обычные записи типа `material` в системном
-компендиуме (`pack-src/sh-test-items/SH_Material_{Skin,Muscle,Bone}.json`)
-и индексируются через `MaterialsManager`. Можно подставить любой
-другой материал (мировой или из пака) — резолвер не знает «броня vs
-ткани», он резолвит стек.
+Способность группы: `game.spaceholder.getGroupAbility(actor, groupId)` = sum currentHp / sum maxHp.
 
-**Дефолты:** если поле `bodyLayers` не задано, `AnatomyManager` при
-нормализации подставит значение из
-`module/helpers/damage/body-layers-defaults.mjs`
-(`DEFAULTS_BY_TYPE_ID[part.id]`, иначе — generic `skin/muscle/bone`).
-Если нужна часть **без** тканевых слоёв — это легально: пропишите
-явно `"bodyLayers": []`; дефолт подставляется только при отсутствии
-поля или когда значение не массив.
-
-**Органы** (`bodyPart.organs`) **не являются** `bodyLayers` и в v2
-**не моделируются** как слои. Это отдельная «критическая структура»
-внутри части, которая резолвится другой системой после того, как
-посчитан `bodyDamage`.
-
-#### Ограничения v2
-- Стек симметричный (один и тот же как на вход, так и на выход),
-  без `byDirection`-override.
-- У слоёв тела нет persistent integrity: на каждый выстрел стек
-  пересоздаётся со свежим здоровьем. «Хронический» износ кости
-  моделируется через `Injury`, не через `layer.integrity`.
-- Органы как отдельные структуры остаются out-of-scope текущего
-  цикла правок.
+**Материалы:** `skin` / `muscle` / `bone` живут как записи типа `material` в системном компендиуме и индексируются через `MaterialsManager`.
 
 ### Legacy: только `links`
 
@@ -170,7 +131,7 @@ mirroring и оставляет JSON читаемым.
 1. Ключи слотов: `head#1`, …; в каждой части `slotRef`, `uuid`, `displayName`.
 2. Цели в `relations` ремапятся с ключей пресета на `slotRef`.
 3. `links` = уникальные цели всех `adjacent` у этой части (для старых визуализаторов и кода, который ждёт список соседей).
-4. `bodyLayers` санируются (через `sanitizeBodyLayers`); если поле не массив, подставляется `getDefaultBodyLayersForType(part.id)`.
+4. `groups` ремапятся с ключей пресета на `slotRef`.
 
 ## Registry.json
 
@@ -178,16 +139,9 @@ mirroring и оставляет JSON читаемым.
 
 ## Миграция старых JSON
 
-Одноразовые миграционные скрипты в репозитории:
+Одноразовые скрипты в `scripts/` (relations, bodyLayers) — исторические. Текущий контракт части: `material` + `faces` + `inners` + `heightFrac`; группы на корне пресета. Legacy `chest`/`back`/`abdomen`/`groin` ремапятся в `upperTorso`/`lowerTorso` + face (`LEGACY_HUMANOID_PART_REMAP`).
 
-- **`scripts/migrate-anatomy-relations.mjs`** — legacy `links` → `relations` + `exposure` (уже применён к встроенным пресетам).
-- **`scripts/add-body-layers-to-anatomies.mjs`** — добавляет поле `bodyLayers` в каждую часть. Идемпотентен: уже заполненное `bodyLayers` не трогает. По умолчанию правит только `data/anatomy/*.json` и `module/data/anatomy/*.json`; для мировых файлов передайте корень `--worlds-root <path>`, например:
-
-  ```bash
-  node scripts/add-body-layers-to-anatomies.mjs --worlds-root "E:/FoundryVTT/Data/worlds"
-  ```
-
-  Скрипт пройдёт по `<path>/<worldId>/spaceholder/anatomy/*.json`. Актёров в мировых базах данных он не трогает — их `bodyLayers` подтянет `ensureActorPartBodyLayersSynced` при следующем `prepareDerivedData`.
+Актёров в мировых базах скрипт не трогает — GM заново применяет пресет humanoid.
 
 ## API AnatomyManager
 

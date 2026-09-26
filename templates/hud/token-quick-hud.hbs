@@ -1,124 +1,315 @@
+{{#*inline "shHudActionChip"}}
+  <div
+    class="sh-action-chip {{#if isFavorite}}is-favorite{{/if}}"
+    draggable="true"
+    data-drag-action-id="{{id}}"
+    data-drag-label="{{fullLabel}}"
+    data-drag-img="{{dragImg}}"
+  >
+    <button
+      type="button"
+      class="sh-action-btn sh-action-chip__main"
+      data-action="run-action"
+      data-action-id="{{id}}"
+      data-focus-scope="{{scope}}"
+      aria-label="{{fullLabel}}"
+      data-tooltip="{{tooltip}}"
+      {{#unless enabled}}disabled{{/unless}}
+    >
+      {{#if icon}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}
+      <span class="sh-action-btn__label">{{text}}</span>
+      {{#if apCost}}<span class="sh-action-btn__cost">{{apCost}}</span>{{/if}}
+    </button>
+  </div>
+{{/inline}}
+
+{{#*inline "shHudItemCard"}}
+  <div
+    class="sh-token-quick-hud__held-item {{#if isSelected}}is-selected{{/if}} {{#if isStowed}}is-stowed{{/if}} {{#if isWeapon}}is-weapon{{#unless ready}} is-not-ready{{/unless}}{{/if}}"
+    data-held-item
+    data-item-id="{{itemId}}"
+    data-item-uuid="{{itemUuid}}"
+  >
+    <button
+      type="button"
+      class="sh-token-quick-hud__held-select"
+      data-action="select-held-item"
+      data-item-id="{{itemId}}"
+      data-tooltip="{{tooltip}}"
+      data-focus-scope="held"
+      aria-label="{{tooltip}}{{#if isWeapon}}{{#unless ready}} — {{notReadyLabel}}{{/unless}}{{/if}}"
+      aria-pressed="{{#if isSelected}}true{{else}}false{{/if}}"
+    >
+      {{#if img}}
+        <img class="sh-token-quick-hud__held-img" src="{{img}}" alt="" />
+      {{else}}
+        <span class="sh-token-quick-hud__held-img sh-token-quick-hud__held-img--placeholder">
+          <i class="{{icon}}" aria-hidden="true"></i>
+        </span>
+      {{/if}}
+      <span class="sh-token-quick-hud__held-meta">
+        <span class="sh-token-quick-hud__held-name">{{name}}</span>
+        {{#if modeLabel}}
+          <span class="sh-token-quick-hud__held-detail">{{modeLabel}}</span>
+        {{/if}}
+      </span>
+      {{#if isWeapon}}
+        {{#unless ready}}
+          <i class="fa-solid fa-triangle-exclamation sh-token-quick-hud__readiness" aria-hidden="true"></i>
+        {{/unless}}
+      {{/if}}
+      {{#if ammo.length}}
+        <span class="sh-token-quick-hud__ammo" aria-hidden="true">
+          {{#each ammo as |d|}}
+            {{#if d.isBar}}
+              <span class="sh-token-quick-hud__ammo-bar"><span style="width: {{d.fillPct}}%"></span></span>
+            {{else if d.isPips}}
+              <span class="sh-token-quick-hud__ammo-pips">{{#each d.pips as |p|}}<span class="{{#if p.filled}}is-filled{{/if}}"></span>{{/each}}</span>
+            {{else}}
+              <span class="sh-token-quick-hud__ammo-count">{{d.text}}</span>
+            {{/if}}
+          {{/each}}
+        </span>
+      {{/if}}
+    </button>
+  </div>
+{{/inline}}
+
 <section
   id="spaceholder-token-quick-hud"
   class="spaceholder sh-token-quick-hud {{#if isEmpty}}is-empty{{/if}}"
+  data-expanded="{{#if isExpanded}}true{{else}}false{{/if}}"
   aria-label="{{ariaLabel}}"
 >
-  <div class="sh-token-quick-hud__layout">
-    <aside class="sh-token-quick-hud__rail">
-      <div class="sh-token-quick-hud__identity-card">
-        <div class="sh-token-quick-hud__title">{{actorName}}</div>
-      </div>
+  {{#if isEmpty}}
+    <div class="sh-token-quick-hud__empty-pill" role="status">
+      <i class="fa-solid fa-user-slash" aria-hidden="true"></i>
+      <span>{{actorName}}</span>
+    </div>
+  {{else}}
+    <div class="sh-token-quick-hud__stack">
+      {{#if hasSelection}}
+        <div class="sh-token-quick-hud__selected" role="group" aria-label="{{selectedLabel}}">
+          {{#each selectedGroups as |g|}}
+            <div class="sh-token-quick-hud__selected-group" data-item-id="{{g.itemId}}">
+              <span class="sh-token-quick-hud__selected-chip">
+                {{#if g.img}}
+                  <img class="sh-token-quick-hud__selected-img" src="{{g.img}}" alt="" />
+                {{else}}
+                  <i class="{{g.icon}}" aria-hidden="true"></i>
+                {{/if}}
+                <span class="sh-token-quick-hud__selected-name">{{g.name}}</span>
+                <button
+                  type="button"
+                  class="icon-btn sh-token-quick-hud__deselect"
+                  data-action="deselect-item"
+                  data-item-id="{{g.itemId}}"
+                  data-focus-scope="selected"
+                  data-tooltip="{{g.deselectLabel}}"
+                  aria-label="{{g.deselectLabel}}"
+                >
+                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+              </span>
 
-      <div class="sh-token-quick-hud__stats-block">
-        <div class="sh-token-quick-hud__portrait-wrap">
-          {{#if tokenImg}}
-            <img class="sh-token-quick-hud__portrait" src="{{tokenImg}}" alt="" />
-          {{else}}
-            <span class="sh-token-quick-hud__portrait sh-token-quick-hud__portrait--placeholder" aria-hidden="true">
-              <i class="fa-solid fa-user"></i>
+              {{#each g.modeLines as |ml|}}
+                <div class="sh-token-quick-hud__mode-selector" role="group" aria-label="{{ml.lineName}}">
+                  {{#if ml.showLineName}}
+                    <span class="sh-token-quick-hud__mode-line">{{ml.lineName}}</span>
+                  {{/if}}
+                  {{#each ml.modes as |m|}}
+                    <button
+                      type="button"
+                      class="sh-token-quick-hud__mode-btn {{#if m.isActive}}is-active{{/if}}"
+                      data-action="switch-mode"
+                      data-item-id="{{g.itemId}}"
+                      data-line-id="{{m.lineId}}"
+                      data-mode-id="{{m.modeId}}"
+                      data-focus-scope="selected"
+                      data-tooltip="{{m.tooltip}}"
+                      aria-pressed="{{#if m.isActive}}true{{else}}false{{/if}}"
+                    >{{m.name}}</button>
+                  {{/each}}
+                </div>
+              {{/each}}
+
+              {{#if g.actions.length}}
+                <div class="sh-actions-grid sh-token-quick-hud__selected-actions">
+                  {{#each g.actions as |a|}}
+                    {{> shHudActionChip a scope="selected" text=a.compactLabel fullLabel=a.label}}
+                  {{/each}}
+                </div>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+
+      {{#if hasCards}}
+        <div class="sh-token-quick-hud__held-islands" role="group" aria-label="{{heldLabel}}">
+          {{#each heldCards as |card|}}
+            {{> shHudItemCard card}}
+          {{/each}}
+          {{#if hasStowedCards}}
+            <span class="sh-token-quick-hud__held-divider" aria-hidden="true"></span>
+            {{#each stowedCards as |card|}}
+              {{> shHudItemCard card}}
+            {{/each}}
+          {{/if}}
+        </div>
+      {{/if}}
+
+      {{#if hasActions}}
+        <div
+          id="spaceholder-token-quick-hud-drawer"
+          class="sh-token-quick-hud__drawer"
+          aria-hidden="{{#if isExpanded}}false{{else}}true{{/if}}"
+          {{#unless isExpanded}}inert hidden{{/unless}}
+        >
+          <div class="sh-token-quick-hud__drawer-header">
+            <div class="sh-token-quick-hud__drawer-title">
+              <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+              <span>{{quickActionsLabel}}</span>
+              <span class="sh-token-quick-hud__count" aria-hidden="true">{{actionCount}}</span>
+            </div>
+          </div>
+          <div
+            class="sh-actions-grid sh-token-quick-hud__drawer-actions"
+            role="group"
+            aria-label="{{quickActionsLabel}}"
+          >
+            {{#each generalActions as |a|}}
+              {{> shHudActionChip a scope="drawer" text=a.label fullLabel=a.label}}
+            {{/each}}
+          </div>
+        </div>
+      {{/if}}
+
+      <div class="sh-token-quick-hud__dock" role="toolbar" aria-label="{{ariaLabel}}">
+        <div class="sh-token-quick-hud__identity">
+          <button
+            type="button"
+            class="sh-token-quick-hud__portrait-wrap"
+            data-action="view-portrait"
+            data-focus-scope="identity"
+            data-tooltip="{{viewPortraitLabel}}"
+            aria-label="{{viewPortraitLabel}}"
+          >
+            {{#if tokenImg}}
+              <img class="sh-token-quick-hud__portrait" src="{{tokenImg}}" alt="" />
+            {{else}}
+              <span class="sh-token-quick-hud__portrait sh-token-quick-hud__portrait--placeholder" aria-hidden="true">
+                <i class="fa-solid fa-user"></i>
+              </span>
+            {{/if}}
+          </button>
+
+          <div class="sh-token-quick-hud__identity-meta">
+            <span class="sh-token-quick-hud__title" data-tooltip="{{actorName}}">{{actorName}}</span>
+            <div class="sh-token-quick-hud__status">
+              {{#if showAp}}
+                <span
+                  class="sh-token-quick-hud__ap {{#if apEmpty}}is-empty{{/if}}"
+                  data-tooltip="{{apTooltip}}"
+                  aria-label="{{apTooltip}}: {{apText}}"
+                >
+                  <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                  <span class="sh-token-quick-hud__ap-value">{{apText}}</span>
+                </span>
+              {{/if}}
+              {{#each effects as |e|}}
+                <img class="sh-token-quick-hud__effect" src="{{e.img}}" alt="{{e.name}}" data-tooltip="{{e.name}}" />
+              {{/each}}
+              {{#if effectsOverflow}}
+                <span class="sh-token-quick-hud__effect-more" data-tooltip="{{effectsOverflowTooltip}}">+{{effectsOverflow}}</span>
+              {{/if}}
+            </div>
+            <div class="sh-token-quick-hud__identity-tools">
+              <button
+                type="button"
+                class="icon-btn sh-token-quick-hud__tool"
+                data-action="pan-to-token"
+                data-focus-scope="identity"
+                data-tooltip="{{panToTokenLabel}}"
+                aria-label="{{panToTokenLabel}}"
+              >
+                <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+              </button>
+              <button
+                type="button"
+                class="icon-btn sh-token-quick-hud__tool"
+                data-action="open-sheet"
+                data-focus-scope="identity"
+                data-tooltip="{{openSheetLabel}}"
+                aria-label="{{openSheetLabel}}"
+              >
+                <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+              </button>
+              {{#if canConfigureToken}}
+                <button
+                  type="button"
+                  class="icon-btn sh-token-quick-hud__tool"
+                  data-action="open-token-config"
+                  data-focus-scope="identity"
+                  data-tooltip="{{openTokenConfigLabel}}"
+                  aria-label="{{openTokenConfigLabel}}"
+                >
+                  <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+            </div>
+          </div>
+        </div>
+
+        {{#if attack.show}}
+          <button
+            type="button"
+            class="sh-token-quick-hud__attack {{#unless attack.enabled}}is-disabled{{/unless}}"
+            data-action="attack"
+            data-item-id="{{attack.itemId}}"
+            data-focus-scope="dock"
+            data-tooltip="{{attack.tooltip}}"
+            aria-label="{{attackLabel}}: {{attack.subtitle}}"
+            aria-disabled="{{#if attack.enabled}}false{{else}}true{{/if}}"
+          >
+            <span class="sh-token-quick-hud__attack-head">
+              <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+              <span class="sh-token-quick-hud__attack-label">{{attackLabel}}</span>
+              {{#if attack.apText}}
+                <span class="sh-token-quick-hud__attack-ap">{{attack.apText}}</span>
+              {{/if}}
             </span>
+            <span class="sh-token-quick-hud__attack-sub">{{attack.subtitle}}</span>
+          </button>
+        {{/if}}
+
+        <div class="sh-actions-grid sh-token-quick-hud__preview" role="group" aria-label="{{quickActionsLabel}}">
+          {{#if hasActions}}
+            {{#each generalActions as |a|}}
+              {{> shHudActionChip a scope="dock" text=a.label fullLabel=a.label}}
+            {{/each}}
+          {{else}}
+            <span class="sh-token-quick-hud__empty-text">{{noActionsLabel}}</span>
           {{/if}}
         </div>
 
-        {{#if showAp}}
-          <div class="sh-token-quick-hud__stat" data-tooltip="{{apTooltip}}" aria-label="{{apTooltip}}">
-            <span class="sh-token-quick-hud__stat-label">{{localize 'SPACEHOLDER.ActionsSystem.UI.APHeaderLabel'}}</span>
-            <span class="sh-token-quick-hud__stat-value">{{apText}}</span>
-          </div>
-        {{/if}}
-      </div>
-    </aside>
-
-    <div class="sh-token-quick-hud__block sh-token-quick-hud__block--held" data-segment="held">
-      <div class="sh-token-quick-hud__block-header">
-        <span class="sh-token-quick-hud__block-title">{{heldLabel}}</span>
-        <button
-          type="button"
-          class="icon-btn sh-token-quick-hud__block-toggle"
-          data-action="toggle-segment"
-          data-tooltip="{{expandLabel}}"
-          aria-label="{{expandLabel}}"
-          hidden
-        >
-          <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
-        </button>
-      </div>
-      <div class="sh-token-quick-hud__block-body">
-        {{#if hasHeldItems}}
-          <div class="sh-token-quick-hud__held-list">
-            {{#each heldItems as |item|}}
-              <button
-                type="button"
-                class="sh-token-quick-hud__held-item {{#if item.isSelected}}is-selected{{/if}} {{#if item.isWeapon}}is-weapon{{/if}} {{#if item.isWeapon}}{{#unless item.ready}}is-not-ready{{/unless}}{{/if}}"
-                data-action="select-held-item"
-                data-item-id="{{item.itemId}}"
-                data-item-uuid="{{item.itemUuid}}"
-                data-tooltip="{{item.tooltip}}"
-                aria-label="{{item.name}}"
-                aria-pressed="{{item.isSelected}}"
-              >
-                {{#if item.img}}
-                  <img class="sh-token-quick-hud__held-img" src="{{item.img}}" alt="" />
-                {{else}}
-                  <span class="sh-token-quick-hud__held-img sh-token-quick-hud__held-img--placeholder">
-                    <i class="{{item.icon}}" aria-hidden="true"></i>
-                  </span>
-                {{/if}}
-                <div class="sh-token-quick-hud__held-meta">
-                  <span class="sh-token-quick-hud__held-name">{{item.name}}</span>
-                  {{#if item.detail}}
-                    <span class="sh-token-quick-hud__held-detail">{{item.detail}}</span>
-                  {{/if}}
-                </div>
-              </button>
-            {{/each}}
-          </div>
-        {{else}}
-          <div class="sh-token-quick-hud__empty">{{noHeldLabel}}</div>
-        {{/if}}
-      </div>
-    </div>
-
-    <div class="sh-token-quick-hud__block sh-token-quick-hud__block--actions" data-segment="actions">
-      <div class="sh-token-quick-hud__block-header">
-        <span class="sh-token-quick-hud__block-title">{{localize 'SPACEHOLDER.TokenQuickHud.QuickActions'}}</span>
-        <button
-          type="button"
-          class="icon-btn sh-token-quick-hud__block-toggle"
-          data-action="toggle-segment"
-          data-tooltip="{{expandLabel}}"
-          aria-label="{{expandLabel}}"
-          hidden
-        >
-          <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
-        </button>
-      </div>
-      <div class="sh-token-quick-hud__block-body">
         {{#if hasActions}}
-          <div class="sh-actions-grid sh-token-quick-hud__actions-grid">
-            {{#each displayActions as |a|}}
-              <div class="sh-action-chip {{#if a.isFavorite}}is-favorite{{/if}}">
-                <button
-                  type="button"
-                  class="sh-action-btn sh-action-chip__main"
-                  data-action="run-action"
-                  data-action-id="{{a.id}}"
-                  aria-label="{{a.label}}"
-                  data-tooltip="{{a.tooltip}}"
-                  title="{{a.label}}"
-                  {{#unless a.enabled}}disabled{{/unless}}
-                >
-                  {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
-                  <span class="sh-action-btn__label">{{a.label}}</span>
-                  {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
-                </button>
-              </div>
-            {{/each}}
-          </div>
-        {{else}}
-          <div class="sh-token-quick-hud__empty">{{noActionsLabel}}</div>
+          <button
+            type="button"
+            class="icon-btn sh-token-quick-hud__drawer-toggle"
+            data-action="toggle-drawer"
+            data-focus-scope="dock"
+            data-tooltip="{{#if isExpanded}}{{collapseLabel}}{{else}}{{expandLabel}}{{/if}}"
+            aria-label="{{#if isExpanded}}{{collapseLabel}}{{else}}{{expandLabel}}{{/if}}"
+            aria-controls="spaceholder-token-quick-hud-drawer"
+            aria-expanded="{{#if isExpanded}}true{{else}}false{{/if}}"
+            hidden
+          >
+            <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+            <span class="sh-token-quick-hud__overflow-count" aria-hidden="true"></span>
+          </button>
         {{/if}}
       </div>
     </div>
-  </div>
+  {{/if}}
 </section>

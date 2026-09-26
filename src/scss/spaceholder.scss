@@ -14,6 +14,7 @@
 @import 'global/window';
 @import 'global/grid';
 @import 'global/flex';
+@import 'global/aiming';
 
 /* Components (each partial is responsible for scoping to .window-app.spaceholder) */
 @import 'components/forms';
@@ -23,7 +24,9 @@
 @import 'components/resource';
 @import 'components/items';
 @import 'components/effects';
+@import 'components/action-controls';
 @import 'components/character';
+@import 'components/skills';
 @import 'components/health';
 @import 'components/injuries';
 @import 'components/inventory';
@@ -31,6 +34,7 @@
 @import 'components/faction';
 @import 'components/globalmap-biome-editor';
 @import 'components/globalmap-edge-ui';
+@import 'components/globalmap-terrain3d';
 @import 'components/hotbar-faction-ui';
 @import 'components/token-quick-hud';
 @import 'components/weapon-context-menu';

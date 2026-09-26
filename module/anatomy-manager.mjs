@@ -3,7 +3,6 @@
  * Отвечает за загрузку, кэширование и предоставление данных анатомий
  */
 import {
-  sanitizeExposure,
   sanitizeRelation,
   mergeLegacyLinksIntoRelations,
   dedupeRelations,
@@ -14,9 +13,17 @@ import {
   legacyLinksToAdjacentRelations
 } from "./helpers/anatomy-relations.mjs";
 import {
-  sanitizeBodyLayers,
-  getDefaultBodyLayersForType
-} from "./helpers/damage/body-layers-defaults.mjs";
+  sanitizeFaces,
+  sanitizeInners,
+  innersFromPart,
+  sanitizePartMaterial,
+  sanitizeHeightFrac,
+  sanitizeHeightM,
+  sanitizeAnatomyGroups,
+  remapGroupParts,
+  stripDeprecatedPartFields,
+  DEFAULT_ANATOMY_HEIGHT_M,
+} from "./helpers/anatomy-groups.mjs";
 
 /** Путь к папке анатомий мира: worlds/<worldId>/spaceholder/anatomy */
 function _getWorldAnatomyDir() {
@@ -59,19 +66,11 @@ export function coerceAnatomyGridCoord(v) {
 }
 
 /**
- * Опциональные координаты для 3D-просмотра вкладки «Здоровье» (единицы Three.js: X вправо, Y вверх, Z глубина).
- * Независимы от сеточных `x`/`y` (только 2D-редактор).
- *
- * @param {unknown} raw
- * @returns {{ x: number, y: number, z: number } | null}
+ * @deprecated 3D Health viewer removed; kept so leftover imports do not throw.
+ * @returns {null}
  */
-export function sanitizePosition3d(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  const x = Number(raw.x);
-  const y = Number(raw.y);
-  const z = Number(raw.z);
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
-  return { x, y, z };
+export function sanitizePosition3d(_raw) {
+  return null;
 }
 
 /**
@@ -115,22 +114,14 @@ function _buildNormalizedActorBodyParts(rawBodyParts) {
 
     part.displayName = _resolveBodyPartName(typeId, part.name);
 
-    if (!Array.isArray(part.organs)) part.organs = [];
     if (!Array.isArray(part.tags)) part.tags = Array.isArray(rawPart.tags) ? rawPart.tags : [];
     part.x = coerceAnatomyGridCoord(rawPart.x ?? part.x ?? 0);
     part.y = coerceAnatomyGridCoord(rawPart.y ?? part.y ?? 0);
-    const p3 = sanitizePosition3d(rawPart.position3d);
-    if (p3) part.position3d = p3;
-    else delete part.position3d;
-    if (!("status" in part)) part.status = "healthy";
-    if (!("internal" in part)) part.internal = false;
-
-    const cleanedLayers = sanitizeBodyLayers(rawPart.bodyLayers);
-    part.bodyLayers = cleanedLayers && cleanedLayers.length > 0
-      ? cleanedLayers
-      : getDefaultBodyLayersForType(typeId);
-
-    part.exposure = sanitizeExposure(rawPart.exposure);
+    part.material = sanitizePartMaterial(rawPart.material ?? part.material);
+    part.faces = sanitizeFaces(rawPart.faces ?? part.faces);
+    part.heightFrac = sanitizeHeightFrac(rawPart.heightFrac ?? part.heightFrac, 0.5);
+    part.inners = innersFromPart(rawPart);
+    stripDeprecatedPartFields(part);
     let relsFromFile = Array.isArray(rawPart.relations)
       ? rawPart.relations.map(sanitizeRelation).filter(Boolean)
       : [];
@@ -151,7 +142,7 @@ function _buildNormalizedActorBodyParts(rawBodyParts) {
     part.links = deriveAdjacentLinksFromRelations(part.relations);
   }
 
-  return result;
+  return { bodyParts: result, rawKeyToSlotRef };
 }
 
 export class AnatomyManager {
@@ -281,16 +272,21 @@ export class AnatomyManager {
     const anatomyTemplate = await this.loadAnatomy(anatomyId);
     const actorAnatomy = foundry.utils.deepClone(anatomyTemplate);
 
-    actorAnatomy.bodyParts = _buildNormalizedActorBodyParts(actorAnatomy.bodyParts);
-    
-    // Применяем модификаторы и переопределения; задаём слоты органов по умолчанию
-    for (const [slotRef, part] of Object.entries(actorAnatomy.bodyParts)) {
+    const { bodyParts, rawKeyToSlotRef } = _buildNormalizedActorBodyParts(actorAnatomy.bodyParts);
+    actorAnatomy.bodyParts = bodyParts;
+    actorAnatomy.heightM = sanitizeHeightM(actorAnatomy.heightM, DEFAULT_ANATOMY_HEIGHT_M);
+    actorAnatomy.groups = remapGroupParts(
+      actorAnatomy.groups,
+      rawKeyToSlotRef,
+      Object.keys(bodyParts),
+    );
+
+    for (const part of Object.values(actorAnatomy.bodyParts)) {
       let newMax = part.maxHp;
       if (healthMultiplier !== 1.0) {
         newMax = Math.ceil(newMax * healthMultiplier);
       }
       part.maxHp = newMax;
-      if (!Array.isArray(part.organs)) part.organs = [];
 
       const overrideByTypeId = overrides[part.id];
       if (overrideByTypeId) {
@@ -343,6 +339,8 @@ export class AnatomyManager {
           description: data.description ?? "",
           version: data.version ?? null,
           grid: data.grid ?? null,
+          heightM: data.heightM ?? null,
+          groups: Array.isArray(data.groups) ? data.groups : [],
           bodyParts: data.bodyParts,
           links: Array.isArray(data.links) ? data.links : null,
           meta: data.meta ?? null,
@@ -399,6 +397,8 @@ export class AnatomyManager {
       description: data.description ?? "",
       version: data.version ?? null,
       grid,
+      heightM: sanitizeHeightM(data.heightM, DEFAULT_ANATOMY_HEIGHT_M),
+      groups: sanitizeAnatomyGroups(data.groups, Object.keys(bodyParts)),
       bodyParts,
       links,
       meta: data.meta ?? null
@@ -426,16 +426,22 @@ export class AnatomyManager {
     // иначе новые части могут смержиться с унаследованными от базового актёра.
     await actor.update({ "system.health.bodyParts": new foundry.data.operators.ForcedDeletion() });
 
-    const bodyParts = _buildNormalizedActorBodyParts(foundry.utils.deepClone(preset.bodyParts));
+    const { bodyParts, rawKeyToSlotRef } = _buildNormalizedActorBodyParts(foundry.utils.deepClone(preset.bodyParts));
+    const groups = remapGroupParts(preset.groups, rawKeyToSlotRef, Object.keys(bodyParts));
 
     const update = {
       "system.anatomy.id": preset.id,
       "system.anatomy.name": preset.name || preset.id,
       "system.anatomy.type": preset.id,
+      "system.anatomy.groups": groups,
       "system.health.bodyParts": bodyParts,
       // Иначе в новой анатомии могут остаться травмы, ссылающиеся на старые slotRef/uuid.
       "system.health.injuries": []
     };
+    const heightM = sanitizeHeightM(preset.heightM, 0);
+    if (heightM > 0 && !Number(actor.system?.heightM)) {
+      update["system.heightM"] = heightM;
+    }
     if (preset.grid && typeof preset.grid.width === "number" && typeof preset.grid.height === "number") {
       update["system.health.anatomyGrid"] = { width: preset.grid.width, height: preset.grid.height };
     }
@@ -468,7 +474,7 @@ export class AnatomyManager {
   }
   
   /**
-   * Валидация структуры анатомии (внешняя: weight, relations/links legacy, x/y, exposure).
+   * Валидация структуры анатомии (id/maxHp/material, relations, faces, inners).
    * @param {Object} anatomyData - Данные анатомии
    * @returns {boolean} Результат валидации
    */
@@ -492,7 +498,10 @@ export class AnatomyManager {
       return false;
     }
 
-    const partRequired = ['id', 'weight', 'maxHp'];
+    anatomyData.heightM = sanitizeHeightM(anatomyData.heightM, DEFAULT_ANATOMY_HEIGHT_M);
+    anatomyData.groups = sanitizeAnatomyGroups(anatomyData.groups, Object.keys(bodyParts));
+
+    const partRequired = ['id', 'maxHp'];
     for (let [partId, part] of Object.entries(bodyParts)) {
       for (const field of partRequired) {
         if (!(field in part)) {
@@ -500,21 +509,18 @@ export class AnatomyManager {
           return false;
         }
       }
-      if (!('status' in part)) part.status = 'healthy';
-      if (!('internal' in part)) part.internal = false;
       if (!('tags' in part)) part.tags = [];
       part.x = coerceAnatomyGridCoord(part.x);
       part.y = coerceAnatomyGridCoord(part.y);
-      const p3v = sanitizePosition3d(part.position3d);
-      if (p3v) part.position3d = p3v;
-      else delete part.position3d;
-
-      const cleanedLayers = sanitizeBodyLayers(part.bodyLayers);
-      part.bodyLayers = cleanedLayers && cleanedLayers.length > 0
-        ? cleanedLayers
-        : getDefaultBodyLayersForType(String(part.id ?? partId));
-
-      part.exposure = sanitizeExposure(part.exposure);
+      part.material = sanitizePartMaterial(part.material);
+      if (!part.material) {
+        console.error(`Body part '${partId}' missing required field: material`);
+        return false;
+      }
+      part.faces = sanitizeFaces(part.faces);
+      part.heightFrac = sanitizeHeightFrac(part.heightFrac, 0.5);
+      part.inners = innersFromPart(part);
+      stripDeprecatedPartFields(part);
       let partRels = Array.isArray(part.relations) ? part.relations.map(sanitizeRelation).filter(Boolean) : [];
       const legacyLinks = Array.isArray(part.links)
         ? part.links.map((t) => String(t ?? "").trim()).filter(Boolean)
