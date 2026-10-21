@@ -24,13 +24,16 @@ tags:
 | `system.json` → `packs[]` | Объявление паков и путей к каталогам LevelDB. |
 | `pack-src/<имя-пака>/` | **Исходники**: по одному JSON на документ (человекочитаемо, нормально диффается в git). |
 | `packs/<имя-пака>/` | **Собранный** компендиум (LevelDB). То, что реально читает Foundry. |
-| `scripts/compile-sh-test-items.mjs` | Сборка LevelDB из `pack-src/sh-test-items` через `@foundryvtt/foundryvtt-cli` (`compilePack`). |
+| `scripts/compile-pack.mjs <имя>` | Сборка LevelDB из `pack-src/<имя>` через `@foundryvtt/foundryvtt-cli` (`compilePack`); `--in-place` — в `packs/<имя>`, без него — в `packs/<имя>-next`. |
 | `packs/.gitattributes` | У каталогов паков бинарные артефакты LevelDB помечены как binary (см. статью Foundry про CRLF). |
 
 Примеры паков:
 
 - **`sh-test-items`** (`SpaceHolder Test Items`) — исходники в **`pack-src/sh-test-items/`**, тип `Item`.
-- **`sh-test-actors`** (`SpaceHolder Test Actors`) — исходники в **`pack-src/sh-test-actors/`**, тип `Actor`. Содержит `Стрелок` (humanoid + стартовый каталог: АК, Глок, лазер, броня) и `Мишень` (одна часть `chest`). Предметы: `npm run generate:sh-catalog`; актёры: `npm run generate:sh-test-actors` (после каталога / правок анатомии), затем пересобрать паки.
+- **`sh-test-actors`** (`SpaceHolder Test Actors`) — исходники в **`pack-src/sh-test-actors/`**, тип `Actor`. Содержит `Стрелок` (humanoid + стартовый каталог: АК, Глок, лазер, броня) и `Мишень` (одна часть `chest`). Актёры: `npm run generate:sh-test-actors` (после правок предметов или анатомии), затем пересобрать пак.
+- **`sh-test-scenes`** (`SpaceHolder Test Scenes`) — тип **`Adventure`**: одна запись = сцена со своими актёрами, фракциями, журналом «что проверить» и папками; импорт приключения создаёт всё сразу с теми же id, поэтому токены сцены находят своих актёров. Исходники — `pack-src/sh-test-scenes/SH_Adventure_<сцена>_<id>.json` и папка `pack-src/sh-test-scenes/<сцена>/` (вложенные документы отдельными файлами; в записи приключения — пути к ним, это развёрнутый формат CLI). Генератор: `npm run generate:sh-test-scenes` (берёт предметы из `pack-src/sh-test-items` и анатомии из `data/anatomy`, пишет и задник `assets/scenes/<сцена>.svg`). Сейчас одна сцена — «Перестрелка в баре».
+- Актёров обоих паков собирает общий модуль **`scripts/lib/sh-actor-builder.mjs`**: части тела из пресета (как `AnatomyManager`, с `tissue` и органами), снаряжение из каталога (в руках, надето, заряжено в оружие: магазин — `attachedItemId`, патроны во внутренний магазин — `contentItemIds`, в патронник — `chamberItemId`).
+- **Источник истины для предметов — `pack-src/sh-test-items`.** Числа баланса туда пишет утилита баланса («В компендиум…», см. `BALANCE_TOOL.md`) или руки. `generate:sh-catalog` устарел относительно исходников (после него пропадут миграции: слоты брони `upperTorso` + сторона, `effortShare`) — не запускать, пока его не обновят.
 
 ## Обязательные поля в JSON исходника (Item)
 
@@ -73,8 +76,11 @@ tags:
 | `npm run pack:sh-test-items` | Основная сборка в **`packs/sh-test-items`**. **Foundry должен быть закрыт.** |
 | `npm run pack:sh-test-items:next` | Сборка в **`packs/sh-test-items-next`** (обход LOCK на основном каталоге, пока клиент открыт). Потом вручную: закрыть Foundry, заменить каталог пака или перенести содержимое. |
 | `npm run unpack:sh-test-items` | Выгрузить текущий LevelDB из **`packs/sh-test-items`** в **`pack-src/sh-test-items`** (с `-c` очищает цель). **Предпочтительно при закрытом Foundry.** Удобно подтянуть правки, сделанные в UI компендиума, обратно в исходники. |
-| `npm run generate:sh-catalog` | Перегенерировать весь `pack-src/sh-test-items/*.json` (материалы, броня, патроны, оружие). **Стирает** предыдущие JSON в этой папке. |
-| `npm run generate:sh-test-actors` | Перегенерировать `pack-src/sh-test-actors/*.json` из `data/anatomy/humanoid.json` и текущего каталога предметов. Запускать после `generate:sh-catalog`, перед `pack:sh-test-actors`. |
+| `npm run generate:sh-catalog` | **Устарел, не запускать** (см. выше): перегенерирует весь `pack-src/sh-test-items/*.json` и **стирает** предыдущие JSON, теряя поздние правки. |
+| `npm run generate:sh-test-actors` | Перегенерировать `pack-src/sh-test-actors/*.json` из `data/anatomy/humanoid.json` и текущего каталога предметов. Перед `pack:sh-test-actors`. |
+| `npm run generate:sh-test-scenes` | Перегенерировать `pack-src/sh-test-scenes/**` и задники `assets/scenes/*.svg`. Перед `pack:sh-test-scenes`. |
+| `npm run pack:sh-test-scenes` | Основная сборка в **`packs/sh-test-scenes`**. **Foundry должен быть закрыт.** |
+| `npm run pack:sh-test-scenes:next` | Сборка в **`packs/sh-test-scenes-next`** (обход LOCK). |
 | `npm run pack:sh-test-actors` | Основная сборка в **`packs/sh-test-actors`**. **Foundry должен быть закрыт.** |
 | `npm run pack:sh-test-actors:next` | Сборка в **`packs/sh-test-actors-next`** (обход LOCK на основном каталоге, пока клиент открыт). |
 | `npm run unpack:sh-test-actors` | Выгрузить текущий LevelDB из **`packs/sh-test-actors`** в **`pack-src/sh-test-actors`** (с `-c` очищает цель). |
@@ -85,7 +91,7 @@ tags:
 
 1. Добавить блок в **`system.json`** → `packs` (`name`, `label`, `path`, `type`, `system`).
 2. Создать **`pack-src/<name>/`** с JSON-файлами.
-3. Добавить скрипт сборки по образцу **`scripts/compile-sh-test-items.mjs`** (другой `dest`) или обобщить один скрипт с аргументами — и строки в **`package.json`**.
+3. Добавить строки в **`package.json`**: `node scripts/compile-pack.mjs <name> --in-place` (и без `--in-place` — сборка в `-next`).
 4. Собрать пак командой после закрытия Foundry.
 5. При необходимости расширить **`packFolders`** в `system.json`.
 

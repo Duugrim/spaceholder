@@ -29,6 +29,14 @@
         <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.AmmoCost'}}</span>
         <input type="number" min="1" step="1" data-wpath="{{mode.path}}.ammoCost" data-wdtype="Int" value="{{mode.ammoCost}}" />
       </label>
+      <label class="sh-wv3-field sh-wv3-field--wide" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.CritEffectHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.CritEffect'}}</span>
+        <select data-wpath="{{mode.path}}.critEffect" data-wdtype="String">
+          {{#each ../w.critEffectOptions as |opt|}}
+          <option value="{{opt.value}}" {{#if (eq opt.value mode.critEffect)}}selected{{/if}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+      </label>
       {{#if mode.isBurst}}
       <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Mode.BurstCountHint'}}">
         <span>{{localize 'SPACEHOLDER.WeaponV3.Mode.BurstCount'}}</span>

@@ -319,6 +319,67 @@
     }
   }
 
+  .health-death-banner {
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 107, 107, 0.6);
+    background: rgba(255, 107, 107, 0.12);
+    color: #ff8a8a;
+    font-weight: 600;
+
+    // Dying: out of action, dies without help.
+    &--dying {
+      border-color: rgba(255, 165, 80, 0.6);
+      background: rgba(255, 165, 80, 0.12);
+      color: #ffb070;
+    }
+  }
+
+  // An organ under its part: dimmer and smaller; colour follows the state of the organ.
+  .body-part-organ {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 0;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--sh-text-dim);
+
+    .organ-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .organ-state {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .health-numbers {
+      min-width: 56px;
+    }
+
+    &.organ-status-ok .organ-state {
+      visibility: hidden;
+    }
+
+    &.organ-status-damaged {
+      color: #ff9800;
+    }
+
+    &.organ-status-destroyed {
+      color: #ff6b6b;
+    }
+
+    &.organ-status-lost {
+      color: #90a4ae;
+      text-decoration: line-through;
+    }
+  }
+
   .tree-structure {
     font-family: $font-mono;
     white-space: pre;
@@ -384,14 +445,8 @@
     }
   }
 
-  .body-part-line.injured.status-destroyed {
-    .part-name,
-    .health-numbers {
-      color: #c084fc;
-    }
-  }
-
-  .body-part-line.injured.status-missing {
+  // A lost part, and everything that hung below it.
+  .body-part-line.injured.status-lost {
     .part-name,
     .health-numbers {
       color: #90a4ae;
@@ -794,6 +849,22 @@
 
       &.anatomy-editor-part--linked-neighbor {
         border-color: rgba(255, 255, 255, 0.75);
+      }
+
+      // A lost part (HP gone, or an ancestor was lost).
+      &.anatomy-editor-part--lost {
+        opacity: 0.35;
+        filter: grayscale(1);
+      }
+
+      // The root of the part tree: losing it takes the whole body.
+      &.anatomy-editor-part--root {
+        box-shadow: 0 0 0 3px rgba(255, 200, 120, 0.95);
+      }
+
+      // Parts that go down together with the selected one.
+      &.anatomy-editor-part--subtree {
+        box-shadow: 0 0 0 2px rgba(255, 200, 120, 0.55);
       }
 
       &.selected {

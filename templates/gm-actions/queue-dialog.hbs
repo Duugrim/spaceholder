@@ -1,0 +1,24 @@
+<div class="spaceholder-gm-queue">
+  <p class="spaceholder-gm-queue__hint">{{hint}}</p>
+  {{#each groups}}
+  <section class="spaceholder-gm-queue__group" data-category="{{category}}">
+    <label class="spaceholder-gm-queue__group-head">
+      <input type="checkbox" class="spaceholder-gm-queue__group-toggle" data-category="{{category}}" checked>
+      <span class="spaceholder-gm-queue__group-name">{{label}}</span>
+      <span class="spaceholder-gm-queue__group-count">{{entries.length}}</span>
+    </label>
+    <ul class="spaceholder-gm-queue__list">
+      {{#each entries}}
+      <li class="spaceholder-gm-queue__row">
+        <label>
+          <input type="checkbox" name="entry" value="{{id}}" data-category="{{../category}}" checked>
+          <span class="spaceholder-gm-queue__time">{{time}}</span>
+          <span class="spaceholder-gm-queue__who">{{requesterName}}</span>
+          <span class="spaceholder-gm-queue__label">{{label}}</span>
+        </label>
+      </li>
+      {{/each}}
+    </ul>
+  </section>
+  {{/each}}
+</div>

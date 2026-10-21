@@ -1,0 +1,63 @@
+{
+  "name": "Дерево",
+  "type": "material",
+  "_id": "shcf7d0bdd4e4977",
+  "img": "systems/spaceholder/assets/icons/armor.svg/leather-armor.svg",
+  "system": {
+    "description": "<p>Дерево (wood)</p>",
+    "materialId": "wood",
+    "category": "structure",
+    "hardness": 0.003,
+    "integrityPerThickness": 0.8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.06,
+    "resistance": {
+      "ballistic": 100,
+      "concussive": 80,
+      "piercing": 100,
+      "cutting": 80,
+      "thermal": 20,
+      "laser": 30,
+      "plasma": 30,
+      "electric": 100,
+      "sonic": 60,
+      "radiation": 10,
+      "chemical": 30
+    },
+    "wear": {
+      "ballistic": 40,
+      "concussive": 40,
+      "piercing": 40,
+      "cutting": 60,
+      "thermal": 120,
+      "laser": 150,
+      "plasma": 200,
+      "electric": 0,
+      "sonic": 10,
+      "radiation": 0,
+      "chemical": 40
+    },
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shce06713c564fbd",
+  "sort": 170000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shcf7d0bdd4e4977"
+}

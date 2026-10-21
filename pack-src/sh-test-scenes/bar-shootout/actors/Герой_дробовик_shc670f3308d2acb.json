@@ -1,0 +1,2340 @@
+{
+  "name": "Герой (дробовик)",
+  "type": "character",
+  "_id": "shc670f3308d2acb",
+  "img": "icons/svg/mystery-man.svg",
+  "system": {
+    "anatomy": {
+      "type": "humanoid",
+      "id": "humanoid",
+      "name": "Humanoid",
+      "bodyParts": {},
+      "groups": [
+        {
+          "id": "legs",
+          "type": "movement",
+          "name": "Legs",
+          "parts": [
+            "leftThigh#1",
+            "rightThigh#1",
+            "leftShin#1",
+            "rightShin#1",
+            "leftFoot#1",
+            "rightFoot#1"
+          ]
+        },
+        {
+          "id": "arms",
+          "type": "manipulation",
+          "name": "Arms",
+          "parts": [
+            "leftShoulder#1",
+            "rightShoulder#1",
+            "leftArm#1",
+            "rightArm#1",
+            "leftHand#1",
+            "rightHand#1"
+          ]
+        },
+        {
+          "id": "senses",
+          "type": "sensory",
+          "name": "Senses",
+          "parts": [
+            "head#1"
+          ]
+        },
+        {
+          "id": "vitals",
+          "type": "critical",
+          "name": "Vitals",
+          "parts": [
+            "head#1",
+            "neck#1",
+            "upperTorso#1",
+            "lowerTorso#1"
+          ]
+        }
+      ],
+      "rootRef": "head#1",
+      "hitGroupOverride": ""
+    },
+    "heightM": 1.75,
+    "speedMps": 3,
+    "health": {
+      "injuries": [],
+      "bodyParts": {
+        "head#1": {
+          "id": "head",
+          "name": "Head",
+          "slotRef": "head#1",
+          "uuid": "shc670f3308d2acb-bp-head-1",
+          "maxHp": 110,
+          "x": 4,
+          "y": 1,
+          "tags": [
+            "vital",
+            "brain",
+            "sensory",
+            "armor_head"
+          ],
+          "material": "bone",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.35,
+            "organDepth": 1,
+            "bluntToParent": 0.3,
+            "bleed": 6,
+            "shellThickness": 0.46,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.93,
+          "inners": [
+            {
+              "id": "eyes",
+              "name": "Eyes",
+              "material": "skin",
+              "occupancyPct": 8,
+              "maxHp": 44,
+              "bleed": 1,
+              "tags": []
+            },
+            {
+              "id": "ears",
+              "name": "Ears",
+              "material": "skin",
+              "occupancyPct": 4,
+              "maxHp": 53,
+              "bleed": 1,
+              "tags": []
+            },
+            {
+              "id": "brain",
+              "name": "Brain",
+              "material": "skin",
+              "occupancyPct": 50,
+              "maxHp": 44,
+              "bleed": 0,
+              "tags": [
+                "vital"
+              ],
+              "mortalShare": 0.1
+            }
+          ],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "neck#1"
+            }
+          ],
+          "links": [
+            "neck#1"
+          ]
+        },
+        "neck#1": {
+          "id": "neck",
+          "name": "Neck",
+          "slotRef": "neck#1",
+          "uuid": "shc670f3308d2acb-bp-neck-1",
+          "maxHp": 110,
+          "x": 4,
+          "y": 2,
+          "tags": [
+            "vital",
+            "vulnerable",
+            "armor_neck"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 10,
+            "cavity": 0.5
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.88,
+          "inners": [
+            {
+              "id": "artery",
+              "name": "Carotid artery",
+              "material": "muscle",
+              "occupancyPct": 20,
+              "maxHp": 20,
+              "bleed": 80,
+              "tags": []
+            }
+          ],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "head#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "upperTorso#1"
+            },
+            {
+              "kind": "parent",
+              "target": "head#1"
+            }
+          ],
+          "links": [
+            "head#1",
+            "upperTorso#1"
+          ]
+        },
+        "upperTorso#1": {
+          "id": "upperTorso",
+          "name": "Upper Torso",
+          "slotRef": "upperTorso#1",
+          "uuid": "shc670f3308d2acb-bp-upperTorso-1",
+          "maxHp": 190,
+          "x": 4,
+          "y": 3,
+          "tags": [
+            "core",
+            "vital",
+            "armor_chest"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 3,
+            "depthShare": 0.85,
+            "organDepth": 4,
+            "bleed": 10,
+            "cavity": 0.3
+          },
+          "faces": [
+            "front",
+            "back"
+          ],
+          "heightFrac": 0.7,
+          "inners": [
+            {
+              "id": "heart",
+              "name": "Heart",
+              "material": "muscle",
+              "occupancyPct": 15,
+              "maxHp": 66,
+              "bleed": 40,
+              "tags": [
+                "vital"
+              ]
+            },
+            {
+              "id": "lungs",
+              "name": "Lungs",
+              "material": "skin",
+              "occupancyPct": 40,
+              "maxHp": 66,
+              "bleed": 15,
+              "tags": []
+            }
+          ],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "neck#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "lowerTorso#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftShoulder#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightShoulder#1"
+            },
+            {
+              "kind": "parent",
+              "target": "neck#1"
+            }
+          ],
+          "links": [
+            "neck#1",
+            "lowerTorso#1",
+            "leftShoulder#1",
+            "rightShoulder#1"
+          ]
+        },
+        "lowerTorso#1": {
+          "id": "lowerTorso",
+          "name": "Lower Torso",
+          "slotRef": "lowerTorso#1",
+          "uuid": "shc670f3308d2acb-bp-lowerTorso-1",
+          "maxHp": 165,
+          "x": 4,
+          "y": 4,
+          "tags": [
+            "core",
+            "armor_chest"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 3,
+            "depthShare": 0.8,
+            "organDepth": 4,
+            "bleed": 10,
+            "cavity": 0.3
+          },
+          "faces": [
+            "front",
+            "back"
+          ],
+          "heightFrac": 0.55,
+          "inners": [
+            {
+              "id": "guts",
+              "name": "Guts",
+              "material": "skin",
+              "occupancyPct": 40,
+              "maxHp": 88,
+              "bleed": 10,
+              "tags": []
+            },
+            {
+              "id": "liver",
+              "name": "Liver",
+              "material": "muscle",
+              "occupancyPct": 15,
+              "maxHp": 88,
+              "bleed": 40,
+              "tags": []
+            }
+          ],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "upperTorso#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftThigh#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightThigh#1"
+            },
+            {
+              "kind": "parent",
+              "target": "upperTorso#1"
+            }
+          ],
+          "links": [
+            "upperTorso#1",
+            "leftThigh#1",
+            "rightThigh#1"
+          ]
+        },
+        "leftShoulder#1": {
+          "id": "leftShoulder",
+          "name": "Left Shoulder",
+          "slotRef": "leftShoulder#1",
+          "uuid": "shc670f3308d2acb-bp-leftShoulder-1",
+          "maxHp": 132,
+          "x": 3,
+          "y": 3,
+          "tags": [
+            "joint",
+            "left_side",
+            "armor_shoulder"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.78,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "upperTorso#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "upperTorso#1"
+            }
+          ],
+          "links": [
+            "upperTorso#1",
+            "leftArm#1"
+          ]
+        },
+        "rightShoulder#1": {
+          "id": "rightShoulder",
+          "name": "Right Shoulder",
+          "slotRef": "rightShoulder#1",
+          "uuid": "shc670f3308d2acb-bp-rightShoulder-1",
+          "maxHp": 132,
+          "x": 5,
+          "y": 3,
+          "tags": [
+            "joint",
+            "right_side",
+            "armor_shoulder"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.78,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "upperTorso#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "upperTorso#1"
+            }
+          ],
+          "links": [
+            "upperTorso#1",
+            "rightArm#1"
+          ]
+        },
+        "leftArm#1": {
+          "id": "leftArm",
+          "name": "Left Arm",
+          "slotRef": "leftArm#1",
+          "uuid": "shc670f3308d2acb-bp-leftArm-1",
+          "maxHp": 157,
+          "x": 2,
+          "y": 3,
+          "tags": [
+            "limb",
+            "left_side",
+            "manipulator",
+            "armor_arm"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.62,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftShoulder#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftHand#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftShoulder#1"
+            }
+          ],
+          "links": [
+            "leftShoulder#1",
+            "leftHand#1"
+          ]
+        },
+        "rightArm#1": {
+          "id": "rightArm",
+          "name": "Right Arm",
+          "slotRef": "rightArm#1",
+          "uuid": "shc670f3308d2acb-bp-rightArm-1",
+          "maxHp": 157,
+          "x": 6,
+          "y": 3,
+          "tags": [
+            "limb",
+            "right_side",
+            "manipulator",
+            "armor_arm"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.62,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightShoulder#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightHand#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightShoulder#1"
+            }
+          ],
+          "links": [
+            "rightShoulder#1",
+            "rightHand#1"
+          ]
+        },
+        "leftHand#1": {
+          "id": "leftHand",
+          "name": "Left Hand",
+          "slotRef": "leftHand#1",
+          "uuid": "shc670f3308d2acb-bp-leftHand-1",
+          "maxHp": 88,
+          "x": 1,
+          "y": 3,
+          "tags": [
+            "extremity",
+            "left_side",
+            "manipulator",
+            "dexterous",
+            "armor_hand"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.48,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftArm#1"
+            }
+          ],
+          "links": [
+            "leftArm#1"
+          ]
+        },
+        "rightHand#1": {
+          "id": "rightHand",
+          "name": "Right Hand",
+          "slotRef": "rightHand#1",
+          "uuid": "shc670f3308d2acb-bp-rightHand-1",
+          "maxHp": 88,
+          "x": 7,
+          "y": 3,
+          "tags": [
+            "extremity",
+            "right_side",
+            "manipulator",
+            "dexterous",
+            "armor_hand"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.48,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightArm#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightArm#1"
+            }
+          ],
+          "links": [
+            "rightArm#1"
+          ]
+        },
+        "leftThigh#1": {
+          "id": "leftThigh",
+          "name": "Left Thigh",
+          "slotRef": "leftThigh#1",
+          "uuid": "shc670f3308d2acb-bp-leftThigh-1",
+          "maxHp": 180,
+          "x": 3,
+          "y": 5,
+          "tags": [
+            "limb",
+            "left_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1.5,
+            "depthShare": 0.35,
+            "organDepth": 1,
+            "bleed": 6,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.4,
+          "inners": [
+            {
+              "id": "artery",
+              "name": "Femoral artery",
+              "material": "muscle",
+              "occupancyPct": 12,
+              "maxHp": 20,
+              "bleed": 80,
+              "tags": []
+            }
+          ],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "lowerTorso#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "lowerTorso#1"
+            }
+          ],
+          "links": [
+            "lowerTorso#1",
+            "leftShin#1"
+          ]
+        },
+        "rightThigh#1": {
+          "id": "rightThigh",
+          "name": "Right Thigh",
+          "slotRef": "rightThigh#1",
+          "uuid": "shc670f3308d2acb-bp-rightThigh-1",
+          "maxHp": 180,
+          "x": 5,
+          "y": 5,
+          "tags": [
+            "limb",
+            "right_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1.5,
+            "depthShare": 0.35,
+            "organDepth": 1,
+            "bleed": 6,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.4,
+          "inners": [
+            {
+              "id": "artery",
+              "name": "Femoral artery",
+              "material": "muscle",
+              "occupancyPct": 12,
+              "maxHp": 20,
+              "bleed": 80,
+              "tags": []
+            }
+          ],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "lowerTorso#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "lowerTorso#1"
+            }
+          ],
+          "links": [
+            "lowerTorso#1",
+            "rightShin#1"
+          ]
+        },
+        "leftShin#1": {
+          "id": "leftShin",
+          "name": "Left Shin",
+          "slotRef": "leftShin#1",
+          "uuid": "shc670f3308d2acb-bp-leftShin-1",
+          "maxHp": 132,
+          "x": 3,
+          "y": 6,
+          "tags": [
+            "limb",
+            "left_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.18,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftThigh#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "leftFoot#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftThigh#1"
+            }
+          ],
+          "links": [
+            "leftThigh#1",
+            "leftFoot#1"
+          ]
+        },
+        "rightShin#1": {
+          "id": "rightShin",
+          "name": "Right Shin",
+          "slotRef": "rightShin#1",
+          "uuid": "shc670f3308d2acb-bp-rightShin-1",
+          "maxHp": 132,
+          "x": 5,
+          "y": 6,
+          "tags": [
+            "limb",
+            "right_side",
+            "locomotion",
+            "armor_leg"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.18,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightThigh#1"
+            },
+            {
+              "kind": "adjacent",
+              "target": "rightFoot#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightThigh#1"
+            }
+          ],
+          "links": [
+            "rightThigh#1",
+            "rightFoot#1"
+          ]
+        },
+        "leftFoot#1": {
+          "id": "leftFoot",
+          "name": "Left Foot",
+          "slotRef": "leftFoot#1",
+          "uuid": "shc670f3308d2acb-bp-leftFoot-1",
+          "maxHp": 110,
+          "x": 3,
+          "y": 7,
+          "tags": [
+            "extremity",
+            "left_side",
+            "locomotion",
+            "armor_foot"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.03,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "leftShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "leftShin#1"
+            }
+          ],
+          "links": [
+            "leftShin#1"
+          ]
+        },
+        "rightFoot#1": {
+          "id": "rightFoot",
+          "name": "Right Foot",
+          "slotRef": "rightFoot#1",
+          "uuid": "shc670f3308d2acb-bp-rightFoot-1",
+          "maxHp": 110,
+          "x": 5,
+          "y": 7,
+          "tags": [
+            "extremity",
+            "right_side",
+            "locomotion",
+            "armor_foot"
+          ],
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
+          },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.03,
+          "inners": [],
+          "relations": [
+            {
+              "kind": "adjacent",
+              "target": "rightShin#1"
+            },
+            {
+              "kind": "parent",
+              "target": "rightShin#1"
+            }
+          ],
+          "links": [
+            "rightShin#1"
+          ]
+        }
+      },
+      "anatomyGrid": {
+        "width": 9,
+        "height": 9
+      }
+    },
+    "biography": "<p>Герои. Помповый дробовик (дробь, есть пули), средний жилет.</p>",
+    "attributes": {
+      "level": {
+        "value": 1
+      }
+    },
+    "actionPoints": {
+      "value": 100
+    },
+    "speed": 1,
+    "gFaction": "Actor.shc624481ea1d58e",
+    "actions": [],
+    "aimingArc": {
+      "zoneHalfDegrees": [
+        1,
+        5,
+        15,
+        25,
+        30
+      ],
+      "deviationBaseDeg": 1
+    },
+    "abilities": {
+      "end": {
+        "value": 100
+      },
+      "str": {
+        "value": 100
+      },
+      "agi": {
+        "value": 100
+      },
+      "cor": {
+        "value": 100
+      },
+      "per": {
+        "value": 100
+      },
+      "int": {
+        "value": 100
+      },
+      "luc": {
+        "value": 100
+      }
+    }
+  },
+  "prototypeToken": {
+    "name": "Герой (дробовик)",
+    "displayName": 30,
+    "actorLink": false,
+    "appendNumber": false,
+    "prependAdjective": false,
+    "width": 1,
+    "height": 1,
+    "texture": {
+      "src": "icons/svg/mystery-man.svg",
+      "anchorX": 0.5,
+      "anchorY": 0.5,
+      "offsetX": 0,
+      "offsetY": 0,
+      "fit": "contain",
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": 0,
+      "tint": "#3fae5a",
+      "alphaThreshold": 0.75
+    },
+    "hexagonalShape": 0,
+    "lockRotation": false,
+    "rotation": 0,
+    "alpha": 1,
+    "disposition": 1,
+    "displayBars": 0,
+    "bar1": {
+      "attribute": null
+    },
+    "bar2": {
+      "attribute": null
+    },
+    "light": {
+      "negative": false,
+      "priority": 0,
+      "alpha": 0.5,
+      "angle": 360,
+      "bright": 0,
+      "color": null,
+      "coloration": 1,
+      "dim": 0,
+      "attenuation": 0.5,
+      "luminosity": 0.5,
+      "saturation": 0,
+      "contrast": 0,
+      "shadows": 0,
+      "animation": {
+        "type": null,
+        "speed": 5,
+        "intensity": 5,
+        "reverse": false
+      }
+    },
+    "sight": {
+      "enabled": false,
+      "range": 0,
+      "angle": 360,
+      "visionMode": "basic",
+      "color": null,
+      "attenuation": 0.1,
+      "brightness": 0,
+      "saturation": 0,
+      "contrast": 0
+    },
+    "detectionModes": [],
+    "occludable": {
+      "radius": 0
+    },
+    "ring": {
+      "enabled": false,
+      "colors": {
+        "ring": null,
+        "background": null
+      },
+      "effects": 1,
+      "subject": {
+        "scale": 1,
+        "texture": null
+      }
+    },
+    "movementAction": null,
+    "flags": {},
+    "randomImg": false
+  },
+  "items": [
+    {
+      "name": "Помповый дробовик",
+      "type": "item",
+      "_id": "ed2acb8bcde10700",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/shotgun.svg",
+      "system": {
+        "description": "<p>Помповый дробовик. По умолчанию 12к дробь (мультиснаряд); пуля — отдельный патрон.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 1,
+        "weight": 3.6,
+        "formula": "",
+        "equipped": false,
+        "held": true,
+        "anatomyId": "",
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": true,
+          "isAmmo": false,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 6
+            }
+          },
+          "lines": [
+            {
+              "id": "shc9c304724027c3",
+              "name": "Ствол",
+              "trajectoryKind": "simple",
+              "simpleLimit": {
+                "enabled": false,
+                "value": 0,
+                "unit": "grid"
+              },
+              "payloadId": "",
+              "aiming": 14,
+              "trigger": 3,
+              "energyMult": {
+                "enabled": false,
+                "value": 100
+              },
+              "spread": {
+                "enabled": true,
+                "value": 2
+              },
+              "recoil": {
+                "enabled": true,
+                "value": 7
+              },
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "damage": [],
+              "ammoBlocks": [
+                {
+                  "id": "shc2e149be0f7b90",
+                  "type": "internalMagazine",
+                  "capacity": 6,
+                  "loadAmount": 1,
+                  "chamberEnabled": true,
+                  "autoFeed": true,
+                  "caliber": "12ga-buck, 12ga-slug",
+                  "connector": "",
+                  "search": {
+                    "hands": true,
+                    "worn": true,
+                    "inventory": true,
+                    "containers": true,
+                    "mode": "auto"
+                  },
+                  "apActions": {
+                    "loadOne": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "loadX": {
+                      "enabled": true,
+                      "value": 10
+                    },
+                    "reload": {
+                      "enabled": true,
+                      "value": 30
+                    },
+                    "bolt": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "unload": {
+                      "enabled": true,
+                      "value": 5
+                    },
+                    "empty": {
+                      "enabled": true,
+                      "value": 10
+                    }
+                  },
+                  "damage": [],
+                  "runtime": {
+                    "charge": 0,
+                    "chamberCharge": false,
+                    "attachedItemId": "",
+                    "chamberItemId": "ed2acb7933d80202",
+                    "contentItemIds": [
+                      "ed2acb7933d80201"
+                    ],
+                    "chamberItem": null,
+                    "contents": [],
+                    "magazine": null
+                  }
+                }
+              ],
+              "modes": [
+                {
+                  "id": "shcff5423f764db7",
+                  "name": "Одиночный",
+                  "fireMode": "single",
+                  "burstCount": 3,
+                  "fireDelayAp": 6,
+                  "ammoCost": 1,
+                  "enterCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "exitCost": {
+                    "enabled": false,
+                    "value": 0
+                  },
+                  "modifiers": [],
+                  "multishot": {
+                    "enabled": false,
+                    "count": 1,
+                    "coneDegrees": 0
+                  }
+                }
+              ],
+              "multishot": {
+                "enabled": false,
+                "count": 1,
+                "coneDegrees": 22
+              }
+            }
+          ],
+          "state": {
+            "activeLineId": "shc9c304724027c3",
+            "activeModeId": "shcff5423f764db7",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [],
+            "caliber": "",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0,
+              "allowFractional": false,
+              "clampNonNegative": true,
+              "scaleDamageFromSpent": false,
+              "overheatNotify": false,
+              "changePerShot": {
+                "sign": "-",
+                "formula": "1"
+              },
+              "changePerSecond": {
+                "sign": "+",
+                "formula": "0"
+              }
+            },
+            "capacity": 0,
+            "consume": true,
+            "falloff": {
+              "enabled": false,
+              "halfDistance": 0
+            },
+            "multishot": {
+              "enabled": false,
+              "count": 1,
+              "coneDegrees": 0
+            },
+            "onHitSplash": {
+              "enabled": false,
+              "radius": 0,
+              "unit": "grid"
+            }
+          }
+        },
+        "containerHostId": ""
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 100000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1782902000000,
+        "modifiedTime": 1782902000000,
+        "lastModifiedBy": null
+      }
+    },
+    {
+      "name": "Патрон 12к дробь",
+      "type": "item",
+      "_id": "ed2acb7933d80201",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "system": {
+        "description": "<p>Патрон 12к дробь</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 6,
+        "weight": 0.02,
+        "formula": "",
+        "equipped": false,
+        "held": false,
+        "anatomyId": "",
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "enabled": true,
+                "damageType": "ballistic",
+                "damage": 35,
+                "armorPen": 15,
+                "hardness": 1,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "12ga-buck",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0,
+              "allowFractional": false,
+              "clampNonNegative": true,
+              "scaleDamageFromSpent": false,
+              "overheatNotify": false,
+              "changePerShot": {
+                "sign": "-",
+                "formula": "1"
+              },
+              "changePerSecond": {
+                "sign": "+",
+                "formula": "0"
+              }
+            },
+            "capacity": 0,
+            "consume": true,
+            "falloff": {
+              "enabled": true,
+              "halfDistance": 35
+            },
+            "multishot": {
+              "enabled": true,
+              "count": 6,
+              "coneDegrees": 20
+            },
+            "onHitSplash": {
+              "enabled": false,
+              "radius": 0,
+              "unit": "grid"
+            }
+          }
+        },
+        "storage": {
+          "enabled": false,
+          "version": 1,
+          "slots": {},
+          "contents": []
+        },
+        "container": {
+          "contents": [],
+          "limits": {
+            "maxItems": 0,
+            "maxWeight": 0
+          }
+        },
+        "containerHostId": "ed2acb8bcde10700"
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 110000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1782902000001,
+        "modifiedTime": 1782902000001,
+        "lastModifiedBy": null
+      }
+    },
+    {
+      "name": "Патрон 12к дробь",
+      "type": "item",
+      "_id": "ed2acb7933d80202",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "system": {
+        "description": "<p>Патрон 12к дробь</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 1,
+        "weight": 0.02,
+        "formula": "",
+        "equipped": false,
+        "held": false,
+        "anatomyId": "",
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "enabled": true,
+                "damageType": "ballistic",
+                "damage": 35,
+                "armorPen": 15,
+                "hardness": 1,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "12ga-buck",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0,
+              "allowFractional": false,
+              "clampNonNegative": true,
+              "scaleDamageFromSpent": false,
+              "overheatNotify": false,
+              "changePerShot": {
+                "sign": "-",
+                "formula": "1"
+              },
+              "changePerSecond": {
+                "sign": "+",
+                "formula": "0"
+              }
+            },
+            "capacity": 0,
+            "consume": true,
+            "falloff": {
+              "enabled": true,
+              "halfDistance": 35
+            },
+            "multishot": {
+              "enabled": true,
+              "count": 6,
+              "coneDegrees": 20
+            },
+            "onHitSplash": {
+              "enabled": false,
+              "radius": 0,
+              "unit": "grid"
+            }
+          }
+        },
+        "storage": {
+          "enabled": false,
+          "version": 1,
+          "slots": {},
+          "contents": []
+        },
+        "container": {
+          "contents": [],
+          "limits": {
+            "maxItems": 0,
+            "maxWeight": 0
+          }
+        },
+        "containerHostId": "ed2acb8bcde10700"
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 120000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1782902000002,
+        "modifiedTime": 1782902000002,
+        "lastModifiedBy": null
+      }
+    },
+    {
+      "name": "Патрон 12к дробь",
+      "type": "item",
+      "_id": "ed2acb7933d80203",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "system": {
+        "description": "<p>Патрон 12к дробь</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 12,
+        "weight": 0.02,
+        "formula": "",
+        "equipped": false,
+        "held": false,
+        "anatomyId": "",
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "enabled": true,
+                "damageType": "ballistic",
+                "damage": 35,
+                "armorPen": 15,
+                "hardness": 1,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "12ga-buck",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0,
+              "allowFractional": false,
+              "clampNonNegative": true,
+              "scaleDamageFromSpent": false,
+              "overheatNotify": false,
+              "changePerShot": {
+                "sign": "-",
+                "formula": "1"
+              },
+              "changePerSecond": {
+                "sign": "+",
+                "formula": "0"
+              }
+            },
+            "capacity": 0,
+            "consume": true,
+            "falloff": {
+              "enabled": true,
+              "halfDistance": 35
+            },
+            "multishot": {
+              "enabled": true,
+              "count": 6,
+              "coneDegrees": 20
+            },
+            "onHitSplash": {
+              "enabled": false,
+              "radius": 0,
+              "unit": "grid"
+            }
+          }
+        },
+        "storage": {
+          "enabled": false,
+          "version": 1,
+          "slots": {},
+          "contents": []
+        },
+        "container": {
+          "contents": [],
+          "limits": {
+            "maxItems": 0,
+            "maxWeight": 0
+          }
+        },
+        "containerHostId": ""
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 130000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1782902000003,
+        "modifiedTime": 1782902000003,
+        "lastModifiedBy": null
+      }
+    },
+    {
+      "name": "Патрон 12к пуля",
+      "type": "item",
+      "_id": "ed2acb06d0a3f804",
+      "img": "systems/spaceholder/assets/icons/weapon.svg/bullets.svg",
+      "system": {
+        "description": "<p>Патрон 12к пуля</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 6,
+        "weight": 0.02,
+        "formula": "",
+        "equipped": false,
+        "held": false,
+        "anatomyId": "",
+        "coveredParts": [],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": false,
+          "isActions": false,
+          "isModifiers": false,
+          "isWeapon": false,
+          "isAmmo": true,
+          "isContainer": false
+        },
+        "weapon": {
+          "version": 3,
+          "ergonomics": {
+            "overall": 100,
+            "zones": {
+              "enabled": false,
+              "green": 100,
+              "yellow": 100,
+              "orange": 100,
+              "red": 100
+            },
+            "deadZone": {
+              "enabled": false,
+              "value": 100
+            },
+            "aimPenalty": {
+              "enabled": false,
+              "value": 100
+            },
+            "critZoneBonus": {
+              "enabled": false,
+              "value": 0
+            },
+            "critZoneSize": {
+              "enabled": false,
+              "value": 100
+            },
+            "readying": {
+              "enabled": true,
+              "value": 0
+            }
+          },
+          "lines": [],
+          "state": {
+            "activeLineId": "",
+            "activeModeId": "",
+            "ready": false
+          },
+          "ammo": {
+            "damage": [
+              {
+                "enabled": true,
+                "damageType": "ballistic",
+                "damage": 140,
+                "armorPen": 40,
+                "hardness": 1,
+                "armorDamageFactor": 100,
+                "armorDamageReduction": 100,
+                "speed": 0,
+                "payloadId": ""
+              }
+            ],
+            "caliber": "12ga-slug",
+            "connector": {
+              "enabled": false,
+              "value": ""
+            },
+            "charge": {
+              "enabled": false,
+              "max": 0,
+              "current": 0,
+              "allowFractional": false,
+              "clampNonNegative": true,
+              "scaleDamageFromSpent": false,
+              "overheatNotify": false,
+              "changePerShot": {
+                "sign": "-",
+                "formula": "1"
+              },
+              "changePerSecond": {
+                "sign": "+",
+                "formula": "0"
+              }
+            },
+            "capacity": 0,
+            "consume": true,
+            "falloff": {
+              "enabled": true,
+              "halfDistance": 70
+            },
+            "multishot": {
+              "enabled": false,
+              "count": 1,
+              "coneDegrees": 0
+            },
+            "onHitSplash": {
+              "enabled": false,
+              "radius": 0,
+              "unit": "grid"
+            }
+          }
+        },
+        "storage": {
+          "enabled": false,
+          "version": 1,
+          "slots": {},
+          "contents": []
+        },
+        "container": {
+          "contents": [],
+          "limits": {
+            "maxItems": 0,
+            "maxWeight": 0
+          }
+        },
+        "containerHostId": ""
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 140000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1782902000004,
+        "modifiedTime": 1782902000004,
+        "lastModifiedBy": null
+      }
+    },
+    {
+      "name": "Уличный комплект",
+      "type": "item",
+      "_id": "ed2acb064251f705",
+      "img": "systems/spaceholder/assets/icons/clothing.svg/trousers.svg",
+      "system": {
+        "description": "<p>Куртка + джинсы.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 1,
+        "weight": 2.4,
+        "formula": "",
+        "equipped": true,
+        "held": false,
+        "anatomyId": "humanoid",
+        "coveredParts": [
+          {
+            "slotRef": "upperTorso",
+            "layers": [
+              {
+                "material": "cloth-heavy",
+                "thickness": 2
+              }
+            ],
+            "face": "front"
+          },
+          {
+            "slotRef": "lowerTorso",
+            "layers": [
+              {
+                "material": "cloth-heavy",
+                "thickness": 2
+              }
+            ],
+            "face": "front"
+          },
+          {
+            "slotRef": "upperTorso",
+            "layers": [
+              {
+                "material": "cloth-heavy",
+                "thickness": 2
+              }
+            ],
+            "face": "back"
+          },
+          {
+            "slotRef": "leftThigh",
+            "layers": [
+              {
+                "material": "cloth-heavy",
+                "thickness": 1
+              }
+            ],
+            "face": "front"
+          },
+          {
+            "slotRef": "rightThigh",
+            "layers": [
+              {
+                "material": "cloth-heavy",
+                "thickness": 1
+              }
+            ],
+            "face": "front"
+          },
+          {
+            "slotRef": "leftShin",
+            "layers": [
+              {
+                "material": "cloth-heavy",
+                "thickness": 1
+              }
+            ],
+            "face": "front"
+          },
+          {
+            "slotRef": "rightShin",
+            "layers": [
+              {
+                "material": "cloth-heavy",
+                "thickness": 1
+              }
+            ],
+            "face": "front"
+          }
+        ],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": true,
+          "isActions": false,
+          "isModifiers": false
+        },
+        "containerHostId": ""
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 150000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1782902000005,
+        "modifiedTime": 1782902000005,
+        "lastModifiedBy": null
+      }
+    },
+    {
+      "name": "Бронежилет (средний)",
+      "type": "item",
+      "_id": "ed2acbb05931c306",
+      "img": "systems/spaceholder/assets/icons/armor.svg/kevlar-vest.svg",
+      "system": {
+        "description": "<p>Сталь + кевлар.</p>",
+        "implantReplaceOrgan": null,
+        "actions": [],
+        "quantity": 1,
+        "weight": 7,
+        "formula": "",
+        "equipped": true,
+        "held": false,
+        "anatomyId": "humanoid",
+        "coveredParts": [
+          {
+            "slotRef": "upperTorso",
+            "layers": [
+              {
+                "material": "steel-plate",
+                "thickness": 3,
+                "coverage": 75
+              },
+              {
+                "material": "kevlar",
+                "thickness": 1
+              }
+            ],
+            "face": "front"
+          },
+          {
+            "slotRef": "lowerTorso",
+            "layers": [
+              {
+                "material": "steel-plate",
+                "thickness": 3,
+                "coverage": 75
+              },
+              {
+                "material": "kevlar",
+                "thickness": 1
+              }
+            ],
+            "face": "front"
+          },
+          {
+            "slotRef": "upperTorso",
+            "layers": [
+              {
+                "material": "steel-plate",
+                "thickness": 3,
+                "coverage": 75
+              },
+              {
+                "material": "kevlar",
+                "thickness": 1
+              }
+            ],
+            "face": "back"
+          }
+        ],
+        "defaultActions": {
+          "equip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "unequip": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "hold": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "stow": {
+            "showInCombat": false,
+            "showInQuickbar": true
+          },
+          "drop": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "wear": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          },
+          "show": {
+            "showInCombat": false,
+            "showInQuickbar": false
+          }
+        },
+        "modifiers": {
+          "abilities": [],
+          "derived": [],
+          "params": []
+        },
+        "itemTags": {
+          "isArmor": true,
+          "isActions": false,
+          "isModifiers": false
+        },
+        "containerHostId": ""
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 160000,
+      "ownership": {
+        "default": 0
+      },
+      "flags": {},
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "13.350",
+        "systemId": "spaceholder",
+        "systemVersion": "0.178",
+        "createdTime": 1782902000006,
+        "modifiedTime": 1782902000006,
+        "lastModifiedBy": null
+      }
+    }
+  ],
+  "effects": [],
+  "folder": "shc57d62d51e6620",
+  "sort": 2000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782902000000,
+    "modifiedTime": 1782902000000,
+    "lastModifiedBy": null
+  }
+}

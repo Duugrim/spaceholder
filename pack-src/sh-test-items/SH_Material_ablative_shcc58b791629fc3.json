@@ -43,6 +43,18 @@
           "type": "thermal",
           "fraction": 0.4
         }
+      ],
+      "ballistic": [
+        {
+          "type": "concussive",
+          "fraction": 0.25
+        }
+      ],
+      "concussive": [
+        {
+          "type": "concussive",
+          "fraction": 0.6
+        }
       ]
     },
     "selfInduction": {},

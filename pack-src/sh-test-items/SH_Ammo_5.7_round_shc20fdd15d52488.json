@@ -101,7 +101,7 @@
             "enabled": true,
             "damageType": "ballistic",
             "damage": 95,
-            "armorPen": 55,
+            "armorPen": 70,
             "hardness": 1,
             "armorDamageFactor": 100,
             "armorDamageReduction": 100,
@@ -135,7 +135,7 @@
         "consume": true,
         "falloff": {
           "enabled": true,
-          "halfDistance": 55
+          "halfDistance": 200
         },
         "multishot": {
           "enabled": false,

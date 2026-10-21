@@ -37,7 +37,7 @@ npm run watch
   - Совместимость Foundry v13; локализация «en»; медиа/иконки; packs пустые
 
 - Инициализация системы (module/spaceholder.mjs)
-  - Hooks.once('init'): публикует API в game.spaceholder, задаёт CONFIG.SPACEHOLDER, настраивает инициативу (1d20 + @abilities.dex.mod), регистрирует кастомные Document-классы (Actor/Item) и листы (Application V2), отключает legacyTransferral для ActiveEffect, прелоадит шаблоны
+  - Hooks.once('init'): публикует API в game.spaceholder, задаёт CONFIG.SPACEHOLDER, настраивает инициативу (1d20 + @abilities.agi.mod), регистрирует кастомные Document-классы (Actor/Item) и листы (Application V2), отключает legacyTransferral для ActiveEffect, прелоадит шаблоны
   - Handlebars helpers (toLowerCase, multiply, join, lt/gt/eq)
   - Hooks.once('ready'): инициализация AnatomyManager; регистрация hotbarDrop → создание макросов для предметов
 
@@ -104,11 +104,11 @@ await someDoc.update({ img: iconPath });
 
 - Анатомии существ
   - AnatomyManager (module/anatomy-manager.mjs)
-    - initialize() загружает реестр module/data/anatomy/registry.json и кэширует данные
+    - initialize() загружает реестр data/anatomy/registry.json и кэширует данные
     - loadAnatomy() достаёт JSON анатомии (например humanoid.json, quadruped.json), валидирует и кэширует
     - createActorAnatomy() формирует копию шаблона для актёра (maxHp с учётом коэффициента, currentHp из maxHp)
     - getAvailableAnatomies(), getAnatomyDisplayName(), reload(), getStats()
-  - Данные: module/data/anatomy/registry.json описывает список доступных анатомий, категории и отключённые варианты (с префиксом "_")
+  - Данные: data/anatomy/registry.json описывает список доступных анатомий, категории и отключённые варианты (с префиксом "_")
   
 - Модули глобальной карты находятся в module\helpers\global-map
 

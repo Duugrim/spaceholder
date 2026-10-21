@@ -1637,8 +1637,8 @@ class GlobalMapEdgeUI {
         const { rows, cols, biomes, moisture, temperature } = grid;
         const { cellSize, bounds } = md;
 
-        const gridCol = Math.floor((px - bounds.minX) / cellSize);
-        const gridRow = Math.floor((py - bounds.minY) / cellSize);
+        const gridCol = Math.round((px - bounds.minX) / cellSize);
+        const gridRow = Math.round((py - bounds.minY) / cellSize);
 
         if (gridRow >= 0 && gridRow < rows && gridCol >= 0 && gridCol < cols) {
           const idx = gridRow * cols + gridCol;

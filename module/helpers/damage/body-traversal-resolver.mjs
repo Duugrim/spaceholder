@@ -1,50 +1,71 @@
 /**
- * Body-traversal resolver — walks a projectile/application package through
- * one or more anatomy body parts, delegating per-part layer resolution to
- * {@link resolveDamagePackage}. Orchestrates:
+ * Body-traversal resolver — walks a projectile/application package through the hit body part (and on
+ * through `relations.behind`, when a preset defines it), delegating armour to
+ * {@link resolveDamagePackage}. Per part:
  *
- *  1. **Entry** — incoming-face armour, then the part's catalog `material`.
- *  2. **Centre accumulation** — damage reaching the centre is recorded as
- *     `bodyDamageBySlot[slotRef]`.
- *  3. **Transfer vs. exit** — if the part has a `relations.behind` with
- *     matching `direction`, we roll against `chance` and either transfer
- *     to the next part as an internal entry, or exit through the opposite
- *     face (armour on that face, if the part actually has it).
+ *  1. **Armour** on the incoming face (layers with `coverage` < 100 may be missed: the hit lands in a gap).
+ *  2. **Tissue** (`partTissue`): the part takes what it *absorbs*. A penetrating projectile crosses the
+ *     shell (the part's own `material`, e.g. the skull; a weaker one stays in it), then the inside
+ *     absorbs `depthFlat + depthShare × energy`. The part's damage is the share of the projectile's damage
+ *     that matches the absorbed energy (damage follows energy), plus `cavity` × the energy absorbed inside
+ *     (the temporary cavity of a high-energy round); whatever is left leaves the body.
+ *     Blows, burns and the shock armour hands on stay on the part entirely.
+ *  3. **Exit**: the residual goes through armour on the opposite face and leaves the body
+ *     (`exitApplications`, for a target behind) — or into the part behind (`relations.behind`).
+ *  4. **Organs**: each organ is rolled separately; a bigger cavity (more energy absorbed) hits more of
+ *     them. A penetrating projectile reaches organs only with energy past `organDepth`; a blow reaches them
+ *     only above the concussion threshold. An organ takes `organShare` of the part's damage.
+ *  5. **Blow to the parent**: `bluntToParent` of the blow goes on to the parent part (a helmet hit to the
+ *     neck).
  *
- * Tissue is a single catalog material on the part. Legacy `bodyLayers`
- * stacks are still honoured when tests pass them without a material slug.
- *
- * The resolver is pure — it does not import Foundry. See
- * [docs/code/reference/ANATOMY_SYSTEM.md].
+ * The resolver is pure — it does not import Foundry. See [docs/code/reference/ANATOMY_SYSTEM.md].
  */
 
 import {
   resolveDamagePackage,
   mergeDamageInstances,
-  normalizeApplications
+  normalizeApplications,
+  effectiveArmorRating,
+  damageRatioForEnergyRatio,
+  projectileEnergy,
 } from './damage-resolver.mjs';
-import { ensureLayerDefaults } from './materials-manager.mjs';
-import { sanitizeBodyLayers } from './body-layers-defaults.mjs';
-import { isDamageType } from './damage-types.mjs';
+import { ensureLayerDefaults, normalizeMaterial } from './materials-manager.mjs';
+import { isDamageType, penetratesBody } from './damage-types.mjs';
 import {
+  partTissue,
   resolveIncomingFace,
   resolveOppositeFace,
-  sanitizePartMaterial,
 } from '../anatomy-groups.mjs';
 
+const EPS = 1e-9;
+
 /**
- * Tissue stack for a part: catalog `material` as a single layer, or legacy
- * `bodyLayers` when tests still pass an explicit stack and no material slug.
- * @param {object} part
- * @returns {Array<{material:string, thickness:number}>}
+ * Body-wide constants of the wound model (the balance tool may override them):
+ * - `organCavityEnergy` — energy scale of the organ roll: a part that absorbed this much energy hits each
+ *   organ as if its share were doubled;
+ * - `organShare` — share of the part's damage an organ in the wound takes;
+ * - `concussionThreshold` — a blow (damage scale) must exceed this to hurt organs; the excess counts.
  */
-function partTissueLayers(part) {
-  const mat = String(part?.material ?? '').trim();
-  if (mat && mat !== 'biological' && mat !== 'bionic' && mat !== 'flesh' && mat !== 'cybernetic') {
-    return [{ material: sanitizePartMaterial(mat), thickness: 1 }];
-  }
-  const sanitized = sanitizeBodyLayers(part?.bodyLayers);
-  return Array.isArray(sanitized) ? sanitized : [];
+export const DEFAULT_BODY_MODEL = Object.freeze({
+  organCavityEnergy: 4,
+  organShare: 0.5,
+  concussionThreshold: 60,
+});
+
+const DIRECTIONS = Object.freeze(['front', 'back', 'left', 'right', 'top', 'bottom']);
+
+const OPPOSITE_DIRECTION = Object.freeze({
+  front: 'back',
+  back: 'front',
+  left: 'right',
+  right: 'left',
+  top: 'bottom',
+  bottom: 'top'
+});
+
+function normalizeDirection(raw) {
+  const v = String(raw ?? 'front').toLowerCase().trim();
+  return DIRECTIONS.includes(v) ? v : 'front';
 }
 
 function sourcesForFace(raw, face) {
@@ -67,35 +88,10 @@ function cloneArmorSources(raw) {
   }));
 }
 
-function applyArmorScale(sources, armorScale) {
-  const s = Number(armorScale);
-  const scale = Number.isFinite(s) && s > 0 ? s : 1;
-  if (scale === 1) return sources;
-  const thickMul = Math.sqrt(scale);
-  return sources.map((src) => ({
-    ...src,
-    layers: src.layers.map((l) => {
-      const t = Number(l.thickness);
-      if (!Number.isFinite(t) || t <= 0) return { ...l };
-      return { ...l, thickness: t * thickMul };
-    })
-  }));
-}
-
-const DIRECTIONS = Object.freeze(['front', 'back', 'left', 'right', 'top', 'bottom']);
-
-const OPPOSITE_DIRECTION = Object.freeze({
-  front: 'back',
-  back: 'front',
-  left: 'right',
-  right: 'left',
-  top: 'bottom',
-  bottom: 'top'
-});
-
-function normalizeDirection(raw) {
-  const v = String(raw ?? 'front').toLowerCase().trim();
-  return DIRECTIONS.includes(v) ? v : 'front';
+/** Coverage of an armour layer, percent (a plate with gaps covers less than 100). */
+function layerCoverage(layer) {
+  const n = Number(layer?.coverage);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 100;
 }
 
 /* ================================================================== *
@@ -103,9 +99,9 @@ function normalizeDirection(raw) {
  * ================================================================== */
 
 /**
- * Convert resolver `bodyHits` (`{type, amount, armorPen, armorDamageFactor, hardness}`)
- * into an `applications` package. Uses a single `parallel` phase so every
- * shard starts from the outer layer of the next stack independently.
+ * Convert resolver `bodyHits` into an `applications` package: one `parallel` phase so every shard
+ * starts from the outer layer of the next stack independently. The carried energy and the
+ * armour-damage-reduction stay with the shard.
  */
 function bodyHitsToApplications(hits) {
   if (!Array.isArray(hits) || !hits.length) return [];
@@ -118,30 +114,30 @@ function bodyHitsToApplications(hits) {
     const adfRaw = Number(h.armorDamageFactor ?? 1);
     const armorDamageFactor = Number.isFinite(adfRaw) && adfRaw > 0 ? adfRaw : 1;
     const hRaw = Number(h.hardness ?? 1);
-    const hardness = Number.isFinite(hRaw) && hRaw > 1e-9 ? hRaw : 1;
-    items.push({ type: h.type, damage: amount, armorPen, armorDamageFactor, hardness });
+    const hardness = Number.isFinite(hRaw) && hRaw > EPS ? hRaw : 1;
+    const item = { type: h.type, damage: amount, armorPen, armorDamageFactor, hardness };
+    if (Number.isFinite(h.energy) && h.energy >= 0) item.energy = h.energy;
+    if (Number.isFinite(h.armorDamageReduction)) item.armorDamageReduction = h.armorDamageReduction;
+    if (h.transferred) item.transferred = true;
+    items.push(item);
   }
   return items.length ? [{ mode: 'parallel', items }] : [];
 }
 
-/**
- * Convert an incoming `applications` value into the `bodyHits` shape used
- * at the part centre. Preserves `armorPen` / `armorDamageFactor` from
- * every item so subsequent stacks still see them.
- */
+/** Incoming `applications` in the `bodyHits` shape (an internal entry has no armour stack). */
 function applicationsToBodyHits(apps) {
-  const phases = normalizeApplications(apps);
   const out = [];
-  for (const phase of phases) {
+  for (const phase of normalizeApplications(apps)) {
     for (const item of phase.items) {
-      const hRaw = Number(item.hardness ?? 1);
-      const hardness = Number.isFinite(hRaw) && hRaw > 1e-9 ? hRaw : 1;
       out.push({
         type: item.type,
         amount: item.damage,
-        armorPen: Math.max(0, Number(item.armorPen ?? 0)),
-        armorDamageFactor: Math.max(0, Number(item.armorDamageFactor ?? 1)) || 1,
-        hardness
+        armorPen: item.armorPen,
+        armorDamageFactor: item.armorDamageFactor,
+        hardness: item.hardness,
+        ...(Number.isFinite(item.energy) ? { energy: item.energy } : {}),
+        ...(Number.isFinite(item.armorDamageReduction) ? { armorDamageReduction: item.armorDamageReduction } : {}),
+        ...(item.transferred ? { transferred: true } : {})
       });
     }
   }
@@ -149,118 +145,76 @@ function applicationsToBodyHits(apps) {
 }
 
 /* ================================================================== *
- *  Flat stack construction / reconstitution                            *
+ *  Armour stack construction / reconstitution                          *
  * ================================================================== */
 
 /**
- * Build a flat layer stack (armour + body layers) annotated with keys
- * that identify each layer's provenance:
- *
- *   `armor:<itemId>:<coverageIdx>:<layerIdx>`
- *   `body:<slotRef>:<passId>:<layerIdx>`
- *
- * `passId` is either `'entry'` or `'exit'` so entry- and exit-side body
- * layers never collide inside the same resolver call.
- *
- * Order `'fwd'` concatenates armour first (outer → inner) then body
- * layers (outer → centre). Order `'rev'` reverses both: body layers
- * (centre → outer) then armour (inner → outer).
- *
- * @param {Object} args
- * @param {Array<{itemId:string, coverageIdx:number, layers:Array}>} args.sources
- * @param {Array<{material:string, thickness:number}>} args.bodyLayers
- * @param {'fwd'|'rev'} args.order
- * @param {string} args.slotRef
- * @param {'entry'|'exit'} args.passId
- * @param {(id:string)=>Object} args.resolveMaterial
- * @returns {Array<Object>} flat list of layer states
+ * Flat armour stack of the given sources, keyed `armor:<itemId>:<coverageIdx>:<layerIdx>`. A layer with
+ * `coverage` < 100 is missed when the roll falls into its gap (the hit lands where the plate is not).
+ * `'fwd'` = outer → inner (entry), `'rev'` = inner → outer (exit).
+ * @returns {{ flat: object[], gaps: string[] }}
  */
-function buildFlatStack({ sources, bodyLayers, order, slotRef, passId, resolveMaterial }) {
+function buildArmorStack({ sources, order, resolveMaterial, chance }) {
   const mat = typeof resolveMaterial === 'function' ? resolveMaterial : () => ({ materialId: '' });
   const flat = [];
-
-  const pushArmor = (src) => {
-    for (let i = 0; i < src.layers.length; i += 1) {
+  const gaps = [];
+  const list = order === 'rev' ? [...sources].reverse() : sources;
+  for (const src of list) {
+    const idx = src.layers.map((_, i) => i);
+    if (order === 'rev') idx.reverse();
+    for (const i of idx) {
       const layer = src.layers[i];
       if (!layer || typeof layer !== 'object') continue;
+      const key = `armor:${src.itemId}:${src.coverageIdx}:${i}`;
+      const coverage = layerCoverage(layer);
+      if (coverage < 100 && chance({ kind: 'gap', id: key, chance: 1 - coverage / 100 })) {
+        gaps.push(key);
+        continue;
+      }
       const md = mat(layer.material);
-      flat.push(ensureLayerDefaults(
-        { ...layer, key: `armor:${src.itemId}:${src.coverageIdx}:${i}` },
-        md ?? { materialId: layer.material }
-      ));
+      flat.push(ensureLayerDefaults({ ...layer, key }, md ?? { materialId: layer.material }));
     }
-  };
-  const pushArmorRev = (src) => {
-    for (let i = src.layers.length - 1; i >= 0; i -= 1) {
-      const layer = src.layers[i];
-      if (!layer || typeof layer !== 'object') continue;
-      const md = mat(layer.material);
-      flat.push(ensureLayerDefaults(
-        { ...layer, key: `armor:${src.itemId}:${src.coverageIdx}:${i}` },
-        md ?? { materialId: layer.material }
-      ));
-    }
-  };
-  const pushBody = (forward) => {
-    const range = forward
-      ? bodyLayers.map((_, i) => i)
-      : bodyLayers.map((_, i) => bodyLayers.length - 1 - i);
-    for (const i of range) {
-      const layer = bodyLayers[i];
-      if (!layer || typeof layer !== 'object') continue;
-      const md = mat(layer.material);
-      flat.push(ensureLayerDefaults(
-        { ...layer, key: `body:${slotRef}:${passId}:${i}` },
-        md ?? { materialId: layer.material }
-      ));
-    }
-  };
-
-  if (order === 'fwd') {
-    for (const src of sources) pushArmor(src);
-    pushBody(true);
-  } else {
-    pushBody(false);
-    for (let s = sources.length - 1; s >= 0; s -= 1) pushArmorRev(sources[s]);
   }
-  return flat;
+  return { flat, gaps };
 }
 
 /**
- * Reassemble armour sources from the resolver's survivors. Body-layer
- * entries are dropped (they are virtual). Missing buckets become empty
- * layer arrays so persistence code can still detect layer destruction.
- *
- * @param {Array<{itemId:string, coverageIdx:number, layers:Array}>} originalSources
- * @param {Array<Object>} resolvedLayers
- * @returns {Array<{itemId:string, coverageIdx:number, layers:Array}>}
+ * Write the resolver's layer states back into the armour sources. Layers the pass did not touch (another
+ * face, a gap in the coverage) keep their state.
  */
 function reconstituteArmor(originalSources, resolvedLayers) {
-  const bucket = new Map();
-  for (const layer of resolvedLayers) {
+  const byKey = new Map();
+  for (const layer of resolvedLayers ?? []) {
     const key = String(layer?.key ?? '');
-    if (!key.startsWith('armor:')) continue;
-    const parts = key.split(':');
-    if (parts.length < 4) continue;
-    const itemId = parts[1];
-    const coverageIdxStr = parts[2];
-    const bucketKey = `${itemId}:${coverageIdxStr}`;
-    if (!bucket.has(bucketKey)) bucket.set(bucketKey, []);
-    bucket.get(bucketKey).push({
-      material: layer.material,
-      thickness: layer.thickness,
-      integrity: layer.integrity,
-      integrityMax: layer.integrityMax,
-      breachLoss: layer.breachLoss,
-      breachCapacity: layer.breachCapacity
-    });
+    if (key.startsWith('armor:')) byKey.set(key, layer);
   }
   return originalSources.map((src) => ({
     itemId: src.itemId,
     coverageIdx: src.coverageIdx,
     face: src.face ?? '',
-    layers: bucket.get(`${src.itemId}:${src.coverageIdx}`) ?? []
+    layers: src.layers.map((layer, i) => {
+      const res = byKey.get(`armor:${src.itemId}:${src.coverageIdx}:${i}`);
+      if (!res) return { ...layer };
+      return {
+        ...layer,
+        material: res.material,
+        thickness: res.thickness,
+        integrity: res.integrity,
+        integrityMax: res.integrityMax,
+        breachLoss: res.breachLoss,
+        breachCapacity: res.breachCapacity
+      };
+    })
   }));
+}
+
+/** Energy the armour layers absorbed from the projectile itself (penetrated or held). */
+function absorbedByArmor(trace) {
+  let sum = 0;
+  for (const t of trace ?? []) {
+    if ((t.kind === 'penetrate' || t.kind === 'hold') && Number.isFinite(t.energyAbsorbed)) sum += t.energyAbsorbed;
+  }
+  return sum;
 }
 
 /* ================================================================== *
@@ -268,13 +222,8 @@ function reconstituteArmor(originalSources, resolvedLayers) {
  * ================================================================== */
 
 /**
- * Given a set of `behind` relations whose `direction` matches the current
- * hit direction, return the target slotRef the projectile transfers to —
- * or `null` if it stops at the centre. Each relation carries a `chance`
- * percentage (0..100); probabilities are clipped and their sum capped at
- * 1.0. A single RNG draw decides whether the projectile transfers and, if
- * so, which specific relation it follows.
- *
+ * Given the `behind` relations matching the hit direction, return the slot the projectile goes on into —
+ * or `null`. Each relation carries a `chance` percentage; one roll decides.
  * @param {Array<{target:string, chance:number}>} behindRels
  * @param {() => number} rng
  * @returns {string|null}
@@ -295,6 +244,60 @@ function pickBehindTransfer(behindRels, rng) {
 }
 
 /* ================================================================== *
+ *  Tissue                                                              *
+ * ================================================================== */
+
+/**
+ * A penetrating projectile through the part's tissue.
+ * @param {object} hit body hit (`amount`, `energy`, `armorPen`, `hardness`, `armorDamageReduction`)
+ * @param {{ shellR: number, tissue: object }} ctx `shellR` — energy the shell holds (0 for an internal entry)
+ * @returns {{ deposit: number, absorbed: number, reached: boolean, inShell: boolean, exit: object|null,
+ *   energyBefore: number, energyAfter: number }}
+ */
+function passTissue(hit, { shellR, tissue }) {
+  const D = Math.max(0, Number(hit.amount) || 0);
+  const E = Number.isFinite(hit.energy) ? Math.max(0, hit.energy) : projectileEnergy(D, hit);
+  const adr = hit.armorDamageReduction;
+  const stays = (inShell) => ({ deposit: D, absorbed: E, reached: false, inShell, exit: null, energyBefore: E, energyAfter: 0 });
+  if (E <= EPS) return stays(false);
+  if (shellR > EPS && E <= shellR + EPS) return stays(true);
+  const E1 = shellR > EPS ? E - shellR : E;
+  const D1 = shellR > EPS ? D * damageRatioForEnergyRatio(E1 / E, adr) : D;
+  const reached = E1 > tissue.organDepth + EPS;
+  const take = Math.min(E1, tissue.depthFlat + tissue.depthShare * E1);
+  const E2 = Math.max(0, E1 - take);
+  const D2 = E2 > EPS ? D1 * damageRatioForEnergyRatio(E2 / E1, adr) : 0;
+  // The temporary cavity: energy absorbed inside tears more than the projectile's share of damage.
+  const cavity = Math.max(0, Number(tissue.cavity) || 0) * (E1 - E2);
+  return {
+    deposit: D - D2 + cavity,
+    absorbed: E - E2,
+    reached,
+    inShell: false,
+    exit: D2 > EPS ? { ...hit, amount: D2, energy: E2 } : null,
+    energyBefore: E,
+    energyAfter: E2,
+  };
+}
+
+/**
+ * Organs a wound hits: each organ separately, its share boosted by the cavity
+ * (`1 − (1 − share)^(1 + energy / organCavityEnergy)`).
+ * @returns {Array<object>} the organs hit
+ */
+function rollOrgans(inners, cavityEnergy, model, chance) {
+  const out = [];
+  const scale = Math.max(EPS, Number(model.organCavityEnergy) || DEFAULT_BODY_MODEL.organCavityEnergy);
+  const power = 1 + Math.max(0, cavityEnergy) / scale;
+  for (const inner of Array.isArray(inners) ? inners : []) {
+    const share = Math.max(0, Math.min(1, (Number(inner?.occupancyPct) || 0) / 100));
+    if (share <= 0) continue;
+    if (chance({ kind: 'organ', id: String(inner?.id ?? ''), chance: 1 - Math.pow(1 - share, power) })) out.push(inner);
+  }
+  return out;
+}
+
+/* ================================================================== *
  *  Public entry point                                                  *
  * ================================================================== */
 
@@ -303,38 +306,49 @@ function pickBehindTransfer(behindRels, rng) {
  * @property {string} slotRef
  * @property {'external'|'internal'} entryKind
  * @property {string} incomingDirection
- * @property {{fwd:number, back:number}} exposure
  * @property {string|null} transferredTo
- * @property {boolean} exited - true when the projectile left via the back
- *   side (exposure[opposite(D)] > 0 with no behind transfer)
+ * @property {boolean} exited - the projectile left the body through this part
  */
 
 /**
- * Resolve a projectile/application package against a chain of anatomy
- * body parts. Follows `relations.behind` transitions one step at a time
- * and stops when either the residual dissipates or every reachable part
- * has been visited.
+ * @typedef {Object} PartWound what one part took from the package
+ * @property {number} deposit damage of penetrating projectiles the part absorbed
+ * @property {number} blunt blows: the shock armour handed on and concussive damage
+ * @property {number} surface other damage that stays on the part (burns, chemicals…)
+ * @property {number} cavityEnergy energy the part (and the armour right in front of it) absorbed
+ * @property {boolean} reachedOrgans a penetrating projectile got past `organDepth`
+ * @property {boolean} inShell a penetrating projectile stopped in the shell
+ * @property {boolean} exited the projectile left the body here
+ * @property {string[]} gaps armour layers missed through a coverage gap
+ */
+
+/**
+ * Resolve a projectile/application package against the hit body part (and the parts behind it).
  *
  * @param {Object} args
- * @param {{ bodyParts: Object<string, Object> }} args.anatomy - anatomy
- *   with normalized `bodyParts` (keyed by slotRef). Each part must carry
- *   `exposure`, `relations`, and — ideally — `bodyLayers`; missing body
- *   layers are filled from {@link getDefaultBodyLayersForType}.
- * @param {string} args.startSlotRef - slotRef of the initially hit part
+ * @param {{ bodyParts: Object<string, Object> }} args.anatomy - normalized `bodyParts` keyed by slotRef;
+ *   parts carry `material`, `tissue`, `inners`, `faces`, `relations`
+ * @param {string} args.startSlotRef - slotRef of the hit part
  * @param {string} [args.hitDirection='front']
- * @param {unknown} args.applications - same shape as
- *   {@link resolveDamagePackage}'s `applications`
- * @param {Object<string, Array<{itemId:string, coverageIdx:number, layers:Array}>>} [args.armorBySlot={}]
- *   per-slot armour stacks (outer-most first)
+ * @param {unknown} args.applications - same shape as {@link resolveDamagePackage}'s `applications`
+ * @param {Object<string, Array<{itemId:string, coverageIdx:number, face?:string, layers:Array}>>} [args.armorBySlot={}]
+ *   per-slot armour sources (outer-most first)
  * @param {(id:string)=>Object} [args.resolveMaterial]
  * @param {()=>number} [args.random]
+ * @param {Partial<typeof DEFAULT_BODY_MODEL>} [args.bodyModel]
+ * @param {(event: {kind: 'gap'|'organ', id: string, chance: number}) => boolean} [args.decide] where the hit lands:
+ *   called for every location roll (an armour gap, an organ) with the chance of the event; returns whether it
+ *   happens. Without it the rolls use `random`. The balance tool walks every branch with it.
  *
  * @returns {{
  *   bodyDamageBySlot: Object<string, Array<{type:string, amount:number}>>,
+ *   innerHitsBySlot: Object<string, Array<{innerId:string, amount:number, type:string}>>,
+ *   woundsBySlot: Object<string, PartWound>,
  *   armorUpdatesBySlot: Object<string, Array<{itemId:string, coverageIdx:number, layers:Array}>>,
+ *   exitApplications: Array<{mode:string, items:object[]}>,
  *   path: TraversalPathEntry[],
  *   trace: Array<Object>
- * }}
+ * }} `exitApplications` — what left the body (empty when everything stayed in it)
  */
 export function resolveBodyTraversal({
   anatomy,
@@ -342,20 +356,35 @@ export function resolveBodyTraversal({
   hitDirection = 'front',
   applications,
   armorBySlot = {},
-  armorScale = 1,
   resolveMaterial,
-  random
+  random,
+  bodyModel,
+  decide
 } = {}) {
   const bodyParts = anatomy?.bodyParts && typeof anatomy.bodyParts === 'object' ? anatomy.bodyParts : {};
   const direction = normalizeDirection(hitDirection);
   const rng = typeof random === 'function' ? random : Math.random;
   const mat = typeof resolveMaterial === 'function' ? resolveMaterial : () => ({ materialId: '' });
+  const model = { ...DEFAULT_BODY_MODEL, ...(bodyModel ?? {}) };
+  /** A location roll: does an event with this chance happen. */
+  const chance = typeof decide === 'function'
+    ? (event) => decide(event) === true
+    : (event) => rng() < event.chance;
 
-  const bodyDamageBySlot = {};
+  const damageBySlot = {};
+  const innerHitsBySlot = {};
+  const woundsBySlot = {};
   const armorUpdatesBySlot = {};
+  const exitHits = [];
   const path = [];
   const trace = [];
   const processed = new Set();
+
+  const addDamage = (slotRef, hits) => {
+    const list = hits.filter((h) => h && h.amount > EPS);
+    if (!list.length) return;
+    damageBySlot[slotRef] = mergeDamageInstances([...(damageBySlot[slotRef] ?? []), ...list]);
+  };
 
   const queue = [{
     slotRef: String(startSlotRef ?? '').trim(),
@@ -376,106 +405,152 @@ export function resolveBodyTraversal({
     const D = node.incomingDirection;
     const incomingFace = resolveIncomingFace(part, D);
     const oppositeFace = resolveOppositeFace(part, incomingFace);
+    const tissue = partTissue(part);
+    const external = node.entryKind === 'external';
 
-    const rawArmorSrcs = cloneArmorSources(armorBySlot?.[slotRef]);
-    let currentArmorSrcs = applyArmorScale(rawArmorSrcs, armorScale);
-    const entryArmor = sourcesForFace(currentArmorSrcs, incomingFace);
-    const tissue = partTissueLayers(part);
+    let currentArmorSrcs = cloneArmorSources(armorBySlot?.[slotRef]);
+    const gaps = [];
 
-    // ---- 1. Entry: incoming-face armour → part material ----------------
-    let centerHits;
-    const wantsEntryStack = node.entryKind === 'external'
-      && (entryArmor.length > 0 || tissue.length > 0);
-    if (wantsEntryStack) {
-      const flat = buildFlatStack({
-        sources: entryArmor,
-        bodyLayers: tissue,
-        order: 'fwd',
-        slotRef,
-        passId: 'entry',
-        resolveMaterial: mat
-      });
-      const res = resolveDamagePackage({
-        layers: flat,
-        applications: node.applications,
-        resolveMaterial: mat,
-        random: rng
-      });
-      centerHits = res.bodyHits.slice();
-      currentArmorSrcs = reconstituteArmor(currentArmorSrcs, res.layers);
-      for (const entry of res.trace) trace.push({ ...entry, slotRef, phase: 'entry' });
-    } else {
-      centerHits = applicationsToBodyHits(node.applications);
-    }
-
-    // ---- 2. Accumulate centre damage on this part ----------------------
-    if (centerHits.length) {
-      const existing = bodyDamageBySlot[slotRef] ?? [];
-      bodyDamageBySlot[slotRef] = mergeDamageInstances([
-        ...existing,
-        ...centerHits.map((h) => ({ type: h.type, amount: h.amount }))
-      ]);
-    }
-
-    // ---- 3. Decide transfer vs exit ------------------------------------
-    const relations = Array.isArray(part.relations) ? part.relations : [];
-    const behindRels = relations.filter(
-      (r) => r && r.kind === 'behind' && normalizeDirection(r.direction) === D
-    );
-    let transferredTo = null;
-    if (centerHits.length && behindRels.length) {
-      const target = pickBehindTransfer(behindRels, rng);
-      if (target && !processed.has(target) && bodyParts[target]) {
-        queue.push({
-          slotRef: target,
-          entryKind: 'internal',
-          applications: bodyHitsToApplications(centerHits),
-          incomingDirection: D
-        });
-        transferredTo = target;
-      }
-    }
-
-    // ---- 4. Exit via opposite-face armour (if not transferred) ---------
-    let exited = false;
-    const exitArmor = oppositeFace ? sourcesForFace(currentArmorSrcs, oppositeFace) : [];
-    if (!transferredTo && centerHits.length && oppositeFace) {
-      if (exitArmor.length > 0) {
-        const flat = buildFlatStack({
-          sources: exitArmor,
-          bodyLayers: [],
-          order: 'rev',
-          slotRef,
-          passId: 'exit',
-          resolveMaterial: mat
-        });
-        const res = resolveDamagePackage({
-          layers: flat,
-          applications: bodyHitsToApplications(centerHits),
-          resolveMaterial: mat,
-          random: rng
-        });
+    // ---- 1. Armour on the incoming face --------------------------------
+    let hits;
+    let armorAbsorbed = 0;
+    if (external) {
+      const stack = buildArmorStack({ sources: sourcesForFace(currentArmorSrcs, incomingFace), order: 'fwd', resolveMaterial: mat, chance });
+      gaps.push(...stack.gaps);
+      if (stack.flat.length) {
+        const res = resolveDamagePackage({ layers: stack.flat, applications: node.applications, resolveMaterial: mat, random: rng });
+        hits = res.bodyHits.slice();
+        armorAbsorbed = absorbedByArmor(res.trace);
         currentArmorSrcs = reconstituteArmor(currentArmorSrcs, res.layers);
-        for (const entry of res.trace) trace.push({ ...entry, slotRef, phase: 'exit' });
+        for (const entry of res.trace) trace.push({ ...entry, slotRef, phase: 'entry' });
+      } else {
+        hits = applicationsToBodyHits(node.applications);
       }
-      exited = true;
+    } else {
+      hits = applicationsToBodyHits(node.applications);
     }
 
+    // ---- 2. Tissue -------------------------------------------------------
+    const shellMaterial = normalizeMaterial(mat(tissue.material) ?? { materialId: tissue.material });
+    const deposits = [];
+    const exits = [];
+    let deposit = 0;
+    let reachingDeposit = 0;
+    let blunt = 0;
+    let surface = 0;
+    let bodyAbsorbed = 0;
+    let reachedOrgans = false;
+    let inShell = false;
+    let dominant = null;
+    for (const hit of hits) {
+      const amount = Math.max(0, Number(hit.amount) || 0);
+      if (amount <= EPS) continue;
+      if (hit.transferred || !penetratesBody(hit.type)) {
+        if (hit.type === 'concussive') blunt += amount;
+        else surface += amount;
+        if (!hit.transferred) bodyAbsorbed += Number.isFinite(hit.energy) ? hit.energy : projectileEnergy(amount, hit);
+        deposits.push({ type: hit.type, amount });
+        continue;
+      }
+      const shellR = external
+        ? effectiveArmorRating({ thickness: tissue.shellThickness }, shellMaterial, hit.type).eARBase
+        : 0;
+      const pass = passTissue(hit, { shellR, tissue });
+      deposit += pass.deposit;
+      bodyAbsorbed += pass.absorbed;
+      if (pass.reached) {
+        reachedOrgans = true;
+        reachingDeposit += pass.deposit;
+      }
+      inShell ||= pass.inShell;
+      deposits.push({ type: hit.type, amount: pass.deposit });
+      if (!dominant || pass.deposit > dominant.amount) dominant = { type: hit.type, amount: pass.deposit };
+      if (pass.exit) exits.push(pass.exit);
+      trace.push({
+        kind: 'tissue', slotRef, phase: 'tissue', type: hit.type, shell: shellR,
+        energyBefore: pass.energyBefore, energyAfter: pass.energyAfter, deposit: pass.deposit,
+        reached: pass.reached, inShell: pass.inShell, exit: pass.exit?.amount ?? 0
+      });
+    }
+
+    // ---- 3. Exit: the part behind, or out through the opposite face -----
+    let transferredTo = null;
+    let exited = false;
+    if (exits.length) {
+      const behindRels = (Array.isArray(part.relations) ? part.relations : []).filter(
+        (r) => r && r.kind === 'behind' && normalizeDirection(r.direction) === D
+      );
+      const target = behindRels.length ? pickBehindTransfer(behindRels, rng) : null;
+      if (target && !processed.has(target) && bodyParts[target] && !bodyParts[target].lost) {
+        queue.push({ slotRef: target, entryKind: 'internal', applications: bodyHitsToApplications(exits), incomingDirection: D });
+        transferredTo = target;
+      } else {
+        let leaving = exits;
+        if (oppositeFace) {
+          const stack = buildArmorStack({ sources: sourcesForFace(currentArmorSrcs, oppositeFace), order: 'rev', resolveMaterial: mat, chance });
+          gaps.push(...stack.gaps);
+          if (stack.flat.length) {
+            const res = resolveDamagePackage({ layers: stack.flat, applications: bodyHitsToApplications(exits), resolveMaterial: mat, random: rng });
+            currentArmorSrcs = reconstituteArmor(currentArmorSrcs, res.layers);
+            for (const entry of res.trace) trace.push({ ...entry, slotRef, phase: 'exit' });
+            leaving = res.bodyHits.filter((h) => !h.transferred);
+            // A plate on the far side that slows the projectile pushes back into the same part.
+            for (const h of res.bodyHits.filter((x) => x.transferred)) {
+              if (h.type === 'concussive') blunt += h.amount;
+              else surface += h.amount;
+              deposits.push({ type: h.type, amount: h.amount });
+            }
+          }
+        }
+        if (leaving.length) {
+          exitHits.push(...leaving);
+          exited = true;
+        }
+      }
+    }
+
+    addDamage(slotRef, deposits);
+
+    // ---- 4. Organs -------------------------------------------------------
+    const concussion = Math.max(0, blunt - Math.max(0, Number(model.concussionThreshold) || 0));
+    if ((reachedOrgans && reachingDeposit > EPS) || concussion > EPS) {
+      const cavityEnergy = bodyAbsorbed + armorAbsorbed;
+      const share = Math.max(0, Number(model.organShare) || 0);
+      const amount = share * ((reachedOrgans ? reachingDeposit : 0) + concussion);
+      const type = reachedOrgans && reachingDeposit >= concussion && dominant ? dominant.type : 'concussive';
+      if (amount > EPS) {
+        const organs = rollOrgans(part.inners, cavityEnergy, model, chance);
+        if (organs.length) innerHitsBySlot[slotRef] = organs.map((o) => ({ innerId: String(o.id ?? ''), amount, type }));
+      }
+    }
+
+    // ---- 5. Blow to the parent ------------------------------------------
+    if (blunt > EPS && tissue.bluntToParent > 0) {
+      const parentRef = (Array.isArray(part.relations) ? part.relations : []).find((r) => r?.kind === 'parent')?.target;
+      const parent = parentRef ? bodyParts[parentRef] : null;
+      if (parent && !parent.lost) addDamage(parentRef, [{ type: 'concussive', amount: blunt * tissue.bluntToParent }]);
+    }
+
+    woundsBySlot[slotRef] = {
+      deposit,
+      blunt,
+      surface,
+      cavityEnergy: bodyAbsorbed + armorAbsorbed,
+      reachedOrgans,
+      inShell,
+      exited,
+      gaps,
+    };
     armorUpdatesBySlot[slotRef] = currentArmorSrcs;
-    path.push({
-      slotRef,
-      entryKind: node.entryKind,
-      incomingDirection: D,
-      incomingFace,
-      oppositeFace,
-      transferredTo,
-      exited
-    });
+    path.push({ slotRef, entryKind: node.entryKind, incomingDirection: D, incomingFace, oppositeFace, transferredTo, exited });
   }
 
   return {
-    bodyDamageBySlot,
+    bodyDamageBySlot: damageBySlot,
+    innerHitsBySlot,
+    woundsBySlot,
     armorUpdatesBySlot,
+    exitApplications: bodyHitsToApplications(exitHits),
     path,
     trace
   };
@@ -490,7 +565,9 @@ export const __internals__ = Object.freeze({
   OPPOSITE_DIRECTION,
   bodyHitsToApplications,
   applicationsToBodyHits,
-  buildFlatStack,
+  buildArmorStack,
   reconstituteArmor,
-  pickBehindTransfer
+  pickBehindTransfer,
+  passTissue,
+  rollOrgans
 });

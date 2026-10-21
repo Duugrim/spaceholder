@@ -1,0 +1,135 @@
+// GM actions: the "awaits GM / cancelled / failed" chat note and the "Player actions while you
+// were away" window. Classes are unique to the feature, so no window scoping is needed.
+
+// ===== Chat note =====
+.spaceholder-gm-action-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 8px;
+  border-left: 3px solid currentColor;
+  border-radius: 0 3px 3px 0;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+
+  i {
+    flex: 0 0 auto;
+    font-size: 11px;
+  }
+
+  &--pending {
+    color: $sh-warning;
+  }
+
+  &--cancelled {
+    color: $sh-text-dim;
+  }
+
+  &--failed {
+    color: $sh-danger;
+  }
+}
+
+// ===== Queue window =====
+.spaceholder-gm-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+
+  &__hint {
+    margin: 0;
+    font-size: 12px;
+    color: $sh-text-muted;
+  }
+
+  // Groups are joined segments: one bordered block per category, rows split by thin lines.
+  &__group {
+    border: 1px solid $sh-border;
+    border-radius: 4px;
+    background: rgba($sh-surface-2, 0.6);
+    overflow: hidden;
+  }
+
+  &__group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  &__group-name {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__group-count {
+    flex: 0 0 auto;
+    padding: 0 7px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 11px;
+    font-weight: 600;
+    color: $sh-text-muted;
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid $sh-border;
+
+    label {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+    }
+  }
+
+  &__time {
+    flex: 0 0 auto;
+    min-width: 38px;
+    font-variant-numeric: tabular-nums;
+    color: $sh-text-dim;
+  }
+
+  &__who {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: $sh-accent-strong;
+  }
+
+  &__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  input[type='checkbox'] {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+}

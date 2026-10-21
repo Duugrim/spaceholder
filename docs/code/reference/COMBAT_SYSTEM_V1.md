@@ -15,7 +15,7 @@ This document describes the implemented V1 combat architecture for SpaceHolder.
 - Apply combat events to runtime state (flags on the `Combat` document) as they occur.
 - Use a hybrid multi-writer model: initiator produces an event, GM applies it authoritatively (including via socket for non-GM clients).
 - Support popcorn initiative with side alternation and GM override.
-- Track AP as `DEX * INT` with action-table spend per round.
+- Track AP as `floor(√(AGI × INT))` with action-table spend per start (three starts per round; see `DERIVED_STATS.md`).
 - Track movement from Foundry v13 core movement history.
 - Support undo scaffolding via event effects/inverse metadata.
 
@@ -86,12 +86,17 @@ Off-turn actions are still logged into the action table under `turnStartIndex: 0
 
 ## AP rules
 
-- `maxAP = floor(DEX * INT)`
-- spent AP = sum of non-ignored action costs in current round table
-- value shown as `maxAP - spent` (can go below zero; no hard lock)
-- coordination adjustment:
-  - for non-negative base cost: `max(0, baseCost - (COR - 10))`
+- `maxAP = floor(√(AGI × INT))` (100 for an average character; `getMaxApFromAbilities`)
+- the pool is the stored `system.actionPoints.value`; every spend goes through the transaction ledger (`spendAp`, rules in `helpers/actions/ap-pool.mjs`)
+- **in combat the pool is a hard limit**: an action that costs more AP than is left is refused with a warning (`SPACEHOLDER.ActionsSystem.Errors.NotEnoughAP`), nothing is charged and nothing happens. A weapon attack is checked as a whole before the first step (preparation + first shot); a burst / auto series stops at the first shot the pool cannot pay. The only exception is movement: the token has already moved, so it takes what is left (`AP_SHORTAGE.CLAMP`). «In combat» means the actor is a combatant of the started combat (`isActorInActiveCombat`)
+- **out of combat nothing is limited** and the same number is a counter of AP **spent since the last combat**: the stored value runs below zero, the HUD / sheet show `max − value` (`describeApCounter`). Max AP then only says how often personal-time effects apply (`spent × 10 / max` seconds)
+- the pool is refilled at every official turn start (`refreshApPool`, the remainder passes as personal time) and when the combat is deleted (`resetApPool`, no time passes: the counter starts again from zero spent)
+- going below zero in combat with a GM's consent or by a character trait is not done yet (card «Механика овердрафта»)
+- coordination adjustment (action speed):
+  - for positive base cost: `max(1, round(baseCost / m))`, `m = 2·COR / (COR + 100)`
   - negative base costs stay negative
+  - movement is not adjusted: its cost is distance × `system.speed`
+- every official turn start refills the pool; a round has three starts per character (`params.turnStarts`), so a round is ≈ 30 s of personal time
 
 ### Round advance (GM)
 

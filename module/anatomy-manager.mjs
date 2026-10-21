@@ -10,7 +10,9 @@ import {
   deriveAdjacentLinksFromRelations,
   enforceSingleParentRelation,
   validateRelationsTargets,
-  legacyLinksToAdjacentRelations
+  legacyLinksToAdjacentRelations,
+  resolveRootRef,
+  validatePartTree
 } from "./helpers/anatomy-relations.mjs";
 import {
   sanitizeFaces,
@@ -19,10 +21,12 @@ import {
   sanitizePartMaterial,
   sanitizeHeightFrac,
   sanitizeHeightM,
+  sanitizeSpeedMps,
   sanitizeAnatomyGroups,
   remapGroupParts,
   stripDeprecatedPartFields,
   DEFAULT_ANATOMY_HEIGHT_M,
+  DEFAULT_ANATOMY_SPEED_MPS,
 } from "./helpers/anatomy-groups.mjs";
 
 /** Путь к папке анатомий мира: worlds/<worldId>/spaceholder/anatomy */
@@ -56,6 +60,18 @@ function _resolveBodyPartName(id, explicitName) {
 /** Публично: пересчёт подписи части (после загрузки из БД / смены языка). */
 export function resolveBodyPartDisplayName(typeId, explicitName) {
   return _resolveBodyPartName(typeId, explicitName);
+}
+
+/** Localized name of an organ by its id (`SPACEHOLDER.Organs.<id>`), else the preset's own name. */
+export function resolveInnerDisplayName(id, explicitName) {
+  const cleanId = String(id ?? "").trim();
+  const explicit = String(explicitName ?? "").trim();
+  if (cleanId) {
+    const key = `SPACEHOLDER.Organs.${cleanId}`;
+    const localized = game.i18n?.localize?.(key);
+    if (localized && localized !== key) return localized;
+  }
+  return explicit || cleanId || "-";
 }
 
 /** Координата на сетке анатомии: число или строка из JSON/Foundry → целое, иначе 0. */
@@ -143,6 +159,19 @@ function _buildNormalizedActorBodyParts(rawBodyParts) {
   }
 
   return { bodyParts: result, rawKeyToSlotRef };
+}
+
+/**
+ * Root of a normalized anatomy: the preset's `root` key mapped to its slotRef, else the part without
+ * a parent (presets saved before `root` existed).
+ * @param {unknown} rawRoot - `root` from the preset (a key of the raw bodyParts)
+ * @param {Record<string, string>} rawKeyToSlotRef
+ * @param {Record<string, Object>} bodyParts - normalized parts (slotRef keys)
+ * @returns {string}
+ */
+function _resolveNormalizedRoot(rawRoot, rawKeyToSlotRef, bodyParts) {
+  const key = String(rawRoot ?? "").trim();
+  return resolveRootRef(bodyParts, rawKeyToSlotRef?.[key] ?? key) ?? "";
 }
 
 export class AnatomyManager {
@@ -274,7 +303,9 @@ export class AnatomyManager {
 
     const { bodyParts, rawKeyToSlotRef } = _buildNormalizedActorBodyParts(actorAnatomy.bodyParts);
     actorAnatomy.bodyParts = bodyParts;
+    actorAnatomy.root = _resolveNormalizedRoot(actorAnatomy.root, rawKeyToSlotRef, bodyParts);
     actorAnatomy.heightM = sanitizeHeightM(actorAnatomy.heightM, DEFAULT_ANATOMY_HEIGHT_M);
+    actorAnatomy.speedMps = sanitizeSpeedMps(actorAnatomy.speedMps, DEFAULT_ANATOMY_SPEED_MPS);
     actorAnatomy.groups = remapGroupParts(
       actorAnatomy.groups,
       rawKeyToSlotRef,
@@ -339,7 +370,9 @@ export class AnatomyManager {
           description: data.description ?? "",
           version: data.version ?? null,
           grid: data.grid ?? null,
+          root: data.root ?? null,
           heightM: data.heightM ?? null,
+          speedMps: data.speedMps ?? null,
           groups: Array.isArray(data.groups) ? data.groups : [],
           bodyParts: data.bodyParts,
           links: Array.isArray(data.links) ? data.links : null,
@@ -396,8 +429,10 @@ export class AnatomyManager {
       name,
       description: data.description ?? "",
       version: data.version ?? null,
+      root: resolveRootRef(bodyParts, data.root) ?? "",
       grid,
       heightM: sanitizeHeightM(data.heightM, DEFAULT_ANATOMY_HEIGHT_M),
+      speedMps: sanitizeSpeedMps(data.speedMps, DEFAULT_ANATOMY_SPEED_MPS),
       groups: sanitizeAnatomyGroups(data.groups, Object.keys(bodyParts)),
       bodyParts,
       links,
@@ -434,13 +469,19 @@ export class AnatomyManager {
       "system.anatomy.name": preset.name || preset.id,
       "system.anatomy.type": preset.id,
       "system.anatomy.groups": groups,
+      "system.anatomy.rootRef": _resolveNormalizedRoot(preset.root, rawKeyToSlotRef, bodyParts),
       "system.health.bodyParts": bodyParts,
       // Иначе в новой анатомии могут остаться травмы, ссылающиеся на старые slotRef/uuid.
       "system.health.injuries": []
     };
+    // Height and the species' combat speed belong to the anatomy: an explicit value in the preset replaces the actor's one.
     const heightM = sanitizeHeightM(preset.heightM, 0);
-    if (heightM > 0 && !Number(actor.system?.heightM)) {
+    if (heightM > 0) {
       update["system.heightM"] = heightM;
+    }
+    const speedMps = sanitizeSpeedMps(preset.speedMps, 0);
+    if (speedMps > 0) {
+      update["system.speedMps"] = speedMps;
     }
     if (preset.grid && typeof preset.grid.width === "number" && typeof preset.grid.height === "number") {
       update["system.health.anatomyGrid"] = { width: preset.grid.width, height: preset.grid.height };
@@ -499,6 +540,7 @@ export class AnatomyManager {
     }
 
     anatomyData.heightM = sanitizeHeightM(anatomyData.heightM, DEFAULT_ANATOMY_HEIGHT_M);
+    anatomyData.speedMps = sanitizeSpeedMps(anatomyData.speedMps, DEFAULT_ANATOMY_SPEED_MPS);
     anatomyData.groups = sanitizeAnatomyGroups(anatomyData.groups, Object.keys(bodyParts));
 
     const partRequired = ['id', 'maxHp'];
@@ -531,6 +573,13 @@ export class AnatomyManager {
       part.relations = dedupeRelations(enforceSingleParentRelation(partRels));
       if (!validateRelationsTargets(bodyParts, part.relations, partId)) return false;
       part.links = deriveAdjacentLinksFromRelations(part.relations);
+    }
+
+    // The `parent` relations must form one tree under the root; a broken tree is reported, not rejected.
+    anatomyData.root = resolveRootRef(bodyParts, anatomyData.root) ?? "";
+    const tree = validatePartTree(bodyParts, anatomyData.root);
+    if (!tree.ok) {
+      console.warn(`Anatomy | '${anatomyData.id}' part tree is broken:`, tree.errors);
     }
 
     if (anatomyData.links !== undefined && !Array.isArray(anatomyData.links)) {

@@ -34,7 +34,9 @@ import {
   fireDelayToRpm,
   formatAmmoCounter,
   normalizeAmmoConfig,
+  resolveModeCritEffect,
 } from '../helpers/weapon/weapon-model.mjs';
+import { CRIT_EFFECT_LIST } from '../helpers/hit-quality.mjs';
 import {
   TRAJECTORY_KINDS,
   TRAJECTORY_LENGTH_UNITS,
@@ -201,6 +203,7 @@ const MATERIAL_CATEGORY_OPTIONS = Object.freeze([
   { id: 'ceramic', labelKey: 'SPACEHOLDER.Materials.Categories.Ceramic' },
   { id: 'composite', labelKey: 'SPACEHOLDER.Materials.Categories.Composite' },
   { id: 'ablative', labelKey: 'SPACEHOLDER.Materials.Categories.Ablative' },
+  { id: 'structure', labelKey: 'SPACEHOLDER.Materials.Categories.Structure' },
   { id: 'exotic', labelKey: 'SPACEHOLDER.Materials.Categories.Exotic' },
 ]);
 
@@ -961,6 +964,7 @@ export class SpaceHolderItemSheet_Material extends SpaceHolderBaseItemSheet {
     const degradation = (sys.degradation && typeof sys.degradation === 'object') ? sys.degradation : {};
     const resistance = (sys.resistance && typeof sys.resistance === 'object') ? sys.resistance : {};
     const wear = (sys.wear && typeof sys.wear === 'object') ? sys.wear : {};
+    const damping = (sys.damping && typeof sys.damping === 'object') ? sys.damping : {};
 
     const asJsonString = (raw) => {
       if (Array.isArray(raw)) {
@@ -976,6 +980,7 @@ export class SpaceHolderItemSheet_Material extends SpaceHolderBaseItemSheet {
       category: dt.category,
       resistance: Number(resistance[dt.id] ?? 0),
       wear: Number(wear[dt.id] ?? 0),
+      damping: Number(damping[dt.id] ?? 0),
       conductanceJson: asJsonString(conductance[dt.id]),
       selfInductionJson: asJsonString(selfInduction[dt.id]),
       degradation: typeof degradation[dt.id] === 'string' ? degradation[dt.id] : '',
@@ -1692,6 +1697,10 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     if (mode.isBurst) {
       rows.push({ label: L('SPACEHOLDER.WeaponV3.Mode.BurstCount'), display: _wv3FmtNumber(mode.burstCount) });
     }
+    rows.push({
+      label: L('SPACEHOLDER.WeaponV3.Mode.CritEffect'),
+      display: L(`SPACEHOLDER.WeaponV3.Mode.CritEffects.${resolveModeCritEffect(mode)}`),
+    });
     if (!mode.isSingle) {
       rows.push({
         label: L('SPACEHOLDER.WeaponV3.Mode.Rpm'),
@@ -1724,6 +1733,10 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
     const fireModeOptions = Object.values(FIRE_MODES).map((m) => ({
       value: m,
       label: L(`SPACEHOLDER.WeaponV3.Mode.FireModes.${m}`),
+    }));
+    const critEffectOptions = CRIT_EFFECT_LIST.map((effect) => ({
+      value: effect,
+      label: L(`SPACEHOLDER.WeaponV3.Mode.CritEffects.${effect}`),
     }));
     const searchModeOptions = Object.values(AMMO_SEARCH_MODES).map((m) => ({
       value: m,
@@ -1828,6 +1841,7 @@ export class SpaceHolderItemSheet_Item extends SpaceHolderBaseItemSheet {
       state: weapon.state,
       blockTypeOptions,
       fireModeOptions,
+      critEffectOptions,
       searchModeOptions,
       ammoDisplayStyleOptions,
       modOpOptions,

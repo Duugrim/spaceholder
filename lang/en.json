@@ -1,9 +1,12 @@
 {
   "SPACEHOLDER": {
+    "Migration": {
+      "AbilityScaleDone": "Abilities converted to the new scale: {actors} actor(s), {items} item(s)."
+    },
     "Ability": {
       "End": { "long": "Endurance", "abbr": "END" },
       "Str": { "long": "Strength", "abbr": "STR" },
-      "Dex": { "long": "Dexterity", "abbr": "DEX" },
+      "Agi": { "long": "Agility", "abbr": "AGI" },
       "Cor": { "long": "Coordination", "abbr": "COR" },
       "Per": { "long": "Perception", "abbr": "PER" },
       "Int": { "long": "Intellect", "abbr": "INT" },
@@ -286,6 +289,13 @@
         "AmmoCostHint": "Multiplier for charge changePerShot on this mode (e.g. wand spells spending 2 or 5)",
         "BurstCount": "Shots per burst",
         "BurstCountHint": "Number of shots in one burst",
+        "CritEffect": "Crit effect",
+        "CritEffectHint": "What a critical hit (bullseye) does in this mode",
+        "CritEffects": {
+          "default": "By fire mode",
+          "none": "Nothing",
+          "pickPart": "Pick the body part"
+        },
         "Rpm": "RPM",
         "FireDelayHint": "Delay between shots in AP (10 AP = 1 s)",
         "EnterCost": "Enable (AP)",
@@ -317,6 +327,8 @@
         "Hardness": "Hardness",
         "ArmorDamageReduction": "Armor dmg reduction (%)",
         "ArmorDamageReductionHint": "100% — damage drops proportionally to energy lost in armor; 0% — armor never reduces damage",
+        "EffortShare": "Effort (% STR)",
+        "EffortShareHint": "Share of the attacker's STR added to damage; 0 = fixed damage (energy preview at STR 100)",
         "Speed": "Speed",
         "SpeedHint": "Placeholder — projectile speed is not used yet",
         "PayloadId": "Payload ID",
@@ -396,6 +408,8 @@
         "AmmoGroup": "Ammunition",
         "DetachMenu": "Detach…",
         "DetachMenuShort": "Detach…",
+        "DetachItem": "Detach: {item}",
+        "DetachItemShort": "Detach",
         "DetachMagazineMenu": "Detach…",
         "DetachMagazineMenuShort": "Detach…",
         "UnloadBatteryMenu": "Detach…",
@@ -420,6 +434,7 @@
         "Bolt": "Bolt",
         "AttachMagazine": "Attach magazine",
         "Ready": "Readying",
+        "FirstShot": "First shot (aiming + trigger)",
         "Aim": "Aiming",
         "Blocked": {
           "unknown": "The attack cannot be performed.",
@@ -601,11 +616,13 @@
         "WeightPerThickness": "Weight per thickness",
         "ResistanceTable": "Resistance % per damage type",
         "WearTable": "Wear susceptibility per damage type",
+        "DampingTable": "Blunt damping per mm",
+        "DampingHint": "How much the layer softens a blow another layer handed on (the shock behind a stopped bullet): blow × e^(−damping × thickness). Impact foam has it, a steel plate does not.",
         "Hardness": "Material hardness",
         "HardnessTable": "Material hardness",
         "HardnessHint": "Scalar material hardness used by the v3 armour rating: hardness × thickness². Resistance rows scale this by damage type.",
-        "ConductanceTable": "Conductance overrides (pass-through, pre-structure)",
-        "ConductanceHint": "Fraction of the incoming hit that passes through as the given type to the next layer, independent of blocking. Leave empty for default. JSON: [{\"type\":\"electric\",\"fraction\":0.9}, …]",
+        "ConductanceTable": "Shock transfer (of the absorbed damage)",
+        "ConductanceHint": "Share of the damage the layer absorbed (all of it when it held, the absorbed part when penetrated) handed on to the layers behind as the given type: the blunt shock behind armour. The projectile itself is not weakened. Leave empty for default. JSON: [{\"type\":\"concussive\",\"fraction\":0.5}, …]",
         "SelfInductionTable": "Self-induction overrides (held → own integrity)",
         "SelfInductionHint": "When the layer holds this damage type, the listed fractions are converted and damage the layer's own integrity. If integrity runs out, the remainder overflows into the next layer. Leave empty for default. JSON: [{\"type\":\"thermal\",\"fraction\":0.2}, …]",
         "DegradationTable": "Degradation overrides",
@@ -618,6 +635,7 @@
         "Composite": "Composite",
         "Ablative": "Ablative",
         "Biological": "Biological",
+        "Structure": "Structure (walls)",
         "Exotic": "Exotic"
       },
       "SteelPlate": {
@@ -693,57 +711,108 @@
       "HeaderEditApply": "Apply",
       "AbilitiesEditButton": "Edit abilities",
       "AbilitiesEditDialogTitle": "Edit abilities",
-      "AbilitiesEditHint": "Base values before equipment modifiers."
+      "AbilitiesEditHint": "Base values before equipment modifiers.",
+      "HitboxEditButton": "Edit hitbox size",
+      "HitboxEditDialogTitle": "Hitbox size",
+      "HitboxEditHint": "100% is the token's size. Lower is harder to hit.",
+      "GravityEditButton": "Edit gravity",
+      "GravityEditDialogTitle": "Gravity",
+      "GravityEditHint": "1 = Earth, 0.38 = Mars. Height and species speed are set in the anatomy: Health tab, edit mode, the ruler button."
     },
     "Units": {
       "Kg": "kg",
       "M": "m"
     },
+    "GmActions": {
+      "Chat": {
+        "Pending": "Action awaits GM",
+        "PendingMany": "Actions await GM ({count})",
+        "Cancelled": "Cancelled by GM",
+        "CancelledMany": "Cancelled by GM ({count})",
+        "Failed": "Action failed",
+        "FailedMany": "Actions failed ({count})",
+        "DefaultLabel": "Action"
+      },
+      "Queue": {
+        "Title": "Player actions while you were away",
+        "Hint": "Untick what should not happen: unticked actions are cancelled, not applied.",
+        "Apply": "Apply selected",
+        "Later": "Later",
+        "Empty": "No player actions are waiting.",
+        "Summary": "Applied {applied}, cancelled {cancelled}, failed {failed}."
+      },
+      "Category": {
+        "damage": "Damage",
+        "globalMap": "Global map",
+        "misc": "Other"
+      },
+      "Damage": {
+        "Label": "{attacker} → {target}: {part}",
+        "NotApplied": "Damage was not applied: {reason}"
+      }
+    },
     "Derived": {
       "HealthBonus": "Health bonus",
+      "Load": "Load, kg",
       "CarryWeight": "Carry weight, kg",
       "LiftWeight": "Lift weight, kg",
-      "MeleeDamage": "Melee damage bonus",
-      "Jumps": "Jumps (high / long)",
-      "JumpHigh": "Jump height, m",
-      "JumpLong": "Jump length, m",
-      "TravelSpeed": "Speed, m/s",
+      "JumpLongRun": "Running long jump, m",
+      "ObstacleHeights": "Obstacles, m",
+      "CombatSpeedMs": "Combat speed, m/s",
+      "CombatSpeedKmh": "Combat speed, km/h",
+      "SprintSpeedMs": "Sprint, m/s",
+      "SprintSpeedKmh": "Sprint, km/h",
+      "TravelSpeedMs": "March speed, m/s",
+      "TravelSpeedKmh": "March speed, km/h",
+      "SpeedUnitToggle": "m/s ↔ km/h",
+      "Hitbox": "Hitbox size",
+      "BodyHeight": "Height, m",
+      "SpeciesSpeed": "Species speed, m/s",
+      "Gravity": "Gravity (γ)",
       "ApPerDistanceUnit": "AP per 1 distance",
-      "Agility": "Agility",
+      "Dexterity": "Dexterity",
       "ActionSpeed": "Action speed",
       "Reaction": "Reaction",
       "Accuracy": "Accuracy",
       "Awareness": "Awareness",
       "LearnRate": "Learn rate",
+      "SkillBudget": "Skill budget",
       "Will": "Willpower",
-      "Intuition": "Intuition",
+      "Intuition": "Intuition (max points)",
       "Heroism": "Heroism points",
-      "SecondWind": "Second wind (death saves)",
+      "SecondWind": "Second wind (points)",
       "Groups": {
         "Physical": "Body & load",
+        "Body": "Body & environment",
         "Coordination": "Movement & precision",
         "Mental": "Mind & senses",
         "Resources": "Resources"
       },
       "Tooltip": {
-        "HealthBonus": "MVP: Endurance modifier.",
-        "CarryWeight": "MVP: from Strength + Endurance.",
-        "LiftWeight": "MVP: from Strength.",
-        "MeleeDamage": "MVP: Strength modifier as bonus.",
-        "Jumps": "MVP: high / long from Strength + Dexterity (m).",
-        "JumpHigh": "MVP: vertical jump from Strength + Dexterity.",
-        "JumpLong": "MVP: long jump from Strength + Dexterity.",
-        "TravelSpeed": "MVP: combat movement speed (m/s). Distance per AP slice still drives `system.speed` (AP per distance).",
-        "Agility": "MVP: 10 + DEX mod + COR mod.",
-        "ActionSpeed": "MVP: from Coordination.",
-        "Reaction": "MVP: 10 + DEX mod + PER mod.",
-        "Accuracy": "MVP: 10 + COR mod + PER mod.",
-        "Awareness": "MVP: from Perception.",
-        "LearnRate": "MVP: from Perception + Intellect.",
-        "Will": "MVP: from Intellect.",
-        "Intuition": "MVP: from Luck + Intellect.",
-        "Heroism": "MVP: from Luck.",
-        "SecondWind": "MVP: 1 + END mod + LUC mod."
+        "HealthBonus": "Bonus to body-part HP from endurance, relative to the species.",
+        "Load": "Carried weight / weight carried without a penalty. Above it movement slows.",
+        "CarryWeight": "Weight carried without a penalty.",
+        "LiftWeight": "Maximum weight lifted once.",
+        "JumpLongRun": "Long jump with a run-up.",
+        "ObstacleHeights": "Obstacle height cleared while running / climbed up / pulled up to.",
+        "CombatSpeed": "Movement speed in combat.",
+        "SprintSpeed": "Sprint speed.",
+        "TravelSpeed": "Sustained march speed.",
+        "Hitbox": "Hitbox size: share of the token's size that projectiles can hit (100% = token size).",
+        "BodyHeight": "Body height from the anatomy.",
+        "SpeciesSpeed": "Combat speed of the species at AGI 100.",
+        "Gravity": "Gravity acting on the character (1 = Earth).",
+        "Dexterity": "Dexterity: mean of AGI and COR.",
+        "ActionSpeed": "Action cost bonus from coordination. Movement is not affected.",
+        "Reaction": "Reaction: geometric mean of AGI and PER.",
+        "Accuracy": "Aiming accuracy: geometric mean of COR and PER.",
+        "Awareness": "Passive awareness: PER × passive share.",
+        "LearnRate": "Learning capacity: geometric mean of PER and INT.",
+        "SkillBudget": "Total skill levels the character can hold.",
+        "Will": "Willpower: INT × multiplier.",
+        "Intuition": "Maximum of the intuition pool.",
+        "Heroism": "Heroism points.",
+        "SecondWind": "Second wind points: survive a lethal wound."
       }
     },
     "Actions": {
@@ -765,6 +834,20 @@
       "Bake": "Bake"
     },
     "Health": {
+      "PartLost": "Lost",
+      "PartLostWith": "Lost together with: {part}",
+      "OrganStatus": {
+        "ok": "fine",
+        "damaged": "damaged",
+        "destroyed": "destroyed",
+        "lost": "lost"
+      },
+      "DeadRoot": "Dead: the root part was lost — {part}",
+      "DeadOrgan": "Dead: {organ} ({part}) was destroyed or lost",
+      "DyingOrgan": "Dying: {organ} ({part}) damaged",
+      "DyingBleeding": "Dying: bleeding out, ~{minutes} min",
+      "OrganVital": "vital",
+      "OrganHp": "Organ HP",
       "Anatomy": {
         "ManageTitle": "Manage anatomy",
         "Current": "Current anatomy",
@@ -792,10 +875,56 @@
       }
     },
     "Settings": {
-      "HitLuckCombine": {
-        "Name": "Hit luck combine",
-        "Hint": "How aiming-arc zone combines with token centrality. Multiplier (default): zone × centrality. Penalty: centrality + zone offset."
+      "HitQuality": {
+        "FullZone": {
+          "Name": "Full-hit zone (% of token width)",
+          "Hint": "The central part of the target's hitbox that takes the shot at full energy. Outside it the energy falls evenly towards the edge."
+        },
+        "CritZone": {
+          "Name": "Bullseye zone (% of token width)",
+          "Hint": "A small zone at the very centre: a critical hit. What a crit does is set per fire mode of the weapon."
+        },
+        "EdgeEnergy": {
+          "Name": "Energy at the edge of the hitbox (%)",
+          "Hint": "How much of the projectile's energy is left for a hit on the very edge of the hitbox. The damage follows the energy: armour is pierced worse, and a target without armour takes less damage."
+        }
+      },
+      "ShotTrailFade": {
+        "Name": "Shot trail lifetime (seconds)",
+        "Hint": "How long a shot's trajectory stays on the canvas while it fades out. Applies only to your client."
       }
+    },
+    "Walls": {
+      "Config": {
+        "Title": "Shot penetration",
+        "Hint": "How shots interact with this wall. A wall without a material stops every shot.",
+        "Material": "Material",
+        "MaterialNone": "None (stops every shot)",
+        "MaterialMissing": "{id} (missing)",
+        "Kind": "Kind",
+        "KindThin": "Thin wall (partition)",
+        "KindSolid": "Solid mass boundary",
+        "KindHint": "Thin: a partition of its own thickness. Solid: one face of a thick wall, cave or building — what a shot crosses between its entry and exit faces is the thickness. A solid wall uses the Direction setting above: pick the OPEN side (where shots come from); the other side is the solid inside.",
+        "Thickness": "Thickness, mm",
+        "ThicknessHint": "In millimetres, like armour. Thin: wall thickness. Solid: depth assumed when no far face is found (0 = unbounded, nothing gets through).",
+        "SolidNeedsDirection": "A solid wall needs a Direction (Left or Right). Until it has one, this wall counts as thin."
+      },
+      "Chat": {
+        "Penetrated": "Wall: {material}, {thickness} mm — penetrated, damage {before} → {after}",
+        "Stopped": "Wall: {material}, {thickness} mm — stopped the shot",
+        "Unbounded": "Wall: {material} — solid mass, stopped the shot",
+        "Opaque": "Wall without a material — stopped the shot"
+      }
+    },
+    "Organs": {
+      "brain": "Brain",
+      "eyes": "Eyes",
+      "ears": "Ears",
+      "heart": "Heart",
+      "lungs": "Lungs",
+      "guts": "Guts",
+      "liver": "Liver",
+      "artery": "Artery"
     },
     "BodyParts": {
       "head": "Head",
@@ -823,6 +952,10 @@
       "leftLeg": "Left Leg",
       "rightLeg": "Right Leg"
     },
+    "AnatomySpecies": {
+      "Title": "Species parameters",
+      "Hint": "Height and the species' combat speed (at AGI 100) belong to the anatomy and are saved with it in a world preset."
+    },
     "AnatomyGroups": {
       "Title": "Anatomy groups",
       "TypeManipulation": "Manipulation",
@@ -831,18 +964,16 @@
       "TypeCritical": "Critical",
       "FaceFront": "Front",
       "FaceBack": "Back",
-      "HitDialogTitle": "Hit group",
-      "HitLuck": "Hit luck: {value} ({band})",
-      "BandPartOrGroup": "pick group or part",
-      "BandGroup": "group only",
-      "BandGroup45": "group, armor at 45°",
-      "BandGraze": "graze",
-      "BandContinue": "continues",
-      "PickGroup": "Group",
-      "PickPart": "Specific part",
-      "AnyPart": "— group (any part) —",
-      "Confirm": "Hit",
-      "Override": "Always this group when possible"
+      "Override": "Always this group when possible",
+      "Root": "Anatomy root",
+      "RootNote": "Losing the root, or any part, takes everything below it along the \"Parent\" links. Changing the root turns the chain of parents around up to the new root.",
+      "RootDeleteBlocked": "The anatomy root cannot be deleted: make another part the root first (the Groups button).",
+      "TreeBroken": "The \"Parent\" link tree is broken"
+    },
+    "HitQuality": {
+      "Crit": "crit",
+      "Full": "full hit",
+      "Glancing": "glancing"
     },
     "IconPicker": {
       "Title": "Icon Picker",
@@ -949,12 +1080,23 @@
       "CollapseActions": "Collapse quick actions",
       "NotReady": "Not ready",
       "SelectedItems": "Selected items",
-      "DeselectItem": "Deselect: {name}",
-      "StowedHint": "quick access, not in hands",
+      "DeselectItem": "Deselect",
+      "StowedHint": "quick access",
       "Attack": "Attack",
-      "AttackNeedsSelection": "Select a weapon",
+      "AttackCancel": "Cancel",
+      "AttackCancelTooltip": "Cancel attack",
+      "AttackSelectOne": "Select one weapon",
       "AttackMultiUnsupported": "Attacking with several items is not supported yet",
+      "SelectedWeaponTools": "Weapon controls: {name}",
+      "FireLine": "Fire line",
+      "FireMode": "Fire mode",
+      "WeaponMenu": "Weapon actions",
+      "ItemMenu": "Item actions",
+      "Health": "Condition",
       "AttackTooltip": "Attack: {item} ({ap})",
+      "AttackCostPrep": "preparation {ap}",
+      "AttackCostShot": "first shot {ap}",
+      "AttackCostNext": "next shots {ap}",
       "ViewPortrait": "View portrait",
       "PanToToken": "Center on token",
       "OpenSheet": "Open character sheet",
@@ -977,8 +1119,10 @@
         "ActionPoints": "Action Points",
         "CurrentAP": "Current AP",
         "APHeaderLabel": "AP:",
+        "APSpentHeaderLabel": "Spent:",
+        "SpentAP": "AP spent since the last combat: {value} (max AP {max})",
         "TurnStarts": "Turns per round",
-        "TurnStartsTooltip": "MVP: floor(DEX × INT / 100), minimum 1.",
+        "TurnStartsTooltip": "Turn starts per round (each refills the AP pool).",
         "Faction": "Faction (UUID)",
         "AvailableActions": "Available actions",
         "NoActions": "No actions available",
@@ -1045,6 +1189,7 @@
         "Unequip": "Unequip: {item}",
         "Hold": "Hold: {item}",
         "Stow": "Stow: {item}",
+        "HoldStowToggle": "Hold / stow: {item}",
         "Drop": "Discard: {item}",
         "Show": "Show: {item}",
         "EquipShort": "Equip",
@@ -1056,6 +1201,10 @@
       },
       "Movement": {
         "Move": "Move"
+      },
+      "AttackMacro": {
+        "Name": "Attack: {item}",
+        "NameMode": "Attack: {item} ({mode})"
       },
       "FreeAction": {
         "Label": "Free",
@@ -1071,6 +1220,7 @@
         "ApSpendFailed": "Could not apply Action Point spend",
         "NoTokenForAiming": "No token found for aiming action",
         "ActionNotFound": "Action not found",
+        "AttackItemNotFound": "Could not find this weapon. Recreate the shortcut.",
         "MissingActionPayload": "Select a payload for this action first",
         "AimingUnavailable": "Aiming manager is unavailable",
         "AimingStartFailed": "Could not start aiming mode"
@@ -1080,8 +1230,31 @@
         "DebugNoCoreWound": "no core wound (all energy spent in layers)"
       }
     },
+    "AttackLog": {
+      "Label": "Attack: {weapon}",
+      "ChatTitle": "Attack",
+      "Summary": "Shots: {shots} · Hits: {hits}",
+      "NoHits": "No hits",
+      "ShowShots": "Show shots",
+      "ShowHits": "Show hits",
+      "ShotTitle": "Shot {n}",
+      "ShotHits": "hits: {count}",
+      "HitLine": "Shot {shot} · from {clock} o'clock · centrality {centrality} · energy ×{energy} ({quality})",
+      "HitLinePlain": "Shot {shot} · from {clock} o'clock",
+      "HitPicked": "picked: {group}",
+      "AreaHitLine": "Shot {shot} · AoE · from {clock} o'clock · coverage {coverage}% · {mode} · effect ×{scale}",
+      "ImpactResult": "{part}: {damage}",
+      "SameWound": "{part}: same wound",
+      "NoWound": "no wound",
+      "OrganReached": "organ hit: {organs}",
+      "ThroughBody": "through {name}",
+      "BulletGoesOn": "the bullet goes on: {damage}",
+      "DamageQueued": "awaits the GM",
+      "DamageFailed": "damage not applied"
+    },
     "ActionChatJournal": {
       "Title": "Round {round} — Actions",
+      "GmLabel": "Action journal",
       "Undo": "Undo",
       "Undone": "Undone",
       "UndoFailed": "Could not undo action",
@@ -1142,6 +1315,7 @@
       "DebugDialogHint": "Shows all actor Item documents and weapon/ammo nested-storage snapshots without hiding contained items.",
       "DebugDeleteSelected": "Delete selected",
       "DebugSelectItem": "Select an item to delete.",
+      "ItemActions": "Item actions",
       "NestedStorageItem": "nested storage",
       "ExpandItem": "Expand contents",
       "CollapseItem": "Collapse contents",
@@ -1157,17 +1331,10 @@
       },
       "HeldActions": {
         "AttackTooltip": "Attack",
-        "StowTooltip": "Stow in backpack",
-        "DropTooltip": "Discard on the ground",
-        "ThrowTooltip": "Hurl",
-        "WearTooltip": "Equip",
-        "ShowTooltip": "Show in chat",
-        "NotImplemented": "This action will be added later.",
+        "OpenTooltip": "Open item",
         "DropFailed": "Could not discard item.",
         "DropNoToken": "No token for this actor on the current scene.",
-        "DropItemPilesDisabled": "Canvas item piles are disabled in world settings (item-piles-sh).",
-        "WearOnlyArmor": "Only items with armor tag can be equipped.",
-        "WearNeedsHeld": "Item must be held before equipping."
+        "DropItemPilesDisabled": "Canvas item piles are disabled in world settings (item-piles-sh)."
       }
     },
     "Injuries": {
@@ -1297,6 +1464,12 @@
       "Abilities": "Core abilities",
       "Derived": "Derived stats",
       "Params": "Character parameters",
+      "ParamTargets": {
+        "Gravity": "Gravity acting on the character (1 = Earth)",
+        "AwarenessMult": "Passive awareness share of PER",
+        "WillMult": "Will multiplier on INT",
+        "TurnStarts": "Turn starts per round"
+      },
       "Empty": "No modifiers configured",
       "Target": "Target",
       "Value": "Value",
@@ -1305,7 +1478,7 @@
       "AbilitiesShort": {
         "End": "END",
         "Str": "STR",
-        "Dex": "DEX",
+        "Agi": "AGI",
         "Cor": "COR",
         "Per": "PER",
         "Int": "INT",
@@ -1314,7 +1487,7 @@
       "AbilitiesLong": {
         "End": "Endurance",
         "Str": "Strength",
-        "Dex": "Dexterity",
+        "Agi": "Agility",
         "Cor": "Coordination",
         "Per": "Perception",
         "Int": "Intellect",
@@ -1604,10 +1777,10 @@
       "DeviationHint": "Standard aiming applies x1/x2/x4 to yellow/orange/red zones.",
       "Zones": {
         "Purple": "Purple zone (bonus)",
-        "Green": "Green zone (no penalty)",
-        "Yellow": "Yellow zone (light penalty)",
-        "Orange": "Orange zone (medium penalty)",
-        "Red": "Red zone (heavy penalty)"
+        "Green": "Green zone (confident shot)",
+        "Yellow": "Yellow zone (fairly confident)",
+        "Orange": "Orange zone (unsure)",
+        "Red": "Red zone (blind shot)"
       }
     },
     "AimingManager": {
@@ -1632,18 +1805,26 @@
       },
       "Messages": {
         "TokenNotSelected": "Token not selected",
-        "AimingActivated": "Aiming mode activated. LMB - shoot, RMB/ESC - cancel",
+        "AimingActivated": "Aiming mode activated. LMB - shoot, RMB click or ESC - cancel",
         "StandardShotInfo": "Standard aiming: {zone}{clamped}",
         "LuckClamped": "clamped",
         "WeaponNotFound": "Weapon not found: {uuid}",
         "NoAmmoForWeapon": "{weapon}: no ammunition ({reason})",
         "PayloadNotFound": "Payload not found: {payload}",
         "ProjectileShotResolved": "{shooter} fires {weapon} ({ammo}); impacts: {hits}",
-        "DiagnosticLuck": "{zone}{clamped}",
-        "DiagnosticLuckLine": "Luck: {value}",
+        "DiagnosticLuck": "{zone}{confidence}{clamped}",
+        "DiagnosticLuckLine": "Confidence: {value}",
         "DiagnosticSpread": "{delta}",
         "DiagnosticSpreadLine": "Spread: {value}",
-        "DiagnosticHit": "{name} · {clock}h · {centrality} · luck {hitLuck} ({band})",
+        "DiagnosticAreaHit": "{name} · AoE · from {clock} o'clock · coverage {coverage}% · {mode} · effect ×{scale}",
+        "DiagnosticPass": "{name} · confidence {confidence} ({zone}) is not above resistance {resistance}{reasons} — flies past",
+        "ResistanceStates": {
+          "combat": "in combat",
+          "moving": "moving",
+          "cover": "in cover",
+          "hidden": "hidden behind cover"
+        },
+        "ResistanceMod": "effects {value}",
         "DiagnosticMiss": "miss"
       },
       "Errors": {
@@ -2068,6 +2249,7 @@
         "Confirm": {
           "DeleteTitle": "Delete biome?",
           "DeleteContent": "<p>Delete biome <b>{name}</b> (ID: <b>{id}</b>)?</p>",
+          "DeleteUsedWarning": "<p><b>{count}</b> cells of the current map use this biome. The next time the map is loaded they will be replaced with the default biome, and saving the map makes that permanent.</p>",
           "ResetOverridesTitle": "Reset biome-overrides.json?",
           "ResetOverridesContent": "<p>This will clear the overrides file and restore default biomes (after reloading the list).</p>"
         }
@@ -2214,6 +2396,7 @@
             "SelectAtLeastOneFilter": "Select at least one filter",
             "SelectAtLeastOneAction": "Select at least one action",
             "SelectTargetBiome": "Select target biome",
+            "SelectSourceBiome": "Select at least one source biome",
             "NoBiomesArrayAvailable": "No biomes array available (legacy map?)"
           },
           "Notifications": {
@@ -2473,6 +2656,7 @@
         "VisibilityAll": "Public",
         "InteractionDistance": "Interaction distance (cells)",
         "AutoLoot": "Auto-loot when opened",
+        "DeleteWhenEmpty": "Delete the token when empty",
         "SelectSourceItem": "Source item",
         "OpenFromToken": "Open from selected token",
         "OpenSuccess": "Container access granted"

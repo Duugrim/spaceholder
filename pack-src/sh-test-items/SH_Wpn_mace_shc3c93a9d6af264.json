@@ -1,0 +1,238 @@
+{
+  "name": "Булава",
+  "type": "item",
+  "_id": "shc3c93a9d6af264",
+  "img": "systems/spaceholder/assets/icons/weapon.svg/flanged-mace.svg",
+  "system": {
+    "description": "<p>Ударное оружие: тупой удар, мало проникает, но сотрясает то, что под бронёй.</p>",
+    "implantReplaceOrgan": null,
+    "actions": [],
+    "quantity": 1,
+    "weight": 2.2,
+    "formula": "",
+    "equipped": false,
+    "held": false,
+    "anatomyId": "",
+    "coveredParts": [],
+    "defaultActions": {
+      "equip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "unequip": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "hold": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "stow": {
+        "showInCombat": false,
+        "showInQuickbar": true
+      },
+      "drop": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "wear": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      },
+      "show": {
+        "showInCombat": false,
+        "showInQuickbar": false
+      }
+    },
+    "modifiers": {
+      "abilities": [],
+      "derived": [],
+      "params": []
+    },
+    "itemTags": {
+      "isArmor": false,
+      "isActions": false,
+      "isModifiers": false,
+      "isWeapon": true,
+      "isAmmo": false,
+      "isContainer": false
+    },
+    "weapon": {
+      "version": 3,
+      "ergonomics": {
+        "overall": 100,
+        "zones": {
+          "enabled": false,
+          "green": 100,
+          "yellow": 100,
+          "orange": 100,
+          "red": 100
+        },
+        "deadZone": {
+          "enabled": false,
+          "value": 100
+        },
+        "aimPenalty": {
+          "enabled": false,
+          "value": 100
+        },
+        "critZoneBonus": {
+          "enabled": false,
+          "value": 0
+        },
+        "critZoneSize": {
+          "enabled": false,
+          "value": 100
+        },
+        "readying": {
+          "enabled": true,
+          "value": 5
+        }
+      },
+      "lines": [
+        {
+          "id": "shc91b78e4ab7361",
+          "name": "Удар",
+          "trajectoryKind": "complex",
+          "simpleLimit": {
+            "enabled": false,
+            "value": 0,
+            "unit": "grid"
+          },
+          "payloadId": "melee_sword_cut",
+          "aiming": 10,
+          "trigger": 3,
+          "energyMult": {
+            "enabled": false,
+            "value": 100
+          },
+          "spread": {
+            "enabled": false,
+            "value": 0
+          },
+          "recoil": {
+            "enabled": false,
+            "value": 0
+          },
+          "enterCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "exitCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "damage": [
+            {
+              "enabled": true,
+              "damageType": "concussive",
+              "damage": 0,
+              "effortShare": 70,
+              "armorPen": 10,
+              "hardness": 1,
+              "armorDamageFactor": 100,
+              "armorDamageReduction": 100,
+              "speed": 0,
+              "payloadId": ""
+            }
+          ],
+          "ammoBlocks": [],
+          "modes": [
+            {
+              "id": "shc28d7cabaad287",
+              "name": "Удар",
+              "fireMode": "single",
+              "burstCount": 3,
+              "fireDelayAp": 5,
+              "ammoCost": 1,
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "modifiers": [],
+              "multishot": {
+                "enabled": false,
+                "count": 1,
+                "coneDegrees": 0
+              }
+            }
+          ],
+          "multishot": {
+            "enabled": false,
+            "count": 1,
+            "coneDegrees": 0
+          }
+        }
+      ],
+      "state": {
+        "activeLineId": "shc91b78e4ab7361",
+        "activeModeId": "shc28d7cabaad287",
+        "ready": false
+      },
+      "ammo": {
+        "damage": [],
+        "caliber": "",
+        "connector": {
+          "enabled": false,
+          "value": ""
+        },
+        "charge": {
+          "enabled": false,
+          "max": 0,
+          "current": 0,
+          "allowFractional": false,
+          "clampNonNegative": true,
+          "scaleDamageFromSpent": false,
+          "overheatNotify": false,
+          "changePerShot": {
+            "sign": "-",
+            "formula": "1"
+          },
+          "changePerSecond": {
+            "sign": "+",
+            "formula": "0"
+          }
+        },
+        "capacity": 0,
+        "consume": true,
+        "falloff": {
+          "enabled": false,
+          "halfDistance": 0
+        },
+        "multishot": {
+          "enabled": false,
+          "count": 1,
+          "coneDegrees": 0
+        },
+        "onHitSplash": {
+          "enabled": false,
+          "radius": 0,
+          "unit": "grid"
+        }
+      }
+    }
+  },
+  "effects": [],
+  "folder": "shcfca2efa5b8efb",
+  "sort": 100000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc3c93a9d6af264"
+}

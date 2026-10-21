@@ -786,14 +786,18 @@ export class GlobalMapTools {
   }
 
   _ensureVectorRiversInitialized() {
-    if (this.vectorRivers) return this.vectorRivers;
+    // The renderer owns the per-scene data and replaces it on scene change / refresh: never keep a stale copy.
+    const rendererData = this.renderer?.vectorRiversData;
+    if (this.vectorRivers && (!rendererData || rendererData === this.vectorRivers)) return this.vectorRivers;
 
     const scene = canvas?.scene;
-    let raw = null;
-    try {
-      raw = scene?.getFlag?.('spaceholder', 'globalMapRivers');
-    } catch (e) {
-      raw = null;
+    let raw = (rendererData && typeof rendererData === 'object') ? rendererData : null;
+    if (!raw) {
+      try {
+        raw = scene?.getFlag?.('spaceholder', 'globalMapRivers');
+      } catch (e) {
+        raw = null;
+      }
     }
 
     // Default structure (in case renderer is not available)
@@ -1465,14 +1469,18 @@ export class GlobalMapTools {
   }
 
   _ensureVectorRegionsInitialized() {
-    if (this.vectorRegions) return this.vectorRegions;
+    // The renderer owns the per-scene data and replaces it on scene change / refresh: never keep a stale copy.
+    const rendererData = this.renderer?.vectorRegionsData;
+    if (this.vectorRegions && (!rendererData || rendererData === this.vectorRegions)) return this.vectorRegions;
 
     const scene = canvas?.scene;
-    let raw = null;
-    try {
-      raw = scene?.getFlag?.('spaceholder', 'globalMapRegions');
-    } catch (e) {
-      raw = null;
+    let raw = (rendererData && typeof rendererData === 'object') ? rendererData : null;
+    if (!raw) {
+      try {
+        raw = scene?.getFlag?.('spaceholder', 'globalMapRegions');
+      } catch (e) {
+        raw = null;
+      }
     }
 
     // Default structure (in case renderer is not available)
@@ -2621,8 +2629,9 @@ export class GlobalMapTools {
     
     if (this.singleCellMode) {
       // Single cell mode: affect only the cell under cursor
-      const targetRow = Math.floor(gridRow);
-      const targetCol = Math.floor(gridCol);
+      // Cells are drawn centered on their sample point -> round, not floor
+      const targetRow = Math.round(gridRow);
+      const targetCol = Math.round(gridCol);
       minRow = Math.max(0, targetRow);
       maxRow = Math.min(rows - 1, targetRow);
       minCol = Math.max(0, targetCol);
@@ -3133,8 +3142,9 @@ export class GlobalMapTools {
     const gridCol = (worldX - bounds.minX) / cellSize;
     const gridRow = (worldY - bounds.minY) / cellSize;
     
-    const targetRow = Math.floor(gridRow);
-    const targetCol = Math.floor(gridCol);
+    // Cells are drawn centered on their sample point -> round, not floor
+    const targetRow = Math.round(gridRow);
+    const targetCol = Math.round(gridCol);
     
     // Check bounds
     if (targetRow < 0 || targetRow >= rows || targetCol < 0 || targetCol >= cols) {
@@ -3375,6 +3385,16 @@ export class GlobalMapTools {
   showToolsUI() {
     // Remove existing UI
     this.hideToolsUI();
+
+    // The panel below renders every filter off at 0-100; keep the filter state in sync with it.
+    this.heightFilterEnabled = false;
+    this.heightFilterMin = 0;
+    this.heightFilterMax = 100;
+    this.heightFilterByBiomeEnabled = false;
+    this.biomeFilterEnabled = false;
+    this.biomeFilterHeightMin = 0;
+    this.biomeFilterHeightMax = 100;
+    this.biomeFilterByBiomeEnabled = false;
 
     const t = (key) => _t(key);
     const f = (key, data) => _f(key, data);
@@ -4458,6 +4478,7 @@ export class GlobalMapTools {
       if (minVal > maxVal) {
         $('#height-filter-max').val(minVal);
         $('#height-filter-max-value').text(minVal);
+        this.heightFilterMax = minVal;
       }
       this.heightFilterMin = minVal;
       const max = parseInt($('#height-filter-max').val());
@@ -4471,6 +4492,7 @@ export class GlobalMapTools {
       if (maxVal < minVal) {
         $('#height-filter-min').val(maxVal);
         $('#height-filter-min-value').text(maxVal);
+        this.heightFilterMin = maxVal;
       }
       this.heightFilterMax = maxVal;
       const min = parseInt($('#height-filter-min').val());
@@ -4506,6 +4528,7 @@ export class GlobalMapTools {
       if (minVal > maxVal) {
         $('#biome-tool-height-max').val(minVal);
         $('#biome-tool-height-max-value').text(minVal);
+        this.biomeFilterHeightMax = minVal;
       }
       this.biomeFilterHeightMin = minVal;
       const max = parseInt($('#biome-tool-height-max').val());
@@ -4519,6 +4542,7 @@ export class GlobalMapTools {
       if (maxVal < minVal) {
         $('#biome-tool-height-min').val(maxVal);
         $('#biome-tool-height-min-value').text(maxVal);
+        this.biomeFilterHeightMin = maxVal;
       }
       this.biomeFilterHeightMax = maxVal;
       const min = parseInt($('#biome-tool-height-min').val());
@@ -4983,7 +5007,13 @@ export class GlobalMapTools {
         ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Replace.Errors.SelectAtLeastOneAction'));
         return;
       }
-      
+
+      // An empty source set would disable the biome filter and match the whole map
+      if (useBiome && !this.replaceSourceBiomeIds.size) {
+        ui.notifications?.warn?.(_t('SPACEHOLDER.GlobalMap.Tools.Replace.Errors.SelectSourceBiome'));
+        return;
+      }
+
       const criteria = {
         heightMin: useHeight ? parseInt($('#replace-height-min').val()) : null,
         heightMax: useHeight ? parseInt($('#replace-height-max').val()) : null,
@@ -5069,8 +5099,8 @@ export class GlobalMapTools {
     const { heights, rows, cols } = this.renderer.currentGrid;
     const { cellSize, bounds } = this.renderer.currentMetadata;
 
-    const gridCol = Math.floor((worldX - bounds.minX) / cellSize);
-    const gridRow = Math.floor((worldY - bounds.minY) / cellSize);
+    const gridCol = Math.round((worldX - bounds.minX) / cellSize);
+    const gridRow = Math.round((worldY - bounds.minY) / cellSize);
 
     if (gridRow < 0 || gridRow >= rows || gridCol < 0 || gridCol >= cols) {
       return false;
@@ -5571,8 +5601,8 @@ export class GlobalMapTools {
     const { cellSize, bounds } = metadata;
 
     // Convert world coords to grid coords
-    const gridCol = Math.floor((worldX - bounds.minX) / cellSize);
-    const gridRow = Math.floor((worldY - bounds.minY) / cellSize);
+    const gridCol = Math.round((worldX - bounds.minX) / cellSize);
+    const gridRow = Math.round((worldY - bounds.minY) / cellSize);
 
     // Check bounds
     if (gridRow < 0 || gridRow >= rows || gridCol < 0 || gridCol >= cols) {

@@ -119,6 +119,8 @@ export class GlobalMapRenderer {
     // If we have a grid from another scene, drop it to prevent cross-scene editing/rendering bugs
     const gridSceneMismatch = !!(this.currentSceneId && sceneId && this.currentSceneId !== sceneId);
     if (gridSceneMismatch) {
+      // Processing has no scene ownership: drop its copy too, or getUnifiedGrid() keeps serving the old scene.
+      game.spaceholder?.globalMapProcessing?.clear?.();
       this.currentGrid = null;
       this.currentMetadata = null;
       this.currentSceneId = null;
@@ -181,6 +183,12 @@ export class GlobalMapRenderer {
 
     // Clear existing container
     if (this.container) {
+      // The terrain-bake sprite is owned by the 3D view: detach it so the recursive destroy doesn't kill it.
+      try {
+        this._terrainBakeSprite?.parent?.removeChild(this._terrainBakeSprite);
+      } catch (e) {
+        // ignore
+      }
       try {
         this.container.destroy({ children: true });
       } catch (e) {
@@ -349,7 +357,7 @@ export class GlobalMapRenderer {
     }
 
     // Clear previous map rendering (keep rivers/labels/overlays)
-    this.mapLayer.removeChildren();
+    this._destroyLayerChildren(this.mapLayer);
 
     if (this.terrainBakeEnabled && this._terrainBakeSprite) {
       this.mapLayer.addChild(this._terrainBakeSprite);
@@ -2281,18 +2289,20 @@ export class GlobalMapRenderer {
     if (!this.container) return;
 
     try {
-      this.mapLayer?.removeChildren();
+      this._destroyLayerChildren(this.mapLayer);
 
-      this.regionsLayer?.removeChildren();
-      this.regionLabelsLayer?.removeChildren();
+      this._destroyLayerChildren(this.regionsLayer);
+      this._destroyLayerChildren(this.regionLabelsLayer);
+      this._regionHoverLabel = null;
       try {
         this.regionHoverLayer?.clear?.();
       } catch (e) {
         // ignore
       }
 
-      this.riversLayer?.removeChildren();
-      this.riverLabelsLayer?.removeChildren();
+      this._destroyLayerChildren(this.riversLayer);
+      this._destroyLayerChildren(this.riverLabelsLayer);
+      this._riverHoverLabel = null;
 
       // If layers are missing for some reason, fall back to clearing root
       if (!this.mapLayer || !this.riversLayer || !this.riverLabelsLayer) {
@@ -2306,6 +2316,24 @@ export class GlobalMapRenderer {
 
       this.isVisible = false;
       console.log('GlobalMapRenderer | Cleared');
+    }
+  }
+
+  /**
+   * Remove and destroy a layer's children (detached Graphics keep their GPU geometry until destroyed).
+   * The terrain-bake sprite is owned by the 3D view and is only detached.
+   * @private
+   */
+  _destroyLayerChildren(layer) {
+    if (!layer) return;
+    for (const child of layer.removeChildren()) {
+      if (child === this._terrainBakeSprite) continue;
+      this._cancelFadeDeep(child);
+      try {
+        child.destroy({ children: true });
+      } catch (e) {
+        // ignore
+      }
     }
   }
 
@@ -2718,11 +2746,27 @@ export class GlobalMapRenderer {
 
     let oldWrap = null;
     if (hasOld) {
-      const oldChildren = layer.removeChildren();
-      oldWrap = new PIXI.Container();
-      oldWrap.name = `${layer.name || 'layer'}OldWrap`;
-      oldWrap.addChild(...oldChildren);
-      layer.addChild(oldWrap);
+      const oldWrapName = `${layer.name || 'layer'}OldWrap`;
+      const oldChildren = [];
+      for (const ch of layer.removeChildren()) {
+        // A previous old-wrap was already fading out (its fade and destroy callback were just cancelled):
+        // destroy it now instead of nesting it, otherwise rapid updates stack full copies of the layer.
+        if (ch?.name === oldWrapName) {
+          try {
+            ch.destroy({ children: true });
+          } catch (e) {
+            // ignore
+          }
+          continue;
+        }
+        oldChildren.push(ch);
+      }
+      if (oldChildren.length) {
+        oldWrap = new PIXI.Container();
+        oldWrap.name = oldWrapName;
+        oldWrap.addChild(...oldChildren);
+        layer.addChild(oldWrap);
+      }
     }
 
     if (newChild) {

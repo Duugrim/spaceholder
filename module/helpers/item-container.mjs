@@ -321,6 +321,68 @@ export async function releaseDirectContainerChildrenToRoot(actor, hostItemId) {
   return true;
 }
 
+/** Child edits come in bursts (a stack split, a whole pile moved): redraw each open host sheet once per burst. */
+const HOST_SHEET_REFRESH_DELAY_MS = 30;
+
+/**
+ * Open sheets of containers (and of weapons hosting magazines or batteries) show how full the host is.
+ * A child that changes — its quantity or weight, or it is added, taken out or deleted — does not touch the
+ * host itself, so Foundry would not redraw the host's sheet; several writers also pass `render: false`.
+ * Redraw the open sheets of the child's hosts (nested hosts included).
+ * Installed once at `ready`; not called by anything else.
+ */
+export function installContainerSheetRefresh() {
+  /** @type {Map<string, Item>} */
+  const pending = new Map();
+  /** @type {ReturnType<typeof setTimeout>|null} */
+  let timer = null;
+
+  const flush = () => {
+    timer = null;
+    const hosts = [...pending.values()];
+    pending.clear();
+    for (const host of hosts) {
+      try {
+        host.sheet?.render?.(false);
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  };
+
+  const queue = (host) => {
+    if (!host?.uuid || !host.sheet?.rendered) return;
+    pending.set(host.uuid, host);
+    if (timer == null) timer = setTimeout(flush, HOST_SHEET_REFRESH_DELAY_MS);
+  };
+
+  const queueHostChain = (actor, child) => {
+    const seen = new Set();
+    let hostId = String(child?.system?.containerHostId ?? '').trim();
+    while (hostId && !seen.has(hostId)) {
+      seen.add(hostId);
+      const host = actor.items.get(hostId);
+      if (!host) break;
+      queue(host);
+      hostId = String(host.system?.containerHostId ?? '').trim();
+    }
+  };
+
+  for (const hook of ['createItem', 'updateItem', 'deleteItem']) {
+    Hooks.on(hook, (item, changes) => {
+      const actor = item?.parent;
+      if (actor?.documentName !== 'Actor' || item.type !== 'item') return;
+      queueHostChain(actor, item);
+      // Moved to another host (or out of one): the previous host is no longer known, so redraw every open one.
+      if (hook === 'updateItem' && foundry.utils.hasProperty(changes ?? {}, 'system.containerHostId')) {
+        for (const other of actor.items) {
+          if (other.system?.itemTags?.isContainer || other.system?.itemTags?.isWeapon) queue(other);
+        }
+      }
+    });
+  }
+}
+
 /**
  * After `updateEmbeddedDocuments(..., { render: false })` / item.update({ render: false }),
  * Foundry does not refresh open sheets. Re-run render for the owning actor sheet and any

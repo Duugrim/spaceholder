@@ -1,0 +1,7658 @@
+{
+ "version": 1,
+ "items": [
+  {
+   "id": "ammo.338",
+   "kind": "ammo",
+   "name": "Патрон .338",
+   "group": "338",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_338_round_shc5726e961969f9.json",
+    "docId": "shc5726e961969f9"
+   },
+   "base": {
+    "caliber": "338",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 200,
+      "armorPen": 85,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 500
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "338",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 200,
+      "armorPen": 85,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 500
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.44mag",
+   "kind": "ammo",
+   "name": "Патрон .44 Mag",
+   "group": "44mag",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_44mag_round_shcd7606da9bc0af.json",
+    "docId": "shcd7606da9bc0af"
+   },
+   "base": {
+    "caliber": "44mag",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 125,
+      "armorPen": 30,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 150
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "44mag",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 125,
+      "armorPen": 30,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 150
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.50bmg",
+   "kind": "ammo",
+   "name": "Патрон .50 BMG",
+   "group": "50bmg",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_50bmg_round_shcf7bc6012c2237.json",
+    "docId": "shcf7bc6012c2237"
+   },
+   "base": {
+    "caliber": "50bmg",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 280,
+      "armorPen": 110,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 870
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "50bmg",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 280,
+      "armorPen": 110,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 870
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.12ga-buck",
+   "kind": "ammo",
+   "name": "Патрон 12к дробь",
+   "group": "12ga-buck",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_12ga-buck_round_shc9ee727933d802.json",
+    "docId": "shc9ee727933d802"
+   },
+   "base": {
+    "caliber": "12ga-buck",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 35,
+      "armorPen": 15,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 35
+    },
+    "multishot": {
+     "enabled": true,
+     "count": 6,
+     "coneDegrees": 20
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "12ga-buck",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 35,
+      "armorPen": 15,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 35
+    },
+    "multishot": {
+     "enabled": true,
+     "count": 6,
+     "coneDegrees": 20
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.12ga-slug",
+   "kind": "ammo",
+   "name": "Патрон 12к пуля",
+   "group": "12ga-slug",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_12ga-slug_round_shc1ff3306d0a3f8.json",
+    "docId": "shc1ff3306d0a3f8"
+   },
+   "base": {
+    "caliber": "12ga-slug",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 140,
+      "armorPen": 40,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 70
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "12ga-slug",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 140,
+      "armorPen": 40,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 70
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.5.56",
+   "kind": "ammo",
+   "name": "Патрон 5.56×45",
+   "group": "5.56",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_5.56_round_shc8c89d8fd4e1a9.json",
+    "docId": "shc8c89d8fd4e1a9"
+   },
+   "base": {
+    "caliber": "5.56",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 115,
+      "armorPen": 60,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 300
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "5.56",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 115,
+      "armorPen": 60,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 300
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.5.7",
+   "kind": "ammo",
+   "name": "Патрон 5.7×28",
+   "group": "5.7",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_5.7_round_shc20fdd15d52488.json",
+    "docId": "shc20fdd15d52488"
+   },
+   "base": {
+    "caliber": "5.7",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 95,
+      "armorPen": 70,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 200
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "5.7",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 95,
+      "armorPen": 70,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 200
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.7.62x39",
+   "kind": "ammo",
+   "name": "Патрон 7.62×39",
+   "group": "7.62x39",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_7.62x39_round_shcfd522315bd526.json",
+    "docId": "shcfd522315bd526"
+   },
+   "base": {
+    "caliber": "7.62x39",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 130,
+      "armorPen": 50,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 280
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "7.62x39",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 130,
+      "armorPen": 50,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 280
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.7.62x54r",
+   "kind": "ammo",
+   "name": "Патрон 7.62×54R",
+   "group": "7.62x54r",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_7.62x54r_round_shc28761c13a11ab.json",
+    "docId": "shc28761c13a11ab"
+   },
+   "base": {
+    "caliber": "7.62x54r",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 160,
+      "armorPen": 70,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 330
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "7.62x54r",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 160,
+      "armorPen": 70,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 330
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.9mm",
+   "kind": "ammo",
+   "name": "Патрон 9×19",
+   "group": "9mm",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_9mm_round_shcd82030e53e888.json",
+    "docId": "shcd82030e53e888"
+   },
+   "base": {
+    "caliber": "9mm",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 100,
+      "armorPen": 25,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 240
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "9mm",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 100,
+      "armorPen": 25,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 240
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.plasma-cell",
+   "kind": "ammo",
+   "name": "Патрон Плазменная ячейка",
+   "group": "plasma-cell",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_plasma-cell_round_shcff3b7d6e5075d.json",
+    "docId": "shcff3b7d6e5075d"
+   },
+   "base": {
+    "caliber": "plasma-cell",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "plasma",
+      "damage": 160,
+      "armorPen": 5,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 18
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "plasma-cell",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "plasma",
+      "damage": 160,
+      "armorPen": 5,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 18
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.rocket-ракета-he",
+   "kind": "ammo",
+   "name": "Ракета HE",
+   "group": "rocket",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_rocket-he_round_shc1817a91cf72bb.json",
+    "docId": "shc1817a91cf72bb"
+   },
+   "base": {
+    "caliber": "rocket",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "concussive",
+      "damage": 160,
+      "armorPen": 25,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": false,
+     "halfDistance": 0
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": true,
+     "radius": 3,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "rocket",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "concussive",
+      "damage": 160,
+      "armorPen": 25,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": false,
+     "halfDistance": 0
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": true,
+     "radius": 3,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "ammo.rocket",
+   "kind": "ammo",
+   "name": "Ракета HEAT",
+   "group": "rocket",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_rocket-heat_round_shc19a20152e027e.json",
+    "docId": "shc19a20152e027e"
+   },
+   "base": {
+    "caliber": "rocket",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 220,
+      "armorPen": 100,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": false,
+     "halfDistance": 0
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": true,
+     "radius": 1,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "rocket",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 220,
+      "armorPen": 100,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": false,
+     "halfDistance": 0
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": true,
+     "radius": 1,
+     "unit": "grid"
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.боевая-броня-торс",
+   "kind": "armor",
+   "name": "Боевая броня (торс)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_combat-armor_shc689503b70ec82.json",
+    "docId": "shc689503b70ec82"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 6
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 6
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 6
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 6
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 6
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 6
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.бронежилет-керамика",
+   "kind": "armor",
+   "name": "Бронежилет (керамика)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_vest-ceramic_shceff2047842d21.json",
+    "docId": "shceff2047842d21"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "ceramic-plate",
+        "thickness": 4
+       },
+       {
+        "material": "kevlar",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "ceramic-plate",
+        "thickness": 4
+       },
+       {
+        "material": "kevlar",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "ceramic-plate",
+        "thickness": 4
+       },
+       {
+        "material": "kevlar",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "ceramic-plate",
+        "thickness": 4
+       },
+       {
+        "material": "kevlar",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "ceramic-plate",
+        "thickness": 4
+       },
+       {
+        "material": "kevlar",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "ceramic-plate",
+        "thickness": 4
+       },
+       {
+        "material": "kevlar",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.бронежилет-лёгкий",
+   "kind": "armor",
+   "name": "Бронежилет (лёгкий)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_vest-light_shcf9fc285a38edb.json",
+    "docId": "shcf9fc285a38edb"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.бронежилет-средний",
+   "kind": "armor",
+   "name": "Бронежилет (средний)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_vest-mid_shc28204b05931c3.json",
+    "docId": "shc28204b05931c3"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 3,
+        "coverage": 75
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 3,
+        "coverage": 75
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 3,
+        "coverage": 75
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 3,
+        "coverage": 75
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 3,
+        "coverage": 75
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 3,
+        "coverage": 75
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.бронежилет-тяжёлый",
+   "kind": "armor",
+   "name": "Бронежилет (тяжёлый)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_vest-heavy_shc060d07571b200.json",
+    "docId": "shc060d07571b200"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 6
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       },
+       {
+        "material": "foam",
+        "thickness": 4
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 6
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       },
+       {
+        "material": "foam",
+        "thickness": 4
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 6
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       },
+       {
+        "material": "foam",
+        "thickness": 4
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 6
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       },
+       {
+        "material": "foam",
+        "thickness": 4
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 6
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       },
+       {
+        "material": "foam",
+        "thickness": 4
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 6
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       },
+       {
+        "material": "foam",
+        "thickness": 4
+       }
+      ],
+      "face": "back"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.зимний-комплект",
+   "kind": "armor",
+   "name": "Зимний комплект",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_winter_shc0bc7158acedb8.json",
+    "docId": "shc0bc7158acedb8"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       },
+       {
+        "material": "foam",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.кожаный-комплект",
+   "kind": "armor",
+   "name": "Кожаный комплект",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_leather-jacket_shc64b0e6d394bfd.json",
+    "docId": "shc64b0e6d394bfd"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "leather",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.комбинезон",
+   "kind": "armor",
+   "name": "Комбинезон",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_coverall_shc2e057c32b8f49.json",
+    "docId": "shc2e057c32b8f49"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.повседневная-одежда",
+   "kind": "armor",
+   "name": "Повседневная одежда",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_casual_shc82b83180a06b6.json",
+    "docId": "shc82b83180a06b6"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-light",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.рабочая-одежда",
+   "kind": "armor",
+   "name": "Рабочая одежда",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_work_shc0c08c46095627.json",
+    "docId": "shc0c08c46095627"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightArm",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.уличный-комплект",
+   "kind": "armor",
+   "name": "Уличный комплект",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_street_shc416f5064251f7.json",
+    "docId": "shc416f5064251f7"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "lowerTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "upperTorso",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 2
+       }
+      ],
+      "face": "back"
+     },
+     {
+      "slotRef": "leftThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightThigh",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "leftShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     },
+     {
+      "slotRef": "rightShin",
+      "layers": [
+       {
+        "material": "cloth-heavy",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.шлем-лёгкий",
+   "kind": "armor",
+   "name": "Шлем (лёгкий)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_helm-light_shc30848141ee4c4.json",
+    "docId": "shc30848141ee4c4"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "head",
+      "layers": [
+       {
+        "material": "polymer",
+        "thickness": 3
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "head",
+      "layers": [
+       {
+        "material": "polymer",
+        "thickness": 3
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.шлем-средний",
+   "kind": "armor",
+   "name": "Шлем (средний)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_helm-mid_shcb3c0c6ff0919a.json",
+    "docId": "shcb3c0c6ff0919a"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "head",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 2
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "head",
+      "layers": [
+       {
+        "material": "steel-plate",
+        "thickness": 2
+       },
+       {
+        "material": "kevlar",
+        "thickness": 1
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "armor.шлем-тяжёлый",
+   "kind": "armor",
+   "name": "Шлем (тяжёлый)",
+   "group": "",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wear_helm-heavy_shcd90cf657bf335.json",
+    "docId": "shcd90cf657bf335"
+   },
+   "base": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "head",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 3
+       },
+       {
+        "material": "ablative",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "values": {
+    "anatomyId": "humanoid",
+    "coveredParts": [
+     {
+      "slotRef": "head",
+      "layers": [
+       {
+        "material": "combat-composite",
+        "thickness": 3
+       },
+       {
+        "material": "ablative",
+        "thickness": 2
+       }
+      ],
+      "face": "front"
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.ablative",
+   "kind": "material",
+   "name": "Аблятивное покрытие",
+   "group": "ablative",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_ablative_shcc58b791629fc3.json",
+    "docId": "shcc58b791629fc3"
+   },
+   "base": {
+    "category": "ablative",
+    "hardness": 12,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.8,
+    "resistance": {
+     "ballistic": 20,
+     "concussive": 30,
+     "piercing": 25,
+     "cutting": 30,
+     "thermal": 90,
+     "laser": 120,
+     "plasma": 80,
+     "electric": 20,
+     "sonic": 20,
+     "radiation": 15,
+     "chemical": 40
+    },
+    "wear": {
+     "ballistic": 150,
+     "concussive": 80,
+     "piercing": 120,
+     "cutting": 100,
+     "thermal": 40,
+     "laser": 30,
+     "plasma": 50,
+     "electric": 10,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 60
+    },
+    "damping": null,
+    "conductance": {
+     "laser": [
+      {
+       "type": "thermal",
+       "fraction": 0.4
+      }
+     ],
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.25
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.6
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "ablative",
+    "hardness": 12,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.8,
+    "resistance": {
+     "ballistic": 20,
+     "concussive": 30,
+     "piercing": 25,
+     "cutting": 30,
+     "thermal": 90,
+     "laser": 120,
+     "plasma": 80,
+     "electric": 20,
+     "sonic": 20,
+     "radiation": 15,
+     "chemical": 40
+    },
+    "wear": {
+     "ballistic": 150,
+     "concussive": 80,
+     "piercing": 120,
+     "cutting": 100,
+     "thermal": 40,
+     "laser": 30,
+     "plasma": 50,
+     "electric": 10,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 60
+    },
+    "conductance": {
+     "laser": [
+      {
+       "type": "thermal",
+       "fraction": 0.4
+      }
+     ],
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.25
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.6
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": null
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.concrete",
+   "kind": "material",
+   "name": "Бетон",
+   "group": "structure",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_concrete_shc9f750d35005aa.json",
+    "docId": "shc9f750d35005aa"
+   },
+   "base": {
+    "category": "structure",
+    "hardness": 0.005,
+    "integrityPerThickness": 3,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.24,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 100,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 100,
+     "laser": 60,
+     "plasma": 60,
+     "electric": 100,
+     "sonic": 80,
+     "radiation": 40,
+     "chemical": 60
+    },
+    "wear": {
+     "ballistic": 20,
+     "concussive": 40,
+     "piercing": 20,
+     "cutting": 10,
+     "thermal": 15,
+     "laser": 20,
+     "plasma": 60,
+     "electric": 0,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 20
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "structure",
+    "hardness": 0.005,
+    "integrityPerThickness": 3,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.24,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 100,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 100,
+     "laser": 60,
+     "plasma": 60,
+     "electric": 100,
+     "sonic": 80,
+     "radiation": 40,
+     "chemical": 60
+    },
+    "wear": {
+     "ballistic": 20,
+     "concussive": 40,
+     "piercing": 20,
+     "cutting": 10,
+     "thermal": 15,
+     "laser": 20,
+     "plasma": 60,
+     "electric": 0,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 20
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.combat-composite",
+   "kind": "material",
+   "name": "Боевой композит",
+   "group": "composite",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_combat-composite_shc2e93d3aee30cb.json",
+    "docId": "shc2e93d3aee30cb"
+   },
+   "base": {
+    "category": "composite",
+    "hardness": 12,
+    "integrityPerThickness": 60,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 4.5,
+    "resistance": {
+     "ballistic": 110,
+     "concussive": 80,
+     "piercing": 95,
+     "cutting": 100,
+     "thermal": 55,
+     "laser": 50,
+     "plasma": 45,
+     "electric": 25,
+     "sonic": 60,
+     "radiation": 20,
+     "chemical": 40
+    },
+    "wear": {
+     "ballistic": 35,
+     "concussive": 25,
+     "piercing": 35,
+     "cutting": 30,
+     "thermal": 60,
+     "laser": 50,
+     "plasma": 130,
+     "electric": 5,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 80
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.12
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.4
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "composite",
+    "hardness": 12,
+    "integrityPerThickness": 60,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 4.5,
+    "resistance": {
+     "ballistic": 110,
+     "concussive": 80,
+     "piercing": 95,
+     "cutting": 100,
+     "thermal": 55,
+     "laser": 50,
+     "plasma": 45,
+     "electric": 25,
+     "sonic": 60,
+     "radiation": 20,
+     "chemical": 40
+    },
+    "wear": {
+     "ballistic": 35,
+     "concussive": 25,
+     "piercing": 35,
+     "cutting": 30,
+     "thermal": 60,
+     "laser": 50,
+     "plasma": 130,
+     "electric": 5,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 80
+    },
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.12
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.4
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": null
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.drywall",
+   "kind": "material",
+   "name": "Гипсокартон",
+   "group": "structure",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_drywall_shc151cf9add21cf.json",
+    "docId": "shc151cf9add21cf"
+   },
+   "base": {
+    "category": "structure",
+    "hardness": 0.0015,
+    "integrityPerThickness": 0.3,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.08,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 70,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 50,
+     "laser": 30,
+     "plasma": 30,
+     "electric": 100,
+     "sonic": 40,
+     "radiation": 5,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 80,
+     "piercing": 80,
+     "cutting": 100,
+     "thermal": 60,
+     "laser": 80,
+     "plasma": 150,
+     "electric": 0,
+     "sonic": 20,
+     "radiation": 0,
+     "chemical": 50
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "structure",
+    "hardness": 0.0015,
+    "integrityPerThickness": 0.3,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.08,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 70,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 50,
+     "laser": 30,
+     "plasma": 30,
+     "electric": 100,
+     "sonic": 40,
+     "radiation": 5,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 80,
+     "piercing": 80,
+     "cutting": 100,
+     "thermal": 60,
+     "laser": 80,
+     "plasma": 150,
+     "electric": 0,
+     "sonic": 20,
+     "radiation": 0,
+     "chemical": 50
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.wood",
+   "kind": "material",
+   "name": "Дерево",
+   "group": "structure",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_wood_shcf7d0bdd4e4977.json",
+    "docId": "shcf7d0bdd4e4977"
+   },
+   "base": {
+    "category": "structure",
+    "hardness": 0.003,
+    "integrityPerThickness": 0.8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.06,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 80,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 20,
+     "laser": 30,
+     "plasma": 30,
+     "electric": 100,
+     "sonic": 60,
+     "radiation": 10,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 40,
+     "concussive": 40,
+     "piercing": 40,
+     "cutting": 60,
+     "thermal": 120,
+     "laser": 150,
+     "plasma": 200,
+     "electric": 0,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 40
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "structure",
+    "hardness": 0.003,
+    "integrityPerThickness": 0.8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.06,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 80,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 20,
+     "laser": 30,
+     "plasma": 30,
+     "electric": 100,
+     "sonic": 60,
+     "radiation": 10,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 40,
+     "concussive": 40,
+     "piercing": 40,
+     "cutting": 60,
+     "thermal": 120,
+     "laser": 150,
+     "plasma": 200,
+     "electric": 0,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 40
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.foam",
+   "kind": "material",
+   "name": "Импакт-пена",
+   "group": "fabric",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_foam_shc14d61a6db84e9.json",
+    "docId": "shc14d61a6db84e9"
+   },
+   "base": {
+    "category": "fabric",
+    "hardness": 6,
+    "integrityPerThickness": 10,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.4,
+    "resistance": {
+     "ballistic": 30,
+     "concussive": 90,
+     "piercing": 20,
+     "cutting": 25,
+     "thermal": 40,
+     "laser": 25,
+     "plasma": 20,
+     "electric": 5,
+     "sonic": 50,
+     "radiation": 0,
+     "chemical": 20
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 20,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 150,
+     "laser": 200,
+     "plasma": 250,
+     "electric": 0,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 100
+    },
+    "damping": {
+     "concussive": 0.03
+    },
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "fabric",
+    "hardness": 6,
+    "integrityPerThickness": 10,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.4,
+    "resistance": {
+     "ballistic": 30,
+     "concussive": 90,
+     "piercing": 20,
+     "cutting": 25,
+     "thermal": 40,
+     "laser": 25,
+     "plasma": 20,
+     "electric": 5,
+     "sonic": 50,
+     "radiation": 0,
+     "chemical": 20
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 20,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 150,
+     "laser": 200,
+     "plasma": 250,
+     "electric": 0,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 100
+    },
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": {
+     "concussive": 0.03
+    }
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.kevlar",
+   "kind": "material",
+   "name": "Кевлар",
+   "group": "fabric",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_kevlar_shc7731e806e129c.json",
+    "docId": "shc7731e806e129c"
+   },
+   "base": {
+    "category": "fabric",
+    "hardness": 20,
+    "integrityPerThickness": 30,
+    "breachCapacityPerThickness": 30,
+    "weightPerThickness": 1.4,
+    "resistance": {
+     "ballistic": 135,
+     "concussive": 55,
+     "piercing": 15,
+     "cutting": 70,
+     "thermal": 25,
+     "laser": 25,
+     "plasma": 30,
+     "electric": 10,
+     "sonic": 40,
+     "radiation": 5,
+     "chemical": 20
+    },
+    "wear": {
+     "ballistic": 10,
+     "concussive": 15,
+     "piercing": 50,
+     "cutting": 50,
+     "thermal": 100,
+     "laser": 90,
+     "plasma": 140,
+     "electric": 0,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 150
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.5
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.15
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.9
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "fabric",
+    "hardness": 20,
+    "integrityPerThickness": 30,
+    "breachCapacityPerThickness": 30,
+    "weightPerThickness": 1.4,
+    "resistance": {
+     "ballistic": 135,
+     "concussive": 55,
+     "piercing": 15,
+     "cutting": 70,
+     "thermal": 25,
+     "laser": 25,
+     "plasma": 30,
+     "electric": 10,
+     "sonic": 40,
+     "radiation": 5,
+     "chemical": 20
+    },
+    "wear": {
+     "ballistic": 10,
+     "concussive": 15,
+     "piercing": 50,
+     "cutting": 50,
+     "thermal": 100,
+     "laser": 90,
+     "plasma": 140,
+     "electric": 0,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 150
+    },
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.5
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.15
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.9
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": null
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.ceramic-plate",
+   "kind": "material",
+   "name": "Керамическая плита",
+   "group": "composite",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_ceramic-plate_shc1e104c171f19f.json",
+    "docId": "shc1e104c171f19f"
+   },
+   "base": {
+    "category": "composite",
+    "hardness": 22,
+    "integrityPerThickness": 25,
+    "breachCapacityPerThickness": 20,
+    "weightPerThickness": 3.2,
+    "resistance": {
+     "ballistic": 120,
+     "concussive": 40,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 50,
+     "laser": 45,
+     "plasma": 40,
+     "electric": 15,
+     "sonic": 30,
+     "radiation": 10,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 120,
+     "piercing": 70,
+     "cutting": 60,
+     "thermal": 80,
+     "laser": 70,
+     "plasma": 180,
+     "electric": 5,
+     "sonic": 20,
+     "radiation": 0,
+     "chemical": 80
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.6
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "composite",
+    "hardness": 22,
+    "integrityPerThickness": 25,
+    "breachCapacityPerThickness": 20,
+    "weightPerThickness": 3.2,
+    "resistance": {
+     "ballistic": 120,
+     "concussive": 40,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 50,
+     "laser": 45,
+     "plasma": 40,
+     "electric": 15,
+     "sonic": 30,
+     "radiation": 10,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 120,
+     "piercing": 70,
+     "cutting": 60,
+     "thermal": 80,
+     "laser": 70,
+     "plasma": 180,
+     "electric": 5,
+     "sonic": 20,
+     "radiation": 0,
+     "chemical": 80
+    },
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.6
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": null
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.brick",
+   "kind": "material",
+   "name": "Кирпич",
+   "group": "structure",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_brick_shc4b025d4214f7d.json",
+    "docId": "shc4b025d4214f7d"
+   },
+   "base": {
+    "category": "structure",
+    "hardness": 0.0035,
+    "integrityPerThickness": 1.5,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.18,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 90,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 100,
+     "laser": 60,
+     "plasma": 60,
+     "electric": 100,
+     "sonic": 70,
+     "radiation": 30,
+     "chemical": 50
+    },
+    "wear": {
+     "ballistic": 30,
+     "concussive": 50,
+     "piercing": 30,
+     "cutting": 15,
+     "thermal": 15,
+     "laser": 20,
+     "plasma": 60,
+     "electric": 0,
+     "sonic": 15,
+     "radiation": 0,
+     "chemical": 20
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "structure",
+    "hardness": 0.0035,
+    "integrityPerThickness": 1.5,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.18,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 90,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 100,
+     "laser": 60,
+     "plasma": 60,
+     "electric": 100,
+     "sonic": 70,
+     "radiation": 30,
+     "chemical": 50
+    },
+    "wear": {
+     "ballistic": 30,
+     "concussive": 50,
+     "piercing": 30,
+     "cutting": 15,
+     "thermal": 15,
+     "laser": 20,
+     "plasma": 60,
+     "electric": 0,
+     "sonic": 15,
+     "radiation": 0,
+     "chemical": 20
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.leather",
+   "kind": "material",
+   "name": "Кожа",
+   "group": "fabric",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_leather_shc56e083ac050b6.json",
+    "docId": "shc56e083ac050b6"
+   },
+   "base": {
+    "category": "fabric",
+    "hardness": 3,
+    "integrityPerThickness": 12,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.9,
+    "resistance": {
+     "ballistic": 25,
+     "concussive": 35,
+     "piercing": 30,
+     "cutting": 55,
+     "thermal": 35,
+     "laser": 20,
+     "plasma": 15,
+     "electric": 15,
+     "sonic": 15,
+     "radiation": 0,
+     "chemical": 25
+    },
+    "wear": {
+     "ballistic": 120,
+     "concussive": 50,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 200,
+     "laser": 250,
+     "plasma": 300,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 120
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "fabric",
+    "hardness": 3,
+    "integrityPerThickness": 12,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.9,
+    "resistance": {
+     "ballistic": 25,
+     "concussive": 35,
+     "piercing": 30,
+     "cutting": 55,
+     "thermal": 35,
+     "laser": 20,
+     "plasma": 15,
+     "electric": 15,
+     "sonic": 15,
+     "radiation": 0,
+     "chemical": 25
+    },
+    "wear": {
+     "ballistic": 120,
+     "concussive": 50,
+     "piercing": 100,
+     "cutting": 80,
+     "thermal": 200,
+     "laser": 250,
+     "plasma": 300,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 120
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.skin",
+   "kind": "material",
+   "name": "Кожа (ткань тела)",
+   "group": "biological",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_skin_shc2341584733eac.json",
+    "docId": "shc2341584733eac"
+   },
+   "base": {
+    "category": "biological",
+    "hardness": 1,
+    "integrityPerThickness": 5,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1,
+    "resistance": {
+     "ballistic": 15,
+     "concussive": 40,
+     "piercing": 20,
+     "cutting": 25,
+     "thermal": 40,
+     "laser": 30,
+     "plasma": 25,
+     "electric": 30,
+     "sonic": 40,
+     "radiation": 10,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 100,
+     "concussive": 40,
+     "piercing": 100,
+     "cutting": 120,
+     "thermal": 80,
+     "laser": 90,
+     "plasma": 120,
+     "electric": 20,
+     "sonic": 10,
+     "radiation": 5,
+     "chemical": 100
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "biological",
+    "hardness": 1,
+    "integrityPerThickness": 5,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1,
+    "resistance": {
+     "ballistic": 15,
+     "concussive": 40,
+     "piercing": 20,
+     "cutting": 25,
+     "thermal": 40,
+     "laser": 30,
+     "plasma": 25,
+     "electric": 30,
+     "sonic": 40,
+     "radiation": 10,
+     "chemical": 30
+    },
+    "wear": {
+     "ballistic": 100,
+     "concussive": 40,
+     "piercing": 100,
+     "cutting": 120,
+     "thermal": 80,
+     "laser": 90,
+     "plasma": 120,
+     "electric": 20,
+     "sonic": 10,
+     "radiation": 5,
+     "chemical": 100
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.bone",
+   "kind": "material",
+   "name": "Кость",
+   "group": "biological",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_bone_shcd424f55b0132d.json",
+    "docId": "shcd424f55b0132d"
+   },
+   "base": {
+    "category": "biological",
+    "hardness": 8,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.8,
+    "resistance": {
+     "ballistic": 60,
+     "concussive": 70,
+     "piercing": 55,
+     "cutting": 50,
+     "thermal": 50,
+     "laser": 40,
+     "plasma": 35,
+     "electric": 20,
+     "sonic": 60,
+     "radiation": 15,
+     "chemical": 40
+    },
+    "wear": {
+     "ballistic": 40,
+     "concussive": 25,
+     "piercing": 45,
+     "cutting": 50,
+     "thermal": 50,
+     "laser": 60,
+     "plasma": 80,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 50
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "biological",
+    "hardness": 8,
+    "integrityPerThickness": 20,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.8,
+    "resistance": {
+     "ballistic": 60,
+     "concussive": 70,
+     "piercing": 55,
+     "cutting": 50,
+     "thermal": 50,
+     "laser": 40,
+     "plasma": 35,
+     "electric": 20,
+     "sonic": 60,
+     "radiation": 15,
+     "chemical": 40
+    },
+    "wear": {
+     "ballistic": 40,
+     "concussive": 25,
+     "piercing": 45,
+     "cutting": 50,
+     "thermal": 50,
+     "laser": 60,
+     "plasma": 80,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 50
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.cloth-light",
+   "kind": "material",
+   "name": "Лёгкая ткань",
+   "group": "fabric",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_cloth-light_shc90354eb33ca7d.json",
+    "docId": "shc90354eb33ca7d"
+   },
+   "base": {
+    "category": "fabric",
+    "hardness": 0.5,
+    "integrityPerThickness": 2,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.2,
+    "resistance": {
+     "ballistic": 10,
+     "concussive": 10,
+     "piercing": 5,
+     "cutting": 20,
+     "thermal": 20,
+     "laser": 10,
+     "plasma": 5,
+     "electric": 5,
+     "sonic": 0,
+     "radiation": 0,
+     "chemical": 5
+    },
+    "wear": {
+     "ballistic": 300,
+     "concussive": 100,
+     "piercing": 300,
+     "cutting": 300,
+     "thermal": 500,
+     "laser": 500,
+     "plasma": 500,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 300
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.2
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "fabric",
+    "hardness": 0.5,
+    "integrityPerThickness": 2,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.2,
+    "resistance": {
+     "ballistic": 10,
+     "concussive": 10,
+     "piercing": 5,
+     "cutting": 20,
+     "thermal": 20,
+     "laser": 10,
+     "plasma": 5,
+     "electric": 5,
+     "sonic": 0,
+     "radiation": 0,
+     "chemical": 5
+    },
+    "wear": {
+     "ballistic": 300,
+     "concussive": 100,
+     "piercing": 300,
+     "cutting": 300,
+     "thermal": 500,
+     "laser": 500,
+     "plasma": 500,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 300
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.2
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.muscle",
+   "kind": "material",
+   "name": "Мышцы",
+   "group": "biological",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_muscle_shc5fc012e8d1e78.json",
+    "docId": "shc5fc012e8d1e78"
+   },
+   "base": {
+    "category": "biological",
+    "hardness": 2,
+    "integrityPerThickness": 8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.1,
+    "resistance": {
+     "ballistic": 25,
+     "concussive": 50,
+     "piercing": 30,
+     "cutting": 35,
+     "thermal": 45,
+     "laser": 35,
+     "plasma": 30,
+     "electric": 35,
+     "sonic": 45,
+     "radiation": 10,
+     "chemical": 35
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 30,
+     "piercing": 80,
+     "cutting": 90,
+     "thermal": 70,
+     "laser": 80,
+     "plasma": 100,
+     "electric": 15,
+     "sonic": 10,
+     "radiation": 5,
+     "chemical": 80
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "biological",
+    "hardness": 2,
+    "integrityPerThickness": 8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.1,
+    "resistance": {
+     "ballistic": 25,
+     "concussive": 50,
+     "piercing": 30,
+     "cutting": 35,
+     "thermal": 45,
+     "laser": 35,
+     "plasma": 30,
+     "electric": 35,
+     "sonic": 45,
+     "radiation": 10,
+     "chemical": 35
+    },
+    "wear": {
+     "ballistic": 80,
+     "concussive": 30,
+     "piercing": 80,
+     "cutting": 90,
+     "thermal": 70,
+     "laser": 80,
+     "plasma": 100,
+     "electric": 15,
+     "sonic": 10,
+     "radiation": 5,
+     "chemical": 80
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.cloth-heavy",
+   "kind": "material",
+   "name": "Плотная ткань",
+   "group": "fabric",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_cloth-heavy_shcdefa61c5716dc.json",
+    "docId": "shcdefa61c5716dc"
+   },
+   "base": {
+    "category": "fabric",
+    "hardness": 2,
+    "integrityPerThickness": 8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.5,
+    "resistance": {
+     "ballistic": 20,
+     "concussive": 25,
+     "piercing": 15,
+     "cutting": 40,
+     "thermal": 30,
+     "laser": 15,
+     "plasma": 10,
+     "electric": 10,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 15
+    },
+    "wear": {
+     "ballistic": 200,
+     "concussive": 80,
+     "piercing": 200,
+     "cutting": 150,
+     "thermal": 300,
+     "laser": 400,
+     "plasma": 450,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 200
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.25
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "fabric",
+    "hardness": 2,
+    "integrityPerThickness": 8,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.5,
+    "resistance": {
+     "ballistic": 20,
+     "concussive": 25,
+     "piercing": 15,
+     "cutting": 40,
+     "thermal": 30,
+     "laser": 15,
+     "plasma": 10,
+     "electric": 10,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 15
+    },
+    "wear": {
+     "ballistic": 200,
+     "concussive": 80,
+     "piercing": 200,
+     "cutting": 150,
+     "thermal": 300,
+     "laser": 400,
+     "plasma": 450,
+     "electric": 5,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 200
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.25
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.polymer",
+   "kind": "material",
+   "name": "Полимер",
+   "group": "composite",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_polymer_shc2eac6e0343f9f.json",
+    "docId": "shc2eac6e0343f9f"
+   },
+   "base": {
+    "category": "composite",
+    "hardness": 4,
+    "integrityPerThickness": 15,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.1,
+    "resistance": {
+     "ballistic": 35,
+     "concussive": 40,
+     "piercing": 40,
+     "cutting": 45,
+     "thermal": 40,
+     "laser": 35,
+     "plasma": 30,
+     "electric": 40,
+     "sonic": 20,
+     "radiation": 5,
+     "chemical": 50
+    },
+    "wear": {
+     "ballistic": 90,
+     "concussive": 40,
+     "piercing": 80,
+     "cutting": 70,
+     "thermal": 120,
+     "laser": 150,
+     "plasma": 200,
+     "electric": 10,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 40
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.4
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.2
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.8
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "composite",
+    "hardness": 4,
+    "integrityPerThickness": 15,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 1.1,
+    "resistance": {
+     "ballistic": 35,
+     "concussive": 40,
+     "piercing": 40,
+     "cutting": 45,
+     "thermal": 40,
+     "laser": 35,
+     "plasma": 30,
+     "electric": 40,
+     "sonic": 20,
+     "radiation": 5,
+     "chemical": 50
+    },
+    "wear": {
+     "ballistic": 90,
+     "concussive": 40,
+     "piercing": 80,
+     "cutting": 70,
+     "thermal": 120,
+     "laser": 150,
+     "plasma": 200,
+     "electric": 10,
+     "sonic": 10,
+     "radiation": 0,
+     "chemical": 40
+    },
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.4
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.3
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.2
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.8
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": null
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.rock",
+   "kind": "material",
+   "name": "Скальная порода",
+   "group": "structure",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_rock_shcb6b24e62d8e54.json",
+    "docId": "shcb6b24e62d8e54"
+   },
+   "base": {
+    "category": "structure",
+    "hardness": 0.008,
+    "integrityPerThickness": 10,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.27,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 100,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 100,
+     "laser": 60,
+     "plasma": 60,
+     "electric": 100,
+     "sonic": 80,
+     "radiation": 40,
+     "chemical": 60
+    },
+    "wear": {
+     "ballistic": 10,
+     "concussive": 20,
+     "piercing": 10,
+     "cutting": 5,
+     "thermal": 5,
+     "laser": 10,
+     "plasma": 40,
+     "electric": 0,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 10
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "structure",
+    "hardness": 0.008,
+    "integrityPerThickness": 10,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.27,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 100,
+     "piercing": 100,
+     "cutting": 100,
+     "thermal": 100,
+     "laser": 60,
+     "plasma": 60,
+     "electric": 100,
+     "sonic": 80,
+     "radiation": 40,
+     "chemical": 60
+    },
+    "wear": {
+     "ballistic": 10,
+     "concussive": 20,
+     "piercing": 10,
+     "cutting": 5,
+     "thermal": 5,
+     "laser": 10,
+     "plasma": 40,
+     "electric": 0,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 10
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.steel-plate",
+   "kind": "material",
+   "name": "Стальная пластина",
+   "group": "metal",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_steel-plate_shcac8d48982bd23.json",
+    "docId": "shcac8d48982bd23"
+   },
+   "base": {
+    "category": "metal",
+    "hardness": 10,
+    "integrityPerThickness": 50,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 7.85,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 90,
+     "piercing": 90,
+     "cutting": 120,
+     "thermal": 45,
+     "laser": 35,
+     "plasma": 55,
+     "electric": 20,
+     "sonic": 90,
+     "radiation": 60,
+     "chemical": 25
+    },
+    "wear": {
+     "ballistic": 40,
+     "concussive": 30,
+     "piercing": 40,
+     "cutting": 20,
+     "thermal": 50,
+     "laser": 55,
+     "plasma": 160,
+     "electric": 5,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 100
+    },
+    "damping": null,
+    "conductance": {
+     "electric": [
+      {
+       "type": "electric",
+       "fraction": 0.9
+      }
+     ],
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.45
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.05
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.15
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.7
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "metal",
+    "hardness": 10,
+    "integrityPerThickness": 50,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 7.85,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 90,
+     "piercing": 90,
+     "cutting": 120,
+     "thermal": 45,
+     "laser": 35,
+     "plasma": 55,
+     "electric": 20,
+     "sonic": 90,
+     "radiation": 60,
+     "chemical": 25
+    },
+    "wear": {
+     "ballistic": 40,
+     "concussive": 30,
+     "piercing": 40,
+     "cutting": 20,
+     "thermal": 50,
+     "laser": 55,
+     "plasma": 160,
+     "electric": 5,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 100
+    },
+    "conductance": {
+     "electric": [
+      {
+       "type": "electric",
+       "fraction": 0.9
+      }
+     ],
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.45
+      }
+     ],
+     "piercing": [
+      {
+       "type": "concussive",
+       "fraction": 0.05
+      }
+     ],
+     "cutting": [
+      {
+       "type": "concussive",
+       "fraction": 0.15
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.7
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": null
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.glass",
+   "kind": "material",
+   "name": "Стекло",
+   "group": "structure",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_glass_shce5eae2e910030.json",
+    "docId": "shce5eae2e910030"
+   },
+   "base": {
+    "category": "structure",
+    "hardness": 0.003,
+    "integrityPerThickness": 0.2,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.25,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 60,
+     "piercing": 100,
+     "cutting": 60,
+     "thermal": 60,
+     "laser": 20,
+     "plasma": 40,
+     "electric": 100,
+     "sonic": 30,
+     "radiation": 5,
+     "chemical": 100
+    },
+    "wear": {
+     "ballistic": 150,
+     "concussive": 200,
+     "piercing": 150,
+     "cutting": 100,
+     "thermal": 60,
+     "laser": 20,
+     "plasma": 120,
+     "electric": 0,
+     "sonic": 80,
+     "radiation": 0,
+     "chemical": 5
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "structure",
+    "hardness": 0.003,
+    "integrityPerThickness": 0.2,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.25,
+    "resistance": {
+     "ballistic": 100,
+     "concussive": 60,
+     "piercing": 100,
+     "cutting": 60,
+     "thermal": 60,
+     "laser": 20,
+     "plasma": 40,
+     "electric": 100,
+     "sonic": 30,
+     "radiation": 5,
+     "chemical": 100
+    },
+    "wear": {
+     "ballistic": 150,
+     "concussive": 200,
+     "piercing": 150,
+     "cutting": 100,
+     "thermal": 60,
+     "laser": 20,
+     "plasma": 120,
+     "electric": 0,
+     "sonic": 80,
+     "radiation": 0,
+     "chemical": 5
+    },
+    "damping": null,
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "material.tank-composite",
+   "kind": "material",
+   "name": "Танковый композит",
+   "group": "composite",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Material_tank-composite_shcb17f91341a40b.json",
+    "docId": "shcb17f91341a40b"
+   },
+   "base": {
+    "category": "composite",
+    "hardness": 25,
+    "integrityPerThickness": 100,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 12,
+    "resistance": {
+     "ballistic": 140,
+     "concussive": 110,
+     "piercing": 130,
+     "cutting": 140,
+     "thermal": 70,
+     "laser": 55,
+     "plasma": 50,
+     "electric": 30,
+     "sonic": 100,
+     "radiation": 80,
+     "chemical": 50
+    },
+    "wear": {
+     "ballistic": 20,
+     "concussive": 15,
+     "piercing": 20,
+     "cutting": 15,
+     "thermal": 40,
+     "laser": 45,
+     "plasma": 120,
+     "electric": 5,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 60
+    },
+    "damping": null,
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.01
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {}
+   },
+   "values": {
+    "category": "composite",
+    "hardness": 25,
+    "integrityPerThickness": 100,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 12,
+    "resistance": {
+     "ballistic": 140,
+     "concussive": 110,
+     "piercing": 130,
+     "cutting": 140,
+     "thermal": 70,
+     "laser": 55,
+     "plasma": 50,
+     "electric": 30,
+     "sonic": 100,
+     "radiation": 80,
+     "chemical": 50
+    },
+    "wear": {
+     "ballistic": 20,
+     "concussive": 15,
+     "piercing": 20,
+     "cutting": 15,
+     "thermal": 40,
+     "laser": 45,
+     "plasma": 120,
+     "electric": 5,
+     "sonic": 5,
+     "radiation": 0,
+     "chemical": 60
+    },
+    "conductance": {
+     "ballistic": [
+      {
+       "type": "concussive",
+       "fraction": 0.01
+      }
+     ],
+     "concussive": [
+      {
+       "type": "concussive",
+       "fraction": 0.1
+      }
+     ]
+    },
+    "selfInduction": {},
+    "degradation": {},
+    "damping": null
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.ак",
+   "kind": "weapon",
+   "name": "АК",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_ak_shcdf7df5f673876.json",
+    "docId": "shcdf7df5f673876"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc4f1f886d367a4",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x39"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc4f1f886d367a4",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x39"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.болтовка",
+   "kind": "weapon",
+   "name": "Болтовка",
+   "group": "Снайперское",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_bolt762_shc907cd7b516909.json",
+    "docId": "shc907cd7b516909"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc5d0e8b4706f83",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc5d0e8b4706f83",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.глок",
+   "kind": "weapon",
+   "name": "Глок",
+   "group": "Пистолеты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_glock_shc3088e4b2c5b9f.json",
+    "docId": "shc3088e4b2c5b9f"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc75e5b871b26ee",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "9mm"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc75e5b871b26ee",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "9mm"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.двустволка",
+   "kind": "weapon",
+   "name": "Двустволка",
+   "group": "Дробовики",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_double_shc636525ebe3e13.json",
+    "docId": "shc636525ebe3e13"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc87be56bc8199a",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc87be56bc8199a",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.дробопулемёт",
+   "kind": "weapon",
+   "name": "Дробопулемёт",
+   "group": "Дробовики",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_shotgunMg_shc181738ddc21e3.json",
+    "docId": "shc181738ddc21e3"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc0f08236f1d3db",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck-s, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc0f08236f1d3db",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck-s, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.карабин",
+   "kind": "weapon",
+   "name": "Карабин",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_carbine_shcdf2bec55098df.json",
+    "docId": "shcdf2bec55098df"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc0b3102718e009",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc0b3102718e009",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.копьё",
+   "kind": "weapon",
+   "name": "Копьё",
+   "group": "Копья",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_spear_shc9e744c80e2062.json",
+    "docId": "shc9e744c80e2062"
+   },
+   "base": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shcba50b8ffb2c29",
+      "name": "Тычок",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "piercing",
+        "damage": 0,
+        "effortShare": 110,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     },
+     {
+      "id": "shc1576c1f4f7413",
+      "name": "Рез",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "cutting",
+        "damage": 0,
+        "effortShare": 60,
+        "armorPen": 25,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     }
+    ]
+   },
+   "values": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shcba50b8ffb2c29",
+      "name": "Тычок",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "piercing",
+        "damage": 0,
+        "effortShare": 110,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     },
+     {
+      "id": "shc1576c1f4f7413",
+      "name": "Рез",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "cutting",
+        "damage": 0,
+        "effortShare": 60,
+        "armorPen": 25,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.лазерная-снайперская",
+   "kind": "weapon",
+   "name": "Лазерная снайперская",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_lasSniper_shc22503d63d995c.json",
+    "docId": "shc22503d63d995c"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shcf57bcd04c08ad",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 180,
+        "armorPen": 50,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-l"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shcf57bcd04c08ad",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 180,
+        "armorPen": 50,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-l"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.лазерная-штурмовая",
+   "kind": "weapon",
+   "name": "Лазерная штурмовая",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_lasRifle_shcaef038c43843d.json",
+    "docId": "shcaef038c43843d"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc896de21be4915",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 140,
+        "armorPen": 45,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-l"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc896de21be4915",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 140,
+        "armorPen": 45,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-l"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.лазерный-гатлинг",
+   "kind": "weapon",
+   "name": "Лазерный гатлинг",
+   "group": "Тяжёлое",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_lasGatling_shcc330eb67ccd2e.json",
+    "docId": "shcc330eb67ccd2e"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc21a5c5b39a802",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 120,
+        "armorPen": 45,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-xl"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc21a5c5b39a802",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 120,
+        "armorPen": 45,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-xl"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.лазерный-дробовик",
+   "kind": "weapon",
+   "name": "Лазерный дробовик",
+   "group": "Дробовики",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_lasShot_shc06824050bdabc.json",
+    "docId": "shc06824050bdabc"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc62ea95a3f0410",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 150,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-m"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc62ea95a3f0410",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 150,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-m"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.лазерный-пистолет",
+   "kind": "weapon",
+   "name": "Лазерный пистолет",
+   "group": "Пистолеты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_lasPistol_shc8a58db833e033.json",
+    "docId": "shc8a58db833e033"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shccb511a6e35741",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 110,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shccb511a6e35741",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 110,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.лазерный-пп",
+   "kind": "weapon",
+   "name": "Лазерный ПП",
+   "group": "ПП",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_lasSmg_shcdffbd28e0e7d2.json",
+    "docId": "shcdffbd28e0e7d2"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shce8ac245ea10a3",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 115,
+        "armorPen": 42,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-m"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shce8ac245ea10a3",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 115,
+        "armorPen": 42,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-m"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.лазерный-тяжёлый-пистолет",
+   "kind": "weapon",
+   "name": "Лазерный тяжёлый пистолет",
+   "group": "Пистолеты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_lasHeavyPistol_shcd1c93b14cc985.json",
+    "docId": "shcd1c93b14cc985"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc2518f6df74696",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 135,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shc2518f6df74696",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 135,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.меч",
+   "kind": "weapon",
+   "name": "Меч",
+   "group": "Мечи",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_sword_shc292bf7725241a.json",
+    "docId": "shc292bf7725241a"
+   },
+   "base": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shc5a026f3d5607e",
+      "name": "Рез",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "cutting",
+        "damage": 0,
+        "effortShare": 100,
+        "armorPen": 30,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     },
+     {
+      "id": "shc6bb1b2009e967",
+      "name": "Укол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "piercing",
+        "damage": 0,
+        "effortShare": 110,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     }
+    ]
+   },
+   "values": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shc5a026f3d5607e",
+      "name": "Рез",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "cutting",
+        "damage": 0,
+        "effortShare": 100,
+        "armorPen": 30,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     },
+     {
+      "id": "shc6bb1b2009e967",
+      "name": "Укол",
+      "calibers": [],
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "piercing",
+        "damage": 0,
+        "effortShare": 110,
+        "armorPen": 40,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.мосин",
+   "kind": "weapon",
+   "name": "Мосин",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_mosin_shc6a1bc20148110.json",
+    "docId": "shc6a1bc20148110"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shcec93e62c8167c",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shcec93e62c8167c",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.нож",
+   "kind": "weapon",
+   "name": "Нож",
+   "group": "Ножи",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_knife_shcbe7c61abffc7d.json",
+    "docId": "shcbe7c61abffc7d"
+   },
+   "base": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shccd1f26092341b",
+      "name": "Колющий",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "piercing",
+        "damage": 0,
+        "effortShare": 90,
+        "armorPen": 21,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     },
+     {
+      "id": "shc72958232cfa9c",
+      "name": "Режущий",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "cutting",
+        "damage": 0,
+        "effortShare": 45,
+        "armorPen": 20,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     }
+    ]
+   },
+   "values": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shccd1f26092341b",
+      "name": "Колющий",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "piercing",
+        "damage": 0,
+        "effortShare": 90,
+        "armorPen": 21,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     },
+     {
+      "id": "shc72958232cfa9c",
+      "name": "Режущий",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "cutting",
+        "damage": 0,
+        "effortShare": 45,
+        "armorPen": 20,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.обрез",
+   "kind": "weapon",
+   "name": "Обрез",
+   "group": "Дробовики",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_sawed_shcd72d08e0f1a63.json",
+    "docId": "shcd72d08e0f1a63"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc15abcafde4322",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc15abcafde4322",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.плазменная-снайперская",
+   "kind": "weapon",
+   "name": "Плазменная снайперская",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_plaSniper_shc24535571a5b1a.json",
+    "docId": "shc24535571a5b1a"
+   },
+   "base": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shc298e0826374ac",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 163
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shc298e0826374ac",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 163
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.плазменная-штурмовая",
+   "kind": "weapon",
+   "name": "Плазменная штурмовая",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_plaRifle_shc980e3a4ee63ff.json",
+    "docId": "shc980e3a4ee63ff"
+   },
+   "base": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shcdc1ed844ac7f5",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 119
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shcdc1ed844ac7f5",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 119
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.плазменное-пт",
+   "kind": "weapon",
+   "name": "Плазменное ПТ",
+   "group": "Тяжёлое",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_plaAt_shc2bd6570a51668.json",
+    "docId": "shc2bd6570a51668"
+   },
+   "base": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shc0f9ab3c5b2903",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 281
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shc0f9ab3c5b2903",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 281
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.плазменный-пистолет",
+   "kind": "weapon",
+   "name": "Плазменный пистолет",
+   "group": "Пистолеты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_plaPistol_shc3ad496e6876f2.json",
+    "docId": "shc3ad496e6876f2"
+   },
+   "base": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shcd26e10e8e7c09",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 94
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Плазменное",
+    "lines": [
+     {
+      "id": "shcd26e10e8e7c09",
+      "name": "Ускоритель",
+      "energyMult": {
+       "enabled": true,
+       "value": 94
+      },
+      "damage": [],
+      "calibers": [
+       "plasma-cell"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.помповый-дробовик",
+   "kind": "weapon",
+   "name": "Помповый дробовик",
+   "group": "Дробовики",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_pump_shcab7588bcde107.json",
+    "docId": "shcab7588bcde107"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc9c304724027c3",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc9c304724027c3",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.ракетница",
+   "kind": "weapon",
+   "name": "Ракетница",
+   "group": "Ракетницы",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_rocketLauncher_shcaa68bd20b02cf.json",
+    "docId": "shcaa68bd20b02cf"
+   },
+   "base": {
+    "family": "Тяжёлое",
+    "lines": [
+     {
+      "id": "shcc86fdb6759913",
+      "name": "Пусковая",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "rocket"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Тяжёлое",
+    "lines": [
+     {
+      "id": "shcc86fdb6759913",
+      "name": "Пусковая",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "rocket"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.револьвер-.44",
+   "kind": "weapon",
+   "name": "Револьвер .44",
+   "group": "Пистолеты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_revolver44_shc2da7624ab98dd.json",
+    "docId": "shc2da7624ab98dd"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc8919165b923e0",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "44mag"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc8919165b923e0",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "44mag"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.ручной-пулемёт",
+   "kind": "weapon",
+   "name": "Ручной пулемёт",
+   "group": "Пулемёты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_rpk_shc7a4056392cf6b.json",
+    "docId": "shc7a4056392cf6b"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc4a95b7bc08d74",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x39"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc4a95b7bc08d74",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x39"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.сайга",
+   "kind": "weapon",
+   "name": "Сайга",
+   "group": "Дробовики",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_saiga_shc56c66580ca122.json",
+    "docId": "shc56c66580ca122"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc8d7c617efba9d",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck-s, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc8d7c617efba9d",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "12ga-buck-s, 12ga-slug"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.станнер",
+   "kind": "weapon",
+   "name": "Станнер",
+   "group": "Пистолеты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_stunner_shcb1c37d343d755.json",
+    "docId": "shcb1c37d343d755"
+   },
+   "base": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shcc201e6642a425",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 50,
+        "armorPen": 35,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-xs"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Лазерное",
+    "lines": [
+     {
+      "id": "shcc201e6642a425",
+      "name": "Излучатель",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "laser",
+        "damage": 50,
+        "armorPen": 35,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": [
+       "laser-heat-xs"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.узи",
+   "kind": "weapon",
+   "name": "УЗИ",
+   "group": "ПП",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_uzi_shc84c26d792c782.json",
+    "docId": "shc84c26d792c782"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc7cc702e24230d",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": true,
+       "value": 108
+      },
+      "damage": [],
+      "calibers": [
+       "9mm"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc7cc702e24230d",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": true,
+       "value": 108
+      },
+      "damage": [],
+      "calibers": [
+       "9mm"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.ar",
+   "kind": "weapon",
+   "name": "AR",
+   "group": "Винтовки",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_ar_shcb3889d27f259d.json",
+    "docId": "shcb3889d27f259d"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc13a1173c38423",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "5.56"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc13a1173c38423",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "5.56"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.barrett-.50",
+   "kind": "weapon",
+   "name": "Barrett .50",
+   "group": "Снайперское",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_barrett_shc44da999f05968.json",
+    "docId": "shc44da999f05968"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shca90fbd6dbcd68",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "50bmg"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shca90fbd6dbcd68",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "50bmg"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.browning-.50",
+   "kind": "weapon",
+   "name": "Browning .50",
+   "group": "Пулемёты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_browning_shc58f7e9e629fe3.json",
+    "docId": "shc58f7e9e629fe3"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc4d3fd56c7db34",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "50bmg"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc4d3fd56c7db34",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "50bmg"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.dmr-.338",
+   "kind": "weapon",
+   "name": "DMR .338",
+   "group": "Снайперское",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_dmrB_shca87d5bbc33051.json",
+    "docId": "shca87d5bbc33051"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc37bf87f975e18",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "338"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc37bf87f975e18",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "338"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.dmr-7.62",
+   "kind": "weapon",
+   "name": "DMR 7.62",
+   "group": "Снайперское",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_dmrA_shc6ff3e440d9586.json",
+    "docId": "shc6ff3e440d9586"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc11ced61d64f72",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc11ced61d64f72",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "7.62x54r"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.five-seven",
+   "kind": "weapon",
+   "name": "Five-seveN",
+   "group": "Пистолеты",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_fiveSeven_shcbccf649980cdc.json",
+    "docId": "shcbccf649980cdc"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc71ced0edef4f8",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "5.7"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc71ced0edef4f8",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [],
+      "calibers": [
+       "5.7"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.mp5",
+   "kind": "weapon",
+   "name": "MP5",
+   "group": "ПП",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_mp5_shc0afe780cebac8.json",
+    "docId": "shc0afe780cebac8"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc8a388f9bebbef",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": true,
+       "value": 110
+      },
+      "damage": [],
+      "calibers": [
+       "9mm"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc8a388f9bebbef",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": true,
+       "value": 110
+      },
+      "damage": [],
+      "calibers": [
+       "9mm"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "weapon.p90",
+   "kind": "weapon",
+   "name": "P90",
+   "group": "ПП",
+   "status": "draft",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_p90_shc66f585921a78b.json",
+    "docId": "shc66f585921a78b"
+   },
+   "base": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc7b7cafd946a25",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": true,
+       "value": 112
+      },
+      "damage": [],
+      "calibers": [
+       "5.7"
+      ]
+     }
+    ]
+   },
+   "values": {
+    "family": "Огнестрельное",
+    "lines": [
+     {
+      "id": "shc7b7cafd946a25",
+      "name": "Ствол",
+      "energyMult": {
+       "enabled": true,
+       "value": 112
+      },
+      "damage": [],
+      "calibers": [
+       "5.7"
+      ]
+     }
+    ]
+   },
+   "notes": "",
+   "missing": false
+  },
+  {
+   "id": "preset.helm-light",
+   "kind": "preset",
+   "name": "Лёгкая каска",
+   "group": "armor",
+   "status": "working",
+   "source": {
+    "type": "custom",
+    "from": "armor.шлем-лёгкий"
+   },
+   "base": null,
+   "values": {
+    "use": "armor",
+    "layers": [
+     {
+      "material": "polymer",
+      "thickness": 3
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.helm-mid",
+   "kind": "preset",
+   "name": "Средняя каска",
+   "group": "armor",
+   "status": "draft",
+   "source": {
+    "type": "custom",
+    "from": "armor.шлем-средний"
+   },
+   "base": null,
+   "values": {
+    "use": "armor",
+    "layers": [
+     {
+      "material": "steel-plate",
+      "thickness": 2
+     },
+     {
+      "material": "kevlar",
+      "thickness": 1
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.helm-heavy",
+   "kind": "preset",
+   "name": "Тяжёлая каска",
+   "group": "armor",
+   "status": "draft",
+   "source": {
+    "type": "custom",
+    "from": "armor.шлем-тяжёлый"
+   },
+   "base": null,
+   "values": {
+    "use": "armor",
+    "layers": [
+     {
+      "material": "combat-composite",
+      "thickness": 3
+     },
+     {
+      "material": "ablative",
+      "thickness": 2
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.vest-light",
+   "kind": "preset",
+   "name": "Лёгкий жилет",
+   "group": "armor",
+   "status": "draft",
+   "source": {
+    "type": "custom",
+    "from": "armor.бронежилет-лёгкий"
+   },
+   "base": null,
+   "values": {
+    "use": "armor",
+    "layers": [
+     {
+      "material": "kevlar",
+      "thickness": 1
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.vest-mid",
+   "kind": "preset",
+   "name": "Средний жилет",
+   "group": "armor",
+   "status": "working",
+   "source": {
+    "type": "custom",
+    "from": "armor.бронежилет-средний"
+   },
+   "base": null,
+   "values": {
+    "use": "armor",
+    "layers": [
+     {
+      "material": "steel-plate",
+      "thickness": 3,
+      "coverage": 75
+     },
+     {
+      "material": "kevlar",
+      "thickness": 1
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.vest-ceramic",
+   "kind": "preset",
+   "name": "Керамический жилет",
+   "group": "armor",
+   "status": "draft",
+   "source": {
+    "type": "custom",
+    "from": "armor.бронежилет-керамика"
+   },
+   "base": null,
+   "values": {
+    "use": "armor",
+    "layers": [
+     {
+      "material": "ceramic-plate",
+      "thickness": 4
+     },
+     {
+      "material": "kevlar",
+      "thickness": 2
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.vest-heavy",
+   "kind": "preset",
+   "name": "Тяжёлый жилет",
+   "group": "armor",
+   "status": "working",
+   "source": {
+    "type": "custom",
+    "from": "armor.бронежилет-тяжёлый"
+   },
+   "base": null,
+   "values": {
+    "use": "armor",
+    "layers": [
+     {
+      "material": "steel-plate",
+      "thickness": 6
+     },
+     {
+      "material": "kevlar",
+      "thickness": 1
+     },
+     {
+      "material": "foam",
+      "thickness": 4
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.steel-1m",
+   "kind": "preset",
+   "name": "Сталь 1 м",
+   "group": "both",
+   "status": "draft",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "values": {
+    "use": "both",
+    "layers": [
+     {
+      "material": "steel-plate",
+      "thickness": 1000
+     }
+    ]
+   },
+   "notes": "Крайний случай из диктовки: пистолет против метра стали."
+  },
+  {
+   "id": "preset.wall-drywall",
+   "kind": "preset",
+   "name": "Гипсокартон 15 мм",
+   "group": "wall",
+   "status": "draft",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "values": {
+    "use": "wall",
+    "layers": [
+     {
+      "material": "drywall",
+      "thickness": 15
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.wall-wood",
+   "kind": "preset",
+   "name": "Дерево 50 мм",
+   "group": "wall",
+   "status": "draft",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "values": {
+    "use": "wall",
+    "layers": [
+     {
+      "material": "wood",
+      "thickness": 50
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.wall-brick",
+   "kind": "preset",
+   "name": "Кирпич 120 мм",
+   "group": "wall",
+   "status": "draft",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "values": {
+    "use": "wall",
+    "layers": [
+     {
+      "material": "brick",
+      "thickness": 120
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "id": "preset.wall-concrete",
+   "kind": "preset",
+   "name": "Бетон 200 мм",
+   "group": "wall",
+   "status": "draft",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "values": {
+    "use": "wall",
+    "layers": [
+     {
+      "material": "concrete",
+      "thickness": 200
+     }
+    ]
+   },
+   "notes": ""
+  },
+  {
+   "status": "working",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "notes": "",
+   "id": "ammo.autocannon-ap",
+   "kind": "ammo",
+   "name": "Снаряд автопушки ББ",
+   "group": "autocannon",
+   "values": {
+    "caliber": "autocannon",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 900,
+      "armorPen": 180,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 1500
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   }
+  },
+  {
+   "status": "working",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "notes": "",
+   "id": "ammo.autocannon-he",
+   "kind": "ammo",
+   "name": "Снаряд автопушки ОФ",
+   "group": "autocannon-he",
+   "values": {
+    "caliber": "autocannon",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "concussive",
+      "damage": 120,
+      "armorPen": 25,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 1500
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": true,
+     "radius": 2,
+     "unit": "grid"
+    }
+   }
+  },
+  {
+   "status": "working",
+   "source": {
+    "type": "custom"
+   },
+   "base": null,
+   "notes": "",
+   "id": "weapon.fist",
+   "kind": "weapon",
+   "name": "Кулак",
+   "group": "Рукопашная",
+   "values": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "ai-fist",
+      "name": "Удар",
+      "calibers": [],
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "concussive",
+        "damage": 0,
+        "effortShare": 20,
+        "armorPen": 10,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "ammo.9mm-патрон-9x19-бронебойный",
+   "kind": "ammo",
+   "name": "Патрон 9×19 бронебойный",
+   "group": "9mm",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Ammo_9mm-ap_round_shca193dc1268dcb.json",
+    "docId": "shca193dc1268dcb"
+   },
+   "base": {
+    "caliber": "9mm",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 100,
+      "armorPen": 50,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 240
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "values": {
+    "caliber": "9mm",
+    "damage": [
+     {
+      "enabled": true,
+      "damageType": "ballistic",
+      "damage": 100,
+      "armorPen": 50,
+      "hardness": 1,
+      "armorDamageFactor": 100,
+      "armorDamageReduction": 100,
+      "speed": 0,
+      "payloadId": ""
+     }
+    ],
+    "falloff": {
+     "enabled": true,
+     "halfDistance": 240
+    },
+    "multishot": {
+     "enabled": false,
+     "count": 1,
+     "coneDegrees": 0
+    },
+    "onHitSplash": {
+     "enabled": false,
+     "radius": 0,
+     "unit": "grid"
+    }
+   },
+   "notes": ""
+  },
+  {
+   "id": "weapon.булава",
+   "kind": "weapon",
+   "name": "Булава",
+   "group": "Дубины",
+   "status": "working",
+   "source": {
+    "type": "compendium",
+    "file": "SH_Wpn_mace_shc3c93a9d6af264.json",
+    "docId": "shc3c93a9d6af264"
+   },
+   "base": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shc91b78e4ab7361",
+      "name": "Удар",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "concussive",
+        "damage": 0,
+        "effortShare": 70,
+        "armorPen": 10,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     }
+    ]
+   },
+   "values": {
+    "family": "Ближний бой",
+    "lines": [
+     {
+      "id": "shc91b78e4ab7361",
+      "name": "Удар",
+      "energyMult": {
+       "enabled": false,
+       "value": 100
+      },
+      "damage": [
+       {
+        "enabled": true,
+        "damageType": "concussive",
+        "damage": 0,
+        "effortShare": 70,
+        "armorPen": 10,
+        "hardness": 1,
+        "armorDamageFactor": 100,
+        "armorDamageReduction": 100,
+        "speed": 0,
+        "payloadId": ""
+       }
+      ],
+      "calibers": []
+     }
+    ]
+   },
+   "notes": ""
+  }
+ ],
+ "revision": 4
+}

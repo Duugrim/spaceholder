@@ -1,23 +1,34 @@
 import {
   ACTION_DRAG_TYPE,
+  ATTACK_DRAG_TYPE,
   collectActorActions,
+  collectWeaponQuickActions,
   executeActorAction,
-  getActorActionPoints,
+  findActorAction,
+  actionApShown,
   getFavoriteActionIds,
+  listableActions,
   openItemInteractMenu,
   toggleFavoriteAction,
 } from './actions/action-service.mjs';
+import { describeApCounter } from './actions/transaction-ledger.mjs';
 import { getWeaponData, lineShotReadiness, syncExternalChargeHostedRuntime } from './weapon/weapon-ammo-runtime.mjs';
 import { buildAmmoDisplay, listWeaponAttacks, resolveActiveWeaponAttack } from './weapon/weapon-model.mjs';
 import { previewItemAttack, previewModeSwitchAp, switchWeaponMode } from './weapon/attack-chain.mjs';
 import { openSimpleContextMenu } from './simple-context-menu.mjs';
+import { AIMING_CHANGED_HOOK } from './aiming-manager.mjs';
+import { getSelectedItemIds, setSelectedItemIds } from './hud-selection.mjs';
 
 const UI_ID = 'spaceholder-token-quick-hud';
 const TEMPLATE_PATH = 'systems/spaceholder/templates/hud/token-quick-hud.hbs';
 const ANCHOR_GAP_PX = 6;
 const VIEWPORT_MARGIN_PX = 12;
 const EFFECT_ICON_LIMIT = 6;
-const SELECTION_FLAG = 'quickHudSelectedItemIds';
+/** Inline icon buttons per selected card group; the rest stay reachable via the ⋯ menu. */
+const SELECTED_TOOL_LIMIT = 4;
+const FX_LAYER_ID = 'spaceholder-token-quick-hud-fx';
+/** Tray ↔ loadout flight duration. */
+const FLY_MS = 340;
 export const HIDE_HELD_ACTIONS_SETTING = 'tokenQuickHud.hideActionsOfHeldItems';
 
 let _hooksInstalled = false;
@@ -89,10 +100,9 @@ function _findCharacterFallbackToken(user) {
   const character = user?.character;
   if (!character) return null;
 
-  const active = character.getActiveTokens?.(true, true) || [];
-  const token = active[0] ?? null;
-  if (token?.actor && _userOwnsToken(token, user)) return token;
-  return null;
+  // Canvas tokens (not documents) of the character on the current scene, linked or not.
+  const active = character.getActiveTokens?.(false, false) || [];
+  return active.find((token) => token?.actor && _userOwnsToken(token, user)) ?? null;
 }
 
 /**
@@ -151,13 +161,8 @@ function _isHudActor(actor) {
 }
 
 function _getApDisplay(actor) {
-  const ap = getActorActionPoints(actor);
-  const current = Math.max(0, Number(ap?.value) || 0);
-  const max = Math.max(0, Number(ap?.max) || 0);
-  return {
-    text: max > 0 ? `${current}/${max}` : String(current),
-    empty: current <= 0,
-  };
+  const ap = describeApCounter(actor);
+  return { text: ap.text, empty: ap.empty, spent: ap.isSpent, tooltip: ap.tooltip };
 }
 
 function _actionBelongsToItem(action, itemUuid) {
@@ -192,16 +197,6 @@ function _getCompactActionLabel(action, selectedHeldUuids = null) {
   return label.slice(sourcePrefix.length).trim() || label;
 }
 
-/**
- * @param {Actor} actor
- * @returns {string[]} HUD-selected item ids (flag, selection order)
- */
-function _getSelectedItemIds(actor) {
-  const raw = actor?.getFlag?.('spaceholder', SELECTION_FLAG);
-  if (!Array.isArray(raw)) return [];
-  return raw.map((id) => String(id ?? '').trim()).filter(Boolean);
-}
-
 export function getHideActionsOfHeldItems() {
   try {
     return game.settings.get('spaceholder', HIDE_HELD_ACTIONS_SETTING) !== false;
@@ -226,9 +221,14 @@ export function registerTokenQuickHudSettings() {
 /**
  * @param {ActionDescriptor} action
  * @param {import('./actions/action-service.mjs').ActionContext} ctx
- * @param {{ isFavorite?: boolean, selectedHeldUuids?: Set<string>|null, dragImg?: string }} [opts]
+ * @param {{ isFavorite?: boolean, selectedHeldUuids?: Set<string>|null, dragImg?: string, iconOnly?: boolean }} [opts]
  */
-function _enrichActionForHud(action, ctx, { isFavorite = false, selectedHeldUuids = null, dragImg = '' } = {}) {
+function _enrichActionForHud(action, ctx, {
+  isFavorite = false,
+  selectedHeldUuids = null,
+  dragImg = '',
+  iconOnly = false,
+} = {}) {
   let enabled = true;
   let disabledReason = null;
   try {
@@ -241,17 +241,23 @@ function _enrichActionForHud(action, ctx, { isFavorite = false, selectedHeldUuid
   }
 
   const label = String(action.label ?? '').trim();
-  const tooltip = disabledReason || label;
+  const apCost = actionApShown(ctx?.actor, action);
+  // Icon-only buttons have no visible label or cost text: keep both in the tooltip.
+  const named = iconOnly && apCost > 0
+    ? `${label} (${apCost} ${_t('SPACEHOLDER.WeaponV3.Chain.ApShort')})`
+    : label;
+  const tooltip = disabledReason || named;
 
   return {
     id: String(action.id ?? '').trim(),
     label,
     compactLabel: _getCompactActionLabel(action, selectedHeldUuids),
     icon: String(action.icon ?? 'fa-solid fa-bolt').trim(),
-    apCost: Math.max(0, Number(action.apCost) || 0),
+    apCost,
     enabled,
     tooltip,
     isFavorite: !!isFavorite,
+    iconOnly: !!iconOnly,
     dragImg,
   };
 }
@@ -261,9 +267,13 @@ function _enrichActionForHud(action, ctx, { isFavorite = false, selectedHeldUuid
  * @param {ActionDescriptor[]} actions
  * @param {string[]} favoriteIdList
  * @param {object} ctx
- * @param {{ selectedHeldUuids?: Set<string>|null, dragImgFor?: (action: object) => string }} [opts]
+ * @param {{ selectedHeldUuids?: Set<string>|null, dragImgFor?: (action: object) => string, iconOnly?: boolean }} [opts]
  */
-function _buildHudActions(actions, favoriteIdList, ctx, { selectedHeldUuids = null, dragImgFor = () => '' } = {}) {
+function _buildHudActions(actions, favoriteIdList, ctx, {
+  selectedHeldUuids = null,
+  dragImgFor = () => '',
+  iconOnly = false,
+} = {}) {
   const favoriteSet = new Set(favoriteIdList);
   const actionById = new Map(
     (actions ?? []).map((a) => [String(a?.id ?? '').trim(), a])
@@ -273,6 +283,7 @@ function _buildHudActions(actions, favoriteIdList, ctx, { selectedHeldUuids = nu
     isFavorite,
     selectedHeldUuids,
     dragImg: dragImgFor(action),
+    iconOnly,
   });
 
   for (const id of favoriteIdList) {
@@ -339,10 +350,9 @@ function _buildItemCard(actor, item, { isStowed }) {
     card.ready = !!readiness?.ready;
     card.modeLabel = modeParts.join(' · ');
     card.ammo = ammo;
-    card.tooltip = [name, lineName, modeName, ammo.map((d) => d.text).join(' · ')].filter(Boolean).join(' — ');
   }
 
-  if (isStowed) card.tooltip = `${card.tooltip} — ${_t('SPACEHOLDER.TokenQuickHud.StowedHint')}`;
+  if (isStowed) card.tooltip = `${name} — ${_t('SPACEHOLDER.TokenQuickHud.StowedHint')}`;
   return card;
 }
 
@@ -368,59 +378,118 @@ function _collectItemCards(actor) {
 }
 
 /**
- * Line/mode selector groups for a weapon with more than one attack.
+ * Fire line / fire mode switchers for a weapon with more than one attack.
+ * Lines switch to their first mode; the mode switcher lists the active line's
+ * modes. A button is draggable (pinned attack shortcut) when it identifies
+ * one attack: any mode button, or a line button of a single-mode line.
  * @param {Item} item
+ * @returns {{ lineSwitch: object[], modeSwitch: object[] }}
  */
-function _buildModeSelector(item) {
+function _buildFireSwitches(item) {
   const weapon = getWeaponData(item);
-  if (listWeaponAttacks(weapon).length < 2) return [];
+  const empty = { lineSwitch: [], modeSwitch: [] };
+  if (listWeaponAttacks(weapon).length < 2) return empty;
+
   const active = resolveActiveWeaponAttack(weapon);
   const lines = (weapon.lines ?? []).filter((l) => (l.modes ?? []).length);
-  const multiLine = lines.length > 1;
   const apShort = _t('SPACEHOLDER.WeaponV3.Chain.ApShort');
+  const label = (name, cost) => (cost > 0 ? `${name} (${cost} ${apShort})` : name);
 
-  return lines.map((line) => ({
-    lineName: String(line.name || _t('SPACEHOLDER.WeaponV3.Line.Default')),
-    showLineName: multiLine,
-    modes: (line.modes ?? []).map((mode) => {
-      const isActive = line.id === active.lineId && mode.id === active.modeId;
-      const name = String(mode.name || _t('SPACEHOLDER.WeaponV3.Mode.Default'));
-      const cost = isActive ? 0 : previewModeSwitchAp(item, line.id, mode.id);
+  const lineSwitch = lines.length > 1
+    ? lines.map((line) => {
+      const isActive = line.id === active.lineId;
+      const target = line.modes[0];
+      const name = String(line.name || _t('SPACEHOLDER.WeaponV3.Line.Default'));
       return {
         lineId: line.id,
+        modeId: target.id,
+        name,
+        isActive,
+        tooltip: label(name, isActive ? 0 : previewModeSwitchAp(item, line.id, target.id)),
+        draggable: line.modes.length === 1,
+      };
+    })
+    : [];
+
+  const activeLine = lines.find((l) => l.id === active.lineId) ?? lines[0];
+  const modeSwitch = (activeLine?.modes ?? []).length > 1
+    ? activeLine.modes.map((mode) => {
+      const isActive = mode.id === active.modeId;
+      const name = String(mode.name || _t('SPACEHOLDER.WeaponV3.Mode.Default'));
+      return {
+        lineId: activeLine.id,
         modeId: mode.id,
         name,
         isActive,
-        tooltip: cost > 0 ? `${name} (${cost} ${apShort})` : name,
+        tooltip: label(name, isActive ? 0 : previewModeSwitchAp(item, activeLine.id, mode.id)),
+        draggable: true,
       };
-    }),
+    })
+    : [];
+
+  return { lineSwitch, modeSwitch };
+}
+
+/**
+ * One-click weapon buttons (reload, load N, bolt) for a selected weapon.
+ * With several ammo blocks the label keeps the line/block prefix.
+ * @param {Actor} actor
+ * @param {Item} item
+ * @param {object} ctx action context
+ * @param {(action: object) => string} dragImgFor
+ */
+function _buildWeaponTools(actor, item, ctx, dragImgFor) {
+  const quick = collectWeaponQuickActions(actor, item, ctx);
+  const multiBlock = new Set(quick.map((a) => a.blockPrefix).filter(Boolean)).size > 1;
+  return quick.map((action) => ({
+    ..._enrichActionForHud(action, ctx, { dragImg: dragImgFor(action), iconOnly: true }),
+    compactLabel: String((multiBlock ? action.label : action.menuLabel) || action.label || '').trim(),
+    noFavorite: true,
   }));
 }
 
 /**
- * «Attack» button state for the selected attack-capable items.
+ * «Attack» button state. The button lives in the selected-items block, so it
+ * exists only while an attack-capable item is selected. While the actor is aiming
+ * it turns into «Cancel attack» (`isAiming`).
  * @param {Actor} actor
- * @param {object[]} cards all HUD item cards
  * @param {object[]} selectedCards
  */
-function _buildAttackContext(actor, cards, selectedCards) {
-  const show = cards.some((c) => c.canAttack);
+function _buildAttackContext(actor, selectedCards) {
   const attackCards = selectedCards.filter((c) => c.canAttack);
   const base = {
-    show,
+    show: attackCards.length > 0,
     enabled: false,
+    canDrag: false,
+    isBlocked: false,
+    isAiming: false,
+    label: _t('SPACEHOLDER.TokenQuickHud.Attack'),
     itemId: '',
-    subtitle: '',
-    apText: '',
+    itemUuid: '',
+    hint: '',
+    unaffordable: false,
+    prepText: '',
+    shotText: '',
     tooltip: '',
   };
-  if (!show) return base;
+  if (!base.show) return base;
 
-  if (attackCards.length !== 1) {
-    const key = attackCards.length
-      ? 'SPACEHOLDER.TokenQuickHud.AttackMultiUnsupported'
-      : 'SPACEHOLDER.TokenQuickHud.AttackNeedsSelection';
-    return { ...base, subtitle: _t(key), tooltip: _t(key) };
+  if (game.spaceholder?.aimingManager?.isAimingActor?.(actor)) {
+    return {
+      ...base,
+      enabled: true,
+      isAiming: true,
+      label: _t('SPACEHOLDER.TokenQuickHud.AttackCancel'),
+      tooltip: _t('SPACEHOLDER.TokenQuickHud.AttackCancelTooltip'),
+    };
+  }
+
+  if (attackCards.length > 1) {
+    return {
+      ...base,
+      hint: _t('SPACEHOLDER.TokenQuickHud.AttackSelectOne'),
+      tooltip: _t('SPACEHOLDER.TokenQuickHud.AttackMultiUnsupported'),
+    };
   }
 
   const card = attackCards[0];
@@ -430,23 +499,34 @@ function _buildAttackContext(actor, cards, selectedCards) {
   const modeText = (weapon.lines ?? []).length > 1
     ? `${preview.lineName} / ${preview.modeName}`
     : preview.modeName;
-  const subtitle = [card.name, modeText].filter(Boolean).join(' · ');
+  const target = [card.name, modeText].filter(Boolean).join(' · ');
+  const identity = { ...base, itemId: card.itemId, itemUuid: card.itemUuid };
   if (!preview.ok) {
     const reason = _t(`SPACEHOLDER.WeaponV3.Chain.Blocked.${preview.reason ?? 'unknown'}`);
-    return { ...base, itemId: card.itemId, subtitle, tooltip: reason };
+    return { ...identity, isBlocked: true, tooltip: reason };
   }
 
-  const apText = `~${preview.totalAp}`;
+  // The price on the button: what it takes to start shooting (dim) + the first shot (red). The tooltip
+  // spells out the same numbers, and the cost of each following shot of a burst / auto series.
+  const apShort = _t('SPACEHOLDER.WeaponV3.Chain.ApShort');
+  const costParts = [];
+  if (preview.prepAp > 0) costParts.push(_t('SPACEHOLDER.TokenQuickHud.AttackCostPrep', { ap: `${preview.prepAp} ${apShort}` }));
+  costParts.push(_t('SPACEHOLDER.TokenQuickHud.AttackCostShot', { ap: `${preview.shotAp} ${apShort}` }));
+  if (preview.nextShotAp > 0) costParts.push(_t('SPACEHOLDER.TokenQuickHud.AttackCostNext', { ap: `${preview.nextShotAp} ${apShort}` }));
+  // In combat the pool must cover the preparation and the first shot: the button stays clickable (it
+  // explains itself) but reads as unavailable.
+  const unaffordable = preview.affordable === false;
+  const tooltip = _t('SPACEHOLDER.TokenQuickHud.AttackTooltip', { item: target, ap: costParts.join(', ') });
   return {
-    ...base,
+    ...identity,
     enabled: true,
-    itemId: card.itemId,
-    subtitle,
-    apText,
-    tooltip: _t('SPACEHOLDER.TokenQuickHud.AttackTooltip', {
-      item: subtitle,
-      ap: `${apText} ${_t('SPACEHOLDER.WeaponV3.Chain.ApShort')}`,
-    }),
+    canDrag: true,
+    unaffordable,
+    prepText: preview.prepAp > 0 ? String(preview.prepAp) : '',
+    shotText: String(preview.shotAp),
+    tooltip: unaffordable
+      ? `${tooltip} — ${_t('SPACEHOLDER.ActionsSystem.Errors.NotEnoughAP', { need: preview.totalAp, have: preview.apLeft ?? 0 })}`
+      : tooltip,
   };
 }
 
@@ -470,6 +550,55 @@ function _collectEffectIcons(actor) {
     effectsOverflow: Math.max(0, icons.length - EFFECT_ICON_LIMIT),
     effectsOverflowTooltip: icons.slice(EFFECT_ICON_LIMIT).map((e) => e.name).join(', '),
   };
+}
+
+/**
+ * Mark chips that wrapped past the visible height of a fixed-height chip list
+ * as clipped (hidden + inert) so only whole chips are ever shown.
+ * @param {HTMLElement} list
+ * @returns {number} number of clipped chips
+ */
+function _markClippedChips(list) {
+  const chips = Array.from(list.querySelectorAll(':scope > .sh-action-chip'));
+  const listTop = list.getBoundingClientRect().top;
+  const visibleBottom = list.clientHeight + 1;
+  let clipped = 0;
+  for (const chip of chips) {
+    const isClipped = chip.getBoundingClientRect().bottom - listTop > visibleBottom;
+    chip.classList.toggle('is-clipped', isClipped);
+    chip.toggleAttribute('inert', isClipped);
+    if (isClipped) clipped += 1;
+  }
+  return clipped;
+}
+
+/**
+ * Positions of the item cards by zone (`tray` = middle block, `selected` = loadout).
+ * @param {HTMLElement} root
+ * @returns {Map<string, { zone: string, rect: DOMRect, node: HTMLElement }>}
+ */
+function _captureZones(root) {
+  const zones = new Map();
+  for (const node of root.querySelectorAll('[data-zone][data-item-id]')) {
+    zones.set(String(node.dataset.itemId), {
+      zone: String(node.dataset.zone),
+      rect: node.getBoundingClientRect(),
+      node,
+    });
+  }
+  return zones;
+}
+
+/**
+ * `clip-path` that shows only the top-left `w × h` part of a `W × H` box.
+ * @param {{ width: number, height: number }} full
+ * @param {{ width: number, height: number }} part
+ * @returns {string}
+ */
+function _clipToPart(full, part) {
+  const right = Math.max(0, full.width - part.width);
+  const bottom = Math.max(0, full.height - part.height);
+  return `inset(0px ${right}px ${bottom}px 0px)`;
 }
 
 function _emptyContext() {
@@ -531,10 +660,12 @@ class TokenQuickHud {
     const cards = [...held, ...stowed];
     const cardById = new Map(cards.map((c) => [c.itemId, c]));
 
-    const selectedIds = _getSelectedItemIds(actor).filter((id) => cardById.has(id));
+    const selectedIds = getSelectedItemIds(actor).filter((id) => cardById.has(id));
     const selectedSet = new Set(selectedIds);
-    for (const card of cards) card.isSelected = selectedSet.has(card.itemId);
     const selectedCards = selectedIds.map((id) => cardById.get(id));
+    // Selected items move from the tray (middle block) to the loadout (top block).
+    const trayHeld = held.filter((c) => !selectedSet.has(c.itemId));
+    const trayStowed = stowed.filter((c) => !selectedSet.has(c.itemId));
 
     const actorImg = String(actor.img ?? '').trim();
     const itemImgByUuid = new Map(
@@ -550,7 +681,11 @@ class TokenQuickHud {
       return actorImg;
     };
 
-    const quickbarActions = actions.filter((a) => a?.showInQuickbar !== false);
+    // Simple item actions (take off, drop…) show up only when favorited; a favorite is pinned to the HUD
+    // even where the action is not a quickbar action by default.
+    const favoriteSet = new Set(favoriteIdList);
+    const quickbarActions = listableActions(actions, favoriteSet)
+      .filter((a) => a?.showInQuickbar !== false || favoriteSet.has(a.id));
     const cardUuids = new Set(cards.map((c) => c.itemUuid).filter(Boolean));
     const generalSource = getHideActionsOfHeldItems()
       ? quickbarActions.filter((a) => !_actionBelongsToAnyItem(a, cardUuids))
@@ -564,18 +699,36 @@ class TokenQuickHud {
         quickbarActions.filter((a) => _actionBelongsToAnyItem(a, uuids)),
         favoriteIdList,
         context,
-        { selectedHeldUuids: uuids, dragImgFor },
+        { selectedHeldUuids: uuids, dragImgFor, iconOnly: true },
       );
-      const modeLines = card.canAttack && item ? _buildModeSelector(item) : [];
+      const canAttack = card.canAttack && !!item;
+      const { lineSwitch, modeSwitch } = canAttack ? _buildFireSwitches(item) : { lineSwitch: [], modeSwitch: [] };
+      const weaponTools = canAttack
+        ? _buildWeaponTools(actor, item, context, () => card.img).slice(0, SELECTED_TOOL_LIMIT)
+        : [];
+      const notReady = canAttack && !card.ready;
       return {
         itemId: card.itemId,
+        itemUuid: card.itemUuid,
         name: card.name,
         img: card.img,
         icon: card.icon,
-        deselectLabel: _t('SPACEHOLDER.TokenQuickHud.DeselectItem', { name: card.name }),
-        modeLines,
-        hasModeSelector: modeLines.length > 0,
-        actions: itemActions,
+        isStowed: card.isStowed,
+        deselectLabel: _t('SPACEHOLDER.TokenQuickHud.DeselectItem'),
+        toolsLabel: _t('SPACEHOLDER.TokenQuickHud.SelectedWeaponTools', { name: card.name }),
+        menuLabel: _t(canAttack ? 'SPACEHOLDER.TokenQuickHud.WeaponMenu' : 'SPACEHOLDER.TokenQuickHud.ItemMenu'),
+        canAttack,
+        notReady,
+        notReadyLabel: card.notReadyLabel,
+        ammo: card.ammo,
+        lineSwitch,
+        modeSwitch,
+        hasModes: modeSwitch.length > 0,
+        weaponTools,
+        itemTools: itemActions.slice(0, SELECTED_TOOL_LIMIT),
+        // Line-bound block: fire selectors, ammo counter and reload/load buttons.
+        hasLoadout: canAttack
+          && (lineSwitch.length > 0 || modeSwitch.length > 0 || card.ammo.length > 0 || weaponTools.length > 0 || notReady),
       };
     });
 
@@ -587,22 +740,24 @@ class TokenQuickHud {
     return {
       isEmpty: false,
       isExpanded: this._isExpanded,
+      actorId: String(actor.id ?? ''),
       actorName,
       tokenImg,
       showAp: true,
       apText: ap.text,
       apEmpty: ap.empty,
-      apTooltip: _t('SPACEHOLDER.ActionsSystem.UI.CurrentAP'),
+      apSpent: ap.spent,
+      apTooltip: ap.tooltip,
       ..._collectEffectIcons(actor),
       canConfigureToken: !!tokenDoc?.isOwner,
-      attack: _buildAttackContext(actor, cards, selectedCards),
+      attack: _buildAttackContext(actor, selectedCards),
       generalActions,
       hasActions: generalActions.length > 0,
       actionCount: generalActions.length,
-      heldCards: held,
-      stowedCards: stowed,
-      hasCards: cards.length > 0,
-      hasStowedCards: stowed.length > 0,
+      heldCards: trayHeld,
+      stowedCards: trayStowed,
+      hasCards: trayHeld.length + trayStowed.length > 0,
+      hasStowedCards: trayStowed.length > 0,
       selectedGroups,
       hasSelection: selectedGroups.length > 0,
       noActionsLabel: _t('SPACEHOLDER.ActionsSystem.UI.NoActions'),
@@ -615,7 +770,9 @@ class TokenQuickHud {
       panToTokenLabel: _t('SPACEHOLDER.TokenQuickHud.PanToToken'),
       openSheetLabel: _t('SPACEHOLDER.TokenQuickHud.OpenSheet'),
       openTokenConfigLabel: _t('SPACEHOLDER.TokenQuickHud.OpenTokenConfig'),
-      attackLabel: _t('SPACEHOLDER.TokenQuickHud.Attack'),
+      fireLineLabel: _t('SPACEHOLDER.TokenQuickHud.FireLine'),
+      fireModeLabel: _t('SPACEHOLDER.TokenQuickHud.FireMode'),
+      healthLabel: _t('SPACEHOLDER.TokenQuickHud.Health'),
       ariaLabel: _t('SPACEHOLDER.TokenQuickHud.AriaLabel', { name: actorName }),
     };
   }
@@ -710,25 +867,20 @@ class TokenQuickHud {
   }
 
   /**
-   * Mark general action chips that do not fit the preview rows as clipped
-   * (inert) and show the overflow count on the drawer toggle.
+   * Mark selected-card tool buttons and general action chips that do not fit
+   * as clipped (inert) and show the overflow count on the drawer toggle.
    * @param {HTMLElement} root
    */
   _syncActionOverflow(root) {
+    for (const tools of root?.querySelectorAll?.('.sh-token-quick-hud__selected-tools') ?? []) {
+      _markClippedChips(tools);
+    }
+
     const list = root?.querySelector?.('.sh-token-quick-hud__preview');
     const toggle = root?.querySelector?.('[data-action="toggle-drawer"]');
     if (!(list instanceof HTMLElement)) return;
 
-    const chips = Array.from(list.querySelectorAll(':scope > .sh-action-chip'));
-    const listTop = list.getBoundingClientRect().top;
-    const visibleBottom = list.clientHeight + 1;
-    let clipped = 0;
-    for (const chip of chips) {
-      const isClipped = chip.getBoundingClientRect().bottom - listTop > visibleBottom;
-      chip.classList.toggle('is-clipped', isClipped);
-      chip.toggleAttribute('inert', isClipped);
-      if (isClipped) clipped += 1;
-    }
+    const clipped = _markClippedChips(list);
 
     if (!(toggle instanceof HTMLElement)) return;
     const count = toggle.querySelector('.sh-token-quick-hud__overflow-count');
@@ -848,6 +1000,7 @@ class TokenQuickHud {
     this._disconnectAnchorObserver();
 
     const existing = this.element;
+    const prevZones = existing ? _captureZones(existing) : null;
     if (existing) {
       this._detachRootListeners(existing);
       try { existing.replaceWith(nextEl); } catch (_) {
@@ -866,6 +1019,9 @@ class TokenQuickHud {
     this._syncAnchorPosition(hotbarEl, nextEl);
     this._syncActionOverflow(nextEl);
     this._bindAnchorObserver(hotbarEl, nextEl);
+    if (prevZones && existing?.dataset.actorId === nextEl.dataset.actorId) {
+      this._animateZoneChanges(prevZones, nextEl);
+    }
 
     requestAnimationFrame(() => {
       if (!nextEl.isConnected) return;
@@ -878,10 +1034,97 @@ class TokenQuickHud {
   destroy() {
     this._cancelScheduledRender();
     this._disconnectAnchorObserver();
+    document.getElementById(FX_LAYER_ID)?.remove();
     const el = this.element;
     if (!el) return;
     this._detachRootListeners(el);
     el.remove();
+  }
+
+  /**
+   * Overlay for flying card ghosts. It reuses the HUD classes so ghosts keep
+   * their styling, but sits outside the HUD root (which is replaced on render
+   * and has a transform that would offset `position: fixed` children).
+   * @returns {HTMLElement}
+   */
+  _ensureFxLayer() {
+    let layer = document.getElementById(FX_LAYER_ID);
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = FX_LAYER_ID;
+      layer.className = 'spaceholder sh-token-quick-hud sh-token-quick-hud__fx';
+      layer.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(layer);
+    }
+    return layer;
+  }
+
+  /**
+   * Items that changed zone (tray ↔ loadout) fly to their new place: a ghost of
+   * the old card travels and dissolves while the new card unfolds in place.
+   * @param {ReturnType<typeof _captureZones>} prevZones
+   * @param {HTMLElement} nextEl
+   */
+  _animateZoneChanges(prevZones, nextEl) {
+    if (typeof Element.prototype.animate !== 'function') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
+
+    const moves = [];
+    for (const el of nextEl.querySelectorAll('[data-zone][data-item-id]')) {
+      const prev = prevZones.get(String(el.dataset.itemId));
+      if (!prev || prev.zone === el.dataset.zone) continue;
+      moves.push({ el, prev, to: el.getBoundingClientRect() });
+    }
+    if (!moves.length) return;
+
+    const layer = this._ensureFxLayer();
+    for (const { el, prev, to } of moves) {
+      const from = prev.rect;
+      const grows = to.width > from.width || to.height > from.height;
+      const shrinks = to.width < from.width || to.height < from.height;
+
+      // The card at its final place: unfolds from the old card's size.
+      const hidden = { opacity: 0, clipPath: grows ? _clipToPart(to, from) : 'inset(0px)' };
+      el.animate(
+        [hidden, { ...hidden, offset: 0.45 }, { opacity: 1, clipPath: 'inset(0px)' }],
+        { duration: FLY_MS, easing: 'ease-out', fill: 'backwards' },
+      );
+
+      // Ghost of the old card: flies to the new place and dissolves.
+      const ghost = prev.node.cloneNode(true);
+      ghost.removeAttribute('draggable');
+      ghost.setAttribute('inert', '');
+      Object.assign(ghost.style, {
+        position: 'fixed',
+        left: `${from.left}px`,
+        top: `${from.top}px`,
+        width: `${from.width}px`,
+        height: `${from.height}px`,
+        minWidth: '0',
+        maxWidth: 'none',
+        margin: '0',
+        pointerEvents: 'none',
+        zIndex: '1',
+      });
+      layer.appendChild(ghost);
+      const flight = ghost.animate(
+        [
+          { transform: 'translate(0px, 0px)', opacity: 1, clipPath: 'inset(0px)' },
+          { opacity: 1, offset: 0.6 },
+          {
+            transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)`,
+            opacity: 0,
+            clipPath: shrinks ? _clipToPart(from, to) : 'inset(0px)',
+          },
+        ],
+        { duration: FLY_MS, easing: 'cubic-bezier(0.22, 0.8, 0.24, 1)', fill: 'forwards' },
+      );
+      const cleanup = () => ghost.remove();
+      flight.addEventListener('finish', cleanup);
+      flight.addEventListener('cancel', cleanup);
+      // Animation events wait for a rendered frame; never leave a ghost behind.
+      setTimeout(cleanup, FLY_MS + 150);
+    }
   }
 
   /**
@@ -899,7 +1142,14 @@ class TokenQuickHud {
     };
   }
 
-  async _openHeldItemMenu(heldItemEl, ev, anchorElement = heldItemEl) {
+  /**
+   * Item interact menu for a card or a selected-item row.
+   * @param {HTMLElement} heldItemEl element carrying `data-item-id` / `data-item-uuid`
+   * @param {MouseEvent|KeyboardEvent|null} ev
+   * @param {HTMLElement} [anchorElement]
+   * @param {Partial<ReturnType<typeof _focusKeyOf>>|null} [focusKey] control to refocus afterwards
+   */
+  async _openHeldItemMenu(heldItemEl, ev, anchorElement = heldItemEl, focusKey = null) {
     if (!(heldItemEl instanceof HTMLElement)) return;
     const resolved = this._resolveActorContext();
     if (!resolved) return;
@@ -925,7 +1175,7 @@ class TokenQuickHud {
         event: menuEvent,
         anchorElement,
       });
-      await this._renderImmediately({
+      await this._renderImmediately(focusKey ?? {
         action: 'select-held-item',
         itemId,
         scope: 'held',
@@ -941,6 +1191,7 @@ class TokenQuickHud {
    * @param {MouseEvent} ev
    */
   _openActionMenu(btn, ev) {
+    if (btn.dataset.noFavorite === 'true') return;
     const resolved = this._resolveActorContext();
     if (!resolved?.editable) return;
     const { actor } = resolved;
@@ -988,12 +1239,31 @@ class TokenQuickHud {
   }
 
   /**
-   * Action chips drag onto the macro hotbar (see `createActorActionMacro`).
+   * Drag sources for the macro hotbar: action chips (`createActorActionMacro`)
+   * and attack-capable weapons / mode buttons / the Attack button
+   * (`createItemAttackMacro`).
    * @param {DragEvent} ev
    */
   _onRootDragStart(ev) {
+    if (!ev.dataTransfer) return;
+
+    // The nearest source wins: a reload chip sits inside a weapon card, and it is the reload that is dragged.
+    const source = ev.target?.closest?.('[data-drag-attack-uuid], .sh-action-chip[data-drag-action-id]');
+    const attackSource = source?.dataset?.dragAttackUuid !== undefined ? source : null;
+    if (attackSource) {
+      const data = {
+        type: ATTACK_DRAG_TYPE,
+        itemUuid: String(attackSource.dataset.dragAttackUuid ?? ''),
+        lineId: String(attackSource.dataset.dragLineId ?? ''),
+        modeId: String(attackSource.dataset.dragModeId ?? ''),
+      };
+      ev.dataTransfer.setData('text/plain', JSON.stringify(data));
+      ev.dataTransfer.effectAllowed = 'copy';
+      return;
+    }
+
     const chip = ev.target?.closest?.('.sh-action-chip[data-drag-action-id]');
-    if (!chip || !ev.dataTransfer) return;
+    if (!chip) return;
     const resolved = this._resolveActorContext();
     if (!resolved) return;
 
@@ -1029,12 +1299,12 @@ class TokenQuickHud {
    * @param {boolean|null} [force] true = add, false = remove, null = toggle
    */
   async _setItemSelected(actor, itemId, force = null) {
-    const current = _getSelectedItemIds(actor).filter((id) => actor.items?.has?.(id));
+    const current = getSelectedItemIds(actor).filter((id) => actor.items?.has?.(id));
     const has = current.includes(itemId);
     const select = force === null ? !has : !!force;
     if (select === has) return;
     const next = select ? [...current, itemId] : current.filter((id) => id !== itemId);
-    await actor.setFlag('spaceholder', SELECTION_FLAG, next);
+    await setSelectedItemIds(actor, next);
   }
 
   async _onIdentityAction(action, resolved) {
@@ -1101,8 +1371,12 @@ class TokenQuickHud {
         case 'deselect-item': {
           ev.preventDefault();
           if (!itemId || !editable) return;
-          await this._setItemSelected(actor, itemId, action === 'deselect-item' ? false : null);
-          await this._renderImmediately({ action: 'select-held-item', itemId, scope: 'held' });
+          const deselect = action === 'deselect-item';
+          await this._setItemSelected(actor, itemId, !deselect);
+          // The card changes block: keep keyboard focus on its counterpart control.
+          await this._renderImmediately(deselect
+            ? { action: 'select-held-item', itemId, scope: 'held' }
+            : { action: 'deselect-item', itemId, scope: 'selected' });
           return;
         }
 
@@ -1125,7 +1399,21 @@ class TokenQuickHud {
           const item = actor.items.get(itemId);
           if (!item?.canAttack) return;
           await item.attack({ token: resolved.token });
-          await this._renderImmediately({ action: 'attack', scope: 'dock' });
+          await this._renderImmediately(_focusKeyOf(control));
+          return;
+        }
+
+        case 'cancel-aim': {
+          ev.preventDefault();
+          game.spaceholder?.aimingManager?.stopAiming?.();
+          await this._renderImmediately({ action: 'attack', itemId, scope: 'attack' });
+          return;
+        }
+
+        case 'item-menu': {
+          ev.preventDefault();
+          const host = control.closest('[data-held-item]');
+          await this._openHeldItemMenu(host, ev, control, _focusKeyOf(control));
           return;
         }
 
@@ -1133,8 +1421,7 @@ class TokenQuickHud {
           ev.preventDefault();
           const actionId = String(control.dataset.actionId ?? '').trim();
           if (!actionId) return;
-          const { actions } = collectActorActions(actor, { tokenDoc, editable });
-          const found = actions.find((a) => String(a?.id ?? '') === actionId);
+          const found = findActorAction(actor, actionId, { tokenDoc, editable });
           if (!found) {
             ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.Errors.ActionNotFound'));
             return;
@@ -1260,6 +1547,9 @@ export function installTokenQuickHudHooks() {
   for (const hook of ['createActiveEffect', 'updateActiveEffect', 'deleteActiveEffect']) {
     Hooks.on(hook, (effect) => _scheduleForActor(_owningActor(effect)));
   }
+
+  // The Attack button turns into «Cancel attack» while the actor is aiming.
+  Hooks.on(AIMING_CHANGED_HOOK, _scheduleFromHotbar);
 
   // `showInCombat` filtering depends on whether a combat is running.
   Hooks.on('updateCombat', _scheduleFromHotbar);

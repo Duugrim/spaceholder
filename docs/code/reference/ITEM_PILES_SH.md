@@ -38,7 +38,7 @@ tags:
 ## Flags and data model
 
 - Pile marker flag:
-  - `flags.spaceholder.itemPilesSh.isPile = true`
+  - `flags.spaceholder.itemPilesSh.isPile = true` — set on the pile **token** (`_createPileTokenAsGm`, and `prototypeToken` of the template actor); an actor flag also counts. `isPileLootActor(actor)` checks both (`hasPileFlag`), because a pile's actor is the synthetic actor of that token.
 - Per-item stack cache (pile `loot` actors only):
   - `flags.spaceholder.itemPilesSh.stackFingerprint` — hex string; maintained by `preCreateItem` / `preUpdateItem` hooks when the parent actor is a pile (`type === loot` and `isPile`).
 - A pile is represented as:
@@ -53,6 +53,8 @@ When an item is dropped or transferred into a pile, the subsystem looks for an e
 - **Fingerprint input** (canonical JSON + FNV-1a 32-bit hex): `type`, `name`, `img`, `system` with `quantity`, `held`, and `equipped` removed, sorted `effects`, and `flags` with `flags.spaceholder.itemPilesSh` removed entirely (so `droppedAt` and the cache field do not affect identity). `flags.core.sourceId` is also omitted so compendium linkage does not force incorrect merges.
 - **Lazy match**: if an older pile item has no `stackFingerprint` flag yet, the fingerprint is computed from `item.toObject(false)` on demand when searching (no automatic DB write until the next update hook runs).
 - **New creates** from `item-piles-sh` set `stackFingerprint` on the create payload before `preCreateItem`; the hook skips recomputation when the field is already present so the hash stays aligned with the merge logic.
+- **Updates** (`preUpdateItem`) recompute the hash of a pile item and refresh the cached value when the identity changed (rename, system edit); quantity changes leave it alone. A stack stored with the never-merge suffix (`|fresh:<id>`, `STACK_FRESH_MARK`: a container moved together with its contents) keeps that suffix.
+- Test: `node module/helpers/item-piles-sh/stack-fingerprint.test.mjs`.
 
 ## Settings
 
@@ -78,6 +80,7 @@ Available at `game.spaceholder.itemPilesSh.api`:
   - ownership/faction/public visibility
   - lock/key validation
   - optional interaction distance check (token to pile token)
+- `deleteWhenEmpty` (`system`, only meaningful on an unlinked token's actor — checkbox on the loot sheet when it is a token): when the last item leaves the pile (taken, split off, deleted) the active GM deletes the pile token (`_registerEmptyPileCleanupHook`). Piles created by dropping items get it on; the shared template actor and linked chests have no token of their own and are never deleted. Test: `node module/helpers/item-piles-sh/empty-pile-cleanup.test.mjs`.
 - Auto-generated loot actors:
   - use one shared template actor `Generic Item Pile` in hidden Actor folder `SH Hidden`
   - pile instances are created as unlinked (`actorLink: false`) tokens of that template

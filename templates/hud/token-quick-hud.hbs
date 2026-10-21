@@ -1,6 +1,6 @@
 {{#*inline "shHudActionChip"}}
   <div
-    class="sh-action-chip {{#if isFavorite}}is-favorite{{/if}}"
+    class="sh-action-chip {{#if isFavorite}}is-favorite{{/if}} {{#if iconOnly}}is-icon{{/if}}"
     draggable="true"
     data-drag-action-id="{{id}}"
     data-drag-label="{{fullLabel}}"
@@ -12,6 +12,7 @@
       data-action="run-action"
       data-action-id="{{id}}"
       data-focus-scope="{{scope}}"
+      {{#if noFavorite}}data-no-favorite="true"{{/if}}
       aria-label="{{fullLabel}}"
       data-tooltip="{{tooltip}}"
       {{#unless enabled}}disabled{{/unless}}
@@ -23,12 +24,45 @@
   </div>
 {{/inline}}
 
+{{#*inline "shHudAmmo"}}
+  {{#if ammo.length}}
+    <span class="sh-token-quick-hud__ammo" aria-hidden="true">
+      {{#each ammo as |d|}}
+        {{#if d.isBar}}
+          <span class="sh-token-quick-hud__ammo-bar" style="--sh-ammo-ticks: {{d.ticks}}"><span style="width: {{d.fillPct}}%"></span></span>
+        {{else if d.isPips}}
+          <span class="sh-token-quick-hud__ammo-pips">{{#each d.pips as |p|}}<span class="{{#if p.filled}}is-filled{{/if}}"></span>{{/each}}</span>
+        {{else}}
+          <span class="sh-token-quick-hud__ammo-count">{{d.text}}</span>
+        {{/if}}
+      {{/each}}
+    </span>
+  {{/if}}
+{{/inline}}
+
+{{#*inline "shHudFireButton"}}
+  <button
+    type="button"
+    class="sh-token-quick-hud__mode-btn {{#if b.isActive}}is-active{{/if}}"
+    data-action="switch-mode"
+    data-item-id="{{g.itemId}}"
+    data-line-id="{{b.lineId}}"
+    data-mode-id="{{b.modeId}}"
+    data-focus-scope="{{scope}}"
+    data-tooltip="{{b.tooltip}}"
+    aria-pressed="{{#if b.isActive}}true{{else}}false{{/if}}"
+    {{#if b.draggable}}draggable="true" data-drag-attack-uuid="{{g.itemUuid}}" data-drag-line-id="{{b.lineId}}" data-drag-mode-id="{{b.modeId}}"{{/if}}
+  >{{b.name}}</button>
+{{/inline}}
+
 {{#*inline "shHudItemCard"}}
   <div
-    class="sh-token-quick-hud__held-item {{#if isSelected}}is-selected{{/if}} {{#if isStowed}}is-stowed{{/if}} {{#if isWeapon}}is-weapon{{#unless ready}} is-not-ready{{/unless}}{{/if}}"
+    class="sh-token-quick-hud__held-item {{#if isStowed}}is-stowed{{/if}} {{#if isWeapon}}is-weapon{{#unless ready}} is-not-ready{{/unless}}{{/if}}"
+    data-zone="tray"
     data-held-item
     data-item-id="{{itemId}}"
     data-item-uuid="{{itemUuid}}"
+    {{#if canAttack}}draggable="true" data-drag-attack-uuid="{{itemUuid}}"{{/if}}
   >
     <button
       type="button"
@@ -38,7 +72,6 @@
       data-tooltip="{{tooltip}}"
       data-focus-scope="held"
       aria-label="{{tooltip}}{{#if isWeapon}}{{#unless ready}} — {{notReadyLabel}}{{/unless}}{{/if}}"
-      aria-pressed="{{#if isSelected}}true{{else}}false{{/if}}"
     >
       {{#if img}}
         <img class="sh-token-quick-hud__held-img" src="{{img}}" alt="" />
@@ -58,19 +91,7 @@
           <i class="fa-solid fa-triangle-exclamation sh-token-quick-hud__readiness" aria-hidden="true"></i>
         {{/unless}}
       {{/if}}
-      {{#if ammo.length}}
-        <span class="sh-token-quick-hud__ammo" aria-hidden="true">
-          {{#each ammo as |d|}}
-            {{#if d.isBar}}
-              <span class="sh-token-quick-hud__ammo-bar"><span style="width: {{d.fillPct}}%"></span></span>
-            {{else if d.isPips}}
-              <span class="sh-token-quick-hud__ammo-pips">{{#each d.pips as |p|}}<span class="{{#if p.filled}}is-filled{{/if}}"></span>{{/each}}</span>
-            {{else}}
-              <span class="sh-token-quick-hud__ammo-count">{{d.text}}</span>
-            {{/if}}
-          {{/each}}
-        </span>
-      {{/if}}
+      {{> shHudAmmo}}
     </button>
   </div>
 {{/inline}}
@@ -78,6 +99,7 @@
 <section
   id="spaceholder-token-quick-hud"
   class="spaceholder sh-token-quick-hud {{#if isEmpty}}is-empty{{/if}}"
+  data-actor-id="{{actorId}}"
   data-expanded="{{#if isExpanded}}true{{else}}false{{/if}}"
   aria-label="{{ariaLabel}}"
 >
@@ -90,58 +112,137 @@
     <div class="sh-token-quick-hud__stack">
       {{#if hasSelection}}
         <div class="sh-token-quick-hud__selected" role="group" aria-label="{{selectedLabel}}">
-          {{#each selectedGroups as |g|}}
-            <div class="sh-token-quick-hud__selected-group" data-item-id="{{g.itemId}}">
-              <span class="sh-token-quick-hud__selected-chip">
-                {{#if g.img}}
-                  <img class="sh-token-quick-hud__selected-img" src="{{g.img}}" alt="" />
-                {{else}}
-                  <i class="{{g.icon}}" aria-hidden="true"></i>
-                {{/if}}
-                <span class="sh-token-quick-hud__selected-name">{{g.name}}</span>
-                <button
-                  type="button"
-                  class="icon-btn sh-token-quick-hud__deselect"
-                  data-action="deselect-item"
-                  data-item-id="{{g.itemId}}"
-                  data-focus-scope="selected"
-                  data-tooltip="{{g.deselectLabel}}"
-                  aria-label="{{g.deselectLabel}}"
-                >
-                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                </button>
-              </span>
-
-              {{#each g.modeLines as |ml|}}
-                <div class="sh-token-quick-hud__mode-selector" role="group" aria-label="{{ml.lineName}}">
-                  {{#if ml.showLineName}}
-                    <span class="sh-token-quick-hud__mode-line">{{ml.lineName}}</span>
+          <div class="sh-token-quick-hud__selected-list">
+            {{#each selectedGroups as |g|}}
+              <div
+                class="sh-token-quick-hud__selected-card {{#if g.notReady}}is-not-ready{{/if}} {{#if g.isStowed}}is-stowed{{/if}}"
+                data-zone="selected"
+                data-held-item
+                data-item-id="{{g.itemId}}"
+                data-item-uuid="{{g.itemUuid}}"
+                {{#if g.canAttack}}draggable="true" data-drag-attack-uuid="{{g.itemUuid}}"{{/if}}
+              >
+                <div class="sh-token-quick-hud__selected-icon">
+                  {{#if g.img}}
+                    <img class="sh-token-quick-hud__selected-img" src="{{g.img}}" alt="" />
+                  {{else}}
+                    <span class="sh-token-quick-hud__selected-img sh-token-quick-hud__selected-img--placeholder">
+                      <i class="{{g.icon}}" aria-hidden="true"></i>
+                    </span>
                   {{/if}}
-                  {{#each ml.modes as |m|}}
+                  <button
+                    type="button"
+                    class="icon-btn sh-token-quick-hud__deselect"
+                    data-action="deselect-item"
+                    data-item-id="{{g.itemId}}"
+                    data-focus-scope="selected"
+                    data-tooltip="{{g.deselectLabel}}"
+                    aria-label="{{g.deselectLabel}}: {{g.name}}"
+                  >
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                  </button>
+                </div>
+
+                <div class="sh-token-quick-hud__selected-main">
+                  <span class="sh-token-quick-hud__selected-name" data-tooltip="{{g.name}}">{{g.name}}</span>
+                  <div class="sh-token-quick-hud__selected-foot" role="group" aria-label="{{g.toolsLabel}}">
+                    {{#if g.itemTools.length}}
+                      <div class="sh-actions-grid sh-token-quick-hud__selected-tools">
+                        {{#each g.itemTools as |a|}}
+                          {{> shHudActionChip a scope="selected-tools" text=a.compactLabel fullLabel=a.label}}
+                        {{/each}}
+                      </div>
+                    {{/if}}
                     <button
                       type="button"
-                      class="sh-token-quick-hud__mode-btn {{#if m.isActive}}is-active{{/if}}"
-                      data-action="switch-mode"
+                      class="icon-btn sh-token-quick-hud__tool sh-token-quick-hud__item-menu"
+                      data-action="item-menu"
                       data-item-id="{{g.itemId}}"
-                      data-line-id="{{m.lineId}}"
-                      data-mode-id="{{m.modeId}}"
-                      data-focus-scope="selected"
-                      data-tooltip="{{m.tooltip}}"
-                      aria-pressed="{{#if m.isActive}}true{{else}}false{{/if}}"
-                    >{{m.name}}</button>
-                  {{/each}}
+                      data-focus-scope="item-menu"
+                      data-tooltip="{{g.menuLabel}}"
+                      aria-label="{{g.menuLabel}}"
+                      aria-haspopup="menu"
+                    >
+                      <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+                    </button>
+                  </div>
                 </div>
-              {{/each}}
 
-              {{#if g.actions.length}}
-                <div class="sh-actions-grid sh-token-quick-hud__selected-actions">
-                  {{#each g.actions as |a|}}
-                    {{> shHudActionChip a scope="selected" text=a.compactLabel fullLabel=a.label}}
-                  {{/each}}
-                </div>
+                {{#if g.hasLoadout}}
+                  <div class="sh-token-quick-hud__fire {{#unless g.hasModes}}is-tabs-only{{/unless}}">
+                    {{#if g.lineSwitch.length}}
+                      <div class="sh-token-quick-hud__line-tabs" role="group" aria-label="{{@root.fireLineLabel}}">
+                        {{#each g.lineSwitch as |b|}}
+                          {{> shHudFireButton b=b g=g scope="fire-line"}}
+                        {{/each}}
+                      </div>
+                    {{/if}}
+                    <div class="sh-token-quick-hud__fire-row">
+                      {{#if g.weaponTools.length}}
+                        <div class="sh-actions-grid sh-token-quick-hud__selected-tools">
+                          {{#each g.weaponTools as |a|}}
+                            {{> shHudActionChip a scope="weapon-tools" text=a.compactLabel fullLabel=a.label}}
+                          {{/each}}
+                        </div>
+                      {{/if}}
+                      {{#if g.notReady}}
+                        <span class="sh-token-quick-hud__ammo-pill">
+                          <i
+                            class="fa-solid fa-triangle-exclamation sh-token-quick-hud__readiness"
+                            data-tooltip="{{g.notReadyLabel}}"
+                            aria-label="{{g.notReadyLabel}}"
+                          ></i>
+                          {{> shHudAmmo g}}
+                        </span>
+                      {{else if g.ammo.length}}
+                        <span class="sh-token-quick-hud__ammo-pill">{{> shHudAmmo g}}</span>
+                      {{/if}}
+                      {{#if g.modeSwitch.length}}
+                        <div class="sh-token-quick-hud__mode-plate" role="group" aria-label="{{@root.fireModeLabel}}">
+                          {{#each g.modeSwitch as |b|}}
+                            {{> shHudFireButton b=b g=g scope="fire-mode"}}
+                          {{/each}}
+                        </div>
+                      {{/if}}
+                    </div>
+                  </div>
+                {{/if}}
+              </div>
+            {{/each}}
+          </div>
+
+          {{#if attack.show}}
+            <button
+              type="button"
+              class="sh-token-quick-hud__attack {{#unless attack.enabled}}is-disabled{{/unless}} {{#if attack.isBlocked}}is-blocked{{/if}} {{#if attack.unaffordable}}is-unaffordable{{/if}} {{#if attack.isAiming}}is-aiming{{/if}}"
+              data-action="{{#if attack.isAiming}}cancel-aim{{else}}attack{{/if}}"
+              data-item-id="{{attack.itemId}}"
+              data-focus-scope="attack"
+              data-tooltip="{{attack.tooltip}}"
+              aria-label="{{#if attack.isAiming}}{{attack.tooltip}}{{else}}{{attack.label}}: {{attack.tooltip}}{{/if}}"
+              aria-disabled="{{#if attack.enabled}}false{{else}}true{{/if}}"
+              {{#if attack.canDrag}}draggable="true" data-drag-attack-uuid="{{attack.itemUuid}}"{{/if}}
+            >
+              <span class="sh-token-quick-hud__attack-label">
+                {{#if attack.isAiming}}<i class="fa-solid fa-xmark" aria-hidden="true"></i>{{/if}}{{attack.label}}
+              </span>
+              {{#if attack.shotText}}
+                <span class="sh-token-quick-hud__attack-cost">
+                  {{#if attack.prepText}}
+                    <span class="sh-token-quick-hud__attack-prep">{{attack.prepText}}</span>
+                    <span class="sh-token-quick-hud__attack-sep" aria-hidden="true">+</span>
+                  {{/if}}
+                  <span class="sh-token-quick-hud__attack-shot"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i>{{attack.shotText}}</span>
+                </span>
               {{/if}}
-            </div>
-          {{/each}}
+              {{#if attack.isBlocked}}
+                <i class="fa-solid fa-triangle-exclamation sh-token-quick-hud__attack-warn" aria-hidden="true"></i>
+              {{/if}}
+              {{#if attack.hint}}
+                <span class="sh-token-quick-hud__attack-hint">{{attack.hint}}</span>
+              {{/if}}
+            </button>
+          {{/if}}
         </div>
       {{/if}}
 
@@ -151,7 +252,7 @@
             {{> shHudItemCard card}}
           {{/each}}
           {{#if hasStowedCards}}
-            <span class="sh-token-quick-hud__held-divider" aria-hidden="true"></span>
+            {{#if heldCards.length}}<span class="sh-token-quick-hud__held-divider" aria-hidden="true"></span>{{/if}}
             {{#each stowedCards as |card|}}
               {{> shHudItemCard card}}
             {{/each}}
@@ -209,11 +310,11 @@
             <div class="sh-token-quick-hud__status">
               {{#if showAp}}
                 <span
-                  class="sh-token-quick-hud__ap {{#if apEmpty}}is-empty{{/if}}"
+                  class="sh-token-quick-hud__ap {{#if apEmpty}}is-empty{{/if}} {{#if apSpent}}is-spent{{/if}}"
                   data-tooltip="{{apTooltip}}"
                   aria-label="{{apTooltip}}: {{apText}}"
                 >
-                  <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                  <i class="fa-solid {{#if apSpent}}fa-hourglass-half{{else}}fa-bolt{{/if}}" aria-hidden="true"></i>
                   <span class="sh-token-quick-hud__ap-value">{{apText}}</span>
                 </span>
               {{/if}}
@@ -261,27 +362,18 @@
           </div>
         </div>
 
-        {{#if attack.show}}
-          <button
-            type="button"
-            class="sh-token-quick-hud__attack {{#unless attack.enabled}}is-disabled{{/unless}}"
-            data-action="attack"
-            data-item-id="{{attack.itemId}}"
-            data-focus-scope="dock"
-            data-tooltip="{{attack.tooltip}}"
-            aria-label="{{attackLabel}}: {{attack.subtitle}}"
-            aria-disabled="{{#if attack.enabled}}false{{else}}true{{/if}}"
-          >
-            <span class="sh-token-quick-hud__attack-head">
-              <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
-              <span class="sh-token-quick-hud__attack-label">{{attackLabel}}</span>
-              {{#if attack.apText}}
-                <span class="sh-token-quick-hud__attack-ap">{{attack.apText}}</span>
-              {{/if}}
-            </span>
-            <span class="sh-token-quick-hud__attack-sub">{{attack.subtitle}}</span>
-          </button>
-        {{/if}}
+        <div
+          class="sh-token-quick-hud__health"
+          role="group"
+          aria-label="{{healthLabel}}"
+        >
+          <span class="sh-token-quick-hud__health-head">
+            <i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>
+            <span>{{healthLabel}}</span>
+          </span>
+          <span class="sh-token-quick-hud__health-track" aria-hidden="true"></span>
+          <span class="sh-token-quick-hud__health-value">—</span>
+        </div>
 
         <div class="sh-actions-grid sh-token-quick-hud__preview" role="group" aria-label="{{quickActionsLabel}}">
           {{#if hasActions}}

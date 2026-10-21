@@ -19,7 +19,8 @@
         "layers": [
           {
             "material": "steel-plate",
-            "thickness": 3
+            "thickness": 3,
+            "coverage": 75
           },
           {
             "material": "kevlar",
@@ -33,7 +34,8 @@
         "layers": [
           {
             "material": "steel-plate",
-            "thickness": 3
+            "thickness": 3,
+            "coverage": 75
           },
           {
             "material": "kevlar",
@@ -47,7 +49,8 @@
         "layers": [
           {
             "material": "steel-plate",
-            "thickness": 3
+            "thickness": 3,
+            "coverage": 75
           },
           {
             "material": "kevlar",

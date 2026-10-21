@@ -37,7 +37,32 @@
       "radiation": 0,
       "chemical": 80
     },
-    "conductance": {},
+    "conductance": {
+      "ballistic": [
+        {
+          "type": "concussive",
+          "fraction": 0.12
+        }
+      ],
+      "piercing": [
+        {
+          "type": "concussive",
+          "fraction": 0.1
+        }
+      ],
+      "cutting": [
+        {
+          "type": "concussive",
+          "fraction": 0.1
+        }
+      ],
+      "concussive": [
+        {
+          "type": "concussive",
+          "fraction": 0.4
+        }
+      ]
+    },
     "selfInduction": {},
     "degradation": {}
   },

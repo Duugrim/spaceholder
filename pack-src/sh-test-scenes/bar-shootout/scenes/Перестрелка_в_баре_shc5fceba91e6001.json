@@ -1,0 +1,1584 @@
+{
+  "_id": "shc5fceba91e6001",
+  "name": "Перестрелка в баре",
+  "active": false,
+  "navigation": true,
+  "navOrder": 0,
+  "navName": "",
+  "thumb": null,
+  "width": 3200,
+  "height": 2200,
+  "padding": 0,
+  "shiftX": 0,
+  "shiftY": 0,
+  "initialLevel": "defaultLevel0000",
+  "grid": {
+    "type": 1,
+    "size": 100,
+    "style": "solidLines",
+    "thickness": 1,
+    "color": "#000000",
+    "alpha": 0.12,
+    "distance": 1,
+    "units": "m"
+  },
+  "tokenVision": false,
+  "fog": {
+    "mode": 0
+  },
+  "environment": {
+    "darknessLevel": 0,
+    "globalLight": {
+      "enabled": true
+    }
+  },
+  "levels": [
+    {
+      "_id": "defaultLevel0000",
+      "name": "Первый этаж",
+      "elevation": {
+        "bottom": null,
+        "top": null
+      },
+      "background": {
+        "color": "#55524c",
+        "src": "systems/spaceholder/assets/scenes/bar-shootout.svg",
+        "tint": "#ffffff",
+        "alphaThreshold": 0.75
+      },
+      "foreground": {
+        "src": null,
+        "tint": "#ffffff",
+        "alphaThreshold": 0.75
+      },
+      "fog": {
+        "src": null,
+        "tint": "#ffffff"
+      },
+      "textures": {
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "fill",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0
+      },
+      "visibility": {
+        "levels": []
+      },
+      "sort": 0,
+      "flags": {}
+    }
+  ],
+  "walls": [
+    {
+      "_id": "shc32309ac7444cc",
+      "c": [
+        200,
+        200,
+        2600,
+        200
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc0a914479d723d",
+      "c": [
+        200,
+        200,
+        200,
+        600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc31f4a44d01d5f",
+      "c": [
+        200,
+        600,
+        200,
+        900
+      ],
+      "levels": [],
+      "light": 0,
+      "move": 20,
+      "sight": 0,
+      "sound": 10,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "glass",
+            "kind": "thin",
+            "thickness": 6
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc557b1e5f97d0b",
+      "c": [
+        200,
+        900,
+        200,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shcc3f0a85a2fe45",
+      "c": [
+        2600,
+        200,
+        2600,
+        900
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shcde2ae9190a666",
+      "c": [
+        2600,
+        900,
+        2600,
+        1000
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 60
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc6da17feda3ac9",
+      "c": [
+        2600,
+        1000,
+        2600,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc8bbb54cdb91fa",
+      "c": [
+        200,
+        1600,
+        300,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shcba3ef52e0f7a6",
+      "c": [
+        300,
+        1600,
+        700,
+        1600
+      ],
+      "levels": [],
+      "light": 0,
+      "move": 20,
+      "sight": 0,
+      "sound": 10,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "glass",
+            "kind": "thin",
+            "thickness": 6
+          }
+        }
+      }
+    },
+    {
+      "_id": "shcf1ca124814fa1",
+      "c": [
+        700,
+        1600,
+        900,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc86db40e69479e",
+      "c": [
+        900,
+        1600,
+        1000,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 40
+          }
+        }
+      }
+    },
+    {
+      "_id": "shcf19f7f31b624e",
+      "c": [
+        1000,
+        1600,
+        1100,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 40
+          }
+        }
+      }
+    },
+    {
+      "_id": "shce043aa427255a",
+      "c": [
+        1100,
+        1600,
+        1300,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc8b2fa0a89440f",
+      "c": [
+        1300,
+        1600,
+        1700,
+        1600
+      ],
+      "levels": [],
+      "light": 0,
+      "move": 20,
+      "sight": 0,
+      "sound": 10,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "glass",
+            "kind": "thin",
+            "thickness": 6
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc462905ca0a523",
+      "c": [
+        1700,
+        1600,
+        2600,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "brick",
+            "kind": "thin",
+            "thickness": 250
+          }
+        }
+      }
+    },
+    {
+      "_id": "shca2318fcc903f3",
+      "c": [
+        1800,
+        200,
+        1800,
+        400
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc1c2f9bc9dc98a",
+      "c": [
+        1800,
+        400,
+        1800,
+        500
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 40
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc1438b288ca266",
+      "c": [
+        1800,
+        500,
+        1800,
+        1200
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc260930cd1e477",
+      "c": [
+        1800,
+        1200,
+        1800,
+        1300
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 40
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc239da37dade8c",
+      "c": [
+        1800,
+        1300,
+        1800,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc695fa82ff8a5f",
+      "c": [
+        1800,
+        700,
+        2200,
+        700
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc97bdd5d6c11eb",
+      "c": [
+        2200,
+        700,
+        2300,
+        700
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 40
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc23a3681fc3fcf",
+      "c": [
+        2300,
+        700,
+        2600,
+        700
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc613ae2a558e21",
+      "c": [
+        1800,
+        1100,
+        1900,
+        1100
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc50a2ee0238c22",
+      "c": [
+        1900,
+        1100,
+        2000,
+        1100
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 40
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc383b01bee1e2e",
+      "c": [
+        2000,
+        1100,
+        2600,
+        1100
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shcc8743151ec8d2",
+      "c": [
+        2200,
+        1100,
+        2200,
+        1300
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc2f79505d834f3",
+      "c": [
+        2200,
+        1300,
+        2200,
+        1400
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 1,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 40
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc72146184d3ce5",
+      "c": [
+        2200,
+        1400,
+        2200,
+        1600
+      ],
+      "levels": [],
+      "light": 20,
+      "move": 20,
+      "sight": 20,
+      "sound": 20,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "drywall",
+            "kind": "thin",
+            "thickness": 25
+          }
+        }
+      }
+    },
+    {
+      "_id": "shc4b418d74f3679",
+      "c": [
+        400,
+        500,
+        1300,
+        500
+      ],
+      "levels": [],
+      "light": 0,
+      "move": 20,
+      "sight": 0,
+      "sound": 0,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 60
+          }
+        }
+      }
+    },
+    {
+      "_id": "shcb84e316ce3375",
+      "c": [
+        1300,
+        300,
+        1300,
+        500
+      ],
+      "levels": [],
+      "light": 0,
+      "move": 20,
+      "sight": 0,
+      "sound": 0,
+      "dir": 0,
+      "door": 0,
+      "ds": 0,
+      "threshold": {
+        "light": null,
+        "sight": null,
+        "sound": null,
+        "attenuation": false
+      },
+      "flags": {
+        "spaceholder": {
+          "wall": {
+            "material": "wood",
+            "kind": "thin",
+            "thickness": 60
+          }
+        }
+      }
+    }
+  ],
+  "tokens": [
+    {
+      "_id": "shc22a272d940b0d",
+      "name": "Герой (Глок)",
+      "actorId": "shc1df4c4bd89a76",
+      "actorLink": false,
+      "x": 400,
+      "y": 900,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 0,
+      "disposition": 1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3fae5a",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc32f353e8a6402",
+      "name": "Герой (дробовик)",
+      "actorId": "shc670f3308d2acb",
+      "actorLink": false,
+      "x": 800,
+      "y": 900,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 1,
+      "disposition": 1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3fae5a",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc2b7d466fb93be",
+      "name": "Герой (револьвер)",
+      "actorId": "shc810d360bb9c99",
+      "actorLink": false,
+      "x": 500,
+      "y": 1200,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 2,
+      "disposition": 1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3fae5a",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc9cff2786c25fb",
+      "name": "Герой (нож)",
+      "actorId": "shc9e74c7f9396f8",
+      "actorLink": false,
+      "x": 1100,
+      "y": 1200,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 3,
+      "disposition": 1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3fae5a",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc2cd02f35096d9",
+      "name": "Главарь (АК)",
+      "actorId": "shc363f6dda2ac83",
+      "actorLink": false,
+      "x": 700,
+      "y": 300,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 4,
+      "disposition": -1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#c23b3b",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc37d5791c65817",
+      "name": "Бандит (УЗИ)",
+      "actorId": "shc3c25d0cb3afa0",
+      "actorLink": false,
+      "x": 1400,
+      "y": 500,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 5,
+      "disposition": -1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#c23b3b",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc52407e8ef93eb",
+      "name": "Бандит (обрез)",
+      "actorId": "shc7184fa417dfb8",
+      "actorLink": false,
+      "x": 1600,
+      "y": 1200,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 6,
+      "disposition": -1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#c23b3b",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc907370f51df74",
+      "name": "Громила (булава)",
+      "actorId": "shc5d4c346a2fc39",
+      "actorLink": false,
+      "x": 1100,
+      "y": 600,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 7,
+      "disposition": -1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#c23b3b",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shcb94741075aa3f",
+      "name": "Бандит (Глок ББ)",
+      "actorId": "shc6fdadc28e43ef",
+      "actorLink": false,
+      "x": 2100,
+      "y": 400,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 8,
+      "disposition": -1,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#c23b3b",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc1a053759acd5d",
+      "name": "Командир (AR)",
+      "actorId": "shc77132d2d3fedb",
+      "actorLink": false,
+      "x": 500,
+      "y": 2000,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 9,
+      "disposition": 0,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3b6fc2",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc7e75b816641db",
+      "name": "Штурмовик 1 (AR)",
+      "actorId": "shce93a0e251da7d",
+      "actorLink": false,
+      "x": 700,
+      "y": 2000,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 10,
+      "disposition": 0,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3b6fc2",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc9c62f386dcf44",
+      "name": "Штурмовик 2 (AR)",
+      "actorId": "shc17b78c7f99e9d",
+      "actorLink": false,
+      "x": 1200,
+      "y": 2000,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 11,
+      "disposition": 0,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3b6fc2",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc0e8f889046294",
+      "name": "Штурмовик 3 (AR)",
+      "actorId": "shc3d3766074ece0",
+      "actorLink": false,
+      "x": 2700,
+      "y": 1000,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 12,
+      "disposition": 0,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3b6fc2",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc11eccb231b949",
+      "name": "Штурмовик 4 (Сайга)",
+      "actorId": "shc4e85fa1764ad8",
+      "actorLink": false,
+      "x": 1400,
+      "y": 2000,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 13,
+      "disposition": 0,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3b6fc2",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    },
+    {
+      "_id": "shc9bf44af2d4cef",
+      "name": "Штурмовик 5 (P90)",
+      "actorId": "shc5f54dd1f437aa",
+      "actorLink": false,
+      "x": 2700,
+      "y": 800,
+      "elevation": 0,
+      "width": 1,
+      "height": 1,
+      "level": "defaultLevel0000",
+      "sort": 14,
+      "disposition": 0,
+      "displayName": 30,
+      "texture": {
+        "src": "icons/svg/mystery-man.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "offsetX": 0,
+        "offsetY": 0,
+        "fit": "contain",
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "tint": "#3b6fc2",
+        "alphaThreshold": 0.75
+      },
+      "rotation": 0,
+      "hidden": false,
+      "flags": {}
+    }
+  ],
+  "notes": [
+    {
+      "_id": "shcb853348065d38",
+      "entryId": "shc702107ec87847",
+      "pageId": "shc2f0043c0401b5",
+      "x": 150,
+      "y": 1680,
+      "elevation": 0,
+      "levels": [],
+      "texture": {
+        "src": "icons/svg/book.svg",
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "fit": "contain",
+        "tint": "#ffffff"
+      },
+      "iconSize": 48,
+      "text": "Что проверить",
+      "fontSize": 28,
+      "textColor": "#ffffff",
+      "flags": {}
+    }
+  ],
+  "drawings": [],
+  "lights": [],
+  "sounds": [],
+  "regions": [],
+  "tiles": [],
+  "journal": "shc702107ec87847",
+  "journalEntryPage": "shc2f0043c0401b5",
+  "weather": "",
+  "folder": "shc245a86f3fbf13",
+  "sort": 0,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "14.360",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782902000000,
+    "modifiedTime": 1782902000000,
+    "lastModifiedBy": null
+  }
+}

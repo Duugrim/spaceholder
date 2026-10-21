@@ -1,6 +1,6 @@
 const MODULE_NS = 'spaceholder';
 let _hooksInstalled = false;
-let _autoloadInProgress = false;
+let _autoloadSeq = 0;
 
 function _isGlobalMapFlagChanged(changes) {
   if (!changes || typeof changes !== 'object') return false;
@@ -36,8 +36,9 @@ async function _tryAutoloadGlobalMap(scene, { force = false } = {}) {
     return true;
   }
 
-  if (_autoloadInProgress) return false;
-  _autoloadInProgress = true;
+  // Newest request wins; a load that finishes after the scene changed must not render (or keep) its grid.
+  const seq = ++_autoloadSeq;
+  const isStale = () => seq !== _autoloadSeq || canvas?.scene?.id !== scene.id;
 
   try {
     // Ensure biome overrides are loaded before we normalize/render biomes.
@@ -52,7 +53,19 @@ async function _tryAutoloadGlobalMap(scene, { force = false } = {}) {
       // ignore
     }
 
+    if (isStale()) return false;
+
     const loaded = await processing.loadGridFromFile(scene);
+    if (isStale()) {
+      // loadGridFromFile stores its result in processing: don't leave another scene's grid there.
+      if (loaded?.gridData && processing.unifiedGrid === loaded.gridData) {
+        const isCurrent = renderer.currentSceneId === canvas?.scene?.id;
+        processing.unifiedGrid = isCurrent ? renderer.currentGrid : null;
+        processing.gridMetadata = isCurrent ? renderer.currentMetadata : null;
+      }
+      return false;
+    }
+
     if (loaded?.gridData) {
       await renderer.render(loaded.gridData, loaded.metadata);
       console.log(`SpaceHolder | Global map autoloaded for scene: ${scene?.name ?? scene?.id ?? 'unknown'}`);
@@ -62,8 +75,6 @@ async function _tryAutoloadGlobalMap(scene, { force = false } = {}) {
     console.info(`SpaceHolder | Global map autoload: file not found for scene: ${scene?.name ?? scene?.id ?? 'unknown'}`);
   } catch (e) {
     console.error('SpaceHolder | Failed to autoload global map', e);
-  } finally {
-    _autoloadInProgress = false;
   }
 
   return false;

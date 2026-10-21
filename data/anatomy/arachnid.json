@@ -2,7 +2,8 @@
   "id": "arachnid",
   "name": "Arachnid",
   "description": "Eight-legged spider-like creature anatomy",
-  "version": "3.0.0",
+  "version": "3.1.0",
+  "root": "cephalothorax",
   "grid": {
     "width": 9,
     "height": 7
@@ -10,7 +11,7 @@
   "bodyParts": {
     "cephalothorax": {
       "id": "cephalothorax",
-      "maxHp": 55,
+      "maxHp": 225,
       "x": 4,
       "y": 3,
       "tags": [
@@ -56,17 +57,39 @@
           "target": "rightLeg4"
         }
       ],
-      "material": "skin",
+      "material": "bone",
       "faces": [
         "front",
         "back"
       ],
       "heightFrac": 0.55,
-      "inners": []
+      "inners": [
+        {
+          "id": "brain",
+          "name": "Brain",
+          "material": "skin",
+          "occupancyPct": 30,
+          "maxHp": 44,
+          "bleed": 0,
+          "tags": [
+            "vital"
+          ],
+          "mortalShare": 0.1
+        }
+      ],
+      "tissue": {
+        "depthFlat": 0.5,
+        "depthShare": 0.35,
+        "organDepth": 1,
+        "bluntToParent": 0,
+        "bleed": 8,
+        "shellThickness": 0.46,
+        "cavity": 1
+      }
     },
     "abdomenSegment": {
       "id": "abdomenSegment",
-      "maxHp": 45,
+      "maxHp": 165,
       "x": 4,
       "y": 4,
       "tags": [
@@ -83,17 +106,36 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front",
         "back"
       ],
       "heightFrac": 0.4,
-      "inners": []
+      "inners": [
+        {
+          "id": "heart",
+          "name": "Heart",
+          "material": "muscle",
+          "occupancyPct": 20,
+          "maxHp": 66,
+          "bleed": 40,
+          "tags": [
+            "vital"
+          ]
+        }
+      ],
+      "tissue": {
+        "depthFlat": 3,
+        "depthShare": 0.8,
+        "organDepth": 4,
+        "bleed": 10,
+        "cavity": 0.3
+      }
     },
     "leftLeg1": {
       "id": "leftLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 2,
       "y": 2,
       "tags": [
@@ -112,16 +154,23 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     },
     "leftLeg2": {
       "id": "leftLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 2,
       "y": 3,
       "tags": [
@@ -140,16 +189,23 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     },
     "leftLeg3": {
       "id": "leftLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 2,
       "y": 4,
       "tags": [
@@ -168,16 +224,23 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     },
     "leftLeg4": {
       "id": "leftLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 2,
       "y": 5,
       "tags": [
@@ -196,16 +259,23 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     },
     "rightLeg1": {
       "id": "rightLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 6,
       "y": 2,
       "tags": [
@@ -224,16 +294,23 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     },
     "rightLeg2": {
       "id": "rightLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 6,
       "y": 3,
       "tags": [
@@ -252,16 +329,23 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     },
     "rightLeg3": {
       "id": "rightLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 6,
       "y": 4,
       "tags": [
@@ -280,16 +364,23 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     },
     "rightLeg4": {
       "id": "rightLeg",
-      "maxHp": 18,
+      "maxHp": 94,
       "x": 6,
       "y": 5,
       "tags": [
@@ -308,12 +399,19 @@
           "target": "cephalothorax"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
       "faces": [
         "front"
       ],
       "heightFrac": 0.25,
-      "inners": []
+      "inners": [],
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      }
     }
   },
   "links": [

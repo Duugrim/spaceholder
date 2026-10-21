@@ -19,11 +19,7 @@
         "layers": [
           {
             "material": "polymer",
-            "thickness": 2
-          },
-          {
-            "material": "kevlar",
-            "thickness": 1
+            "thickness": 3
           }
         ],
         "face": "front"

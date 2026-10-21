@@ -1,0 +1,63 @@
+{
+  "_id": "shc98a3480fea733",
+  "name": "Перестрелка в баре",
+  "img": "systems/spaceholder/assets/scenes/bar-shootout.svg",
+  "caption": "Тестовая сцена: групповой бой трёх сторон в баре.",
+  "description": "<p>Бар с комнатами и стенами из настоящих материалов, три стороны готовы к бою: герои, бандиты, полиция. Импорт создаёт сцену, бойцов, фракции и журнал «что проверить».</p><h2>Что проверить</h2><ul><li><strong>Базовое групповое боестолкновение</strong>: попадание в цель, пробитие брони, создание травм, кровотечение.</li><li>Подручные предметы как оружие — когда будет готова такая система.</li><li>Подручные предметы как укрытие — когда будет готова такая система.</li><li><strong>Пробитие стен.</strong></li><li>Разрушение стен — когда будет готова такая система.</li></ul><h2>Стороны</h2><ul><li><strong>Герои</strong> (зелёные): плохо экипированы — Глок, дробовик, револьвер .44, нож; брони почти нет, максимум средний жилет.</li><li><strong>Бандиты</strong> (красные): все в кожанках, главарь и громила в тяжёлых жилетах; АК, УЗИ, обрез, булава, Глок с бронебойными.</li><li><strong>Полиция</strong> (синие): штурмовой отряд в боевой броне и тяжёлых шлемах; AR, Сайга, P90. Четверо на улице за машинами, двое у заднего выхода.</li></ul><h2>Стены</h2><ul><li>Внешние — кирпич 250 мм: стрелковое оружие не пробивает.</li><li>Внутренние — гипсокартон 25 мм; двери — дерево 40 мм, задняя дверь — 60 мм; окна — стекло 6 мм; стойка — дерево 60 мм (видно сквозь, но пуля встречает дерево).</li><li>Пробитие: бандит с Глоком ББ на кухне стреляет в зал сквозь гипсокартон; полиция стреляет в окна и сквозь входную дверь; винтовка пробивает стойку, Глок — нет.</li></ul>",
+  "folder": null,
+  "sort": 0,
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "14.360",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782902000000,
+    "modifiedTime": 1782902000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!adventures!shc98a3480fea733",
+  "actors": [
+    "bar-shootout/actors/Герои_shc624481ea1d58e.json",
+    "bar-shootout/actors/Бандиты_shcdfc2bfae5da73.json",
+    "bar-shootout/actors/Полиция_shc774b0ff1adc86.json",
+    "bar-shootout/actors/Герой_Глок_shc1df4c4bd89a76.json",
+    "bar-shootout/actors/Герой_дробовик_shc670f3308d2acb.json",
+    "bar-shootout/actors/Герой_револьвер_shc810d360bb9c99.json",
+    "bar-shootout/actors/Герой_нож_shc9e74c7f9396f8.json",
+    "bar-shootout/actors/Главарь_АК_shc363f6dda2ac83.json",
+    "bar-shootout/actors/Бандит_УЗИ_shc3c25d0cb3afa0.json",
+    "bar-shootout/actors/Бандит_обрез_shc7184fa417dfb8.json",
+    "bar-shootout/actors/Громила_булава_shc5d4c346a2fc39.json",
+    "bar-shootout/actors/Бандит_Глок_ББ_shc6fdadc28e43ef.json",
+    "bar-shootout/actors/Командир_AR_shc77132d2d3fedb.json",
+    "bar-shootout/actors/Штурмовик_1_AR_shce93a0e251da7d.json",
+    "bar-shootout/actors/Штурмовик_2_AR_shc17b78c7f99e9d.json",
+    "bar-shootout/actors/Штурмовик_3_AR_shc3d3766074ece0.json",
+    "bar-shootout/actors/Штурмовик_4_Сайга_shc4e85fa1764ad8.json",
+    "bar-shootout/actors/Штурмовик_5_P90_shc5f54dd1f437aa.json"
+  ],
+  "cards": [],
+  "combats": [],
+  "folders": [
+    "bar-shootout/folders/Перестрелка_в_баре_shcf8ea1fb43c603.json",
+    "bar-shootout/folders/Герои_shc57d62d51e6620.json",
+    "bar-shootout/folders/Бандиты_shcf46653408f391.json",
+    "bar-shootout/folders/Полиция_shcce5e1d95b6ee4.json",
+    "bar-shootout/folders/Фракции_shceeb4668e8cad1.json",
+    "bar-shootout/folders/Тестовые_сцены_shc245a86f3fbf13.json",
+    "bar-shootout/folders/Тестовые_сцены_shc7ee53518d3bba.json"
+  ],
+  "items": [],
+  "journal": [
+    "bar-shootout/journal/Перестрелка_в_баре_что_проверить_shc702107ec87847.json"
+  ],
+  "playlists": [],
+  "scenes": [
+    "bar-shootout/scenes/Перестрелка_в_баре_shc5fceba91e6001.json"
+  ],
+  "tables": [],
+  "macros": []
+}

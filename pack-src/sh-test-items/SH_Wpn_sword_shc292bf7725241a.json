@@ -4,7 +4,7 @@
   "_id": "shc292bf7725241a",
   "img": "systems/spaceholder/assets/icons/weapon.svg/winged-sword.svg",
   "system": {
-    "description": "<p>Режущий удар (swing, stop on first).</p>",
+    "description": "<p>Длинный клинок: рез (замах) и укол — укол достаёт до органов торса.</p>",
     "implantReplaceOrgan": null,
     "actions": [],
     "quantity": 1,
@@ -126,7 +126,8 @@
             {
               "enabled": true,
               "damageType": "cutting",
-              "damage": 90,
+              "damage": 0,
+              "effortShare": 100,
               "armorPen": 30,
               "hardness": 1,
               "armorDamageFactor": 100,
@@ -140,6 +141,83 @@
             {
               "id": "shc45eb2f1d59fb9",
               "name": "Удар",
+              "fireMode": "single",
+              "burstCount": 3,
+              "fireDelayAp": 5,
+              "ammoCost": 1,
+              "enterCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "exitCost": {
+                "enabled": false,
+                "value": 0
+              },
+              "modifiers": [],
+              "multishot": {
+                "enabled": false,
+                "count": 1,
+                "coneDegrees": 0
+              }
+            }
+          ],
+          "multishot": {
+            "enabled": false,
+            "count": 1,
+            "coneDegrees": 0
+          }
+        },
+        {
+          "id": "shc6bb1b2009e967",
+          "name": "Укол",
+          "trajectoryKind": "simple",
+          "simpleLimit": {
+            "enabled": true,
+            "value": 1,
+            "unit": "grid"
+          },
+          "payloadId": "",
+          "aiming": 10,
+          "trigger": 3,
+          "energyMult": {
+            "enabled": false,
+            "value": 100
+          },
+          "spread": {
+            "enabled": true,
+            "value": 0
+          },
+          "recoil": {
+            "enabled": false,
+            "value": 0
+          },
+          "enterCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "exitCost": {
+            "enabled": false,
+            "value": 0
+          },
+          "damage": [
+            {
+              "enabled": true,
+              "damageType": "piercing",
+              "damage": 0,
+              "effortShare": 110,
+              "armorPen": 40,
+              "hardness": 1,
+              "armorDamageFactor": 100,
+              "armorDamageReduction": 100,
+              "speed": 0,
+              "payloadId": ""
+            }
+          ],
+          "ammoBlocks": [],
+          "modes": [
+            {
+              "id": "shc076ccebdf15d1",
+              "name": "Укол",
               "fireMode": "single",
               "burstCount": 3,
               "fireDelayAp": 5,

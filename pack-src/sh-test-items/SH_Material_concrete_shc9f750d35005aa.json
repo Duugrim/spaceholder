@@ -1,0 +1,63 @@
+{
+  "name": "Бетон",
+  "type": "material",
+  "_id": "shc9f750d35005aa",
+  "img": "systems/spaceholder/assets/icons/armor.svg/metal-scales.svg",
+  "system": {
+    "description": "<p>Бетон (concrete)</p>",
+    "materialId": "concrete",
+    "category": "structure",
+    "hardness": 0.005,
+    "integrityPerThickness": 3.0,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.24,
+    "resistance": {
+      "ballistic": 100,
+      "concussive": 100,
+      "piercing": 100,
+      "cutting": 100,
+      "thermal": 100,
+      "laser": 60,
+      "plasma": 60,
+      "electric": 100,
+      "sonic": 80,
+      "radiation": 40,
+      "chemical": 60
+    },
+    "wear": {
+      "ballistic": 20,
+      "concussive": 40,
+      "piercing": 20,
+      "cutting": 10,
+      "thermal": 15,
+      "laser": 20,
+      "plasma": 60,
+      "electric": 0,
+      "sonic": 10,
+      "radiation": 0,
+      "chemical": 20
+    },
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shce06713c564fbd",
+  "sort": 150000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc9f750d35005aa"
+}

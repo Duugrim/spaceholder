@@ -12,7 +12,7 @@
  * See `docs/damage-types-armor-conversion` plan, §1, §3, §6, §7.
  */
 
-import { DAMAGE_TYPE_IDS, DEGRADATION_MODES, isDamageType } from './damage-types.mjs';
+import { DAMAGE_TYPE_IDS, DEGRADATION_MODES, isDamageType, isMechanical } from './damage-types.mjs';
 import { ensureLayerDefaults, normalizeMaterial } from './materials-manager.mjs';
 
 const EPSILON = 1e-9;
@@ -103,15 +103,32 @@ export function projectileEnergy(amount, mods) {
 }
 
 /**
- * Convert absorbed energy back into the same damage scale as the incoming hit.
+ * How much of the damage is left when a projectile keeps `energyRatio` of its energy.
  *
  * `reductionPct` is the v3 «Снижение урона бронёй» percentage:
- *   damageRatio = 1 − (1 − energyAfter/energyBefore) × reductionPct/100
+ *   damageRatio = 1 − (1 − energyRatio) × reductionPct/100
  *
  * 100 → damage drops proportionally to energy (legacy behaviour);
  * 50  → energy halved costs only a quarter of the damage;
- * 0   → armor never reduces damage; > 100 → damage can run out before energy
+ * 0   → energy loss never reduces damage; > 100 → damage can run out before energy
  * («урон кончился, энергия осталась» — снаряд отведён бронёй).
+ *
+ * The same law serves armour (energy absorbed by a layer) and a glancing hit (energy scaled by the
+ * hit quality, see `hit-quality.mjs`).
+ *
+ * @param {number} energyRatio energy after / energy before, clamped to 0–1
+ * @param {number} [reductionPct]
+ * @returns {number} ≥ 0
+ */
+export function damageRatioForEnergyRatio(energyRatio, reductionPct = 100) {
+  const kept = Math.max(0, Math.min(1, Number.isFinite(Number(energyRatio)) ? Number(energyRatio) : 1));
+  const pct = Math.max(0, Number.isFinite(Number(reductionPct)) ? Number(reductionPct) : 100);
+  return Math.max(0, 1 - (1 - kept) * (pct / 100));
+}
+
+/**
+ * Convert absorbed energy back into the same damage scale as the incoming hit
+ * (see {@link damageRatioForEnergyRatio} for `reductionPct`).
  *
  * @param {number} amount
  * @param {number} energyBefore
@@ -123,10 +140,7 @@ export function residualDamageAfterArmor(amount, energyBefore, eAR, reductionPct
   const energy = Math.max(0, Number(energyBefore) || 0);
   if (energy <= EPSILON) return { energyAfter: 0, residual: 0 };
   const energyAfter = Math.max(0, energy - Math.max(0, Number(eAR) || 0));
-  const pct = Math.max(0, Number.isFinite(Number(reductionPct)) ? Number(reductionPct) : 100);
-  const energyLossRatio = 1 - energyAfter / energy;
-  const damageRatio = Math.max(0, 1 - energyLossRatio * (pct / 100));
-  const residual = Math.max(0, Number(amount) || 0) * damageRatio;
+  const residual = Math.max(0, Number(amount) || 0) * damageRatioForEnergyRatio(energyAfter / energy, reductionPct);
   return { energyAfter, residual };
 }
 
@@ -171,6 +185,7 @@ export function normalizeApplications(raw) {
     // v3 extensions: pre-computed projectile energy and «Снижение урона бронёй».
     const energy = Number(item.energy);
     if (Number.isFinite(energy) && energy >= 0) out.energy = energy;
+    if (item.transferred === true) out.transferred = true;
     const reduction = Number(item.armorDamageReduction);
     if (Number.isFinite(reduction) && reduction >= 0) out.armorDamageReduction = reduction;
     return out;
@@ -264,46 +279,105 @@ function evaluateLayerForHit(layer, eARBase, mode, random) {
 }
 
 /**
- * Apply `(type, amount)` to a layer at index `layerIdx` in the live stack
- * starting from `startIdx`. Recursively walks the rest of the stack.
+ * Shares of the damage a layer absorbed that it hands on as other types (`conductance[T]`): the blunt
+ * shock behind armour. Taken from what the layer absorbed — everything when it held, the absorbed part
+ * when it was penetrated — so it never weakens the projectile itself.
+ * @param {Object} material normalized material
+ * @param {string} type incoming damage type
+ * @param {number} absorbed damage the layer absorbed
+ * @returns {Array<{type: string, amount: number}>}
+ */
+function _conductedShares(material, type, absorbed) {
+  if (!_isPositive(absorbed)) return [];
+  const out = [];
+  let used = 0;
+  for (const entry of material.conductance?.[type] ?? []) {
+    const f = Math.max(0, Number(entry?.fraction ?? 0));
+    if (f <= 0 || !isDamageType(entry?.type)) continue;
+    const take = Math.min(f, Math.max(0, 1 - used));
+    if (take <= 0) break;
+    used += take;
+    const chunk = absorbed * take;
+    if (_isPositive(chunk)) out.push({ type: entry.type, amount: chunk });
+  }
+  return out;
+}
+
+/**
+ * Carry a shock another layer handed on (conduction, self-induction overflow) through the rest of the
+ * stack. It is not a projectile: nothing holds it, each layer only softens it by its `damping[T]`
+ * (`× e^(−damping × thickness)` — impact foam spreads the blow, a plate does not). It does not wear the
+ * layers and does not move the package position.
+ * @returns {{ deepestLayerReached: number, bodyHits: object[] }}
+ */
+function passTransferred(type, amount, layers, startIdx, ctx, matCache, trace) {
+  let current = Math.max(0, Number(amount) || 0);
+  for (let i = startIdx; i < layers.length && _isPositive(current); i += 1) {
+    const layer = layers[i];
+    if (!layer || layer.integrity <= EPSILON) continue;
+    const material = getMaterialFor(ctx, layer.material, matCache);
+    const k = Math.max(0, Number(material.damping?.[type] ?? 0) || 0);
+    if (k <= 0) continue;
+    const before = current;
+    current *= Math.exp(-k * Math.max(0, Number(layer.thickness) || 0));
+    trace.push({ kind: 'damp', layerIndex: i, material: layer.material, type, before, after: current });
+  }
+  const bodyHits = [];
+  if (_isPositive(current)) {
+    bodyHits.push({ type, amount: current, armorPen: 0, armorDamageFactor: 1, hardness: 1, energy: 0, transferred: true });
+    trace.push({ kind: 'body', type, amount: current, transferred: true });
+  }
+  return { deepestLayerReached: startIdx, bodyHits };
+}
+
+/**
+ * Apply `(type, amount)` to the live stack starting from `startIdx`.
  *
- * - Wear / breachLoss are mutated on the live `layers` array.
- * - Layers whose `integrity` has dropped to `0` (at or below `EPSILON`)
- *   are kept in the stack but treated as transparent: subsequent hits
- *   skip them entirely (`continue` at the top of the loop). Physically
- *   keeping them preserves their `{material, thickness, integrityMax,
- *   breachCapacity}` metadata so repair/restoration code can bring them
- *   back later (see `docs/code/reference` — armour is repairable, not
- *   destructible).
- * - Returns `{ deepestLayerReached, bodyHits: DamageInstance[] }`.
+ * - The projectile's energy decides penetration (v3: a layer holds `eAR`); the damage follows the
+ *   energy by the armour-damage-reduction law (`damageRatioForEnergyRatio`).
+ * - The damage a layer absorbs may be handed on as a shock (`conductance`, see
+ *   {@link _conductedShares}); a held hit also converts into wear on the layer (`selfInduction`). When the
+ *   layer breaks, a non-mechanical hit (a beam) overflows into the layers behind; a mechanical one (bullet,
+ *   blade, blow) does not — its shock is the conductance. Both go on through {@link passTransferred}.
+ * - Wear / breachLoss are mutated on the live `layers` array. Layers whose `integrity` dropped to `0`
+ *   stay in the stack but are transparent (armour is repairable, not destructible).
+ * - A `transferred` application (a shock handed on by another stack) is only softened.
  *
- * `deepestLayerReached` is the index of the layer the application was last
- * present on (could be == layers.length, meaning it reached the body).
+ * `deepestLayerReached` is the index of the layer the projectile was last present on (`layers.length`
+ * when it reached the body); handed-on shocks do not move it.
  *
  * @param {string} type
  * @param {number} amount
  * @param {LayerState[]} layers - mutable
  * @param {number} startIdx
- * @param {{ armorPen: number, armorDamageFactor: number, hardness: number }} mods
+ * @param {{ armorPen: number, armorDamageFactor: number, hardness: number, armorDamageReduction?: number, initialEnergy?: number }} mods
  * @param {ResolverContext} ctx
  * @param {Map<string, Object>} matCache
- * @param {Object[]} trace        - mutable: per-event log
- * @param {boolean} [isPrimary]   - true for primary application (controls
- *   whether the resulting position influences package position)
+ * @param {Object[]} trace - mutable: per-event log
+ * @param {boolean} [isPrimary]
+ * @param {boolean} [transferred]
  * @returns {{ deepestLayerReached: number, bodyHits: DamageInstance[] }}
  */
-function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, trace, isPrimary = true) {
+function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, trace, isPrimary = true, transferred = false) {
+  if (transferred) return passTransferred(type, amount, layers, startIdx, ctx, matCache, trace);
+
   const bodyHits = [];
   let cursor = startIdx;
-  let currentType = type;
+  const currentType = type;
   let currentAmount = amount;
   let deepest = startIdx;
-  // v3: the projectile energy is computed once BEFORE the shot and carried
-  // through the stack independently from the damage amount. Energy decides
-  // penetration; damage decides body harm (scaled by armorDamageReduction).
+  // v3: the projectile energy is computed once BEFORE the shot and carried through the stack
+  // independently from the damage amount. Energy decides penetration; damage decides body harm.
   let currentEnergy = Number.isFinite(mods.initialEnergy) && mods.initialEnergy >= 0
     ? mods.initialEnergy
     : projectileEnergy(amount, mods);
+
+  const handOn = (shares, cursorIdx) => {
+    for (const inst of shares) {
+      const sub = passTransferred(inst.type, inst.amount, layers, cursorIdx + 1, ctx, matCache, trace);
+      bodyHits.push(...sub.bodyHits);
+    }
+  };
 
   while (cursor < layers.length) {
     const layer = layers[cursor];
@@ -313,103 +387,64 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
     }
 
     const material = getMaterialFor(ctx, layer.material, matCache);
-
-    // ---- Step 1. Conductance (always, before structural check). --------
-    // Split off `conductance[T]` fractions as fresh hits on the next layer
-    // in whatever types the material conducts to. The remainder engages the
-    // structure with the original type `T`.
-    const conductance = material.conductance?.[currentType] ?? [];
-    let conductedFraction = 0;
-    const conductedItems = [];
-    for (const entry of conductance) {
-      const f = Math.max(0, Number(entry?.fraction ?? 0));
-      if (f <= 0) continue;
-      if (!isDamageType(entry?.type)) continue;
-      const take = Math.min(f, Math.max(0, 1 - conductedFraction));
-      if (take <= 0) break;
-      const chunk = currentAmount * take;
-      if (!_isPositive(chunk)) continue;
-      conductedItems.push({ type: entry.type, amount: chunk });
-      conductedFraction += take;
-    }
-    const xStruct = currentAmount * Math.max(0, 1 - conductedFraction);
-    // Conducted shares take their proportional energy with them (their
-    // sub-hits recompute energy from their own amounts).
-    currentEnergy *= Math.max(0, 1 - conductedFraction);
-
-    if (conductedItems.length) {
-      trace.push({
-        kind: 'conduct', layerIndex: cursor, material: layer.material,
-        fromType: currentType, items: conductedItems.map((c) => ({ ...c })),
-        remaining: xStruct
-      });
-      for (const inst of conductedItems) {
-        const sub = applyHitOnStack(inst.type, inst.amount, layers, cursor + 1, mods, ctx, matCache, trace, false);
-        bodyHits.push(...sub.bodyHits);
-        deepest = Math.max(deepest, sub.deepestLayerReached);
-      }
-    }
-
     deepest = Math.max(deepest, cursor);
 
-    // If conductance ate the entire hit, nothing to do structurally.
-    if (!_isPositive(xStruct)) {
-      return { deepestLayerReached: deepest, bodyHits };
-    }
-
-    // ---- Step 2. Structural evaluation on X_struct. --------------------
     const mode = material.degradation[currentType] ?? DEGRADATION_MODES.REDUCTION;
     const armour = effectiveArmorRating(layer, material, currentType);
     const evalRes = evaluateLayerForHit(layer, armour.eARBase, mode, ctx.random);
 
     if (!evalRes.active) {
-      trace.push({ kind: 'bypass', layerIndex: cursor, material: layer.material, type: currentType, amount: xStruct, mode });
-      currentAmount = xStruct;
+      trace.push({ kind: 'bypass', layerIndex: cursor, material: layer.material, type: currentType, amount: currentAmount, mode });
       cursor += 1;
       continue;
     }
 
-    // Distribution mode: the "outside" fraction of the structural portion
-    // skips this layer as the same type; the "inside" fraction is processed
-    // normally below.
-    let structAmount = xStruct;
+    // Distribution mode: the "outside" fraction skips this layer as the same type (with its share of
+    // the energy); the "inside" fraction is processed normally below.
+    let structAmount = currentAmount;
     if (mode === DEGRADATION_MODES.DISTRIBUTION && evalRes.distributionBypassFraction > EPSILON) {
-      const outsideAmt = xStruct * evalRes.distributionBypassFraction;
-      const insideAmt = xStruct * evalRes.distributionInsideFraction;
+      const outsideAmt = currentAmount * evalRes.distributionBypassFraction;
+      const insideAmt = currentAmount * evalRes.distributionInsideFraction;
       if (_isPositive(outsideAmt)) {
-        const tail = applyHitOnStack(currentType, outsideAmt, layers, cursor + 1, mods, ctx, matCache, trace, false);
+        const tailMods = { ...mods, initialEnergy: currentEnergy * evalRes.distributionBypassFraction };
+        const tail = applyHitOnStack(currentType, outsideAmt, layers, cursor + 1, tailMods, ctx, matCache, trace, false, false);
         bodyHits.push(...tail.bodyHits);
         deepest = Math.max(deepest, tail.deepestLayerReached);
       }
       structAmount = insideAmt;
-      // Energy splits in the same proportion as the distributed amount.
       currentEnergy *= Math.max(0, evalRes.distributionInsideFraction);
-      if (!_isPositive(structAmount)) {
-        // Entire structural portion slipped through via distribution; the
-        // layer's integrity is not affected by the bypassed amount.
-        return { deepestLayerReached: deepest, bodyHits };
-      }
+      if (!_isPositive(structAmount)) return { deepestLayerReached: deepest, bodyHits };
     }
 
     const eAR = evalRes.eAR;
     const Hp = _positiveProjectileHardness(mods.hardness);
     const armorPen = _nonNegativeArmorPen(mods.armorPen);
     const energyBefore = Math.max(0, currentEnergy);
-    const energyResult = eAR <= EPSILON
-      ? { energyAfter: energyBefore, residual: structAmount }
-      : residualDamageAfterArmor(structAmount, energyBefore, eAR, mods.armorDamageReduction);
-    const { energyAfter, residual } = energyResult;
-    const energyAbsorbed = eAR <= EPSILON ? 0 : Math.min(energyBefore, eAR);
+    const penetrated = eAR <= EPSILON || energyBefore > eAR + EPSILON;
+    let energyAfter = energyBefore;
+    let residual = structAmount;
+    if (eAR > EPSILON) {
+      if (penetrated) ({ energyAfter, residual } = residualDamageAfterArmor(structAmount, energyBefore, eAR, mods.armorDamageReduction));
+      else { energyAfter = 0; residual = 0; }
+    }
+    const energyAbsorbed = Math.max(0, energyBefore - energyAfter);
+    const absorbedDamage = Math.max(0, structAmount - residual);
 
     const adf = Math.max(0, mods.armorDamageFactor || 1);
     const wearCoeffT = _wearCoefficient(material, currentType) * adf;
     const wearDeltaT = wearCoeffT * structAmount;
     layer.integrity = Math.max(0, layer.integrity - wearDeltaT);
 
-    if (eAR <= EPSILON || energyBefore > eAR + EPSILON) {
-      // Penetrated: residual continues with same type, breachLoss grows.
-      layer.breachLoss = Math.min(layer.breachCapacity, layer.breachLoss + wearDeltaT);
+    const conducted = _conductedShares(material, currentType, absorbedDamage);
+    if (conducted.length) {
+      trace.push({
+        kind: 'conduct', layerIndex: cursor, material: layer.material,
+        fromType: currentType, items: conducted.map((c) => ({ ...c })), absorbed: absorbedDamage
+      });
+    }
 
+    if (penetrated) {
+      layer.breachLoss = Math.min(layer.breachCapacity, layer.breachLoss + wearDeltaT);
       trace.push({
         kind: 'penetrate', layerIndex: cursor, material: layer.material, type: currentType,
         incoming: structAmount, ar: armour.ar, eARBase: armour.eARBase, eAR,
@@ -418,14 +453,16 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
         resistancePercent: armour.resistancePercent,
         breachAfter: layer.breachLoss, integrityAfter: layer.integrity, mode
       });
-
+      handOn(conducted, cursor);
       currentAmount = residual;
       currentEnergy = energyAfter;
       cursor += 1;
+      // `armorDamageReduction` > 100 can run the damage out before the energy: nothing goes on.
+      if (!_isPositive(currentAmount)) return { deepestLayerReached: deepest, bodyHits };
       continue;
     }
 
-    // ---- Step 3. Held → record event, then apply selfInduction. --------
+    // ---- Held → record event, hand on the shock, apply selfInduction. ----
     trace.push({
       kind: 'hold', layerIndex: cursor, material: layer.material, type: currentType,
       incoming: structAmount, ar: armour.ar, eARBase: armour.eARBase, eAR,
@@ -434,29 +471,30 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
       resistancePercent: armour.resistancePercent,
       integrityAfter: layer.integrity, mode
     });
+    handOn(conducted, cursor);
 
     const overflow = _applySelfInduction({
       layer, material, fromType: currentType, xStruct: structAmount,
       armorDamageFactor: adf, cursor, trace
     });
+    // A mechanical hit's shock is the conductance above; a layer worn out while holding it only breaks.
+    // Energy types (a beam burning through) still overflow into the layers behind.
+    if (!isMechanical(currentType)) handOn(overflow, cursor);
 
-    for (const inst of overflow) {
-      const sub = applyHitOnStack(inst.type, inst.amount, layers, cursor + 1, mods, ctx, matCache, trace, false);
-      bodyHits.push(...sub.bodyHits);
-      deepest = Math.max(deepest, sub.deepestLayerReached);
-    }
-
-    // Held applications stop at this layer for the primary type.
     return { deepestLayerReached: cursor, bodyHits };
   }
 
   if (_isPositive(currentAmount)) {
+    // `energy` / `armorDamageReduction` let a caller carry the shard into another stack (e.g. wall
+    // penetration, the body) without recomputing the energy from the residual damage.
     bodyHits.push({
       type: currentType,
       amount: currentAmount,
       armorPen: Math.max(0, mods.armorPen || 0),
       armorDamageFactor: Math.max(0, mods.armorDamageFactor || 1),
-      hardness: _positiveProjectileHardness(mods.hardness)
+      hardness: _positiveProjectileHardness(mods.hardness),
+      energy: Math.max(0, currentEnergy),
+      ...(Number.isFinite(mods.armorDamageReduction) ? { armorDamageReduction: mods.armorDamageReduction } : {})
     });
     trace.push({ kind: 'body', type: currentType, amount: currentAmount });
   }
@@ -553,7 +591,7 @@ function _applySelfInduction({ layer, material, fromType, xStruct, armorDamageFa
  *
  * @returns {{
  *   bodyDamage: DamageInstance[],
- *   bodyHits: Array<{ type: string, amount: number, armorPen: number, armorDamageFactor: number, hardness: number }>,
+ *   bodyHits: Array<{ type: string, amount: number, armorPen: number, armorDamageFactor: number, hardness: number, energy: number, armorDamageReduction?: number }>,
  *   layers: LayerState[],
  *   trace: Object[]
  * }} `bodyDamage` is a merged list of `(type, amount)` reaching the body —
@@ -603,7 +641,7 @@ export function resolveDamagePackage(input) {
           armorDamageReduction: item.armorDamageReduction,
           initialEnergy: item.energy
         };
-        const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true);
+        const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true, item.transferred === true);
         bodyDamage.push(...result.bodyHits);
         phaseDeepest = Math.max(phaseDeepest, result.deepestLayerReached);
       }
@@ -622,7 +660,7 @@ export function resolveDamagePackage(input) {
           armorDamageReduction: item.armorDamageReduction,
           initialEnergy: item.energy
         };
-        const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true);
+        const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true, item.transferred === true);
         bodyDamage.push(...result.bodyHits);
         cursor = result.deepestLayerReached;
       }

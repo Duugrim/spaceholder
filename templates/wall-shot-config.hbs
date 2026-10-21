@@ -1,0 +1,37 @@
+<fieldset class="spaceholder-wall-shot-config">
+  <legend>{{localize "SPACEHOLDER.Walls.Config.Title"}}</legend>
+  <p class="hint">{{localize "SPACEHOLDER.Walls.Config.Hint"}}</p>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.Walls.Config.Material"}}</label>
+    <div class="form-fields">
+      <select name="flags.spaceholder.wall.material">
+        <option value="" {{#unless material}}selected{{/unless}}>{{localize "SPACEHOLDER.Walls.Config.MaterialNone"}}</option>
+        {{#each materials}}
+        <option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.Walls.Config.Kind"}}</label>
+    <div class="form-fields">
+      <select name="flags.spaceholder.wall.kind">
+        <option value="thin" {{#unless isSolid}}selected{{/unless}}>{{localize "SPACEHOLDER.Walls.Config.KindThin"}}</option>
+        <option value="solid" {{#if isSolid}}selected{{/if}}>{{localize "SPACEHOLDER.Walls.Config.KindSolid"}}</option>
+      </select>
+    </div>
+    <p class="hint">{{localize "SPACEHOLDER.Walls.Config.KindHint"}}</p>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "SPACEHOLDER.Walls.Config.Thickness"}}</label>
+    <div class="form-fields">
+      <input type="number" name="flags.spaceholder.wall.thickness" data-dtype="Number" min="0" step="any" value="{{thickness}}">
+    </div>
+    <p class="hint">{{localize "SPACEHOLDER.Walls.Config.ThicknessHint"}}</p>
+  </div>
+
+  <p class="hint spaceholder-wall-solid-warning" hidden>{{localize "SPACEHOLDER.Walls.Config.SolidNeedsDirection"}}</p>
+</fieldset>

@@ -12,9 +12,9 @@
     "breachCapacityPerThickness": 30,
     "weightPerThickness": 1.4,
     "resistance": {
-      "ballistic": 100,
+      "ballistic": 135,
       "concussive": 55,
-      "piercing": 35,
+      "piercing": 15,
       "cutting": 70,
       "thermal": 25,
       "laser": 25,
@@ -25,7 +25,7 @@
       "chemical": 20
     },
     "wear": {
-      "ballistic": 30,
+      "ballistic": 10,
       "concussive": 15,
       "piercing": 50,
       "cutting": 50,
@@ -48,6 +48,18 @@
         {
           "type": "concussive",
           "fraction": 0.3
+        }
+      ],
+      "cutting": [
+        {
+          "type": "concussive",
+          "fraction": 0.15
+        }
+      ],
+      "concussive": [
+        {
+          "type": "concussive",
+          "fraction": 0.9
         }
       ]
     },

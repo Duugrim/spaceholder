@@ -245,3 +245,175 @@ export function validateRelationsTargets(bodyParts, relations, partKey) {
   }
   return true;
 }
+
+/* ================================================================== *
+ *  Part tree (`parent` relations)                                      *
+ * ================================================================== */
+
+/**
+ * Slot key of the part's parent (first `parent` relation), or `null` for a root / unknown part.
+ * @param {Record<string, Object>} bodyParts
+ * @param {string} slotRef
+ * @returns {string|null}
+ */
+export function parentOf(bodyParts, slotRef) {
+  const rels = bodyParts?.[slotRef]?.relations;
+  if (!Array.isArray(rels)) return null;
+  const rel = rels.find((r) => r && r.kind === "parent" && r.target);
+  const target = rel ? String(rel.target).trim() : "";
+  return target && bodyParts[target] ? target : null;
+}
+
+/**
+ * Direct children of a part (parts whose `parent` points at it), in key order.
+ * @param {Record<string, Object>} bodyParts
+ * @param {string} slotRef
+ * @returns {string[]}
+ */
+export function childrenOf(bodyParts, slotRef) {
+  return Object.keys(bodyParts ?? {}).filter((key) => parentOf(bodyParts, key) === slotRef);
+}
+
+/**
+ * Everything below a part in the tree (children, grandchildren…), breadth first, without the part itself.
+ * Safe against cycles in broken data.
+ * @param {Record<string, Object>} bodyParts
+ * @param {string} slotRef
+ * @returns {string[]}
+ */
+export function descendantsOf(bodyParts, slotRef) {
+  const out = [];
+  const seen = new Set([slotRef]);
+  const queue = [slotRef];
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const child of childrenOf(bodyParts, cur)) {
+      if (seen.has(child)) continue;
+      seen.add(child);
+      out.push(child);
+      queue.push(child);
+    }
+  }
+  return out;
+}
+
+/**
+ * Parts without a parent: root candidates (a valid anatomy has exactly one).
+ * @param {Record<string, Object>} bodyParts
+ * @returns {string[]}
+ */
+export function parentlessParts(bodyParts) {
+  return Object.keys(bodyParts ?? {}).filter((key) => !parentOf(bodyParts, key));
+}
+
+/**
+ * The root slot of an anatomy: `rootRef` when it names an existing part, otherwise the first part
+ * without a parent (old actors / presets saved before `root` existed). `null` when there are no parts.
+ * @param {Record<string, Object>} bodyParts
+ * @param {string} [rootRef]
+ * @returns {string|null}
+ */
+export function resolveRootRef(bodyParts, rootRef) {
+  const parts = bodyParts && typeof bodyParts === "object" ? bodyParts : {};
+  const wanted = String(rootRef ?? "").trim();
+  if (wanted && parts[wanted]) return wanted;
+  return parentlessParts(parts)[0] ?? null;
+}
+
+/**
+ * Check that the `parent` relations form one tree hanging from `root`.
+ * @param {Record<string, Object>} bodyParts
+ * @param {string} root
+ * @returns {{ ok: boolean, errors: Array<{ code: string, part?: string }> }}
+ */
+export function validatePartTree(bodyParts, root) {
+  const parts = bodyParts && typeof bodyParts === "object" ? bodyParts : {};
+  const errors = [];
+  if (!Object.keys(parts).length) return { ok: true, errors };
+  const rootKey = String(root ?? "").trim();
+  if (!rootKey || !parts[rootKey]) {
+    errors.push({ code: "root-missing", part: rootKey || undefined });
+    return { ok: false, errors };
+  }
+  if (parentOf(parts, rootKey)) errors.push({ code: "root-has-parent", part: rootKey });
+  for (const key of Object.keys(parts)) {
+    const seen = new Set([key]);
+    let cur = key;
+    let reachesRoot = key === rootKey;
+    while (!reachesRoot) {
+      const next = parentOf(parts, cur);
+      if (!next) break;
+      if (seen.has(next)) {
+        errors.push({ code: "cycle", part: key });
+        break;
+      }
+      seen.add(next);
+      cur = next;
+      reachesRoot = cur === rootKey;
+    }
+    if (!reachesRoot && !errors.some((e) => e.code === "cycle" && e.part === key)) {
+      errors.push({ code: "not-under-root", part: key });
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+/**
+ * Parent changes needed to make `newRoot` the root without breaking the tree: the chain from `newRoot`
+ * up to the old root is turned around, everything else keeps its parent.
+ * @param {Record<string, Object>} bodyParts
+ * @param {string} newRoot
+ * @returns {Record<string, string|null>} new parent per part that changes (`null` = no parent); `{}` if `newRoot` is unknown
+ */
+export function rerootParents(bodyParts, newRoot) {
+  if (!bodyParts?.[newRoot]) return {};
+  const path = [newRoot];
+  const seen = new Set(path);
+  let cur = newRoot;
+  for (;;) {
+    const next = parentOf(bodyParts, cur);
+    if (!next || seen.has(next)) break;
+    path.push(next);
+    seen.add(next);
+    cur = next;
+  }
+  const changes = { [newRoot]: null };
+  for (let i = 1; i < path.length; i += 1) changes[path[i]] = path[i - 1];
+  return changes;
+}
+
+/**
+ * Lost parts: a destroyed part is lost, and so is everything below it in the `parent` tree. Destroyed is the
+ * part's own `destroyed` flag when it has one (body-state: below its reserve), else its HP is gone (`currentHp` ≤ 0
+ * while it has HP to lose). Pure: expects `currentHp` / `effectiveMaxHp` (or `maxHp`) already derived on each part.
+ * @param {Record<string, Object>} bodyParts
+ * @returns {Record<string, string>} lost slot → the nearest ancestor (or the part itself) whose HP ran out
+ */
+export function computeLostParts(bodyParts) {
+  const parts = bodyParts && typeof bodyParts === "object" ? bodyParts : {};
+  const destroyed = (key) => {
+    const part = parts[key];
+    if (typeof part?.destroyed === "boolean") return part.destroyed;
+    const max = Number(part?.effectiveMaxHp ?? part?.maxHp) || 0;
+    return max > 0 && (Number(part?.currentHp ?? max) || 0) <= 0;
+  };
+  /** @type {Record<string, string>} */
+  const lost = {};
+  for (const key of Object.keys(parts)) {
+    if (destroyed(key)) {
+      lost[key] = key;
+      continue;
+    }
+    const seen = new Set([key]);
+    let cur = parentOf(parts, key);
+    while (cur && !seen.has(cur)) {
+      if (destroyed(cur)) {
+        lost[key] = cur;
+        break;
+      }
+      seen.add(cur);
+      cur = parentOf(parts, cur);
+    }
+  }
+  return lost;
+}

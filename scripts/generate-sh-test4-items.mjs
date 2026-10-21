@@ -143,7 +143,7 @@ function baseItem({
       actions: [],
       quantity,
       weight,
-      formula: 'd20 + @dex.mod + ceil(@lvl / 2)',
+      formula: 'd20 + @agi.mod + ceil(@lvl / 2)',
       equipped: false,
       held: false,
       anatomyId: null,

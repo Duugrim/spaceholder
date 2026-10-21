@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Баланс SpaceHolder</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%238fb98f' d='M8 1l1.5 5H15l-4.3 3.2L12.3 15 8 11.6 3.7 15l1.6-5.8L1 6h5.5z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Баланс SpaceHolder</h1>
+    <nav class="tabs" id="tabs" aria-label="Разделы"></nav>
+    <span class="spacer"></span>
+    <span class="save-status" id="save-status" role="status"></span>
+    <button class="btn btn-small" type="button" id="btn-dicts" title="Справочники">Справочники</button>
+    <button class="btn btn-small" type="button" id="btn-export" title="Экспорт для ИИ">Экспорт для ИИ</button>
+  </header>
+  <div class="banner banner-error" id="banner" hidden></div>
+  <main id="panel"></main>
+  <div id="modals"></div>
+  <div id="toasts" aria-live="polite"></div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

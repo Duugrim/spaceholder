@@ -133,7 +133,7 @@ export class GlobalMapProcessing {
 
     // Target grid dimensions (rectangular grid to fill scene)
     const sceneDims = scene.dimensions;
-    const cellSize = (scene.canvas?.grid?.size || 64) / gridResolution;
+    const cellSize = (scene.grid?.size || 64) / gridResolution;
 
     const gridCols = Math.ceil(sceneDims.width / cellSize);
     const gridRows = Math.ceil(sceneDims.height / cellSize);
@@ -341,7 +341,7 @@ export class GlobalMapProcessing {
     }
 
     const sceneDims = targetScene.dimensions;
-    const cellSize = (targetScene.canvas?.grid?.size || 64) / gridResolution;
+    const cellSize = (targetScene.grid?.size || 64) / gridResolution;
 
     const biomes = this.biomeResolver.listBiomes();
     if (!biomes.length) {

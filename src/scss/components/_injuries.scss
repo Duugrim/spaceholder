@@ -151,6 +151,10 @@
     color: #f4d27a;
   }
 
+  .inj-seg-organ {
+    color: #ff8a8a;
+  }
+
   .inj-seg-bleedState {
     color: #e66a6a;
     font-style: italic;
@@ -223,6 +227,12 @@
     .inj-seg {
       margin-right: 2px;
     }
+  }
+
+  // The list scrolls and clips what sticks out above it: the top card has no room for an upward box, so it opens downward.
+  .injury-card:first-child .inj-source-tip {
+    bottom: auto;
+    top: calc(100% + 6px);
   }
 
   .inj-source-wrap:hover .inj-source-tip,

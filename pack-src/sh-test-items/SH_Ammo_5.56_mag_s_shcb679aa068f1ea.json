@@ -135,7 +135,7 @@
         "consume": false,
         "falloff": {
           "enabled": true,
-          "halfDistance": 90
+          "halfDistance": 300
         },
         "multishot": {
           "enabled": false,

@@ -20,6 +20,8 @@ export const ITEM_PILES_SH = {
   PILE_MERGE_DISTANCE_MULTIPLIER: 0.5,
   /** Cached stack identity hash under `flags.spaceholder.itemPilesSh` */
   STACK_FINGERPRINT_KEY: 'stackFingerprint',
+  /** Suffix after the identity hash of a stack that must never merge with an identical one (a container moved with its contents). */
+  STACK_FRESH_MARK: '|fresh:',
 };
 
 export function getSystemSocketName() {

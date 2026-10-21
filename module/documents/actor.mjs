@@ -1,18 +1,27 @@
-import { anatomyManager, resolveBodyPartDisplayName } from '../anatomy-manager.mjs';
+import { anatomyManager, resolveBodyPartDisplayName, resolveInnerDisplayName } from '../anatomy-manager.mjs';
 import { getMaxApFromAbilities } from '../helpers/actions/transaction-ledger.mjs';
 import { resolveCoverageEntryToActorSlots, coverageEntryMatchesSlotFace } from '../helpers/body-part-coverage.mjs';
-import { ensureActorPartRelationsSynced } from '../helpers/anatomy-relations.mjs';
+import { ensureActorPartRelationsSynced, resolveRootRef } from '../helpers/anatomy-relations.mjs';
 import { normalizeApplications } from '../helpers/damage/damage-resolver.mjs';
 import { resolveBodyTraversal } from '../helpers/damage/body-traversal-resolver.mjs';
 import { materialsManager, ensureLayerDefaults } from '../helpers/damage/materials-manager.mjs';
 import { describeInjury } from '../helpers/damage/injury-description.mjs';
+import { applyBodyState } from '../helpers/body-state.mjs';
 import { normalizeSkillsData } from '../helpers/skills/skills.mjs';
+import { ABILITY_IDS, DEFAULT_PARAMS, abilityMod, computeDerivedStats } from '../helpers/derived-stats.mjs';
+import { AP_PER_SECOND } from '../helpers/weapon/weapon-model.mjs';
 import {
   sanitizeAnatomyGroups,
   DEFAULT_ANATOMY_HEIGHT_M,
+  DEFAULT_ANATOMY_SPEED_MPS,
   injuryCategoryForPart,
 } from '../helpers/anatomy-groups.mjs';
 import { buildProjectileApplications, composeProjectileApplications } from './item.mjs';
+
+/** Modifier target ids renamed over time → current id. */
+const LEGACY_MODIFIER_TARGET_IDS = Object.freeze({
+  'abilities.dex': 'abilities.agi',
+});
 
 function _sanitizeAimingArcSystemData(systemData) {
   if (!systemData || typeof systemData !== 'object') return;
@@ -104,7 +113,7 @@ export class SpaceHolderActor extends Actor {
     if (!systemData?.abilities || typeof systemData.abilities !== 'object') return;
     for (const ability of Object.values(systemData.abilities)) {
       if (ability && typeof ability === 'object' && Number.isFinite(Number(ability.value))) {
-        ability.mod = Math.floor((Number(ability.value) - 10) / 2);
+        ability.mod = abilityMod(ability.value);
       }
     }
   }
@@ -117,84 +126,83 @@ export class SpaceHolderActor extends Actor {
 
     const systemData = actorData.system;
 
+    // Поправки (гравитация, множители внимательности/воли, старты хода) — база для модификаторов.
+    this._ensureParams(systemData);
+
     // Применяем модификаторы от экипированных надетых предметов к базовым значениям
     this._applyWearableModifiers(systemData);
 
     this._prepareAbilityModifiers(systemData);
 
+    // Anatomy meta first: derived stats read the species height and speed.
+    this._prepareAnatomyMeta(systemData);
     this._prepareDerivedCharacterStats(systemData);
     _sanitizeAimingArcSystemData(systemData);
     normalizeSkillsData(systemData);
-    this._prepareAnatomyMeta(systemData);
 
     // Process body parts health system (always based on health)
     this._prepareBodyParts(systemData);
   }
 
   /**
-   * MVP производные величины с листа персонажа (формулы можно заменить позже).
+   * Runtime: fill `system.params` defaults (old documents saved before they existed),
+   * so item/effect modifiers add to the real base instead of to 0.
+   * @param {object} systemData
+   */
+  _ensureParams(systemData) {
+    const params = systemData.params && typeof systemData.params === 'object' ? systemData.params : {};
+    for (const [key, def] of Object.entries(DEFAULT_PARAMS)) {
+      if (!Number.isFinite(Number(params[key]))) params[key] = def;
+    }
+    systemData.params = params;
+  }
+
+  /**
+   * Производные величины листа персонажа. Формулы — в `helpers/derived-stats.mjs`
+   * (чистый модуль, покрыт тестом), здесь только сбор входов.
    * Пишет в `systemData.derivedStats` только в рантайме (не в template.json).
+   * Описание: docs/code/reference/DERIVED_STATS.md.
    * @param {object} systemData
    */
   _prepareDerivedCharacterStats(systemData) {
     const abs = systemData.abilities || {};
-    const val = (k) => {
-      const n = Number(abs[k]?.value);
-      return Number.isFinite(n) ? n : 0;
-    };
-    const mod = (k) => {
-      const n = Number(abs[k]?.mod);
-      return Number.isFinite(n) ? n : 0;
-    };
+    const abilities = {};
+    for (const id of ABILITY_IDS) abilities[id] = abs[id]?.value;
 
-    const endM = mod('end');
-    const strM = mod('str');
-    const strV = val('str');
-    const dexM = mod('dex');
-    const dexV = val('dex');
-    const corM = mod('cor');
-    const perM = mod('per');
-    const intM = mod('int');
-    const intV = val('int');
-    const lucM = mod('luc');
+    const derived = computeDerivedStats({
+      abilities,
+      speedMps: systemData.speedMps,
+      heightM: systemData.heightM,
+      params: systemData.params,
+      loadKg: this._getCarriedWeightKg(),
+      encumbrance: CONFIG.SPACEHOLDER?.encumbrance?.enabled !== false,
+      apSlice: CONFIG.SPACEHOLDER?.movementApTimeSlice,
+      apPerSecond: AP_PER_SECOND,
+      minDistPerSlice: CONFIG.SPACEHOLDER?.movementMinDistancePerSlice,
+    });
 
-    // Прыжки (м): грубая линейная связь от STR+DEX
-    const jumpHigh = Math.max(0, 0.25 + (strV + dexV - 20) * 0.04);
-    const jumpLong = Math.max(0, 1.8 + (strV + dexV - 20) * 0.15);
-
-    const apSlice = Math.max(1, Number(CONFIG.SPACEHOLDER?.movementApTimeSlice) || 10);
-    const minDistPerSlice = Math.max(
-      Number.EPSILON,
-      Number(CONFIG.SPACEHOLDER?.movementMinDistancePerSlice) || 0.25
-    );
-    const travelDistPerSlice = Math.max(0, 5 + dexM);
-    const distPerSliceForCost = Math.max(minDistPerSlice, travelDistPerSlice);
-    systemData.speed = apSlice / distPerSliceForCost;
-
+    systemData.speed = derived.speedApPerMeter;
     systemData.derivedStats = {
-      healthBonus: endM,
-      carryWeight: Math.floor(15 + strV * 6 + val('end') * 5),
-      liftWeight: Math.floor(strV * 12),
-      meleeDamageBonus: strM,
-      jumpHigh,
-      jumpLong,
-      travelSpeed: travelDistPerSlice,
-      movementTimeSliceAp: apSlice,
-      /** MVP: ходов за раунд (боёвка), не хранится в документе. */
-      turnsPerRound: Math.max(1, Math.floor((dexV * intV) / 100)),
-      agilityScore: 10 + dexM + corM,
-      actionSpeed: Math.max(0, 8 + corM * 2),
-      reactionScore: 10 + dexM + perM,
-      accuracyScore: 10 + corM + perM,
-      awarenessScore: 10 + perM * 2,
-      learnRateScore: 10 + perM + intM,
-      willScore: 10 + intM * 2,
-      intuitionScore: 10 + lucM + intM,
-      heroismPoints: Math.max(0, 1 + lucM),
-      secondWindBonus: 1 + endM + lucM,
+      ...derived,
       /** Совпадает с `getMaxApFromAbilities` / макс. ОД в бою. */
       maxApFromAbilities: getMaxApFromAbilities(this),
     };
+  }
+
+  /**
+   * Вес всего, что лежит у актёра (все Item типа `item` с учётом количества,
+   * как в итоге инвентаря на листе), кг.
+   * @returns {number}
+   */
+  _getCarriedWeightKg() {
+    let total = 0;
+    for (const item of this.items ?? []) {
+      if (item.type !== 'item') continue;
+      const quantity = Number(item.system?.quantity) || 0;
+      const weight = Number(item.system?.weight) || 0;
+      total += weight * quantity;
+    }
+    return total;
   }
 
   /**
@@ -236,8 +244,8 @@ export class SpaceHolderActor extends Actor {
       if (part?.uuid) uuidToSlotRef[part.uuid] = slotRef;
     }
 
-    // Предварительно собираем сумму урона по частям (amount хранится в масштабе x100)
-    const sumDamageByPart = {};
+    // Wounds in HP units with their part (`amount` is stored ×100), the organs each reached.
+    const wounds = [];
     for (const inj of injuries) {
       if (typeof inj?.amount !== 'number') continue;
       let key = null;
@@ -247,11 +255,23 @@ export class SpaceHolderActor extends Actor {
         key = inj.partId;
       }
       if (!key) continue;
-      sumDamageByPart[key] = (sumDamageByPart[key] || 0) + Math.max(0, inj.amount | 0);
+      const organs = Array.isArray(inj.inners) ? inj.inners.filter((o) => o?.id) : [];
+      wounds.push({
+        slotRef: key,
+        amount: Math.max(0, inj.amount | 0) / 100,
+        initialAmount: Math.max(0, (inj.initialAmount ?? inj.amount) | 0) / 100,
+        type: inj.type,
+        status: inj.status,
+        inners: organs.map((o) => ({ id: o.id, amount: Math.max(0, o.amount | 0) / 100 })),
+      });
     }
 
-    // Обновляем производные поля частей тела (typed relations + производные links; попадания — в shot-manager)
-    for (const [partId, bodyPart] of Object.entries(bodyParts)) {
+    // Множитель здоровья от END (относительный к виду); у типов без derivedStats — 1.
+    const hpMult = Number(systemData.derivedStats?.healthMult);
+    const hpScale = Number.isFinite(hpMult) && hpMult > 0 ? hpMult : 1;
+
+    // Производные поля частей для показа (typed relations + производные links; попадания — в shot-manager).
+    for (const bodyPart of Object.values(bodyParts)) {
       ensureActorPartRelationsSynced(bodyPart);
       const typeId = String(bodyPart?.id ?? "").trim();
       if (typeId) {
@@ -262,17 +282,24 @@ export class SpaceHolderActor extends Actor {
         ? bodyPart.relations.find((r) => r && r.kind === "parent")
         : null;
       bodyPart.parentRef = parentRel?.target ?? null;
-
-      // Вычисляем текущее здоровье из травм: current = maxHp - floor(sum(amount)/100)
-      const sumAmt = sumDamageByPart[partId] || 0;
-      const dmgUnits = Math.floor(sumAmt / 100); // Масштаб: x100 => целые единицы HP
-      const currentHpDerived = Math.max(0, bodyPart.maxHp - dmgUnits);
-      bodyPart.currentHp = currentHpDerived;
-
-      // Процент здоровья и статус — производные (status больше не хранится в JSON)
-      bodyPart.healthPercentage = bodyPart.maxHp > 0 ? Math.floor((currentHpDerived * 100) / bodyPart.maxHp) : 100;
-      bodyPart.status = this._getBodyPartStatus({ healthPercentage: bodyPart.healthPercentage });
+      for (const inner of Array.isArray(bodyPart.inners) ? bodyPart.inners : []) {
+        inner.displayName = resolveInnerDisplayName(inner.id, inner.name);
+      }
     }
+
+    // State from the wounds (body-state.mjs): HP (stored `maxHp` × END), lost parts with everything below
+    // them, organs, bleeding, dead / dying (synced to the token by actor-death.mjs). Injuries stay the only
+    // source of truth, so healing one brings the parts back.
+    const { bleeding, death } = applyBodyState(bodyParts, wounds, {
+      hpScale,
+      rootRef: systemData.anatomy?.rootRef,
+      materialOf: (part) => this.getPartMaterial(part),
+    });
+    for (const bodyPart of Object.values(bodyParts)) {
+      bodyPart.status = this._getBodyPartStatus(bodyPart);
+    }
+    systemData.health.bleeding = bleeding;
+    systemData.health.dead = death;
   }
 
   /**
@@ -287,6 +314,8 @@ export class SpaceHolderActor extends Actor {
       : (systemData.anatomy = {});
     const bodyParts = systemData.health?.bodyParts ?? {};
     const slotRefs = Object.keys(bodyParts);
+    // Root of the part tree: the saved `rootRef`, else the part without a parent (older actors).
+    anatomy.rootRef = resolveRootRef(bodyParts, anatomy.rootRef) ?? '';
     anatomy.groups = sanitizeAnatomyGroups(anatomy.groups, [
       ...slotRefs,
       ...Object.values(bodyParts).map((p) => String(p?.id ?? '')).filter(Boolean),
@@ -294,6 +323,10 @@ export class SpaceHolderActor extends Actor {
     const h = Number(systemData.heightM);
     if (!Number.isFinite(h) || h <= 0) {
       systemData.heightM = DEFAULT_ANATOMY_HEIGHT_M;
+    }
+    const v = Number(systemData.speedMps);
+    if (!Number.isFinite(v) || v <= 0) {
+      systemData.speedMps = DEFAULT_ANATOMY_SPEED_MPS;
     }
   }
 
@@ -323,8 +356,10 @@ export class SpaceHolderActor extends Actor {
       const collect = (arr) => {
         if (!Array.isArray(arr)) return;
         for (const m of arr) {
-          const id = String(m?.targetId ?? m?.id ?? '').trim();
-          if (!id) continue;
+          const rawId = String(m?.targetId ?? m?.id ?? '').trim();
+          if (!rawId) continue;
+          // Items saved before the `dex` → `agi` rename still point at the old id.
+          const id = LEGACY_MODIFIER_TARGET_IDS[rawId] ?? rawId;
           const mode = String(m?.mode || 'add').trim() || 'add';
           if (mode !== 'add') continue;
           const val = Number(m?.value ?? 0);
@@ -366,8 +401,13 @@ export class SpaceHolderActor extends Actor {
    * @param {string|Object} [opts.source] либо строка-легаси, либо структурированный
    *   объект `{ attackerUuid, attackerName, weaponUuid, weaponName, ammoUuid,
    *   ammoName, verbKey, shotUid }` (любое поле опционально).
+   * @param {Array<{id: string, amount: number}>} [opts.inners] органы части, до которых дошла рана
+   *   (id из `part.inners`; урон x100, не больше `amount`)
    */
-  async addInjury({ partId, partUuid, amount, initialAmount, type = 'unknown', status = 'raw', source = '' } = {}) {
+  async addInjury({
+    partId, partUuid, amount, initialAmount, type = 'unknown', status = 'raw', source = '',
+    inners = []
+  } = {}) {
     const bodyParts = this.system.health?.bodyParts || {};
     if (!bodyParts || !Object.keys(bodyParts).length) return false;
 
@@ -413,6 +453,10 @@ export class SpaceHolderActor extends Actor {
       source: normalizedSource,
       createdAt: Date.now()
     };
+    const organs = (Array.isArray(inners) ? inners : [])
+      .map((o) => ({ id: String(o?.id ?? '').trim(), amount: Math.max(0, Math.min(amt, (o?.amount ?? 0) | 0)) }))
+      .filter((o) => o.id && o.amount > 0);
+    if (organs.length) injury.inners = organs;
 
     const injuries = Array.isArray(this.system.health?.injuries) ? foundry.utils.deepClone(this.system.health.injuries) : [];
     injuries.push(injury);
@@ -488,11 +532,13 @@ export class SpaceHolderActor extends Actor {
   /** Текущее здоровье части тела (derived, без сохранения) */
   getCurrentHpForPart(partId) {
     const bodyPart = this.system.health?.bodyParts?.[partId];
-    if (!bodyPart) return 0;
+    if (!bodyPart || bodyPart.lost) return 0;
+    // Prepared by body-state (saturation, a disabled part below 0); the plain sum only before preparation.
+    if (Number.isFinite(Number(bodyPart.currentHp))) return Number(bodyPart.currentHp);
     const injuries = this.getInjuriesByPart(partId);
     const sumAmt = injuries.reduce((acc, i) => acc + (i.amount|0), 0);
     const dmgUnits = Math.floor(sumAmt / 100);
-    return Math.max(0, bodyPart.maxHp - dmgUnits);
+    return Math.max(0, (bodyPart.effectiveMaxHp ?? bodyPart.maxHp) - dmgUnits);
   }
 
   /**
@@ -581,13 +627,16 @@ export class SpaceHolderActor extends Actor {
     builderContext,
     source = '',
     hitDirection = 'front',
-    armorScale = 1,
     random
   } = {}) {
     const bodyParts = this.system?.health?.bodyParts || {};
     const slotRef = this._resolveSlotRef({ partId, partUuid, bodyParts });
     if (!slotRef) {
       return { bodyDamage: [], bodyDamageBySlot: {}, path: [], trace: [], slotRef: null };
+    }
+    // A lost part is gone: nothing there to hit.
+    if (bodyParts[slotRef]?.lost) {
+      return { bodyDamage: [], bodyDamageBySlot: {}, path: [], trace: [], slotRef };
     }
 
     const package_ = this._composeApplicationPackage({ applications, projectile, builderId, builderContext });
@@ -602,7 +651,6 @@ export class SpaceHolderActor extends Actor {
       hitDirection,
       applications: package_,
       armorBySlot,
-      armorScale: Number.isFinite(Number(armorScale)) ? Math.max(0, Number(armorScale)) : 1,
       resolveMaterial: (id) => materialsManager.getMaterial(id),
       random
     });
@@ -614,19 +662,24 @@ export class SpaceHolderActor extends Actor {
       const totalAmount = Math.round(hits.reduce((sum, d) => sum + d.amount, 0) * 100);
       if (totalAmount <= 0) continue;
       const dominant = hits.reduce((acc, d) => (d.amount > (acc?.amount ?? 0) ? d : acc), null);
+      const innerHits = traversal.innerHitsBySlot?.[partSlot] ?? [];
       await this.addInjury({
         partId: partSlot,
         amount: totalAmount,
         initialAmount: totalAmount,
         type: dominant?.type ?? 'unknown',
         status: 'raw',
-        source: source || 'damage-package'
+        source: source || 'damage-package',
+        inners: innerHits.map((hit) => ({ id: hit.innerId, amount: Math.round(hit.amount * 100) }))
       });
     }
 
     return {
       bodyDamage: traversal.bodyDamageBySlot[slotRef] ?? [],
       bodyDamageBySlot: traversal.bodyDamageBySlot,
+      innerHitsBySlot: traversal.innerHitsBySlot,
+      woundsBySlot: traversal.woundsBySlot,
+      exitApplications: traversal.exitApplications,
       path: traversal.path,
       trace: traversal.trace,
       slotRef
@@ -795,8 +848,10 @@ export class SpaceHolderActor extends Actor {
    */
   _getBodyPartStatus(bodyPart) {
     const percentage = bodyPart.healthPercentage;
-    
-    if (percentage === 0) return "destroyed";
+
+    if (bodyPart.lost) return "lost";
+    if (bodyPart.lost === false && percentage <= 0) return "badly_injured";
+    if (percentage === 0) return "lost";
     if (percentage < 25) return "badly_injured";
     if (percentage < 50) return "injured";
     if (percentage < 75) return "bruised";
@@ -820,14 +875,12 @@ export class SpaceHolderActor extends Actor {
   }
 
   /**
-   * Stub: return first body part ID for legacy callers. Hit resolution will be in shot-manager.
-   * @returns {string|null} First body part ID or null
+   * Slot of the anatomy's root part (`system.anatomy.rootRef`; the head for a humanoid): the part whose
+   * loss takes the whole body with it.
+   * @returns {string|null} Root slotRef or null when there are no body parts
    */
   getRootBodyPart() {
-    const bodyParts = this.system.health?.bodyParts;
-    if (!bodyParts || !Object.keys(bodyParts).length) return null;
-    const sorted = Object.entries(bodyParts).sort((a, b) => (b[1].maxHp ?? 0) - (a[1].maxHp ?? 0));
-    return sorted[0][0];
+    return resolveRootRef(this.system.health?.bodyParts, this.system.anatomy?.rootRef);
   }
 
   /**
@@ -920,8 +973,12 @@ export class SpaceHolderActor extends Actor {
         delUpdate['delta.system.anatomy.name'] = displayName;
         delUpdate['delta.system.anatomy.type'] = anatomyId;
         delUpdate['delta.system.anatomy.groups'] = Array.isArray(anatomy.groups) ? anatomy.groups : [];
+        delUpdate['delta.system.anatomy.rootRef'] = anatomy.root ?? '';
         if (Number(anatomy.heightM) > 0) {
           delUpdate['delta.system.heightM'] = anatomy.heightM;
+        }
+        if (Number(anatomy.speedMps) > 0) {
+          delUpdate['delta.system.speedMps'] = anatomy.speedMps;
         }
         // Записываем bodyParts по ключам, чтобы избежать merge целого объекта в ActorDelta.
         for (const [slotRef, partData] of Object.entries(anatomy.bodyParts ?? {})) {
@@ -942,12 +999,16 @@ export class SpaceHolderActor extends Actor {
           'system.anatomy.name': displayName,
           'system.anatomy.type': anatomyId,
           'system.anatomy.groups': Array.isArray(anatomy.groups) ? anatomy.groups : [],
+          'system.anatomy.rootRef': anatomy.root ?? '',
           'system.health.bodyParts': anatomy.bodyParts,
           // Травмы привязаны к slotRef/uuid старой анатомии, очищаем при полной замене.
           'system.health.injuries': []
         };
         if (Number(anatomy.heightM) > 0) {
           update['system.heightM'] = anatomy.heightM;
+        }
+        if (Number(anatomy.speedMps) > 0) {
+          update['system.speedMps'] = anatomy.speedMps;
         }
         if (anatomy.grid && typeof anatomy.grid.width === 'number' && typeof anatomy.grid.height === 'number') {
           update['system.health.anatomyGrid'] = { width: anatomy.grid.width, height: anatomy.grid.height };
@@ -989,6 +1050,7 @@ export class SpaceHolderActor extends Actor {
           deltaUpdate['delta.system.anatomy.id'] = null;
           deltaUpdate['delta.system.anatomy.name'] = null;
           deltaUpdate['delta.system.anatomy.type'] = null;
+          deltaUpdate['delta.system.anatomy.rootRef'] = '';
         }
         // Шаг 1: удаляем все известные ключи и анатомию.
         await this.token.update(deltaUpdate);
@@ -1001,6 +1063,7 @@ export class SpaceHolderActor extends Actor {
           delUpdate['system.anatomy.id'] = null;
           delUpdate['system.anatomy.name'] = null;
           delUpdate['system.anatomy.type'] = null;
+          delUpdate['system.anatomy.rootRef'] = '';
         }
         await this.update(delUpdate);
       }
@@ -1058,6 +1121,8 @@ export class SpaceHolderActor extends Actor {
       for (let [k, v] of Object.entries(data.abilities)) {
         data[k] = foundry.utils.deepClone(v);
       }
+      // `dex` was renamed to `agi`: keep old item formulas (`@dex.mod`) working.
+      if (data.agi && !data.dex) data.dex = foundry.utils.deepClone(data.agi);
     }
 
     // Add level for easier access, or fall back to 0.

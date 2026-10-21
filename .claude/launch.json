@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "balance-tool",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/balance/server.mjs", "--port", "8767"],
+      "port": 8767
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "_id": "shcf46653408f391",
+  "name": "Бандиты",
+  "type": "Actor",
+  "folder": "shcf8ea1fb43c603",
+  "description": "",
+  "sorting": "m",
+  "sort": 2000,
+  "color": "#c23b3b",
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "14.360",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782902000000,
+    "modifiedTime": 1782902000000,
+    "lastModifiedBy": null
+  }
+}

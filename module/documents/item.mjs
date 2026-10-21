@@ -403,12 +403,14 @@ export class SpaceHolderItem extends Item {
    * Attack with this item using its active line/mode (attack chain → aiming).
    * @param {object} [options]
    * @param {Token|null} [options.token] attacking token; required for aiming
+   * @param {string} [options.lineId] pin a fire line (with `modeId`)
+   * @param {string} [options.modeId] pin a fire mode (with `lineId`)
    * @returns {Promise<boolean>}
    */
-  async attack({ token = null } = {}) {
+  async attack({ token = null, lineId = '', modeId = '' } = {}) {
     const actor = this.actor;
     if (!actor) return false;
-    return attackWithItem({ actor, item: this, token });
+    return attackWithItem({ actor, item: this, token, lineId, modeId });
   }
 
   /**

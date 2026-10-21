@@ -1,6 +1,6 @@
 {{!-- Саб-блок урона (v3): список записей урона с предрассчитанной энергией.
      Контекст: dmg = { basePath, rows: [{ index, path, damageType, damage, armorPen,
-     hardness, armorDamageReduction, speed, payloadId, energy }] } --}}
+     effortShare, hardness, armorDamageReduction, speed, payloadId, energy }] } --}}
 <div class="sh-wv3-damage" data-sh-wv3-damage="{{dmg.basePath}}">
   <div class="sh-wv3-damage__header">
     <span class="sh-wv3-damage__title">
@@ -25,6 +25,10 @@
       <label class="sh-wv3-field">
         <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.Damage'}}</span>
         <input type="number" min="0" step="any" data-wpath="{{row.path}}.damage" data-wdtype="Number" value="{{row.damage}}" {{#unless ../editable}}disabled{{/unless}} />
+      </label>
+      <label class="sh-wv3-field" data-tooltip="{{localize 'SPACEHOLDER.WeaponV3.Damage.EffortShareHint'}}">
+        <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.EffortShare'}}</span>
+        <input type="number" min="0" step="any" data-wpath="{{row.path}}.effortShare" data-wdtype="Number" value="{{row.effortShare}}" {{#unless ../editable}}disabled{{/unless}} />
       </label>
       <label class="sh-wv3-field">
         <span>{{localize 'SPACEHOLDER.WeaponV3.Damage.ArmorPen'}}</span>

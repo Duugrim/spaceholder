@@ -6,9 +6,11 @@ import { setForcedAimingArcOverlay } from './aiming-arc-overlay.mjs';
 import {
   AP_PER_SECOND,
   FIRE_MODES,
+  resolveModeCritEffect,
   applyErgonomicsToArcs,
   applyDamageModifiers,
   buildProjectileFromDamageEntries,
+  resolveEntriesEffort,
   resolveEffectiveAttackParams,
   normalizeMultishot,
   normalizeOnHitSplash,
@@ -22,28 +24,40 @@ import {
   preflightLineShotReadiness,
 } from './weapon/weapon-ammo-runtime.mjs';
 import { spendAp } from './actions/transaction-ledger.mjs';
+import { beginCombatAction } from './actions/combat-action-log.mjs';
+import { reportAttack } from './actions/attack-report.mjs';
+import { shotApCost } from './weapon/attack-chain.mjs';
+import { addShot, createAttackLog, formatNumber } from './weapon/attack-log.mjs';
 import {
   normalizeTrajectoryKind,
   resolveWeaponLinePayload,
   applyOnHitSplashToPayload,
   TRAJECTORY_KINDS,
 } from './weapon/trajectory.mjs';
-import {
-  resolveHitLuck,
-  clockToHitFace,
-  upgradeLuckZoneTowardGreen,
-  isContinueBand,
-  isGrazeBand,
-  canPickSpecificPart,
-  promptHitGroupDialog,
-  localizeHitLuckBand,
-} from './hit-luck.mjs';
-import { availableHitGroups, groupSlotRefs } from './anatomy-groups.mjs';
+import { applyEnergyScaleToApplications, BLAST_PART_COUNT, VOLLEY_SHARED_SPREAD, volleySpreadAt } from './weapon/damage-profile.mjs';
+import { totalApplicationsDamage } from './walls/wall-penetration.mjs';
+import { MIN_CARRY_DAMAGE, clockToHitFace } from './hit-luck.mjs';
+import { zoneConfidence } from './shot-confidence.mjs';
+import { CRIT_EFFECTS, computeHitQuality, localizeHitQualityTier } from './hit-quality.mjs';
+import { availableHitGroups, groupSlotRefs, isPartAlive } from './anatomy-groups.mjs';
+import { GM_ACTION_TYPES } from './gm-actions/gm-action-handlers.mjs';
+import { composeProjectileApplications } from '../documents/item.mjs';
+import { materialsManager } from './damage/materials-manager.mjs';
 
 let _payloadLibraryCache = null;
 
 /** Canonical id inside straight-line.json (manifest filename uses hyphens). */
 const DEFAULT_WEAPON_PAYLOAD_ID = 'straight_line';
+
+/**
+ * Pointer travel (px) between a right-button press and its release above which the gesture is a
+ * camera pan, not a click. Only a click cancels aiming.
+ */
+const RMB_CLICK_MAX_MOVE_PX = 6;
+
+/** Fired when aiming starts or stops: `Hooks.callAll(AIMING_CHANGED_HOOK, { aiming, token })`. */
+export const AIMING_CHANGED_HOOK = 'spaceholder.aimingChanged';
+
 
 function _normalizeAimingType(typeRaw) {
   const type = String(typeRaw ?? 'simple').trim().toLowerCase();
@@ -85,12 +99,13 @@ function _pointerDeg(token) {
 
 function _accuracyScore(actor) {
   const n = Number(actor?.system?.derivedStats?.accuracyScore);
-  return Number.isFinite(n) && n > 0 ? n : 10;
+  // No derived stats (NPC, loot): treat as an average character (accuracy 100).
+  return Number.isFinite(n) && n > 0 ? n : 100;
 }
 
 function _wanderRadiusPx(actor) {
   const cfg = _aimingCfg();
-  const ref = Math.max(0.001, Number(cfg.accuracyRefScore) || 10);
+  const ref = Math.max(0.001, Number(cfg.accuracyRefScore) || 100);
   const score = Math.max(1, _accuracyScore(actor));
   return _gridSizePx() * (ref / score);
 }
@@ -211,7 +226,8 @@ function _clampDesiredToArcs(pointerDeg, desiredDeg, allowedPerSideDeg) {
 
 /**
  * Luck from the technical line vs the token pointer. Arcs no longer jitter
- * the shot direction. Clamped-behind shots are always red.
+ * the shot direction. Clamped-behind shots are always red. `confidence` is the zone as a number
+ * (`zoneConfidence`): the shot reaches a token only if it is greater than the token's hit resistance.
  */
 function _sampleShotLuck(token, lineDeg, ergo = null, clamped = false) {
   const { zones } = _resolveAimingArcConfig(token?.actor, ergo);
@@ -225,6 +241,7 @@ function _sampleShotLuck(token, lineDeg, ergo = null, clamped = false) {
     zone,
     zoneIndex,
     zoneLabel,
+    confidence: zoneConfidence(zone),
     lineDeg: Number(lineDeg) || 0,
     pointerDeg,
     clamped: !!clamped,
@@ -252,7 +269,7 @@ export class AimingManager {
     // Привязки событий
     this._boundEvents = {
       onMouseMove: this._onMouseMove.bind(this),
-      onMouseDown: this._onMouseDown.bind(this),
+      onPointerDown: this._onPointerDown.bind(this),
       onMouseUp: this._onMouseUp.bind(this),
       onContextMenu: this._onContextMenu.bind(this),
       onKeyDown: this._onKeyDown.bind(this)
@@ -263,6 +280,25 @@ export class AimingManager {
     this._fireBusy = false;
     /** True while primary button is held during aiming (stops AUTO race on release). */
     this._lmbHeld = false;
+    /** Where the current right-button press started (client px); `null` when none. */
+    this._rmbPress = null;
+    /**
+     * The attack of the current aiming session: everything shot until aiming is left. Reported to chat
+     * when aiming stops (see `_attackSession`).
+     * @type {{log: object, actor: Actor|null, token: Token|null, inFlight: number, closing: boolean, flushed?: boolean}|null}
+     */
+    this._attack = null;
+  }
+
+  /**
+   * Whether `actor` has an aiming session running (for UI that offers to cancel it).
+   * @param {Actor|null|undefined} actor
+   * @returns {boolean}
+   */
+  isAimingActor(actor) {
+    if (!this.isAiming || !actor) return false;
+    const aimingActor = this.currentToken?.actor ?? null;
+    return !!aimingActor && (aimingActor === actor || aimingActor.uuid === actor.uuid);
   }
 
   _normalizePayloadId(id) {
@@ -334,7 +370,8 @@ export class AimingManager {
    * @returns {Promise<boolean>}
    */
   async startWeaponV3Aiming({ token, actor, weaponItem, lineId, modeId } = {}) {
-    if (!token || !weaponItem) return false;
+    // Needs a token on the canvas (a position to shoot from); a document or nothing cannot aim.
+    if (!token?.center || !weaponItem) return false;
     const weapon = getWeaponData(weaponItem);
     const eff = resolveEffectiveAttackParams(weapon, lineId, modeId);
     if (!eff) return false;
@@ -550,9 +587,9 @@ export class AimingManager {
       return;
     }
     
-    // Если уже прицеливаемся, останавливаем предыдущее
+    // Если уже прицеливаемся, останавливаем предыдущее (изготовку этого же оружия не сбрасываем)
     if (this.isAiming) {
-      this.stopAiming();
+      this.stopAiming({ keepReadyWeaponUuid: options?.weaponV3?.weaponItemUuid });
     }
     
     console.log('AimingManager: Starting aiming for token', token.name);
@@ -572,19 +609,27 @@ export class AimingManager {
     } else {
       this._startSimpleAiming();
     }
+    Hooks.callAll(AIMING_CHANGED_HOOK, { aiming: true, token });
   }
   
   /**
-   * Остановить прицеливание
+   * Остановить прицеливание. Выход из прицеливания снимает изготовку оружия (`state.ready`):
+   * следующая атака снова платит за подготовку.
+   * @param {object} [opts]
+   * @param {string} [opts.keepReadyWeaponUuid] оружие, у которого изготовку сохранить (новое прицеливание им же)
    */
-  stopAiming() {
+  stopAiming({ keepReadyWeaponUuid = '' } = {}) {
     if (!this.isAiming) return;
     
     console.log('AimingManager: Stopping aiming');
     this._lmbHeld = false;
+    this._rmbPress = null;
     this._stopAutoFire();
     const currentToken = this.currentToken;
     const aimingType = _normalizeAimingType(this.currentOptions?.type);
+    const readyWeaponUuid = String(this.currentOptions?.weaponV3?.weaponItemUuid ?? '').trim();
+    const attack = this._attack;
+    this._attack = null;
     
     this.isAiming = false;
     this.currentToken = null;
@@ -595,7 +640,7 @@ export class AimingManager {
 
     this._stopAimingTicker();
     this._clearPointer();
-    try { game.spaceholder?.drawManager?.clearAll?.(); } catch (_) { /* ignore */ }
+    // Shot trails are not cleared here: they fade out by their own age, whatever the aiming state.
 
     this._unbindEvents();
     this._setStandardCursorHidden(false);
@@ -603,6 +648,27 @@ export class AimingManager {
 
     if (aimingType === 'standard' && currentToken) {
       setForcedAimingArcOverlay(currentToken, false);
+    }
+    if (readyWeaponUuid && readyWeaponUuid !== keepReadyWeaponUuid) void this._standDownWeapon(readyWeaponUuid);
+    this._closeAttack(attack);
+    Hooks.callAll(AIMING_CHANGED_HOOK, { aiming: false, token: currentToken });
+  }
+
+  /**
+   * The weapon is no longer held ready (изготовка → боеготовность lost). The HUD refreshes on the item update.
+   * @private
+   * @param {string} weaponItemUuid
+   */
+  async _standDownWeapon(weaponItemUuid) {
+    try {
+      const weaponItem = await fromUuid(weaponItemUuid);
+      if (!weaponItem) return;
+      const weapon = getWeaponData(weaponItem);
+      if (!weapon.state?.ready) return;
+      weapon.state.ready = false;
+      await persistWeaponData(weaponItem, weapon);
+    } catch (e) {
+      console.warn('AimingManager: could not stand the weapon down', e);
     }
   }
   
@@ -864,6 +930,27 @@ export class AimingManager {
     return _sampleShotLuck(this.currentToken, lineDeg, this._aimingErgo, clamped);
   }
 
+  /**
+   * Draw the shot's trail on this client right away (with "auto render" on). The same record goes
+   * into the shot's chat message, from which every other client draws it; `DrawManager` ignores a
+   * shot it already shows, so the shooter does not get it twice.
+   * @private
+   * @param {string} uid
+   * @param {{extension?: boolean}} [options] `extension`: the rest of the trail — the bullet left the
+   *   body and flew on (known once the damage is resolved), a record of its own
+   */
+  _renderShot(uid, { extension = false } = {}) {
+    if (!this.currentOptions?.autoRender) return;
+    const shotManager = game.spaceholder?.shotManager;
+    const record = extension ? shotManager?.getShotExtension?.(uid) : shotManager?.getShotRecord?.(uid);
+    if (!record) return;
+    if (!game.spaceholder?.drawManager) {
+      console.warn('AimingManager: drawManager not available');
+      return;
+    }
+    game.spaceholder.drawManager.drawRecord(record);
+  }
+
   _attachShotDiagnostics(uid, { luck = null, spread = null } = {}) {
     if (!uid) return;
     try {
@@ -881,88 +968,220 @@ export class AimingManager {
     } catch (_) { /* ignore */ }
   }
 
-  _fmtClock(n) {
-    const v = Number(n);
-    if (!Number.isFinite(v)) return '?';
-    let hours = v;
-    while (hours < 0) hours += 12;
-    while (hours >= 12) hours -= 12;
-    const r = Math.round(hours * 10) / 10;
-    if (r === 0) return '12';
-    return String(r);
+  /**
+   * The projectile the shot manager runs through penetrable walls: the damage package of
+   * `projectile` composed without a target actor. `null` (every wall stops the shot, as before)
+   * when the projectile has no usable damage spec.
+   *
+   * @private
+   * @param {object} projectile
+   * @param {object} [builderContext]
+   * @returns {{applications: Array<{mode: string, items: object[]}>}|null}
+   */
+  _wallPenetrationFor(projectile, builderContext = {}) {
+    if (!projectile || typeof projectile !== 'object') return null;
+    const applications = composeProjectileApplications(projectile, { ...builderContext, actor: null });
+    return applications.length ? { applications, falloff: projectile.falloff } : null;
   }
 
-  async _postShotDiagnosticChat(uid) {
-    const shot = uid ? game.spaceholder?.shotManager?.shotSystem?.getShot?.(uid) : null;
-    if (!shot) return;
-
-    const E = foundry.utils.escapeHTML;
+  /**
+   * Chat lines for the walls a shot met (penetrated or stopped by).
+   * @private
+   * @param {object} shot
+   * @returns {string[]}
+   */
+  _wallDiagnosticLines(shot) {
+    const i18n = game.i18n;
+    const fmt = (n) => this._fmt(n);
     const lines = [];
-
-    const luck = shot.luck ?? null;
-    if (luck) {
-      const clampedBit = luck.clamped
-        ? ` (${game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.LuckClamped') ?? 'clamped'})`
-        : '';
-      const luckValue = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticLuck', {
-        zone: String(luck.zoneLabel ?? luck.zone ?? ''),
-        clamped: clampedBit,
-      }) || `${luck.zoneLabel ?? luck.zone ?? ''}${clampedBit}`;
-      lines.push(game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticLuckLine', {
-        value: luckValue,
-      }) || luckValue);
+    for (const event of Array.isArray(shot?.wallPasses) ? shot.wallPasses : []) {
+      const material = String(materialsManager.getMaterial(event.material)?.name || event.material || '');
+      const thickness = Number.isFinite(event.thickness) ? fmt(event.thickness) : '∞';
+      let key;
+      if (event.penetrated) key = 'Penetrated';
+      else if (event.reason === 'opaque') key = 'Opaque';
+      else if (event.reason === 'unbounded') key = 'Unbounded';
+      else key = 'Stopped';
+      const fallback = `${material} ${thickness}: ${key.toLowerCase()}`;
+      lines.push(i18n?.format?.(`SPACEHOLDER.Walls.Chat.${key}`, {
+        material,
+        thickness,
+        before: fmt(event.damageBefore),
+        after: fmt(event.damageAfter),
+      }) || fallback);
     }
+    return lines;
+  }
 
-    const spread = shot.spread ?? { spreadDeltaDeg: 0, spreadMaxDeg: 0 };
-    const delta = Number(spread.spreadDeltaDeg);
-    const deltaSafe = Number.isFinite(delta) ? delta : 0;
-    const signed = `${deltaSafe > 0 ? '+' : ''}${this._fmt(deltaSafe)}°`;
-    const max = Number(spread.spreadMaxDeg);
-    const maxSafe = Number.isFinite(max) ? max : 0;
-    const spreadCore = maxSafe > 0 ? `${signed} / ${this._fmt(maxSafe)}°` : signed;
-    const spreadValue = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticSpread', {
-      delta: spreadCore,
-    }) || spreadCore;
-    lines.push(game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticSpreadLine', {
-      value: spreadValue,
-    }) || spreadValue);
+  /**
+   * The attack log of the current aiming session — everything shot until aiming is left — started at the
+   * first shot. The session counts the shots still in flight, so the attack is reported to chat only after
+   * the last of them has landed (`_closeAttack`).
+   *
+   * @private
+   * @param {{weaponItem?: Item, eff?: object}} [weaponCtx] the v3 weapon context of the shot, if any
+   */
+  _attackSession(weaponCtx = null) {
+    if (this._attack) return this._attack;
+    const token = this.currentToken;
+    const actor = token?.actor ?? null;
+    const weaponItem = weaponCtx?.weaponItem ?? null;
+    const eff = weaponCtx?.eff ?? null;
+    const log = createAttackLog({
+      actor: { uuid: actor?.uuid, name: actor?.name },
+      token: { uuid: token?.document?.uuid, name: token?.name },
+      weapon: weaponItem
+        ? { uuid: weaponItem.uuid, name: weaponItem.name }
+        : { name: this.currentOptions?.actionName ?? '' },
+      lineName: eff?.line?.name,
+      modeName: eff?.mode?.name,
+      fireMode: eff?.mode?.fireMode,
+    });
+    this._attack = { log, actor, token, inFlight: 0, closing: false };
+    return this._attack;
+  }
 
-    const tokenHits = (Array.isArray(shot.actualHits) ? shot.actualHits : [])
-      .filter((h) => h?.type === 'token' && h?.object);
-    if (!tokenHits.length) {
-      const miss = game.i18n?.localize?.('SPACEHOLDER.AimingManager.Messages.DiagnosticMiss') ?? 'miss';
-      lines.push(miss);
-    } else {
-      for (const hit of tokenHits) {
-        const name = String(hit.object?.name ?? hit.object?.actor?.name ?? '');
-        const clock = this._fmtClock(hit.details?.clock);
-        const centrality = this._fmt(hit.details?.centrality);
-        const luckInfo = resolveHitLuck({
-          centrality: hit.details?.centrality,
-          zone: luck?.zone,
-        });
-        const hitLine = game.i18n?.format?.('SPACEHOLDER.AimingManager.Messages.DiagnosticHit', {
-          name,
-          clock,
-          centrality,
-          hitLuck: this._fmt(luckInfo.hitLuck),
-          band: localizeHitLuckBand(luckInfo.band),
-        }) || `${name} · ${clock}h · ${centrality} · ${this._fmt(luckInfo.hitLuck)}`;
-        lines.push(hitLine);
-      }
-    }
+  /**
+   * Aiming was left: the attack is over. It is reported now, or as soon as its shots in flight have landed.
+   * @private
+   */
+  _closeAttack(session) {
+    if (!session) return;
+    session.closing = true;
+    if (session.inFlight <= 0) void this._flushAttack(session);
+  }
 
-    const content = `<div>${lines.map((line) => `<div>${E(line)}</div>`).join('')}</div>`;
+  /** A shot of the session has landed (or failed); report the attack if it was waiting for it. @private */
+  _releaseShot(session) {
+    session.inFlight -= 1;
+    if (session.closing && session.inFlight <= 0) void this._flushAttack(session);
+  }
+
+  /** @private */
+  async _flushAttack(session) {
+    if (session.flushed) return;
+    session.flushed = true;
     try {
-      await ChatMessage.create({
-        speaker: ChatMessage.getSpeaker({ actor: this.currentToken?.actor ?? null }),
-        content,
-      });
-    } catch (_) {
-      /* ignore chat errors */
+      await reportAttack(session.log, { actor: session.actor, token: session.token });
+    } catch (error) {
+      console.error('AimingManager: could not report the attack', error);
     }
   }
-  
+
+  /**
+   * Send the shot's trail to the other clients (the shooter has drawn it already). Only with "auto render".
+   * @private
+   * @param {string} uid
+   * @param {{extension?: boolean}} [options] see {@link _renderShot}
+   */
+  _broadcastShot(uid, { extension = false } = {}) {
+    if (!this.currentOptions?.autoRender) return;
+    const shotManager = game.spaceholder?.shotManager;
+    const record = extension ? shotManager?.getShotExtension?.(uid) : shotManager?.getShotRecord?.(uid);
+    if (record) game.spaceholder?.drawManager?.broadcastRecord?.(record);
+  }
+
+  /**
+   * Show the rest of the trails of bullets that left a body and flew on (known only once the damage of
+   * the shots is resolved).
+   * @private
+   * @param {string[]} uids
+   */
+  _showExtensions(uids) {
+    for (const uid of uids) {
+      this._renderShot(uid, { extension: true });
+      this._broadcastShot(uid, { extension: true });
+    }
+  }
+
+  /**
+   * The «flies past» line of a token the projectile did not hit, with the reason: the shot's
+   * confidence (its zone) did not beat the token's resistance, and what the resistance is made of.
+   * @private
+   * @param {{ object?: any, details?: object }} pass entry of `shot.passedThrough`
+   * @param {string} [zoneLabel] the zone the shot was taken from
+   */
+  _passLine(pass, zoneLabel = '') {
+    const messages = 'SPACEHOLDER.AimingManager.Messages';
+    const details = pass?.details ?? {};
+    const reasons = (details.resistanceStates ?? [])
+      .map((id) => game.i18n?.localize?.(`${messages}.ResistanceStates.${id}`) ?? id);
+    const mod = Number(details.resistanceMod) || 0;
+    if (mod) {
+      const value = `${mod > 0 ? '+' : ''}${mod}`;
+      reasons.push(game.i18n?.format?.(`${messages}.ResistanceMod`, { value }) || `effects ${value}`);
+    }
+    const args = {
+      name: String(pass?.object?.name ?? pass?.object?.actor?.name ?? ''),
+      zone: String(zoneLabel ?? ''),
+      confidence: formatNumber(details.confidence),
+      resistance: formatNumber(details.resistance),
+      reasons: reasons.length ? ` (${reasons.join(', ')})` : '',
+    };
+    return game.i18n?.format?.(`${messages}.DiagnosticPass`, args)
+      || `${args.name} · confidence ${args.confidence} (${args.zone}) is not above resistance ${args.resistance}${args.reasons} — flies past`;
+  }
+
+  /**
+   * What one ray of a shot leaves in the attack log: the luck and spread it was fired with, the tokens
+   * it flew past, the walls it met, its impacts and its trail.
+   *
+   * @private
+   * @param {string} uid
+   * @param {object[]} impacts from `_resolveHitImpacts`
+   * @param {{autoRender: boolean}} opts a trail drawn without «auto render» is stored but not shown
+   * @returns {{luck: object|null, spread: object|null, passes: string[], walls: string[], impacts: object[],
+   *   record: object|null, extension: object|null}} `extension` is the rest of the trail when the bullet
+   *   left the body and flew on
+   */
+  _collectRay(uid, impacts, { autoRender }) {
+    const shot = uid ? game.spaceholder?.shotManager?.shotSystem?.getShot?.(uid) : null;
+    const passes = [];
+    for (const pass of Array.isArray(shot?.passedThrough) ? shot.passedThrough : []) {
+      passes.push(this._passLine(pass, shot.luck?.zoneLabel ?? shot.luck?.zone));
+    }
+    const luck = shot?.luck
+      ? { zone: shot.luck.zone, zoneLabel: shot.luck.zoneLabel, confidence: shot.luck.confidence, clamped: !!shot.luck.clamped }
+      : null;
+    const spread = shot?.spread
+      ? { deltaDeg: Number(shot.spread.spreadDeltaDeg) || 0, maxDeg: Number(shot.spread.spreadMaxDeg) || 0 }
+      : null;
+    // A trail drawn without «auto render» is stored but not shown; the same goes for its continuation.
+    const stored = (record) => (record ? (autoRender ? record : { ...record, quiet: true }) : null);
+    return {
+      luck,
+      spread,
+      passes,
+      walls: this._wallDiagnosticLines(shot),
+      impacts,
+      record: stored(shot?.record),
+      extension: stored(shot?.extension),
+    };
+  }
+
+  /**
+   * Put a trigger pull into the attack log: the rays fired by it (a multishot volley has several) and
+   * what it cost.
+   * @private
+   * @param {{log: object}} session
+   * @param {ReturnType<AimingManager['_collectRay']>[]} rays
+   * @param {{apCost?: number, baseApCost?: number}} [cost]
+   */
+  _logShot(session, rays, { apCost = 0, baseApCost = apCost } = {}) {
+    const first = rays[0] ?? {};
+    return addShot(session.log, {
+      apCost,
+      baseApCost,
+      rays: rays.length,
+      luck: first.luck ?? null,
+      spread: first.spread ?? null,
+      passes: rays.flatMap((r) => r.passes),
+      walls: rays.flatMap((r) => r.walls),
+      impacts: rays.flatMap((r) => r.impacts),
+      records: rays.flatMap((r) => [r.record, r.extension]).filter(Boolean),
+    });
+  }
+
   /**
    * Выполнить выстрел
    * @private
@@ -986,36 +1205,41 @@ export class AimingManager {
     const payload = this.currentPayload;
     const direction = this._getCurrentDirection();
     const luck = this._currentShotLuck();
+    const autoRender = !!this.currentOptions?.autoRender;
+    const session = this._attackSession();
+    session.inFlight += 1;
+    try {
+      console.log('AimingManager: Firing with direction', direction);
 
-    console.log('AimingManager: Firing with direction', direction);
+      const uid = shotManager.createShot(
+        this.currentToken,
+        payload,
+        direction,
+        {
+          penetration: this._wallPenetrationFor(payload, {
+            shooterActorUuid: this.currentToken?.actor?.uuid ?? null,
+          }),
+          confidence: luck?.confidence ?? null,
+        }
+      );
+      this._attachShotDiagnostics(uid, {
+        luck,
+        spread: { spreadDeltaDeg: 0, spreadMaxDeg: 0 },
+      });
 
-    const uid = shotManager.createShot(
-      this.currentToken,
-      payload,
-      direction
-    );
-    this._attachShotDiagnostics(uid, {
-      luck,
-      spread: { spreadDeltaDeg: 0, spreadMaxDeg: 0 },
-    });
+      console.log('AimingManager: Shot created with UID', uid);
 
-    console.log('AimingManager: Shot created with UID', uid);
+      this._renderShot(uid);
+      this._broadcastShot(uid);
 
-    // Если включена автоматическая отрисовка, вызываем draw-manager
-    if (this.currentOptions.autoRender) {
-      const shotResult = shotManager.getShotResult(uid);
-      if (shotResult && game.spaceholder?.drawManager) {
-        game.spaceholder.drawManager.drawShot(shotResult);
-        console.log('AimingManager: Shot rendered via drawManager');
-      } else if (!game.spaceholder?.drawManager) {
-        console.warn('AimingManager: drawManager not available');
-      }
+      const impacts = await this._resolveHitImpacts(uid, { projectile: payload });
+      this._showExtensions([uid]);
+      this._logShot(session, [this._collectRay(uid, impacts, { autoRender })]);
+
+      // Не останавливаем прицеливание автоматически - пользователь может продолжить
+    } finally {
+      this._releaseShot(session);
     }
-
-    await this._postShotDiagnosticChat(uid);
-    await this._resolveHitLuckImpacts(uid, { projectile: payload });
-
-    // Не останавливаем прицеливание автоматически - пользователь может продолжить
   }
 
   /**
@@ -1102,11 +1326,18 @@ export class AimingManager {
   async _fireWeaponV3Single({ first = true } = {}) {
     if (!this.isAiming || !this.currentToken) return false;
     this._fireBusy = true;
+    let session = null;
     try {
       const ctx = await this._resolveWeaponV3Context();
       if (!ctx) return false;
+      // Aiming may have been left while the weapon was being resolved.
+      if (!this.isAiming || !this.currentToken) return false;
       const { weaponItem, weapon, eff, lineId, modeId } = ctx;
-      const actor = this.currentToken?.actor ?? null;
+      const token = this.currentToken;
+      const actor = token.actor ?? null;
+      const autoRender = !!this.currentOptions?.autoRender;
+      session = this._attackSession(ctx);
+      session.inFlight += 1;
 
       const preflight = await preflightLineShotReadiness(actor, weapon, lineId);
       if (!preflight.ready) {
@@ -1118,14 +1349,19 @@ export class AimingManager {
       }
 
       // --- ОД ---------------------------------------------------------
-      const cost = first
+      // Action speed (COR) prices shots like every other action. In combat a shot the pool cannot pay is
+      // refused (`spendAp`): a burst or an auto series stops there, and nothing is consumed.
+      const baseCost = first
         ? Math.max(0, eff.line.aiming) + Math.max(0, eff.line.trigger)
         : Math.max(0, eff.mode.fireDelayAp);
-      const apCost = Math.ceil(cost);
+      const baseApCost = Math.ceil(baseCost);
+      const apCost = shotApCost(actor, baseCost);
       if (apCost > 0 && actor?.type === 'character') {
+        const { combatant } = await beginCombatAction(actor, token.document ?? null);
         let spend = null;
         try {
           spend = await spendAp(actor, apCost, {
+            combatantId: combatant?.id ?? null,
             source: { type: 'action', actionId: 'weaponV3.shot', label: weaponItem.name },
           });
         } catch (e) {
@@ -1149,8 +1385,14 @@ export class AimingManager {
       }
       await persistWeaponData(weaponItem, weapon);
 
-      // --- Снаряд: модификаторы урона + множитель энергии ----------------
-      const entries = applyDamageModifiers(consumed.damageEntries, eff.damageMods, eff.line.energyMult);
+      // --- Снаряд: усилие стрелка (STR) → урон, затем модификаторы и множитель энергии ---
+      // Записи с `effortShare` (ближнее оружие) получают урон от силы атакующего; у боеприпасов доля 0.
+      const effort = Number(actor?.system?.abilities?.str?.value) || 0;
+      const entries = applyDamageModifiers(
+        resolveEntriesEffort(consumed.damageEntries, effort),
+        eff.damageMods,
+        eff.line.energyMult,
+      );
       const firstRound = consumed.rounds.find((r) => r.round)?.round ?? null;
       const ammoCfg = normalizeAmmoConfig(firstRound?.system?.weapon?.ammo);
       const projectile = buildProjectileFromDamageEntries(entries, {
@@ -1193,7 +1435,13 @@ export class AimingManager {
         : [baseDirection];
 
       const shotManager = game.spaceholder?.shotManager;
+      const penetration = this._wallPenetrationFor(projectile, {
+        shooterActorUuid: actor?.uuid ?? null,
+        weaponItemUuid: weaponItem?.uuid ?? null,
+        ammoItemUuid: firstRound?.uuid ?? firstRound?.sourceUuid ?? null,
+      });
 
+      const uids = [];
       for (const coneDir of coneDirs) {
         let direction = coneDir;
         let spreadDeltaDeg = 0;
@@ -1204,42 +1452,92 @@ export class AimingManager {
           spreadDeltaDeg = (Math.random() * 2 - 1) * spreadMaxDeg;
           direction += spreadDeltaDeg;
         }
-        const uid = shotManager.createShot(this.currentToken, payload, direction);
+        const uid = shotManager.createShot(token, payload, direction, {
+          penetration,
+          confidence: luck?.confidence ?? null,
+        });
         this._attachShotDiagnostics(uid, {
           luck,
           spread: { spreadDeltaDeg, spreadMaxDeg },
         });
-        if (this.currentOptions?.autoRender) {
-          const shotResult = shotManager.getShotResult(uid);
-          if (shotResult && game.spaceholder?.drawManager) {
-            game.spaceholder.drawManager.drawShot(shotResult);
-          }
-        }
-        await this._postShotDiagnosticChat(uid);
-        await this._resolveHitLuckImpacts(uid, {
-          projectile,
-          weaponItem,
-          ammoItem: firstRound,
-        });
+        this._renderShot(uid);
+        this._broadcastShot(uid);
+        uids.push(uid);
       }
+      const volleyImpacts = await this._resolveVolleyImpacts(uids, {
+        projectile,
+        weaponItem,
+        ammoItem: firstRound,
+        critEffect: resolveModeCritEffect(eff.mode),
+      }, { coneDegrees: multishot.enabled ? multishot.coneDegrees : 0 });
+      this._showExtensions(uids);
+      const rays = uids.map((uid, i) => this._collectRay(uid, volleyImpacts[i], { autoRender }));
+      this._logShot(session, rays, { apCost, baseApCost });
 
       // Камера осталась пустой без автоподачи → серия прерывается затвором.
       if (consumed.needsBolt) return false;
       return true;
     } finally {
       this._fireBusy = false;
+      if (session) this._releaseShot(session);
     }
   }
 
-  async _resolveHitLuckImpacts(shotUid, shotContext = {}) {
-    const shotManager = game.spaceholder?.shotManager;
-    if (!shotManager || !shotUid) return;
-    const shot = shotManager.shotSystem?.getShot?.(shotUid);
-    if (!shot) return;
+  /**
+   * Turn every token hit of a shot into damage on the target actor.
+   *
+   * - Line hits (`details.centrality`): the hit quality (hit-quality.mjs) scales the projectile's
+   *   energy — a glancing hit does what an angled armour plate would do, and still hurts a target
+   *   without armour less. The bullseye is a crit; what a crit does is the fire mode's `critEffect`:
+   *   `pickPart` lands the hit in the group the target has marked (`hitGroupOverride`), every other
+   *   hit lands in a random group and part.
+   * - AoE hits (`details.area`): no quality. The segment's `coverageMode` already decided who is
+   *   affected; the body part is random and the energy is scaled by `details.effectScale`
+   *   (coverage for `proportional`, 1 for the other modes); a blast reaches several parts.
+   * One ray of {@link _resolveVolleyImpacts}.
+   *
+   * @private
+   * @param {string} shotUid
+   * @param {{projectile?: object, weaponItem?: Item, ammoItem?: Item, critEffect?: string}} [shotContext]
+   *   `critEffect`: what a crit does in the mode that fired the shot (nothing when omitted)
+   * @returns {Promise<object[]>} one impact per token the ray reached (see `weapon/attack-log.mjs`): a hit or an
+   *   area hit; damage results are filled in once applied
+   */
+  async _resolveHitImpacts(shotUid, shotContext = {}) {
+    const [impacts] = await this._resolveVolleyImpacts([shotUid], shotContext);
+    return impacts ?? [];
+  }
 
-    const tokenHits = (Array.isArray(shot.actualHits) ? shot.actualHits : [])
-      .filter((h) => h?.type === 'token' && h?.object?.actor);
-    if (!tokenHits.length) return;
+  /**
+   * Turn every token hit of a trigger pull (one ray, or the rays of a multishot volley) into damage.
+   *
+   * - Each ray's line hits are scaled by their hit quality and by the distance falloff (a hit behind
+   *   walls carries the falloff already, see `planWallPasses`).
+   * - Pellets of one volley that hit the same token while the volley is still tight there
+   *   ({@link VOLLEY_SHARED_SPREAD}) make one wound: one body-part roll, their damage goes in as one
+   *   package (a parallel phase), so it adds up — a point-blank shotgun blast lands in one part.
+   * - A blast (`details.blast`) reaches {@link BLAST_PART_COUNT} body parts of each target it covers,
+   *   its energy split among them.
+   *
+   * @private
+   * @param {string[]} shotUids
+   * @param {{projectile?: object, weaponItem?: Item, ammoItem?: Item, critEffect?: string}} [shotContext]
+   * @param {{ coneDegrees?: number }} [volley] the fan of the volley (full angle)
+   * @returns {Promise<object[][]>} the impacts of every ray, in the order of `shotUids`
+   */
+  async _resolveVolleyImpacts(shotUids, shotContext = {}, { coneDegrees = 0 } = {}) {
+    const uids = (Array.isArray(shotUids) ? shotUids : [shotUids]).filter(Boolean);
+    const perShot = uids.map(() => []);
+    const shotManager = game.spaceholder?.shotManager;
+    if (!shotManager || !uids.length) return perShot;
+
+    // No damage spec (e.g. a bare GM payload) → the hits are still recorded, nothing is applied.
+    const projectile = shotContext.projectile;
+    const canApply = projectile && typeof projectile === 'object'
+      && (Number(projectile.damage) > 0
+        || (Array.isArray(projectile.applications) && projectile.applications.length)
+        || projectile.builderId);
+    const critEffect = shotContext.critEffect ?? CRIT_EFFECTS.NONE;
 
     const shooterActor = this.currentToken?.actor ?? null;
     const injurySource = {
@@ -1250,89 +1548,364 @@ export class AimingManager {
       ammoUuid: shotContext.ammoItem?.uuid ?? shotContext.ammoItem?.sourceUuid ?? null,
       ammoName: shotContext.ammoItem?.name ?? null,
       verbKey: 'fire',
-      shotUid,
+      shotUid: uids[0],
+    };
+    const builderContext = {
+      shooterActorUuid: shooterActor?.uuid ?? null,
+      weaponItemUuid: shotContext.weaponItem?.uuid ?? null,
+      ammoItemUuid: injurySource.ammoUuid,
     };
 
-    for (const hit of tokenHits) {
-      const targetActor = hit.object.actor;
-      if (typeof targetActor.applyDamagePackage !== 'function') continue;
-      const bodyParts = targetActor.system?.health?.bodyParts ?? {};
-      const partIds = Object.keys(bodyParts);
-      if (!partIds.length) continue;
+    // 1. Every token hit with its impact record and the scaled projectile that reaches it.
+    const entries = [];
+    const hitContext = { shotManager, projectile, canApply, builderContext };
+    uids.forEach((uid, index) => {
+      const shot = shotManager.shotSystem?.getShot?.(uid);
+      const tokenHits = (Array.isArray(shot?.actualHits) ? shot.actualHits : [])
+        .filter((h) => h?.type === 'token' && h?.object);
+      for (const hit of tokenHits) {
+        const { impact, entry } = this._hitEntry({ uid, shot, hit, index }, hitContext);
+        perShot[index].push(impact);
+        if (entry) entries.push(entry);
+      }
+    });
 
-      const resolved = resolveHitLuck({
-        centrality: hit.details?.centrality,
-        zone: shot.luck?.zone,
-      });
-      if (!hit.details || typeof hit.details !== 'object') hit.details = {};
-      hit.details.hitLuck = resolved.hitLuck;
-      hit.details.hitLuckBand = resolved.band;
-
-      if (isContinueBand(resolved.band)) {
-        if (shot.luck) {
-          shot.luck = {
-            ...shot.luck,
-            zone: upgradeLuckZoneTowardGreen(shot.luck.zone),
-          };
-        }
+    // 2. Wounds: tight volley pellets on one token share one; everything else is its own.
+    const wounds = [];
+    const byToken = new Map();
+    for (const entry of entries) {
+      const singlePhase = entry.applications.length === 1;
+      if (entry.isArea || uids.length < 2 || !singlePhase) {
+        wounds.push([entry]);
         continue;
       }
+      const list = byToken.get(entry.hit.object) ?? [];
+      list.push(entry);
+      byToken.set(entry.hit.object, list);
+    }
+    for (const list of byToken.values()) {
+      const { point } = list[0].hit;
+      const origin = list[0].shot?.origin;
+      const distance = point && origin
+        ? shotManager._hitDistanceSceneUnits({ distance: Math.hypot(point.x - origin.x, point.y - origin.y) })
+        : Infinity;
+      const spread = volleySpreadAt(distance, coneDegrees);
+      if (list.length > 1 && spread <= VOLLEY_SHARED_SPREAD) wounds.push(list);
+      else for (const entry of list) wounds.push([entry]);
+    }
 
-      const groups = availableHitGroups(targetActor);
-      const override = String(targetActor.system?.anatomy?.hitGroupOverride ?? '').trim();
-      let groupId = null;
-      let partId = null;
-
-      if (isGrazeBand(resolved.band)) {
-        groupId = groups.length
-          ? groups[Math.floor(Math.random() * groups.length)].id
-          : null;
-      } else if (override && groups.some((g) => g.id === override)) {
-        groupId = override;
-      } else if (groups.length) {
-        const choice = await promptHitGroupDialog({
-          actor: targetActor,
-          resolved,
-          groups,
-          allowPart: canPickSpecificPart(resolved.band),
-        });
-        groupId = choice.groupId;
-        partId = choice.partId;
+    // 3. Apply. A bullet that leaves the body it wounded flies on and can hurt the next token on its line.
+    for (const wound of wounds) {
+      const woundContext = { critEffect, builderContext, injurySource: { ...injurySource, shotUid: wound[0].uid } };
+      const exit = await this._applyWound(wound, woundContext);
+      if (wound.length === 1 && !wound[0].isArea) {
+        await this._followThrough(wound[0], exit, { ...woundContext, shotManager, hitContext, perShot });
       }
+    }
+    return perShot;
+  }
 
-      if (!partId && groupId) {
-        const group = groups.find((g) => g.id === groupId);
-        const slots = groupSlotRefs(bodyParts, group);
-        partId = slots.length ? slots[Math.floor(Math.random() * slots.length)] : null;
-      }
-      if (!partId) {
-        partId = partIds[Math.floor(Math.random() * partIds.length)];
-      }
+  /**
+   * The attack-log record of a token a ray reached and the projectile that reaches it: scaled by the hit
+   * quality (line hits), the share of a blast it is exposed to (AoE) and the distance falloff.
+   *
+   * @private
+   * @param {{uid: string, shot: object, hit: object, index: number}} at the ray and the hit (`index`: the
+   *   ray's place in the volley)
+   * @param {{shotManager: ShotManager, projectile: object, canApply: boolean, builderContext: object}} ctx
+   * @returns {{impact: object, entry: object|null}} `entry` is what {@link _applyWound} takes; `null` when
+   *   there is nothing to apply (no damage spec, or the token has no actor that takes damage)
+   */
+  _hitEntry({ uid, shot, hit, index }, { shotManager, projectile, canApply, builderContext }) {
+    const isArea = hit.details?.area === true;
+    let quality = null;
+    if (!isArea) {
+      quality = computeHitQuality(hit.details?.centrality);
+      if (!hit.details || typeof hit.details !== 'object') hit.details = {};
+      hit.details.hitQuality = quality;
+    }
+    const impact = this._impactOf(hit, quality, { outcome: isArea ? 'area' : 'hit' });
+    const targetActor = hit.object.actor ?? null;
+    if (!canApply || typeof targetActor?.applyDamagePackage !== 'function') return { impact, entry: null };
+    // AoE: the share of the blast the target is exposed to (only `proportional` goes below 1).
+    const effectScale = isArea ? Math.max(0, Math.min(1, Number(hit.details.effectScale) || 0)) : 1;
+    // A shot that went through walls (or out of a body) reaches this target with what is left of the
+    // projectile (the falloff to here included); otherwise the falloff from the muzzle applies.
+    const carry = Array.isArray(hit.details?.carry) && hit.details.carry.length ? hit.details.carry : null;
+    const falloff = isArea || carry ? 1 : shotManager.falloffAt(shot, hit.point);
+    // A glancing hit reaches the target with part of the projectile's energy.
+    const energyScale = (quality?.multiplier ?? 1) * falloff;
+    const applications = shotManager.buildScaledApplications(projectile, {
+      actor: targetActor,
+      builderContext,
+      scale: effectScale,
+      energyScale,
+      base: carry,
+    });
+    // Nothing scaled: the actor composes the projectile itself (builders get the target as context).
+    const unscaled = !carry && effectScale >= 1 && energyScale >= 1;
+    return {
+      impact,
+      entry: { uid, shot, hit, impact, quality, isArea, targetActor, applications, unscaled, projectile, index },
+    };
+  }
 
-      const projectile = shotContext.projectile;
-      const canApply = projectile && typeof projectile === 'object'
-        && (Number(projectile.damage) > 0
-          || (Array.isArray(projectile.applications) && projectile.applications.length)
-          || projectile.builderId);
-      if (!canApply) continue;
+  /**
+   * The bullet left the body of `entry` (`exit`): it goes on along its line and each token it reaches
+   * is hurt with what is left, in flight order (`ShotManager#continueShot`). Their impacts follow the
+   * first one in the ray's log, marked `through` (the target the bullet came out of); the target a bullet
+   * left carries `exit` (the damage that went on). Walls behind the body, flights past a token and the
+   * rest of the trail are recorded in the shot.
+   *
+   * Nothing goes on when the bullet did not leave (`exit` empty) or the damage is not known yet (it waits
+   * for the GM): the flight past the first body is simply not played.
+   *
+   * @private
+   * @param {object} entry the entry of the wound the bullet left
+   * @param {object[]|null} exit `exitApplications` of the wound
+   * @param {object} ctx `_applyWound` context plus `shotManager`, `hitContext` (see {@link _hitEntry})
+   *   and `perShot` (the impacts of every ray)
+   */
+  async _followThrough(entry, exit, ctx) {
+    const { shot, hit, index } = entry;
+    if (!exit?.length || shot?.tail?.anchor !== hit) return;
+    const { shotManager, hitContext, perShot } = ctx;
+    // What is left below what an injury can store is no bullet any more.
+    const exitDamage = totalApplicationsDamage(exit);
+    if (exitDamage < MIN_CARRY_DAMAGE) return;
+    let previous = entry.impact;
+    previous.exit = exitDamage;
 
-      const hitDirection = clockToHitFace(hit.details?.clock);
-      try {
-        await targetActor.applyDamagePackage({
+    await shotManager.continueShot(shot, {
+      anchor: hit,
+      exit,
+      deliver: async (nextHit) => {
+        const { impact, entry: next } = this._hitEntry({ uid: entry.uid, shot, hit: nextHit, index }, hitContext);
+        impact.through = previous.name;
+        previous = impact;
+        perShot[index].push(impact);
+        if (!next) return null;
+        const left = await this._applyWound([next], ctx);
+        const leftDamage = left?.length ? totalApplicationsDamage(left) : 0;
+        if (leftDamage >= MIN_CARRY_DAMAGE) impact.exit = leftDamage;
+        return left;
+      },
+    });
+  }
+
+  /**
+   * Apply one wound: the body part(s) it lands in and the damage. A volley wound goes in as one package
+   * (its pellets in a parallel phase); a blast spreads over several parts.
+   * @private
+   * @param {object[]} wound entries from {@link _resolveVolleyImpacts}
+   * @param {{critEffect: string, builderContext: object, injurySource: object}} ctx
+   * @returns {Promise<object[]|null>} what left the body (`exitApplications`) when the wound is one hit of
+   *   one bullet in one part and its result is known; otherwise `null` (a blast, a joined volley wound,
+   *   damage that waits for the GM or failed)
+   */
+  async _applyWound(wound, { critEffect, builderContext, injurySource }) {
+    const [first, ...rest] = wound;
+    const { targetActor, hit, quality, impact } = first;
+    const blast = first.isArea && hit.details?.blast === true;
+    const partIds = this._pickHitParts(targetActor, {
+      count: blast ? BLAST_PART_COUNT : 1,
+      quality,
+      critEffect,
+      impact,
+    });
+    if (!partIds.length) return null;
+
+    let damageSpec;
+    if (wound.length > 1) {
+      damageSpec = { applications: [{ mode: 'parallel', items: wound.flatMap((e) => e.applications[0]?.items ?? []) }] };
+    } else if (blast && partIds.length > 1) {
+      damageSpec = { applications: applyEnergyScaleToApplications(first.applications, 1 / partIds.length) };
+    } else if (first.unscaled) {
+      damageSpec = { projectile: first.projectile };
+    } else {
+      damageSpec = { applications: first.applications };
+    }
+    if (damageSpec.applications && !damageSpec.applications.length) return null;
+
+    const hitDirection = clockToHitFace(hit.details?.clock);
+    const results = [];
+    try {
+      for (const partId of partIds) {
+        const result = await this._applyDamage(targetActor, {
           partId,
-          projectile,
-          builderContext: {
-            shooterActorUuid: shooterActor?.uuid ?? null,
-            weaponItemUuid: shotContext.weaponItem?.uuid ?? null,
-            ammoItemUuid: injurySource.ammoUuid,
-          },
+          ...damageSpec,
+          builderContext,
           source: injurySource,
           hitDirection,
-          armorScale: resolved.armorScale,
         });
-      } catch (e) {
-        console.error('AimingManager: applyDamagePackage failed', e);
+        results.push({ partId, result });
       }
+      Object.assign(impact, this._damageOutcome(targetActor, results));
+    } catch (e) {
+      console.error('AimingManager: applying damage failed', e);
+      impact.failed = true;
+    }
+    // The other pellets of a volley wound went into the same wound.
+    for (const entry of rest) {
+      entry.impact.partName = impact.partName;
+      entry.impact.joined = true;
+    }
+    return wound.length === 1 && results.length === 1 ? this._exitOf(results[0].result) : null;
+  }
+
+  /**
+   * What left the body in an `applyDamagePackage` result — directly, or through the GM action manager.
+   * @private
+   * @param {object|null} result
+   * @returns {object[]|null} `exitApplications`; `null` when nothing left it or the result is not known
+   */
+  _exitOf(result) {
+    if (result?.status === 'queued') return null;
+    const out = result?.status === 'done' ? result.result : result;
+    const exit = out?.exitApplications;
+    return Array.isArray(exit) && exit.length ? exit : null;
+  }
+
+  /**
+   * Body parts a hit lands in — never interrupting play with a dialog: the group the target has marked when
+   * the shot crit with a part-picking mode, else a random one; the part is a random one inside the group.
+   * Several parts (a blast) are distinct while there are enough alive ones.
+   * @private
+   * @param {Actor} targetActor
+   * @param {{count?: number, quality?: object|null, critEffect?: string, impact?: object}} [options]
+   * @returns {string[]} slotRefs
+   */
+  _pickHitParts(targetActor, { count = 1, quality = null, critEffect = CRIT_EFFECTS.NONE, impact = null } = {}) {
+    const bodyParts = targetActor.system?.health?.bodyParts ?? {};
+    // Lost parts (and what hung below them) cannot be hit; a body with nothing left takes no damage.
+    const alive = Object.keys(bodyParts).filter((id) => isPartAlive(bodyParts[id]));
+    if (!alive.length) return [];
+    const groups = availableHitGroups(targetActor);
+    const override = String(targetActor.system?.anatomy?.hitGroupOverride ?? '').trim();
+    const picked = quality?.crit && critEffect === CRIT_EFFECTS.PICK_PART && override
+      ? groups.find((g) => g.id === override)
+      : null;
+    if (picked && impact) impact.pickedGroup = picked.name;
+
+    const out = [];
+    const want = Math.max(1, Math.min(count, alive.length));
+    for (let attempt = 0; out.length < want && attempt < want * 6; attempt += 1) {
+      const group = out.length === 0 && picked
+        ? picked
+        : (groups.length ? groups[Math.floor(Math.random() * groups.length)] : null);
+      const slots = group ? groupSlotRefs(bodyParts, group, { aliveOnly: true }) : alive;
+      const free = slots.filter((s) => !out.includes(s));
+      const pool = free.length ? free : alive.filter((s) => !out.includes(s));
+      if (!pool.length) break;
+      out.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    return out;
+  }
+
+  /**
+   * The attack-log record of a token a ray reached: who, where from, how centrally and with how much
+   * of the projectile's energy.
+   * @private
+   * @param {object} hit entry of `shot.actualHits`
+   * @param {object|null} quality `computeHitQuality` result (line hits only)
+   * @param {{outcome: string}} extra
+   */
+  _impactOf(hit, quality, extra) {
+    const details = hit.details ?? {};
+    const impact = {
+      tokenUuid: hit.object?.document?.uuid ?? null,
+      name: String(hit.object?.name ?? hit.object?.actor?.name ?? ''),
+      kind: details.area ? 'area' : 'line',
+      clock: details.clock,
+      ...extra,
+    };
+    if (details.area) {
+      impact.coverage = details.coverage;
+      impact.coverageMode = details.coverageMode;
+      impact.effectScale = details.effectScale;
+    } else if (quality) {
+      impact.centrality = quality.centrality ?? undefined;
+      impact.energyScale = quality.multiplier;
+      impact.quality = quality.tier;
+      impact.qualityLabel = localizeHitQualityTier(quality.tier);
+      impact.crit = quality.crit;
+    }
+    return impact;
+  }
+
+  /**
+   * What the log keeps of an applied wound: the body part(s) and the damage that reached them, or that the
+   * damage waits for the GM.
+   * @private
+   * @param {Actor} targetActor
+   * @param {Array<{partId: string, result: object|null}>} results one per part the wound landed in:
+   *   the `applyDamagePackage` result, or what the GM action manager returned
+   */
+  _damageOutcome(targetActor, results) {
+    const bodyParts = targetActor.system?.health?.bodyParts ?? {};
+    const names = [];
+    const organs = [];
+    const damage = new Map();
+    let queued = false;
+    let known = false;
+    for (const { partId, result } of results) {
+      queued ||= result?.status === 'queued';
+      const out = result?.status === 'done' ? result.result : result;
+      const slotRef = out?.slotRef ?? partId;
+      const part = bodyParts[slotRef] ?? bodyParts[partId];
+      names.push(String(part?.displayName ?? part?.name ?? slotRef ?? ''));
+      // Organs the damage reached on its way (the entry part and whatever lay behind it).
+      for (const [slot, hits] of Object.entries(out?.innerHitsBySlot ?? {})) {
+        for (const hit of Array.isArray(hits) ? hits : []) {
+          const inner = (bodyParts[slot]?.inners ?? []).find((o) => o?.id === hit?.innerId);
+          const name = String(inner?.displayName ?? inner?.name ?? hit?.innerId ?? '');
+          if (name && !organs.includes(name)) organs.push(name);
+        }
+      }
+      if (Array.isArray(out?.bodyDamage)) {
+        known = true;
+        for (const d of out.bodyDamage) damage.set(d.type, (damage.get(d.type) ?? 0) + d.amount);
+      }
+    }
+    return {
+      partName: names.filter(Boolean).join(', '),
+      organs: organs.length ? organs : undefined,
+      damage: known ? [...damage].map(([type, amount]) => ({ type, amount })) : undefined,
+      queued: queued || undefined,
+    };
+  }
+
+  /**
+   * Apply a damage package to a target. Owners (the GM included) apply it directly; anyone else
+   * goes through the GM action manager, which runs it on a GM client right away or — when no GM is
+   * online — parks it in a queue (and posts the "awaits GM" note).
+   *
+   * @private
+   * @param {Actor} targetActor
+   * @param {object} damageArgs arguments of `Actor#applyDamagePackage`
+   * @returns {Promise<object>} the `applyDamagePackage` result, or the GM action manager's `{status, ...}`
+   */
+  async _applyDamage(targetActor, damageArgs) {
+    const gmActions = game.spaceholder?.gmActions;
+    if (targetActor.isOwner || !gmActions) return targetActor.applyDamagePackage(damageArgs);
+
+    const part = targetActor.system?.health?.bodyParts?.[damageArgs.partId];
+    const label = game.i18n?.format?.('SPACEHOLDER.GmActions.Damage.Label', {
+      attacker: String(damageArgs.source?.attackerName ?? ''),
+      target: String(targetActor.name ?? ''),
+      part: String(part?.displayName ?? part?.name ?? damageArgs.partId ?? ''),
+    }) ?? '';
+    try {
+      return await gmActions.request(
+        GM_ACTION_TYPES.DAMAGE_APPLY,
+        { targetUuid: targetActor.uuid, ...damageArgs },
+        { label },
+      );
+    } catch (error) {
+      ui.notifications?.warn?.(game.i18n?.format?.('SPACEHOLDER.GmActions.Damage.NotApplied', {
+        reason: error?.message ?? String(error),
+      }) ?? `Damage was not applied: ${error?.message ?? error}`);
+      throw error;
     }
   }
 
@@ -1449,7 +2022,7 @@ export class AimingManager {
       const targetActor = hit.object.actor;
       if (typeof targetActor.applyDamagePackage !== 'function') continue;
       const bodyParts = targetActor.system?.health?.bodyParts ?? {};
-      const partIds = Object.keys(bodyParts);
+      const partIds = Object.keys(bodyParts).filter((id) => isPartAlive(bodyParts[id]));
       if (!partIds.length) continue;
       const partId = partIds[Math.floor(Math.random() * partIds.length)];
       try {
@@ -1688,14 +2261,20 @@ export class AimingManager {
    */
   _bindEvents() {
     canvas.stage.on('mousemove', this._boundEvents.onMouseMove);
-    canvas.stage.on('mousedown', this._boundEvents.onMouseDown);
+    // Presses are read at window capture, ahead of PIXI and Foundry's own mouse handling, so that
+    // the primary button can be taken over completely (see `_onPointerDown`).
+    window.addEventListener('pointerdown', this._boundEvents.onPointerDown, true);
     canvas.stage.on('mouseup', this._boundEvents.onMouseUp);
     canvas.stage.on('mouseupoutside', this._boundEvents.onMouseUp);
     canvas.stage.on('pointerupoutside', this._boundEvents.onMouseUp);
     canvas.stage.on('pointercancel', this._boundEvents.onMouseUp);
     document.addEventListener('contextmenu', this._boundEvents.onContextMenu);
     document.addEventListener('keydown', this._boundEvents.onKeyDown);
-    document.addEventListener('pointerup', this._boundEvents.onMouseUp);
+    // Releases are read at window capture too: a panel that swallows the event, a cancelled pointer or
+    // an alt-tab with the button held must not leave auto-fire running.
+    window.addEventListener('pointerup', this._boundEvents.onMouseUp, true);
+    window.addEventListener('pointercancel', this._boundEvents.onMouseUp, true);
+    window.addEventListener('blur', this._boundEvents.onMouseUp);
   }
   
   /**
@@ -1704,14 +2283,16 @@ export class AimingManager {
    */
   _unbindEvents() {
     canvas.stage.off('mousemove', this._boundEvents.onMouseMove);
-    canvas.stage.off('mousedown', this._boundEvents.onMouseDown);
+    window.removeEventListener('pointerdown', this._boundEvents.onPointerDown, true);
     canvas.stage.off('mouseup', this._boundEvents.onMouseUp);
     canvas.stage.off('mouseupoutside', this._boundEvents.onMouseUp);
     canvas.stage.off('pointerupoutside', this._boundEvents.onMouseUp);
     canvas.stage.off('pointercancel', this._boundEvents.onMouseUp);
     document.removeEventListener('contextmenu', this._boundEvents.onContextMenu);
     document.removeEventListener('keydown', this._boundEvents.onKeyDown);
-    document.removeEventListener('pointerup', this._boundEvents.onMouseUp);
+    window.removeEventListener('pointerup', this._boundEvents.onMouseUp, true);
+    window.removeEventListener('pointercancel', this._boundEvents.onMouseUp, true);
+    window.removeEventListener('blur', this._boundEvents.onMouseUp);
   }
   
   /**
@@ -1724,43 +2305,76 @@ export class AimingManager {
   }
   
   /**
-   * Обработчик нажатия мыши
+   * The canvas element Foundry draws on (events that target it are "on the map").
    * @private
+   * @returns {HTMLElement|null}
    */
-  _onMouseDown(event) {
-    if (!this.isAiming) return;
-    
-    if (event.data.button === 0) { // ЛКМ
-      event.stopPropagation();
+  _canvasElement() {
+    return canvas?.app?.canvas ?? canvas?.app?.view ?? null;
+  }
+
+  /**
+   * @private
+   * @param {Event} event
+   * @returns {boolean} whether the event landed on the map and not on a window or HUD above it
+   */
+  _isCanvasEvent(event) {
+    const el = this._canvasElement();
+    return !!el && event?.target === el;
+  }
+
+  /**
+   * Pointer press on the map while aiming. The primary button belongs to aiming alone: the event is
+   * stopped before PIXI and Foundry see it, so a held button (auto fire) does not also draw a
+   * selection box, drag a token or deselect it. The secondary button is left to Foundry (it pans the
+   * camera); only where its press began is noted, to tell a click from a pan on release.
+   * @private
+   * @param {PointerEvent} event
+   */
+  _onPointerDown(event) {
+    if (!this.isAiming || !this._isCanvasEvent(event)) return;
+
+    if (event.button === 0) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
       this._lmbHeld = true;
       void this._fire();
+    } else if (event.button === 2) {
+      this._rmbPress = { x: event.clientX, y: event.clientY };
     }
   }
-  
+
   /**
    * Обработчик отпускания мыши: останавливает авто-огонь (v3, режим Авто).
    * @private
    */
   _onMouseUp(event) {
     const btn = event?.data?.button ?? event?.button;
-    // PIXI events use data.button; document pointerup uses button. Treat missing as primary release.
-    if (btn == null || btn === 0) {
+    // PIXI events use data.button; DOM pointerup uses button. Treat missing as primary release;
+    // a cancelled pointer or a lost window focus ends the press whatever the button was.
+    const aborted = event?.type === 'pointercancel' || event?.type === 'blur';
+    if (aborted || btn == null || btn === 0) {
       this._lmbHeld = false;
       this._stopAutoFire();
     }
   }
 
   /**
-   * Обработчик правого клика
+   * Context-menu event on the map (the end of a right-button gesture). A right click cancels
+   * aiming; the same event also ends a camera pan, and that must not.
    * @private
+   * @param {MouseEvent} event
    */
   _onContextMenu(event) {
-    if (!this.isAiming) return;
-    
+    if (!this.isAiming || !this._isCanvasEvent(event)) return;
+
     event.preventDefault();
+    const press = this._rmbPress;
+    this._rmbPress = null;
+    if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > RMB_CLICK_MAX_MOVE_PX) return;
     this.stopAiming();
   }
-  
+
   /**
    * Обработчик нажатия клавиш
    * @private

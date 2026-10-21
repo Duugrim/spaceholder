@@ -1,24 +1,18 @@
 /**
- * Smoke tests for `resolveBodyTraversal`. Runs in plain Node (no
- * Foundry globals). Execute with:
+ * Smoke tests for `resolveBodyTraversal`. Runs in plain Node (no Foundry globals):
  *   node module/helpers/damage/body-traversal-resolver.test.mjs
  *
- * Philosophy:
- *   1. **Regression**: on a minimal «one-sided» anatomy without body
- *      layers, `resolveBodyTraversal` must produce the same
- *      `bodyDamage` as a direct `resolveDamagePackage` call. We reuse
- *      scenarios from [damage-resolver.test.mjs] — no hard-coded
- *      expected numbers here, only «the two resolvers agree».
- *   2. **Through-and-through**: through-back pass with optional armour,
- *      HEAT multi-phase, behind-relation weighted transfer.
- *   3. **Body-layers-only**: pure `skin/muscle/bone` absorption with no
- *      armour; symmetric parts do the stack twice.
- *   4. **Corner cases**: `chance = 0/100`, direction mismatch, explicit
- *      empty `bodyLayers`, armour updates do not leak body layers.
+ * 1. **Armour regression**: a part whose tissue keeps everything (no shell, `depthShare` 1) takes exactly
+ *    what the armour stack lets through — the traversal agrees with a direct `resolveDamagePackage` call.
+ * 2. **Tissue**: the part takes what it absorbs; the damage follows the energy; the rest leaves the body.
+ * 3. **Organs**: reach by `organDepth`, chance boosted by the cavity, share of the deposit, concussion.
+ * 4. **Exit**: through armour on the far side, into the part behind (no double counting).
+ * 5. **Armour coverage** gaps and the armour state of untouched faces.
+ * 6. **Blow to the parent part.**
  */
 
 import { resolveDamagePackage } from './damage-resolver.mjs';
-import { resolveBodyTraversal } from './body-traversal-resolver.mjs';
+import { resolveBodyTraversal, DEFAULT_BODY_MODEL } from './body-traversal-resolver.mjs';
 import { ensureLayerDefaults } from './materials-manager.mjs';
 import { TEST_MATERIAL_FIXTURES } from './__fixtures__/test-materials.mjs';
 import { DEGRADATION_MODES } from './damage-types.mjs';
@@ -34,829 +28,276 @@ function assert(label, cond, detail) {
   }
 }
 
-function approxEqual(a, b, tol = 1e-6) {
-  return Math.abs(a - b) <= tol;
-}
+const near = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
+const total = (hits) => (hits ?? []).reduce((s, h) => s + h.amount, 0);
+const byType = (hits, type) => (hits ?? []).filter((h) => h.type === type).reduce((s, h) => s + h.amount, 0);
 
-const baseResolve = (id) => TEST_MATERIAL_FIXTURES[id] ?? null;
-const determRandom = () => 0.5;
+/** Test-only materials next to the shared fixtures. */
+const CUSTOM = {
+  // Tissue shell: holds 0.5 energy at thickness 1 against everything.
+  shell: { materialId: 'shell', hardness: 1, integrityPerThickness: 5, resistance: { ballistic: 50, piercing: 50, cutting: 50, concussive: 50 } },
+  // A plate that hands on 40% of what it absorbs as a blow.
+  plate: {
+    materialId: 'plate', hardness: 10, integrityPerThickness: 50,
+    resistance: { ballistic: 100 }, wear: { ballistic: 0 },
+    conductance: { ballistic: [{ type: 'concussive', fraction: 0.4 }] },
+    selfInduction: { ballistic: [] },
+    degradation: { ballistic: DEGRADATION_MODES.REDUCTION },
+  },
+  // Padding: transparent to projectiles, softens blows.
+  pad: { materialId: 'pad', hardness: 1, integrityPerThickness: 10, resistance: {}, damping: { concussive: 0.1 } },
+};
+const resolveMaterial = (id) => CUSTOM[id] ?? TEST_MATERIAL_FIXTURES[id] ?? null;
+const rng = (v) => () => v;
 
-function deepCloneLayers(layers) {
-  return layers.map((l) => ({ ...l }));
-}
+const makeLayer = (materialId, thickness, overrides = {}) =>
+  ensureLayerDefaults({ material: materialId, thickness, ...overrides }, resolveMaterial(materialId));
 
-function makeLayer(materialId, thickness, overrides = {}) {
-  const md = baseResolve(materialId);
-  return ensureLayerDefaults({ material: materialId, thickness, ...overrides }, md);
-}
+/** One-shot ballistic package with an explicit energy. */
+const shot = (damage, energy, extra = {}) => [{ mode: 'sequential', items: [{ type: 'ballistic', damage, armorPen: 0.5, energy, ...extra }] }];
 
-function mergedBodyDamage(bodyDamage) {
-  const copy = (bodyDamage ?? []).slice();
-  copy.sort((a, b) => (a.type < b.type ? -1 : a.type > b.type ? 1 : 0));
-  return copy;
-}
+const TISSUE = { shellThickness: 1, depthFlat: 2, depthShare: 0.5, organDepth: 3 };
 
-/* ================================================================== *
- *  Minimal anatomy builder                                            *
- * ================================================================== */
-
-/**
- * Build a one-part anatomy with `exposure.front = 100`, all other
- * exposures zero, no relations, and no body layers. Good for direct
- * regression against `resolveDamagePackage`.
- */
-function oneSidedAnatomy(slotRef = 'body') {
-  return {
-    bodyParts: {
-      [slotRef]: {
-        id: '__test_onesided__',
-        faces: ['front'],
-        bodyLayers: [],
-        relations: []
-      }
-    }
-  };
+function part(id, { tissue = TISSUE, faces = ['front'], inners = [], relations = [], material = 'shell' } = {}) {
+  return { id, material, tissue, faces, inners, relations };
 }
 
 /* ================================================================== *
- *  Regression: 14 cases agree with direct resolveDamagePackage        *
+ *  1. Armour regression                                                *
  * ================================================================== */
 
-function runRegression(label, { layers, applications, resolveMaterial: rm = baseResolve }) {
-  const directInput = deepCloneLayers(layers);
-  const traversalInput = deepCloneLayers(layers);
+const KEEP_ALL = { shellThickness: 0, depthFlat: 0, depthShare: 1, organDepth: 0 };
 
-  const direct = resolveDamagePackage({
-    layers: directInput,
-    applications,
-    resolveMaterial: rm,
-    random: determRandom
-  });
-
+function runRegression(label, { layers, applications }) {
+  const direct = resolveDamagePackage({ layers: layers.map((l) => ({ ...l })), applications, resolveMaterial, random: rng(0.5) });
   const traversal = resolveBodyTraversal({
-    anatomy: oneSidedAnatomy('body'),
+    anatomy: { bodyParts: { body: part('body', { tissue: KEEP_ALL }) } },
     startSlotRef: 'body',
-    hitDirection: 'front',
     applications,
-    armorBySlot: {
-      body: [{ itemId: 'regression-item', coverageIdx: 0, layers: traversalInput }]
-    },
-    resolveMaterial: rm,
-    random: determRandom
+    armorBySlot: { body: [{ itemId: 'item', coverageIdx: 0, layers: layers.map((l) => ({ ...l })) }] },
+    resolveMaterial,
+    random: rng(0.5),
   });
-
-  const bodyDirect = mergedBodyDamage(direct.bodyDamage);
-  const bodyTraversal = mergedBodyDamage(traversal.bodyDamageBySlot.body ?? []);
-  assert(`${label}: traversal bodyDamage matches direct resolver`,
-    JSON.stringify(bodyDirect) === JSON.stringify(bodyTraversal),
-    `direct=${JSON.stringify(bodyDirect)} traversal=${JSON.stringify(bodyTraversal)}`);
-
-  const directLayers = direct.layers.map(({ key, ...rest }) => rest);
-  const traversalLayers = (traversal.armorUpdatesBySlot.body?.[0]?.layers ?? [])
-    .map(({ key, ...rest }) => rest);
-  assert(`${label}: traversal armour survivors match direct resolver`,
-    JSON.stringify(directLayers) === JSON.stringify(traversalLayers),
-    `direct=${JSON.stringify(directLayers)} traversal=${JSON.stringify(traversalLayers)}`);
+  const sort = (list) => [...(list ?? [])].sort((a, b) => a.type.localeCompare(b.type)).map((h) => `${h.type}:${h.amount.toFixed(6)}`);
+  assert(`${label}: the part takes what the armour let through`,
+    JSON.stringify(sort(direct.bodyDamage)) === JSON.stringify(sort(traversal.bodyDamageBySlot.body)),
+    `direct=${JSON.stringify(sort(direct.bodyDamage))} traversal=${JSON.stringify(sort(traversal.bodyDamageBySlot.body))}`);
+  const strip = (list) => list.map(({ key, ...rest }) => rest);
+  assert(`${label}: armour states agree`,
+    JSON.stringify(strip(direct.layers)) === JSON.stringify(strip(traversal.armorUpdatesBySlot.body[0].layers)),
+    `direct=${JSON.stringify(strip(direct.layers))} traversal=${JSON.stringify(traversal.armorUpdatesBySlot.body[0].layers)}`);
 }
 
-/* Case 1 — ballistic vs 1mm steel-plate */
-runRegression('Regression Case1', {
+runRegression('R1 ballistic vs 1mm steel', { layers: [makeLayer('steel-plate', 1)], applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 200 }] }] });
+runRegression('R2 concussive vs kevlar', { layers: [makeLayer('kevlar', 1)], applications: [{ mode: 'sequential', items: [{ type: 'concussive', damage: 10 }] }] });
+runRegression('R3 ballistic vs kevlar + foam', { layers: [makeLayer('kevlar', 1), makeLayer('foam', 1)], applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 20 }] }] });
+runRegression('R4 piercing armorPen vs kevlar', { layers: [makeLayer('kevlar', 1)], applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 25, armorPen: 5 }] }] });
+runRegression('R5 two phases vs steel', {
   layers: [makeLayer('steel-plate', 1)],
-  applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 200 }] }]
+  applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 100 }] }, { mode: 'sequential', items: [{ type: 'thermal', damage: 30 }] }],
 });
-
-/* Case 2 — concussive vs kevlar (conductance + selfInduction) */
-runRegression('Regression Case2', {
+runRegression('R6 parallel volley vs kevlar', {
   layers: [makeLayer('kevlar', 1)],
-  applications: [{ mode: 'sequential', items: [{ type: 'concussive', damage: 10 }] }]
+  applications: [{ mode: 'parallel', items: [{ type: 'ballistic', damage: 30 }, { type: 'ballistic', damage: 30 }, { type: 'concussive', damage: 80 }] }],
 });
+runRegression('R7 plate holds, pad softens the blow', { layers: [makeLayer('plate', 3), makeLayer('pad', 5)], applications: shot(100, 25) });
 
-/* Case 3 — ballistic vs kevlar+foam */
-runRegression('Regression Case3', {
-  layers: [makeLayer('kevlar', 1), makeLayer('foam', 1)],
-  applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 20 }] }]
-});
+/* ================================================================== *
+ *  2. Tissue                                                           *
+ * ================================================================== */
 
-/* Case 4 — laser vs ablative */
-runRegression('Regression Case4', {
-  layers: [makeLayer('ablative', 1)],
-  applications: [{ mode: 'sequential', items: [{ type: 'thermal', damage: 30 }] }]
-});
+const oneBody = (opts) => ({ bodyParts: { body: part('body', opts) } });
 
-/* Case 5 — ballistic w/ armorPen vs kevlar */
-runRegression('Regression Case5', {
-  layers: [makeLayer('kevlar', 1)],
-  applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 25, armorPen: 5 }] }]
-});
-
-/* Case 6 — HEAT-like two-phase (piercing + thermal) */
-runRegression('Regression Case6', {
-  layers: [makeLayer('steel-plate', 1)],
-  applications: [
-    { mode: 'sequential', items: [{ type: 'piercing', damage: 100 }] },
-    { mode: 'sequential', items: [{ type: 'thermal', damage: 30 }] }
-  ]
-});
-
-/* Case 7 — parallel ballistic×2 + concussive on kevlar */
-runRegression('Regression Case7', {
-  layers: [makeLayer('kevlar', 1)],
-  applications: [{
-    mode: 'parallel',
-    items: [
-      { type: 'ballistic', damage: 30 },
-      { type: 'ballistic', damage: 30 },
-      { type: 'concussive', damage: 80 }
-    ]
-  }]
-});
-
-/* Case 8 — distribution mode (uses a custom material override) */
 {
-  const customResolve = (id) => {
-    if (id === 'distro') {
-      return {
-        materialId: 'distro',
-        integrityPerThickness: 100,
-        resistance: { ballistic: 50 },
-        wear: { ballistic: 0 },
-        conductance: {},
-        selfInduction: {},
-        degradation: { ballistic: DEGRADATION_MODES.DISTRIBUTION }
-      };
-    }
-    return baseResolve(id);
-  };
-  runRegression('Regression Case8 (distribution)', {
-    layers: [{ material: 'distro', thickness: 1, integrity: 50, integrityMax: 100, breachLoss: 50, breachCapacity: 100 }],
-    applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 30 }] }],
-    resolveMaterial: customResolve
-  });
+  // E 25 → shell 0.5 → 24.5 inside → absorbs 2 + 0.5 × 24.5 = 14.25 → 10.25 leaves. Damage follows energy.
+  const res = resolveBodyTraversal({ anatomy: oneBody(), startSlotRef: 'body', applications: shot(100, 25), resolveMaterial, random: rng(0.5) });
+  const dep = total(res.bodyDamageBySlot.body);
+  const exitItem = res.exitApplications[0]?.items?.[0];
+  assert('D1: the part takes the share of the damage matching the absorbed energy (59)', near(dep, 59), dep);
+  assert('D1: the rest leaves the body with its energy (41 damage, 10.25 energy)', near(exitItem?.damage, 41) && near(exitItem?.energy, 10.25), JSON.stringify(exitItem));
+  assert('D1: nothing is lost or counted twice (part + exit = 100)', near(dep + exitItem.damage, 100));
+  assert('D1: the wound records the deposit and the exit', near(res.woundsBySlot.body.deposit, 59) && res.woundsBySlot.body.exited === true && res.path[0].exited === true);
 }
 
-/* Case 9 — bypass mode */
 {
-  const customResolve = (id) => {
-    if (id === 'bypass') {
-      return {
-        materialId: 'bypass',
-        integrityPerThickness: 100,
-        resistance: { ballistic: 50 },
-        wear: { ballistic: 0 },
-        conductance: {},
-        selfInduction: {},
-        degradation: { ballistic: DEGRADATION_MODES.BYPASS }
-      };
-    }
-    return baseResolve(id);
-  };
-  runRegression('Regression Case9 (bypass)', {
-    layers: [{ material: 'bypass', thickness: 1, integrity: 50, integrityMax: 100, breachLoss: 50, breachCapacity: 100 }],
-    applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 30 }] }],
-    resolveMaterial: customResolve
-  });
+  // Cavity: 2 extra damage per unit of energy absorbed inside (24.5 − 10.25 = 14.25) on top of the 59.
+  const res = resolveBodyTraversal({ anatomy: oneBody({ tissue: { ...TISSUE, cavity: 2 } }), startSlotRef: 'body', applications: shot(100, 25), resolveMaterial, random: rng(0.5) });
+  assert('D1b: the cavity adds damage for the energy absorbed inside', near(total(res.bodyDamageBySlot.body), 59 + 2 * 14.25), total(res.bodyDamageBySlot.body));
+  assert('D1b: what leaves the body does not change', near(res.exitApplications[0].items[0].damage, 41));
 }
 
-/* Case 10 — chance mode */
 {
-  const customResolve = (id) => {
-    if (id === 'chance') {
-      return {
-        materialId: 'chance',
-        integrityPerThickness: 100,
-        resistance: { ballistic: 50 },
-        wear: { ballistic: 0 },
-        conductance: { ballistic: [{ type: 'concussive', fraction: 0.25 }] },
-        selfInduction: {},
-        degradation: { ballistic: DEGRADATION_MODES.CHANCE }
-      };
-    }
-    return baseResolve(id);
-  };
-  runRegression('Regression Case10 (chance)', {
-    layers: [{ material: 'chance', thickness: 1, integrity: 30, integrityMax: 100, breachLoss: 70, breachCapacity: 100 }],
-    applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 30 }] }],
-    resolveMaterial: customResolve
-  });
+  // A slow projectile stays inside: the part takes all of it, nothing leaves.
+  const res = resolveBodyTraversal({ anatomy: oneBody(), startSlotRef: 'body', applications: shot(100, 3), resolveMaterial, random: rng(0.5) });
+  assert('D2: a projectile that stops inside gives the part its whole damage', near(total(res.bodyDamageBySlot.body), 100));
+  assert('D2: nothing leaves the body', res.exitApplications.length === 0 && res.woundsBySlot.body.exited === false);
 }
 
-/* Case 11 — legacy {type, damage} normalises to one sequential phase */
-runRegression('Regression Case11 (legacy)', {
-  layers: [makeLayer('kevlar', 1)],
-  applications: { type: 'ballistic', damage: 20 }
-});
-
-/* Case 12 — full conductance for electric vs steel-plate */
 {
-  const customResolve = (id) => {
-    if (id === 'conductive') {
-      return {
-        materialId: 'conductive',
-        integrityPerThickness: 50,
-        resistance: { electric: 100 },
-        wear: { electric: 0 },
-        conductance: { electric: [{ type: 'electric', fraction: 1.0 }] },
-        selfInduction: {},
-        degradation: { electric: DEGRADATION_MODES.REDUCTION }
-      };
-    }
-    return baseResolve(id);
-  };
-  runRegression('Regression Case12 (conductance=1)', {
-    layers: [makeLayer('steel-plate', 1, { material: 'conductive' })],
-    applications: [{ mode: 'sequential', items: [{ type: 'electric', damage: 40 }] }],
-    resolveMaterial: customResolve
-  });
+  // Weaker than the shell: stays in it, full damage, no organs.
+  const anatomy = oneBody({ inners: [{ id: 'core', occupancyPct: 100, maxHp: 20, tags: ['vital'] }], tissue: { ...TISSUE, organDepth: 0 } });
+  const res = resolveBodyTraversal({ anatomy, startSlotRef: 'body', applications: shot(100, 0.4), resolveMaterial, random: rng(0.5) });
+  assert('D3: a projectile weaker than the shell stays in it with its whole damage', near(total(res.bodyDamageBySlot.body), 100) && res.woundsBySlot.body.inShell === true);
+  assert('D3: it reaches no organ', !res.innerHitsBySlot.body);
 }
 
-/* Case 13 — full hold + full selfInduction */
 {
-  const customResolve = (id) => {
-    if (id === 'absorber') {
-      return {
-        materialId: 'absorber',
-        integrityPerThickness: 50,
-        resistance: { ballistic: 30 },
-        wear: { ballistic: 0.1 },
-        conductance: {},
-        selfInduction: { ballistic: [{ type: 'ballistic', fraction: 1.0 }] },
-        degradation: { ballistic: DEGRADATION_MODES.BASTION }
-      };
-    }
-    return baseResolve(id);
-  };
-  runRegression('Regression Case13 (selfInduction=1)', {
-    layers: [{ material: 'absorber', thickness: 1, integrity: 50, integrityMax: 50, breachLoss: 0, breachCapacity: 50 }],
-    applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 20 }] }],
-    resolveMaterial: customResolve
-  });
+  // Blows and burns stay on the part entirely.
+  const apps = [{ mode: 'parallel', items: [{ type: 'concussive', damage: 30 }, { type: 'thermal', damage: 20 }] }];
+  const res = resolveBodyTraversal({ anatomy: oneBody(), startSlotRef: 'body', applications: apps, resolveMaterial, random: rng(0.5) });
+  assert('D4: a blow and a burn stay on the part', near(byType(res.bodyDamageBySlot.body, 'concussive'), 30) && near(byType(res.bodyDamageBySlot.body, 'thermal'), 20));
+  assert('D4: they never leave the body', res.exitApplications.length === 0);
+  assert('D4: the blow is recorded as blunt, the burn as surface', near(res.woundsBySlot.body.blunt, 30) && near(res.woundsBySlot.body.surface, 20));
 }
 
-/* Case 14 — partial overflow during selfInduction */
 {
-  const customResolve = (id) => {
-    if (id === 'brittle') {
-      return {
-        materialId: 'brittle',
-        integrityPerThickness: 10,
-        resistance: { ballistic: 30 },
-        wear: { ballistic: 0.1, thermal: 2.0, concussive: 3.0 },
-        conductance: {},
-        selfInduction: {
-          ballistic: [
-            { type: 'thermal', fraction: 0.5 },
-            { type: 'concussive', fraction: 0.5 }
-          ]
-        },
-        degradation: { ballistic: DEGRADATION_MODES.BASTION }
-      };
-    }
-    return baseResolve(id);
-  };
-  runRegression('Regression Case14 (brittle overflow)', {
-    layers: [{ material: 'brittle', thickness: 1, integrity: 10, integrityMax: 10, breachLoss: 0, breachCapacity: 10 }],
-    applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 10 }] }],
-    resolveMaterial: customResolve
-  });
+  // The shock a stopped bullet hands on stays on the part; padding softens it.
+  const armor = (layers) => ({ body: [{ itemId: 'v', coverageIdx: 0, layers }] });
+  const bare = resolveBodyTraversal({ anatomy: oneBody(), startSlotRef: 'body', applications: shot(100, 25), armorBySlot: armor([makeLayer('plate', 3)]), resolveMaterial, random: rng(0.5) });
+  const padded = resolveBodyTraversal({ anatomy: oneBody(), startSlotRef: 'body', applications: shot(100, 25), armorBySlot: armor([makeLayer('plate', 3), makeLayer('pad', 5)]), resolveMaterial, random: rng(0.5) });
+  assert('D5: a held bullet hands on 40% of its damage as a blow', near(byType(bare.bodyDamageBySlot.body, 'concussive'), 40) && near(byType(bare.bodyDamageBySlot.body, 'ballistic'), 0));
+  assert('D5: 5 mm of padding softens the blow by e^(−0.5)', near(byType(padded.bodyDamageBySlot.body, 'concussive'), 40 * Math.exp(-0.5)));
+  assert('D5: the shock does not leave the body', bare.exitApplications.length === 0);
 }
 
 /* ================================================================== *
- *  Section 2: through-and-through                                     *
+ *  3. Organs                                                           *
  * ================================================================== */
 
-/**
- * Anatomy helper: two humanoid-ish parts where `front` enters `front`
- * and exits via `behind` into `back`, which then exits to the outside.
- *
- *   front (exposure.front=100, back=0, behind→back dir=front chance=X)
- *   back  (exposure.front=0,  back=100, no relations)
- */
-function frontBackAnatomy({ frontLayers, backLayers, chance = 100, backFaces = ['front', 'back'] }) {
-  return {
+{
+  const inners = [{ id: 'core', occupancyPct: 30, maxHp: 20, tags: ['vital'] }];
+  // Deep enough (24.5 past the shell > organDepth 3); cavity 14.75 → chance 1 − 0.7^(1 + 14.75/4) ≈ 0.81.
+  const res = resolveBodyTraversal({ anatomy: oneBody({ inners }), startSlotRef: 'body', applications: shot(100, 25), resolveMaterial, random: rng(0.5) });
+  const hit = res.innerHitsBySlot.body?.[0];
+  assert('O1: a big cavity hits an organ a plain share would miss', hit?.innerId === 'core', JSON.stringify(res.innerHitsBySlot));
+  assert('O1: the organ takes organShare of the part\'s damage', near(hit?.amount, DEFAULT_BODY_MODEL.organShare * 59), JSON.stringify(hit));
+
+  // Small cavity: 3.2 energy absorbed → chance 1 − 0.7^1.8 ≈ 0.47 < 0.5.
+  const small = resolveBodyTraversal({ anatomy: oneBody({ inners, tissue: { ...TISSUE, organDepth: 0 } }), startSlotRef: 'body', applications: shot(100, 3.2), resolveMaterial, random: rng(0.5) });
+  assert('O2: a small cavity keeps the chance near the share', !small.innerHitsBySlot.body, JSON.stringify(small.innerHitsBySlot));
+
+  // Not deep enough: 2.7 past the shell < organDepth 3.
+  const shallow = resolveBodyTraversal({ anatomy: oneBody({ inners }), startSlotRef: 'body', applications: shot(100, 3.2), resolveMaterial, random: rng(0) });
+  assert('O3: a projectile that does not get past organDepth reaches no organ', !shallow.innerHitsBySlot.body && shallow.woundsBySlot.body.reachedOrgans === false);
+}
+
+{
+  // Each organ separately: both are hit by a big cavity.
+  const inners = [{ id: 'a', occupancyPct: 40 }, { id: 'b', occupancyPct: 40 }];
+  const res = resolveBodyTraversal({ anatomy: oneBody({ inners }), startSlotRef: 'body', applications: shot(100, 25), resolveMaterial, random: rng(0.5) });
+  assert('O4: a big wound hits several organs', (res.innerHitsBySlot.body ?? []).map((h) => h.innerId).join() === 'a,b', JSON.stringify(res.innerHitsBySlot));
+}
+
+{
+  // Blows: only the excess over the concussion threshold reaches organs.
+  const inners = [{ id: 'core', occupancyPct: 30, maxHp: 20, tags: ['vital'] }];
+  const armor = { body: [{ itemId: 'v', coverageIdx: 0, layers: [makeLayer('plate', 3)] }] };
+  const weak = resolveBodyTraversal({ anatomy: oneBody({ inners }), startSlotRef: 'body', applications: shot(100, 25), armorBySlot: armor, resolveMaterial, random: rng(0.5) });
+  const threshold = DEFAULT_BODY_MODEL.concussionThreshold;
+  assert(`O5: a blow of 40 (under the threshold ${threshold}) does not hurt organs`, !weak.innerHitsBySlot.body);
+  const strong = resolveBodyTraversal({
+    anatomy: oneBody({ inners }), startSlotRef: 'body', applications: shot(200, 50),
+    armorBySlot: { body: [{ itemId: 'v', coverageIdx: 0, layers: [makeLayer('plate', 3)] }] }, resolveMaterial, random: rng(0.5),
+  });
+  const hit = strong.innerHitsBySlot.body?.[0];
+  const excess = DEFAULT_BODY_MODEL.organShare * (80 - threshold);
+  assert(`O5: a blow of 80 hurts the organ with organShare of the excess (${excess})`, hit?.innerId === 'core' && near(hit.amount, excess) && hit.type === 'concussive', JSON.stringify(strong.innerHitsBySlot));
+  const bare = resolveBodyTraversal({
+    anatomy: oneBody({ inners }), startSlotRef: 'body',
+    applications: [{ mode: 'sequential', items: [{ type: 'concussive', damage: threshold + 10 }] }], resolveMaterial, random: rng(0.1),
+  });
+  assert('O6: a direct blow over the threshold reaches the organ under it', near(bare.innerHitsBySlot.body?.[0]?.amount, DEFAULT_BODY_MODEL.organShare * 10));
+}
+
+/* ================================================================== *
+ *  4. Exit                                                             *
+ * ================================================================== */
+
+{
+  // Far-side plate 1 mm (holds 10): the 10.25 leaving the body pushes through with 0.25; its shock stays.
+  const anatomy = oneBody({ faces: ['front', 'back'] });
+  const armorBySlot = { body: [{ itemId: 'v', coverageIdx: 0, face: 'back', layers: [makeLayer('plate', 1)] }] };
+  const res = resolveBodyTraversal({ anatomy, startSlotRef: 'body', applications: shot(100, 25), armorBySlot, resolveMaterial, random: rng(0.5) });
+  const out = res.exitApplications[0]?.items?.[0];
+  assert('X1: the far-side plate slows what leaves the body', near(out?.damage, 41 * 0.25 / 10.25) && near(out?.energy, 0.25), JSON.stringify(out));
+  assert('X1: its shock pushes back into the same part', near(byType(res.bodyDamageBySlot.body, 'concussive'), (41 - 41 * 0.25 / 10.25) * 0.4));
+}
+
+{
+  // A one-faced part has no armour behind, the projectile still leaves.
+  const res = resolveBodyTraversal({ anatomy: oneBody({ faces: ['front'] }), startSlotRef: 'body', applications: shot(100, 25), resolveMaterial, random: rng(0.5) });
+  assert('X2: a one-faced part lets the projectile out', res.exitApplications.length === 1 && res.woundsBySlot.body.exited === true);
+}
+
+{
+  // Behind relation: only the residual goes on — the parts share the damage, nothing is counted twice.
+  const anatomy = {
     bodyParts: {
-      front: {
-        id: 'abdomen',
-        faces: ['front'],
-        bodyLayers: frontLayers,
-        relations: [{ kind: 'behind', direction: 'front', target: 'back', chance }]
-      },
-      back: {
-        id: 'back',
-        faces: backFaces,
-        bodyLayers: backLayers,
-        relations: []
-      }
-    }
+      front: part('front', { relations: [{ kind: 'behind', direction: 'front', target: 'back', chance: 100 }] }),
+      back: part('back'),
+    },
   };
+  const res = resolveBodyTraversal({ anatomy, startSlotRef: 'front', applications: shot(100, 25), resolveMaterial, random: rng(0.5) });
+  const front = total(res.bodyDamageBySlot.front);
+  const back = total(res.bodyDamageBySlot.back);
+  const out = res.exitApplications[0]?.items?.[0]?.damage ?? 0;
+  assert('X3: the projectile goes on into the part behind', res.path[0].transferredTo === 'back' && res.path[1].entryKind === 'internal');
+  assert('X3: front 59, back 28.5 (no shell inside), 12.5 leaves', near(front, 59) && near(back, 28.5) && near(out, 12.5), `${front} ${back} ${out}`);
+  assert('X3: front + back + exit = 100', near(front + back + out, 100));
+
+  anatomy.bodyParts.back.lost = true;
+  const lost = resolveBodyTraversal({ anatomy, startSlotRef: 'front', applications: shot(100, 25), resolveMaterial, random: rng(0.5) });
+  assert('X4: a lost part behind is skipped — the projectile leaves', lost.path.length === 1 && lost.exitApplications.length === 1);
 }
 
-/* Case T1 — AP Rifle (piercing 200 + armorPen 20) through abdomen → back, no armour */
+/* ================================================================== *
+ *  5. Armour coverage and untouched faces                              *
+ * ================================================================== */
+
 {
-  const anatomy = frontBackAnatomy({
-    frontLayers: [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 4 }, { material: 'bone', thickness: 1 }],
-    backLayers: [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 3 }, { material: 'bone', thickness: 2 }],
-    chance: 100
-  });
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 200, armorPen: 20 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  const frontHit = res.bodyDamageBySlot.front ?? [];
-  const backHit = res.bodyDamageBySlot.back ?? [];
-  assert('T1: AP Rifle abdomen→back yields damage in BOTH slots',
-    frontHit.length > 0 && backHit.length > 0,
-    JSON.stringify(res.bodyDamageBySlot));
-  assert('T1: path has two visited slots in order',
-    res.path.length === 2
-      && res.path[0].slotRef === 'front' && res.path[0].transferredTo === 'back'
-      && res.path[1].slotRef === 'back' && res.path[1].entryKind === 'internal',
-    JSON.stringify(res.path));
+  const armorBySlot = (coverage) => ({ body: [{ itemId: 'v', coverageIdx: 0, face: 'front', layers: [makeLayer('plate', 3, { coverage })] }] });
+  const gap = resolveBodyTraversal({ anatomy: oneBody(), startSlotRef: 'body', applications: shot(100, 25), armorBySlot: armorBySlot(40), resolveMaterial, random: rng(0.5) });
+  assert('K1: a roll past the coverage lands in the gap — the plate is not met', near(total(gap.bodyDamageBySlot.body), 59) && gap.woundsBySlot.body.gaps.length === 1);
+  assert('K1: the missed plate keeps its state', gap.armorUpdatesBySlot.body[0].layers[0].integrity === 150 && gap.armorUpdatesBySlot.body[0].layers[0].coverage === 40);
+  const plate = resolveBodyTraversal({ anatomy: oneBody(), startSlotRef: 'body', applications: shot(100, 25), armorBySlot: armorBySlot(60), resolveMaterial, random: rng(0.5) });
+  assert('K2: a roll inside the coverage meets the plate', near(byType(plate.bodyDamageBySlot.body, 'ballistic'), 0) && near(byType(plate.bodyDamageBySlot.body, 'concussive'), 40));
 }
 
-/* Case T2 — same shot, but a t-shirt covers both slots (insignificant
-   absorption, the bullet still reaches both centres and keeps going) */
 {
-  const anatomy = frontBackAnatomy({
-    frontLayers: [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 4 }, { material: 'bone', thickness: 1 }],
-    backLayers: [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 3 }, { material: 'bone', thickness: 2 }],
-    chance: 100
-  });
-  const tshirt = (slot) => [{
-    itemId: 'tshirt',
-    coverageIdx: slot === 'front' ? 0 : 1,
-    layers: [{ material: 'kevlar', thickness: 0.2, integrity: 3, integrityMax: 3, breachLoss: 0, breachCapacity: 3 }]
-  }];
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 200, armorPen: 20 }] }],
-    armorBySlot: { front: tshirt('front'), back: tshirt('back') },
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  assert('T2: t-shirt does not stop AP Rifle, both slots take damage',
-    (res.bodyDamageBySlot.front?.length ?? 0) > 0
-      && (res.bodyDamageBySlot.back?.length ?? 0) > 0,
-    JSON.stringify(res.bodyDamageBySlot));
-  // The t-shirt on the abdomen is hit on ENTRY only (abdomen back
-  // exposure = 0): it's either destroyed outright or heavily breached.
-  const frontItem = res.armorUpdatesBySlot.front?.[0];
-  const tshirtGone = frontItem?.layers?.length === 0;
-  const tshirtBreached = (frontItem?.layers?.[0]?.breachLoss ?? 0) > 0;
-  assert('T2: t-shirt on abdomen interacted with the shot (destroyed or breached)',
-    !!frontItem && (tshirtGone || tshirtBreached),
-    JSON.stringify(frontItem));
-}
-
-/* Case T3 — HEAT package through chest → back (two-phase traversal) */
-{
-  const anatomy = frontBackAnatomy({
-    frontLayers: [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 3 }, { material: 'bone', thickness: 2 }],
-    backLayers: [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 3 }, { material: 'bone', thickness: 2 }],
-    chance: 100
-  });
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [
-      { mode: 'sequential', items: [{ type: 'piercing', damage: 150, armorPen: 30 }] },
-      { mode: 'sequential', items: [{ type: 'thermal', damage: 60 }] }
+  // Regression: a front hit used to wipe the layers of the back coverage of the same item.
+  const anatomy = oneBody({ faces: ['front', 'back'] });
+  const armorBySlot = {
+    body: [
+      { itemId: 'vest', coverageIdx: 0, face: 'front', layers: [makeLayer('kevlar', 1)] },
+      { itemId: 'vest', coverageIdx: 1, face: 'back', layers: [makeLayer('kevlar', 1)] },
     ],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  const front = res.bodyDamageBySlot.front ?? [];
-  const back = res.bodyDamageBySlot.back ?? [];
-  assert('T3: HEAT phases both reach chest',
-    front.some((d) => d.type === 'piercing') && front.some((d) => d.type === 'thermal'),
-    JSON.stringify(front));
-  assert('T3: HEAT phases both reach back',
-    back.some((d) => d.type === 'piercing') && back.some((d) => d.type === 'thermal'),
-    JSON.stringify(back));
+  };
+  const res = resolveBodyTraversal({ anatomy, startSlotRef: 'body', applications: shot(100, 3), armorBySlot, resolveMaterial, random: rng(0.5) });
+  const back = res.armorUpdatesBySlot.body.find((s) => s.coverageIdx === 1);
+  assert('K3: the back coverage keeps its layers after a front hit', back?.layers?.length === 1 && back.layers[0].integrity === 30, JSON.stringify(back));
 }
 
 /* ================================================================== *
- *  Section 3: body-layers-only                                        *
+ *  6. Blow to the parent part                                          *
  * ================================================================== */
 
-/* Case B1 — bone stops 9mm Ball (low piercing) even without armour */
 {
   const anatomy = {
     bodyParts: {
-      body: {
-        id: 'custom',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
-        bodyLayers: [
-          { material: 'skin', thickness: 1 },
-          { material: 'muscle', thickness: 1 },
-          { material: 'bone', thickness: 3 }
-        ],
-        relations: []
-      }
-    }
-  };
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'body',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 25 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  const centre = res.bodyDamageBySlot.body ?? [];
-  const totalPiercing = centre.filter((d) => d.type === 'piercing').reduce((s, d) => s + d.amount, 0);
-  const bone = baseResolve('bone');
-  assert('B1: bone present and has piercing resistance',
-    !!bone && Number(bone?.resistance?.piercing ?? 0) > 0,
-    JSON.stringify(bone?.resistance));
-  assert('B1: bone attenuates piercing below the input (25 → centre < 25)',
-    totalPiercing < 25,
-    JSON.stringify(centre));
-}
-
-/* Case B2 — piercing against a brittle-bone layer triggers
-   selfInduction: the bone holds the shot, the layer is destroyed, and
-   the overflow arrives at the centre as concussive. */
-{
-  const customResolve = (id) => {
-    if (id === 'brittle-bone') {
-      return {
-        materialId: 'brittle-bone',
-        integrityPerThickness: 3,
-        resistance: { piercing: 50 },
-        wear: { piercing: 20, concussive: 200 },
-        conductance: {},
-        selfInduction: { piercing: [{ type: 'concussive', fraction: 0.5 }] },
-        degradation: { piercing: DEGRADATION_MODES.REDUCTION }
-      };
-    }
-    return baseResolve(id);
-  };
-  const anatomy = {
-    bodyParts: {
-      body: {
-        id: 'custom',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
-        bodyLayers: [{ material: 'brittle-bone', thickness: 1 }],
-        relations: []
-      }
-    }
-  };
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'body',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 20 }] }],
-    armorBySlot: {},
-    resolveMaterial: customResolve,
-    random: determRandom
-  });
-  const centre = res.bodyDamageBySlot.body ?? [];
-  const hasPiercing = centre.some((d) => d.type === 'piercing' && d.amount > 0);
-  const hasConcussive = centre.some((d) => d.type === 'concussive' && d.amount > 0);
-  assert('B2: brittle bone holds the piercing (no piercing reaches centre)',
-    !hasPiercing, JSON.stringify(centre));
-  assert('B2: selfInduction overflow produces concussive at the centre',
-    hasConcussive, JSON.stringify(centre));
-}
-
-/* Case B3 — symmetric head does the bodyLayers stack twice
-   (entry + exit), so total absorption exceeds a single-sided part */
-{
-  const layers = [
-    { material: 'skin', thickness: 1 },
-    { material: 'muscle', thickness: 1 },
-    { material: 'bone', thickness: 3 }
-  ];
-  const applications = [{ mode: 'sequential', items: [{ type: 'piercing', damage: 60 }] }];
-
-  // one-sided: exit side absent, only the entry stack eats damage
-  const oneSided = resolveBodyTraversal({
-    anatomy: {
-      bodyParts: {
-        head: {
-          id: 'head',
-          faces: ['front'],
-          bodyLayers: layers,
-          relations: []
-        }
-      }
+      head: part('head', { tissue: { ...TISSUE, bluntToParent: 0.3 }, relations: [{ kind: 'parent', target: 'neck' }] }),
+      neck: part('neck'),
     },
-    startSlotRef: 'head',
-    hitDirection: 'front',
-    applications,
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-
-  // symmetric: exit side also present → the reversed stack runs too.
-  // Residual after entry is merged into the centre first, then the exit
-  // stack consumes some more. The centre total should be UNCHANGED (the
-  // exit stack is applied after we've already logged centre damage).
-  // The difference surfaces only in the trace.
-  const symmetric = resolveBodyTraversal({
-    anatomy: {
-      bodyParts: {
-        head: {
-          id: 'head',
-          faces: ['front', 'back'],
-          bodyLayers: layers,
-          relations: []
-        }
-      }
-    },
-    startSlotRef: 'head',
-    hitDirection: 'front',
-    applications,
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-
-  const exitedOne = oneSided.path[0]?.exited === true;
-  const exitedSym = symmetric.path[0]?.exited === true;
-  assert('B3: one-sided head does not record an exit pass',
-    exitedOne === false, JSON.stringify(oneSided.path));
-  assert('B3: symmetric head records an exit pass',
-    exitedSym === true, JSON.stringify(symmetric.path));
-}
-
-/* Case B4 — abdomen → back exits to outside (behind has no further transfer) */
-{
-  const anatomy = frontBackAnatomy({
-    frontLayers: [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 2 }],
-    backLayers:  [{ material: 'skin', thickness: 1 }, { material: 'muscle', thickness: 2 }],
-    chance: 100
-  });
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 80 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  assert('B4: both slots receive damage',
-    (res.bodyDamageBySlot.front?.length ?? 0) > 0
-      && (res.bodyDamageBySlot.back?.length ?? 0) > 0,
-    JSON.stringify(res.bodyDamageBySlot));
-  const backEntry = res.path.find((p) => p.slotRef === 'back');
-  assert('B4: back exited via opposite face',
-    !!backEntry && backEntry.exited === true && backEntry.transferredTo === null,
-    JSON.stringify(backEntry));
-}
-
-/* Case B5 — abdomen transfers into back, but back has no back exposure → residual dissipates in back's centre */
-{
-  const anatomy = {
-    bodyParts: {
-      front: {
-        id: 'abdomen',
-        faces: ['front'],
-        bodyLayers: [{ material: 'muscle', thickness: 2 }],
-        relations: [{ kind: 'behind', direction: 'front', target: 'back', chance: 100 }]
-      },
-      back: {
-        id: 'back',
-        faces: ['front'],
-        bodyLayers: [{ material: 'muscle', thickness: 2 }],
-        relations: []
-      }
-    }
   };
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 60 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  const backEntry = res.path.find((p) => p.slotRef === 'back');
-  assert('B5: back receives damage but cannot exit (no opposite face)',
-    (res.bodyDamageBySlot.back?.length ?? 0) > 0
-      && backEntry?.exited === false
-      && backEntry?.transferredTo === null,
-    JSON.stringify({ back: res.bodyDamageBySlot.back, backEntry }));
+  const armorBySlot = { head: [{ itemId: 'helmet', coverageIdx: 0, layers: [makeLayer('plate', 3)] }] };
+  const res = resolveBodyTraversal({ anatomy, startSlotRef: 'head', applications: shot(100, 25), armorBySlot, resolveMaterial, random: rng(0.5) });
+  assert('P1: a helmet blow passes bluntToParent of itself to the neck', near(byType(res.bodyDamageBySlot.neck, 'concussive'), 40 * 0.3), JSON.stringify(res.bodyDamageBySlot));
+  delete anatomy.bodyParts.head.tissue.bluntToParent;
+  const none = resolveBodyTraversal({ anatomy, startSlotRef: 'head', applications: shot(100, 25), armorBySlot, resolveMaterial, random: rng(0.5) });
+  assert('P2: without bluntToParent the neck is untouched', !none.bodyDamageBySlot.neck);
 }
 
-/* ================================================================== *
- *  Section 4: corner cases                                            *
- * ================================================================== */
-
-/* Case C1 — chance = 0: behind relation ignored, no transfer */
-{
-  const anatomy = frontBackAnatomy({
-    frontLayers: [{ material: 'muscle', thickness: 1 }],
-    backLayers:  [{ material: 'muscle', thickness: 1 }],
-    chance: 0
-  });
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 50 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  assert('C1: chance=0 never transfers to behind',
-    res.path.length === 1 && res.path[0].transferredTo === null,
-    JSON.stringify(res.path));
-  assert('C1: back slot is untouched',
-    !res.bodyDamageBySlot.back,
-    JSON.stringify(res.bodyDamageBySlot));
-}
-
-/* Case C2 — chance = 100: behind always transfers */
-{
-  const anatomy = frontBackAnatomy({
-    frontLayers: [{ material: 'muscle', thickness: 1 }],
-    backLayers:  [{ material: 'muscle', thickness: 1 }],
-    chance: 100
-  });
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 50 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: () => 0.999
-  });
-  assert('C2: chance=100 always transfers to behind (even with high roll)',
-    res.path.length === 2 && res.path[0].transferredTo === 'back',
-    JSON.stringify(res.path));
-}
-
-/* Case C3 — behind direction mismatch: hit is `front`, behind is `left` → ignored */
-{
-  const anatomy = {
-    bodyParts: {
-      front: {
-        id: 'x',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
-        bodyLayers: [],
-        relations: [{ kind: 'behind', direction: 'left', target: 'back', chance: 100 }]
-      },
-      back: {
-        id: 'y',
-        exposure: { front: 0, back: 100, left: 0, right: 0, top: 0, bottom: 0 },
-        bodyLayers: [],
-        relations: []
-      }
-    }
-  };
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 30 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  assert('C3: behind with direction≠hitDirection does not trigger',
-    res.path.length === 1 && res.path[0].transferredTo === null,
-    JSON.stringify(res.path));
-  assert('C3: back slot untouched',
-    !res.bodyDamageBySlot.back,
-    JSON.stringify(res.bodyDamageBySlot));
-}
-
-/* Case C4 — `bodyLayers: []` is honoured: no body absorption at all */
-{
-  const anatomy = {
-    bodyParts: {
-      body: {
-        id: '__test_empty_layers__',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
-        bodyLayers: [],
-        relations: []
-      }
-    }
-  };
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'body',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 42 }] }],
-    armorBySlot: {},
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  const centre = res.bodyDamageBySlot.body ?? [];
-  const total = centre.reduce((s, d) => s + d.amount, 0);
-  assert('C4: empty bodyLayers lets the full package hit the centre',
-    centre.length === 1 && approxEqual(total, 42),
-    JSON.stringify(centre));
-}
-
-/* Case C5 — armorUpdates never contain body-layer entries */
-{
-  const anatomy = {
-    bodyParts: {
-      body: {
-        id: 'x',
-        exposure: { front: 100, back: 0, left: 0, right: 0, top: 0, bottom: 0 },
-        bodyLayers: [{ material: 'muscle', thickness: 2 }],
-        relations: []
-      }
-    }
-  };
-  const armor = [{
-    itemId: 'plate',
-    coverageIdx: 0,
-    layers: [{ material: 'steel-plate', thickness: 1, integrity: 50, integrityMax: 50, breachLoss: 0, breachCapacity: 50 }]
-  }];
-  const res = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'body',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 80 }] }],
-    armorBySlot: { body: armor },
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  const updates = res.armorUpdatesBySlot.body;
-  const hasOnlyArmourMaterials = Array.isArray(updates)
-    && updates.length === 1
-    && updates[0].itemId === 'plate'
-    && updates[0].layers.every((l) => l.material === 'steel-plate');
-  assert('C5: armour updates contain only armour-provenance layers',
-    hasOnlyArmourMaterials,
-    JSON.stringify(updates));
-}
-
-/* Case C6 — armorPen/armorDamageFactor survive the body-centre handoff */
-{
-  // two concentric parts, armour only on the REAR exit; the projectile
-  // passes through front (no armour, no body layers) into back (armour
-  // on its exit side). The armorPen should still apply to that armour.
-  const anatomy = frontBackAnatomy({
-    frontLayers: [],
-    backLayers: [],
-    chance: 100
-  });
-  const backArmor = [{
-    itemId: 'rear-plate',
-    coverageIdx: 0,
-    layers: [makeLayer('steel-plate', 1)]
-  }];
-  // Same damage with and without pen → we expect pen to push more
-  // through the rear-plate on exit.
-  const withoutPen = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 40 }] }],
-    armorBySlot: { back: backArmor.map((s) => ({ ...s, layers: deepCloneLayers(s.layers) })) },
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-  const withPen = resolveBodyTraversal({
-    anatomy,
-    startSlotRef: 'front',
-    hitDirection: 'front',
-    applications: [{ mode: 'sequential', items: [{ type: 'piercing', damage: 40, armorPen: 25 }] }],
-    armorBySlot: { back: backArmor.map((s) => ({ ...s, layers: deepCloneLayers(s.layers) })) },
-    resolveMaterial: baseResolve,
-    random: determRandom
-  });
-
-  const trackedPen = withPen.trace.some((e) => e.phase === 'exit' && (e.damage ?? e.amount) > 0);
-  const trackedPlain = withoutPen.trace.some((e) => e.phase === 'exit' && (e.damage ?? e.amount) > 0);
-  assert('C6: armorPen changes exit-trace damage vs plain hit',
-    trackedPen !== trackedPlain || withPen.path[1]?.exited !== withoutPen.path[1]?.exited || true,
-    JSON.stringify({ withoutPen: withoutPen.trace, withPen: withPen.trace }));
-  // Primary assertion: without pen the plate may hold; with pen it must
-  // produce at least as much exit-wear breach on the rear plate.
-  const plainBreach = withoutPen.armorUpdatesBySlot.back?.[0]?.layers?.[0]?.breachLoss ?? 0;
-  const penBreach = withPen.armorUpdatesBySlot.back?.[0]?.layers?.[0]?.breachLoss ?? 0;
-  assert('C6: armorPen produces ≥ breach on the rear plate',
-    penBreach >= plainBreach,
-    `plain=${plainBreach} pen=${penBreach}`);
-}
-
-/* ================================================================== *
- *  Summary                                                            *
- * ================================================================== */
-
-if (failed > 0) {
+if (failed) {
   console.error(`\n${failed} assertion(s) failed.`);
   process.exit(1);
-} else {
-  console.log('\nAll body-traversal smoke tests passed.');
 }
+console.log('\nAll body-traversal smoke tests passed.');

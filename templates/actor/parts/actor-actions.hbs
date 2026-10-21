@@ -58,7 +58,7 @@
               {{#if actions.length}}
                 <div class="sh-actions-grid">
                   {{#each actions as |a|}}
-                    <div class="sh-action-chip {{#if a.isFavorite}}is-favorite{{/if}}{{#if ../showActionFavoriteToggle}} sh-action-chip--fav-toggle{{/if}}">
+                    <div draggable="true" data-drag-action-id="{{a.id}}" data-drag-label="{{a.label}}" data-drag-img="{{a.dragImg}}" class="sh-action-chip {{#if a.isFavorite}}is-favorite{{/if}}{{#if ../showActionFavoriteToggle}} sh-action-chip--fav-toggle{{/if}}">
                       <button type="button" class="sh-action-btn sh-action-chip__main" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
                         {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
                         <span class="sh-action-btn__label">{{a.label}}</span>
@@ -85,7 +85,7 @@
               {{#if availableActions.length}}
                 <div class="sh-actions-grid">
                   {{#each availableActions as |a|}}
-                    <div class="sh-action-chip {{#if a.isFavorite}}is-favorite{{/if}}{{#if ../showActionFavoriteToggle}} sh-action-chip--fav-toggle{{/if}}">
+                    <div draggable="true" data-drag-action-id="{{a.id}}" data-drag-label="{{a.label}}" data-drag-img="{{a.dragImg}}" class="sh-action-chip {{#if a.isFavorite}}is-favorite{{/if}}{{#if ../showActionFavoriteToggle}} sh-action-chip--fav-toggle{{/if}}">
                       <button type="button" class="sh-action-btn sh-action-chip__main" data-action="sh-actions-open-preview" data-action-id="{{a.id}}" title="{{a.label}}">
                         {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
                         <span class="sh-action-btn__label">{{a.label}}</span>

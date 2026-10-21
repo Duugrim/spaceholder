@@ -13,19 +13,29 @@ export function computeItemStackFingerprint(itemLike) {
 }
 
 /**
+ * Whether a document (token or actor) carries the pile marker `flags.spaceholder.itemPilesSh.isPile`.
+ * @param {{getFlag?: Function, flags?: object}|null|undefined} doc
+ * @returns {boolean}
+ */
+export function hasPileFlag(doc) {
+  try {
+    if (doc?.getFlag?.(ITEM_PILES_SH.FLAG_SCOPE, ITEM_PILES_SH.FLAG_ROOT)?.isPile) return true;
+    return !!doc?.flags?.[ITEM_PILES_SH.FLAG_SCOPE]?.[ITEM_PILES_SH.FLAG_ROOT]?.isPile;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * A pile's actor. Piles are tokens of the shared template actor, and the marker sits on the token
+ * (`_createPileTokenAsGm`), so the token is checked as well as the actor.
  * @param {Actor|null|undefined} actor
  * @returns {boolean}
  */
 export function isPileLootActor(actor) {
   if (!actor || actor.documentName !== 'Actor') return false;
   if (actor.type !== ITEM_PILES_SH.PILE_DEFAULT_ACTOR_TYPE) return false;
-  try {
-    const viaGet = actor.getFlag?.(ITEM_PILES_SH.FLAG_SCOPE, ITEM_PILES_SH.FLAG_ROOT);
-    if (viaGet?.isPile) return true;
-    return !!actor.flags?.[ITEM_PILES_SH.FLAG_SCOPE]?.[ITEM_PILES_SH.FLAG_ROOT]?.isPile;
-  } catch (_) {
-    return false;
-  }
+  return hasPileFlag(actor) || hasPileFlag(actor.token);
 }
 
 /**

@@ -6,10 +6,13 @@
  *   hold → exit old mode → enter line → enter mode → reload/bolt →
  *   readying → start aiming.
  *
- * Execution shows a confirmation dialog with the step breakdown and the AP
- * total (unless the actor has the «auto-confirm complex actions» flag),
- * then performs the steps one by one, spending AP through the transaction
- * ledger, and finally enters the aiming UI bound to the chosen line/mode.
+ * The steps are performed one by one, spending AP through the transaction ledger
+ * (priced with the actor's action speed) and each logged as an action of its own in the
+ * combat log, and finally the aiming UI bound to the chosen line/mode is entered. No
+ * confirmation is asked: the «Attack» button shows the price (the missing steps, and the
+ * first shot). In combat the whole price (steps + first shot) must fit the AP pool before the
+ * first step is paid. The old confirmation dialog is kept behind `CONFIRM_ATTACK_CHAIN_ENABLED` (off).
+ * The shots themselves are charged and logged by the aiming session (`AimingManager`).
  */
 
 import {
@@ -28,10 +31,63 @@ import {
   syncExternalChargeHostedRuntime,
 } from './weapon-ammo-runtime.mjs';
 import { unparentActorItemFromHost } from '../item-weapon-host.mjs';
-import { spendAp, ensureCharacterApSynced } from '../actions/transaction-ledger.mjs';
+import {
+  canAffordAp,
+  ensureCharacterApSynced,
+  notEnoughApMessage,
+  spendAp,
+} from '../actions/transaction-ledger.mjs';
+import { beginCombatAction, logCombatAction } from '../actions/combat-action-log.mjs';
+import { getSelectedItemIds, setSelectedItemIds } from '../hud-selection.mjs';
+import { ABILITY_NORM, applyActionSpeedToCost } from '../derived-stats.mjs';
 
-/** MVP: «Открыть рюкзак» + взять предмет в руки. */
-export const TAKE_WEAPON_AP_COST = 10;
+/**
+ * The confirmation dialog of a costly attack chain is legacy: an attack no longer asks anything (the
+ * button shows the price, the steps just run). The dialog code stays, switched off, for the places that
+ * will assemble a long chain of actions out of the inventory. Turn on to bring it back.
+ */
+export const CONFIRM_ATTACK_CHAIN_ENABLED = false;
+
+/** Base AP of «take in hands» (`CONFIG.SPACEHOLDER.itemActionAp.hold`), the same as the item's own action. */
+function takeWeaponAp() {
+  const n = Number(globalThis.CONFIG?.SPACEHOLDER?.itemActionAp?.hold);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 10;
+}
+
+function _actorCor(actor) {
+  const cor = Number(actor?.system?.abilities?.cor?.value);
+  return Number.isFinite(cor) ? cor : ABILITY_NORM;
+}
+
+/**
+ * Chain steps priced for this actor: action speed (COR) applies to the steps like it does to every
+ * other action, so the cost the button shows is the cost that is charged. `baseApCost` keeps the
+ * price before the actor's speed (the combat log shows both).
+ * @param {Actor|null|undefined} actor
+ * @param {AttackChainStep[]} steps
+ * @returns {AttackChainStep[]}
+ */
+function _priceSteps(actor, steps) {
+  const cor = _actorCor(actor);
+  return steps.map((s) => {
+    const base = Math.max(0, Number(s.apCost) || 0);
+    return { ...s, baseApCost: base, apCost: applyActionSpeedToCost(base, cor) };
+  });
+}
+
+/**
+ * AP of a weapon timing (aiming + trigger of the first shot, the delay of a following shot of a series)
+ * priced for this actor: action speed (COR) applies to shots like it does to every other action.
+ * The same function prices the button and the charge. The real rate of fire (auto-fire timer, RPM)
+ * is not touched: it stays on the global `AP_PER_SECOND`.
+ *
+ * @param {Actor|null|undefined} actor
+ * @param {number} baseAp timing in AP, as the weapon defines it
+ * @returns {number} whole AP
+ */
+export function shotApCost(actor, baseAp) {
+  return applyActionSpeedToCost(Math.ceil(Math.max(0, Number(baseAp) || 0)), _actorCor(actor));
+}
 
 const AUTO_CONFIRM_FLAG = 'autoConfirmComplexActions';
 
@@ -129,7 +185,7 @@ export function buildAttackChain({ actor, weaponItem, lineId, modeId }) {
     steps.push({
       kind: 'hold',
       label: _t('SPACEHOLDER.WeaponV3.Chain.TakeWeapon', { name: weaponItem.name }),
-      apCost: TAKE_WEAPON_AP_COST,
+      apCost: takeWeaponAp(),
     });
   }
 
@@ -182,8 +238,40 @@ export function buildAttackChain({ actor, weaponItem, lineId, modeId }) {
   // 5. Enter aiming UI (free when readied / readying disabled).
   steps.push({ kind: 'aim', label: _t('SPACEHOLDER.WeaponV3.Chain.Aim'), apCost: 0 });
 
-  const totalAp = steps.reduce((sum, s) => sum + Math.max(0, Number(s.apCost) || 0), 0);
-  return { ok: true, steps, totalAp, weapon };
+  const priced = _priceSteps(actor, steps);
+  const totalAp = priced.reduce((sum, s) => sum + Math.max(0, Number(s.apCost) || 0), 0);
+  return { ok: true, steps: priced, totalAp, weapon };
+}
+
+/**
+ * AP of the first shot of an attack: aiming + trigger of the line. Charged when the shot is fired
+ * (`AimingManager`), not by the chain; follow-up shots of a burst / auto series cost the mode delay.
+ *
+ * @param {object} weapon normalized v3 weapon
+ * @param {string} lineId
+ * @param {string} modeId
+ * @param {Actor|null} [actor] whose action speed prices the shot
+ * @returns {number} whole AP
+ */
+export function firstShotAp(weapon, lineId, modeId, actor = null) {
+  const eff = resolveEffectiveAttackParams(weapon, lineId, modeId);
+  if (!eff) return 0;
+  return shotApCost(actor, Math.max(0, Number(eff.line.aiming) || 0) + Math.max(0, Number(eff.line.trigger) || 0));
+}
+
+/**
+ * The rows the confirmation dialog shows: the steps that mean something to the player. The terminal
+ * «aim» step and a free «switch mode» step are bookkeeping and stay out; the first shot is added so the
+ * dialog total matches the cost preview.
+ *
+ * @param {AttackChainStep[]} steps
+ * @param {number} shotAp
+ * @returns {AttackChainStep[]}
+ */
+export function describeChainForConfirm(steps, shotAp) {
+  const rows = steps.filter((s) => s.kind !== 'aim' && !(s.kind === 'enterMode' && !(Number(s.apCost) > 0)));
+  if (shotAp > 0) rows.push({ kind: 'shot', label: _t('SPACEHOLDER.WeaponV3.Chain.FirstShot'), apCost: shotAp });
+  return rows;
 }
 
 /* ================================================================== *
@@ -280,28 +368,47 @@ export async function confirmAttackChain({ actor, steps, totalAp, title = '' }) 
  *  Execution                                                          *
  * ================================================================== */
 
-async function _spendStepAp(actor, step) {
+/** Steps that are real actions worth a line in the combat log even when free (the rest is bookkeeping). */
+const LOGGED_FREE_STEPS = new Set(['hold', 'reload', 'bolt', 'ready']);
+
+/**
+ * @param {AttackChainStep} step
+ * @returns {boolean}
+ */
+function _isLoggedStep(step) {
+  return step.kind !== 'aim' && (Number(step.apCost) > 0 || LOGGED_FREE_STEPS.has(step.kind));
+}
+
+/**
+ * Pay for a step. In combat the whole chain was checked up front, so a refusal here only means the
+ * pool changed meanwhile.
+ * @returns {Promise<{ok: boolean, transactionId: string|null}>}
+ */
+async function _spendStepAp(actor, step, combatant) {
   const cost = Math.max(0, Math.floor(Number(step.apCost) || 0));
-  if (cost <= 0 || actor.type !== 'character') return true;
+  if (cost <= 0 || actor.type !== 'character') return { ok: true, transactionId: null };
   let spend = null;
   try {
     spend = await spendAp(actor, cost, {
+      combatantId: combatant?.id ?? null,
       source: { type: 'action', actionId: `weaponChain.${step.kind}`, label: step.label },
     });
   } catch (e) {
     ui.notifications?.warn?.(String(e?.message || e));
-    return false;
+    return { ok: false, transactionId: null };
   }
   if (!spend?.ok) {
     ui.notifications?.warn?.(spend?.error || _t('SPACEHOLDER.ActionsSystem.Errors.ApSpendFailed'));
-    return false;
+    return { ok: false, transactionId: null };
   }
-  return true;
+  return { ok: true, transactionId: spend.transactionId ?? null };
 }
 
 /**
- * Execute the chain step by step. Stops with a warning when AP runs out or
- * a step fails (e.g. no ammo found during reload).
+ * Execute the chain step by step. In combat the whole price (steps + `reserveAp`) must fit the AP pool,
+ * or nothing is paid and nothing happens. Stops with a warning when a step fails (e.g. no ammo found
+ * during reload). Every paid step is an action of its own in the combat log, so the log shows what was
+ * prepared BEFORE the attack (the shots are logged as the attack itself).
  *
  * @param {object} args
  * @param {Actor} args.actor
@@ -310,18 +417,46 @@ async function _spendStepAp(actor, step) {
  * @param {string} args.lineId
  * @param {string} args.modeId
  * @param {AttackChainStep[]} args.steps
+ * @param {number} [args.reserveAp] AP the caller still needs after the steps (the first shot), checked together with them
  * @returns {Promise<boolean>}
  */
-export async function executeAttackChain({ actor, weaponItem, token, lineId, modeId, steps }) {
+export async function executeAttackChain({ actor, weaponItem, token, lineId, modeId, steps, reserveAp = 0 }) {
   await ensureCharacterApSynced(actor);
+
+  // The first action of a round starts the actor's official turn (and refills the pool): that comes
+  // before the check, which must see the pool the steps will really be paid from.
+  const { combatant } = await beginCombatAction(actor, token?.document ?? null);
+
+  const stepsAp = steps.reduce((sum, s) => sum + Math.max(0, Number(s.apCost) || 0), 0);
+  const afford = canAffordAp(actor, stepsAp + Math.max(0, Number(reserveAp) || 0));
+  if (!afford.ok) {
+    ui.notifications?.warn?.(notEnoughApMessage(afford));
+    return false;
+  }
 
   for (const step of steps) {
     // Charge AP first; the step effect follows only when affordable.
-    if (!(await _spendStepAp(actor, step))) return false;
+    const paid = await _spendStepAp(actor, step, combatant);
+    if (!paid.ok) return false;
+    if (combatant && _isLoggedStep(step)) {
+      await logCombatAction({
+        actor,
+        tokenDoc: token?.document ?? null,
+        actionId: `weaponChain.${step.kind}`,
+        label: step.label,
+        baseCost: step.baseApCost ?? step.apCost,
+        cost: step.apCost,
+        transactionId: paid.transactionId,
+        combatantHint: combatant,
+      });
+    }
 
     switch (step.kind) {
       case 'hold': {
-        await weaponItem.update({ 'system.held': true, 'system.equipped': false, 'system.containerHostId': '' });
+        // Out of a container / weapon host: leave the host's contents consistent (not just clear the id).
+        const hosted = String(weaponItem.system?.containerHostId ?? '').trim();
+        const unparented = hosted ? await unparentActorItemFromHost(actor, weaponItem.id, { held: true }) : false;
+        if (!unparented) await weaponItem.update({ 'system.held': true, 'system.equipped': false });
         break;
       }
       case 'exitMode': {
@@ -329,7 +464,7 @@ export async function executeAttackChain({ actor, weaponItem, token, lineId, mod
         weapon.state.activeModeId = '';
         weapon.state.activeLineId = '';
         await persistWeaponData(weaponItem, weapon);
-        if (step.apCost > 0) await _announceModeStep(actor, weaponItem, step);
+        if (step.apCost > 0 && !combatant) await _announceModeStep(actor, weaponItem, step);
         break;
       }
       case 'enterLine':
@@ -340,7 +475,7 @@ export async function executeAttackChain({ actor, weaponItem, token, lineId, mod
         weapon.state.activeLineId = lineId;
         weapon.state.activeModeId = modeId;
         await persistWeaponData(weaponItem, weapon);
-        if (step.apCost > 0) await _announceModeStep(actor, weaponItem, step);
+        if (step.apCost > 0 && !combatant) await _announceModeStep(actor, weaponItem, step);
         break;
       }
       case 'reload': {
@@ -414,7 +549,8 @@ async function _ensureAimingManager() {
 }
 
 /**
- * Optional chat ping when switching fire modes with a real AP enter/exit cost.
+ * Chat ping when switching fire modes with a real AP enter/exit cost out of combat (in combat the
+ * combat log carries the step).
  * @param {Actor|null} actor
  * @param {Item} weaponItem
  * @param {AttackChainStep} step
@@ -433,6 +569,57 @@ async function _announceModeStep(actor, weaponItem, step) {
   } catch (_) {
     /* ignore */
   }
+}
+
+/**
+ * Loadout swaps in progress: the weapon an attack borrowed, by actor id. An entry lives until the
+ * aiming it belongs to ends and the previous selection is back.
+ * @type {Map<string, {hookName: string, hookId: number, prevSelected: string[], wasHeld: boolean, weaponItem: Item, restoring: Promise<void>|null}>}
+ */
+const _borrowedWeapons = new Map();
+
+/**
+ * While aiming, the weapon in use must be the selected one: the HUD's Attack / Cancel button and the
+ * card readouts follow the selection. An attack started from elsewhere (a hotbar macro, the sheet) with
+ * another item selected therefore swaps: the weapon becomes the selection (the chain has already put
+ * it in hands), and when aiming ends `_returnBorrowedWeapon` brings the previous selection back and puts
+ * the weapon away again if it was not in hands before.
+ *
+ * @param {object} args
+ * @param {Actor} args.actor
+ * @param {Item} args.weaponItem
+ * @param {string[]} args.prevSelected selection before the attack
+ * @param {boolean} args.wasHeld whether the weapon was in hands before the attack
+ */
+async function _borrowWeaponForAttack({ actor, weaponItem, prevSelected, wasHeld }) {
+  if (prevSelected.includes(weaponItem.id)) return;
+  const { AIMING_CHANGED_HOOK } = await import('../aiming-manager.mjs');
+  const entry = { hookName: AIMING_CHANGED_HOOK, hookId: 0, prevSelected, wasHeld, weaponItem, restoring: null };
+  _borrowedWeapons.set(actor.id, entry);
+  entry.hookId = Hooks.on(AIMING_CHANGED_HOOK, ({ aiming, token } = {}) => {
+    if (!aiming && token?.actor?.id === actor.id) void _returnBorrowedWeapon(actor);
+  });
+  await setSelectedItemIds(actor, [weaponItem.id]);
+}
+
+/**
+ * Undo `_borrowWeaponForAttack` (idempotent; resolves when the previous state is back).
+ * @param {Actor} actor
+ * @returns {Promise<void>}
+ */
+function _returnBorrowedWeapon(actor) {
+  const entry = _borrowedWeapons.get(actor.id);
+  if (!entry) return Promise.resolve();
+  entry.restoring ??= (async () => {
+    Hooks.off(entry.hookName, entry.hookId);
+    try {
+      await setSelectedItemIds(actor, entry.prevSelected.filter((id) => actor.items?.has?.(id)));
+      if (!entry.wasHeld && entry.weaponItem.system?.held) await entry.weaponItem.update({ 'system.held': false });
+    } finally {
+      _borrowedWeapons.delete(actor.id);
+    }
+  })();
+  return entry.restoring;
 }
 
 /**
@@ -465,16 +652,40 @@ export async function runWeaponAttack({ actor, weaponItem, token, lineId, modeId
     if (synced) await persistWeaponData(weaponItem, weapon);
   }
 
+  // A previous attack's borrowed weapon goes back first, so this attack records the real loadout.
+  await _returnBorrowedWeapon(actor);
+  const prevSelected = getSelectedItemIds(actor).filter((id) => actor.items?.has?.(id));
+  const wasHeld = !!weaponItem.system?.held;
+
   const chain = buildAttackChain({ actor, weaponItem, lineId, modeId });
   if (!chain.ok) {
     ui.notifications?.warn?.(_t(`SPACEHOLDER.WeaponV3.Chain.Blocked.${chain.reason ?? 'unknown'}`));
     return false;
   }
   const { line, mode } = getWeaponLineMode(chain.weapon, lineId, modeId);
-  const title = `${weaponItem.name}: ${line?.name || _t('SPACEHOLDER.WeaponV3.Line.Default')} / ${mode?.name || _t('SPACEHOLDER.WeaponV3.Mode.Default')}`;
-  const confirmed = await confirmAttackChain({ actor, steps: chain.steps, totalAp: chain.totalAp, title });
-  if (!confirmed) return false;
-  return executeAttackChain({ actor, weaponItem, token, lineId, modeId, steps: chain.steps });
+  // The confirmation dialog is legacy and off (`CONFIRM_ATTACK_CHAIN_ENABLED`): the steps just run.
+  if (CONFIRM_ATTACK_CHAIN_ENABLED && chain.totalAp > 0) {
+    const title = `${weaponItem.name}: ${line?.name || _t('SPACEHOLDER.WeaponV3.Line.Default')} / ${mode?.name || _t('SPACEHOLDER.WeaponV3.Mode.Default')}`;
+    const shotAp = firstShotAp(chain.weapon, lineId, modeId, actor);
+    const confirmed = await confirmAttackChain({
+      actor,
+      steps: describeChainForConfirm(chain.steps, shotAp),
+      totalAp: chain.totalAp + shotAp,
+      title,
+    });
+    if (!confirmed) return false;
+  }
+  const started = await executeAttackChain({
+    actor,
+    weaponItem,
+    token,
+    lineId,
+    modeId,
+    steps: chain.steps,
+    reserveAp: firstShotAp(chain.weapon, lineId, modeId, actor),
+  });
+  if (started) await _borrowWeaponForAttack({ actor, weaponItem, prevSelected, wasHeld });
+  return started;
 }
 
 /* ================================================================== *
@@ -504,7 +715,8 @@ export function previewModeSwitchAp(weaponItem, lineId, modeId) {
   const weapon = getWeaponData(weaponItem);
   const { line, mode } = getWeaponLineMode(weapon, lineId, modeId);
   if (!line || !mode) return 0;
-  return _buildModeSwitchSteps(weapon, line, mode)
+  const actor = weaponItem?.actor ?? weaponItem?.parent ?? null;
+  return _priceSteps(actor, _buildModeSwitchSteps(weapon, line, mode))
     .reduce((sum, s) => sum + Math.max(0, Number(s.apCost) || 0), 0);
 }
 
@@ -525,62 +737,83 @@ export async function switchWeaponMode({ actor, weaponItem, lineId, modeId }) {
   const { line, mode } = getWeaponLineMode(weapon, lineId, modeId);
   if (!line || !mode) return false;
 
-  const steps = _buildModeSwitchSteps(weapon, line, mode);
+  const steps = _priceSteps(actor, _buildModeSwitchSteps(weapon, line, mode));
   if (!steps.length) return true;
 
   const totalAp = steps.reduce((sum, s) => sum + Math.max(0, Number(s.apCost) || 0), 0);
-  if (totalAp > 0) {
+  if (CONFIRM_ATTACK_CHAIN_ENABLED && totalAp > 0) {
     const title = `${weaponItem.name}: ${line.name || _t('SPACEHOLDER.WeaponV3.Line.Default')} / ${mode.name || _t('SPACEHOLDER.WeaponV3.Mode.Default')}`;
-    const confirmed = await confirmAttackChain({ actor, steps, totalAp, title });
+    const confirmed = await confirmAttackChain({ actor, steps: describeChainForConfirm(steps, 0), totalAp, title });
     if (!confirmed) return false;
   }
   return executeAttackChain({ actor, weaponItem, token: null, lineId, modeId, steps });
 }
 
 /**
- * Cost preview for attacking with the item's active line/mode: missing chain
- * steps plus the first shot (aiming + trigger). Burst/auto follow-up shots
- * are not included.
+ * Cost preview for attacking with the item's active line/mode, split the way the Attack button shows it:
+ * `prepAp` — the missing chain steps (take in hands, reload, readying…), `shotAp` — the first shot
+ * (aiming + trigger), `nextShotAp` — each following shot of a burst / auto series (0 for a single shot).
+ * In combat `affordable` says whether `totalAp` fits the pool (`apLeft`); out of combat it is always true.
  *
  * @param {object} args
  * @param {Actor} args.actor
  * @param {Item} args.item
- * @returns {{ok: boolean, reason?: string, totalAp: number, lineName: string, modeName: string}}
+ * @returns {{ok: boolean, reason?: string, prepAp: number, shotAp: number, nextShotAp: number, totalAp: number, lineName: string, modeName: string, affordable?: boolean, apLeft?: number|null}}
  */
 export function previewItemAttack({ actor, item }) {
-  if (!canAttackWithItem(item)) return { ok: false, reason: 'noAttack', totalAp: 0, lineName: '', modeName: '' };
+  if (!canAttackWithItem(item)) return { ok: false, reason: 'noAttack', prepAp: 0, shotAp: 0, nextShotAp: 0, totalAp: 0, lineName: '', modeName: '' };
   const weapon = getWeaponData(item);
   const attack = resolveActiveWeaponAttack(weapon);
   const lineName = String(attack.line?.name || _t('SPACEHOLDER.WeaponV3.Line.Default'));
   const modeName = String(attack.mode?.name || _t('SPACEHOLDER.WeaponV3.Mode.Default'));
 
   const chain = buildAttackChain({ actor, weaponItem: item, lineId: attack.lineId, modeId: attack.modeId });
-  if (!chain.ok) return { ok: false, reason: chain.reason, totalAp: 0, lineName, modeName };
+  if (!chain.ok) return { ok: false, reason: chain.reason, prepAp: 0, shotAp: 0, nextShotAp: 0, totalAp: 0, lineName, modeName };
 
+  const shotAp = firstShotAp(weapon, attack.lineId, attack.modeId, actor);
   const eff = resolveEffectiveAttackParams(weapon, attack.lineId, attack.modeId);
-  const shotAp = eff
-    ? Math.ceil(Math.max(0, Number(eff.line.aiming) || 0) + Math.max(0, Number(eff.line.trigger) || 0))
-    : 0;
-  return { ok: true, totalAp: chain.totalAp + shotAp, lineName, modeName };
+  const series = eff?.mode?.fireMode && eff.mode.fireMode !== 'single';
+  const nextShotAp = series ? shotApCost(actor, eff.mode.fireDelayAp) : 0;
+  const totalAp = chain.totalAp + shotAp;
+  const afford = canAffordAp(actor, totalAp);
+  return {
+    ok: true,
+    prepAp: chain.totalAp,
+    shotAp,
+    nextShotAp,
+    totalAp,
+    lineName,
+    modeName,
+    affordable: afford.ok,
+    apLeft: afford.inCombat ? afford.have : null,
+  };
 }
 
 /**
  * Attack with the item's active line/mode (switching nothing explicitly —
- * the chain enters the default mode when state is empty).
+ * the chain enters the default mode when state is empty). A valid
+ * `lineId` + `modeId` pair overrides the active attack (pinned shortcuts);
+ * the chain then adds the mode switch steps.
  *
  * @param {object} args
  * @param {Actor} args.actor
  * @param {Item} args.item
  * @param {Token|null} args.token
+ * @param {string} [args.lineId]
+ * @param {string} [args.modeId]
  * @returns {Promise<boolean>}
  */
-export async function attackWithItem({ actor, item, token }) {
+export async function attackWithItem({ actor, item, token, lineId = '', modeId = '' }) {
   if (!canAttackWithItem(item)) return false;
   if (!token) {
     ui.notifications?.warn?.(_t('SPACEHOLDER.ActionsSystem.Errors.NoTokenForAiming'));
     return false;
   }
-  const attack = resolveActiveWeaponAttack(getWeaponData(item));
+  const weapon = getWeaponData(item);
+  const pinned = getWeaponLineMode(weapon, lineId, modeId);
+  const attack = pinned.line && pinned.mode
+    ? { lineId, modeId }
+    : resolveActiveWeaponAttack(weapon);
   if (!attack.lineId || !attack.modeId) return false;
   return runWeaponAttack({ actor, weaponItem: item, token, lineId: attack.lineId, modeId: attack.modeId });
 }

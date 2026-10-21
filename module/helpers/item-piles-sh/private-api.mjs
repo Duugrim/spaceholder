@@ -12,12 +12,16 @@ import {
   computeFingerprintForPendingItem,
   computeItemStackFingerprint,
   getCachedStackFingerprint,
+  hasPileFlag,
   isPileLootActor,
 } from './stack-fingerprint.mjs';
 
 let _initialized = false;
 let _pileTechFolderId = null;
 let _genericPileActorId = null;
+
+/** Let the last transfer settle (a stack is deleted after its copy is made) before judging a pile empty. */
+const EMPTY_PILE_CHECK_DELAY_MS = 50;
 
 function _safeNumber(raw, fallback = 0) {
   const n = Number(raw);
@@ -53,16 +57,7 @@ function _isPileTokenAtPoint(tokenDoc, x, y, gridSize) {
 }
 
 function _isPileToken(tokenDoc) {
-  try {
-    return !!(
-      tokenDoc?.getFlag?.(ITEM_PILES_SH.FLAG_SCOPE, ITEM_PILES_SH.FLAG_ROOT)?.isPile ||
-      tokenDoc?.flags?.[ITEM_PILES_SH.FLAG_SCOPE]?.[ITEM_PILES_SH.FLAG_ROOT]?.isPile ||
-      tokenDoc?.actor?.getFlag?.(ITEM_PILES_SH.FLAG_SCOPE, ITEM_PILES_SH.FLAG_ROOT)?.isPile ||
-      tokenDoc?.actor?.flags?.[ITEM_PILES_SH.FLAG_SCOPE]?.[ITEM_PILES_SH.FLAG_ROOT]?.isPile
-    );
-  } catch (_) {
-    return false;
-  }
+  return hasPileFlag(tokenDoc) || hasPileFlag(tokenDoc?.actor);
 }
 
 function _normalizeUuid(raw) {
@@ -363,12 +358,15 @@ function _registerItemStackFingerprintHooks() {
       if (!changes || typeof changes !== 'object') return;
       const merged = foundry.utils.mergeObject(item.toObject(false), changes, { inplace: false });
       const fp = computeItemStackFingerprint(merged);
-      const cur = getCachedStackFingerprint(item);
-      if (fp === cur) return;
+      // A «never merge» stack keeps its mark: only the identity part of the cached value follows the item.
+      const cur = String(getCachedStackFingerprint(item) ?? '');
+      const markAt = cur.indexOf(ITEM_PILES_SH.STACK_FRESH_MARK);
+      const curIdentity = markAt >= 0 ? cur.slice(0, markAt) : cur;
+      if (fp === curIdentity) return;
       foundry.utils.setProperty(
         changes,
         `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`,
-        fp,
+        markAt >= 0 ? `${fp}${cur.slice(markAt)}` : fp,
       );
     } catch (error) {
       console.error('SpaceHolder | item-piles-sh stackFingerprint preUpdateItem', error);
@@ -389,7 +387,7 @@ async function _addItemToPileActor(actor, itemData, quantity, { allowStackMerge 
   const fpPath = `flags.${ITEM_PILES_SH.FLAG_SCOPE}.${ITEM_PILES_SH.FLAG_ROOT}.${ITEM_PILES_SH.STACK_FINGERPRINT_KEY}`;
   const fpValue = allowStackMerge
     ? incomingFp
-    : `${incomingFp}|fresh:${foundry.utils.randomID()}`;
+    : `${incomingFp}${ITEM_PILES_SH.STACK_FRESH_MARK}${foundry.utils.randomID()}`;
   foundry.utils.setProperty(normalized, fpPath, fpValue);
 
   if (!allowStackMerge) {
@@ -590,7 +588,41 @@ async function _createPileTokenAsGm(scene, { x, y, textureSrc } = {}) {
 
   const tokenDoc = scene.tokens?.get?.(created?.id) ?? created ?? null;
   if (!tokenDoc) throw new Error('failed to create pile token');
+  // A pile made by dropping items disappears once everything is taken out (the GM can switch this off per pile).
+  await tokenDoc.actor?.update?.({ 'system.deleteWhenEmpty': true });
   return tokenDoc;
+}
+
+/**
+ * Delete the token of an unlinked loot actor that is marked «delete when empty» and has no items left.
+ * The shared template actor and linked chests have no token of their own and are never touched.
+ * @param {Actor} actor
+ * @returns {Promise<boolean>} whether a token was deleted
+ */
+async function _deletePileTokenWhenEmpty(actor) {
+  const tokenDoc = actor?.token ?? null;
+  if (!tokenDoc || actor.type !== ITEM_PILES_SH.PILE_DEFAULT_ACTOR_TYPE) return false;
+  if (!actor.system?.deleteWhenEmpty || actor.items.size > 0) return false;
+  if (!tokenDoc.parent?.tokens?.has?.(tokenDoc.id)) return false;
+  await tokenDoc.delete();
+  return true;
+}
+
+/**
+ * Whenever an item leaves a «delete when empty» pile (taken, split off, deleted), check whether the pile is
+ * empty now. Only the active GM does it: it is the one client that may delete the token, and two GMs would race.
+ */
+function _registerEmptyPileCleanupHook() {
+  Hooks.on('deleteItem', (item) => {
+    const actor = item?.parent ?? null;
+    if (actor?.documentName !== 'Actor' || !actor.token || !actor.system?.deleteWhenEmpty) return;
+    if (!game.user?.isGM || game.users?.activeGM?.id !== game.user.id) return;
+    setTimeout(() => {
+      _deletePileTokenWhenEmpty(actor).catch((error) => {
+        console.warn('SpaceHolder | item-piles-sh failed to delete an empty pile', error);
+      });
+    }, EMPTY_PILE_CHECK_DELAY_MS);
+  });
 }
 
 async function _dropItemAsGm({ dropData, sceneId }) {
@@ -892,6 +924,7 @@ export const ItemPilesShPrivateApi = {
     if (_initialized) return;
     _initialized = true;
     _registerItemStackFingerprintHooks();
+    _registerEmptyPileCleanupHook();
     Hooks.on('dropCanvasData', _onDropCanvasData);
     if (game.user?.isGM) {
       // Pre-create technical folder + generic pile actor once per world session.

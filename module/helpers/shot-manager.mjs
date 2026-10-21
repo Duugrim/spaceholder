@@ -4,23 +4,64 @@
  */
 
 import { composeProjectileApplications } from '../documents/item.mjs';
-import { applyFalloffToApplications, falloffMultiplier, normalizeFalloff } from './weapon/damage-profile.mjs';
-import { clockToHitFace } from './hit-luck.mjs';
+import {
+  applyEnergyScaleToApplications,
+  falloffMultiplier,
+  normalizeAreaExcludeDirectHit,
+  normalizeAreaIgnoreDirectHitCover,
+  normalizeAreaLineOfSight,
+  normalizeFalloff,
+  resolveAreaCoverageEffect,
+} from './weapon/damage-profile.mjs';
+import { clockToHitFace, followProjectileThroughBodies, walkProjectileCollisions } from './hit-luck.mjs';
+import { hitboxScaleFactor } from './hitbox-scale.mjs';
+import { computeHitResistance, createTokenJudge } from './shot-confidence.mjs';
+import { isActorInActiveCombat } from './actions/transaction-ledger.mjs';
+import { materialsManager } from './damage/materials-manager.mjs';
+import { planWallPasses } from './walls/wall-penetration.mjs';
+import { getPxPerThicknessUnit, isShotBlockingWall, wallCrossingFromCollision } from './walls/wall-data.mjs';
+import { buildShotRecord, makeShotId, trailNowMs } from './shot-trail.mjs';
+import {
+  SWING_HIT_MODES,
+  backOffFromWall,
+  centralityFromDistance,
+  normalizeSwingHitMode,
+  resolveSwingSide,
+  swingDeepestPass,
+  swingSideCentrality,
+} from './weapon/trajectory.mjs';
+
+/**
+ * A token shields others from an AoE only within this fraction of its hit radius.
+ * Keeps the blast origin of a rocket (on the target's hit surface) outside the target's own
+ * cover, so tokens standing next to the target still get partial coverage.
+ */
+const TOKEN_COVER_RADIUS_FACTOR = 0.5;
+
+/** Bisection steps that pin down the exact angle at which a sweeping edge first touches something. */
+const SWING_CONTACT_REFINE_STEPS = 12;
+
+/**
+ * Shots kept in memory. A shot is only needed while it is resolved (chat, damage, dialogs); what
+ * outlives it is its `record`, stored in the chat message. The cap keeps old shots — and the
+ * Token/Wall objects their hits point at — from piling up.
+ */
+const MAX_STORED_SHOTS = 32;
 
 /**
  * ShotSystem - центральное хранилище выстрелов
  */
 class ShotSystem {
   constructor() {
-    this.shots = new Map(); // Хранилище активных выстрелов
+    this.shots = new Map(); // Хранилище активных выстрелов (в порядке создания)
   }
 
   /**
    * Генерация уникального ID для выстрела
-   * @returns {string} UID формата shot_{timestamp}
+   * @returns {string} UID формата shot_{random}; уникален и между клиентами
    */
   generateUID() {
-    return `shot_${Date.now()}`;
+    return makeShotId();
   }
 
   /**
@@ -33,12 +74,32 @@ class ShotSystem {
       uid: uid,
       shotResult: {
         shotPaths: [],  // Массив траекторий (координат)
-        shotHits: []    // Массив попаданий
+        shotHits: [],   // Массив попаданий
+        wallPasses: []  // Стены, которые снаряд прошёл или которые его остановили (для отрисовки)
       },
-      actualHits: []    // Массив фактических попаданий от HitSystem
+      actualHits: [],   // Массив фактических попаданий от HitSystem
+      // Пробитие стен: снаряд, который сейчас летит (applications с остатком энергии);
+      // null — стены останавливают выстрел как раньше. Отчёты по стенам — для чата.
+      penetration: null,
+      wallPasses: [],
+      // Токены, мимо которых снаряд пролетел (см. walkProjectileCollisions), и их же как диагностика для чата.
+      passedTokens: new Set(),
+      passedThrough: [],
+      // Уверенность выстрела против сопротивления цели (shot-confidence.mjs): `judgeToken` решает, пролетает ли
+      // снаряд мимо токена; null — выстрел без уверенности (отладочный), каждое касание хитбокса — попадание.
+      judgeToken: null,
+      // Сериализуемая запись выстрела (shot-trail.mjs): рисуется на всех клиентах, хранится в чате.
+      record: null,
+      // Хвост луча `stop` за первым телом (см. _keepTail) и запись продолжения, если пуля вышла из тела
+      // и полетела дальше (см. continueShot): рисуется отдельным куском, когда урон посчитан.
+      tail: null,
+      extension: null
     };
-    
+
     this.shots.set(uid, shot);
+    while (this.shots.size > MAX_STORED_SHOTS) {
+      this.shots.delete(this.shots.keys().next().value);
+    }
     return shot;
   }
 
@@ -141,10 +202,7 @@ export class ShotManager {
       const partId = options.partId ?? hit?.details?.partId ?? hit?.partId ?? null;
       if (!partId) continue;
       const sceneDist = this._hitDistanceSceneUnits(hit);
-      const phases = applyFalloffToApplications(
-        basePhases,
-        falloffMultiplier(sceneDist, falloff),
-      );
+      const phases = applyEnergyScaleToApplications(basePhases, falloffMultiplier(sceneDist, falloff));
       const hitDirection = options.hitDirection
         ?? hit?.details?.hitDirection
         ?? clockToHitFace(hit?.details?.clock);
@@ -156,7 +214,6 @@ export class ShotManager {
           source: sourceSnapshot,
           random: options.random,
           hitDirection: hitDirection || undefined,
-          armorScale: options.armorScale,
         });
         results.push({ actorId: actor.id, slotRef: out.slotRef, bodyDamage: out.bodyDamage });
       } catch (e) {
@@ -167,11 +224,45 @@ export class ShotManager {
   }
 
   /**
+   * Phased applications for one actor hit: scaled by an AoE `effectScale` (the share of the blast the
+   * target is exposed to) and by `energyScale` (a glancing hit, see `hit-quality.mjs`; the distance falloff).
+   * Both scale the energy; the damage follows it by the armour-damage-reduction law, the armour
+   * penetration stays as authored, a carried energy (after walls) is scaled, not recomputed.
+   *
+   * @param {Object} projectile
+   * @param {Object} [options]
+   * @param {Actor|null} [options.actor] target actor (forwarded to application builders)
+   * @param {Object} [options.builderContext]
+   * @param {number} [options.scale=1] 0–1
+   * @param {number} [options.energyScale=1] 0–1
+   * @param {Array<{mode:string, items:object[]}>|null} [options.base] applications to scale instead of
+   *   composing them from `projectile` (what is left of the shot after the walls it went through)
+   * @returns {Array<{mode:string, items:object[]}>} empty when the projectile has no usable damage spec
+   */
+  buildScaledApplications(projectile, { actor = null, builderContext = {}, scale = 1, energyScale = 1, base = null } = {}) {
+    const phases = base ?? composeProjectileApplications(projectile, { ...builderContext, actor });
+    return applyEnergyScaleToApplications(phases, Math.max(0, scale) * Math.max(0, energyScale));
+  }
+
+  /**
    * Convert hit distance (pixels) to scene distance units (e.g. meters).
    * @private
    * @param {object} hit
    * @returns {number}
    */
+  /**
+   * Share of its muzzle energy the shot's projectile still has at a point (distance falloff, measured in a
+   * straight line from the muzzle).
+   * @param {object} shot ShotSystem shot (`origin`, `falloff`)
+   * @param {{x:number, y:number}} point
+   * @returns {number} 0–1 (1 without falloff)
+   */
+  falloffAt(shot, point) {
+    if (!shot?.falloff?.enabled || !shot.origin || !point) return 1;
+    const px = Math.hypot(point.x - shot.origin.x, point.y - shot.origin.y);
+    return falloffMultiplier(this._hitDistanceSceneUnits({ distance: px }), shot.falloff);
+  }
+
   _hitDistanceSceneUnits(hit) {
     const px = Number(hit?.distance) || 0;
     try {
@@ -268,19 +359,47 @@ export class ShotManager {
   }
 
   /**
-   * Получить множитель размера цели на основе DEX токена
+   * Radius of the area in which projectiles register a hit on `token` (the "target"): the token's
+   * body radius times the actor's hitbox scale (`system.hitboxScale`, usually ≤ 100%). This is the
+   * only place the scale is applied. Base characteristics (DEX etc.) must not influence the hitbox.
    * @private
-   * @param {Token} token - Токен
-   * @returns {number} Множитель размера (DEX/10)
+   * @param {Token} token
+   * @returns {number} px
    */
-  _getTargetSizeMultiplier(token) {
-    if (!token || !token.actor) return 1.0;
-    
-    // Получаем DEX из способностей актора
-    const dex = token.actor.system?.abilities?.dex?.value;
-    if (typeof dex !== 'number' || dex <= 0) return 1.0;
-    
-    return dex / 10;
+  _targetHitRadius(token) {
+    const bounds = token.bounds;
+    return (Math.min(bounds.width, bounds.height) / 2) * hitboxScaleFactor(token.actor);
+  }
+
+  /**
+   * How hard `token` is to hit right now (see `shot-confidence.mjs`): the states of its actor that
+   * apply (for now: being in the running combat) plus the flat modifier `system.hitResistanceMod`
+   * that effects fill. A token without an actor has no resistance.
+   * @private
+   * @param {Token|null|undefined} token
+   * @returns {ReturnType<typeof computeHitResistance>}
+   */
+  _hitResistanceFor(token) {
+    const actor = token?.actor ?? null;
+    return computeHitResistance({
+      states: isActorInActiveCombat(actor) ? ['combat'] : [],
+      modifier: actor?.system?.hitResistanceMod,
+    });
+  }
+
+  /**
+   * Radius of the area in which `token` shields others from an AoE (line-of-sight cover):
+   * {@link TOKEN_COVER_RADIUS_FACTOR} of the smaller of the body radius and the hit radius.
+   * Always below the hit radius, an enlarged hitbox never inflates cover, and a shrunken
+   * hitbox (evasion) shrinks cover with it.
+   * @private
+   * @param {Token} token
+   * @returns {number} px
+   */
+  _targetCoverRadius(token) {
+    const bounds = token.bounds;
+    const bodyRadius = Math.min(bounds.width, bounds.height) / 2;
+    return Math.min(bodyRadius, this._targetHitRadius(token)) * TOKEN_COVER_RADIUS_FACTOR;
   }
 
   /**
@@ -318,31 +437,30 @@ export class ShotManager {
    * @param {object} circleCenter - Центр круга {x, y}
    * @param {number} circleRadius - Радиус круга
    * @param {object} tokenCenter - Центр токена {x, y}
-   * @param {number} tokenRadius - Радиус токена
+   * @param {number} tokenRadius - Радиус хитбокса токена (_targetHitRadius)
    * @param {object} collisionOptions - Опции проверки collision {walls, tokens}
    * @param {Array} whitelist - Список игнорируемых токенов
    * @param {Token} targetToken - Целевой токен (для учета высоты)
    * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
   _calculateCircleTokenCoverage(circleCenter, circleRadius, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = [], targetToken = null) {
-    // Применяем множитель размера на основе DEX
-    const sizeMultiplier = this._getTargetSizeMultiplier(targetToken);
-    const effectiveRadius = tokenRadius * sizeMultiplier;
-    
+    const effectiveRadius = tokenRadius; // callers pass _targetHitRadius(token)
+
     // Расстояние от центра круга до центра токена
     const distance = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y);
     
     // Быстрая проверка: токен вне круга (используем эффективный радиус)
-    if (distance > circleRadius + effectiveRadius) return { coverage: 0, hitPoints: [] };
-    
+    if (distance > circleRadius + effectiveRadius) return { coverage: 0, centerCovered: false, hitPoints: [] };
+
     // Сэмплирование: разбиваем токен на точки по кругу
     const sampleCount = 32; // Количество точек для сэмплирования
     const sampleRings = 3;  // Кольца сэмплирования (1 = центр + край)
-    
+
     let hitCount = 0;
     let totalCount = 0;
+    let centerCovered = false;
     const hitPoints = [];
-    
+
     // Центр токена
     totalCount++;
     const centerInCircle = Math.hypot(tokenCenter.x - circleCenter.x, tokenCenter.y - circleCenter.y) <= circleRadius;
@@ -351,6 +469,7 @@ export class ShotManager {
       const losCheck = this._checkLineOfSight(circleCenter, tokenCenter, collisionOptions, whitelist, targetToken);
       if (!losCheck.blocked) {
         hitCount++;
+        centerCovered = true;
         hitPoints.push({ x: tokenCenter.x, y: tokenCenter.y });
       }
     }
@@ -382,9 +501,10 @@ export class ShotManager {
         }
       }
     }
-    
+
     return {
       coverage: hitCount / totalCount,
+      centerCovered,
       hitPoints: hitPoints
     };
   }
@@ -398,24 +518,23 @@ export class ShotManager {
    * @returns {object} Результат {coverage: number, hitPoints: [{x, y}]}
    */
   _calculateConeTokenCoverage(coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad, tokenCenter, tokenRadius, collisionOptions = {}, whitelist = [], targetToken = null) {
-    // Применяем множитель размера на основе DEX
-    const sizeMultiplier = this._getTargetSizeMultiplier(targetToken);
-    const effectiveRadius = tokenRadius * sizeMultiplier;
-    
+    const effectiveRadius = tokenRadius; // callers pass _targetHitRadius(token)
+
     // Расстояние от начала конуса до центра токена
     const distance = Math.hypot(tokenCenter.x - coneOrigin.x, tokenCenter.y - coneOrigin.y);
     
     // Быстрая проверка: токен вне возможного радиуса (используем эффективный радиус)
-    if (distance > coneRange + effectiveRadius || distance < coneCut - effectiveRadius) return { coverage: 0, hitPoints: [] };
-    
+    if (distance > coneRange + effectiveRadius || distance < coneCut - effectiveRadius) return { coverage: 0, centerCovered: false, hitPoints: [] };
+
     // Сэмплирование: разбиваем токен на точки по кругу
     const sampleCount = 32; // Количество точек для сэмплирования
     const sampleRings = 3;  // Кольца сэмплирования (1 = центр + край)
-    
+
     let hitCount = 0;
     let totalCount = 0;
+    let centerCovered = false;
     const hitPoints = [];
-    
+
     // Центр токена
     totalCount++;
     if (this._isPointInCone(tokenCenter, coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad)) {
@@ -423,6 +542,7 @@ export class ShotManager {
       const losCheck = this._checkLineOfSight(coneOrigin, tokenCenter, collisionOptions, whitelist, targetToken);
       if (!losCheck.blocked) {
         hitCount++;
+        centerCovered = true;
         hitPoints.push({ x: tokenCenter.x, y: tokenCenter.y });
       }
     }
@@ -451,9 +571,10 @@ export class ShotManager {
         }
       }
     }
-    
+
     return {
       coverage: hitCount / totalCount,
+      centerCovered,
       hitPoints: hitPoints
     };
   }
@@ -721,26 +842,6 @@ export class ShotManager {
   }
 
   /**
-   * Проверка, вышел ли луч за пределы токена
-   * @private
-   * @param {object} currentPos - Текущая позиция {x, y}
-   * @param {Token} token - Токен
-   * @returns {boolean} true, если луч вышел за пределы
-   */
-  _hasExitedToken(currentPos, token) {
-    const tokenCenter = token.center;
-    const bounds = token.bounds;
-    const radius = Math.min(bounds.width, bounds.height) / 2;
-    
-    const distance = Math.hypot(
-      currentPos.x - tokenCenter.x,
-      currentPos.y - tokenCenter.y
-    );
-    
-    return distance > radius;
-  }
-
-  /**
    * Проверка line of sight между двумя точками
    * @private
    * @param {object} start - Начальная точка {x, y}
@@ -764,7 +865,7 @@ export class ShotManager {
     // Проверка стен
     if (checkWalls && canvas.walls?.placeables) {
       for (const wall of canvas.walls.placeables) {
-        if (!wall.document.move) continue;
+        if (!isShotBlockingWall(wall.document)) continue;
         
         const intersection = this._raySegmentIntersection(
           start,
@@ -826,8 +927,9 @@ export class ShotManager {
         const bounds = token.bounds;
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
-        const radius = Math.min(bounds.width, bounds.height) / 2;
-        
+        // Cover is smaller than the hit radius, so a blast on a target's surface starts outside it.
+        const radius = this._targetCoverRadius(token);
+
         const intersection = this._rayCircleIntersection(
           start,
           end,
@@ -913,12 +1015,8 @@ export class ShotManager {
         const bounds = token.bounds;
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
-        const radius = Math.min(bounds.width, bounds.height) / 2;
-        
-        // Применяем множитель размера на основе DEX
-        const sizeMultiplier = this._getTargetSizeMultiplier(token);
-        const effectiveRadius = radius * sizeMultiplier;
-        
+        const effectiveRadius = this._targetHitRadius(token);
+
         const intersection = this._rayCircleIntersection(
           segment.start,
           segment.end,
@@ -980,7 +1078,7 @@ export class ShotManager {
     // Проверка столкновений со стенами
     if (checkWalls && canvas.walls?.placeables) {
       for (const wall of canvas.walls.placeables) {
-        if (!wall.document.move) continue;
+        if (!isShotBlockingWall(wall.document)) continue;
         
         const intersection = this._raySegmentIntersection(
           segment.start,
@@ -1068,6 +1166,80 @@ export class ShotManager {
   }
 
   /**
+   * Collision options for AoE coverage sampling. `lineOfSight: false` turns line-of-sight
+   * checks off entirely (walls and token cover), e.g. for a spell that ignores cover.
+   * @private
+   * @param {object} segment segment with `collision` and optional `lineOfSight`
+   * @returns {object}
+   */
+  _areaLosOptions(segment) {
+    return normalizeAreaLineOfSight(segment.lineOfSight)
+      ? segment.collision
+      : { walls: false, tokens: false };
+  }
+
+  /**
+   * Direct-hit token lists for the AoE options. A "direct hit" is a token this shot already
+   * struck by contact (line / swing — AoE hits do not count).
+   * - `excludeDirectHit` → `excludeTokens`: not affected by the AoE. They still act as cover.
+   * - `ignoreDirectHitCover` → `coverIgnoreTokens`: do not shield others from the AoE.
+   * The two are independent.
+   * @private
+   * @param {object} segment segment with optional `excludeDirectHit` / `ignoreDirectHitCover`
+   * @param {object} shot shot being built (`actualHits` holds earlier segments' hits)
+   * @returns {{excludeTokens: Token[], coverIgnoreTokens: Token[]}}
+   */
+  _areaTokenFilters(segment, shot) {
+    const exclude = normalizeAreaExcludeDirectHit(segment.excludeDirectHit);
+    const ignoreCover = normalizeAreaIgnoreDirectHitCover(segment.ignoreDirectHitCover);
+    if (!exclude && !ignoreCover) return { excludeTokens: [], coverIgnoreTokens: [] };
+    const direct = [];
+    for (const hit of shot?.actualHits ?? []) {
+      if (hit?.type !== 'token' || hit.details?.area || !hit.object) continue;
+      if (!direct.includes(hit.object)) direct.push(hit.object);
+    }
+    return {
+      excludeTokens: exclude ? direct : [],
+      coverIgnoreTokens: ignoreCover ? direct : [],
+    };
+  }
+
+  /**
+   * Collision entry for a token touched by an AoE (circle / cone), or null when the
+   * segment's `coverageMode` says it is not affected. AoE hits carry no aiming luck and
+   * no centrality — only sampled coverage and the resulting `effectScale` (0–1).
+   * @private
+   * @param {Token} token
+   * @param {{x: number, y: number}} origin AoE origin (used for the hit face / clock)
+   * @param {object} segment segment with optional `coverageMode`
+   * @param {{coverage: number, centerCovered: boolean, hitPoints: object[]}} sample
+   * @param {number} distance origin → token center (px)
+   * @returns {object|null}
+   */
+  _buildAreaTokenCollision(token, origin, segment, sample, distance) {
+    const effect = resolveAreaCoverageEffect(segment.coverageMode, sample, segment.coverageForFullEffect);
+    if (!effect.applies) return null;
+    const tokenCenter = token.center;
+    return {
+      type: 'token',
+      object: token,
+      point: { ...tokenCenter },
+      distance,
+      details: {
+        area: true,
+        blast: segment.blast === true,
+        coverage: sample.coverage,
+        coverageMode: effect.mode,
+        effectScale: effect.scale,
+        centerCovered: sample.centerCovered,
+        // Face toward the AoE origin (12 = target's front) so armour facing matches line hits.
+        clock: this._hitClockHours(token, origin, tokenCenter),
+        hitPoints: sample.hitPoints,
+      },
+    };
+  }
+
+  /**
    * Проверка столкновений для кругового сегмента (взрыв)
    * @private
    */
@@ -1077,10 +1249,11 @@ export class ShotManager {
     const shooterToken = segment.shooterToken;
     const circleCenter = segment.start;
     const circleRadius = segment.range;
-    
+
     if (checkTokens && canvas.tokens?.placeables) {
     for (const token of canvas.tokens.placeables) {
       if (whitelist.includes(token)) continue;
+      if (segment.excludeTokens?.includes(token)) continue;
       if (!token.visible) continue;
       
       // Проверка диспозиции
@@ -1089,9 +1262,8 @@ export class ShotManager {
       }
       
       const tokenCenter = token.center;
-      const tokenBounds = token.bounds;
-      const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
-      
+      const tokenRadius = this._targetHitRadius(token);
+
       // Расстояние от центра круга до центра токена
       const distance = Math.hypot(
         tokenCenter.x - circleCenter.x,
@@ -1106,22 +1278,12 @@ export class ShotManager {
       // Рассчитываем процент покрытия через сэмплирование
       const result = this._calculateCircleTokenCoverage(
         circleCenter, circleRadius, tokenCenter, tokenRadius,
-        segment.collision, extendedWhitelist, token
+        this._areaLosOptions(segment), extendedWhitelist, token
       );
         
-        // Если есть хоть какое-то покрытие - добавляем попадание
-        if (result.coverage > 0) {
-          collisions.push({
-            type: 'token',
-            object: token,
-            point: { ...tokenCenter },
-            distance: distance,
-            details: {
-              coverage: result.coverage,
-              hitPoints: result.hitPoints
-            }
-          });
-        }
+        // Попадание добавляем, если coverageMode сегмента считает токен задетым
+        const collision = this._buildAreaTokenCollision(token, circleCenter, segment, result, distance);
+        if (collision) collisions.push(collision);
       }
     }
     }
@@ -1130,7 +1292,7 @@ export class ShotManager {
     const checkWalls = segment.collision?.walls !== false;
     if (checkWalls && canvas.walls?.placeables) {
       for (const wall of canvas.walls.placeables) {
-        if (!wall.document.move) continue;
+        if (!isShotBlockingWall(wall.document)) continue;
         const wallStart = { x: wall.document.c[0], y: wall.document.c[1] };
         const wallEnd = { x: wall.document.c[2], y: wall.document.c[3] };
         const hit = this._rayCircleIntersection(wallStart, wallEnd, circleCenter, circleRadius);
@@ -1166,10 +1328,11 @@ export class ShotManager {
     const coneCut = segment.cut || 0;
     const coneDirectionRad = (segment.direction * Math.PI) / 180;
     const coneHalfAngleRad = ((segment.angle || 90) / 2 * Math.PI) / 180;
-    
+
     if (checkTokens && canvas.tokens?.placeables) {
     for (const token of canvas.tokens.placeables) {
       if (whitelist.includes(token)) continue;
+      if (segment.excludeTokens?.includes(token)) continue;
       if (!token.visible) continue;
       
       // Проверка диспозиции
@@ -1178,9 +1341,8 @@ export class ShotManager {
       }
       
       const tokenCenter = token.center;
-      const tokenBounds = token.bounds;
-      const tokenRadius = Math.min(tokenBounds.width, tokenBounds.height) / 2;
-      
+      const tokenRadius = this._targetHitRadius(token);
+
       // Расстояние от начала конуса до центра токена
       const distance = Math.hypot(
         tokenCenter.x - coneOrigin.x,
@@ -1198,22 +1360,12 @@ export class ShotManager {
       // Рассчитываем процент покрытия через сэмплирование
       const result = this._calculateConeTokenCoverage(
         coneOrigin, coneRange, coneCut, coneDirectionRad, coneHalfAngleRad,
-        tokenCenter, tokenRadius, segment.collision, extendedWhitelist, token
+        tokenCenter, tokenRadius, this._areaLosOptions(segment), extendedWhitelist, token
       );
       
-      // Если есть покрытие - добавляем попадание
-      if (result.coverage > 0) {
-        collisions.push({
-          type: 'token',
-          object: token,
-          point: { ...tokenCenter },
-          distance: distance,
-          details: {
-            coverage: result.coverage,
-            hitPoints: result.hitPoints
-          }
-        });
-      }
+      // Попадание добавляем, если coverageMode сегмента считает токен задетым
+      const collision = this._buildAreaTokenCollision(token, coneOrigin, segment, result, distance);
+      if (collision) collisions.push(collision);
     }
     }
     
@@ -1229,7 +1381,7 @@ export class ShotManager {
         y: coneOrigin.y + coneRange * Math.sin(coneDirectionRad + coneHalfAngleRad)
       };
       for (const wall of canvas.walls.placeables) {
-        if (!wall.document.move) continue;
+        if (!isShotBlockingWall(wall.document)) continue;
         const wallStart = { x: wall.document.c[0], y: wall.document.c[1] };
         const wallEnd = { x: wall.document.c[2], y: wall.document.c[3] };
         const candidates = [];
@@ -1277,7 +1429,8 @@ export class ShotManager {
    * @returns {Array} Расширенный whitelist
    */
   _buildExtendedWhitelist(whitelist, targetToken, segment, shooterToken) {
-    const extended = [...whitelist, targetToken];
+    // `coverIgnoreTokens` (ignoreDirectHitCover): tokens that do not shield anyone from this AoE.
+    const extended = [...whitelist, targetToken, ...(segment.coverIgnoreTokens ?? [])];
     
     if (!shooterToken || !canvas.tokens?.placeables) {
       return extended;
@@ -1381,6 +1534,167 @@ export class ShotManager {
   }
 
   /**
+   * План пробития стен для прямого сегмента: какие стены снаряд проходит (и с каким остатком
+   * энергии), а какая его останавливает. `null` — старое поведение (любая стена останавливает):
+   * выстрел без снаряда, `onHit: 'need'` (ракета/осколки взрываются на первом касании) и сегмент
+   * без стен.
+   * @private
+   * @param {object} shot
+   * @param {{x:number,y:number}} start
+   * @param {{x:number,y:number}} end
+   * @param {Array} collisions столкновения сегмента, по порядку полёта
+   * @param {string} onHit
+   * @param {Object} [projectile] снаряд, который идёт через стены, если это не `shot.penetration` (то, что
+   *   осталось от пули после тела: `applications` и уровень дальности `energyLevel`, который они уже несут)
+   * @returns {object|null} результат `planWallPasses`
+   */
+  _planWallPasses(shot, start, end, collisions, onHit, projectile = null) {
+    const applications = projectile?.applications ?? shot?.penetration?.applications;
+    if (!applications?.length) return null;
+    if (onHit !== 'stop' && onHit !== 'next') return null;
+    const crossings = collisions
+      .map((collision) => wallCrossingFromCollision(collision))
+      .filter(Boolean);
+    if (!crossings.length) return null;
+    return planWallPasses({
+      crossings,
+      rayStart: start,
+      rayEnd: end,
+      applications,
+      resolveMaterial: (id) => materialsManager.getMaterial(id),
+      pxPerThickness: getPxPerThicknessUnit(),
+      energyAt: (point) => this.falloffAt(shot, point),
+      energyLevel: projectile?.energyLevel ?? shot.penetration?.energyLevel ?? 1,
+    });
+  }
+
+  /**
+   * Что осталось от луча `stop` за телом, остановившим его: токены и стены за ним на том же прямом сегменте
+   * (по порядку полёта) и конец сегмента. Луч по-прежнему кончается на первом токене; если пуля выйдет
+   * из тела, {@link continueShot} пустит её по этому хвосту.
+   * @private
+   * @param {object} shot
+   * @param {object} anchor столкновение токена, остановившего луч
+   * @param {Array} collisions столкновения сегмента (после диспозиции), по порядку полёта
+   * @param {{x:number,y:number}} start начало сегмента
+   * @param {{x:number,y:number}} end конец сегмента (дальность), а не точка попадания
+   */
+  _keepTail(shot, anchor, collisions, start, end) {
+    if (!shot?.penetration?.applications?.length || anchor?.type !== 'token') return;
+    const index = collisions.indexOf(anchor);
+    if (index < 0) return;
+    // Nothing behind the body is fine too: a bullet that leaves it still flies on to the end of the segment.
+    shot.tail = {
+      anchor,
+      collisions: collisions.slice(index + 1),
+      start: { ...start },
+      end: { ...end },
+      used: false,
+    };
+  }
+
+  /**
+   * Записать в выстрел стены, которые снаряд действительно встретил (до `limit` px от начала
+   * сегмента), и обновить летящий снаряд — следующий сегмент продолжит с остатком энергии.
+   * @private
+   * @param {object} shot
+   * @param {object|null} plan результат `_planWallPasses`
+   * @param {number} limit расстояние, дальше которого снаряд не летит
+   */
+  _recordWallPlan(shot, plan, limit) {
+    if (!plan) return;
+    const events = plan.events.filter((event) => event.entryDistance <= limit + 1e-6);
+    if (!events.length) return;
+    shot.wallPasses.push(...events);
+    shot.shotResult.wallPasses.push(...events.map((event) => ({
+      entryPoint: event.entryPoint,
+      exitPoint: event.exitPoint,
+      penetrated: event.penetrated,
+    })));
+    const carry = plan.carryAt(limit);
+    if (carry) {
+      shot.penetration.applications = carry;
+      shot.penetration.energyLevel = plan.levelAt(limit);
+    }
+  }
+
+  /**
+   * Пуля вышла из тела, остановившего луч: пустить её дальше по хвосту (`shot.tail`) с тем, что от неё
+   * осталось (см. `followProjectileThroughBodies`). Стены за телом проходит остаток, а не снаряд из
+   * ствола. Что пуля встретила, дописывается в выстрел (`actualHits`, `shotResult`, `wallPasses`,
+   * `passedThrough`), а продолжение следа лежит в `shot.extension` — отдельной записью, которую
+   * вызывающий рисует и рассылает после урона (первая запись уже нарисована).
+   *
+   * @param {object} shot
+   * @param {Object} args
+   * @param {object} args.anchor столкновение токена, из тела которого вышла пуля (`shot.tail.anchor`)
+   * @param {Array<{mode: string, items: object[]}>} args.exit что вышло из тела (`exitApplications`)
+   * @param {(collision: object, carry: object[]) => Promise<object[]|null|undefined>} args.deliver
+   *   пуля достигла токена с `carry`; вернуть то, что вышло из его тела (или пусто, если застряла)
+   * @returns {Promise<{hits: object[], end: {reason: string}, extension: object|null}|null>} `null` —
+   *   продолжать нечего (хвоста нет, он уже пройден или пуля из другого тела)
+   */
+  async continueShot(shot, { anchor, exit, deliver } = {}) {
+    const tail = shot?.tail;
+    if (!tail || tail.used || tail.anchor !== anchor || !Array.isArray(exit) || !exit.length) return null;
+    tail.used = true;
+    const result = await followProjectileThroughBodies({
+      collisions: tail.collisions,
+      exit,
+      level: this.falloffAt(shot, anchor.point),
+      passState: shot,
+      judgeToken: shot.judgeToken,
+      planWalls: (collisions, applications, energyLevel) => this._planWallPasses(
+        shot, tail.start, tail.end, collisions, 'stop', { applications, energyLevel }
+      ),
+      levelAt: (collision) => this.falloffAt(shot, collision.point),
+      scale: applyEnergyScaleToApplications,
+      deliver,
+    });
+    return { hits: result.hits, end: result.end, extension: this._recordContinuation(shot, tail, result) };
+  }
+
+  /**
+   * Дописать в выстрел полёт после тела и собрать запись продолжения следа: отрезки от точки выхода
+   * через каждое достигнутое тело до стены, остановившей пулю, или до конца сегмента.
+   * @private
+   * @returns {object|null} ShotRecord (id `<uid>.x`, время выстрела) или null, если пуля не пролетела дальше
+   */
+  _recordContinuation(shot, tail, { hits, wallEvents, end }) {
+    const ext = { shotPaths: [], shotHits: [], wallPasses: [] };
+    let from = tail.anchor.point;
+    for (const hit of hits) {
+      ext.shotPaths.push({ start: { ...from }, end: { ...hit.point }, type: 'line' });
+      ext.shotHits.push({ point: hit.point, type: hit.type, object: hit.object, ...hit.details });
+      shot.actualHits.push(hit);
+      from = hit.point;
+    }
+    // Out of the last body and nothing in the way: it flies to the end of the segment.
+    if (end.reason === 'range') ext.shotPaths.push({ start: { ...from }, end: { ...tail.end }, type: 'line' });
+    if (wallEvents.length) {
+      shot.wallPasses.push(...wallEvents);
+      ext.wallPasses.push(...wallEvents.map((event) => ({
+        entryPoint: event.entryPoint,
+        exitPoint: event.exitPoint,
+        penetrated: event.penetrated,
+      })));
+    }
+    if (!ext.shotPaths.length) return null;
+
+    shot.shotResult.shotPaths.push(...ext.shotPaths);
+    shot.shotResult.shotHits.push(...ext.shotHits);
+    shot.shotResult.wallPasses.push(...ext.wallPasses);
+    const base = shot.record ?? {};
+    shot.extension = buildShotRecord({ uid: `${shot.uid}.x`, shotResult: ext }, {
+      t: base.t,
+      sceneId: base.sceneId,
+      tokenId: base.tokenId,
+      userId: base.userId,
+    });
+    return shot.extension;
+  }
+
+  /**
    * Обработка линейного сегмента
    * @private
    */
@@ -1414,15 +1728,21 @@ export class ShotManager {
     
     // Определяем, продолжать ли выстрел на основе onHit
     let shouldContinue = true;
-    
-    if (validCollisions.length > 0) {
-      // Определяем onHit на основе сегмента (по умолчанию "stop")
-      const onHit = segment.onHit || "stop";
-      
-      // Решение о продолжении на основе первого валидного попадания
+    const onHit = segment.onHit || "stop";
+
+    // Попадания по порядку полёта: стена останавливает (если снаряд не пробивает её — см.
+    // _planWallPasses), токены, мимо которых снаряд пролетел, пропускаются —
+    // см. walkProjectileCollisions (hit-luck.mjs).
+    const wallPlan = this._planWallPasses(shot, testSegment.start, endPos, validCollisions, onHit);
+    const reached = walkProjectileCollisions(validCollisions, onHit, shot, wallPlan, { judgeToken: shot.judgeToken });
+    // Стены за токеном, остановившим выстрел, снаряд уже не встречает.
+    this._recordWallPlan(shot, wallPlan, onHit === 'stop' && reached.length ? reached[0].distance : Infinity);
+
+    if (reached.length > 0) {
+      // Решение о продолжении на основе первого настоящего попадания
       if (onHit === "stop") {
         // Простая линия: добавляем ТОЛЬКО первое попадание и останавливаемся
-        const firstCollision = validCollisions[0];
+        const firstCollision = reached[0];
         shot.shotResult.shotHits.push({
           point: firstCollision.point,
           type: firstCollision.type,
@@ -1430,12 +1750,15 @@ export class ShotManager {
           ...firstCollision.details
         });
         shot.actualHits.push(firstCollision);
-        
+
+        // A bullet that leaves the body goes on along the rest of the segment (see continueShot).
+        this._keepTail(shot, firstCollision, validCollisions, testSegment.start, testSegment.end);
         shouldContinue = false;
         endPos = firstCollision.point;
       } else if (onHit === "next" || onHit === "need") {
-        // Проникновение: добавляем все попадания
-        for (const collision of validCollisions) {
+        // `next` — проникновение: все попадания до стены включительно.
+        // `need` — только первое касание (ракета взрывается на цели); выстрел продолжается от него.
+        for (const collision of reached) {
           shot.shotResult.shotHits.push({
             point: collision.point,
             type: collision.type,
@@ -1444,14 +1767,17 @@ export class ShotManager {
           });
           shot.actualHits.push(collision);
         }
-        
+
         shouldContinue = true;
-        endPos = validCollisions[0].point;
+        endPos = reached[0].point;
+        // A blast that goes off on a wall starts just off it: on the wall itself, line of sight from
+        // the blast to every target on the open side would be cut by that same wall.
+        if (onHit === "need" && reached[0].type === 'wall') {
+          endPos = backOffFromWall(reached[0].point, testSegment.start);
+        }
       }
     } else {
-      // Нет валидных столкновений
-      const onHit = segment.onHit || "stop";
-      
+      // Ничего не остановило снаряд (нет столкновений либо он пролетел мимо всех токенов)
       if (onHit === "need") {
         // Останавливаем выстрел, если попадания не было, а оно требовалось
         shouldContinue = false;
@@ -1460,16 +1786,16 @@ export class ShotManager {
         shouldContinue = true;
       }
     }
-    
+
     // Создаём объект пути для сохранения
     const path = {
       start: { ...lastPos },
       end: { ...endPos },
       type: segment.type
     };
-    
+
     shot.shotResult.shotPaths.push(path);
-    
+
     return {
       endPos: endPos,
       direction: absoluteDirection,
@@ -1493,6 +1819,10 @@ export class ShotManager {
       range: range,
       type: segment.type,
       collision: segment.collision,
+      coverageMode: segment.coverageMode,
+      lineOfSight: segment.lineOfSight,
+      coverageForFullEffect: segment.coverageForFullEffect,
+      ...this._areaTokenFilters(segment, shot),
       props: segment.props,
       onHit: segment.onHit,
       shooterToken: shooterToken
@@ -1609,6 +1939,11 @@ export class ShotManager {
         angle,
         cut,
         collision: segment.collision,
+        coverageMode: segment.coverageMode,
+        lineOfSight: segment.lineOfSight,
+        excludeDirectHit: segment.excludeDirectHit,
+        ignoreDirectHitCover: segment.ignoreDirectHitCover,
+        coverageForFullEffect: segment.coverageForFullEffect,
         props: segment.props,
         onHit: 'next',
         hitOrder: segment.hitOrder,
@@ -1644,8 +1979,9 @@ export class ShotManager {
   }
 
   /**
-   * New swing: cone volume + rotating edge line from origin.
-   * Hits when the sweeping edge intersects a token hitbox.
+   * Swing: a cone volume with a rotating edge line from the origin. The sweep stops at the first
+   * wall or token the edge touches (the blow lands on it); `hitMode` decides who is damaged and
+   * with what centrality — see {@link SWING_HIT_MODES}.
    * @private
    */
   _processEdgeSwingSegment(segment, context) {
@@ -1655,8 +1991,10 @@ export class ShotManager {
     const rangePx = (segment.range || 1) * defSize;
     const cutPx = segment.cut ? segment.cut * defSize : 0;
     const angle = segment.angle || 90;
-    const side = String(segment.side || 'right').toLowerCase();
+    // Unless the payload fixes it, the blow sweeps toward the center of the aiming arcs (the facing).
+    const side = resolveSwingSide(segment.side, direction, this._tokenPointerDeg(shooterToken));
     const onHit = segment.onHit || 'stop';
+    const hitMode = normalizeSwingHitMode(segment.hitMode);
     const samples = Math.max(8, Math.min(48, Math.ceil(angle / 3)));
 
     const half = angle / 2;
@@ -1665,8 +2003,116 @@ export class ShotManager {
     // Sweep from far edge toward the other; "right" starts at -half → +half.
     const fromDeg = side === 'left' ? endDeg : startDeg;
     const toDeg = side === 'left' ? startDeg : endDeg;
+    const sweepSign = toDeg >= fromDeg ? 1 : -1;
+    const sampleAngles = Array.from({ length: samples + 1 }, (_unused, i) => fromDeg + (toDeg - fromDeg) * (i / samples));
 
-    // Visual path: cone guide for draw-manager
+    const edgePoint = (deg, radiusPx) => ({
+      x: lastPos.x + Math.cos((deg * Math.PI) / 180) * radiusPx,
+      y: lastPos.y + Math.sin((deg * Math.PI) / 180) * radiusPx,
+    });
+    // Everything the sweeping edge touches at one angle (hostile tokens and walls), nearest first.
+    const edgeAt = (deg, ignoreToken = null) => {
+      const testSegment = {
+        start: edgePoint(deg, cutPx),
+        end: edgePoint(deg, rangePx),
+        type: 'line',
+        collision: segment.collision,
+        props: segment.props,
+        onHit: 'next',
+      };
+      return this.isHit(testSegment, whitelist).filter((c) => {
+        if (c.type === 'wall') return true;
+        if (ignoreToken && c.object === ignoreToken) return false;
+        return !this._shouldIgnoreByDisposition(c.object, segment, shooterToken);
+      });
+    };
+
+    // The blow lands where the edge first touches something.
+    const contact = this._firstSwingContact(edgeAt, sampleAngles);
+    let stopDeg = contact ? contact.deg : toDeg;
+    const hits = [];
+
+    if (hitMode === SWING_HIT_MODES.AREA) {
+      // The sweep stops (visual), but coverage is computed as if it had not: standard cone AoE
+      // over the whole swing area, with the usual coverage options.
+      const coneSegment = {
+        type: 'cone',
+        start: { ...lastPos },
+        range: rangePx,
+        angle,
+        direction: absoluteDirection,
+        cut: cutPx,
+        collision: segment.collision,
+        coverageMode: segment.coverageMode,
+        lineOfSight: segment.lineOfSight,
+        coverageForFullEffect: segment.coverageForFullEffect,
+        ...this._areaTokenFilters(segment, shot),
+        shooterToken,
+      };
+      const areaHits = this._isHitCone(coneSegment, whitelist).filter((c) => c.type === 'token');
+      hits.push(...this._applyHitOrderAndAmount(areaHits, segment.hitOrder || 'near', segment.hitAmount, lastPos));
+    } else if (contact) {
+      const first = contact.collisions[0];
+      if (first.type === 'wall') {
+        hits.push(first);
+      } else {
+        const token = first.object;
+        const radius = this._targetHitRadius(token);
+        let point = first.point;
+        let details;
+        if (hitMode === SWING_HIT_MODES.SIMPLE) {
+          // No centrality at all: the blow is neither a bullseye nor a glancing one.
+          details = { ...first.details };
+          delete details.centrality;
+        } else if (hitMode === SWING_HIT_MODES.SIDE) {
+          details = {
+            ...first.details,
+            centrality: swingSideCentrality({
+              edgeAngleDeg: contact.deg,
+              contact: first.point,
+              center: token.center,
+              radius,
+            }),
+          };
+        } else {
+          // deep: remember the token and keep sweeping until a different wall or token stops
+          // the blow; centrality comes from the swing position closest to the token's center.
+          const later = sampleAngles.filter((deg) => (deg - contact.deg) * sweepSign > 1e-9);
+          const other = this._firstSwingContact((deg) => edgeAt(deg, token), [contact.deg, ...later]);
+          const windowEnd = other ? other.deg : toDeg;
+          const pass = swingDeepestPass({
+            origin: lastPos,
+            center: token.center,
+            innerPx: cutPx,
+            outerPx: rangePx,
+            fromDeg: contact.deg,
+            toDeg: windowEnd,
+          });
+          stopDeg = windowEnd;
+          point = pass.point;
+          details = {
+            ...first.details,
+            centrality: centralityFromDistance(pass.distance, radius),
+            distanceToCenter: pass.distance,
+            clock: this._hitClockHours(token, pass.point, token.center),
+          };
+        }
+        details.swingMode = hitMode;
+        hits.push({ ...first, point, details });
+      }
+    }
+
+    for (const hit of hits) {
+      shot.shotResult.shotHits.push({
+        point: hit.point,
+        type: hit.type,
+        object: hit.object,
+        ...hit.details,
+      });
+      shot.actualHits.push(hit);
+    }
+
+    // Visuals: the swing area plus the edge where the blow stopped (or the end of the arc).
     shot.shotResult.shotPaths.push({
       start: { ...lastPos },
       range: rangePx,
@@ -1675,77 +2121,59 @@ export class ShotManager {
       cut: cutPx,
       type: 'swing',
       side,
+      edgeDeg: stopDeg,
+    });
+    shot.shotResult.shotPaths.push({
+      start: edgePoint(stopDeg, cutPx),
+      end: edgePoint(stopDeg, rangePx),
+      type: 'line',
     });
 
-    const seen = new Set();
     let shouldContinue = true;
-
-    for (let i = 0; i <= samples; i += 1) {
-      const t = i / samples;
-      const deg = fromDeg + (toDeg - fromDeg) * t;
-      const rad = (deg * Math.PI) / 180;
-      const inner = {
-        x: lastPos.x + Math.cos(rad) * cutPx,
-        y: lastPos.y + Math.sin(rad) * cutPx,
-      };
-      const outer = {
-        x: lastPos.x + Math.cos(rad) * rangePx,
-        y: lastPos.y + Math.sin(rad) * rangePx,
-      };
-
-      const testSegment = {
-        start: inner,
-        end: outer,
-        type: 'line',
-        collision: segment.collision,
-        props: segment.props,
-        onHit: 'next',
-      };
-      const collisions = this.isHit(testSegment, whitelist).filter((c) => {
-        if (c.type === 'wall') return false;
-        return !this._shouldIgnoreByDisposition(c.object, segment, shooterToken);
-      });
-
-      for (const collision of collisions) {
-        const key = collision.object?.id || collision.object?.document?.id || JSON.stringify(collision.point);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        shot.shotResult.shotHits.push({
-          point: collision.point,
-          type: collision.type,
-          object: collision.object,
-          ...collision.details,
-        });
-        shot.actualHits.push(collision);
-        if (onHit === 'stop') {
-          shouldContinue = false;
-          break;
-        }
-      }
-      if (!shouldContinue && onHit === 'stop') break;
-    }
-
-    // Edge line visual at end of sweep
-    {
-      const rad = (toDeg * Math.PI) / 180;
-      shot.shotResult.shotPaths.push({
-        start: {
-          x: lastPos.x + Math.cos(rad) * cutPx,
-          y: lastPos.y + Math.sin(rad) * cutPx,
-        },
-        end: {
-          x: lastPos.x + Math.cos(rad) * rangePx,
-          y: lastPos.y + Math.sin(rad) * rangePx,
-        },
-        type: 'line',
-      });
-    }
+    if (onHit === 'stop') shouldContinue = hits.length === 0;
+    else if (onHit === 'need') shouldContinue = hits.length > 0;
 
     return {
       endPos: lastPos,
       direction: absoluteDirection,
-      shouldContinue: onHit === 'stop' ? shouldContinue : true,
+      shouldContinue,
     };
+  }
+
+  /**
+   * First sweep angle at which `edgeAt` reports a contact: scan `angles` in order, then refine the
+   * exact angle by bisection between the last clear angle and the first touching one (so the
+   * contact point does not depend on how coarsely the sweep is sampled).
+   * @private
+   * @param {(deg: number) => Array} edgeAt collisions of the edge at an angle
+   * @param {number[]} angles sweep angles in sweep order
+   * @returns {{deg: number, collisions: Array}|null}
+   */
+  _firstSwingContact(edgeAt, angles) {
+    let clearDeg = null;
+    for (const deg of angles) {
+      const collisions = edgeAt(deg);
+      if (!collisions.length) {
+        clearDeg = deg;
+        continue;
+      }
+      if (clearDeg === null) return { deg, collisions };
+      let lo = clearDeg;
+      let hi = deg;
+      let found = collisions;
+      for (let k = 0; k < SWING_CONTACT_REFINE_STEPS; k += 1) {
+        const mid = (lo + hi) / 2;
+        const midCollisions = edgeAt(mid);
+        if (midCollisions.length) {
+          hi = mid;
+          found = midCollisions;
+        } else {
+          lo = mid;
+        }
+      }
+      return { deg: hi, collisions: found };
+    }
+    return null;
   }
 
   /**
@@ -1770,6 +2198,10 @@ export class ShotManager {
       cut: cut,
       type: segment.type,
       collision: segment.collision,
+      coverageMode: segment.coverageMode,
+      lineOfSight: segment.lineOfSight,
+      coverageForFullEffect: segment.coverageForFullEffect,
+      ...this._areaTokenFilters(segment, shot),
       props: segment.props,
       onHit: segment.onHit,
       shooterToken: shooterToken
@@ -1841,7 +2273,8 @@ export class ShotManager {
   }
 
   /**
-   * Обработка сложного сегмента complexLine - серия простых линий с рикошетами и пробитием
+   * Обработка сложного сегмента complexLine - серия простых линий с рикошетами.
+   * Токен всегда останавливает луч (пробития по характеристикам нет; пробитие решит пайплайн урона).
    * @private
    * @param {object} segment - Сегмент complexLine
    *   {
@@ -1851,7 +2284,6 @@ export class ShotManager {
    *     amount: количество отрезков,
    *     collision: {...},
    *     damage: {
-   *       penetration: пробитие,
    *       ricochet: максимальный угол для рикошета
    *     },
    *     onHit: 'stop' | 'next' | 'skip' | 'need'
@@ -1869,7 +2301,6 @@ export class ShotManager {
     const segmentLength = segment.length;
     const absoluteDirection = direction + (segment.direction || 0);
     const damage = segment.damage || {};
-    const penetration = damage.penetration || 0;
     const maxRicochetAngle = damage.ricochet || 0;
     const onHit = segment.onHit || "stop";
     
@@ -1882,10 +2313,7 @@ export class ShotManager {
     
     // Временный whitelist для предотвращения повторных попаданий
     const tempWhitelist = [...whitelist];
-    
-    // Токены, которые мы пробили (нужно держать в whitelist до выхода)
-    const penetratedTokens = [];
-    
+
     // ======================
     // ЦИКЛ ПО ОТРЕЗКАМ
     // ======================
@@ -1916,23 +2344,12 @@ export class ShotManager {
       });
       
       // ======================
-      // ОЧИСТКА WHITELIST ОТ ПРОБИТЫХ ТОКЕНОВ
-      // ======================
-      // Удаляем токены, которые мы уже покинули
-      for (let j = penetratedTokens.length - 1; j >= 0; j--) {
-        const token = penetratedTokens[j];
-        if (this._hasExitedToken(currentPos, token)) {
-          const idx = tempWhitelist.indexOf(token);
-          if (idx !== -1) tempWhitelist.splice(idx, 1);
-          penetratedTokens.splice(j, 1);
-        }
-      }
-      
-      // ======================
       // ОБРАБОТКА ПОПАДАНИЙ
       // ======================
-      if (validCollisions.length > 0) {
-        const firstHit = validCollisions[0];
+      // Стена останавливает луч, токен, мимо которого луч пролетел (уверенность не выше сопротивления), пропускается.
+      const reached = walkProjectileCollisions(validCollisions, 'stop', shot, null, { judgeToken: shot.judgeToken });
+      if (reached.length > 0) {
+        const firstHit = reached[0];
         let segmentEndPos = firstHit.point;
         let hitProcessed = false;
         
@@ -1960,7 +2377,6 @@ export class ShotManager {
             // Очищаем временный whitelist при рикошете и добавляем стену
             tempWhitelist.length = whitelist.length;
             tempWhitelist.splice(whitelist.length, tempWhitelist.length - whitelist.length, ...whitelist.slice(whitelist.length));
-            penetratedTokens.length = 0;
             
             // Добавляем стену во временный whitelist
             tempWhitelist.push(firstHit.object);
@@ -2023,65 +2439,36 @@ export class ShotManager {
             // Очищаем временный whitelist при рикошете
             tempWhitelist.length = whitelist.length;
             tempWhitelist.splice(whitelist.length, tempWhitelist.length - whitelist.length, ...whitelist.slice(whitelist.length));
-            penetratedTokens.length = 0;
             
           } else {
-            // ПРОВЕРКА ПРОБИТИЯ
-            const tokenEnd = token.actor?.system?.abilities?.end?.value || 0;
-            console.log(`Проверка пробития: penetration=${penetration}, tokenEnd=${tokenEnd}, token=${token.name}`);
-            
-            if (penetration >= tokenEnd) {
-              // ПРОБИВАЕМ ТОКЕН
-              currentPos = firstHit.point;
-              hitProcessed = true;
-              
-              // Добавляем попадание
-              shot.shotResult.shotHits.push({
-                point: firstHit.point,
-                type: firstHit.type,
-                object: firstHit.object,
-                ...firstHit.details
-              });
-              shot.actualHits.push(firstHit);
-              
-              // Добавляем в временный whitelist и список пробитых
-              if (!tempWhitelist.includes(token)) {
-                tempWhitelist.push(token);
-              }
-              if (!penetratedTokens.includes(token)) {
-                penetratedTokens.push(token);
-              }
-              
-            } else {
-              // ТОКЕН ОСТАНОВИЛ ЛУЧ
-              segmentEndPos = firstHit.point;
-              
-              // Добавляем попадание
-              shot.shotResult.shotHits.push({
-                point: firstHit.point,
-                type: firstHit.type,
-                object: firstHit.object,
-                ...firstHit.details
-              });
-              shot.actualHits.push(firstHit);
-              
-              // Определяем, продолжать ли
-              shouldContinue = (onHit === "next" || onHit === "skip");
-              
-              // Сохраняем путь
-              shot.shotResult.shotPaths.push({
-                start: segmentStart,
-                end: { ...segmentEndPos },
-                type: 'line'
-              });
-              
-              currentPos = segmentEndPos;
-              break;
-            }
+            // ТОКЕН ОСТАНОВИЛ ЛУЧ (пробития по характеристикам нет)
+            segmentEndPos = firstHit.point;
+
+            // Добавляем попадание
+            shot.shotResult.shotHits.push({
+              point: firstHit.point,
+              type: firstHit.type,
+              object: firstHit.object,
+              ...firstHit.details
+            });
+            shot.actualHits.push(firstHit);
+
+            // Определяем, продолжать ли
+            shouldContinue = (onHit === "next" || onHit === "skip");
+
+            // Сохраняем путь
+            shot.shotResult.shotPaths.push({
+              start: segmentStart,
+              end: { ...segmentEndPos },
+              type: 'line'
+            });
+
+            currentPos = segmentEndPos;
+            break;
           }
         }
-        
-        // Сохраняем путь, если был рикошет или пробитие
+
+        // Сохраняем путь, если был рикошет
         if (hitProcessed) {
           shot.shotResult.shotPaths.push({
             start: segmentStart,
@@ -2124,16 +2511,33 @@ export class ShotManager {
    * @param {Token} token - Токен, который стреляет
    * @param {object} payload - Объект с инструкциями траектории
    * @param {number} direction - Начальное направление в градусах
+   * @param {object} [options]
+   * @param {{applications: Array<{mode: string, items: object[]}>}} [options.penetration] - снаряд
+   *   (фазы урона) для пробития стен. Без него каждая стена останавливает выстрел.
+   * @param {number|null} [options.confidence] - уверенность выстрела (`zoneConfidence` зоны дуги): токен,
+   *   у которого сопротивление попаданию не ниже, снаряд пролетает мимо (shot-confidence.mjs).
+   *   Без неё — каждое касание хитбокса попадание.
    * @returns {string} UID созданного выстрела
    */
-  createShot(token, payload, direction) {
+  createShot(token, payload, direction, { penetration = null, confidence = null } = {}) {
     // 1. Генерация UID и регистрация выстрела
     const uid = this.shotSystem.generateUID();
     const shot = this.shotSystem.registerShot(uid);
-    
+    shot.judgeToken = createTokenJudge({
+      confidence,
+      resistanceFor: (tokenObject) => this._hitResistanceFor(tokenObject),
+    });
+    const penetrationApps = penetration?.applications;
+    if (Array.isArray(penetrationApps) && penetrationApps.length) {
+      shot.penetration = { applications: penetrationApps, energyLevel: 1 };
+    }
+    // Distance falloff of the projectile, measured from the muzzle (walls on the way and the targets).
+    shot.falloff = normalizeFalloff(penetration?.falloff);
+
     // 2. Получение whitelist и базовых параметров
     const whitelist = this.getWhitelist(token);
     const defaults = this.getDefaults(token);
+    shot.origin = { x: defaults.defPos.x, y: defaults.defPos.y };
     
     // 3. Инициализация переменных для просчёта
     let lastPos = { ...defaults.defPos };
@@ -2162,6 +2566,14 @@ export class ShotManager {
       }
     }
     
+    // 5. Запись выстрела: чистые данные для отрисовки и для чата (без ссылок на токены/стены)
+    shot.record = buildShotRecord(shot, {
+      t: trailNowMs(),
+      sceneId: token?.scene?.id ?? canvas?.scene?.id,
+      tokenId: token?.document?.id ?? token?.id,
+      userId: game.user?.id,
+    });
+
     console.log(`Shot ${uid} created with ${shot.shotResult.shotPaths.length} paths`);
     return uid;
   }
@@ -2174,6 +2586,24 @@ export class ShotManager {
   getShotResult(uid) {
     const shot = this.shotSystem.getShot(uid);
     return shot ? shot.shotResult : null;
+  }
+
+  /**
+   * Запись выстрела (ShotRecord) для `DrawManager.drawRecord` и флага чата.
+   * @param {string} uid - UID выстрела
+   * @returns {object|null} запись или null, если выстрел уже вытеснен из памяти
+   */
+  getShotRecord(uid) {
+    return this.shotSystem.getShot(uid)?.record ?? null;
+  }
+
+  /**
+   * Запись продолжения следа: пуля вышла из тела и полетела дальше (см. `continueShot`).
+   * @param {string} uid - UID выстрела
+   * @returns {object|null} запись или null, если пуля из тела не вышла
+   */
+  getShotExtension(uid) {
+    return this.shotSystem.getShot(uid)?.extension ?? null;
   }
 
   /**

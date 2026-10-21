@@ -245,21 +245,23 @@ export function listArmorCoveredSlotRefs(armor) {
   return ordered;
 }
 
-const MINIMAL_PART_EXPOSURE = Object.freeze({
-  front: 1,
-  back: 1,
-  left: 1,
-  right: 1,
-  top: 1,
-  bottom: 1,
+/**
+ * Tissue of the preview body part: no shell, keeps everything that got through the armour, so the
+ * preview shows exactly what the armour let pass.
+ */
+const PREVIEW_PART_TISSUE = Object.freeze({
+  shellThickness: 0,
+  depthFlat: 0,
+  depthShare: 1,
+  organDepth: 0,
 });
 
 /**
  * Minimum `anatomy` shape for {@link resolveBodyTraversal} when previewing
- * a single hit slot (no full preset or actor). One body part, full
- * exposure, no `behind` transfers.
+ * a single hit slot (no full preset or actor): one body part that keeps
+ * everything the armour let through, no `behind` transfers.
  * @param {string} slotRef
- * @returns {{ bodyParts: Record<string, { id: string, name: string, exposure: Object, relations: [] }> }}
+ * @returns {{ bodyParts: Record<string, { id: string, name: string, tissue: Object, relations: [] }> }}
  */
 export function minimalAnatomyForArmorSlot(slotRef) {
   const id = cleanString(slotRef);
@@ -269,7 +271,7 @@ export function minimalAnatomyForArmorSlot(slotRef) {
       [id]: {
         id,
         name: id,
-        exposure: { ...MINIMAL_PART_EXPOSURE },
+        tissue: { ...PREVIEW_PART_TISSUE },
         relations: [],
       },
     },

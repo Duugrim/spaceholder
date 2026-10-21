@@ -8,8 +8,59 @@
       "type": "humanoid",
       "id": "humanoid",
       "name": "Humanoid",
-      "bodyParts": {}
+      "bodyParts": {},
+      "groups": [
+        {
+          "id": "legs",
+          "type": "movement",
+          "name": "Legs",
+          "parts": [
+            "leftThigh#1",
+            "rightThigh#1",
+            "leftShin#1",
+            "rightShin#1",
+            "leftFoot#1",
+            "rightFoot#1"
+          ]
+        },
+        {
+          "id": "arms",
+          "type": "manipulation",
+          "name": "Arms",
+          "parts": [
+            "leftShoulder#1",
+            "rightShoulder#1",
+            "leftArm#1",
+            "rightArm#1",
+            "leftHand#1",
+            "rightHand#1"
+          ]
+        },
+        {
+          "id": "senses",
+          "type": "sensory",
+          "name": "Senses",
+          "parts": [
+            "head#1"
+          ]
+        },
+        {
+          "id": "vitals",
+          "type": "critical",
+          "name": "Vitals",
+          "parts": [
+            "head#1",
+            "neck#1",
+            "upperTorso#1",
+            "lowerTorso#1"
+          ]
+        }
+      ],
+      "rootRef": "head#1",
+      "hitGroupOverride": ""
     },
+    "heightM": 1.75,
+    "speedMps": 3,
     "health": {
       "injuries": [],
       "bodyParts": {
@@ -18,32 +69,64 @@
           "name": "Head",
           "slotRef": "head#1",
           "uuid": "shcactshooter000-bp-head-1",
-          "weight": 750,
-          "maxHp": 25,
+          "maxHp": 110,
           "x": 4,
           "y": 1,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "vital",
             "brain",
             "sensory",
             "armor_head"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 100,
-            "left": 100
+          "material": "bone",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.35,
+            "organDepth": 1,
+            "bluntToParent": 0.3,
+            "bleed": 6,
+            "shellThickness": 0.46,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.93,
+          "inners": [
+            {
+              "id": "eyes",
+              "name": "Eyes",
+              "material": "skin",
+              "occupancyPct": 8,
+              "maxHp": 44,
+              "bleed": 1,
+              "tags": []
+            },
+            {
+              "id": "ears",
+              "name": "Ears",
+              "material": "skin",
+              "occupancyPct": 4,
+              "maxHp": 53,
+              "bleed": 1,
+              "tags": []
+            },
+            {
+              "id": "brain",
+              "name": "Brain",
+              "material": "skin",
+              "occupancyPct": 50,
+              "maxHp": 44,
+              "bleed": 0,
+              "tags": [
+                "vital"
+              ],
+              "mortalShare": 0.1
+            }
+          ],
           "relations": [
             {
               "kind": "adjacent",
-              "target": "neck#1"
-            },
-            {
-              "kind": "parent",
               "target": "neck#1"
             }
           ],
@@ -56,24 +139,37 @@
           "name": "Neck",
           "slotRef": "neck#1",
           "uuid": "shcactshooter000-bp-neck-1",
-          "weight": 180,
-          "maxHp": 15,
+          "maxHp": 110,
           "x": 4,
           "y": 2,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "vital",
             "vulnerable",
             "armor_neck"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 85,
-            "back": 100,
-            "left": 85
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 10,
+            "cavity": 0.5
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.88,
+          "inners": [
+            {
+              "id": "artery",
+              "name": "Carotid artery",
+              "material": "muscle",
+              "occupancyPct": 20,
+              "maxHp": 20,
+              "bleed": 80,
+              "tags": []
+            }
+          ],
           "relations": [
             {
               "kind": "adjacent",
@@ -81,95 +177,66 @@
             },
             {
               "kind": "adjacent",
-              "target": "chest#1"
-            },
-            {
-              "kind": "adjacent",
-              "target": "back#1"
+              "target": "upperTorso#1"
             },
             {
               "kind": "parent",
-              "target": "chest#1"
+              "target": "head#1"
             }
           ],
           "links": [
             "head#1",
-            "chest#1",
-            "back#1"
+            "upperTorso#1"
           ]
         },
-        "back#1": {
-          "id": "back",
-          "name": "Back",
-          "slotRef": "back#1",
-          "uuid": "shcactshooter000-bp-back-1",
-          "weight": 1100,
-          "maxHp": 35,
-          "x": 5,
-          "y": 4,
-          "status": "healthy",
-          "internal": false,
-          "tags": [
-            "core",
-            "armor_chest"
-          ],
-          "organs": [],
-          "exposure": {
-            "front": 0,
-            "right": 80,
-            "back": 100,
-            "left": 80
-          },
-          "relations": [
-            {
-              "kind": "adjacent",
-              "target": "neck#1"
-            },
-            {
-              "kind": "adjacent",
-              "target": "abdomen#1"
-            },
-            {
-              "kind": "behind",
-              "target": "chest#1",
-              "chance": 40,
-              "direction": "back"
-            },
-            {
-              "kind": "behind",
-              "target": "abdomen#1",
-              "chance": 40,
-              "direction": "back"
-            }
-          ],
-          "links": [
-            "neck#1",
-            "abdomen#1"
-          ]
-        },
-        "chest#1": {
-          "id": "chest",
-          "name": "Chest",
-          "slotRef": "chest#1",
-          "uuid": "shcactshooter000-bp-chest-1",
-          "weight": 1400,
-          "maxHp": 45,
+        "upperTorso#1": {
+          "id": "upperTorso",
+          "name": "Upper Torso",
+          "slotRef": "upperTorso#1",
+          "uuid": "shcactshooter000-bp-upperTorso-1",
+          "maxHp": 190,
           "x": 4,
           "y": 3,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "core",
             "vital",
             "armor_chest"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 80,
-            "back": 0,
-            "left": 80
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 3,
+            "depthShare": 0.85,
+            "organDepth": 4,
+            "bleed": 10,
+            "cavity": 0.3
           },
+          "faces": [
+            "front",
+            "back"
+          ],
+          "heightFrac": 0.7,
+          "inners": [
+            {
+              "id": "heart",
+              "name": "Heart",
+              "material": "muscle",
+              "occupancyPct": 15,
+              "maxHp": 66,
+              "bleed": 40,
+              "tags": [
+                "vital"
+              ]
+            },
+            {
+              "id": "lungs",
+              "name": "Lungs",
+              "material": "skin",
+              "occupancyPct": 40,
+              "maxHp": 66,
+              "bleed": 15,
+              "tags": []
+            }
+          ],
           "relations": [
             {
               "kind": "adjacent",
@@ -177,7 +244,7 @@
             },
             {
               "kind": "adjacent",
-              "target": "abdomen#1"
+              "target": "lowerTorso#1"
             },
             {
               "kind": "adjacent",
@@ -188,97 +255,66 @@
               "target": "rightShoulder#1"
             },
             {
-              "kind": "behind",
-              "target": "back#1",
-              "chance": 80,
-              "direction": "front"
+              "kind": "parent",
+              "target": "neck#1"
             }
           ],
           "links": [
             "neck#1",
-            "abdomen#1",
+            "lowerTorso#1",
             "leftShoulder#1",
             "rightShoulder#1"
           ]
         },
-        "abdomen#1": {
-          "id": "abdomen",
-          "name": "Abdomen",
-          "slotRef": "abdomen#1",
-          "uuid": "shcactshooter000-bp-abdomen-1",
-          "weight": 1100,
-          "maxHp": 40,
+        "lowerTorso#1": {
+          "id": "lowerTorso",
+          "name": "Lower Torso",
+          "slotRef": "lowerTorso#1",
+          "uuid": "shcactshooter000-bp-lowerTorso-1",
+          "maxHp": 165,
           "x": 4,
           "y": 4,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "core",
             "armor_chest"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 80,
-            "back": 0,
-            "left": 80
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 3,
+            "depthShare": 0.8,
+            "organDepth": 4,
+            "bleed": 10,
+            "cavity": 0.3
           },
-          "relations": [
+          "faces": [
+            "front",
+            "back"
+          ],
+          "heightFrac": 0.55,
+          "inners": [
             {
-              "kind": "adjacent",
-              "target": "back#1"
+              "id": "guts",
+              "name": "Guts",
+              "material": "skin",
+              "occupancyPct": 40,
+              "maxHp": 88,
+              "bleed": 10,
+              "tags": []
             },
             {
-              "kind": "adjacent",
-              "target": "chest#1"
-            },
-            {
-              "kind": "adjacent",
-              "target": "groin#1"
-            },
-            {
-              "kind": "behind",
-              "target": "back#1",
-              "chance": 80,
-              "direction": "front"
-            },
-            {
-              "kind": "parent",
-              "target": "chest#1"
+              "id": "liver",
+              "name": "Liver",
+              "material": "muscle",
+              "occupancyPct": 15,
+              "maxHp": 88,
+              "bleed": 40,
+              "tags": []
             }
           ],
-          "links": [
-            "back#1",
-            "chest#1",
-            "groin#1"
-          ]
-        },
-        "groin#1": {
-          "id": "groin",
-          "name": "Groin",
-          "slotRef": "groin#1",
-          "uuid": "shcactshooter000-bp-groin-1",
-          "weight": 350,
-          "maxHp": 20,
-          "x": 4,
-          "y": 5,
-          "status": "healthy",
-          "internal": false,
-          "tags": [
-            "vital",
-            "armor_hip"
-          ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 55,
-            "back": 50,
-            "left": 55
-          },
           "relations": [
             {
               "kind": "adjacent",
-              "target": "abdomen#1"
+              "target": "upperTorso#1"
             },
             {
               "kind": "adjacent",
@@ -290,11 +326,11 @@
             },
             {
               "kind": "parent",
-              "target": "abdomen#1"
+              "target": "upperTorso#1"
             }
           ],
           "links": [
-            "abdomen#1",
+            "upperTorso#1",
             "leftThigh#1",
             "rightThigh#1"
           ]
@@ -304,28 +340,31 @@
           "name": "Left Shoulder",
           "slotRef": "leftShoulder#1",
           "uuid": "shcactshooter000-bp-leftShoulder-1",
-          "weight": 320,
-          "maxHp": 20,
+          "maxHp": 132,
           "x": 3,
           "y": 3,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "joint",
             "left_side",
             "armor_shoulder"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 30,
-            "back": 85,
-            "left": 100
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.78,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
-              "target": "chest#1"
+              "target": "upperTorso#1"
             },
             {
               "kind": "adjacent",
@@ -333,11 +372,11 @@
             },
             {
               "kind": "parent",
-              "target": "chest#1"
+              "target": "upperTorso#1"
             }
           ],
           "links": [
-            "chest#1",
+            "upperTorso#1",
             "leftArm#1"
           ]
         },
@@ -346,28 +385,31 @@
           "name": "Right Shoulder",
           "slotRef": "rightShoulder#1",
           "uuid": "shcactshooter000-bp-rightShoulder-1",
-          "weight": 320,
-          "maxHp": 20,
+          "maxHp": 132,
           "x": 5,
           "y": 3,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "joint",
             "right_side",
             "armor_shoulder"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 85,
-            "left": 30
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.78,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
-              "target": "chest#1"
+              "target": "upperTorso#1"
             },
             {
               "kind": "adjacent",
@@ -375,11 +417,11 @@
             },
             {
               "kind": "parent",
-              "target": "chest#1"
+              "target": "upperTorso#1"
             }
           ],
           "links": [
-            "chest#1",
+            "upperTorso#1",
             "rightArm#1"
           ]
         },
@@ -388,25 +430,28 @@
           "name": "Left Arm",
           "slotRef": "leftArm#1",
           "uuid": "shcactshooter000-bp-leftArm-1",
-          "weight": 800,
-          "maxHp": 30,
+          "maxHp": 157,
           "x": 2,
           "y": 3,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "limb",
             "left_side",
             "manipulator",
             "armor_arm"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 30,
-            "back": 90,
-            "left": 100
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.62,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -431,25 +476,28 @@
           "name": "Right Arm",
           "slotRef": "rightArm#1",
           "uuid": "shcactshooter000-bp-rightArm-1",
-          "weight": 800,
-          "maxHp": 30,
+          "maxHp": 157,
           "x": 6,
           "y": 3,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "limb",
             "right_side",
             "manipulator",
             "armor_arm"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 90,
-            "left": 30
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.62,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -474,12 +522,9 @@
           "name": "Left Hand",
           "slotRef": "leftHand#1",
           "uuid": "shcactshooter000-bp-leftHand-1",
-          "weight": 180,
-          "maxHp": 15,
+          "maxHp": 88,
           "x": 1,
           "y": 3,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "extremity",
             "left_side",
@@ -487,13 +532,19 @@
             "dexterous",
             "armor_hand"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 40,
-            "back": 85,
-            "left": 100
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.48,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -513,12 +564,9 @@
           "name": "Right Hand",
           "slotRef": "rightHand#1",
           "uuid": "shcactshooter000-bp-rightHand-1",
-          "weight": 180,
-          "maxHp": 15,
+          "maxHp": 88,
           "x": 7,
           "y": 3,
-          "status": "healthy",
-          "internal": false,
           "tags": [
             "extremity",
             "right_side",
@@ -526,13 +574,19 @@
             "dexterous",
             "armor_hand"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 85,
-            "left": 40
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.48,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -552,29 +606,42 @@
           "name": "Left Thigh",
           "slotRef": "leftThigh#1",
           "uuid": "shcactshooter000-bp-leftThigh-1",
-          "weight": 800,
-          "maxHp": 35,
+          "maxHp": 180,
           "x": 3,
-          "y": 6,
-          "status": "healthy",
-          "internal": false,
+          "y": 5,
           "tags": [
             "limb",
             "left_side",
             "locomotion",
             "armor_leg"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 60,
-            "back": 85,
-            "left": 100
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1.5,
+            "depthShare": 0.35,
+            "organDepth": 1,
+            "bleed": 6,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.4,
+          "inners": [
+            {
+              "id": "artery",
+              "name": "Femoral artery",
+              "material": "muscle",
+              "occupancyPct": 12,
+              "maxHp": 20,
+              "bleed": 80,
+              "tags": []
+            }
+          ],
           "relations": [
             {
               "kind": "adjacent",
-              "target": "groin#1"
+              "target": "lowerTorso#1"
             },
             {
               "kind": "adjacent",
@@ -582,11 +649,11 @@
             },
             {
               "kind": "parent",
-              "target": "groin#1"
+              "target": "lowerTorso#1"
             }
           ],
           "links": [
-            "groin#1",
+            "lowerTorso#1",
             "leftShin#1"
           ]
         },
@@ -595,29 +662,42 @@
           "name": "Right Thigh",
           "slotRef": "rightThigh#1",
           "uuid": "shcactshooter000-bp-rightThigh-1",
-          "weight": 800,
-          "maxHp": 35,
+          "maxHp": 180,
           "x": 5,
-          "y": 6,
-          "status": "healthy",
-          "internal": false,
+          "y": 5,
           "tags": [
             "limb",
             "right_side",
             "locomotion",
             "armor_leg"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 85,
-            "left": 60
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1.5,
+            "depthShare": 0.35,
+            "organDepth": 1,
+            "bleed": 6,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.4,
+          "inners": [
+            {
+              "id": "artery",
+              "name": "Femoral artery",
+              "material": "muscle",
+              "occupancyPct": 12,
+              "maxHp": 20,
+              "bleed": 80,
+              "tags": []
+            }
+          ],
           "relations": [
             {
               "kind": "adjacent",
-              "target": "groin#1"
+              "target": "lowerTorso#1"
             },
             {
               "kind": "adjacent",
@@ -625,11 +705,11 @@
             },
             {
               "kind": "parent",
-              "target": "groin#1"
+              "target": "lowerTorso#1"
             }
           ],
           "links": [
-            "groin#1",
+            "lowerTorso#1",
             "rightShin#1"
           ]
         },
@@ -638,25 +718,28 @@
           "name": "Left Shin",
           "slotRef": "leftShin#1",
           "uuid": "shcactshooter000-bp-leftShin-1",
-          "weight": 600,
-          "maxHp": 28,
+          "maxHp": 132,
           "x": 3,
-          "y": 7,
-          "status": "healthy",
-          "internal": false,
+          "y": 6,
           "tags": [
             "limb",
             "left_side",
             "locomotion",
             "armor_leg"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 75,
-            "back": 90,
-            "left": 100
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.18,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -681,25 +764,28 @@
           "name": "Right Shin",
           "slotRef": "rightShin#1",
           "uuid": "shcactshooter000-bp-rightShin-1",
-          "weight": 600,
-          "maxHp": 28,
+          "maxHp": 132,
           "x": 5,
-          "y": 7,
-          "status": "healthy",
-          "internal": false,
+          "y": 6,
           "tags": [
             "limb",
             "right_side",
             "locomotion",
             "armor_leg"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 90,
-            "left": 75
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 1,
+            "depthShare": 0.3,
+            "organDepth": 1,
+            "bleed": 5,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.18,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -724,25 +810,28 @@
           "name": "Left Foot",
           "slotRef": "leftFoot#1",
           "uuid": "shcactshooter000-bp-leftFoot-1",
-          "weight": 250,
-          "maxHp": 12,
+          "maxHp": 110,
           "x": 3,
-          "y": 8,
-          "status": "healthy",
-          "internal": false,
+          "y": 7,
           "tags": [
             "extremity",
             "left_side",
             "locomotion",
             "armor_foot"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 90,
-            "left": 100
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.03,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -762,25 +851,28 @@
           "name": "Right Foot",
           "slotRef": "rightFoot#1",
           "uuid": "shcactshooter000-bp-rightFoot-1",
-          "weight": 250,
-          "maxHp": 12,
+          "maxHp": 110,
           "x": 5,
-          "y": 8,
-          "status": "healthy",
-          "internal": false,
+          "y": 7,
           "tags": [
             "extremity",
             "right_side",
             "locomotion",
             "armor_foot"
           ],
-          "organs": [],
-          "exposure": {
-            "front": 100,
-            "right": 100,
-            "back": 90,
-            "left": 100
+          "material": "muscle",
+          "tissue": {
+            "depthFlat": 0.5,
+            "depthShare": 0.2,
+            "organDepth": 1,
+            "bleed": 3,
+            "cavity": 1
           },
+          "faces": [
+            "front"
+          ],
+          "heightFrac": 0.03,
+          "inners": [],
           "relations": [
             {
               "kind": "adjacent",
@@ -798,7 +890,7 @@
       },
       "anatomyGrid": {
         "width": 9,
-        "height": 10
+        "height": 9
       }
     },
     "biography": "<p>Стартовый стрелок каталога: АК в руках, Глок, лазерный пистолет, нож, лёгкая защита.</p>",
@@ -825,25 +917,25 @@
     },
     "abilities": {
       "end": {
-        "value": 10
+        "value": 100
       },
       "str": {
-        "value": 10
+        "value": 100
       },
-      "dex": {
-        "value": 10
+      "agi": {
+        "value": 100
       },
       "cor": {
-        "value": 10
+        "value": 100
       },
       "per": {
-        "value": 10
+        "value": 100
       },
       "int": {
-        "value": 10
+        "value": 100
       },
       "luc": {
-        "value": 10
+        "value": 100
       }
     }
   },
@@ -1373,7 +1465,7 @@
             "consume": false,
             "falloff": {
               "enabled": true,
-              "halfDistance": 80
+              "halfDistance": 280
             },
             "multishot": {
               "enabled": false,
@@ -1840,7 +1932,7 @@
             "consume": false,
             "falloff": {
               "enabled": true,
-              "halfDistance": 45
+              "halfDistance": 240
             },
             "multishot": {
               "enabled": false,
@@ -2026,7 +2118,7 @@
             "consume": true,
             "falloff": {
               "enabled": true,
-              "halfDistance": 45
+              "halfDistance": 240
             },
             "multishot": {
               "enabled": false,
@@ -2212,7 +2304,7 @@
             "consume": false,
             "falloff": {
               "enabled": true,
-              "halfDistance": 80
+              "halfDistance": 280
             },
             "multishot": {
               "enabled": false,
@@ -2445,7 +2537,7 @@
                   "runtime": {
                     "charge": 0,
                     "chamberCharge": false,
-                    "attachedItemId": "",
+                    "attachedItemId": "eer0002bb1e00107",
                     "chamberItemId": "",
                     "contentItemIds": [],
                     "chamberItem": null,
@@ -2706,7 +2798,7 @@
             "maxWeight": 0
           }
         },
-        "containerHostId": ""
+        "containerHostId": "eer000b833e03306"
       },
       "effects": [],
       "folder": null,
@@ -2856,8 +2948,9 @@
                 {
                   "enabled": true,
                   "damageType": "piercing",
-                  "damage": 90,
-                  "armorPen": 35,
+                  "damage": 0,
+                  "effortShare": 90,
+                  "armorPen": 21,
                   "hardness": 1,
                   "armorDamageFactor": 100,
                   "armorDamageReduction": 100,
@@ -2932,7 +3025,8 @@
                 {
                   "enabled": true,
                   "damageType": "cutting",
-                  "damage": 55,
+                  "damage": 0,
+                  "effortShare": 45,
                   "armorPen": 20,
                   "hardness": 1,
                   "armorDamageFactor": 100,
@@ -3321,11 +3415,7 @@
             "layers": [
               {
                 "material": "polymer",
-                "thickness": 2
-              },
-              {
-                "material": "kevlar",
-                "thickness": 1
+                "thickness": 3
               }
             ],
             "face": "front"

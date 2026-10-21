@@ -37,7 +37,20 @@
       "radiation": 0,
       "chemical": 60
     },
-    "conductance": {},
+    "conductance": {
+      "ballistic": [
+        {
+          "type": "concussive",
+          "fraction": 0.01
+        }
+      ],
+      "concussive": [
+        {
+          "type": "concussive",
+          "fraction": 0.1
+        }
+      ]
+    },
     "selfInduction": {},
     "degradation": {}
   },

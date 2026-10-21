@@ -19,7 +19,7 @@
         "layers": [
           {
             "material": "steel-plate",
-            "thickness": 5
+            "thickness": 6
           },
           {
             "material": "kevlar",
@@ -37,7 +37,7 @@
         "layers": [
           {
             "material": "steel-plate",
-            "thickness": 5
+            "thickness": 6
           },
           {
             "material": "kevlar",
@@ -55,7 +55,7 @@
         "layers": [
           {
             "material": "steel-plate",
-            "thickness": 5
+            "thickness": 6
           },
           {
             "material": "kevlar",

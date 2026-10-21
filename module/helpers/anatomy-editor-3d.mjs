@@ -21,9 +21,7 @@ function statusToColorHex(status) {
       return 0xff9800;
     case "badly_injured":
       return 0xff6b6b;
-    case "destroyed":
-      return 0xc084fc;
-    case "missing":
+    case "lost":
       return 0x90a4ae;
     default:
       return 0x6b9b6b;

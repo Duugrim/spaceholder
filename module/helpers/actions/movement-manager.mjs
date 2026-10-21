@@ -2,12 +2,12 @@
  * Movement Manager (v13 integration)
  * - Не включает режимы вручную
  * - Слушает завершённые движения токенов (TokenDocument.movement)
- * - В бою пишет `move` в таблицу: база ОД = ceil(дистанция × system.speed), затем модификатор координации (getEffectiveActionCost).
- *   У персонажей `system.speed` производный: movementApTimeSlice / дистанция за этот бюджет (см. Actor `_prepareDerivedCharacterStats`).
+ * - В бою пишет `move` в таблицу: ОД = ceil(дистанция × system.speed). Скорость действий (координация) движение не меняет.
+ *   У персонажей `system.speed` производный: ОД за 1 м из боевой скорости (см. Actor `_prepareDerivedCharacterStats`).
  */
 
-import { getEffectiveActionCost, getMovementDistanceApBase } from './action-service.mjs';
-import { ensureCharacterApSynced, spendAp } from './transaction-ledger.mjs';
+import { getMovementDistanceApBase } from './action-service.mjs';
+import { AP_SHORTAGE, ensureCharacterApSynced, spendAp } from './transaction-ledger.mjs';
 import { appendCombatActionJournalLine } from './action-chat-journal.mjs';
 
 function _t(key, data = undefined) {
@@ -182,7 +182,8 @@ export class MovementManager {
       }
 
       const rawMovementAp = getMovementDistanceApBase(actor, dist, baseCost);
-      const cost = getEffectiveActionCost(actor, rawMovementAp);
+      // Movement is not scaled by coordination (action speed): the distance cost is final.
+      const cost = rawMovementAp;
       this._tokenPrevPos.delete(String(tokenDocument?.id || ''));
 
       const combat = game?.combat?.started ? game.combat : null;
@@ -205,9 +206,11 @@ export class MovementManager {
       if (cost > 0) {
         await ensureCharacterApSynced(actor);
         try {
+          // The token has already moved: a move the pool cannot cover takes what is left and is not refused.
           const spend = await spendAp(actor, cost, {
             combatantId: combatant?.id ?? null,
             source: { type: "move", movementId: moveId },
+            shortage: AP_SHORTAGE.CLAMP,
           });
           if (!spend?.ok) {
             console.warn("SpaceHolder | Movement AP spend failed", spend?.error);

@@ -1,13 +1,28 @@
 /**
  * Per-character chat journal for one logical combat round: one message, lines appended, per-line undo.
  * Consecutive main-turn moves collapse into one `moveGroup` row (expandable); reactions nest under the group / segment.
+ * An attack (everything shot until the aiming mode was left) is one `attack` row: a summary of the targets hit
+ * that expands into the shots and the exact hits (see `attack-journal-html.mjs`).
  */
+
+import { renderAttackRowHtml } from "./attack-journal-html.mjs";
 
 const MODULE_NS = "spaceholder";
 const FLAG_ROUND_CHAT = "roundActionChat";
 const FLAG_JOURNAL = "actionJournal";
 /** Bumped when journal line shape changes (move groups, nested reactions). */
 const JOURNAL_SCHEMA = 2;
+
+/**
+ * GM action types (`gm-actions`, registered in `gm-actions/gm-action-handlers.mjs`).
+ * A journal message belongs to whoever posted it and the round pointer is a flag on the anchor actor, so a player
+ * who is not the author (a reaction on somebody else's turn, an undo on a GM-posted message) cannot rewrite it:
+ * the GM client does it for them.
+ */
+export const JOURNAL_GM_ACTIONS = Object.freeze({
+  APPEND_LINE: "journal.appendLine",
+  REPLACE_MESSAGE: "journal.replaceMessage",
+});
 
 function _randomId() {
   try {
@@ -90,7 +105,90 @@ async function _syncRoundChatMessagePointer(message, explicitActor = null) {
   await actor.setFlag(MODULE_NS, FLAG_ROUND_CHAT, { round, messageId: message.id });
 }
 
+function _messageAuthorId(message) {
+  const author = message?.author;
+  return String((typeof author === "string" ? author : author?.id) ?? "").trim();
+}
+
+/** Every actor uuid a journal refers to: line owners, move segments and nested reactions. */
+function _collectJournalActorUuids(lines) {
+  const out = new Set();
+  const add = (uuid) => {
+    const u = String(uuid || "").trim();
+    if (u) out.add(u);
+  };
+  for (const line of Array.isArray(lines) ? lines : []) {
+    add(line?.actorUuid);
+    for (const reaction of line?.reactions || []) add(reaction?.actorUuid);
+    for (const seg of line?.segments || []) {
+      add(seg?.actorUuid);
+      for (const reaction of seg?.reactions || []) add(reaction?.actorUuid);
+    }
+  }
+  return [...out];
+}
+
+/**
+ * Whether this client may re-post `message` itself: the GM, or its author who also owns the anchor actor
+ * (the actor flag that points at the round message is moved along with it).
+ * @param {ChatMessage} message
+ * @param {Actor|null} anchorActor
+ * @param {object[]} newLines lines of the journal that replaces the message
+ */
+async function _canReplaceJournalMessage(message, anchorActor, newLines) {
+  if (game.user?.isGM) return true;
+  if (_messageAuthorId(message) !== String(game.user?.id ?? "")) return false;
+  let actor = anchorActor && anchorActor.documentName === "Actor" ? anchorActor : null;
+  if (!actor) {
+    const uuid = _extractActorUuidFromJournalLines(newLines);
+    if (uuid) {
+      try {
+        actor = await fromUuid(uuid);
+      } catch (_) {
+        actor = null;
+      }
+    }
+  }
+  return !actor || actor.documentName !== "Actor" || !!actor.isOwner;
+}
+
+function _journalGmLabel(label = "") {
+  const base = game.i18n?.localize?.("SPACEHOLDER.ActionChatJournal.GmLabel") || "Action journal";
+  const text = String(label || "").trim();
+  return text ? `${base}: ${text}` : base;
+}
+
+/** Ask the GM client to run a journal write this user may not do (`gm-actions`); `null` when it could not be done. */
+async function _requestJournalFromGm(type, payload, label) {
+  const gm = game.spaceholder?.gmActions;
+  if (!gm?.request) {
+    console.warn("SpaceHolder | action journal: GM actions are unavailable, journal not written");
+    return null;
+  }
+  try {
+    return await gm.request(type, payload, { label: _journalGmLabel(label) });
+  } catch (err) {
+    console.warn("SpaceHolder | action journal: GM could not write the journal", err);
+    return null;
+  }
+}
+
 async function _replaceJournalMessage(message, { content, journalFlags, anchorActor = null } = {}) {
+  if (!message?.id) return message ?? null;
+  if (!(await _canReplaceJournalMessage(message, anchorActor, journalFlags?.lines))) {
+    const res = await _requestJournalFromGm(JOURNAL_GM_ACTIONS.REPLACE_MESSAGE, {
+      messageId: message.id,
+      journalFlags,
+      anchorActorUuid: anchorActor?.uuid ?? null,
+    });
+    if (res?.status !== "done") return message;
+    _removeChatMessageDomNow(message.id);
+    return game.messages?.get?.(res.result?.messageId) ?? message;
+  }
+  return _replaceJournalMessageNow(message, { content, journalFlags, anchorActor });
+}
+
+async function _replaceJournalMessageNow(message, { content, journalFlags, anchorActor = null } = {}) {
   if (!message?.id) return message ?? null;
   const oldId = message.id;
   const createData = _chatMessageCreatePayloadFromExisting(message, {
@@ -136,6 +234,7 @@ function _lineIconClass(line) {
   if (line?.icon) return String(line.icon);
   const kind = String(line?.kind || "action");
   if (kind === "move") return "fa-solid fa-shoe-prints";
+  if (kind === "attack") return "fa-solid fa-crosshairs";
   if (kind === "system") return "fa-solid fa-flag-checkered";
   return "fa-solid fa-bolt";
 }
@@ -623,6 +722,9 @@ function _renderApChipHtml(apCost) {
  * @param {{ reactionLabel: string, detailsLabel: string, nested?: boolean }} ctx
  */
 function _renderStandardRowHtml(line, ctx) {
+  if (line.kind === "attack") {
+    return renderAttackRowHtml(line, { nested: !!ctx.nested, renderApChip: _renderApChipHtml });
+  }
   const label = _esc(line.label || "");
   const description = String(line.description || "").trim();
   const undone = !!line.undone;
@@ -855,15 +957,27 @@ function _buildStartTurnLine({ actor, combat, combatant }) {
   };
 }
 
+/**
+ * Whether this user can write the actor's round journal in the combat: a character the user owns, whose
+ * combatant is in the started combat.
+ * @param {Actor|null|undefined} actor
+ * @param {Combat|null|undefined} combat
+ * @param {Combatant|null|undefined} combatant
+ * @returns {boolean}
+ */
+export function canWriteActionJournal(actor, combat, combatant) {
+  if (!actor || actor.type !== "character" || !combat?.started || !combatant) return false;
+  const ownerLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+  return !!actor.testUserPermission?.(game.user, ownerLevel);
+}
+
 export async function ensureCombatActionJournalMessage({
   actor,
   combat,
   combatant,
   withStartLine = false,
 } = {}) {
-  if (!actor || actor.type !== "character" || !combat?.started || !combatant) return null;
-  const ownerLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
-  if (!actor.testUserPermission?.(game.user, ownerLevel)) return null;
+  if (!canWriteActionJournal(actor, combat, combatant)) return null;
   const round = await _logicalRound(combat);
   const title =
     (game.i18n?.format?.("SPACEHOLDER.ActionChatJournal.Title", { round: String(round) }) ||
@@ -888,6 +1002,8 @@ export async function ensureCombatActionJournalMessage({
   return msg || null;
 }
 
+let _journalWriteQueue = Promise.resolve();
+
 /**
  * Append one line to the actor's journal message for the current logical combat round.
  * @param {object} opts
@@ -896,13 +1012,21 @@ export async function ensureCombatActionJournalMessage({
  * @param {Combatant} opts.combatant
  * @param {string} opts.label
  * @param {number} [opts.apCost]
- * @param {'action'|'move'} opts.kind
+ * @param {'action'|'move'|'attack'|'system'} opts.kind
+ * @param {object|null} [opts.attack] attack log of an `attack` line (weapon/attack-log.mjs)
  * @param {string|null} [opts.transactionId]
  * @param {string|null} [opts.combatEventId]
  * @param {string|null} [opts.movementId]
  * @param {string|null} [opts.tokenUuid]
+ * @returns {Promise<void>} writes run one after another (each reads the message and replaces it, so overlapping ones would lose a line)
  */
-export async function appendCombatActionJournalLine({
+export function appendCombatActionJournalLine(opts = {}) {
+  const run = _journalWriteQueue.then(() => _appendCombatActionJournalLineNow(opts));
+  _journalWriteQueue = run.catch(() => {});
+  return run;
+}
+
+async function _appendCombatActionJournalLineNow({
   actor,
   combat,
   combatant,
@@ -918,6 +1042,7 @@ export async function appendCombatActionJournalLine({
   actorName = "",
   icon = null,
   undoable = true,
+  attack = null,
   transactionId = null,
   combatEventId = null,
   movementId = null,
@@ -927,6 +1052,36 @@ export async function appendCombatActionJournalLine({
     if (!actor || actor.type !== "character" || !combat?.started || !combatant) return;
     const anchorA = anchorActor?.type === "character" ? anchorActor : actor;
     const anchorC = anchorCombatant || combatant;
+    if (!canWriteActionJournal(anchorA, combat, anchorC)) {
+      // A reaction on somebody else's turn: the journal of the character whose turn it is is not ours to write.
+      await _requestJournalFromGm(
+        JOURNAL_GM_ACTIONS.APPEND_LINE,
+        {
+          actorUuid: actor.uuid,
+          combatId: combat.id,
+          combatantId: combatant.id,
+          anchorActorUuid: anchorA.uuid,
+          anchorCombatantId: anchorC.id,
+          label,
+          description,
+          apCost,
+          distance,
+          units,
+          kind,
+          isReaction,
+          actorName,
+          icon,
+          undoable,
+          attack,
+          transactionId,
+          combatEventId,
+          movementId,
+          tokenUuid,
+        },
+        label
+      );
+      return;
+    }
     const round = await _logicalRound(combat);
     const title =
       (game.i18n?.format?.("SPACEHOLDER.ActionChatJournal.Title", { round: String(round) }) ||
@@ -940,7 +1095,8 @@ export async function appendCombatActionJournalLine({
       apCost: Math.max(0, Number(apCost) || 0),
       distance: Math.max(0, Number(distance) || 0),
       units: String(units || ""),
-      kind: kind === "move" ? "move" : kind === "system" ? "system" : "action",
+      kind: kind === "move" ? "move" : kind === "system" ? "system" : kind === "attack" ? "attack" : "action",
+      ...(kind === "attack" ? { attack } : {}),
       undone: false,
       undoable: undoable !== false,
       isReaction: !!isReaction,
@@ -969,7 +1125,7 @@ export async function appendCombatActionJournalLine({
     } else if (newLine.kind === "move") {
       _appendOrMergeMainMove(lines, newLine);
     } else {
-      if (newLine.kind === "action") _sealLastMoveGroup(lines);
+      if (newLine.kind === "action" || newLine.kind === "attack") _sealLastMoveGroup(lines);
       lines.push(newLine);
     }
 
@@ -986,23 +1142,96 @@ export async function appendCombatActionJournalLine({
   }
 }
 
+async function _resolveActorByUuid(uuid) {
+  const u = String(uuid || "").trim();
+  if (!u) return null;
+  try {
+    const doc = await fromUuid(u);
+    if (doc?.documentName === "Actor") return doc;
+    return doc?.actor ?? null;
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
+ * GM side of `journal.appendLine`: write the line a player could not write (see `JOURNAL_GM_ACTIONS`).
+ * @param {object} payload the options of `appendCombatActionJournalLine`, documents as uuids / ids
+ * @returns {Promise<{ok: true}>}
+ */
+export async function applyJournalAppendLineAsGm(payload = {}) {
+  const actor = await _resolveActorByUuid(payload.actorUuid);
+  const combat = game.combats?.get?.(String(payload.combatId || "")) ?? null;
+  const combatant = combat?.combatants?.get?.(String(payload.combatantId || "")) ?? null;
+  if (!actor || !combat || !combatant) throw new Error("journal line: actor or combat not found");
+  const anchorActor = await _resolveActorByUuid(payload.anchorActorUuid);
+  const anchorCombatant = combat.combatants?.get?.(String(payload.anchorCombatantId || "")) ?? null;
+  const { actorUuid, combatId, combatantId, anchorActorUuid, anchorCombatantId, ...line } = payload;
+  await appendCombatActionJournalLine({ ...line, actor, combat, combatant, anchorActor, anchorCombatant });
+  return { ok: true };
+}
+
+/**
+ * GM side of `journal.replaceMessage`: re-post a journal message with new lines (the content is rebuilt here).
+ * @param {{messageId: string, journalFlags: object, anchorActorUuid?: (string|null)}} payload
+ * @returns {Promise<{messageId: (string|null)}>} id of the message that replaced it
+ */
+export async function applyJournalReplaceMessageAsGm({ messageId, journalFlags, anchorActorUuid = null } = {}) {
+  const message = game.messages?.get?.(String(messageId || ""));
+  if (!message) throw new Error("journal message not found");
+  const lines = Array.isArray(journalFlags?.lines) ? journalFlags.lines : [];
+  const round = Math.max(1, Number(journalFlags?.round) || 1);
+  const title =
+    game.i18n?.format?.("SPACEHOLDER.ActionChatJournal.Title", { round: String(round) }) || `Round ${round}`;
+  const fresh = await _replaceJournalMessageNow(message, {
+    content: buildActionJournalHtml(lines, round, title),
+    journalFlags: { ...journalFlags, schema: JOURNAL_SCHEMA, round, lines },
+    anchorActor: await _resolveActorByUuid(anchorActorUuid),
+  });
+  return { messageId: fresh?.id ?? null };
+}
+
+/** Actor uuids the lines of a journal refer to — who the GM may let write it (`journal.replaceMessage`). */
+export function collectJournalActorUuids(journalFlags) {
+  return _collectJournalActorUuids(journalFlags?.lines);
+}
+
+/** Show other content in a chat message on this client only (nothing is saved). */
+function _renderJournalContentLocally(messageId, content) {
+  const id = String(messageId || "").trim();
+  if (!id || typeof document === "undefined") return;
+  for (const row of document.querySelectorAll(".chat-message[data-message-id]")) {
+    if (String(row.getAttribute("data-message-id") || "").trim() !== id) continue;
+    const holder = row.querySelector(".message-content");
+    if (holder) holder.innerHTML = content;
+  }
+}
+
+/**
+ * Expand / collapse the segments of a move group. Saved in the message when this user may re-post it
+ * (everybody then sees it); otherwise only this client's view changes.
  * @param {ChatMessage} message
  * @param {string} groupId
+ * @param {boolean|null} [currentlyExpanded] state shown on the button (falls back to the saved one)
  */
-async function _toggleMoveGroupExpandedInMessage(message, groupId) {
+async function _toggleMoveGroupExpandedInMessage(message, groupId, currentlyExpanded = null) {
   if (!message?.id) return;
   const fj = message.flags?.[MODULE_NS]?.[FLAG_JOURNAL];
   const lines = Array.isArray(fj?.lines) ? _dup(fj.lines) : [];
   const idx = lines.findIndex((l) => l?.kind === "moveGroup" && String(l?.id) === String(groupId));
   if (idx < 0) return;
   const g = lines[idx];
-  lines[idx] = { ...g, groupUiExpanded: !g.groupUiExpanded };
+  const expandedNow = typeof currentlyExpanded === "boolean" ? currentlyExpanded : !!g.groupUiExpanded;
+  lines[idx] = { ...g, groupUiExpanded: !expandedNow };
   const round = Math.max(1, Number(fj?.round) || 1);
   const title =
     game.i18n?.format?.("SPACEHOLDER.ActionChatJournal.Title", { round: String(round) }) ||
     `Round ${round}`;
   const content = buildActionJournalHtml(lines, round, title);
+  if (!(await _canReplaceJournalMessage(message, null, lines))) {
+    _renderJournalContentLocally(message.id, content);
+    return;
+  }
   const sh = { ...(message.flags?.[MODULE_NS] || {}) };
   sh[FLAG_JOURNAL] = { ...fj, schema: JOURNAL_SCHEMA, round, lines };
   await _replaceJournalMessage(message, {
@@ -1154,6 +1383,22 @@ function _applyJournalToggleClick(btn) {
   btn.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
 }
 
+/** Open / close a panel of an attack row (DOM only): the button names it by `data-target`. */
+function _applyJournalPanelToggle(btn) {
+  const root = btn.closest?.('[data-spaceholder-action-journal="1"]');
+  const targetId = String(btn.getAttribute("data-target") || "");
+  const panel = targetId ? _queryDescPanelByTargetId(root, targetId) : null;
+  if (!panel) return;
+  const expand = panel.getAttribute("data-collapsed") !== "0";
+  panel.setAttribute("data-collapsed", expand ? "0" : "1");
+  btn.setAttribute("aria-expanded", expand ? "true" : "false");
+  const icon = btn.querySelector?.("i.fa-chevron-right, i.fa-chevron-down");
+  if (icon) {
+    icon.classList.toggle("fa-chevron-right", !expand);
+    icon.classList.toggle("fa-chevron-down", expand);
+  }
+}
+
 async function _applyJournalUndoClick(btn, message) {
   const journalRoot = btn.closest?.('[data-spaceholder-action-journal="1"]');
   _removeCascadePreview(journalRoot);
@@ -1242,6 +1487,13 @@ function _installDelegatedJournalUiOnce() {
         _applyJournalToggleClick(toggle);
         return;
       }
+      const panelToggle = t.closest('[data-action="sh-journal-toggle-panel"]');
+      if (panelToggle?.closest?.('[data-spaceholder-action-journal="1"]')) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        _applyJournalPanelToggle(panelToggle);
+        return;
+      }
       const expand = t.closest('[data-action="sh-journal-toggle-move-group"]');
       if (expand?.closest?.('[data-spaceholder-action-journal="1"]')) {
         const message = _getChatMessageForJournalControl(expand);
@@ -1249,7 +1501,7 @@ function _installDelegatedJournalUiOnce() {
         ev.preventDefault();
         ev.stopPropagation();
         const gid = expand.getAttribute("data-group-id") || "";
-        void _toggleMoveGroupExpandedInMessage(message, gid);
+        void _toggleMoveGroupExpandedInMessage(message, gid, expand.getAttribute("aria-expanded") === "true");
         return;
       }
       const undo = t.closest('[data-action="sh-journal-undo"]');

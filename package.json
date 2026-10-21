@@ -5,14 +5,19 @@
   "scripts": {
     "build": "sass src/scss/spaceholder.scss css/spaceholder.css --style=expanded --no-source-map",
     "watch": "sass src/scss/spaceholder.scss css/spaceholder.css --style=expanded --source-map --watch",
-    "pack:sh-test-items": "node scripts/compile-sh-test-items.mjs --in-place",
-    "pack:sh-test-items:next": "node scripts/compile-sh-test-items.mjs",
+    "balance": "node tools/balance/server.mjs --open",
+    "test:balance": "node tools/balance/test/engine.test.mjs && node tools/balance/test/outcome.test.mjs && node tools/balance/test/store-api.test.mjs",
+    "pack:sh-test-items": "node scripts/compile-pack.mjs sh-test-items --in-place",
+    "pack:sh-test-items:next": "node scripts/compile-pack.mjs sh-test-items",
     "unpack:sh-test-items": "npx --yes @foundryvtt/foundryvtt-cli package unpack -n sh-test-items --inputDirectory ./packs --outputDirectory ./pack-src/sh-test-items -c",
     "generate:sh-catalog": "node scripts/generate-sh-catalog.mjs",
     "generate:sh-test-actors": "node scripts/generate-sh-test-actors.mjs",
-    "pack:sh-test-actors": "node scripts/compile-sh-test-actors.mjs --in-place",
-    "pack:sh-test-actors:next": "node scripts/compile-sh-test-actors.mjs",
-    "unpack:sh-test-actors": "npx --yes @foundryvtt/foundryvtt-cli package unpack -n sh-test-actors --inputDirectory ./packs --outputDirectory ./pack-src/sh-test-actors -c"
+    "pack:sh-test-actors": "node scripts/compile-pack.mjs sh-test-actors --in-place",
+    "pack:sh-test-actors:next": "node scripts/compile-pack.mjs sh-test-actors",
+    "unpack:sh-test-actors": "npx --yes @foundryvtt/foundryvtt-cli package unpack -n sh-test-actors --inputDirectory ./packs --outputDirectory ./pack-src/sh-test-actors -c",
+    "generate:sh-test-scenes": "node scripts/generate-sh-test-scenes.mjs",
+    "pack:sh-test-scenes": "node scripts/compile-pack.mjs sh-test-scenes --in-place",
+    "pack:sh-test-scenes:next": "node scripts/compile-pack.mjs sh-test-scenes"
   },
   "browserslist": [
     "last 3 versions"

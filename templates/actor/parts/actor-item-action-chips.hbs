@@ -1,0 +1,23 @@
+{{!-- Actions of one item as chips: run, favorite star, drag onto the hotbar.
+  Context: actions — the item's actions enriched for the sheet (`_buildItemActionsForPreview`).
+  Used by the inventory preview and the held-items toolbar. --}}
+<div class="sh-actions-grid">
+  {{#each actions as |a|}}
+    <div draggable="true" data-drag-action-id="{{a.id}}" data-drag-label="{{a.label}}" data-drag-img="{{a.dragImg}}" class="sh-action-chip sh-action-chip--fav-toggle {{#if a.isFavorite}}is-favorite{{/if}}">
+      <button type="button" class="sh-action-btn sh-action-chip__main" data-action="sh-action-run" data-action-id="{{a.id}}" title="{{a.label}}">
+        {{#if a.icon}}<i class="{{a.icon}}" aria-hidden="true"></i>{{/if}}
+        <span class="sh-action-btn__label">{{a.label}}</span>
+        {{#if a.apCost}}<span class="sh-action-btn__cost">{{a.apCost}}</span>{{/if}}
+      </button>
+      <button
+        type="button"
+        class="sh-action-chip__fav icon-btn"
+        data-action="sh-action-favorite-toggle"
+        data-action-id="{{a.id}}"
+        aria-pressed="{{#if a.isFavorite}}true{{else}}false{{/if}}"
+        title="{{#if a.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+        aria-label="{{#if a.isFavorite}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteRemove'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.FavoriteAdd'}}{{/if}}"
+      ><i class="{{#if a.isFavorite}}fa-solid fa-star{{else}}fa-regular fa-star{{/if}}" aria-hidden="true"></i></button>
+    </div>
+  {{/each}}
+</div>
