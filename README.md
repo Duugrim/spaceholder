@@ -1,1 +1,1 @@
-Boilerplate fork for personal system development
+Система Foundry VTT для персонального использования.
