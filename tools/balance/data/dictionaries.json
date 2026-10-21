@@ -1,0 +1,141 @@
+{
+ "version": 1,
+ "revision": 1,
+ "outcomes": [
+  {
+   "id": "death",
+   "label": "Смерть",
+   "severity": 6
+  },
+  {
+   "id": "destroyed",
+   "label": "Часть тела уничтожена",
+   "severity": 5
+  },
+  {
+   "id": "mortal",
+   "label": "Смертельная травма",
+   "severity": 4
+  },
+  {
+   "id": "severe",
+   "label": "Тяжёлая травма",
+   "severity": 3
+  },
+  {
+   "id": "light",
+   "label": "Лёгкая травма",
+   "severity": 2
+  },
+  {
+   "id": "graze",
+   "label": "Задел, урона нет",
+   "severity": 1
+  },
+  {
+   "id": "stopped",
+   "label": "Остановлена, эффекта нет",
+   "severity": 0
+  }
+ ],
+ "weaponTypes": [
+  {
+   "id": "pistols",
+   "label": "Пистолеты"
+  },
+  {
+   "id": "smg",
+   "label": "ПП"
+  },
+  {
+   "id": "rifles",
+   "label": "Винтовки"
+  },
+  {
+   "id": "sniper",
+   "label": "Снайперское"
+  },
+  {
+   "id": "shotguns",
+   "label": "Дробовики"
+  },
+  {
+   "id": "mg",
+   "label": "Пулемёты"
+  },
+  {
+   "id": "heavy",
+   "label": "Тяжёлое"
+  },
+  {
+   "id": "melee",
+   "label": "Ближний бой"
+  },
+  {
+   "id": "energy",
+   "label": "Энергетическое"
+  }
+ ],
+ "parts": [
+  {
+   "id": "head",
+   "label": "Голова",
+   "slot": "head",
+   "hp": null
+  },
+  {
+   "id": "neck",
+   "label": "Шея",
+   "slot": "neck",
+   "hp": null
+  },
+  {
+   "id": "upperTorso",
+   "label": "Верх торса",
+   "slot": "upperTorso",
+   "hp": null
+  },
+  {
+   "id": "lowerTorso",
+   "label": "Низ торса",
+   "slot": "lowerTorso",
+   "hp": null
+  },
+  {
+   "id": "shoulder",
+   "label": "Плечо",
+   "slot": "leftShoulder",
+   "hp": null
+  },
+  {
+   "id": "arm",
+   "label": "Рука",
+   "slot": "leftArm",
+   "hp": null
+  },
+  {
+   "id": "hand",
+   "label": "Кисть",
+   "slot": "leftHand",
+   "hp": null
+  },
+  {
+   "id": "thigh",
+   "label": "Бедро",
+   "slot": "leftThigh",
+   "hp": null
+  },
+  {
+   "id": "shin",
+   "label": "Голень",
+   "slot": "leftShin",
+   "hp": null
+  },
+  {
+   "id": "foot",
+   "label": "Ступня",
+   "slot": "leftFoot",
+   "hp": null
+  }
+ ]
+}

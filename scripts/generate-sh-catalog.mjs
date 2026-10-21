@@ -84,6 +84,8 @@ function dmg(type, damage, armorPen, extras = {}) {
     enabled: true,
     damageType: type,
     damage,
+    // Share of the attacker's STR added to damage, percent (melee). 0 = fixed damage.
+    effortShare: extras.effortShare ?? 0,
     armorPen,
     hardness: extras.hardness ?? 1,
     armorDamageFactor: 100,
@@ -91,6 +93,11 @@ function dmg(type, damage, armorPen, extras = {}) {
     speed: 0,
     payloadId: '',
   };
+}
+
+/** Melee damage entry: no flat damage, `share` percent of the wielder's STR (STR 100 → `share` damage). */
+function meleeDmg(type, share, armorPen, extras = {}) {
+  return dmg(type, 0, armorPen, { ...extras, effortShare: share });
 }
 
 function falloff(halfDistance) {
@@ -113,6 +120,17 @@ function apMag() {
   };
 }
 
+/** A bare launch tube: rounds are loaded one by one and unloaded; no magazine swap, no bolt, no mass empty. */
+function apTube() {
+  return {
+    loadOne: { enabled: true, value: 5 },
+    loadX: { enabled: false, value: 0 },
+    reload: { enabled: false, value: 0 },
+    bolt: { enabled: false, value: 0 },
+    unload: { enabled: true, value: 5 },
+    empty: { enabled: false, value: 0 },
+  };
+}
 function apCharge(reload = 20) {
   return {
     loadOne: { enabled: true, value: 5 },
@@ -305,6 +323,58 @@ const MATERIALS = [
     wear: { ballistic: 40, concussive: 25, piercing: 45, cutting: 50, thermal: 50, laser: 60, plasma: 80, electric: 5, sonic: 10, radiation: 0, chemical: 50 },
     conductance: {},
   },
+  // Wall materials (category `structure`): thickness is in millimetres, like armour (the scene's grid
+  // units turn a drawn wall's length into millimetres). A 200 mm concrete wall is thickness 200 and
+  // AR = hardness × 200². Values are the old centimetre ones rescaled: hardness / 100 (it multiplies
+  // t²), integrity and weight per thickness / 10.
+  {
+    slug: 'concrete', name: 'Бетон', category: 'structure', hardness: 0.005,
+    integrityPerThickness: 3, breachCapacityPerThickness: 0, weightPerThickness: 0.24,
+    img: 'armor.svg/metal-scales.svg',
+    resistance: { ballistic: 100, concussive: 100, piercing: 100, cutting: 100, thermal: 100, laser: 60, plasma: 60, electric: 100, sonic: 80, radiation: 40, chemical: 60 },
+    wear: { ballistic: 20, concussive: 40, piercing: 20, cutting: 10, thermal: 15, laser: 20, plasma: 60, electric: 0, sonic: 10, radiation: 0, chemical: 20 },
+    conductance: {},
+  },
+  {
+    slug: 'brick', name: 'Кирпич', category: 'structure', hardness: 0.0035,
+    integrityPerThickness: 1.5, breachCapacityPerThickness: 0, weightPerThickness: 0.18,
+    img: 'armor.svg/metal-scales.svg',
+    resistance: { ballistic: 100, concussive: 90, piercing: 100, cutting: 100, thermal: 100, laser: 60, plasma: 60, electric: 100, sonic: 70, radiation: 30, chemical: 50 },
+    wear: { ballistic: 30, concussive: 50, piercing: 30, cutting: 15, thermal: 15, laser: 20, plasma: 60, electric: 0, sonic: 15, radiation: 0, chemical: 20 },
+    conductance: {},
+  },
+  {
+    slug: 'wood', name: 'Дерево', category: 'structure', hardness: 0.003,
+    integrityPerThickness: 0.8, breachCapacityPerThickness: 0, weightPerThickness: 0.06,
+    img: 'armor.svg/leather-armor.svg',
+    resistance: { ballistic: 100, concussive: 80, piercing: 100, cutting: 80, thermal: 20, laser: 30, plasma: 30, electric: 100, sonic: 60, radiation: 10, chemical: 30 },
+    wear: { ballistic: 40, concussive: 40, piercing: 40, cutting: 60, thermal: 120, laser: 150, plasma: 200, electric: 0, sonic: 10, radiation: 0, chemical: 40 },
+    conductance: {},
+  },
+  {
+    slug: 'drywall', name: 'Гипсокартон', category: 'structure', hardness: 0.0015,
+    integrityPerThickness: 0.3, breachCapacityPerThickness: 0, weightPerThickness: 0.08,
+    img: 'armor.svg/leather-armor.svg',
+    resistance: { ballistic: 100, concussive: 70, piercing: 100, cutting: 80, thermal: 50, laser: 30, plasma: 30, electric: 100, sonic: 40, radiation: 5, chemical: 30 },
+    wear: { ballistic: 80, concussive: 80, piercing: 80, cutting: 100, thermal: 60, laser: 80, plasma: 150, electric: 0, sonic: 20, radiation: 0, chemical: 50 },
+    conductance: {},
+  },
+  {
+    slug: 'glass', name: 'Стекло', category: 'structure', hardness: 0.003,
+    integrityPerThickness: 0.2, breachCapacityPerThickness: 0, weightPerThickness: 0.25,
+    img: 'armor.svg/kevlar.svg',
+    resistance: { ballistic: 100, concussive: 60, piercing: 100, cutting: 60, thermal: 60, laser: 20, plasma: 40, electric: 100, sonic: 30, radiation: 5, chemical: 100 },
+    wear: { ballistic: 150, concussive: 200, piercing: 150, cutting: 100, thermal: 60, laser: 20, plasma: 120, electric: 0, sonic: 80, radiation: 0, chemical: 5 },
+    conductance: {},
+  },
+  {
+    slug: 'rock', name: 'Скальная порода', category: 'structure', hardness: 0.008,
+    integrityPerThickness: 10, breachCapacityPerThickness: 0, weightPerThickness: 0.27,
+    img: 'armor.svg/metal-scales.svg',
+    resistance: { ballistic: 100, concussive: 100, piercing: 100, cutting: 100, thermal: 100, laser: 60, plasma: 60, electric: 100, sonic: 80, radiation: 40, chemical: 60 },
+    wear: { ballistic: 10, concussive: 20, piercing: 10, cutting: 5, thermal: 5, laser: 10, plasma: 40, electric: 0, sonic: 5, radiation: 0, chemical: 10 },
+    conductance: {},
+  },
 ];
 
 // ---------- Calibers ----------
@@ -354,6 +424,7 @@ function materialFolder(category) {
     composite: 'Композиты',
     ablative: 'Аблятив',
     biological: 'Биологические',
+    structure: 'Конструкции',
   };
   return ensureFolder(['Материалы', map[category] || 'Прочее'], '#6b7280');
 }
@@ -849,6 +920,16 @@ function blockExternalMag(idSeed, caliber, capacity) {
   };
 }
 
+/** One round in a bare tube (rocket launcher): no chamber, no magazine, fired straight from the tube. */
+function blockTube(idSeed, caliber) {
+  return {
+    ...blockInternalMag(idSeed, caliber, 1),
+    chamberEnabled: false,
+    autoFeed: false,
+    apActions: apTube(),
+  };
+}
+
 function blockInternalMag(idSeed, caliber, capacity) {
   return {
     id: id(idSeed),
@@ -1082,7 +1163,7 @@ function emitWeapons() {
     desc: 'Прямая траектория + splash с ракеты (HEAT / HE).',
     lines: [lineBase('rocketLauncher:line', 'Пусковая', {
       aiming: 16, spread: 2, recoil: 8,
-      ammoBlocks: [blockInternalMag('rocketLauncher:block', 'rocket', 1)],
+      ammoBlocks: [blockTube('rocketLauncher:block', 'rocket')],
       modes: [mode('rocketLauncher:single', 'Одиночный', 'single', { fireDelayAp: 10 })],
     })],
   });
@@ -1165,12 +1246,12 @@ function emitWeapons() {
     desc: 'Колющий — короткая линия; режущий — swing ~90° с обрезом конуса.',
     lines: [
       lineBase('knife:poke', 'Колющий', {
-        limit: 1, aiming: 6, spread: 0, damage: [dmg('piercing', 90, 35)],
+        limit: 1, aiming: 6, spread: 0, damage: [meleeDmg('piercing', 90, 35)],
         modes: [mode('knife:poke:m', 'Укол', 'single', { fireDelayAp: 3 })],
       }),
       lineBase('knife:cut', 'Режущий', {
         trajectoryKind: 'complex', payloadId: 'melee_knife_cut',
-        aiming: 6, spread: 0, damage: [dmg('cutting', 55, 20)],
+        aiming: 6, spread: 0, damage: [meleeDmg('cutting', 55, 20)],
         modes: [mode('knife:cut:m', 'Рез', 'single', { fireDelayAp: 3 })],
       }),
     ],
@@ -1182,7 +1263,7 @@ function emitWeapons() {
     desc: 'Режущий удар (swing, stop on first).',
     lines: [lineBase('sword:cut', 'Рез', {
       trajectoryKind: 'complex', payloadId: 'melee_sword_cut',
-      aiming: 10, damage: [dmg('cutting', 90, 30)],
+      aiming: 10, damage: [meleeDmg('cutting', 90, 30)],
       modes: [mode('sword:cut:m', 'Удар', 'single', { fireDelayAp: 5 })],
     })],
   });
@@ -1193,12 +1274,12 @@ function emitWeapons() {
     desc: 'Тычок на дистанции / короткий рез (swing).',
     lines: [
       lineBase('spear:poke', 'Тычок', {
-        limit: 2, aiming: 12, damage: [dmg('piercing', 110, 40)],
+        limit: 2, aiming: 12, damage: [meleeDmg('piercing', 110, 40)],
         modes: [mode('spear:poke:m', 'Тычок', 'single', { fireDelayAp: 5 })],
       }),
       lineBase('spear:cut', 'Рез', {
         trajectoryKind: 'complex', payloadId: 'melee_spear_cut',
-        aiming: 10, damage: [dmg('cutting', 60, 25)],
+        aiming: 10, damage: [meleeDmg('cutting', 60, 25)],
         modes: [mode('spear:cut:m', 'Рез', 'single', { fireDelayAp: 5 })],
       }),
     ],

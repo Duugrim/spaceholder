@@ -2,5 +2,6 @@
   "obsidian-local-rest-api",
   "obsidian-style-settings",
   "heading-level-indent",
-  "obsidian-kanban"
+  "obsidian-kanban",
+  "table-checkbox-renderer"
 ]

@@ -56,6 +56,43 @@ export function evalChargeFormula(formula, current) {
 }
 
 /**
+ * Whether the pack gains charge with every shot (`+`): a heat sink, whose `current` is the heat it
+ * holds. A battery loses charge with every shot (`-`), and `current` is what is left.
+ *
+ * @param {object|null|undefined} charge normalized ammo.charge
+ * @returns {boolean}
+ */
+export function chargeGrowsWithShots(charge) {
+  return charge?.changePerShot?.sign === '+';
+}
+
+/**
+ * How much a charge pack can still give: the charge left in a battery, or the room a heat sink has
+ * before it overheats (`max - current`; a cold sink gives all of `max`).
+ *
+ * @param {object|null|undefined} charge normalized ammo.charge
+ * @returns {number}
+ */
+export function chargeSpendableAmount(charge) {
+  const current = Math.max(0, Number(charge?.current) || 0);
+  if (!chargeGrowsWithShots(charge)) return current;
+  const max = Math.max(0, Number(charge?.max) || 0);
+  return max > 0 ? Math.max(0, max - current) : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Whether a charge pack can feed a shot. A battery needs charge left; a heat sink needs room before it
+ * overheats — a cold one (`current` 0) is ready, not empty.
+ *
+ * @param {object|null|undefined} charge normalized ammo.charge
+ * @returns {boolean}
+ */
+export function chargeCanFeedShot(charge) {
+  if (!charge?.enabled) return true;
+  return chargeSpendableAmount(charge) > 0;
+}
+
+/**
  * Round magnitude per allowFractional rules (before sign).
  * @param {number} magnitude
  * @param {boolean} allowFractional

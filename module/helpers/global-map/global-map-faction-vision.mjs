@@ -152,6 +152,26 @@ function installHooks() {
     }
   });
 
+  // Re-evaluate when a token's faction changes (e.g. a POI changes hands).
+  // Foundry only re-initializes vision on token/control/status changes, not on actor system data.
+  Hooks.on('updateActor', (_actor, changes) => {
+    try {
+      if (!foundry.utils.hasProperty(changes ?? {}, 'system.gFaction')) return;
+      refreshFactionVision();
+    } catch (e) {
+      console.error('SpaceHolder | GlobalMapFactionVision: updateActor hook failed', e);
+    }
+  });
+
+  Hooks.on('updateToken', (_tokenDoc, changes) => {
+    try {
+      if (!foundry.utils.hasProperty(changes ?? {}, 'delta.system.gFaction')) return;
+      refreshFactionVision();
+    } catch (e) {
+      console.error('SpaceHolder | GlobalMapFactionVision: updateToken hook failed', e);
+    }
+  });
+
   // Re-evaluate when the current user's factions change.
   Hooks.on('updateUser', (user, changes) => {
     try {

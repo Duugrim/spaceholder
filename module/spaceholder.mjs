@@ -24,6 +24,7 @@ import {
   migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke,
   migrateIconLibraryGeneratedSvgsInsetBackgroundStroke,
 } from './helpers/icon-library/icon-migrations.mjs';
+import { registerAbilityScaleMigrationSetting, migrateAbilityScale } from './helpers/ability-scale-migration.mjs';
 import { pickIcon } from './helpers/icon-picker/icon-picker.mjs';
 import { applyIconPathToActorOrToken, pickAndApplyIconToActorOrToken, promptPickAndApplyIconToActorOrToken } from './helpers/icon-picker/icon-apply.mjs';
 // User -> Factions mapping (used by timeline and other faction-aware features)
@@ -60,6 +61,8 @@ import { GlobalMapRenderer } from './helpers/global-map/global-map-renderer.mjs'
 import { GlobalMapTools } from './helpers/global-map/global-map-tools.mjs';
 import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
 import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
+import { installWallConfigHooks } from './helpers/walls/wall-config.mjs';
+import { registerShotTrailSettings } from './helpers/shot-trail.mjs';
 import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edge-ui.mjs';
 import { installGlobalMapFactionVision } from './helpers/global-map/global-map-faction-vision.mjs';
 import { createGlobalMapTerrain3D } from './helpers/global-map/terrain3d/terrain3d.mjs';
@@ -73,10 +76,13 @@ import { installAimingArcOverlayHooks } from './helpers/aiming-arc-overlay.mjs';
 // Actions system (MVP)
 import {
   ACTION_DRAG_TYPE,
+  ATTACK_DRAG_TYPE,
   collectActorActions,
   createActorActionMacro,
+  createItemAttackMacro,
   executeActorAction,
   runActorActionById,
+  runItemAttackByUuid,
 } from './helpers/actions/action-service.mjs';
 import {
   spendAp,
@@ -95,8 +101,11 @@ import {
 } from './helpers/actions/personal-time.mjs';
 import { registerChargePersonalTimeHooks } from './helpers/weapon/charge-personal-time.mjs';
 import { installActionChatJournalHooks } from './helpers/actions/action-chat-journal.mjs';
+import { installContainerSheetRefresh } from './helpers/item-container.mjs';
 import { installHackChatHooks } from './helpers/minigames/hack/hack-chat.mjs';
 import { installLockpickChatHooks } from './helpers/minigames/lockpick/lockpick-chat.mjs';
+import { installGmActions } from './helpers/gm-actions/index.mjs';
+import { installActorDeathSync } from './helpers/actor-death.mjs';
 import { MovementManager } from './helpers/actions/movement-manager.mjs';
 import { CombatSessionManager } from './helpers/combat/combat-session-manager.mjs';
 import { installTurnPickOverlay } from './helpers/combat/turn-pick-overlay.mjs';
@@ -120,11 +129,7 @@ import {
   getGroupsByType,
   getPartGroups,
 } from './helpers/anatomy-groups.mjs';
-import {
-  HIT_LUCK_SETTING_KEY,
-  HIT_LUCK_COMBINE_MULTIPLIER,
-  HIT_LUCK_COMBINE_PENALTY,
-} from './helpers/hit-luck.mjs';
+import { registerHitQualitySettings } from './helpers/hit-quality.mjs';
 import { coverageKey, getCoverageFace, parseCoverageKey } from './helpers/body-part-coverage.mjs';
 
 /* -------------------------------------------- */
@@ -137,6 +142,7 @@ Hooks.once('init', function () {
   // Register SpaceHolder settings and menus early
   registerIconLibrarySettings();
   registerIconLibraryMigrationSettings();
+  registerAbilityScaleMigrationSetting();
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
   registerTokenControlButtons();
@@ -146,19 +152,8 @@ Hooks.once('init', function () {
   registerTimelineV2Settings();
   registerItemPilesShSettings();
   registerTokenQuickHudSettings();
-  game.settings.register('spaceholder', HIT_LUCK_SETTING_KEY, {
-    name: 'SPACEHOLDER.Settings.HitLuckCombine.Name',
-    hint: 'SPACEHOLDER.Settings.HitLuckCombine.Hint',
-    scope: 'world',
-    config: true,
-    type: String,
-    choices: {
-      [HIT_LUCK_COMBINE_MULTIPLIER]: 'multiplier',
-      [HIT_LUCK_COMBINE_PENALTY]: 'penalty',
-    },
-    default: HIT_LUCK_COMBINE_MULTIPLIER,
-    restricted: true,
-  });
+  registerShotTrailSettings();
+  registerHitQualitySettings();
   installTokenPointerTabs();
   // Legacy world anatomy keys: used only for one-time migration into world folder files
   // World anatomies live in: worlds/<worldId>/spaceholder/anatomy/*.json (FilePicker upload/browse)
@@ -195,6 +190,8 @@ Hooks.once('init', function () {
     migrateIconLibraryGeneratedSvgsInsetBackgroundStroke: (opts = {}) => migrateIconLibraryGeneratedSvgsInsetBackgroundStroke(opts),
     getIconLibraryIndex: (opts = {}) => getIconLibraryIndex(opts),
     getIconLibraryCacheInfo: () => getIconLibraryCacheInfo(),
+    // Abilities moved to the 100 scale (`dex` → `agi`); runs once per world on ready, callable by hand
+    migrateAbilityScale: (opts = {}) => migrateAbilityScale(opts),
     // Helper functions for influence zones
     showInfluence: (debug = false) => game.spaceholder.influenceManager?.enable({ debug }),
     hideInfluence: () => game.spaceholder.influenceManager?.disable(),
@@ -208,6 +205,7 @@ Hooks.once('init', function () {
     collectActorActions: (actor, ctx = {}) => collectActorActions(actor, ctx),
     executeActorAction: (actor, action, ctx = {}) => executeActorAction(actor, action, ctx),
     runActorAction: (actorUuid, actionId) => runActorActionById(actorUuid, actionId),
+    runItemAttack: (itemUuid, opts = {}) => runItemAttackByUuid(itemUuid, opts),
     spendAp: (actor, cost, meta = {}) => spendAp(actor, cost, meta),
     undoTransaction: (opts = {}) => undoTransaction(opts),
     getStoredActionPoints: (actor) => getStoredActionPoints(actor),
@@ -298,6 +296,7 @@ Hooks.once('init', function () {
   });
   // Scene config hooks for global map flag
   installGlobalMapSceneConfigHooks();
+  installWallConfigHooks();
   // Edge UI (fixed panel) for global map scenes
   installGlobalMapEdgeUiHooks();
   // Global Map: vision sources by faction instead of OBSERVER
@@ -337,7 +336,7 @@ Hooks.once('init', function () {
    * @type {String}
    */
   CONFIG.Combat.initiative = {
-    formula: '1d20 + @abilities.dex.mod',
+    formula: '1d20 + @abilities.agi.mod',
     decimals: 2,
   };
 
@@ -944,6 +943,13 @@ Handlebars.registerHelper('eq', function (a, b) {
 /* -------------------------------------------- */
 
 Hooks.once('ready', async function () {
+  // One-time world migration (abilities ×10, dex → agi). GM only; must run before anything reads abilities.
+  try {
+    await migrateAbilityScale();
+  } catch (e) {
+    console.error('SpaceHolder | ability scale migration failed', e);
+  }
+
   try {
     registerChargePersonalTimeHooks();
   } catch (e) {
@@ -1049,6 +1055,10 @@ Hooks.once('ready', async function () {
       if (!bar?.locked) createActorActionMacro(data, slot);
       return false;
     }
+    if (data?.type === ATTACK_DRAG_TYPE) {
+      if (!bar?.locked) createItemAttackMacro(data, slot);
+      return false;
+    }
     return createItemMacro(data, slot);
   });
   // item-piles-sh: primary item drop-on-canvas path for SpaceHolder
@@ -1056,11 +1066,14 @@ Hooks.once('ready', async function () {
 
   installTransactionLedgerHooks();
   installActionChatJournalHooks();
+  installContainerSheetRefresh();
   installHackChatHooks();
   installLockpickChatHooks();
+  installGmActions();
+  installActorDeathSync();
   (async () => {
     for (const a of game.actors ?? []) {
-      if (a?.type !== "character") continue;
+      if (a?.type !== "character" || !a.isOwner) continue;
       try {
         await ensureCharacterApSynced(a);
       } catch (_) {
@@ -1091,6 +1104,12 @@ async function createItemMacro(data, slot) {
   }
   // If it is, retrieve it based on the uuid.
   const item = await Item.fromDropData(data);
+
+  // Weapons get an attack shortcut instead of a chat roll.
+  if (item?.canAttack) {
+    await createItemAttackMacro({ itemUuid: data.uuid }, slot);
+    return false;
+  }
 
   // Create the macro command using the uuid.
   const command = `game.spaceholder.rollItemMacro("${data.uuid}");`;

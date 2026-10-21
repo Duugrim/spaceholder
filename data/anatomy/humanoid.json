@@ -2,11 +2,13 @@
   "id": "humanoid",
   "name": "Humanoid",
   "description": "Human-like anatomy: head, neck, upper/lower torso (front/back faces), limbs. No separate back circle.",
-  "version": "3.0.0",
+  "version": "3.3.0",
+  "root": "head",
   "heightM": 1.75,
+  "speedMps": 3,
   "grid": {
     "width": 9,
-    "height": 10
+    "height": 9
   },
   "groups": [
     {
@@ -59,7 +61,7 @@
     "head": {
       "id": "head",
       "name": "Head",
-      "maxHp": 25,
+      "maxHp": 110,
       "x": 4,
       "y": 1,
       "tags": [
@@ -72,13 +74,22 @@
         {
           "kind": "adjacent",
           "target": "neck"
-        },
-        {
-          "kind": "parent",
-          "target": "neck"
         }
       ],
       "material": "bone",
+      "tissue": {
+        "depthFlat": 0.5,
+        "depthShare": 0.35,
+        "organDepth": 1,
+        "bluntToParent": 0.3,
+        "bleed": 6,
+        "shellThickness": 0.46,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 2,
+        "reserve": 0.5
+      },
       "faces": [
         "front"
       ],
@@ -89,28 +100,37 @@
           "name": "Eyes",
           "material": "skin",
           "occupancyPct": 8,
-          "statuses": []
+          "maxHp": 44,
+          "bleed": 1,
+          "tags": []
         },
         {
           "id": "ears",
           "name": "Ears",
           "material": "skin",
           "occupancyPct": 4,
-          "statuses": []
+          "maxHp": 53,
+          "bleed": 1,
+          "tags": []
         },
         {
           "id": "brain",
           "name": "Brain",
           "material": "skin",
-          "occupancyPct": 30,
-          "statuses": []
+          "occupancyPct": 50,
+          "maxHp": 44,
+          "bleed": 0,
+          "tags": [
+            "vital"
+          ],
+          "mortalShare": 0.1
         }
       ]
     },
     "neck": {
       "id": "neck",
       "name": "Neck",
-      "maxHp": 15,
+      "maxHp": 110,
       "x": 4,
       "y": 2,
       "tags": [
@@ -129,20 +149,41 @@
         },
         {
           "kind": "parent",
-          "target": "upperTorso"
+          "target": "head"
         }
       ],
       "material": "muscle",
+      "tissue": {
+        "depthFlat": 0.5,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 10,
+        "cavity": 0.5
+      },
+      "structure": {
+        "saturation": 2,
+        "reserve": 0.2
+      },
       "faces": [
         "front"
       ],
       "heightFrac": 0.88,
-      "inners": []
+      "inners": [
+        {
+          "id": "artery",
+          "name": "Carotid artery",
+          "material": "muscle",
+          "occupancyPct": 20,
+          "maxHp": 20,
+          "bleed": 80,
+          "tags": []
+        }
+      ]
     },
     "upperTorso": {
       "id": "upperTorso",
       "name": "Upper Torso",
-      "maxHp": 50,
+      "maxHp": 190,
       "x": 4,
       "y": 3,
       "tags": [
@@ -166,9 +207,24 @@
         {
           "kind": "adjacent",
           "target": "rightShoulder"
+        },
+        {
+          "kind": "parent",
+          "target": "neck"
         }
       ],
       "material": "muscle",
+      "tissue": {
+        "depthFlat": 3,
+        "depthShare": 0.85,
+        "organDepth": 4,
+        "bleed": 10,
+        "cavity": 0.3
+      },
+      "structure": {
+        "saturation": 2,
+        "reserve": 0.5
+      },
       "faces": [
         "front",
         "back"
@@ -180,21 +236,27 @@
           "name": "Heart",
           "material": "muscle",
           "occupancyPct": 15,
-          "statuses": []
+          "maxHp": 66,
+          "bleed": 40,
+          "tags": [
+            "vital"
+          ]
         },
         {
           "id": "lungs",
           "name": "Lungs",
           "material": "skin",
           "occupancyPct": 40,
-          "statuses": []
+          "maxHp": 66,
+          "bleed": 15,
+          "tags": []
         }
       ]
     },
     "lowerTorso": {
       "id": "lowerTorso",
       "name": "Lower Torso",
-      "maxHp": 45,
+      "maxHp": 165,
       "x": 4,
       "y": 4,
       "tags": [
@@ -220,6 +282,17 @@
         }
       ],
       "material": "muscle",
+      "tissue": {
+        "depthFlat": 3,
+        "depthShare": 0.8,
+        "organDepth": 4,
+        "bleed": 10,
+        "cavity": 0.3
+      },
+      "structure": {
+        "saturation": 2,
+        "reserve": 0.5
+      },
       "faces": [
         "front",
         "back"
@@ -230,15 +303,26 @@
           "id": "guts",
           "name": "Guts",
           "material": "skin",
-          "occupancyPct": 50,
-          "statuses": []
+          "occupancyPct": 40,
+          "maxHp": 88,
+          "bleed": 10,
+          "tags": []
+        },
+        {
+          "id": "liver",
+          "name": "Liver",
+          "material": "muscle",
+          "occupancyPct": 15,
+          "maxHp": 88,
+          "bleed": 40,
+          "tags": []
         }
       ]
     },
     "leftShoulder": {
       "id": "leftShoulder",
       "name": "Left Shoulder",
-      "maxHp": 20,
+      "maxHp": 132,
       "x": 3,
       "y": 3,
       "tags": [
@@ -260,7 +344,18 @@
           "target": "upperTorso"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -270,7 +365,7 @@
     "rightShoulder": {
       "id": "rightShoulder",
       "name": "Right Shoulder",
-      "maxHp": 20,
+      "maxHp": 132,
       "x": 5,
       "y": 3,
       "tags": [
@@ -292,7 +387,18 @@
           "target": "upperTorso"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -302,7 +408,7 @@
     "leftArm": {
       "id": "leftArm",
       "name": "Left Arm",
-      "maxHp": 30,
+      "maxHp": 157,
       "x": 2,
       "y": 3,
       "tags": [
@@ -325,7 +431,18 @@
           "target": "leftShoulder"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -335,7 +452,7 @@
     "rightArm": {
       "id": "rightArm",
       "name": "Right Arm",
-      "maxHp": 30,
+      "maxHp": 157,
       "x": 6,
       "y": 3,
       "tags": [
@@ -358,7 +475,18 @@
           "target": "rightShoulder"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -368,7 +496,7 @@
     "leftHand": {
       "id": "leftHand",
       "name": "Left Hand",
-      "maxHp": 15,
+      "maxHp": 88,
       "x": 1,
       "y": 3,
       "tags": [
@@ -388,7 +516,18 @@
           "target": "leftArm"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 0.5,
+        "depthShare": 0.2,
+        "organDepth": 1,
+        "bleed": 3,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -398,7 +537,7 @@
     "rightHand": {
       "id": "rightHand",
       "name": "Right Hand",
-      "maxHp": 15,
+      "maxHp": 88,
       "x": 7,
       "y": 3,
       "tags": [
@@ -418,7 +557,18 @@
           "target": "rightArm"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 0.5,
+        "depthShare": 0.2,
+        "organDepth": 1,
+        "bleed": 3,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -428,9 +578,9 @@
     "leftThigh": {
       "id": "leftThigh",
       "name": "Left Thigh",
-      "maxHp": 35,
+      "maxHp": 180,
       "x": 3,
-      "y": 6,
+      "y": 5,
       "tags": [
         "limb",
         "left_side",
@@ -451,19 +601,40 @@
           "target": "lowerTorso"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1.5,
+        "depthShare": 0.35,
+        "organDepth": 1,
+        "bleed": 6,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
       "heightFrac": 0.4,
-      "inners": []
+      "inners": [
+        {
+          "id": "artery",
+          "name": "Femoral artery",
+          "material": "muscle",
+          "occupancyPct": 12,
+          "maxHp": 20,
+          "bleed": 80,
+          "tags": []
+        }
+      ]
     },
     "rightThigh": {
       "id": "rightThigh",
       "name": "Right Thigh",
-      "maxHp": 35,
+      "maxHp": 180,
       "x": 5,
-      "y": 6,
+      "y": 5,
       "tags": [
         "limb",
         "right_side",
@@ -484,19 +655,40 @@
           "target": "lowerTorso"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1.5,
+        "depthShare": 0.35,
+        "organDepth": 1,
+        "bleed": 6,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
       "heightFrac": 0.4,
-      "inners": []
+      "inners": [
+        {
+          "id": "artery",
+          "name": "Femoral artery",
+          "material": "muscle",
+          "occupancyPct": 12,
+          "maxHp": 20,
+          "bleed": 80,
+          "tags": []
+        }
+      ]
     },
     "leftShin": {
       "id": "leftShin",
       "name": "Left Shin",
-      "maxHp": 28,
+      "maxHp": 132,
       "x": 3,
-      "y": 7,
+      "y": 6,
       "tags": [
         "limb",
         "left_side",
@@ -517,7 +709,18 @@
           "target": "leftThigh"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -527,9 +730,9 @@
     "rightShin": {
       "id": "rightShin",
       "name": "Right Shin",
-      "maxHp": 28,
+      "maxHp": 132,
       "x": 5,
-      "y": 7,
+      "y": 6,
       "tags": [
         "limb",
         "right_side",
@@ -550,7 +753,18 @@
           "target": "rightThigh"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 1,
+        "depthShare": 0.3,
+        "organDepth": 1,
+        "bleed": 5,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -560,9 +774,9 @@
     "leftFoot": {
       "id": "leftFoot",
       "name": "Left Foot",
-      "maxHp": 12,
+      "maxHp": 110,
       "x": 3,
-      "y": 8,
+      "y": 7,
       "tags": [
         "extremity",
         "left_side",
@@ -579,7 +793,18 @@
           "target": "leftShin"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 0.5,
+        "depthShare": 0.2,
+        "organDepth": 1,
+        "bleed": 3,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],
@@ -589,9 +814,9 @@
     "rightFoot": {
       "id": "rightFoot",
       "name": "Right Foot",
-      "maxHp": 12,
+      "maxHp": 110,
       "x": 5,
-      "y": 8,
+      "y": 7,
       "tags": [
         "extremity",
         "right_side",
@@ -608,7 +833,18 @@
           "target": "rightShin"
         }
       ],
-      "material": "skin",
+      "material": "muscle",
+      "tissue": {
+        "depthFlat": 0.5,
+        "depthShare": 0.2,
+        "organDepth": 1,
+        "bleed": 3,
+        "cavity": 1
+      },
+      "structure": {
+        "saturation": 3,
+        "reserve": 0.15
+      },
       "faces": [
         "front"
       ],

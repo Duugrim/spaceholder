@@ -7,6 +7,7 @@
           "type": null,
           "bodyParts": {},
           "groups": [],
+          "rootRef": "",
           "hitGroupOverride": ""
         },
         "health": {
@@ -27,6 +28,15 @@
       },
       "speed": 1,
       "heightM": 1.75,
+      "speedMps": 3,
+      "params": {
+        "gravity": 1,
+        "awarenessMult": 0.5,
+        "willMult": 1,
+        "turnStarts": 3
+      },
+      "hitboxScale": 100,
+      "hitResistanceMod": 0,
       "gFaction": "",
       "actions": [],
       "aimingArc": {
@@ -37,13 +47,13 @@
         "deviationBaseDeg": 1
       },
       "abilities": {
-        "end": { "value": 10 },
-        "str": { "value": 10 },
-        "dex": { "value": 10 },
-        "cor": { "value": 10 },
-        "per": { "value": 10 },
-        "int": { "value": 10 },
-        "luc": { "value": 10 }
+        "end": { "value": 100 },
+        "str": { "value": 100 },
+        "agi": { "value": 100 },
+        "cor": { "value": 100 },
+        "per": { "value": 100 },
+        "int": { "value": 100 },
+        "luc": { "value": 100 }
       },
       "skills": {
         "levels": {},
@@ -53,43 +63,44 @@
     "npc": {
       "templates": ["base"],
       "abilities": {
-        "end": { "value": 10 },
-        "str": { "value": 10 },
-        "dex": { "value": 10 },
-        "cor": { "value": 10 },
-        "per": { "value": 10 },
-        "int": { "value": 10 },
-        "luc": { "value": 10 }
+        "end": { "value": 100 },
+        "str": { "value": 100 },
+        "agi": { "value": 100 },
+        "cor": { "value": 100 },
+        "per": { "value": 100 },
+        "int": { "value": 100 },
+        "luc": { "value": 100 }
       },
       "cr": 0
     },
     "loot": {
       "templates": ["base"],
       "abilities": {
-        "end": { "value": 10 },
-        "str": { "value": 10 },
-        "dex": { "value": 10 },
-        "cor": { "value": 10 },
-        "per": { "value": 10 },
-        "int": { "value": 10 },
-        "luc": { "value": 10 }
+        "end": { "value": 100 },
+        "str": { "value": 100 },
+        "agi": { "value": 100 },
+        "cor": { "value": 100 },
+        "per": { "value": 100 },
+        "int": { "value": 100 },
+        "luc": { "value": 100 }
       },
       "isContainer": true,
       "isLocked": false,
       "keyId": "",
       "visibilityMode": "owner",
       "interactionDistance": 2,
-      "autoLoot": false
+      "autoLoot": false,
+      "deleteWhenEmpty": false
     },
     "globalobject": {
       "abilities": {
-        "end": { "value": 10 },
-        "str": { "value": 10 },
-        "dex": { "value": 10 },
-        "cor": { "value": 10 },
-        "per": { "value": 10 },
-        "int": { "value": 10 },
-        "luc": { "value": 10 }
+        "end": { "value": 100 },
+        "str": { "value": 100 },
+        "agi": { "value": 100 },
+        "cor": { "value": 100 },
+        "per": { "value": 100 },
+        "int": { "value": 100 },
+        "luc": { "value": 100 }
       },
       "gRange": 0,
       "gPower": 0,
@@ -102,13 +113,13 @@
     },
     "faction": {
       "abilities": {
-        "end": { "value": 10 },
-        "str": { "value": 10 },
-        "dex": { "value": 10 },
-        "cor": { "value": 10 },
-        "per": { "value": 10 },
-        "int": { "value": 10 },
-        "luc": { "value": 10 }
+        "end": { "value": 100 },
+        "str": { "value": 100 },
+        "agi": { "value": 100 },
+        "cor": { "value": 100 },
+        "per": { "value": 100 },
+        "int": { "value": 100 },
+        "luc": { "value": 100 }
       },
       "fLink": "",
       "fColor": "#666666",
@@ -264,6 +275,7 @@
         "radiation": 0,
         "chemical": 0
       },
+      "damping": {},
       "conductance": {},
       "selfInduction": {},
       "degradation": {}

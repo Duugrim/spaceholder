@@ -53,6 +53,11 @@
   </div>
   <div class="sh-character-header__nameRow">
     <h1 class="charname sh-character-header__name">{{actor.name}}</h1>
+    {{#if deathNote}}
+      <i class="fa-solid fa-skull sh-character-header__dead" data-tooltip="{{deathNote}}"></i>
+    {{else if dyingNote}}
+      <i class="fa-solid fa-heart-pulse sh-character-header__dying" data-tooltip="{{dyingNote}}"></i>
+    {{/if}}
     {{#if editable}}
       <button
         type="button"
@@ -64,14 +69,14 @@
     {{/if}}
   </div>
   {{#if actionPointsCurrent}}
-    <div
-      class="sh-character-header__ap"
-      data-tooltip="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}}: {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
-      aria-label="{{localize 'SPACEHOLDER.ActionsSystem.UI.CurrentAP'}} {{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}"
-    >
-      <span class="sh-character-header__ap-inner">
-        <span class="sh-character-header__ap-label">{{localize 'SPACEHOLDER.ActionsSystem.UI.APHeaderLabel'}}</span>
-        <span class="sh-character-header__ap-value">{{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}</span>
+    <div class="sh-character-header__ap {{#if actionPointsCurrent.isSpent}}is-spent{{/if}}">
+      <span
+        class="sh-character-header__ap-inner"
+        data-tooltip="{{actionPointsCurrent.tooltip}}"
+        aria-label="{{actionPointsCurrent.tooltip}}"
+      >
+        <span class="sh-character-header__ap-label">{{#if actionPointsCurrent.isSpent}}{{localize 'SPACEHOLDER.ActionsSystem.UI.APSpentHeaderLabel'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.UI.APHeaderLabel'}}{{/if}}</span>
+        <span class="sh-character-header__ap-value">{{#if actionPointsCurrent.isSpent}}{{actionPointsCurrent.value}}{{else}}{{actionPointsCurrent.value}} / {{actionPointsCurrent.max}}{{/if}}</span>
       </span>
     </div>
   {{/if}}

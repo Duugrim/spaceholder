@@ -338,27 +338,39 @@ export async function bakeGlobalMapToSceneBackground(globalMapRenderer, scene) {
       updatedAt: new Date().toISOString(),
     });
 
-    // Apply as scene background (Foundry v11+)
-    try {
-      await scene.update({
+    // Apply as scene background.
+    // Foundry v14+: backgrounds live on scene levels; Scene#background is a read-only shim and
+    // scene.update({'background.src'}) is silently pruned.
+    const firstLevel = scene.firstLevel ?? null;
+    if (typeof firstLevel?.update === 'function') {
+      await firstLevel.update({
         'background.src': response.path,
-        'background.scaleX': backgroundScale,
-        'background.scaleY': backgroundScale,
+        'textures.scaleX': backgroundScale,
+        'textures.scaleY': backgroundScale,
       });
-    } catch (e1) {
-      // Some Foundry versions prefer nested object updates
+    } else {
+      // Legacy cores (v11-v13)
       try {
-        console.warn('GlobalMapUI | Failed to set background.* paths, trying background object update:', e1);
         await scene.update({
-          background: {
-            src: response.path,
-            scaleX: backgroundScale,
-            scaleY: backgroundScale,
-          },
+          'background.src': response.path,
+          'background.scaleX': backgroundScale,
+          'background.scaleY': backgroundScale,
         });
-      } catch (e2) {
-        console.warn('GlobalMapUI | Failed to set background via background object, falling back to img:', e2);
-        await scene.update({ img: response.path });
+      } catch (e1) {
+        // Some Foundry versions prefer nested object updates
+        try {
+          console.warn('GlobalMapUI | Failed to set background.* paths, trying background object update:', e1);
+          await scene.update({
+            background: {
+              src: response.path,
+              scaleX: backgroundScale,
+              scaleY: backgroundScale,
+            },
+          });
+        } catch (e2) {
+          console.warn('GlobalMapUI | Failed to set background via background object, falling back to img:', e2);
+          await scene.update({ img: response.path });
+        }
       }
     }
 
@@ -432,7 +444,8 @@ export function registerGlobalMapUI(controls, spaceholder) {
         name: 'inspect-map',
         title: _t('SPACEHOLDER.GlobalMap.Controls.InspectMap'),
         icon: 'fas fa-eye',
-        onChange: (isActive) => {
+        // v13+ SceneControls call onChange(event, active)
+        onChange: (_event, isActive) => {
           if (isActive && spaceholder.globalMapRenderer?.currentGrid) {
             spaceholder.globalMapRenderer.show();
           }
@@ -445,7 +458,7 @@ export function registerGlobalMapUI(controls, spaceholder) {
         name: 'inspect-cell',
         title: _t('SPACEHOLDER.GlobalMap.Controls.InspectCell'),
         icon: 'fas fa-search',
-        onChange: (isActive) => {
+        onChange: (_event, isActive) => {
           if (isActive) {
             spaceholder.globalMapTools?.activateCellInspector();
           } else {

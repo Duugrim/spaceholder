@@ -44,6 +44,7 @@
         <th>{{localize 'SPACEHOLDER.ItemWeapon.DamageType'}}</th>
         <th>{{localize 'SPACEHOLDER.Materials.Sheet.ResistanceTable'}}</th>
         <th>{{localize 'SPACEHOLDER.Materials.Sheet.WearTable'}}</th>
+        <th title="{{localize 'SPACEHOLDER.Materials.Sheet.DampingHint'}}">{{localize 'SPACEHOLDER.Materials.Sheet.DampingTable'}}</th>
         <th>{{localize 'SPACEHOLDER.Materials.Sheet.DegradationTable'}}</th>
       </tr>
     </thead>
@@ -53,6 +54,7 @@
           <td title="{{localize row.descriptionKey}}">{{localize row.labelKey}}</td>
           <td><input type="number" step="any" min="0" name="system.resistance.{{row.id}}" value="{{row.resistance}}" data-dtype="Number"/></td>
           <td><input type="number" step="any" min="0" name="system.wear.{{row.id}}" value="{{row.wear}}" data-dtype="Number"/></td>
+          <td><input type="number" step="any" min="0" name="system.damping.{{row.id}}" value="{{row.damping}}" data-dtype="Number"/></td>
           <td>
             <select name="system.degradation.{{row.id}}">
               <option value="" {{#unless row.degradation}}selected{{/unless}}>—</option>

@@ -1,0 +1,22 @@
+{
+  "_id": "shc57d62d51e6620",
+  "name": "Герои",
+  "type": "Actor",
+  "folder": "shcf8ea1fb43c603",
+  "description": "",
+  "sorting": "m",
+  "sort": 1000,
+  "color": "#3fae5a",
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "14.360",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782902000000,
+    "modifiedTime": 1782902000000,
+    "lastModifiedBy": null
+  }
+}

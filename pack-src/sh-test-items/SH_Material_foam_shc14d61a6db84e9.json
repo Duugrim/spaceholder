@@ -46,7 +46,10 @@
       ]
     },
     "selfInduction": {},
-    "degradation": {}
+    "degradation": {},
+    "damping": {
+      "concussive": 0.03
+    }
   },
   "effects": [],
   "folder": "shce6f677d730eb8",

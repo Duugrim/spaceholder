@@ -54,6 +54,16 @@ $sh-character-card-trapeze-top-right-x: 84%;
       );
     }
 
+    .sh-character-header__dead {
+      color: #ff8a8a;
+      align-self: center;
+    }
+
+    .sh-character-header__dying {
+      color: #ffb070;
+      align-self: center;
+    }
+
     .sh-character-header__nameRow {
       position: absolute;
       z-index: 3;
@@ -323,10 +333,12 @@ $sh-character-card-trapeze-top-right-x: 84%;
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      pointer-events: auto;
+      // The strip spans the whole width under the name; only the counter itself takes the pointer (tooltip).
+      pointer-events: none;
     }
 
     .sh-character-header__ap-inner {
+      pointer-events: auto;
       display: inline-flex;
       align-items: baseline;
       gap: 8px;

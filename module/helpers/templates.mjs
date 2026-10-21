@@ -17,10 +17,11 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/actor/parts/actor-actions.hbs',
     'systems/spaceholder/templates/actor/parts/actor-action-dialog.hbs',
     'systems/spaceholder/templates/actor/parts/actor-held-items.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-item-action-chips.hbs',
     'systems/spaceholder/templates/actor/parts/actor-aiming-arc.hbs',
     'systems/spaceholder/templates/actor/parts/actor-abilities-dialog.hbs',
-    'systems/spaceholder/templates/actor/parts/actor-stats-derived-physical-resources.hbs',
-    'systems/spaceholder/templates/actor/parts/actor-stats-derived-coordination-mental.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-stats-derived-physical-body.hbs',
+    'systems/spaceholder/templates/actor/parts/actor-stats-derived-coordination-mental-resources.hbs',
     'systems/spaceholder/templates/actor/parts/actor-skills.hbs',
     'systems/spaceholder/templates/actor/parts/actor-skills-node.hbs',
     'systems/spaceholder/templates/actor/parts/actor-skills-extra.hbs',
@@ -55,5 +56,7 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/hud/hotbar-faction-ui.hbs',
     'systems/spaceholder/templates/hud/token-quick-hud.hbs',
     'systems/spaceholder/templates/global-map/terrain-look-from.hbs',
+    // GM actions
+    'systems/spaceholder/templates/gm-actions/queue-dialog.hbs',
   ]);
 };

@@ -1,6 +1,12 @@
 {{!-- Health Tab Content --}}
 <div class="health-container">
 
+  {{#if deathNote}}
+  <div class="health-death-banner"><i class="fa-solid fa-skull"></i> {{deathNote}}</div>
+  {{else if dyingNote}}
+  <div class="health-death-banner health-death-banner--dying"><i class="fa-solid fa-heart-pulse"></i> {{dyingNote}}</div>
+  {{/if}}
+
   {{!-- Верх: одна строка — название анатомии слева, кнопки справа --}}
   <div class="anatomy-management-container">
     <div class="anatomy-management-row">
@@ -25,6 +31,9 @@
       </button>
       <button type="button" class="anatomy-icon-btn anatomy-editor-grid-btn" title="Размер сетки анатомии">
         <i class="fas fa-th-large"></i>
+      </button>
+      <button type="button" class="anatomy-icon-btn anatomy-editor-species-btn" title="{{localize 'SPACEHOLDER.AnatomySpecies.Title'}}">
+        <i class="fas fa-ruler-vertical"></i>
       </button>
       <button type="button" class="anatomy-icon-btn anatomy-editor-edit-btn" title="Режим редактирования: перемещение, добавление и удаление частей">
         <i class="fas fa-edit"></i>
@@ -109,11 +118,19 @@
         {{#if hierarchicalBodyParts}}
         <div class="parts-tree">
 {{#each hierarchicalBodyParts as |part|}}
-          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}" data-part-id="{{part.id}}" role="button" tabindex="0">
+          <div class="body-part-line status-{{part.status}} {{#if part.isInjured}}injured{{else}}healthy{{/if}}" data-part-id="{{part.id}}" role="button" tabindex="0"{{#if part.lost}} title="{{part.lostTitle}}"{{/if}}>
             <span class="tree-structure">{{part.treePrefix}}</span><span class="part-name">{{part.name}}</span>
             <span class="part-spacer"></span>
             <span class="health-numbers">{{part.currentHp}}/{{part.maxHp}}</span>
           </div>
+          {{#each part.inners as |inner|}}
+          <div class="body-part-organ organ-status-{{inner.status}}" data-organ-id="{{inner.id}}">
+            <span class="tree-structure">  └ </span><span class="organ-name">{{inner.displayName}}</span>
+            <span class="part-spacer"></span>
+            <span class="organ-state">{{inner.statusLabel}}</span>
+            <span class="health-numbers">{{#if inner.effectiveMaxHp}}{{inner.currentHp}}/{{inner.effectiveMaxHp}}{{else}}—{{/if}}</span>
+          </div>
+          {{/each}}
           {{/each}}
         </div>
         {{else}}

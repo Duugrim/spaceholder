@@ -1,0 +1,95 @@
+<div class="stats-panel">
+  <div class="capacities-list">
+    <div class="sh-derived-groups">
+      {{#if system.derivedStats}}
+      <div class="spaceholder-derived-group">
+        <div class="spaceholder-derived-group__heading">{{localize 'SPACEHOLDER.Derived.Groups.Physical'}}</div>
+        <div class="spaceholder-derived-group__body">
+          <div class="spaceholder-derived-group__body-inner">
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.HealthBonus'}}">{{localize 'SPACEHOLDER.Derived.HealthBonus'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{numberFormat system.derivedStats.healthBonusPct decimals=0 sign=true}}%</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Load'}}">{{localize 'SPACEHOLDER.Derived.Load'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly{{#if loadSlowsDown}} sh-derived-readonly--warn{{/if}}">{{numberFormat system.derivedStats.loadKg decimals=1}} / {{numberFormat system.derivedStats.carryWeight decimals=0}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.CarryWeight'}}">{{localize 'SPACEHOLDER.Derived.CarryWeight'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{numberFormat system.derivedStats.carryWeight decimals=0}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.LiftWeight'}}">{{localize 'SPACEHOLDER.Derived.LiftWeight'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{numberFormat system.derivedStats.liftWeight decimals=0}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.JumpLongRun'}}">{{localize 'SPACEHOLDER.Derived.JumpLongRun'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly{{#if loadSlowsDown}} sh-derived-readonly--slowed{{/if}}">{{numberFormat system.derivedStats.jumpLongRun decimals=1}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.ObstacleHeights'}}">{{localize 'SPACEHOLDER.Derived.ObstacleHeights'}}</div>
+            <div class="capacity-value sh-derived-value sh-derived-cells">
+              <span class="ability-mod sh-derived-readonly">{{numberFormat system.derivedStats.heightRun decimals=2}}</span>
+              <span class="ability-mod sh-derived-readonly">{{numberFormat system.derivedStats.heightClimb decimals=2}}</span>
+              <span class="ability-mod sh-derived-readonly">{{numberFormat system.derivedStats.heightPull decimals=2}}</span>
+            </div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.CombatSpeed'}}">{{localize combatSpeedLabelKey}}</div>
+            <div class="capacity-value sh-derived-value">
+              <button type="button" class="sh-derived-toggle ability-mod sh-derived-readonly{{#if loadSlowsDown}} sh-derived-readonly--slowed{{/if}}" data-action="sh-speed-unit-toggle" data-tooltip="{{localize 'SPACEHOLDER.Derived.SpeedUnitToggle'}}">{{numberFormat combatSpeedDisplay decimals=speedDecimals}}</button>
+            </div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.SprintSpeed'}}">{{localize sprintSpeedLabelKey}}</div>
+            <div class="capacity-value sh-derived-value">
+              <button type="button" class="sh-derived-toggle ability-mod sh-derived-readonly{{#if loadSlowsDown}} sh-derived-readonly--slowed{{/if}}" data-action="sh-speed-unit-toggle" data-tooltip="{{localize 'SPACEHOLDER.Derived.SpeedUnitToggle'}}">{{numberFormat sprintSpeedDisplay decimals=speedDecimals}}</button>
+            </div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.TravelSpeed'}}">{{localize travelSpeedLabelKey}}</div>
+            <div class="capacity-value sh-derived-value">
+              <button type="button" class="sh-derived-toggle ability-mod sh-derived-readonly{{#if loadSlowsDown}} sh-derived-readonly--slowed{{/if}}" data-action="sh-speed-unit-toggle" data-tooltip="{{localize 'SPACEHOLDER.Derived.SpeedUnitToggle'}}">{{numberFormat travelSpeedDisplay decimals=speedDecimals}}</button>
+            </div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Hitbox'}}">{{localize 'SPACEHOLDER.Derived.Hitbox'}}</div>
+            <div class="capacity-value sh-derived-value">
+              <span class="ability-mod sh-derived-readonly">{{numberFormat hitboxScalePercent decimals=0}}%</span>
+              {{#if editable}}
+              <button type="button" class="icon-btn" data-action="sh-hitbox-edit" data-tooltip="{{localize 'SPACEHOLDER.Character.HitboxEditButton'}}" aria-label="{{localize 'SPACEHOLDER.Character.HitboxEditButton'}}"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></button>
+              {{/if}}
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spaceholder-derived-group">
+        <div class="spaceholder-derived-group__heading">{{localize 'SPACEHOLDER.Derived.Groups.Body'}}</div>
+        <div class="spaceholder-derived-group__body">
+          <div class="spaceholder-derived-group__body-inner">
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.BodyHeight'}}">{{localize 'SPACEHOLDER.Derived.BodyHeight'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{numberFormat system.heightM decimals=2}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.SpeciesSpeed'}}">{{localize 'SPACEHOLDER.Derived.SpeciesSpeed'}}</div>
+            <div class="capacity-value sh-derived-value"><span class="ability-mod sh-derived-readonly">{{numberFormat system.speedMps decimals=2}}</span></div>
+          </div>
+          <div class="capacity-line">
+            <div class="capacity-name" data-tooltip="{{localize 'SPACEHOLDER.Derived.Tooltip.Gravity'}}">{{localize 'SPACEHOLDER.Derived.Gravity'}}</div>
+            <div class="capacity-value sh-derived-value">
+              <span class="ability-mod sh-derived-readonly">{{numberFormat system.derivedStats.gravity decimals=2}}</span>
+              {{#if editable}}
+              <button type="button" class="icon-btn" data-action="sh-gravity-edit" data-tooltip="{{localize 'SPACEHOLDER.Character.GravityEditButton'}}" aria-label="{{localize 'SPACEHOLDER.Character.GravityEditButton'}}"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></button>
+              {{/if}}
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+</div>

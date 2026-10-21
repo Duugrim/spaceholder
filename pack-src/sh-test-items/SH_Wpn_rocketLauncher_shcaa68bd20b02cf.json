@@ -129,8 +129,8 @@
               "type": "internalMagazine",
               "capacity": 1,
               "loadAmount": 1,
-              "chamberEnabled": true,
-              "autoFeed": true,
+              "chamberEnabled": false,
+              "autoFeed": false,
               "caliber": "rocket",
               "connector": "",
               "search": {
@@ -146,24 +146,24 @@
                   "value": 5
                 },
                 "loadX": {
-                  "enabled": true,
-                  "value": 10
+                  "enabled": false,
+                  "value": 0
                 },
                 "reload": {
-                  "enabled": true,
-                  "value": 30
+                  "enabled": false,
+                  "value": 0
                 },
                 "bolt": {
-                  "enabled": true,
-                  "value": 5
+                  "enabled": false,
+                  "value": 0
                 },
                 "unload": {
                   "enabled": true,
                   "value": 5
                 },
                 "empty": {
-                  "enabled": true,
-                  "value": 10
+                  "enabled": false,
+                  "value": 0
                 }
               },
               "damage": [],

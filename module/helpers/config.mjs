@@ -60,7 +60,7 @@ SPACEHOLDER.injuryDescriptors = {
 SPACEHOLDER.abilities = {
   end: 'SPACEHOLDER.Ability.End.long',
   str: 'SPACEHOLDER.Ability.Str.long',
-  dex: 'SPACEHOLDER.Ability.Dex.long',
+  agi: 'SPACEHOLDER.Ability.Agi.long',
   cor: 'SPACEHOLDER.Ability.Cor.long',
   per: 'SPACEHOLDER.Ability.Per.long',
   int: 'SPACEHOLDER.Ability.Int.long',
@@ -79,6 +79,28 @@ SPACEHOLDER.movementApTimeSlice = 10;
  * @type {number}
  */
 SPACEHOLDER.movementMinDistancePerSlice = 0.25;
+
+/**
+ * Нагрузка: до «переносимого веса» штрафа нет, от него до «поднимаемого» скорость падает до ×0.5,
+ * выше — не нести (см. docs/code/reference/DERIVED_STATS.md). `enabled: false` отключает штраф.
+ */
+SPACEHOLDER.encumbrance = {
+  enabled: true,
+};
+
+/**
+ * Базовая цена (ОД) простых действий с предметом: взять в руки, убрать, надеть, снять, выбросить,
+ * показать. Стартовые значения — подстраиваются здесь. Реальная цена = база с поправкой на скорость
+ * действий (COR), см. `getEffectiveActionCost`. Тот же `hold` — цена шага «Взять в руки» в цепочке атаки.
+ */
+SPACEHOLDER.itemActionAp = {
+  hold: 10,
+  stow: 5,
+  equip: 20,
+  unequip: 10,
+  drop: 5,
+  show: 2,
+};
 
 /**
  * Конфигурация углов наводки персонажа и штрафов стандартного прицеливания.
@@ -102,7 +124,7 @@ SPACEHOLDER.aimingArc = {
  * shot but does not yet change damage / hit location.
  */
 SPACEHOLDER.aiming = {
-  accuracyRefScore: 10,
+  accuracyRefScore: 100,
   wanderDurationMs: 2000,
   turnRateDegPerSec: 180,
   turnRateMinDegPerSec: 30,
@@ -120,7 +142,7 @@ SPACEHOLDER.aiming = {
 SPACEHOLDER.abilityAbbreviations = {
   end: 'SPACEHOLDER.Ability.End.abbr',
   str: 'SPACEHOLDER.Ability.Str.abbr',
-  dex: 'SPACEHOLDER.Ability.Dex.abbr',
+  agi: 'SPACEHOLDER.Ability.Agi.abbr',
   cor: 'SPACEHOLDER.Ability.Cor.abbr',
   per: 'SPACEHOLDER.Ability.Per.abbr',
   int: 'SPACEHOLDER.Ability.Int.abbr',
@@ -135,14 +157,21 @@ SPACEHOLDER.characterModifierTargets = {
   abilities: [
     { id: 'abilities.end', path: 'abilities.end.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.End' },
     { id: 'abilities.str', path: 'abilities.str.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Str' },
-    { id: 'abilities.dex', path: 'abilities.dex.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Dex' },
+    { id: 'abilities.agi', path: 'abilities.agi.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Agi' },
     { id: 'abilities.cor', path: 'abilities.cor.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Cor' },
     { id: 'abilities.per', path: 'abilities.per.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Per' },
     { id: 'abilities.int', path: 'abilities.int.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Int' },
     { id: 'abilities.luc', path: 'abilities.luc.value', label: 'SPACEHOLDER.Modifiers.AbilitiesLong.Luc' }
   ],
   derived: [],
-  params: []
+  // Base values live in `system.params` (see DEFAULT_PARAMS in helpers/derived-stats.mjs);
+  // modifiers add to them before the derived stats are computed.
+  params: [
+    { id: 'params.gravity', path: 'params.gravity', label: 'SPACEHOLDER.Modifiers.ParamTargets.Gravity' },
+    { id: 'params.awarenessMult', path: 'params.awarenessMult', label: 'SPACEHOLDER.Modifiers.ParamTargets.AwarenessMult' },
+    { id: 'params.willMult', path: 'params.willMult', label: 'SPACEHOLDER.Modifiers.ParamTargets.WillMult' },
+    { id: 'params.turnStarts', path: 'params.turnStarts', label: 'SPACEHOLDER.Modifiers.ParamTargets.TurnStarts' }
+  ]
 };
 
 /**

@@ -10,6 +10,12 @@ import {
   deriveAdjacentLinksFromRelations,
   enforceSingleParentRelation,
   legacyLinksToAdjacentRelations,
+  childrenOf,
+  descendantsOf,
+  parentOf,
+  rerootParents,
+  resolveRootRef,
+  validatePartTree,
   ANATOMY_EXPOSURE_DIRECTIONS,
 } from './anatomy-relations.mjs';
 import { materialsManager } from './damage/materials-manager.mjs';
@@ -24,7 +30,13 @@ import {
   sanitizePartMaterial,
   sanitizeHeightFrac,
   sanitizeAnatomyGroups,
+  sanitizeHeightM,
+  sanitizeSpeedMps,
   stripDeprecatedPartFields,
+  DEFAULT_ANATOMY_HEIGHT_M,
+  DEFAULT_ANATOMY_SPEED_MPS,
+  INNER_TAG_VITAL,
+  isVitalInner,
 } from './anatomy-groups.mjs';
 
 const DEFAULT_CELL_SIZE = 42;
@@ -396,12 +408,19 @@ export class AnatomyEditor {
     const selectedLinks = selectedPart
       ? deriveAdjacentLinksFromRelations(this._getRelationsForPart(selectedPart))
       : [];
+    // The root, and what goes down together with the selected part (its `parent` subtree).
+    const rootRef = resolveRootRef(bodyParts, this.actor?.system?.anatomy?.rootRef);
+    const selectedSubtree = new Set(this.selectedPartId ? descendantsOf(bodyParts, this.selectedPartId) : []);
     for (const [partId, part] of Object.entries(partsById)) {
       const px = this._toPx(part.x, part.y, wrapW, wrapH, centerX, centerY, cellSize, circleRadius);
       const node = document.createElement("div");
       node.className = "anatomy-editor-part anatomy-editor-part-circle";
       if (this.selectedPartId === partId) node.classList.add("selected");
       else if (selectedLinks.includes(partId)) node.classList.add("anatomy-editor-part--linked-neighbor");
+      if (partId === rootRef) node.classList.add("anatomy-editor-part--root");
+      else if (selectedSubtree.has(partId)) node.classList.add("anatomy-editor-part--subtree");
+      const isLost = bodyParts[partId]?.lost === true;
+      if (isLost) node.classList.add("anatomy-editor-part--lost");
       const rawCategory = part.material ?? "";
       const canonCategory = normalizeMaterialCategory(rawCategory) || rawCategory;
       node.dataset.material = canonCategory || "none";
@@ -413,6 +432,7 @@ export class AnatomyEditor {
       node.style.width = `${circleRadius * 2}px`;
       node.style.height = `${circleRadius * 2}px`;
       node.title = this.linkMode ? `Связь: перетащите на другую часть (${part.name || partId})` : (part.name || partId);
+      if (isLost) node.title += ` — ${game.i18n.localize("SPACEHOLDER.Health.PartLost")}`;
       node.draggable = this.editMode && this.editable;
       if (this.linkMode) node.classList.add("anatomy-editor-part--link-mode");
       inner.appendChild(node);
@@ -614,9 +634,19 @@ export class AnatomyEditor {
     propsCol.className = "anatomy-editor-panel-center-props";
     const materialLabel = materialDisplayName(bodyPart.material) || sanitizePartMaterial(bodyPart.material);
     const facesLabel = sanitizeFaces(bodyPart.faces).join(", ");
+    const isRoot = partId === resolveRootRef(this.actor?.system?.health?.bodyParts, this.actor?.system?.anatomy?.rootRef);
+    const rootRow = isRoot
+      ? `<div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">${game.i18n.localize("SPACEHOLDER.AnatomyGroups.Root")}</span><span class="anatomy-editor-panel-value">✓</span></div>`
+      : "";
+    const lostVia = bodyPart.lostVia ? this.actor?.system?.health?.bodyParts?.[bodyPart.lostVia] : null;
+    const lostRow = bodyPart.lost
+      ? `<div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">${game.i18n.localize("SPACEHOLDER.Health.PartLost")}</span><span class="anatomy-editor-panel-value">${lostVia ? (lostVia.displayName || lostVia.name || bodyPart.lostVia) : "✓"}</span></div>`
+      : "";
     const propsBlock = document.createElement("div");
     propsBlock.className = "anatomy-editor-panel-props";
     propsBlock.innerHTML = `
+      ${rootRow}
+      ${lostRow}
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Max HP</span><span class="anatomy-editor-panel-value">${bodyPart.maxHp ?? 0}</span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Материал</span><span class="anatomy-editor-panel-value">${materialLabel}</span></div>
       <div class="anatomy-editor-panel-row"><span class="anatomy-editor-panel-label">Стороны</span><span class="anatomy-editor-panel-value">${facesLabel}</span></div>
@@ -653,7 +683,8 @@ export class AnatomyEditor {
   }
 
   _renderOrgansReadonly(container, bodyPart) {
-    const inners = innersFromPart(bodyPart);
+    // The part on the actor carries the derived organ state (HP, status); sanitizing would drop it.
+    const inners = Array.isArray(bodyPart.inners) && bodyPart.inners.length ? bodyPart.inners : innersFromPart(bodyPart);
     if (!inners.length) {
       const empty = document.createElement("p");
       empty.className = "anatomy-editor-panel-empty-hint";
@@ -666,7 +697,12 @@ export class AnatomyEditor {
     for (const o of inners) {
       const li = document.createElement("li");
       const pct = Number(o.occupancyPct) ? ` ${o.occupancyPct}%` : "";
-      li.textContent = `${o.name || o.id}${pct}`;
+      const hp = Number(o.effectiveMaxHp) > 0 ? ` · ${o.currentHp ?? o.effectiveMaxHp}/${o.effectiveMaxHp}` : "";
+      const state = o.status && o.status !== "ok"
+        ? ` · ${game.i18n.localize(`SPACEHOLDER.Health.OrganStatus.${o.status}`)}`
+        : "";
+      const vital = isVitalInner(o) ? ` · ${game.i18n.localize("SPACEHOLDER.Health.OrganVital")}` : "";
+      li.textContent = `${o.displayName || o.name || o.id}${pct}${hp}${vital}${state}`;
       list.appendChild(li);
     }
     container.appendChild(list);
@@ -993,7 +1029,11 @@ export class AnatomyEditor {
       applyFields(updated[partId]);
     }
     this._normalizeAllBodyPartRelations(updated);
-    await this.actor.update({ "system.health.bodyParts": updated });
+    const updateData = { "system.health.bodyParts": updated };
+    if (newId !== partId && this.actor.system?.anatomy?.rootRef === partId) {
+      updateData["system.anatomy.rootRef"] = newId;
+    }
+    await this.actor.update(updateData);
     this.render();
   }
 
@@ -1109,7 +1149,8 @@ export class AnatomyEditor {
         row.className = "anatomy-editor-panel-organ-row";
         const nameSpan = document.createElement("span");
         nameSpan.className = "anatomy-editor-panel-organ-name";
-        nameSpan.textContent = `${o.name || o.id} · ${o.occupancyPct || 0}% · ${o.material || ""}`;
+        const vitalLabel = isVitalInner(o) ? ` · ${game.i18n.localize("SPACEHOLDER.Health.OrganVital")}` : "";
+        nameSpan.textContent = `${o.name || o.id} · ${o.occupancyPct || 0}% · HP ${o.maxHp || 0} · ${o.material || ""}${vitalLabel}`;
         row.appendChild(nameSpan);
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
@@ -1287,7 +1328,9 @@ export class AnatomyEditor {
         <div class="form-group"><label>ID</label><input type="text" id="ao-slot" placeholder="например eye" style="width:100%;"/></div>
         <div class="form-group"><label>Название</label><input type="text" id="ao-name" placeholder="Глаз" style="width:100%;"/></div>
         <div class="form-group"><label>Доля %</label><input type="number" id="ao-pct" value="10" min="0" max="100" style="width:100%;"/></div>
+        <div class="form-group"><label>${game.i18n.localize("SPACEHOLDER.Health.OrganHp")}</label><input type="number" id="ao-hp" value="10" min="0" style="width:100%;"/></div>
         <div class="form-group"><label>Материал</label><select id="ao-mat" style="width:100%;">${matOpts}</select></div>
+        <div class="form-group"><label><input type="checkbox" id="ao-vital"/> ${game.i18n.localize("SPACEHOLDER.Health.OrganVital")}</label></div>
       </div>`;
     await foundry.applications.api.DialogV2.wait({
       window: { title: "Добавить орган / слот", icon: "fa-solid fa-sitemap" },
@@ -1304,12 +1347,14 @@ export class AnatomyEditor {
             const slotKey = (root.querySelector("#ao-slot")?.value ?? "").trim() || "organ";
             const name = (root.querySelector("#ao-name")?.value ?? "").trim() || slotKey;
             const occupancyPct = Math.max(0, Number(root.querySelector("#ao-pct")?.value) || 0);
+            const maxHp = Math.max(0, Number(root.querySelector("#ao-hp")?.value) || 0);
+            const vital = Boolean(root.querySelector("#ao-vital")?.checked);
             const material = sanitizePartMaterial(root.querySelector("#ao-mat")?.value);
             const bodyParts = foundry.utils.deepClone(this.actor?.system?.health?.bodyParts ?? {});
             const part = bodyParts[partId];
             if (!part) return;
             const inners = innersFromPart(part);
-            inners.push({ id: slotKey, name, occupancyPct, material, statuses: [] });
+            inners.push({ id: slotKey, name, occupancyPct, material, maxHp, tags: vital ? [INNER_TAG_VITAL] : [] });
             part.inners = sanitizeInners(inners);
             delete part.organs;
             await this.actor.update({ "system.health.bodyParts": bodyParts });
@@ -1324,6 +1369,10 @@ export class AnatomyEditor {
   async _deletePart(partId) {
     const bodyParts = foundry.utils.deepClone(this.actor.system.health.bodyParts);
     if (!bodyParts[partId]) return false;
+    if (partId === resolveRootRef(bodyParts, this.actor.system?.anatomy?.rootRef)) {
+      ui.notifications.warn(game.i18n.localize("SPACEHOLDER.AnatomyGroups.RootDeleteBlocked"));
+      return false;
+    }
     const name = bodyParts[partId].name || partId;
     let deleted = false;
     await foundry.applications.api.DialogV2.confirm({
@@ -1333,6 +1382,13 @@ export class AnatomyEditor {
         label: "Удалить",
         icon: "fa-solid fa-trash",
         callback: async () => {
+          // Whatever hung below the deleted part moves up to its parent, so the tree stays whole.
+          const grandParent = parentOf(bodyParts, partId);
+          for (const childId of childrenOf(bodyParts, partId)) {
+            const child = bodyParts[childId];
+            child.relations = (child.relations ?? []).filter((r) => r.kind !== "parent");
+            if (grandParent) child.relations.push({ kind: "parent", target: grandParent });
+          }
           delete bodyParts[partId];
           this._scrubRelationsToDeletedPart(bodyParts, partId);
           await this.actor.update({ "system.health.bodyParts": bodyParts });
@@ -1413,6 +1469,58 @@ export class AnatomyEditor {
     });
   }
 
+  /**
+   * Species parameters of the anatomy: body height (m) and the combat speed of the species (m/s, at AGI 100).
+   * They live with the anatomy (a preset carries them), not on the character sheet.
+   */
+  async openSpeciesDialog() {
+    if (!this.actor) return;
+    const L = (key) => game.i18n.localize(key);
+    const src = this.actor._source?.system ?? {};
+    const prep = this.actor.system ?? {};
+    const height = sanitizeHeightM(src.heightM ?? prep.heightM, DEFAULT_ANATOMY_HEIGHT_M);
+    const speed = sanitizeSpeedMps(src.speedMps ?? prep.speedMps, DEFAULT_ANATOMY_SPEED_MPS);
+    await foundry.applications.api.DialogV2.wait({
+      window: { title: L("SPACEHOLDER.AnatomySpecies.Title"), icon: "fa-solid fa-ruler-vertical" },
+      position: { width: 360 },
+      content: `
+        <div class="anatomy-species-dialog">
+          <div class="form-group">
+            <label for="sp-height">${L("SPACEHOLDER.Derived.BodyHeight")}</label>
+            <input id="sp-height" type="number" min="0.05" step="0.01" value="${height}"/>
+          </div>
+          <div class="form-group">
+            <label for="sp-speed">${L("SPACEHOLDER.Derived.SpeciesSpeed")}</label>
+            <input id="sp-speed" type="number" min="0.05" step="0.1" value="${speed}"/>
+          </div>
+          <p class="notes">${L("SPACEHOLDER.AnatomySpecies.Hint")}</p>
+        </div>`,
+      buttons: [
+        {
+          action: "save",
+          label: L("SPACEHOLDER.Actions.Apply"),
+          icon: "fa-solid fa-check",
+          default: true,
+          callback: async (_ev, button, dialog) => {
+            const form = button?.form ?? dialog?.element?.querySelector?.("form") ?? dialog?.element;
+            const read = (selector) => {
+              const raw = String(form?.querySelector?.(selector)?.value ?? "").trim();
+              return raw && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Number(raw) : null;
+            };
+            const updates = {};
+            const h = read("#sp-height");
+            const v = read("#sp-speed");
+            if (h !== null) updates["system.heightM"] = h;
+            if (v !== null) updates["system.speedMps"] = v;
+            if (Object.keys(updates).length) await this.actor.update(updates);
+            this.render();
+          }
+        },
+        { action: "cancel", label: L("SPACEHOLDER.Actions.Cancel"), icon: "fa-solid fa-times" }
+      ]
+    });
+  }
+
   async openGroupsDialog() {
     if (!this.actor) return;
     const bodyParts = this.actor.system?.health?.bodyParts ?? {};
@@ -1447,6 +1555,15 @@ export class AnatomyEditor {
       .concat(groups.map((g) => `<option value="${g.id}" ${g.id === override ? "selected" : ""}>${g.name}</option>`))
       .join("");
     const partHint = partOptions.map((p) => p.slot).join(", ");
+    const L = (key) => game.i18n.localize(key);
+    const rootRef = resolveRootRef(bodyParts, this.actor.system?.anatomy?.rootRef) ?? "";
+    const rootOpts = partOptions
+      .map((p) => `<option value="${p.slot}" ${p.slot === rootRef ? "selected" : ""}>${p.label}</option>`)
+      .join("");
+    const tree = validatePartTree(bodyParts, rootRef);
+    const treeWarning = tree.ok
+      ? ""
+      : `<p class="notes">⚠ ${L("SPACEHOLDER.AnatomyGroups.TreeBroken")}: ${tree.errors.map((e) => `${e.code}${e.part ? ` (${e.part})` : ""}`).join(", ")}</p>`;
     const content = `
       <div class="anatomy-groups-dialog">
         <p class="notes">${game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.Title") ?? "Groups"}</p>
@@ -1456,6 +1573,12 @@ export class AnatomyEditor {
           <label>${game.i18n?.localize?.("SPACEHOLDER.AnatomyGroups.Override") ?? "Override"}</label>
           <select id="ag-override">${overrideOpts}</select>
         </div>
+        <div class="form-group">
+          <label>${L("SPACEHOLDER.AnatomyGroups.Root")}</label>
+          <select id="ag-root">${rootOpts}</select>
+        </div>
+        <p class="notes">${L("SPACEHOLDER.AnatomyGroups.RootNote")}</p>
+        ${treeWarning}
         <p class="notes">${partHint}</p>
       </div>`;
     await foundry.applications.api.DialogV2.wait({
@@ -1499,13 +1622,28 @@ export class AnatomyEditor {
               });
             }
             const hitGroupOverride = String(root.querySelector("#ag-override")?.value ?? "").trim();
-            await this.actor.update({
+            const updateData = {
               "system.anatomy.groups": sanitizeAnatomyGroups(next, [
                 ...Object.keys(bodyParts),
                 ...Object.values(bodyParts).map((p) => String(p?.id ?? "")).filter(Boolean),
               ]),
               "system.anatomy.hitGroupOverride": hitGroupOverride,
-            });
+            };
+            // A new root turns the chain of parents around so the tree stays whole.
+            const newRoot = String(root.querySelector("#ag-root")?.value ?? "").trim();
+            if (newRoot && bodyParts[newRoot] && newRoot !== rootRef) {
+              const updated = foundry.utils.deepClone(bodyParts);
+              for (const [slot, parent] of Object.entries(rerootParents(bodyParts, newRoot))) {
+                const part = updated[slot];
+                if (!part) continue;
+                part.relations = (part.relations ?? []).filter((r) => r.kind !== "parent");
+                if (parent) part.relations.push({ kind: "parent", target: parent });
+              }
+              this._normalizeAllBodyPartRelations(updated);
+              updateData["system.health.bodyParts"] = updated;
+              updateData["system.anatomy.rootRef"] = newRoot;
+            }
+            await this.actor.update(updateData);
             this.render();
           }
         },
@@ -1529,6 +1667,8 @@ export class AnatomyEditor {
       name,
       grid: grid ? { width: grid.width, height: grid.height } : null,
       heightM: this.actor?.system?.heightM,
+      speedMps: this.actor?.system?.speedMps,
+      root: this.actor?.system?.anatomy?.rootRef,
       groups: this.actor?.system?.anatomy?.groups ?? [],
       bodyParts: foundry.utils.deepClone(bodyParts),
       links: this._buildLinksFromBodyParts(bodyParts)

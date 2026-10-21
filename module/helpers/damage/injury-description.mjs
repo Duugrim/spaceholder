@@ -12,7 +12,7 @@
  * @module helpers/damage/injury-description
  */
 
-import { resolveBodyPartDisplayName } from '../../anatomy-manager.mjs';
+import { resolveBodyPartDisplayName, resolveInnerDisplayName } from '../../anatomy-manager.mjs';
 import { getDamageType } from './damage-types.mjs';
 
 /**
@@ -208,6 +208,13 @@ export function describeInjury({ injury, part, material = 'biological', actor } 
   const segments = Array.isArray(out.segments) ? out.segments.filter(Boolean) : [];
   const tooltipSegments = Array.isArray(out.tooltipSegments) ? out.tooltipSegments.filter(Boolean) : [];
 
+  // The organ the hit also reached: right after the part ("... в Голова (мозг)").
+  const organSeg = _organSegment(part, injury);
+  if (organSeg) {
+    const at = segments.findIndex((s) => s.kind === 'bodyPart');
+    segments.splice(at >= 0 ? at + 1 : segments.length, 0, organSeg);
+  }
+
   if (injury.status === 'treated') {
     segments.unshift({
       kind: 'statusPrefix',
@@ -260,6 +267,16 @@ function _resolvePartName(part, injury) {
   const typeId = part?.id ?? injury?.partId;
   if (typeId) return resolveBodyPartDisplayName(typeId, part?.name);
   return injury?.partId ?? '';
+}
+
+function _organSegment(part, injury) {
+  const organs = Array.isArray(injury?.inners) ? injury.inners.filter((o) => o?.id) : [];
+  if (!organs.length) return null;
+  const names = organs.map((o) => {
+    const inner = (part?.inners ?? []).find((x) => x?.id === o.id);
+    return String(inner?.displayName || resolveInnerDisplayName(o.id, inner?.name)).toLowerCase();
+  });
+  return { kind: 'organ', text: `(${names.join(', ')})` };
 }
 
 function _capitalize(s) {

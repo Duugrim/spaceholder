@@ -16,7 +16,7 @@ tags:
 - Точка входа: `module/spaceholder.mjs` (подключается через `esmodules` в `system.json`).
 - UI слой: классы листов (Application V2 + Handlebars) в `module/sheets` и шаблоны в `templates/`.
 - Доменная логика: кастомные документы Actor/Item и система «анатомии» в `module/documents` и `module/anatomy-manager.mjs`.
-- Данные и локализация: `templates/`, `lang/`, `module/data/anatomy/*.json`.
+- Данные и локализация: `templates/`, `lang/`, `data/anatomy/*.json`.
 - Стили: SCSS в `src/scss`, сборка в `css/spaceholder.css` (Sass через `package.json` scripts).
 - Внешние ассеты/библиотеки: `assets/`, `lib/`.
 
@@ -100,7 +100,7 @@ tags:
   - Примечание: сборка SCSS не выполнялась в рамках данного документа.
 
 ## Данные и ресурсы
-- Анатомии (рантайм): `data/anatomy/*.json` + зеркало в `module/data/anatomy/` в репозитории; подробности — `docs/code/reference/ANATOMY_SYSTEM.md`.
+- Анатомии (рантайм): `data/anatomy/*.json`; подробности — `docs/code/reference/ANATOMY_SYSTEM.md`.
 - Компендии: `packs/` (пока пусто, только `.gitattributes`).
 - Медиа: `assets/anvil-impact.png`; background/thumbnail/media — используются в манифесте.
 - Внешняя библиотека: `lib/some-lib/*` (подключения в коде на момент написания не обнаружено).

@@ -126,8 +126,9 @@
             {
               "enabled": true,
               "damageType": "piercing",
-              "damage": 90,
-              "armorPen": 35,
+              "damage": 0,
+              "effortShare": 90,
+              "armorPen": 21,
               "hardness": 1,
               "armorDamageFactor": 100,
               "armorDamageReduction": 100,
@@ -202,7 +203,8 @@
             {
               "enabled": true,
               "damageType": "cutting",
-              "damage": 55,
+              "damage": 0,
+              "effortShare": 45,
               "armorPen": 20,
               "hardness": 1,
               "armorDamageFactor": 100,

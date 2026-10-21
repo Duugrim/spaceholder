@@ -8,7 +8,10 @@
       "type": "target",
       "id": "target",
       "name": "Target Dummy",
-      "bodyParts": {}
+      "bodyParts": {},
+      "groups": [],
+      "rootRef": "chest#1",
+      "hitGroupOverride": ""
     },
     "health": {
       "injuries": [],
@@ -67,25 +70,25 @@
     },
     "abilities": {
       "end": {
-        "value": 10
+        "value": 100
       },
       "str": {
-        "value": 10
+        "value": 100
       },
-      "dex": {
-        "value": 10
+      "agi": {
+        "value": 100
       },
       "cor": {
-        "value": 10
+        "value": 100
       },
       "per": {
-        "value": 10
+        "value": 100
       },
       "int": {
-        "value": 10
+        "value": 100
       },
       "luc": {
-        "value": 10
+        "value": 100
       }
     }
   },

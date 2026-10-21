@@ -1,0 +1,1251 @@
+{
+ "version": 1,
+ "revision": 277,
+ "groups": [
+  {
+   "id": "g.example-pistol-head",
+   "weaponType": "pistols",
+   "weapon": "Пистолет",
+   "ammo": "9×19",
+   "ammoItem": "ammo.9mm",
+   "weaponItem": "",
+   "part": "head",
+   "note": "Пример из диктовки: пистолетный патрон в голову чаще убивает, но не всегда — пуля может не дойти до мозга.",
+   "favorite": false
+  },
+  {
+   "id": "g.aimve7qitm1",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "pistols",
+   "weapon": "Пистолет",
+   "ammo": "9×19",
+   "ammoItem": "ammo.9mm",
+   "part": "upperTorso",
+   "note": "Якорь «сколько попаданий валит человека»: пистолет без брони и против жилетов."
+  },
+  {
+   "id": "g.aimve7qitm6",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "pistols",
+   "weapon": "Пистолет",
+   "ammo": "9×19",
+   "ammoItem": "ammo.9mm",
+   "part": "arm",
+   "note": "Конечности: в базе случаев их не было совсем."
+  },
+  {
+   "id": "g.aimve7qitm8",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "pistols",
+   "weapon": "Пистолет",
+   "ammo": "9×19",
+   "ammoItem": "ammo.9mm",
+   "part": "thigh",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitma",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "pistols",
+   "weapon": "Пистолет",
+   "ammo": "9×19",
+   "ammoItem": "ammo.9mm",
+   "part": "neck",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitmc",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "pistols",
+   "weapon": "Пистолет",
+   "ammo": "9×19",
+   "ammoItem": "ammo.9mm",
+   "part": "lowerTorso",
+   "note": ""
+  },
+  {
+   "id": "g.mvdtpx3lhcr2",
+   "weaponType": "rifles",
+   "weapon": "HK417",
+   "ammo": "7.62на51",
+   "ammoItem": "ammo.7.62x54r",
+   "weaponItem": "",
+   "part": "head",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.aimve7qitmk",
+   "weaponItem": "weapon.ar",
+   "favorite": false,
+   "weaponType": "rifles",
+   "weapon": "Штурмовая винтовка AR",
+   "ammo": "5.56×45",
+   "ammoItem": "ammo.5.56",
+   "part": "upperTorso",
+   "note": "Винтовка «в тупую» сильнее пистолета, но против пластин уже не всесильна."
+  },
+  {
+   "id": "g.aimve7qitmq",
+   "weaponItem": "weapon.ак",
+   "favorite": false,
+   "weaponType": "rifles",
+   "weapon": "Автомат АК",
+   "ammo": "7.62×39",
+   "ammoItem": "ammo.7.62x39",
+   "part": "upperTorso",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitms",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "rifles",
+   "weapon": "Винтовка",
+   "ammo": "7.62×54R",
+   "ammoItem": "ammo.7.62x54r",
+   "part": "arm",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitmu",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "rifles",
+   "weapon": "HK417",
+   "ammo": "7.62на51",
+   "ammoItem": "ammo.7.62x54r",
+   "part": "upperTorso",
+   "note": "Сквозное попадание: что достаётся цели за первой."
+  },
+  {
+   "id": "g.mvdtx013d19u",
+   "weaponType": "sniper",
+   "weapon": "Barret",
+   "ammo": ".50 BMG",
+   "ammoItem": "ammo.50bmg",
+   "weaponItem": "",
+   "part": "head",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.mvdu9d851laj",
+   "weaponType": "sniper",
+   "weapon": "Barret",
+   "ammo": ".50 BMG",
+   "ammoItem": "ammo.50bmg",
+   "weaponItem": "",
+   "part": "upperTorso",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.aimve7qitmy",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "sniper",
+   "weapon": "Barret",
+   "ammo": ".50 BMG",
+   "ammoItem": "ammo.50bmg",
+   "part": "arm",
+   "note": ""
+  },
+  {
+   "id": "g.mvdu8oir80pa",
+   "weaponType": "shotguns",
+   "weapon": "",
+   "ammo": "12к дробь",
+   "ammoItem": "ammo.12ga-buck",
+   "weaponItem": "",
+   "part": "upperTorso",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.mvduxv2h7kt7",
+   "weaponType": "shotguns",
+   "weapon": "",
+   "ammo": "12к пуля",
+   "ammoItem": "ammo.12ga-slug",
+   "weaponItem": "",
+   "part": "upperTorso",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.mvdv05a5ug2i",
+   "weaponType": "shotguns",
+   "weapon": "",
+   "ammo": "12к дробь",
+   "ammoItem": "ammo.12ga-buck",
+   "weaponItem": "",
+   "part": "head",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.aimve7qitm10",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "shotguns",
+   "weapon": "",
+   "ammo": "12к дробь",
+   "ammoItem": "ammo.12ga-buck",
+   "part": "head",
+   "note": ""
+  },
+  {
+   "id": "g.mvdv3bnsrcdv",
+   "weaponType": "heavy",
+   "weapon": "Автопушка",
+   "ammo": "не-фугасный",
+   "ammoItem": "ammo.autocannon-ap",
+   "weaponItem": "",
+   "part": "upperTorso",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.mvdv59xsvc94",
+   "weaponType": "heavy",
+   "weapon": "Автопушка",
+   "ammo": "фугасный",
+   "ammoItem": "ammo.autocannon-he",
+   "weaponItem": "",
+   "part": "upperTorso",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.aimve7qitm1a",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "heavy",
+   "weapon": "Автопушка",
+   "ammo": "не-фугасный",
+   "ammoItem": "ammo.autocannon-ap",
+   "part": "head",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitm1c",
+   "weaponItem": "",
+   "favorite": false,
+   "weaponType": "heavy",
+   "weapon": "Автопушка",
+   "ammo": "не-фугасный",
+   "ammoItem": "ammo.autocannon-ap",
+   "part": "arm",
+   "note": ""
+  },
+  {
+   "id": "g.mvdv6yocqsan",
+   "weaponType": "melee",
+   "weapon": "Нож",
+   "ammo": "",
+   "ammoItem": "",
+   "weaponItem": "weapon.нож",
+   "part": "upperTorso",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.mvdvcqshe8lg",
+   "weaponType": "melee",
+   "weapon": "Меч",
+   "ammo": "",
+   "ammoItem": "",
+   "weaponItem": "weapon.меч",
+   "part": "upperTorso",
+   "note": "",
+   "favorite": false
+  },
+  {
+   "id": "g.mvdvjzggpbv7",
+   "weaponType": "melee",
+   "weapon": "Булава",
+   "ammo": "",
+   "ammoItem": "",
+   "weaponItem": "weapon.булава",
+   "part": "head",
+   "note": "Булава наносит в основном дробящие повреждения - меньше кровотечения, больше сотрясения",
+   "favorite": false
+  },
+  {
+   "id": "g.aimve7qitm12",
+   "weaponItem": "weapon.fist",
+   "favorite": false,
+   "weaponType": "melee",
+   "weapon": "Кулак",
+   "ammo": "",
+   "ammoItem": "",
+   "part": "head",
+   "note": "Обычная сила (STR 100)."
+  },
+  {
+   "id": "g.aimve7qitm14",
+   "weaponItem": "weapon.булава",
+   "favorite": false,
+   "weaponType": "melee",
+   "weapon": "Булава",
+   "ammo": "",
+   "ammoItem": "",
+   "part": "upperTorso",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitm16",
+   "weaponItem": "weapon.меч",
+   "favorite": false,
+   "weaponType": "melee",
+   "weapon": "Меч",
+   "ammo": "",
+   "ammoItem": "",
+   "part": "arm",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitm18",
+   "weaponItem": "weapon.нож",
+   "favorite": false,
+   "weaponType": "melee",
+   "weapon": "Нож",
+   "ammo": "",
+   "ammoItem": "",
+   "part": "neck",
+   "note": ""
+  },
+  {
+   "id": "g.aimve7qitme",
+   "weaponItem": "weapon.mp5",
+   "favorite": false,
+   "weaponType": "smg",
+   "weapon": "ПП MP5",
+   "ammo": "9×19",
+   "ammoItem": "ammo.9mm",
+   "part": "upperTorso",
+   "note": "Ниша ПП: пистолетный патрон быстро бесполезен против брони."
+  },
+  {
+   "id": "g.aimve7qitmh",
+   "weaponItem": "weapon.p90",
+   "favorite": false,
+   "weaponType": "smg",
+   "weapon": "ПП P90",
+   "ammo": "5.7×28",
+   "ammoItem": "ammo.5.7",
+   "part": "upperTorso",
+   "note": "5.7 создан против мягкой брони: исключение из «ПП бесполезен против брони»."
+  }
+ ],
+ "rows": [
+  {
+   "id": "r.example-1",
+   "groupId": "g.example-pistol-head",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Прямое попадание пробивает голову и мозг насквозь, но рассматривая голову целиком - есть шанс что пуля не заденет мозг. Тогда будет сильно задета, например, челюсть."
+  },
+  {
+   "id": "r.mvdthrh5p3uu",
+   "groupId": "g.example-pistol-head",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.helm-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Пуля негарантированно пробивает каску, и если пробивает - то не выходит сзади. Если не пробивает, то ударный урон идёт дальше и может вывихнуть шею"
+  },
+  {
+   "id": "r.mvdtlhwub1fq",
+   "groupId": "g.example-pistol-head",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.helm-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "severe",
+   "best": null,
+   "note": "Вывих шеи остаётся, но пробития уже точно нет"
+  },
+  {
+   "id": "r.mvdtnbmchl6e",
+   "groupId": "g.example-pistol-head",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 100,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "На дистанции в 100 метров пуля уже не проходит голову насквозь, но ранение мозга всё ещё мало совместимо с жизнью"
+  },
+  {
+   "id": "r.mvdtpx3l5v7v",
+   "groupId": "g.mvdtpx3lhcr2",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": null,
+   "note": "Винтовочный патрон очень мощный, но остроносый: создаёт аккуратное выходное и выходное отверстие"
+  },
+  {
+   "id": "r.mvdtyf0ufs3x",
+   "groupId": "g.mvdtpx3lhcr2",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.helm-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": null,
+   "note": "То же самое, лёгкая каска не замечена"
+  },
+  {
+   "id": "r.mvdtyx03zq87",
+   "groupId": "g.mvdtpx3lhcr2",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.helm-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": null,
+   "note": "Всё ещё пробивает, может выйти сквозь голову, но не выходит из каски с обратной стороны"
+  },
+  {
+   "id": "r.mvdtzsq8vf8x",
+   "groupId": "g.mvdtpx3lhcr2",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.helm-heavy"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": "graze",
+   "note": "Тяжёлая каска предназначена для остановки как раз таких патронов, поэтому хотя каска сильно пострадала (дырка или пуля застрала в ней) - голова скорее цела, чем нет. Разумеется, при условии что есть какая-то поддержка шеи, чтобы её не сломало"
+  },
+  {
+   "id": "r.mvdu2a3lqg8q",
+   "groupId": "g.mvdtpx3lhcr2",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.helm-heavy"
+   },
+   "face": "front",
+   "distance": 1000,
+   "condition": "",
+   "worst": "graze",
+   "best": "stopped",
+   "note": "На излёте пули, предполагая защиту шеи от перелома, пуля мало что может сделать против тяжёлой каски"
+  },
+  {
+   "id": "r.mvdtx013ip8q",
+   "groupId": "g.mvdtx013d19u",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "destroyed",
+   "best": null,
+   "note": "Любая часть тела уничтожена, у пули слишком много энергии"
+  },
+  {
+   "id": "r.mvdu8oirgxd9",
+   "groupId": "g.mvdu8oir80pa",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 2,
+   "condition": "",
+   "worst": "severe",
+   "best": null,
+   "note": "Дробь рвёт плоть, но реально выжить"
+  },
+  {
+   "id": "r.mvdurtz0wch7",
+   "groupId": "g.mvdu8oir80pa",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "death",
+   "best": null,
+   "note": "В реальный упор (вплотную) дробовик очень страшен, так как калибр тот же, что и у 50 BMG (12мм), и выстрел в упор имеет чудовищные последствия"
+  },
+  {
+   "id": "r.mvduuktynh0g",
+   "groupId": "g.mvdu8oir80pa",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 2,
+   "condition": "",
+   "worst": "light",
+   "best": null,
+   "note": "Большинство дробинок застрянет в жилете, ударная сила всё ещё может нанести большие повреждения"
+  },
+  {
+   "id": "r.mvduvv79iuua",
+   "groupId": "g.mvdu8oir80pa",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 50,
+   "condition": "",
+   "worst": "graze",
+   "best": "stopped",
+   "note": "Даже если попадёт в незащищённую бронёй руку - максимум кожу поцарапает"
+  },
+  {
+   "id": "r.mvdu9d85s6s5",
+   "groupId": "g.mvdu9d851laj",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-heavy"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": null,
+   "note": "Пуля застревает в броне, ударный урон разрушает внутренние органы"
+  },
+  {
+   "id": "r.mvdufqkajspu",
+   "groupId": "g.mvdu9d851laj",
+   "armor": {
+    "kind": "layers",
+    "layers": [
+     {
+      "material": "ablative",
+      "thickness": 10
+     },
+     {
+      "material": "combat-composite",
+      "thickness": 10
+     },
+     {
+      "material": "foam",
+      "thickness": 50
+     }
+    ],
+    "label": "Футуристичная боевая броня"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": null,
+   "note": "Боевая броня останавливает пулю 50 BMG, и перераспределяет запулевое воздействие"
+  },
+  {
+   "id": "r.mvdunp7aeyvx",
+   "groupId": "g.mvdu9d851laj",
+   "armor": {
+    "kind": "layers",
+    "layers": [
+     {
+      "material": "tank-composite",
+      "thickness": 30
+     },
+     {
+      "material": "foam",
+      "thickness": 50
+     }
+    ],
+    "label": "Силовая броня"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "stopped",
+   "best": null,
+   "note": "Мощная и дорогая силовая броня создана из таких материалов, что может держать попадание 50 BMG"
+  },
+  {
+   "id": "r.mvduxv2ixguw",
+   "groupId": "g.mvduxv2h7kt7",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "death",
+   "best": null,
+   "note": "По тем же причинам что и у дроби"
+  },
+  {
+   "id": "r.mvduyg2y2ffb",
+   "groupId": "g.mvduxv2h7kt7",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 2,
+   "condition": "",
+   "worst": "mortal",
+   "best": null,
+   "note": "Пробивает и убивает, но не выходит"
+  },
+  {
+   "id": "r.mvdv05a5la28",
+   "groupId": "g.mvdv05a5ug2i",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "destroyed",
+   "best": null,
+   "note": "По причине того, что огромная энергия пули и не такое большое хп головы в сравнении с торсом"
+  },
+  {
+   "id": "r.mvdv3bnsxu5l",
+   "groupId": "g.mvdv3bnsrcdv",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-heavy"
+   },
+   "face": "front",
+   "distance": 10,
+   "condition": "",
+   "worst": "death",
+   "best": null,
+   "note": "Любое попадание из автопушки приводит к смерти, если только не используется футуристичная броня, способная рассеивать запулевое воздействие"
+  },
+  {
+   "id": "r.mvdv59xsldtw",
+   "groupId": "g.mvdv59xsvc94",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-heavy"
+   },
+   "face": "front",
+   "distance": 10,
+   "condition": "",
+   "worst": "severe",
+   "best": null,
+   "note": "Фугасный снаряд может быть остановлен бронёй, и уже его взрыв обычно приводит к тяжёлым травмам"
+  },
+  {
+   "id": "r.mvdv6yocnzt2",
+   "groupId": "g.mvdv6yocqsan",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "severe",
+   "best": "light",
+   "note": "Колотая рана от ножа может быть как лёгкой, так и тяжёлой"
+  },
+  {
+   "id": "r.mvdv8giinwvk",
+   "groupId": "g.mvdv6yocqsan",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "колющий удар",
+   "worst": "light",
+   "best": null,
+   "note": "Колющий удар пробивает кевлар",
+   "lineId": "shccd1f26092341b"
+  },
+  {
+   "id": "r.mvdv9t4otloe",
+   "groupId": "g.mvdv6yocqsan",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "режущий удар",
+   "worst": "graze",
+   "best": null,
+   "note": "Кевлар останавливает режущие удары ножом",
+   "lineId": "shc72958232cfa9c"
+  },
+  {
+   "id": "r.mvdvaoms5lxc",
+   "groupId": "g.mvdv6yocqsan",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": "stopped",
+   "note": "Сталь против обычного ножа (даже боевого) очень эффективна, но бронепластина в жилете не покрывает весь торс"
+  },
+  {
+   "id": "r.mvdvcqshqtu7",
+   "groupId": "g.mvdvcqshe8lg",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "колющий урон",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Укол мечом очень опасен",
+   "lineId": "shc6bb1b2009e967"
+  },
+  {
+   "id": "r.mvdve3mgvn30",
+   "groupId": "g.mvdvcqshe8lg",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "рубяший урон",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Меч эффективен и для рубки",
+   "lineId": "shc5a026f3d5607e"
+  },
+  {
+   "id": "r.mvdvesdq1ys5",
+   "groupId": "g.mvdvcqshe8lg",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "колющий урон",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Меч, прошедший кевлар, всё ещё очень опасен",
+   "lineId": "shc6bb1b2009e967"
+  },
+  {
+   "id": "r.mvdvgm1lft0m",
+   "groupId": "g.mvdvcqshe8lg",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "рубяший урон",
+   "worst": "light",
+   "best": null,
+   "note": "Кевлар неплохо останавливает рубящие удары",
+   "lineId": "shc5a026f3d5607e"
+  },
+  {
+   "id": "r.mvdvh7yysq30",
+   "groupId": "g.mvdvcqshe8lg",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "рубяший урон",
+   "worst": "light",
+   "best": null,
+   "note": "Удар остановлен, но энергия, переходящая в ударный урон, никуда не делась",
+   "lineId": "shc5a026f3d5607e"
+  },
+  {
+   "id": "r.mvdvinvpy6fe",
+   "groupId": "g.mvdvcqshe8lg",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "колющий урон",
+   "worst": "graze",
+   "best": null,
+   "note": "Колоть сталь очень тяжело",
+   "lineId": "shc6bb1b2009e967"
+  },
+  {
+   "id": "r.mvdvjzggeun0",
+   "groupId": "g.mvdvjzggpbv7",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "обычная сила",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Это удар тяжёлой железякой по голове",
+   "effort": 100
+  },
+  {
+   "id": "r.mvdvmxzx59sj",
+   "groupId": "g.mvdvjzggpbv7",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "неестественно высокая сила",
+   "worst": "destroyed",
+   "best": null,
+   "note": "Урон ближнего боя скейлится от силы, поэтому нечеловеческая сила позволяет крушить человеческие головы",
+   "effort": 300
+  },
+  {
+   "id": "r.aimve7qitm2",
+   "groupId": "g.aimve7qitm1",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Пуля остаётся в торсе и отдаёт ему почти всю энергию — тяжёлая рана. Если на пути сердце — смертельная; лёгкие — тяжёлая с сильным кровотечением."
+  },
+  {
+   "id": "r.aimve7qitm3",
+   "groupId": "g.aimve7qitm1",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": null,
+   "note": "Кевлар держит пистолетную пулю; под жилетом остаётся ушиб."
+  },
+  {
+   "id": "r.aimve7qitm4",
+   "groupId": "g.aimve7qitm1",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": "graze",
+   "note": "Стальная пластина держит; удар гасят сталь и кевлар. Мимо пластины — кевлар, тоже держит."
+  },
+  {
+   "id": "r.aimve7qitm5",
+   "groupId": "g.aimve7qitm1",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "3-е попадание в то же место",
+   "worst": "severe",
+   "best": "light",
+   "note": "Серия: кевлар изнашивается. Третья пуля в то же место — сильный ушиб или пробитие ослабленного жилета."
+  },
+  {
+   "id": "r.aimve7qitm7",
+   "groupId": "g.aimve7qitm6",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "severe",
+   "best": "light",
+   "note": "Сквозное ранение мышцы — лёгкая; задета кость — тяжёлая, рука не работает."
+  },
+  {
+   "id": "r.aimve7qitm9",
+   "groupId": "g.aimve7qitm8",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "light",
+   "note": "Бедренная артерия: задета — истекает кровью за минуты; нет — лёгкая или тяжёлая рана мышцы. Сейчас в анатомии нет крупных сосудов — это вопрос, нужны ли они."
+  },
+  {
+   "id": "r.aimve7qitmb",
+   "groupId": "g.aimve7qitma",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Шея: сонная артерия или позвоночник — смертельная; иначе тяжёлая рана с сильным кровотечением."
+  },
+  {
+   "id": "r.aimve7qitmd",
+   "groupId": "g.aimve7qitmc",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Живот: кишечник, печень — тяжёлая рана; без помощи умирает от кровотечения, но не сразу."
+  },
+  {
+   "id": "r.aimve7qitmf",
+   "groupId": "g.aimve7qitme",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Как пистолет, чуть сильнее за счёт ствола."
+  },
+  {
+   "id": "r.aimve7qitmg",
+   "groupId": "g.aimve7qitme",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": null,
+   "note": "Кевлар держит пистолетный патрон и из ПП."
+  },
+  {
+   "id": "r.aimve7qitmi",
+   "groupId": "g.aimve7qitmh",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Прошивает кевлар и идёт дальше как без жилета, чуть ослабленным."
+  },
+  {
+   "id": "r.aimve7qitmj",
+   "groupId": "g.aimve7qitmh",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": "graze",
+   "note": "Стальную пластину не берёт."
+  },
+  {
+   "id": "r.aimve7qitml",
+   "groupId": "g.aimve7qitmk",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Может пройти насквозь, но временная полость задевает органы почти всегда."
+  },
+  {
+   "id": "r.aimve7qitmm",
+   "groupId": "g.aimve7qitmk",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-light"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Кевлар винтовочную пулю не держит."
+  },
+  {
+   "id": "r.aimve7qitmn",
+   "groupId": "g.aimve7qitmk",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "severe",
+   "best": "light",
+   "note": "Пластина 3 мм держит 5.56, удар чувствительный (рёбра)."
+  },
+  {
+   "id": "r.aimve7qitmo",
+   "groupId": "g.aimve7qitmk",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-ceramic"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "light",
+   "best": null,
+   "note": "Керамика держит с запасом, удар гасится."
+  },
+  {
+   "id": "r.aimve7qitmp",
+   "groupId": "g.aimve7qitmk",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 300,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "На 300 м винтовка всё ещё смертельна."
+  },
+  {
+   "id": "r.aimve7qitmr",
+   "groupId": "g.aimve7qitmq",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "severe",
+   "best": "light",
+   "note": "Пластина держит, удар сильнее, чем у 5.56."
+  },
+  {
+   "id": "r.aimve7qitmt",
+   "groupId": "g.aimve7qitms",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "destroyed",
+   "best": "severe",
+   "note": "Проходит руку насквозь; если перебита кость — руку не спасти."
+  },
+  {
+   "id": "r.aimve7qitmv",
+   "groupId": "g.aimve7qitmu",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "severe",
+   "best": "light",
+   "note": "Пуля вышла из первого тела с остатком энергии и ранит второго, но слабее.",
+   "target": "behind"
+  },
+  {
+   "id": "r.aimve7qitmw",
+   "groupId": "g.mvdu9d851laj",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "death",
+   "best": null,
+   "note": "«Любая часть тела уничтожена» — торс тоже, это смерть."
+  },
+  {
+   "id": "r.aimve7qitmx",
+   "groupId": "g.mvdu9d851laj",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "После первого тела у .50 остаётся энергии на ещё одно смертельное ранение.",
+   "target": "behind"
+  },
+  {
+   "id": "r.aimve7qitmz",
+   "groupId": "g.aimve7qitmy",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "destroyed",
+   "best": null,
+   "note": "«Любая часть тела уничтожена» — рука тоже."
+  },
+  {
+   "id": "r.aimve7qitm11",
+   "groupId": "g.aimve7qitm10",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 10,
+   "condition": "",
+   "worst": "severe",
+   "best": "light",
+   "note": "На 10 м в голову попадают 1–3 дробины; череп их держит."
+  },
+  {
+   "id": "r.aimve7qitm13",
+   "groupId": "g.aimve7qitm12",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "",
+   "worst": "severe",
+   "best": "light",
+   "note": "Сломанная челюсть или нокаут — тяжёлая; обычно ушиб. Напрямую зависит от силы. Убить одним ударом нельзя."
+  },
+  {
+   "id": "r.aimve7qitm15",
+   "groupId": "g.aimve7qitm14",
+   "armor": {
+    "kind": "preset",
+    "presetId": "preset.vest-mid"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "обычная сила",
+   "worst": "severe",
+   "best": "light",
+   "note": "Пластина не режется и не пробивается, но дробящий удар проходит ушибом и переломом рёбер.",
+   "effort": 100
+  },
+  {
+   "id": "r.aimve7qitm17",
+   "groupId": "g.aimve7qitm16",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "рубящий удар",
+   "worst": "destroyed",
+   "best": "severe",
+   "note": "Рубящий удар может отсечь руку.",
+   "lineId": "shc5a026f3d5607e"
+  },
+  {
+   "id": "r.aimve7qitm19",
+   "groupId": "g.aimve7qitm18",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 0,
+   "condition": "режущий удар",
+   "worst": "mortal",
+   "best": "severe",
+   "note": "Перерезанное горло — смертельная; вскользь — тяжёлая.",
+   "lineId": "shc72958232cfa9c"
+  },
+  {
+   "id": "r.aimve7qitm1b",
+   "groupId": "g.aimve7qitm1a",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 10,
+   "condition": "",
+   "worst": "destroyed",
+   "best": null,
+   "note": "Снаряд автопушки уничтожает любую часть человека."
+  },
+  {
+   "id": "r.aimve7qitm1d",
+   "groupId": "g.aimve7qitm1c",
+   "armor": {
+    "kind": "none"
+   },
+   "face": "front",
+   "distance": 10,
+   "condition": "",
+   "worst": "destroyed",
+   "best": null,
+   "note": "То же для руки."
+  }
+ ]
+}

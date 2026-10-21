@@ -80,7 +80,7 @@ function _coerceDegradationMode(raw) {
  * Normalize a partial material payload into a fully populated material
  * object the damage resolver can consume directly. Missing per-type rows
  * fall back to:
- *  - `resistance` / `wear` → 0
+ *  - `resistance` / `wear` / `damping` → 0
  *  - `hardness` → scalar default `1` (legacy per-type objects fall back to
  *    their highest positive value)
  *  - `conductance` → the damage type's default conductance (usually empty)
@@ -89,6 +89,10 @@ function _coerceDegradationMode(raw) {
  *
  * `conductance[T]` and `selfInduction[T]` are lists of `{type, fraction}`;
  * each list's total fraction is clipped to `≤ 1` by {@link _coerceFractionList}.
+ *
+ * `damping[T]` (per thickness unit): how much the layer softens a hit of type `T` that another layer
+ * handed on (the blunt shock behind a stopped bullet): it leaves × `e^(−damping × thickness)`.
+ * Impact foam has it, a steel plate does not.
  *
  * @param {Object} src - raw material data (from an item's `system` payload
  *   or a test fixture).
@@ -102,12 +106,14 @@ export function normalizeMaterial(src) {
 
   const resistance = {};
   const wear = {};
+  const damping = {};
   const conductance = {};
   const selfInduction = {};
   const degradation = {};
 
   const srcResistance = (safe.resistance && typeof safe.resistance === 'object') ? safe.resistance : {};
   const srcWear = (safe.wear && typeof safe.wear === 'object') ? safe.wear : {};
+  const srcDamping = (safe.damping && typeof safe.damping === 'object') ? safe.damping : {};
   const srcConductance = (safe.conductance && typeof safe.conductance === 'object') ? safe.conductance : {};
   const srcSelfInduction = (safe.selfInduction && typeof safe.selfInduction === 'object') ? safe.selfInduction : {};
   const srcDegradation = (safe.degradation && typeof safe.degradation === 'object') ? safe.degradation : {};
@@ -118,6 +124,7 @@ export function normalizeMaterial(src) {
     const def = getDamageType(id);
     resistance[id] = Math.max(0, _coerceNumber(srcResistance[id], 0));
     wear[id] = Math.max(0, _coerceNumber(srcWear[id], 0));
+    damping[id] = Math.max(0, _coerceNumber(srcDamping[id], 0));
 
     if (Object.prototype.hasOwnProperty.call(srcConductance, id)) {
       conductance[id] = _coerceFractionList(srcConductance[id]);
@@ -149,6 +156,7 @@ export function normalizeMaterial(src) {
     weightPerThickness: Math.max(0, _coerceNumber(safe.weightPerThickness, 0)),
     resistance,
     wear,
+    damping,
     hardness,
     conductance,
     selfInduction,
@@ -167,7 +175,8 @@ export function normalizeMaterial(src) {
  *   integrity?: number,
  *   integrityMax?: number,
  *   breachLoss?: number,
- *   breachCapacity?: number
+ *   breachCapacity?: number,
+ *   coverage?: number
  * }} layer
  * @param {Object} materialData - normalized material data
  * @returns {Object} layer with all derived fields filled in
@@ -192,6 +201,9 @@ export function ensureLayerDefaults(layer, materialData) {
   if (layer && typeof layer === 'object' && layer.key !== undefined && layer.key !== null) {
     out.key = layer.key;
   }
+  // Coverage (percent): a plate with gaps covers less than 100; the body traversal rolls for it.
+  const coverage = Number(layer?.coverage);
+  if (Number.isFinite(coverage) && coverage < 100) out.coverage = Math.max(0, coverage);
   return out;
 }
 

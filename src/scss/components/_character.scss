@@ -261,6 +261,51 @@
 
     .sh-derived-readonly {
       min-width: 88px;
+
+      // Doubled selector: `.capacity-value .ability-mod` (white text) comes later in this file and would
+      // otherwise win over these state colours.
+      // Carried weight is above the penalty-free limit: orange.
+      &.sh-derived-readonly--warn {
+        color: var(--sh-orange);
+        border-color: var(--sh-orange);
+      }
+
+      // Lowered by the carried weight (speeds, jump): yellow, the lighter sibling of the orange load.
+      &.sh-derived-readonly--slowed {
+        color: var(--sh-warning);
+        border-color: color-mix(in srgb, var(--sh-warning) 60%, var(--sh-border));
+      }
+    }
+
+    // Several values in one row (obstacle heights): separate cells, side by side, never wrapping.
+    &.sh-derived-cells {
+      flex-wrap: nowrap;
+      gap: 4px;
+
+      .sh-derived-readonly {
+        min-width: 46px;
+      }
+    }
+
+    // A value pill that is also a button (m/s ↔ km/h toggle): exactly the look of a plain pill
+    // (Foundry's `button` would make it taller and larger), clickable.
+    .sh-derived-toggle {
+      box-sizing: border-box;
+      width: auto;
+      height: auto;
+      min-height: 0;
+      margin: 0;
+      padding: 2px 8px;
+      font: inherit;
+      font-family: $font-mono;
+      font-weight: 700;
+      line-height: inherit;
+      box-shadow: none;
+      cursor: pointer;
+
+      &:hover {
+        border-color: var(--sh-accent-strong);
+      }
     }
   }
 
@@ -367,7 +412,7 @@
       color: var(--sh-text-muted);
     }
 
-    // Rainbow: order matches template/config — end, str, dex, cor, per, int, luc
+    // Rainbow: order matches template/config — end, str, agi, cor, per, int, luc
     &--end > .sh-ability-block__chip {
       border-color: rgba(229, 115, 115, 0.85);
       background: rgba(229, 115, 115, 0.14);
@@ -386,12 +431,12 @@
       color: #ffcc80;
     }
 
-    &--dex > .sh-ability-block__chip {
+    &--agi > .sh-ability-block__chip {
       border-color: rgba(255, 238, 88, 0.9);
       background: rgba(255, 238, 88, 0.12);
       color: #fff9c4;
     }
-    &--dex > .sh-ability-block__name {
+    &--agi > .sh-ability-block__name {
       color: #fff59d;
     }
 
@@ -653,8 +698,42 @@
     color: var(--sh-text-muted);
   }
 
+  // One toolbar for the selected held item (its action chips plus attack / open), the cards below only select.
+  .sh-held-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0 0 8px;
+    padding: 6px;
+    border: 1px solid var(--sh-border);
+    border-radius: var(--sh-radius-md);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .sh-held-toolbar__tools {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .icon-btn {
+      flex: 0 0 auto;
+      box-sizing: border-box;
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+      min-height: 24px;
+      padding: 0;
+      line-height: 1;
+
+      i {
+        font-size: 12px;
+        line-height: 1;
+      }
+    }
+  }
+
   .sh-held-items-list {
-    margin-top: 4px;
+    margin-top: 6px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -662,9 +741,8 @@
 
   .sh-held-item-card {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
+    align-items: center;
+    gap: 6px;
     padding: 4px 5px 4px 8px;
     border: 1px solid var(--sh-border);
     border-radius: 0 var(--sh-radius-md) var(--sh-radius-md) 0;
@@ -677,16 +755,15 @@
       background: rgba(255, 255, 255, 0.06);
     }
 
+    &.is-selected {
+      border-color: rgba(143, 185, 143, 0.9);
+      background: rgba(74, 110, 74, 0.16);
+      box-shadow: 0 0 0 1px rgba(74, 110, 74, 0.35), 0 0 10px rgba(74, 110, 74, 0.14);
+    }
+
     &:focus-visible {
       @include sh-focus-ring;
     }
-  }
-
-  .sh-held-item-card__header {
-    min-width: 0;
-    display: flex;
-    align-items: flex-start;
-    gap: 4px;
   }
 
   .sh-held-item-card__image {
@@ -707,72 +784,26 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: flex-start;
+    justify-content: center;
     gap: 2px;
   }
 
   .sh-held-item-card__name {
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: transparent;
+    max-width: 100%;
+    min-width: 0;
     color: #fff;
     font-size: 14px;
     font-weight: 700;
     line-height: 1.25;
     text-align: left;
-    cursor: pointer;
-    max-width: 100%;
-    width: 100%;
-    min-width: 0;
     white-space: normal;
     overflow-wrap: anywhere;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-
-    &:hover,
-    &:focus {
-      color: #fff;
-      background: transparent;
-      box-shadow: none;
-    }
   }
 
   .sh-held-item-card__meta {
     font-size: 10px;
     color: var(--sh-text-dim);
     line-height: 1.2;
-  }
-
-  .sh-held-item-card__controls {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 4px;
-    width: 100%;
-    padding-top: 4px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-
-    .icon-btn {
-      flex: 0 0 auto;
-      align-self: center;
-      box-sizing: border-box;
-      width: 24px;
-      height: 24px;
-      min-width: 24px;
-      min-height: 24px;
-      max-width: 24px;
-      max-height: 24px;
-      padding: 0;
-      line-height: 1;
-
-      i {
-        font-size: 12px;
-        line-height: 1;
-      }
-    }
   }
 
   .sh-actions-panel--full {

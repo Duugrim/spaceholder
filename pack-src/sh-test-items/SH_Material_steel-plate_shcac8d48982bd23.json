@@ -43,6 +43,30 @@
           "type": "electric",
           "fraction": 0.9
         }
+      ],
+      "ballistic": [
+        {
+          "type": "concussive",
+          "fraction": 0.45
+        }
+      ],
+      "piercing": [
+        {
+          "type": "concussive",
+          "fraction": 0.05
+        }
+      ],
+      "cutting": [
+        {
+          "type": "concussive",
+          "fraction": 0.15
+        }
+      ],
+      "concussive": [
+        {
+          "type": "concussive",
+          "fraction": 0.7
+        }
       ]
     },
     "selfInduction": {},

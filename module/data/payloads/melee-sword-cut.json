@@ -1,7 +1,7 @@
 {
   "id": "melee_sword_cut",
   "name": "Меч — рез",
-  "description": "Дуга ~45°, с дистанцией; останавливается на первом попадании.",
+  "description": "Дуга ~45°, с дистанцией; останавливается на первом попадании (side).",
   "type": "complex",
   "trajectory": {
     "segments": [
@@ -11,7 +11,8 @@
         "range": 1.5,
         "cut": 0.25,
         "angle": 45,
-        "side": "right",
+        "side": "auto",
+        "hitMode": "side",
         "collision": {
           "walls": true,
           "tokens": { "owner": true, "ally": true, "other": true }

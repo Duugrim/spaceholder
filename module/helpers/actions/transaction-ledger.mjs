@@ -11,6 +11,11 @@
  * Undo: GM may undo combat ledger entries; actor owner may undo own actor ledger (local). Socket `ledgerUndo` is GM-initiator only.
  */
 
+import { maxApFromScores } from "../derived-stats.mjs";
+import { AP_SHORTAGE, apReadout, planApSpend, readApPool } from "./ap-pool.mjs";
+
+export { AP_SHORTAGE };
+
 const MODULE_NS = "spaceholder";
 const FLAG_LEDGER = "transactionLedger";
 const FLAG_SYNCED = "apLedgerSyncedV1";
@@ -65,13 +70,14 @@ async function _applyPersonalTimeSideEffect(meta, { reverse = false } = {}) {
 }
 
 /**
- * Max AP from abilities (same rule as legacy action-service).
+ * Max AP from abilities: floor(√(AGI × INT)), 100 for an average character.
+ * The only place the rule lives (derived stats and combat both call it).
  * @param {Actor} actor
  */
 export function getMaxApFromAbilities(actor) {
-  const dex = _num(actor?.system?.abilities?.dex?.value, 0);
+  const agi = _num(actor?.system?.abilities?.agi?.value, 0);
   const int = _num(actor?.system?.abilities?.int?.value, 0);
-  return Math.max(0, Math.floor(dex * int));
+  return Math.max(0, maxApFromScores(agi, int));
 }
 
 /**
@@ -187,6 +193,8 @@ async function _legacySpentTotal(actor) {
  */
 export async function ensureCharacterApSynced(actor) {
   if (!actor || actor.type !== "character") return;
+  // Only someone who may update the actor can sync it; everyone else would just get a permission error.
+  if (!actor.isOwner) return;
   if (actor.getFlag?.(MODULE_NS, FLAG_SYNCED)) return;
   const max = getMaxApFromAbilities(actor);
   const spent = await _legacySpentTotal(actor);
@@ -203,10 +211,11 @@ export async function ensureCharacterApSynced(actor) {
  * @param {Actor} actor
  */
 export async function recomputeApMaxForActor(actor) {
-  if (!actor || actor.type !== "character") return;
+  if (!actor || actor.type !== "character" || !actor.isOwner) return;
   const max = getMaxApFromAbilities(actor);
   const curVal = _num(actor.system?.actionPoints?.value, max);
-  const nextVal = Math.min(Math.max(0, Math.floor(curVal)), max);
+  // Below zero is legal out of combat (a spent-AP counter, see ap-pool.mjs): only the top is capped.
+  const nextVal = Math.min(Math.floor(curVal), max);
   await actor.update({
     "system.actionPoints.max": max,
     "system.actionPoints.value": nextVal,
@@ -214,21 +223,89 @@ export async function recomputeApMaxForActor(actor) {
 }
 
 /**
- * Stored AP for UI (after sync).
+ * Stored AP for UI (after sync). `value` is what is left (0..max); `spent` is what was spent since the
+ * pool was last full and, out of combat, may exceed `max`; `rawValue` is the stored number (may be < 0).
  * @param {Actor} actor
- * @returns {{ value: number, max: number, base: number, spent: number }}
+ * @returns {{ value: number, max: number, base: number, spent: number, rawValue: number }}
  */
 export function getStoredActionPoints(actor) {
   const max = getMaxApFromAbilities(actor);
   const storedMax = _num(actor?.system?.actionPoints?.max, NaN);
   const effectiveMax = Number.isFinite(storedMax) && storedMax > 0 ? Math.floor(storedMax) : max;
-  const valueRaw = actor?.system?.actionPoints?.value;
-  const value =
-    valueRaw === undefined || valueRaw === null
-      ? effectiveMax
-      : Math.max(0, Math.min(Math.floor(_num(valueRaw, effectiveMax)), effectiveMax));
-  const spent = Math.max(0, effectiveMax - value);
-  return { value, max: effectiveMax, base: effectiveMax, spent };
+  const pool = readApPool({ rawValue: actor?.system?.actionPoints?.value, max: effectiveMax });
+  return { value: pool.value, max: pool.max, base: pool.max, spent: pool.spent, rawValue: pool.rawValue };
+}
+
+/**
+ * Whether the actor takes part in the running combat. Only then is the AP pool a hard limit; for
+ * anyone else (or with no combat) it is a counter of AP spent since the last combat.
+ * @param {Actor|null|undefined} actor
+ * @returns {boolean}
+ */
+export function isActorInActiveCombat(actor) {
+  const combat = game?.combat?.started ? game.combat : null;
+  if (!combat || !actor) return false;
+  return (combat.combatants?.contents || []).some((c) => String(c.actorId ?? c.actor?.id ?? "") === String(actor.id));
+}
+
+/**
+ * What a counter (HUD, sheet) shows for the actor: AP left in combat, AP spent since the last combat otherwise.
+ * @param {Actor} actor
+ * @returns {{ mode: 'pool'|'spent', value: number, max: number, empty: boolean }}
+ */
+export function getApReadout(actor) {
+  return apReadout({ inCombat: isActorInActiveCombat(actor), pool: getStoredActionPoints(actor) });
+}
+
+/**
+ * The AP counter as the HUD and the sheet show it: AP left (`35/100`) in combat, AP spent since the last
+ * combat (`340`) otherwise, with the tooltip that says which one it is.
+ * @param {Actor} actor
+ * @returns {{ mode: 'pool'|'spent', value: number, max: number, empty: boolean, isSpent: boolean, text: string, tooltip: string }}
+ */
+export function describeApCounter(actor) {
+  const ap = getApReadout(actor);
+  const i18n = game?.i18n;
+  if (ap.mode === "spent") {
+    const data = { value: String(ap.value), max: String(ap.max) };
+    return {
+      ...ap,
+      isSpent: true,
+      text: String(ap.value),
+      tooltip: i18n?.format?.("SPACEHOLDER.ActionsSystem.UI.SpentAP", data) || `AP spent since the last combat: ${ap.value} (max ${ap.max})`,
+    };
+  }
+  const label = i18n?.localize?.("SPACEHOLDER.ActionsSystem.UI.CurrentAP") || "Current AP";
+  return {
+    ...ap,
+    isSpent: false,
+    text: ap.max > 0 ? `${ap.value}/${ap.max}` : String(ap.value),
+    tooltip: `${label}: ${ap.value} / ${ap.max}`,
+  };
+}
+
+/**
+ * Whether the actor can pay `cost` AP now. Only characters in combat are limited.
+ * @param {Actor|null|undefined} actor
+ * @param {number} cost
+ * @returns {{ ok: boolean, need: number, have: number, inCombat: boolean }} `have` — AP left
+ */
+export function canAffordAp(actor, cost) {
+  const need = Math.max(0, Math.floor(_num(cost, 0)));
+  if (!actor || actor.type !== "character") return { ok: true, need, have: Infinity, inCombat: false };
+  const pool = getStoredActionPoints(actor);
+  const inCombat = isActorInActiveCombat(actor);
+  return { ok: planApSpend({ inCombat, pool, cost: need }).ok, need, have: pool.value, inCombat };
+}
+
+/**
+ * The warning for a refused spend.
+ * @param {{ need: number, have: number }} shortfall
+ * @returns {string}
+ */
+export function notEnoughApMessage({ need, have } = {}) {
+  const fallback = `Not enough Action Points (need ${need}, have ${have})`;
+  return game?.i18n?.format?.("SPACEHOLDER.ActionsSystem.Errors.NotEnoughAP", { need: String(need), have: String(have) }) || fallback;
 }
 
 /**
@@ -494,10 +571,13 @@ export async function undoTransaction({ transactionId, combat = null, actor = nu
 }
 
 /**
- * Spend AP (subtract, clamp at 0).
+ * Spend AP. In combat the pool is a hard limit: a spend it cannot cover is refused (`ok: false`, nothing
+ * changes) unless `meta.shortage` is `AP_SHORTAGE.CLAMP`. Out of combat nothing is limited and the stored
+ * value runs below zero (see ap-pool.mjs).
  * @param {Actor} actor
  * @param {number} cost
- * @param {object} [meta]
+ * @param {object} [meta] ledger meta; `shortage` (`AP_SHORTAGE`) is read here and not stored
+ * @returns {Promise<{ ok: boolean, transactionId?: string|null, error?: string, code?: string }>}
  */
 export async function spendAp(actor, cost, meta = {}) {
   await ensureCharacterApSynced(actor);
@@ -505,22 +585,48 @@ export async function spendAp(actor, cost, meta = {}) {
   if (!actor || actor.type !== "character") return { ok: false, error: "Not a character" };
   if (c === 0) return { ok: true, transactionId: null };
 
-  const { value } = getStoredActionPoints(actor);
-  const next = Math.max(0, value - c);
-  const actualSpent = Math.max(0, value - next);
+  const { shortage, ...ledgerMeta } = meta;
+  const plan = planApSpend({
+    inCombat: isActorInActiveCombat(actor),
+    pool: getStoredActionPoints(actor),
+    cost: c,
+    shortage,
+  });
+  if (!plan.ok) return { ok: false, code: plan.error, error: notEnoughApMessage(plan) };
+
   const { apToSeconds } = await import("./personal-time.mjs");
-  const personalTimeSeconds = apToSeconds(actor, actualSpent);
+  const personalTimeSeconds = apToSeconds(actor, plan.spent);
   const combat = game?.combat?.started ? game.combat : null;
   return commitTransaction({
-    operations: [{ documentUuid: actor.uuid, path: AP_VALUE, after: next }],
+    operations: [{ documentUuid: actor.uuid, path: AP_VALUE, after: plan.next }],
     meta: {
-      ...meta,
+      ...ledgerMeta,
       kind: "apSpend",
-      combatId: meta.combatId ?? combat?.id ?? null,
+      combatId: ledgerMeta.combatId ?? combat?.id ?? null,
       personalTimeSeconds,
       personalTimeActorUuid: actor.uuid,
       personalTimeSource: "apSpend",
     },
+  });
+}
+
+/**
+ * Put the pool back to full without moving personal time (the combat is over: whatever was left of the
+ * last turn is not time that passes). Out of combat the counter then starts again from zero spent.
+ * @param {Actor} actor
+ * @param {object} [meta]
+ */
+export async function resetApPool(actor, meta = {}) {
+  await ensureCharacterApSynced(actor);
+  if (!actor || actor.type !== "character") return { ok: false, error: "Not a character" };
+  const max = getMaxApFromAbilities(actor);
+  if (getStoredActionPoints(actor).rawValue === max) return { ok: true, transactionId: null };
+  return commitTransaction({
+    operations: [
+      { documentUuid: actor.uuid, path: AP_MAX, after: max },
+      { documentUuid: actor.uuid, path: AP_VALUE, after: max },
+    ],
+    meta: { ...meta, kind: "apReset" },
   });
 }
 
@@ -605,9 +711,9 @@ export function installTransactionLedgerHooks() {
   Hooks.on("updateActor", (doc, change) => {
     try {
       if (!doc || doc.type !== "character") return;
-      const dexTouched = foundry.utils.getProperty(change, "system.abilities.dex") !== undefined;
+      const agiTouched = foundry.utils.getProperty(change, "system.abilities.agi") !== undefined;
       const intTouched = foundry.utils.getProperty(change, "system.abilities.int") !== undefined;
-      if (!dexTouched && !intTouched) return;
+      if (!agiTouched && !intTouched) return;
       recomputeApMaxForActor(doc).catch(() => {});
     } catch (_) {
       /* ignore */

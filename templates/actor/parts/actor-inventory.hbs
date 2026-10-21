@@ -83,52 +83,36 @@
           <div class="inventory-preview-meta">
             <span>{{localize 'SPACEHOLDER.Inventory.Quantity'}} {{selectedInventoryRow.quantity}}</span>
             <span>{{localize 'SPACEHOLDER.Resources.Weight'}} {{selectedInventoryRow.totalWeight}} {{localize 'SPACEHOLDER.Units.Kg'}}</span>
+            <div class="inventory-preview-meta__tools">
+              {{#if selectedInventoryRow.canEdit}}
+              <button
+                type="button"
+                class="icon-btn item-edit"
+                title="{{localize 'SPACEHOLDER.Inventory.EditItem'}}"
+                data-item-id="{{selectedInventoryRow.itemId}}"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              {{/if}}
+              {{#if selectedInventoryRow.canDelete}}
+              <button
+                type="button"
+                class="icon-btn item-delete"
+                title="{{localize 'SPACEHOLDER.Inventory.DeleteItem'}}"
+                data-item-id="{{selectedInventoryRow.itemId}}"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+              {{/if}}
+            </div>
           </div>
 
-          <div class="item-controls inventory-preview-controls">
-            {{#if selectedInventoryRow.canHold}}
-            <button
-              type="button"
-              class="icon-btn item-held-toggle {{#if selectedInventoryRow.system.held}}active{{/if}}"
-              title="{{#if selectedInventoryRow.system.held}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.StowShort'}}{{else}}{{localize 'SPACEHOLDER.ActionsSystem.Wearable.HoldShort'}}{{/if}}"
-              data-item-id="{{selectedInventoryRow.itemId}}"
-              data-action="item-held-toggle"
-            >
-              <i class="fa-solid fa-hand"></i>
-            </button>
-            {{/if}}
-            {{#if selectedInventoryRow.canEquipArmor}}
-            <button
-              type="button"
-              class="icon-btn item-wearable-toggle {{#if selectedInventoryRow.system.equipped}}active{{/if}}"
-              title="{{localize 'SPACEHOLDER.Wearable.EquipToggleTooltip'}}"
-              data-item-id="{{selectedInventoryRow.itemId}}"
-              data-action="wearable-toggle"
-            >
-              <i class="fas fa-shield-alt"></i>
-            </button>
-            {{/if}}
-            {{#if selectedInventoryRow.canEdit}}
-            <button
-              type="button"
-              class="icon-btn item-edit"
-              title="{{localize 'SPACEHOLDER.Inventory.EditItem'}}"
-              data-item-id="{{selectedInventoryRow.itemId}}"
-            >
-              <i class="fas fa-edit"></i>
-            </button>
-            {{/if}}
-            {{#if selectedInventoryRow.canDelete}}
-            <button
-              type="button"
-              class="icon-btn item-delete"
-              title="{{localize 'SPACEHOLDER.Inventory.DeleteItem'}}"
-              data-item-id="{{selectedInventoryRow.itemId}}"
-            >
-              <i class="fas fa-trash"></i>
-            </button>
-            {{/if}}
-          </div>
+          {{#if selectedInventoryRow.itemActions.length}}
+            <div class="inventory-preview-actions">
+              <div class="inventory-preview-actions__title">{{localize 'SPACEHOLDER.Inventory.ItemActions'}}</div>
+              {{> "systems/spaceholder/templates/actor/parts/actor-item-action-chips.hbs" actions=selectedInventoryRow.itemActions}}
+            </div>
+          {{/if}}
 
           <div class="inventory-preview-description">
             {{{selectedInventoryRow.enrichedDescription}}}

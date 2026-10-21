@@ -1,29 +1,145 @@
-// Draw Manager for SpaceHolder — shot trajectory rendering with history + fade.
+// Draw Manager for SpaceHolder — shot trajectory rendering.
+// Every shot is its own layer whose brightness depends only on the shot's age (see shot-trail.mjs),
+// so trails fade out by themselves whatever the shooter is doing. Layers come from shot records:
+// drawn at once by the shooter, by the other clients when the socket brings the shot, and (for a client that
+// missed it, or after a reload) from the attack logs in the chat.
 
-const SHOT_FADE_MS = 60_000;
-const AGED_TINT = 0x888888;
-const AGED_BASE_ALPHA = 0.55;
-const ACTIVE_ALPHA = 1;
+import {
+  DEFAULT_SHOT_TRAIL_FADE_SECONDS,
+  chainLinePaths,
+  getShotTrailFadeSeconds,
+  SHOT_TRAIL_SOCKET_TYPE,
+  makeShotId,
+  readShotRecords,
+  sanitizeShotRecord,
+  shotTrailAlpha,
+  shotTrailFadeMs,
+  trailNowMs,
+} from './shot-trail.mjs';
+
+/** Fade-in of a freshly fired shot (ms). */
+const APPEAR_MS = 200;
+/** Only a shot younger than this fades in; older ones (page reload, scene change) show at once. */
+const APPEAR_MAX_AGE_MS = 1000;
+/** Trails kept at once. The oldest beyond this fade out quickly (guards auto-fire). */
+const MAX_LIVE_LAYERS = 150;
+/** Quick fade-out of a trail pushed over `MAX_LIVE_LAYERS` (ms). */
+const EVICT_MS = 500;
 
 export class DrawManager {
   constructor() {
     this.drawContainer = null;
-    /** @type {Array<{ container: PIXI.Container, createdAt: number, active: boolean }>} */
-    this.shotLayers = [];
-    /** @deprecated kept for callers that still inspect elements; mirrors all layer children */
-    this.currentDrawnElements = [];
+    /**
+     * Drawn trails by shot id, oldest first.
+     * @type {Map<string, { id: string, container: PIXI.Container, t: number, appearAt: number|null, evictedAt: number|null }>}
+     */
+    this.layers = new Map();
+    /** Trail lifetime in ms (client setting `shotTrailFadeSeconds`). */
+    this.fadeMs = shotTrailFadeMs(DEFAULT_SHOT_TRAIL_FADE_SECONDS);
     this._fadeRaf = null;
+    this._hookIds = null;
+    this._socketBound = false;
 
     this.defaultStyles = {
       line: { color: 0xFF4444, alpha: 0.9, width: 4 },
       circle: { color: 0xFF4444, alpha: 0.6, lineWidth: 3, fillAlpha: 0.2 },
       cone: { color: 0xFF8844, alpha: 0.7, lineWidth: 2, fillAlpha: 0.15 },
       hit: { color: 0xFF0000, alpha: 0.9, radius: 8, lineWidth: 2 },
+      wallPass: { color: 0xFFC247, alpha: 0.95, radius: 6, lineWidth: 2 },
     };
   }
 
+  /**
+   * Start-up (`ready`): listen for shots and canvas changes, and redraw the trails that are still
+   * fresh in the chat log (page reload).
+   */
   initialize() {
+    this._installHooks();
+    this._installSocket();
+    this.applyFadeSetting();
     this._createContainer();
+    this.rehydrateFromChat();
+  }
+
+  /** Re-read the trail lifetime from the client setting. */
+  applyFadeSetting() {
+    this.fadeMs = shotTrailFadeMs(getShotTrailFadeSeconds());
+  }
+
+  _installHooks() {
+    if (this._hookIds) return;
+    this._hookIds = [
+      ['createChatMessage', Hooks.on('createChatMessage', (message) => this._onChatMessage(message))],
+      ['canvasReady', Hooks.on('canvasReady', () => this._onCanvasReady())],
+      ['canvasTearDown', Hooks.on('canvasTearDown', () => this.clearAll())],
+    ];
+  }
+
+  _socketName() {
+    try {
+      return `system.${game.system.id}`;
+    } catch (_) {
+      return 'system.spaceholder';
+    }
+  }
+
+  /** Listen for the trails the other clients' shooters send. */
+  _installSocket() {
+    if (this._socketBound) return;
+    try {
+      game.socket.on(this._socketName(), (message) => this._onSocketMessage(message));
+      this._socketBound = true;
+    } catch (error) {
+      console.error('SpaceHolder | DrawManager: socket unavailable', error);
+    }
+  }
+
+  /**
+   * Send a freshly fired shot's record to the other clients, which draw it at once (the shooter has
+   * drawn it already). Whoever misses it still gets it from the attack log in chat.
+   * @param {object} record ShotRecord
+   */
+  broadcastRecord(record) {
+    if (!record?.id) return;
+    try {
+      game.socket.emit(this._socketName(), { type: SHOT_TRAIL_SOCKET_TYPE, record });
+    } catch (error) {
+      console.warn('SpaceHolder | DrawManager: could not send a shot trail', error);
+    }
+  }
+
+  _onSocketMessage(message) {
+    try {
+      if (message?.type !== SHOT_TRAIL_SOCKET_TYPE || !canvas?.ready) return;
+      const record = sanitizeShotRecord(message.record);
+      if (!record || record.quiet) return;
+      this.drawRecord(record);
+    } catch (error) {
+      console.error('SpaceHolder | DrawManager: failed to draw a shot from the socket', error);
+    }
+  }
+
+  /** A chat message arrived (own or someone else's): draw the trails of the attack it reports. */
+  _onChatMessage(message) {
+    try {
+      if (!canvas?.ready) return;
+      for (const record of readShotRecords(message)) {
+        if (!record.quiet) this.drawRecord(record);
+      }
+    } catch (error) {
+      console.error('SpaceHolder | DrawManager: failed to draw a shot from chat', error);
+    }
+  }
+
+  /** New scene on screen: drop the old trails and redraw the fresh ones that belong to this scene. */
+  _onCanvasReady() {
+    try {
+      this.clearAll();
+      this._createContainer();
+      this.rehydrateFromChat();
+    } catch (error) {
+      console.error('SpaceHolder | DrawManager: failed to restore shot trails', error);
+    }
   }
 
   _createContainer() {
@@ -35,60 +151,108 @@ export class DrawManager {
       this.drawContainer.zIndex = 1000;
       this.drawContainer.interactiveChildren = false;
       this.drawContainer.interactive = false;
-      canvas.effects.addChild(this.drawContainer);
     }
+    if (this.drawContainer.parent !== canvas.effects) canvas.effects.addChild(this.drawContainer);
   }
 
   /**
-   * Draw a shot as a new layer. Previous layers stay and age (gray → fade out).
-   * @param {Object} shotResult
+   * Redraw, from the chat log, the trails of this scene that have not faded out yet.
+   * @returns {number} how many trails were drawn
+   */
+  rehydrateFromChat() {
+    if (!canvas?.ready || !canvas.scene) return 0;
+    const sceneId = canvas.scene.id;
+    const now = trailNowMs();
+    const records = [];
+    for (const message of game.messages?.contents ?? []) {
+      for (const record of readShotRecords(message)) {
+        if (record.quiet) continue;
+        if (record.sceneId && record.sceneId !== sceneId) continue;
+        if (now - record.t >= this.fadeMs) continue;
+        records.push(record);
+      }
+    }
+    records.sort((a, b) => a.t - b.t);
+    let drawn = 0;
+    for (const record of records.slice(-MAX_LIVE_LAYERS)) {
+      if (this.drawRecord(record)) drawn += 1;
+    }
+    return drawn;
+  }
+
+  /**
+   * Draw a shot result as a fresh trail. Kept for macros and tests; the game itself draws shot
+   * records (see `drawRecord`).
+   * @param {{shotPaths: object[], shotHits?: object[], wallPasses?: object[]}} shotResult
+   * @returns {boolean} whether a trail was drawn
    */
   drawShot(shotResult) {
     if (!shotResult || !shotResult.shotPaths) {
       console.warn('DrawManager: Invalid shotResult provided');
-      return;
+      return false;
     }
+    return this.drawRecord({
+      id: makeShotId(),
+      t: trailNowMs(),
+      paths: shotResult.shotPaths,
+      hits: shotResult.shotHits ?? [],
+      wallPasses: shotResult.wallPasses ?? [],
+    });
+  }
+
+  /**
+   * Draw a shot record as a trail that fades with the shot's age. A record that is already drawn,
+   * belongs to another scene, or has faded out is ignored, so it is safe to offer the same shot
+   * from several sources (local fire + chat message).
+   * @param {{id: string, t?: number, sceneId?: string, paths: object[], hits?: object[], wallPasses?: object[]}} record
+   * @returns {boolean} whether a trail was drawn
+   */
+  drawRecord(record) {
+    if (!record?.id || !Array.isArray(record.paths)) {
+      console.warn('DrawManager: Invalid shot record provided');
+      return false;
+    }
+    if (this.layers.has(record.id)) return false;
+    if (record.sceneId && canvas?.scene && record.sceneId !== canvas.scene.id) return false;
+
+    const now = trailNowMs();
+    const t = Number.isFinite(Number(record.t)) ? Number(record.t) : now;
+    const age = Math.max(0, now - t);
+    if (age >= this.fadeMs) return false;
 
     this._createContainer();
-    if (!this.drawContainer) return;
-
-    this._demoteActiveLayers();
+    if (!this.drawContainer) return false;
 
     const layer = new PIXI.Container();
-    layer.name = `drawManager_shot_${Date.now()}`;
+    layer.name = `drawManager_shot_${record.id}`;
     layer.interactive = false;
     layer.interactiveChildren = false;
-    layer.alpha = 0;
     this.drawContainer.addChild(layer);
 
     const prevTarget = this._layerTarget;
     this._layerTarget = layer;
-
-    for (const segment of shotResult.shotPaths) {
-      this.drawSegment(segment);
+    try {
+      for (const segment of chainLinePaths(record.paths)) this.drawSegment(segment);
+      if (Array.isArray(record.hits)) record.hits.forEach((hit, index) => this.drawHit(hit, index));
+      if (Array.isArray(record.wallPasses)) {
+        record.wallPasses.forEach((pass, index) => this.drawWallPass(pass, index));
+      }
+    } finally {
+      this._layerTarget = prevTarget;
     }
-    if (shotResult.shotHits?.length) {
-      shotResult.shotHits.forEach((hit, index) => this.drawHit(hit, index));
-    }
 
-    this._layerTarget = prevTarget;
-
-    const entry = { container: layer, createdAt: Date.now(), active: true };
-    this.shotLayers.push(entry);
-    this._rebuildElementIndex();
-    this._animateLayerAppearance(layer, ACTIVE_ALPHA);
+    const fadesIn = age < APPEAR_MAX_AGE_MS;
+    layer.alpha = fadesIn ? 0 : shotTrailAlpha(age, this.fadeMs);
+    this.layers.set(record.id, {
+      id: record.id,
+      container: layer,
+      t,
+      appearAt: fadesIn ? performance.now() : null,
+      evictedAt: null,
+    });
+    this._evictOverflow();
     this._ensureFadeLoop();
-  }
-
-  _demoteActiveLayers() {
-    for (const entry of this.shotLayers) {
-      if (!entry.active) continue;
-      entry.active = false;
-      const c = entry.container;
-      if (!c || c.destroyed) continue;
-      c.tint = AGED_TINT;
-      if (c.alpha > AGED_BASE_ALPHA) c.alpha = AGED_BASE_ALPHA;
-    }
+    return true;
   }
 
   _layerParent() {
@@ -99,7 +263,6 @@ export class DrawManager {
     const parent = this._layerParent();
     if (!parent) return;
     parent.addChild(graphics);
-    this.currentDrawnElements.push(graphics);
   }
 
   drawSegment(segment) {
@@ -131,19 +294,31 @@ export class DrawManager {
     }
   }
 
+  /**
+   * A straight trail, or a polyline when the segment carries `points` (see `chainLinePaths`). Round
+   * caps and joins keep a bend smooth; no mark is drawn at the start or at the bends — the trail
+   * shows something flying, not a geometric figure.
+   * @param {{start?: {x:number,y:number}, end?: {x:number,y:number}, points?: Array<{x:number,y:number}>}} segment
+   */
   drawLine(segment) {
-    if (!segment.start || !segment.end || !this._layerParent()) {
+    const points = Array.isArray(segment.points) && segment.points.length >= 2
+      ? segment.points
+      : [segment.start, segment.end];
+    if (!points.every((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)) || !this._layerParent()) {
       console.warn('DrawManager: Invalid line segment data');
       return;
     }
     const g = new PIXI.Graphics();
     const style = this.defaultStyles.line;
-    g.lineStyle(style.width, style.color, style.alpha);
-    g.moveTo(segment.start.x, segment.start.y);
-    g.lineTo(segment.end.x, segment.end.y);
-    g.beginFill(style.color, style.alpha);
-    g.drawCircle(segment.start.x, segment.start.y, Math.max(2, style.width - 1));
-    g.endFill();
+    g.lineStyle({
+      width: style.width,
+      color: style.color,
+      alpha: style.alpha,
+      cap: PIXI.LINE_CAP.ROUND,
+      join: PIXI.LINE_JOIN.ROUND,
+    });
+    g.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i += 1) g.lineTo(points[i].x, points[i].y);
     g.name = `drawManager_line_${segment.id || 'unknown'}`;
     g.interactive = false;
     g.interactiveChildren = false;
@@ -236,8 +411,12 @@ export class DrawManager {
     const side = String(segment.side || 'right').toLowerCase();
     const startA = directionRad - angleRad / 2;
     const endA = directionRad + angleRad / 2;
-    // Edge at end of swing for a static “after swing” pose.
-    const edgeA = side === 'left' ? startA : endA;
+    // Edge where the blow stopped (shot-manager's `edgeDeg`), else the end of the arc: a static
+    // “after swing” pose.
+    const stoppedAt = Number(segment.edgeDeg);
+    const edgeA = Number.isFinite(stoppedAt)
+      ? (stoppedAt * Math.PI) / 180
+      : (side === 'left' ? startA : endA);
 
     const g = new PIXI.Graphics();
     const style = this.defaultStyles.line;
@@ -286,73 +465,91 @@ export class DrawManager {
     this._track(g);
   }
 
-  _animateLayerAppearance(layer, targetAlpha) {
-    if (!layer || layer.destroyed) return;
-    layer.alpha = 0;
-    const startTime = Date.now();
-    const fadeInDuration = 200;
-    const tick = () => {
-      if (!layer || layer.destroyed) return;
-      const progress = Math.min((Date.now() - startTime) / fadeInDuration, 1);
-      layer.alpha = progress * targetAlpha;
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
+  /**
+   * A wall the projectile went through: a ring on the face it entered and one on the face it left,
+   * joined by a line. (A wall that stopped the shot is an ordinary hit mark.)
+   * @param {{entryPoint: {x:number,y:number}, exitPoint?: {x:number,y:number}|null, penetrated?: boolean}} pass
+   * @param {number} index
+   */
+  drawWallPass(pass, index) {
+    if (!pass?.penetrated || !pass.entryPoint || !this._layerParent()) return;
+    const style = this.defaultStyles.wallPass;
+    const g = new PIXI.Graphics();
+    g.lineStyle(style.lineWidth, style.color, style.alpha);
+    g.drawCircle(pass.entryPoint.x, pass.entryPoint.y, style.radius);
+    if (pass.exitPoint) {
+      g.moveTo(pass.entryPoint.x, pass.entryPoint.y);
+      g.lineTo(pass.exitPoint.x, pass.exitPoint.y);
+      g.drawCircle(pass.exitPoint.x, pass.exitPoint.y, style.radius);
+    }
+    g.name = `drawManager_wallPass_${index}`;
+    g.interactive = false;
+    g.interactiveChildren = false;
+    this._track(g);
   }
 
+  /** Trails beyond `MAX_LIVE_LAYERS` (oldest first) start a quick fade-out. */
+  _evictOverflow() {
+    const live = [...this.layers.values()].filter((entry) => entry.evictedAt == null);
+    const surplus = live.length - MAX_LIVE_LAYERS;
+    if (surplus <= 0) return;
+    const now = performance.now();
+    for (let i = 0; i < surplus; i += 1) live[i].evictedAt = now;
+  }
+
+  /**
+   * Set every trail's brightness from its age. The only place that writes a layer's alpha, so the
+   * fade-in, the age fade and the overflow fade-out cannot fight each other.
+   */
+  _updateLayers() {
+    const now = trailNowMs();
+    const frameTime = performance.now();
+    for (const [id, entry] of this.layers) {
+      const container = entry.container;
+      if (!container || container.destroyed) {
+        this.layers.delete(id);
+        continue;
+      }
+      let alpha = shotTrailAlpha(now - entry.t, this.fadeMs);
+      if (entry.appearAt != null) {
+        const progress = (frameTime - entry.appearAt) / APPEAR_MS;
+        if (progress >= 1) entry.appearAt = null;
+        else alpha *= Math.max(0, progress);
+      }
+      if (entry.evictedAt != null) {
+        alpha *= Math.max(0, 1 - (frameTime - entry.evictedAt) / EVICT_MS);
+      }
+      if (alpha <= 0.001) {
+        container.destroy({ children: true });
+        this.layers.delete(id);
+        continue;
+      }
+      if (Math.abs(container.alpha - alpha) > 0.002) container.alpha = alpha;
+    }
+  }
+
+  /** Run the per-frame update while there are trails; it stops itself when the last one is gone. */
   _ensureFadeLoop() {
-    if (this._fadeRaf) return;
+    if (this._fadeRaf || !this.layers.size) return;
     const tick = () => {
       this._fadeRaf = null;
-      const now = Date.now();
-      let anyLeft = false;
-      const keep = [];
-      for (const entry of this.shotLayers) {
-        const c = entry.container;
-        if (!c || c.destroyed) continue;
-        if (entry.active) {
-          keep.push(entry);
-          anyLeft = true;
-          continue;
-        }
-        const age = now - entry.createdAt;
-        if (age >= SHOT_FADE_MS) {
-          c.destroy({ children: true });
-          continue;
-        }
-        const t = age / SHOT_FADE_MS;
-        c.alpha = AGED_BASE_ALPHA * (1 - t);
-        c.tint = AGED_TINT;
-        keep.push(entry);
-        anyLeft = true;
-      }
-      this.shotLayers = keep;
-      this._rebuildElementIndex();
-      if (anyLeft) this._fadeRaf = requestAnimationFrame(tick);
+      this._updateLayers();
+      if (this.layers.size) this._fadeRaf = requestAnimationFrame(tick);
     };
     this._fadeRaf = requestAnimationFrame(tick);
   }
 
-  _rebuildElementIndex() {
-    this.currentDrawnElements = [];
-    for (const entry of this.shotLayers) {
-      const c = entry.container;
-      if (!c || c.destroyed) continue;
-      for (const child of c.children) this.currentDrawnElements.push(child);
-    }
-  }
-
+  /** Remove every trail at once (also used on scene change). Trails normally fade out by themselves. */
   clearAll() {
     if (this._fadeRaf) {
       cancelAnimationFrame(this._fadeRaf);
       this._fadeRaf = null;
     }
-    for (const entry of this.shotLayers) {
-      const c = entry.container;
-      if (c && !c.destroyed) c.destroy({ children: true });
+    for (const entry of this.layers.values()) {
+      const container = entry.container;
+      if (container && !container.destroyed) container.destroy({ children: true });
     }
-    this.shotLayers = [];
-    this.currentDrawnElements = [];
+    this.layers.clear();
   }
 
   setStyles(styles) {
@@ -364,6 +561,8 @@ export class DrawManager {
 
   destroy() {
     this.clearAll();
+    for (const [name, id] of this._hookIds ?? []) Hooks.off(name, id);
+    this._hookIds = null;
     if (this.drawContainer && !this.drawContainer.destroyed) {
       this.drawContainer.destroy();
     }

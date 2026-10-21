@@ -62,6 +62,13 @@
       "path": "packs/sh-test-actors",
       "type": "Actor",
       "system": "spaceholder"
+    },
+    {
+      "name": "sh-test-scenes",
+      "label": "SpaceHolder Test Scenes",
+      "path": "packs/sh-test-scenes",
+      "type": "Adventure",
+      "system": "spaceholder"
     }
   ],
   "packFolders": [
@@ -71,7 +78,8 @@
       "color": "#6e8fb3",
       "packs": [
         "sh-test-items",
-        "sh-test-actors"
+        "sh-test-actors",
+        "sh-test-scenes"
       ]
     }
   ],

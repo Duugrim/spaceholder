@@ -381,6 +381,8 @@ export class BiomeResolver {
     if (!dir || !fileName) return false;
     const FP = foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
     if (!FP?.browse) return true;
+    // browse() needs FILES_BROWSE (Trusted+ by default): let other users fetch directly (404 is handled by the caller).
+    if (game?.user?.can && !game.user.can('FILES_BROWSE')) return true;
     try {
       const result = await FP.browse('data', dir);
       const files = Array.isArray(result?.files) ? result.files : [];

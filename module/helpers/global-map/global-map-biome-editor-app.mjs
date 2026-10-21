@@ -487,12 +487,21 @@ export class GlobalMapBiomeEditorApp extends foundry.applications.api.Handlebars
     const biome = this._findBiome(id);
     if (!biome) return;
 
+    // A disabled id is remapped to the default biome on the next grid load (normalizeBiomeId): warn if it is painted.
+    const gridBiomes = game?.spaceholder?.globalMapRenderer?.currentGrid?.biomes;
+    let usedCells = 0;
+    if (gridBiomes?.length) {
+      for (let i = 0; i < gridBiomes.length; i++) {
+        if (gridBiomes[i] === id) usedCells++;
+      }
+    }
+
     const ok = await confirmDialog({
       title: _t('SPACEHOLDER.GlobalMap.Biomes.Confirm.DeleteTitle'),
       content: _f('SPACEHOLDER.GlobalMap.Biomes.Confirm.DeleteContent', {
         name: foundry.utils.escapeHTML(String(biome.name ?? '')),
         id,
-      }),
+      }) + (usedCells ? _f('SPACEHOLDER.GlobalMap.Biomes.Confirm.DeleteUsedWarning', { count: usedCells }) : ''),
       yesLabel: _t('SPACEHOLDER.Actions.Delete'),
       yesIcon: 'fa-solid fa-trash',
       noLabel: _t('SPACEHOLDER.Actions.Cancel'),

@@ -1,12 +1,12 @@
 /**
- * Combine aiming-arc luck zone with token-hit centrality into hitLuck.
- * Bands drive group dialog, armor angle, and graze / continue-through.
+ * Aiming-arc luck zones and the projectile collision walk.
+ *
+ * The zone says how confidently a shot was taken (`AimingManager._currentShotLuck`); it is *not* part
+ * of the hit quality (how centrally the hitbox was met — `hit-quality.mjs`). The walk below decides,
+ * in flight order, which of the touched tokens a projectile really reaches; a caller may let it fly
+ * past a token with `judgeToken` (the hook the shot-confidence / hit-resistance model plugs into).
+ * A projectile that leaves a body flies on with what is left of it: `followProjectileThroughBodies`.
  */
-
-export const HIT_LUCK_COMBINE_MULTIPLIER = 'multiplier';
-export const HIT_LUCK_COMBINE_PENALTY = 'penalty';
-export const HIT_LUCK_SETTING_KEY = 'hitLuckCombine';
-export const HIT_LUCK_CONTINUE_EPSILON = 0.01;
 
 export const HIT_LUCK_ZONE_ORDER = Object.freeze([
   'purple',
@@ -16,116 +16,9 @@ export const HIT_LUCK_ZONE_ORDER = Object.freeze([
   'red',
 ]);
 
-export const HIT_LUCK_ZONE_MULTIPLIER = Object.freeze({
-  purple: 1.5,
-  green: 1.0,
-  yellow: 0.75,
-  orange: 0.5,
-  red: 0.25,
-});
-
-export const HIT_LUCK_ZONE_PENALTY = Object.freeze({
-  purple: 0.5,
-  green: 0,
-  yellow: -0.25,
-  orange: -0.5,
-  red: -0.75,
-});
-
-export const HIT_LUCK_BAND = Object.freeze({
-  PART_OR_GROUP: 'partOrGroup',
-  GROUP: 'group',
-  GROUP_45: 'group45',
-  GRAZE: 'graze',
-  CONTINUE: 'continue',
-});
-
-const ARMOR_SCALE_45 = Math.SQRT2;
-const ARMOR_SCALE_75 = 1 / Math.cos((75 * Math.PI) / 180);
-
-function _clamp01(n) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return 0;
-  return Math.max(0, Math.min(1, v));
-}
-
 export function normalizeLuckZone(raw) {
   const z = String(raw ?? '').toLowerCase().trim();
   return HIT_LUCK_ZONE_ORDER.includes(z) ? z : 'green';
-}
-
-export function getHitLuckCombineMode() {
-  try {
-    const v = String(game?.settings?.get?.('spaceholder', HIT_LUCK_SETTING_KEY) ?? '').trim();
-    if (v === HIT_LUCK_COMBINE_PENALTY) return HIT_LUCK_COMBINE_PENALTY;
-  } catch (_) { /* ignore */ }
-  return HIT_LUCK_COMBINE_MULTIPLIER;
-}
-
-/**
- * @param {number} centrality 0–1
- * @param {string} zone
- * @param {string} [mode]
- * @returns {number}
- */
-export function combineHitLuck(centrality, zone, mode) {
-  const c = _clamp01(centrality);
-  const z = normalizeLuckZone(zone);
-  const m = mode === HIT_LUCK_COMBINE_PENALTY || mode === HIT_LUCK_COMBINE_MULTIPLIER
-    ? mode
-    : getHitLuckCombineMode();
-  if (m === HIT_LUCK_COMBINE_PENALTY) return c + (HIT_LUCK_ZONE_PENALTY[z] ?? 0);
-  return c * (HIT_LUCK_ZONE_MULTIPLIER[z] ?? 1);
-}
-
-/**
- * @param {number} hitLuck
- * @param {string} [mode]
- * @returns {string} HIT_LUCK_BAND
- */
-export function hitLuckBand(hitLuck, mode) {
-  const v = Number(hitLuck);
-  const m = mode === HIT_LUCK_COMBINE_PENALTY || mode === HIT_LUCK_COMBINE_MULTIPLIER
-    ? mode
-    : getHitLuckCombineMode();
-  if (!Number.isFinite(v) || v <= 0) return HIT_LUCK_BAND.CONTINUE;
-  if (m === HIT_LUCK_COMBINE_MULTIPLIER && v < HIT_LUCK_CONTINUE_EPSILON) {
-    return HIT_LUCK_BAND.CONTINUE;
-  }
-  if (v > 0.75) return HIT_LUCK_BAND.PART_OR_GROUP;
-  if (v > 0.50) return HIT_LUCK_BAND.GROUP;
-  if (v > 0.25) return HIT_LUCK_BAND.GROUP_45;
-  return HIT_LUCK_BAND.GRAZE;
-}
-
-export function armorScaleForBand(band) {
-  if (band === HIT_LUCK_BAND.GROUP_45) return ARMOR_SCALE_45;
-  if (band === HIT_LUCK_BAND.GRAZE) return ARMOR_SCALE_75;
-  return 1;
-}
-
-export function canPickSpecificPart(band) {
-  return band === HIT_LUCK_BAND.PART_OR_GROUP;
-}
-
-export function isGrazeBand(band) {
-  return band === HIT_LUCK_BAND.GRAZE;
-}
-
-export function isContinueBand(band) {
-  return band === HIT_LUCK_BAND.CONTINUE;
-}
-
-/**
- * Shift luck zone one step toward green (never to purple).
- * @param {string} zone
- * @returns {string}
- */
-export function upgradeLuckZoneTowardGreen(zone) {
-  const z = normalizeLuckZone(zone);
-  const i = HIT_LUCK_ZONE_ORDER.indexOf(z);
-  if (i <= 1) return 'green';
-  return HIT_LUCK_ZONE_ORDER[i - 1];
 }
 
 /**
@@ -144,103 +37,148 @@ export function clockToHitFace(clock) {
 }
 
 /**
- * @param {object} args
- * @param {number} args.centrality
- * @param {string} args.zone
- * @param {string} [args.mode]
- * @returns {{ hitLuck:number, band:string, armorScale:number, zone:string, centrality:number, mode:string }}
+ * Walk a projectile segment's collisions in flight order and return the ones that really
+ * touch it:
+ * - a wall ends the walk (nothing behind it is reachable) — unless a `wallPlan`
+ *   (walls/wall-penetration.mjs `planWallPasses`) lets the projectile through it: a passed wall is
+ *   skipped, a wall that holds ends the walk at the point the plan gives;
+ * - with a `judgeToken` hook, a token it lets the projectile fly past is skipped for the rest of
+ *   the shot (`passedTokens`, listed in `passedThrough` for the chat); without it every touched
+ *   token is a hit;
+ * - `stop` / `need` end the walk at the first token that is really hit, `next` keeps piercing
+ *   until a wall.
+ * Tokens behind passed walls get `details.carry`: the projectile (applications) that is left after
+ * those walls.
+ *
+ * @param {Array<{type: string, object?: any, point?: object, details?: object}>} collisions
+ *   sorted by distance from the segment start
+ * @param {string} onHit segment `onHit`
+ * @param {{ passedTokens: Set<any>, passedThrough: object[] }} passState per-shot state, mutated
+ *   (a ShotSystem shot satisfies this)
+ * @param {{
+ *   stepFor: (collision: object) => ({ blocks: boolean, blockCollision?: object }|null),
+ *   carryAt: (distance: number) => (object[]|null)
+ * }|null} [wallPlan] optional wall penetration plan; without it every wall stops the walk
+ * @param {{ judgeToken?: (collision: object) => ({ pass?: boolean, details?: object }|null) }} [options]
+ *   `judgeToken(collision)`: `{ pass: true }` flies past the token; `details` are merged into the
+ *   collision's (or the pass record's) details
+ * @returns {Array} collisions to record (possibly empty: the projectile flew past everything)
  */
-export function resolveHitLuck({ centrality, zone, mode } = {}) {
-  const m = mode === HIT_LUCK_COMBINE_PENALTY || mode === HIT_LUCK_COMBINE_MULTIPLIER
-    ? mode
-    : getHitLuckCombineMode();
-  const z = normalizeLuckZone(zone);
-  const c = _clamp01(centrality);
-  const luck = combineHitLuck(c, z, m);
-  const band = hitLuckBand(luck, m);
-  return {
-    hitLuck: luck,
-    band,
-    armorScale: armorScaleForBand(band),
-    zone: z,
-    centrality: c,
-    mode: m,
-  };
+export function walkProjectileCollisions(collisions, onHit, passState, wallPlan = null, { judgeToken = null } = {}) {
+  const reached = [];
+  const firstOnly = onHit !== 'next';
+  for (const collision of collisions) {
+    if (collision.type === 'wall') {
+      const step = wallPlan?.stepFor?.(collision) ?? null;
+      if (step && !step.blocks) continue; // the projectile goes through this wall
+      reached.push(step?.blockCollision ?? collision);
+      break;
+    }
+    if (passState.passedTokens.has(collision.object)) continue;
+    if (typeof judgeToken === 'function') {
+      const verdict = judgeToken(collision) ?? {};
+      const details = verdict.details ? { ...collision.details, ...verdict.details } : collision.details;
+      if (verdict.pass) {
+        passState.passedTokens.add(collision.object);
+        passState.passedThrough.push({ object: collision.object, point: collision.point, details });
+        continue;
+      }
+      collision.details = details;
+    }
+    const carry = wallPlan?.carryAt?.(collision.distance) ?? null;
+    if (carry) collision.details = { ...collision.details, carry };
+    reached.push(collision);
+    if (firstOnly) break;
+  }
+  return reached;
 }
 
-const BAND_I18N = {
-  [HIT_LUCK_BAND.PART_OR_GROUP]: 'SPACEHOLDER.AnatomyGroups.BandPartOrGroup',
-  [HIT_LUCK_BAND.GROUP]: 'SPACEHOLDER.AnatomyGroups.BandGroup',
-  [HIT_LUCK_BAND.GROUP_45]: 'SPACEHOLDER.AnatomyGroups.BandGroup45',
-  [HIT_LUCK_BAND.GRAZE]: 'SPACEHOLDER.AnatomyGroups.BandGraze',
-  [HIT_LUCK_BAND.CONTINUE]: 'SPACEHOLDER.AnatomyGroups.BandContinue',
-};
+/** Damage of a projectile that is below what an injury can store (hundredths): it is spent. */
+export const MIN_CARRY_DAMAGE = 0.005;
 
-export function localizeHitLuckBand(band) {
-  const key = BAND_I18N[band];
-  const loc = key ? game?.i18n?.localize?.(key) : '';
-  return (loc && loc !== key) ? loc : String(band ?? '');
+/** Total damage of a phased applications package (`[{mode, items: [{damage}]}]`). */
+function carriedDamage(applications) {
+  let sum = 0;
+  for (const phase of Array.isArray(applications) ? applications : []) {
+    for (const item of Array.isArray(phase?.items) ? phase.items : []) sum += Math.max(0, Number(item?.damage) || 0);
+  }
+  return sum;
 }
 
 /**
- * Shooter dialog: pick a group (and optionally a part).
- * @returns {Promise<{groupId:string|null, partId:string|null}>}
+ * Follow a projectile that left a body: what is left of it flies on along the same straight segment and
+ * can hurt the next token on its line — and leave that one too.
+ *
+ * Each hop, in flight order:
+ * 1. the walls behind the body are run with the projectile that is left (`planWalls`); a wall that holds
+ *    ends the flight;
+ * 2. {@link walkProjectileCollisions} (`stop`, the same `judgeToken` as for the first token) picks the next
+ *    token the projectile really reaches; the projectile is brought to it by the distance falloff
+ *    (`levelAt`) unless the walls have done it already (`details.carry`), and goes in as `details.carry`;
+ * 3. `deliver` applies the damage and returns what leaves that body (empty / nothing: it stays in it).
+ * The flight ends at a token it did not leave, at a wall it did not get through, when what is left is
+ * below {@link MIN_CARRY_DAMAGE}, or at the end of the segment.
+ *
+ * @param {Object} args
+ * @param {Array<{type: string, object?: any, point?: object, distance?: number, details?: object}>} args.collisions
+ *   everything behind the body the projectile left, in flight order (the rest of the segment)
+ * @param {Array<{mode: string, items: object[]}>} args.exit what left the body (its distance falloff included)
+ * @param {number} args.level the falloff level `exit` carries (share of the muzzle energy, 0–1)
+ * @param {{ passedTokens: Set<any>, passedThrough: object[] }} args.passState per-shot state, mutated
+ * @param {((collision: object) => ({ pass?: boolean, details?: object }|null))|null} [args.judgeToken]
+ * @param {(collisions: object[], applications: object[], level: number) => (object|null)} args.planWalls
+ *   wall plan (`planWallPasses` result) for the walls among `collisions`; `null` — every wall stops
+ * @param {(collision: object) => number} args.levelAt falloff level at a collision (0–1)
+ * @param {(applications: object[], ratio: number) => object[]} args.scale energy scaling of a package
+ * @param {(collision: object, carry: object[]) => Promise<object[]|null|undefined>} args.deliver
+ *   a token was reached with `carry`; resolves to what leaves its body
+ * @returns {Promise<{
+ *   hits: object[],
+ *   wallEvents: object[],
+ *   end: { reason: 'spent'|'wall'|'range', collision?: object }
+ * }>} `hits` — the collisions reached in order (tokens, the wall that held last); `wallEvents` — the walls
+ *   met (see `planWallPasses`); `end` — how the flight ended (`range`: it left the segment)
  */
-export async function promptHitGroupDialog({ actor, resolved, groups, allowPart = false } = {}) {
-  const list = Array.isArray(groups) ? groups : [];
-  if (!list.length) return { groupId: null, partId: null };
-  const L = (k, f) => {
-    const v = game?.i18n?.localize?.(k);
-    return v && v !== k ? v : f;
-  };
-  const luckFmt = game?.i18n?.format?.('SPACEHOLDER.AnatomyGroups.HitLuck', {
-    value: Number(resolved?.hitLuck ?? 0).toFixed(2),
-    band: localizeHitLuckBand(resolved?.band),
-  }) ?? String(resolved?.hitLuck ?? '');
+export async function followProjectileThroughBodies({
+  collisions,
+  exit,
+  level,
+  passState,
+  judgeToken = null,
+  planWalls,
+  levelAt,
+  scale,
+  deliver,
+}) {
+  const hits = [];
+  const wallEvents = [];
+  let remaining = Array.isArray(collisions) ? collisions : [];
+  let applications = Array.isArray(exit) ? exit : [];
+  let currentLevel = Number(level) > 0 ? Number(level) : 1;
 
-  const groupOpts = list.map((g) =>
-    `<option value="${String(g.id).replace(/"/g, '&quot;')}">${String(g.name || g.id)}</option>`
-  ).join('');
+  for (;;) {
+    if (carriedDamage(applications) < MIN_CARRY_DAMAGE) return { hits, wallEvents, end: { reason: 'spent' } };
 
-  const bodyParts = actor?.system?.health?.bodyParts ?? {};
-  const partOpts = allowPart
-    ? Object.entries(bodyParts).map(([slot, p]) =>
-      `<option value="${String(slot).replace(/"/g, '&quot;')}">${String(p.displayName || p.name || p.id || slot)}</option>`
-    ).join('')
-    : '';
+    const plan = planWalls?.(remaining, applications, currentLevel) ?? null;
+    const [next] = walkProjectileCollisions(remaining, 'stop', passState, plan, { judgeToken });
+    // Only the walls the projectile really met: not those behind the token it reaches.
+    const limit = next ? next.distance : Infinity;
+    if (plan?.events) wallEvents.push(...plan.events.filter((event) => event.entryDistance <= limit + 1e-6));
+    if (!next) return { hits, wallEvents, end: { reason: 'range' } };
 
-  const partBlock = allowPart
-    ? `<div class="form-group"><label>${L('SPACEHOLDER.AnatomyGroups.PickPart', 'Part')}</label>
-        <select id="hg-part"><option value="">${L('SPACEHOLDER.AnatomyGroups.AnyPart', '—')}</option>${partOpts}</select></div>`
-    : '';
+    hits.push(next);
+    if (next.type !== 'token') return { hits, wallEvents, end: { reason: 'wall', collision: next } };
 
-  const content = `<div class="spaceholder-hit-group-dialog">
-    <p>${luckFmt}</p>
-    <div class="form-group"><label>${L('SPACEHOLDER.AnatomyGroups.PickGroup', 'Group')}</label>
-      <select id="hg-group">${groupOpts}</select></div>
-    ${partBlock}
-  </div>`;
+    // What reaches the token: the walls' carry (falloff included), else what left the body, flown on.
+    const nextLevel = Number(levelAt(next));
+    if (!Array.isArray(next.details?.carry) || !next.details.carry.length) {
+      const ratio = currentLevel > 1e-9 && Number.isFinite(nextLevel) ? nextLevel / currentLevel : 1;
+      next.details = { ...next.details, carry: scale(applications, ratio) };
+    }
+    const left = await deliver(next, next.details.carry);
 
-  let groupId = list[0]?.id ?? null;
-  let partId = null;
-  await foundry.applications.api.DialogV2.wait({
-    window: { title: L('SPACEHOLDER.AnatomyGroups.HitDialogTitle', 'Hit'), icon: 'fa-solid fa-crosshairs' },
-    position: { width: 360 },
-    classes: ['spaceholder'],
-    content,
-    buttons: [
-      {
-        action: 'ok',
-        label: L('SPACEHOLDER.AnatomyGroups.Confirm', 'Hit'),
-        icon: 'fa-solid fa-check',
-        default: true,
-        callback: (ev) => {
-          const root = ev?.currentTarget ?? document;
-          groupId = String(root.querySelector('#hg-group')?.value ?? '').trim() || groupId;
-          partId = allowPart ? (String(root.querySelector('#hg-part')?.value ?? '').trim() || null) : null;
-        },
-      },
-    ],
-  });
-  return { groupId, partId };
+    applications = Array.isArray(left) ? left : [];
+    currentLevel = Number.isFinite(nextLevel) && nextLevel > 0 ? nextLevel : currentLevel;
+    remaining = remaining.slice(remaining.indexOf(next) + 1);
+  }
 }

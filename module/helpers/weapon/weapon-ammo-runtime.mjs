@@ -27,6 +27,8 @@ import {
 } from './weapon-model.mjs';
 import {
   applyChargeChange,
+  chargeCanFeedShot,
+  chargeSpendableAmount,
   computeChargeDelta,
   normalizeChargeChange,
 } from './charge-change.mjs';
@@ -267,7 +269,7 @@ export function hasAttachedMagazine(block) {
 function _itemHasSpendableAmmo(itemLike) {
   if (!_isAmmoItem(itemLike) || _qty(itemLike) <= 0) return false;
   const cfg = _ammoConfigOf(itemLike);
-  if (cfg.charge.enabled) return Math.max(0, Number(cfg.charge.current) || 0) > 0;
+  if (cfg.charge.enabled) return chargeCanFeedShot(cfg.charge);
   return true;
 }
 
@@ -445,7 +447,7 @@ export function blockShotReadiness(block, actor = null) {
 function _ammoSpendableAmount(itemLike) {
   if (!itemLike) return 0;
   const cfg = _ammoConfigOf(itemLike);
-  if (cfg.charge.enabled) return Math.max(0, Number(cfg.charge.current) || 0);
+  if (cfg.charge.enabled) return chargeSpendableAmount(cfg.charge);
   return _qty(itemLike);
 }
 
@@ -701,8 +703,9 @@ export function getAmmoItemChargePreview(itemLike) {
     };
   }
   if (ammo.charge.enabled && ammo.charge.max > 0) {
-    const current = Math.max(0, Number(ammo.charge.current) || 0);
     const max = Math.max(0, Number(ammo.charge.max) || 0);
+    // What is left to shoot with: charge of a battery, room before overheating of a heat sink.
+    const current = Math.min(max, chargeSpendableAmount(ammo.charge));
     return {
       current,
       max,

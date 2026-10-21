@@ -12,8 +12,10 @@ import {
 } from '../helpers/progression-points.mjs';
 import { enrichHTMLWithFactionIcons, resolveFactionDisplay } from '../helpers/faction-display.mjs';
 import { getWorldFactionActors } from '../helpers/user-factions.mjs';
-import { collectActorActions, executeActorAction, getActorActionPoints, openItemInteractMenu, resolveActionToken, getFavoriteActionIds, toggleFavoriteAction } from '../helpers/actions/action-service.mjs';
-import { ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
+import { HITBOX_SCALE_MAX, HITBOX_SCALE_MIN, normalizeHitboxScale } from '../helpers/hitbox-scale.mjs';
+import { DEFAULT_PARAMS } from '../helpers/derived-stats.mjs';
+import { ACTION_DRAG_TYPE, actionApShown, collectActorActions, executeActorAction, getActorActionPoints, listableActions, openItemInteractMenu, resolveActionToken, getFavoriteActionIds, toggleFavoriteAction } from '../helpers/actions/action-service.mjs';
+import { describeApCounter, ensureCharacterApSynced } from '../helpers/actions/transaction-ledger.mjs';
 import { openSimpleContextMenu, closeSimpleContextMenu } from '../helpers/simple-context-menu.mjs';
 import {
   SKILL_CATEGORIES,
@@ -27,7 +29,6 @@ import {
   removeSkillExtra,
   setSkillLevel,
 } from '../helpers/skills/skills.mjs';
-import { findNearestPileDropPointWithinCells } from '../helpers/item-piles-sh/held-drop-resolve.mjs';
 import { resolveCoverageEntryToActorSlots, getCoverageFace, coverageKey } from '../helpers/body-part-coverage.mjs';
 import { materialsManager } from '../helpers/damage/materials-manager.mjs';
 import {
@@ -87,7 +88,11 @@ const CHARACTER_SHEET_PRIMARY_TABS = Object.freeze([
   { id: 'inventory', icon: 'fas fa-box-open', labelKey: 'SPACEHOLDER.Tabs.Inventory' },
 ]);
 
-const CHARACTER_ABILITY_IDS = Object.freeze(['end', 'str', 'dex', 'cor', 'per', 'int', 'luc']);
+/** localStorage key: march speed shown in m/s or km/h. */
+/** Client preference: the three speeds (combat, sprint, march) are shown in m/s or km/h together. */
+const SPEED_UNIT_KEY = 'spaceholder.travelSpeedUnit';
+
+const CHARACTER_ABILITY_IDS = Object.freeze(['end', 'str', 'agi', 'cor', 'per', 'int', 'luc']);
 
 const ACTOR_ACTION_MODE_LABEL_KEYS = Object.freeze({
   chat: 'SPACEHOLDER.ActionsSystem.UI.ModeChat',
@@ -318,7 +323,10 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
       const collected = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
       const favoriteIds = new Set(getFavoriteActionIds(this.actor));
-      context.availableActions = collected.actions.map((a) => this._enrichActionForSheet(a, favoriteIds));
+      // Simple item actions (take off, drop…) are listed only when favorited; they are favorited from the
+      // item's inventory preview.
+      context.availableActions = listableActions(collected.actions, favoriteIds)
+        .map((a) => this._enrichActionForSheet(a, favoriteIds));
       context.favoriteActions = collected.actions
         .filter((a) => favoriteIds.has(String(a?.id ?? '').trim()))
         .map((a) => this._enrichActionForSheet(a, favoriteIds));
@@ -335,11 +343,51 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         previewAction: selectedAction?.preview || null,
       };
 
-      // Current AP from stored system fields (+ one-time legacy sync)
-      context.actionPointsCurrent = getActorActionPoints(this.actor);
+      // Current AP from stored system fields (+ one-time legacy sync); the counter also says whether it shows AP left or AP spent.
+      context.actionPointsCurrent = { ...getActorActionPoints(this.actor), ...describeApCounter(this.actor) };
+
+      this._prepareDerivedStatsContext(context);
     }
 
     return context;
+  }
+
+  /**
+   * Sheet-only view data for the derived stats panel: march speed unit and load warning.
+   * @param {object} context
+   */
+  _prepareDerivedStatsContext(context) {
+    const derived = context.system?.derivedStats;
+    const unitKmh = this._getSpeedUnit() === 'kmh';
+    const toUnit = unitKmh ? 3.6 : 1;
+    const key = (base) => `SPACEHOLDER.Derived.${base}${unitKmh ? 'Kmh' : 'Ms'}`;
+    // The three speeds share one unit, one toggle and one number of decimals (m/s: 2, km/h: 1).
+    context.speedDecimals = unitKmh ? 1 : 2;
+    context.combatSpeedLabelKey = key('CombatSpeed');
+    context.sprintSpeedLabelKey = key('SprintSpeed');
+    context.travelSpeedLabelKey = key('TravelSpeed');
+    context.combatSpeedDisplay = derived ? derived.combatSpeed * toUnit : 0;
+    context.sprintSpeedDisplay = derived ? derived.sprintSpeed * toUnit : 0;
+    context.travelSpeedDisplay = derived ? (unitKmh ? derived.travelSpeedKmh : derived.travelSpeed) : 0;
+    context.loadSlowsDown = !!derived && Number(derived.loadFactor) < 1;
+  }
+
+  /** @returns {'ms'|'kmh'} unit of the speed rows (client-wide preference). */
+  _getSpeedUnit() {
+    try {
+      return globalThis.localStorage?.getItem(SPEED_UNIT_KEY) === 'kmh' ? 'kmh' : 'ms';
+    } catch (_) {
+      return 'ms';
+    }
+  }
+
+  _toggleSpeedUnit() {
+    const next = this._getSpeedUnit() === 'kmh' ? 'ms' : 'kmh';
+    try {
+      globalThis.localStorage?.setItem(SPEED_UNIT_KEY, next);
+    } catch (_) {
+      /* storage may be blocked: the toggle then resets on re-render */
+    }
   }
 
   /**
@@ -380,6 +428,113 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       srcAimingArc.deviationBaseDeg = Math.max(0, Number(aimingArcCfg.defaultDeviationBaseDeg) || 1);
     }
     context.system.aimingArc = srcAimingArc;
+    context.hitboxScalePercent = normalizeHitboxScale(context.system.hitboxScale);
+  }
+
+  /**
+   * Open the editor for the hitbox scale (`system.hitboxScale`, percent of the token's size).
+   */
+  async _openHitboxDialog() {
+    if (this.actor?.type !== 'character' || !this.isEditable) return;
+    const current = Math.round(normalizeHitboxScale(
+      this.actor._source?.system?.hitboxScale ?? this.actor.system?.hitboxScale,
+    ));
+
+    await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: game.i18n.localize('SPACEHOLDER.Character.HitboxEditDialogTitle'),
+        icon: 'fa-solid fa-bullseye',
+      },
+      position: { width: 360 },
+      content: `
+        <div class="spaceholder-hitbox-dialog">
+          <div class="form-group">
+            <label for="sh-hitbox-scale">${game.i18n.localize('SPACEHOLDER.Derived.Hitbox')}, %</label>
+            <input id="sh-hitbox-scale" type="number" min="${HITBOX_SCALE_MIN}" max="${HITBOX_SCALE_MAX}" step="1" value="${current}">
+          </div>
+          <p class="hint">${game.i18n.localize('SPACEHOLDER.Character.HitboxEditHint')}</p>
+        </div>
+      `,
+      buttons: [
+        {
+          action: 'apply',
+          label: game.i18n.localize('SPACEHOLDER.Actions.Apply'),
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const raw = String(root?.querySelector?.('#sh-hitbox-scale')?.value ?? '').trim();
+            if (!raw || !Number.isFinite(Number(raw))) return;
+            await this.actor.update({ 'system.hitboxScale': Math.round(normalizeHitboxScale(raw)) });
+          },
+        },
+        {
+          action: 'cancel',
+          label: game.i18n.localize('SPACEHOLDER.Actions.Cancel'),
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
+  }
+
+  /**
+   * Edit the gravity γ acting on the actor (`system.params.gravity`, 1 = Earth): a parameter of the
+   * environment. Height and the species' combat speed belong to the anatomy (anatomy editor).
+   */
+  async _openGravityDialog() {
+    if (this.actor?.type !== 'character' || !this.isEditable) return;
+    const src = this.actor._source?.system ?? {};
+    const raw = Number(src.params?.gravity ?? DEFAULT_PARAMS.gravity);
+    const gravity = Number.isFinite(raw) ? raw : DEFAULT_PARAMS.gravity;
+    const t = (key) => game.i18n.localize(key);
+
+    await foundry.applications.api.DialogV2.wait({
+      classes: ['spaceholder'],
+      window: {
+        title: t('SPACEHOLDER.Character.GravityEditDialogTitle'),
+        icon: 'fa-solid fa-person',
+      },
+      position: { width: 340 },
+      content: `
+        <div class="spaceholder-body-params-dialog">
+          <div class="form-group">
+            <label for="sh-body-gravity">${t('SPACEHOLDER.Derived.Gravity')}</label>
+            <input id="sh-body-gravity" type="number" min="0" step="0.01" value="${gravity}">
+          </div>
+          <p class="hint">${t('SPACEHOLDER.Character.GravityEditHint')}</p>
+        </div>
+      `,
+      buttons: [
+        {
+          action: 'apply',
+          label: t('SPACEHOLDER.Actions.Apply'),
+          icon: 'fa-solid fa-check',
+          default: true,
+          callback: async (dlgEvent) => {
+            const root =
+              dlgEvent?.currentTarget?.form ||
+              dlgEvent?.target?.form ||
+              dlgEvent?.currentTarget?.closest?.('form') ||
+              dlgEvent?.target?.closest?.('form') ||
+              dlgEvent?.currentTarget;
+            const rawValue = String(root?.querySelector?.('#sh-body-gravity')?.value ?? '').trim();
+            const g = rawValue && Number.isFinite(Number(rawValue)) ? Number(rawValue) : null;
+            if (g !== null && g >= 0) await this.actor.update({ 'system.params.gravity': g });
+          },
+        },
+        {
+          action: 'cancel',
+          label: t('SPACEHOLDER.Actions.Cancel'),
+          icon: 'fa-solid fa-times',
+        },
+      ],
+    });
   }
 
   /**
@@ -737,14 +892,21 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     for (let [partId, part] of Object.entries(bodyParts)) {
       const sumAmt = sumDamageByPart[partId] || 0;
       const dmgUnits = Math.floor(sumAmt / 100); // x100 -> единицы HP
-      const currentHpDerived = Math.max(0, part.maxHp - dmgUnits);
+      const maxHp = part.effectiveMaxHp ?? part.maxHp;
+      // A lost part (and what hung below it) has no HP left, whatever its own injuries say. Otherwise the HP the
+      // actor prepared (body-state: saturation; a disabled part shows its HP below 0).
+      const preparedHp = Number(part.currentHp);
+      const currentHpDerived = part.lost ? 0 : (Number.isFinite(preparedHp) ? preparedHp : Math.max(0, maxHp - dmgUnits));
       currentHpMap[partId] = currentHpDerived;
-      const isInjured = currentHpDerived < part.maxHp;
+      const isInjured = currentHpDerived < maxHp;
       if (isInjured) {
         injuredParts[partId] = { ...part, currentHp: currentHpDerived };
       }
     }
     
+    context.deathNote = this._deathNote();
+    context.dyingNote = context.deathNote ? '' : this._dyingNote();
+
     // Add injured parts to context (for backward compatibility)
     context.injuredParts = Object.keys(injuredParts).length > 0 ? injuredParts : null;
     
@@ -752,6 +914,47 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     context.hierarchicalBodyParts = this._buildBodyPartsList(bodyParts, currentHpMap);
 
     this._prepareHealthEquippedGear(context, bodyParts);
+  }
+
+  /**
+   * Names of the part and the organ a death / dying state points at.
+   * @param {{slotRef?: string|null, innerId?: string|null}} state
+   * @returns {{part: string, organ: string}}
+   */
+  _bodyStateNames(state) {
+    const part = this.actor.system.health?.bodyParts?.[state.slotRef];
+    const inner = (part?.inners ?? []).find((o) => o?.id === state.innerId);
+    return {
+      part: part?.displayName || part?.name || state.slotRef || '',
+      organ: inner?.displayName || inner?.name || state.innerId || '',
+    };
+  }
+
+  /**
+   * One line for the death banner of the health tab ("Dead: the head was lost" / "...: Brain (Head) destroyed"),
+   * or `''` while the body lives. The state itself is derived by the actor (`system.health.dead`).
+   * @returns {string}
+   */
+  _deathNote() {
+    const dead = this.actor?.system?.health?.dead;
+    if (!dead?.dead) return '';
+    const names = this._bodyStateNames(dead);
+    if (dead.reason === 'root') return game.i18n.format('SPACEHOLDER.Health.DeadRoot', { part: names.part });
+    return game.i18n.format('SPACEHOLDER.Health.DeadOrgan', names);
+  }
+
+  /**
+   * One line for the dying banner ("Dying: Brain (Head) damaged" / "Dying: bleeding out, ~6 min"), or `''`.
+   * @returns {string}
+   */
+  _dyingNote() {
+    const state = this.actor?.system?.health?.dead;
+    if (!state?.dying) return '';
+    if (state.reason === 'bleeding') {
+      const minutes = Math.max(1, Math.round(Number(state.minutesToDeath) || 0));
+      return game.i18n.format('SPACEHOLDER.Health.DyingBleeding', { minutes });
+    }
+    return game.i18n.format('SPACEHOLDER.Health.DyingOrgan', this._bodyStateNames(state));
   }
 
   /**
@@ -867,7 +1070,8 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
     const list = [];
     for (const [partId, part] of Object.entries(bodyParts)) {
-      const currentHp = currentHpMap[partId] ?? part.maxHp;
+      const maxHp = part.effectiveMaxHp ?? part.maxHp;
+      const currentHp = currentHpMap[partId] ?? maxHp;
       const baseName = part.displayName || part.name || part.id || partId;
       const typeId = String(part.id ?? "").trim();
       const hasDup = !!typeId && (countByTypeId[typeId] || 0) > 1;
@@ -877,10 +1081,25 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         dupIndex = m ? Number(m[1]) : null;
       }
       const uiName = hasDup && dupIndex ? `${baseName} (${dupIndex})` : baseName;
+      const lostViaPart = part.lostVia ? bodyParts[part.lostVia] : null;
+      let lostTitle = "";
+      if (part.lost) {
+        lostTitle = lostViaPart
+          ? game.i18n.format("SPACEHOLDER.Health.PartLostWith", {
+            part: lostViaPart.displayName || lostViaPart.name || part.lostVia,
+          })
+          : game.i18n.localize("SPACEHOLDER.Health.PartLost");
+      }
       list.push({
         ...part,
+        lostTitle,
+        inners: (part.inners ?? []).map((inner) => ({
+          ...inner,
+          statusLabel: game.i18n.localize(`SPACEHOLDER.Health.OrganStatus.${inner.status ?? "ok"}`),
+        })),
         id: partId,
         name: uiName,
+        maxHp,
         currentHp,
         treePrefix: "",
         hasChildren: Object.values(bodyParts).some(
@@ -888,7 +1107,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
             Array.isArray(p.relations) &&
             p.relations.some((r) => r && r.kind === "parent" && r.target === partId)
         ),
-        isInjured: currentHp < part.maxHp
+        isInjured: currentHp < maxHp
       });
     }
     list.sort((a, b) => {
@@ -1005,6 +1224,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     const addGauge = (gauge) => {
       if (gauge) gauges.push(gauge);
     };
+    let magazineGauge = false;
 
     const isWeapon = !!(tags.isWeapon || tags.isMelee || tags.isRanged || tags.isThrown);
     if (isWeapon) {
@@ -1035,22 +1255,26 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         }));
       }
       if (ammo.connector.enabled && ammo.capacity > 0) {
-        const contents = getNestedStorage(itemLike).contents;
-        const current = contents.reduce(
-          (sum, entry) => sum + Math.max(0, Number(entry?.system?.quantity) || 0),
-          0,
-        );
+        // Rounds of a magazine on an actor are live child items; only a snapshot row keeps them in nested storage.
+        const current = row.isDocument && row.item
+          ? getAmmoItemChargePreview(row.item).current
+          : getNestedStorage(itemLike).contents.reduce(
+            (sum, entry) => sum + Math.max(0, Number(entry?.system?.quantity) || 0),
+            0,
+          );
         addGauge(this._makeInventoryPreviewGauge({
           label: L('SPACEHOLDER.Inventory.PreviewGauge.Magazine'),
           current,
           max: ammo.capacity,
         }));
+        magazineGauge = true;
       }
     }
 
     if (tags.isContainer) {
       const limits = normalizeItemContainerFields(system).container.limits;
-      if (limits.maxItems > 0) {
+      // A magazine's slot limit is its capacity: the «Magazine» gauge above already shows it.
+      if (limits.maxItems > 0 && !magazineGauge) {
         let current = 0;
         if (row.isDocument && row.item) {
           current = calculateActorContainerUsage(this.actor, row.item).itemCount;
@@ -1351,6 +1575,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         })
         : `<em>${escape(noDescription)}</em>`;
       selectedInventoryRow.previewGauges = this._buildInventoryPreviewGauges(selectedInventoryRow);
+      selectedInventoryRow.itemActions = this._buildItemActionsForPreview(selectedInventoryRow);
     }
 
     // Assign and return
@@ -1367,16 +1592,46 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       .sort((a, b) => String(a?.name ?? '').localeCompare(String(b?.name ?? ''), game.i18n?.lang || 'en'));
     const heldNames = heldItems.map((item) => String(item?.name ?? '').trim()).filter(Boolean).join(', ');
     const actorName = String(this.actor?.name ?? '').trim() || (game.i18n?.localize?.('SPACEHOLDER.Actor.UnknownName') ?? 'Actor');
+    // One of the held items is selected; the toolbar above the cards acts on it (the first one until the user picks).
+    const heldSelectedItem = heldItems.find((item) => item.id === this._heldSelectedItemId) ?? heldItems[0] ?? null;
+    this._heldSelectedItemId = heldSelectedItem?.id ?? '';
     context.heldItems = heldItems.map((item) => ({
       id: item.id,
       name: String(item?.name ?? '').trim() || (game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.UntitledAction') ?? 'Unnamed'),
       img: item?.img || Item.DEFAULT_ICON,
       typeLabel: game.i18n?.localize?.('SPACEHOLDER.ItemTypes.Item') ?? 'Item',
-      canAttack: !!item?.canAttack,
+      isSelected: item.id === heldSelectedItem?.id,
     }));
+    context.heldSelected = heldSelectedItem
+      ? {
+        id: heldSelectedItem.id,
+        name: String(heldSelectedItem.name ?? '').trim(),
+        canAttack: !!heldSelectedItem.canAttack,
+        actions: this._buildItemActionsForPreview({ isDocument: true, item: heldSelectedItem }),
+      }
+      : null;
     context.heldItemsSummary = heldNames
       ? (game.i18n?.format?.('SPACEHOLDER.Inventory.HeldSummaryWithItems', { name: actorName, items: heldNames }) ?? `${actorName} holds ${heldNames}.`)
       : (game.i18n?.format?.('SPACEHOLDER.Inventory.HeldSummaryEmpty', { name: actorName }) ?? `${actorName} holds nothing.`);
+  }
+
+  /**
+   * All actions of the item selected in the inventory preview (simple ones included), each with a
+   * favorite toggle: this is where the simple actions (take off, put away, drop…), which the general
+   * lists hide unless favorited, are added to the favorites.
+   *
+   * @param {object} row selected inventory row
+   * @returns {object[]} sheet-enriched actions, empty for anything but an item of a character
+   */
+  _buildItemActionsForPreview(row) {
+    if (this.actor?.type !== 'character' || !row?.isDocument || !row.item?.uuid) return [];
+    const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
+    const { actions } = collectActorActions(this.actor, { tokenDoc, editable: this.isEditable });
+    const favoriteIds = new Set(getFavoriteActionIds(this.actor));
+    const prefix = `item.${row.item.uuid}.`;
+    return actions
+      .filter((a) => String(a?.id ?? '').startsWith(prefix))
+      .map((a) => this._enrichActionForSheet(a, favoriteIds));
   }
 
   /**
@@ -1717,7 +1972,20 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
   _enrichActionForSheet(action, favoriteIds) {
     if (!action) return action;
     const isFavorite = favoriteIds.has(String(action.id ?? '').trim());
-    return { ...action, isFavorite, preview: this._buildActionsPreview(action, isFavorite) };
+    // Show what the action will really cost (action speed included), not its base.
+    const shown = { ...action, apCost: actionApShown(this.actor, action), dragImg: this._actionDragImg(action) };
+    return { ...shown, isFavorite, preview: this._buildActionsPreview(shown, isFavorite) };
+  }
+
+  /** Icon a hotbar macro made from the action gets: the item's for an item action, else the actor's. */
+  _actionDragImg(action) {
+    const id = String(action?.id ?? '');
+    if (action?.source === 'item') {
+      for (const item of this.actor?.items ?? []) {
+        if (item?.img && id.startsWith(`item.${item.uuid}.`)) return String(item.img);
+      }
+    }
+    return String(this.actor?.img ?? '');
   }
 
   _buildActionsPreview(action, isFavorite = false) {
@@ -1960,13 +2228,22 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         ev.stopPropagation();
         openHeldItem(ev.currentTarget);
       });
-      if (node instanceof HTMLElement && node.matches('.sh-held-item-card')) {
-        node.addEventListener('keydown', (ev) => {
-          if (ev.key !== 'Enter' && ev.key !== ' ') return;
-          ev.preventDefault();
-          openHeldItem(ev.currentTarget);
-        });
-      }
+    });
+
+    // A held-item card only selects the item; what can be done with it is the toolbar above the cards.
+    el.querySelectorAll('[data-action="sh-held-item-select"]').forEach((card) => {
+      const select = (ev) => {
+        const id = String(card.dataset?.itemId ?? '').trim();
+        if (!id || id === this._heldSelectedItemId) return;
+        ev.preventDefault();
+        this._heldSelectedItemId = id;
+        this.render(false);
+      };
+      card.addEventListener('click', select);
+      card.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+        select(ev);
+      });
     });
 
     const openHealthEquippedItem = (sourceEl) => {
@@ -2002,151 +2279,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         const tokenDoc = this._getTokenDocumentFromContext?.() ?? null;
         const token = resolveActionToken({ tokenDoc }, this.actor);
         await item.attack({ token });
-      });
-    });
-
-    el.querySelectorAll('[data-action="sh-held-item-stow"]').forEach((node) => {
-      node.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (!this.isEditable) return;
-        const item = getHeldItemFromControl(ev.currentTarget);
-        if (!item) return;
-        await item.update({ 'system.equipped': false, 'system.held': false });
-        this.render(false);
-      });
-    });
-
-    el.querySelectorAll('[data-action="sh-held-item-drop"]').forEach((node) => {
-      node.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (!this.isEditable) return;
-        const item = getHeldItemFromControl(ev.currentTarget);
-        if (!item) return;
-
-        const L = (k) => game.i18n?.localize?.(k) ?? k;
-        if (!game.settings.get('spaceholder', 'itemPilesShEnabled')) {
-          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropItemPilesDisabled'));
-          return;
-        }
-        const pilesApi = game.spaceholder?.itemPilesSh?.api;
-        if (!pilesApi?.dropData) {
-          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropItemPilesDisabled'));
-          return;
-        }
-        const scene = canvas?.scene;
-        if (!scene) {
-          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropNoToken'));
-          return;
-        }
-        const controlled = (canvas.tokens?.controlled ?? []).filter((t) => t.actor?.id === this.actor.id);
-        const actorToken = controlled[0] ?? this.actor.getActiveTokens()?.[0];
-        if (!actorToken?.center) {
-          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropNoToken'));
-          return;
-        }
-
-        const gridSize = canvas.grid.size;
-        const cx = actorToken.center.x;
-        const cy = actorToken.center.y;
-        const dirDeg = Number(actorToken.document.getFlag('spaceholder', 'tokenpointerDirection') ?? 90);
-        const rad = (dirDeg * Math.PI) / 180;
-        const step = gridSize / 2;
-        const targetX = cx + Math.cos(rad) * step;
-        const targetY = cy + Math.sin(rad) * step;
-        const mergeCenter = findNearestPileDropPointWithinCells(scene, cx, cy, 2, gridSize);
-        let dropX;
-        let dropY;
-        if (mergeCenter) {
-          dropX = mergeCenter.x;
-          dropY = mergeCenter.y;
-        } else {
-          dropX = targetX - gridSize / 2;
-          dropY = targetY - gridSize / 2;
-        }
-
-        try {
-          await pilesApi.dropData({
-            dropData: {
-              type: 'Item',
-              uuid: item.uuid,
-              x: dropX,
-              y: dropY,
-              quantity: 1,
-            },
-            sceneId: scene.id,
-          });
-        } catch (e) {
-          console.error('SpaceHolder | failed to drop held item via item-piles-sh:', e);
-          ui.notifications?.warn?.(L('SPACEHOLDER.Inventory.HeldActions.DropFailed'));
-        }
-        this.render(false);
-      });
-    });
-
-    el.querySelectorAll('[data-action="sh-held-item-wear"]').forEach((node) => {
-      node.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (!this.isEditable) return;
-        const item = getHeldItemFromControl(ev.currentTarget);
-        if (!item) return;
-        if (!item.system?.itemTags?.isArmor) {
-          ui.notifications?.info?.(game.i18n?.localize?.('SPACEHOLDER.Inventory.HeldActions.WearOnlyArmor') ?? 'Only armor can be equipped');
-          return;
-        }
-        if (!item.system?.held) {
-          ui.notifications?.info?.(game.i18n?.localize?.('SPACEHOLDER.Inventory.HeldActions.WearNeedsHeld') ?? 'Take item in hands first');
-          return;
-        }
-        await item.update({ 'system.equipped': true, 'system.held': false });
-        this.render(false);
-      });
-    });
-
-    el.querySelectorAll('[data-action="sh-held-item-show"]').forEach((node) => {
-      node.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const item = getHeldItemFromControl(ev.currentTarget);
-        if (!item) return;
-        const escape = foundry.utils.escapeHTML;
-        const qty = Math.max(1, Number(item.system?.quantity) || 1);
-        const weight = Number(item.system?.weight) || 0;
-        const desc = String(item.system?.description ?? '').trim();
-        const enrichedDesc = desc
-          ? await TextEditor.enrichHTML(desc, { async: true, secrets: false, relativeTo: item })
-          : `<em>${escape(game.i18n?.localize?.('SPACEHOLDER.ActionsSystem.UI.NoDescription') ?? 'No description')}</em>`;
-        const typeLabel = game.i18n?.localize?.('SPACEHOLDER.ItemTypes.Item') ?? 'Item';
-        const quantityLabel = game.i18n?.localize?.('SPACEHOLDER.Resources.Quantity') ?? 'Quantity';
-        const weightLabel = game.i18n?.localize?.('SPACEHOLDER.Resources.Weight') ?? 'Weight';
-        const kg = game.i18n?.localize?.('SPACEHOLDER.Units.Kg') ?? 'kg';
-        await ChatMessage.create({
-          speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-          content: `
-            <article class="sh-chat-item-preview">
-              <header style="display:flex;gap:8px;align-items:center;">
-                <img src="${escape(String(item.img || Item.DEFAULT_ICON))}" alt="${escape(item.name)}" width="32" height="32" />
-                <div>
-                  <div><strong>${escape(item.name)}</strong></div>
-                  <div>${escape(typeLabel)}</div>
-                </div>
-              </header>
-              <div style="margin-top:8px;">${escape(quantityLabel)}: ${qty} · ${escape(weightLabel)}: ${weight} ${escape(kg)}</div>
-              <div style="margin-top:8px;">${enrichedDesc}</div>
-            </article>
-          `,
-        });
-      });
-    });
-
-    const heldPlaceholderHint = game.i18n?.localize?.('SPACEHOLDER.Inventory.HeldActions.NotImplemented') ?? 'Not implemented yet';
-    el.querySelectorAll('[data-action="sh-held-item-throw"]').forEach((node) => {
-      node.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        ui.notifications?.info?.(heldPlaceholderHint);
       });
     });
 
@@ -2325,6 +2457,30 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         });
       });
 
+      el.querySelectorAll('[data-action="sh-hitbox-edit"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          await this._openHitboxDialog();
+          this.render(false);
+        });
+      });
+
+      el.querySelectorAll('[data-action="sh-gravity-edit"]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          await this._openGravityDialog();
+          this.render(false);
+        });
+      });
+
+      el.querySelectorAll('[data-action="sh-speed-unit-toggle"]').forEach((btn) => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          this._toggleSpeedUnit();
+          this.render(false);
+        });
+      });
+
       el.querySelectorAll('[data-action="sh-actions-mode-set"]').forEach((btn) => {
         btn.addEventListener('click', async (ev) => {
           ev.preventDefault();
@@ -2377,6 +2533,22 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
           }
           await executeActorAction(this.actor, action, { tokenDoc, editable: this.isEditable });
           this.render(false);
+        });
+      });
+
+      // Any action chip (favorite or not) can be dragged onto the hotbar to make a macro of it.
+      el.querySelectorAll('.sh-action-chip[data-drag-action-id]').forEach((chip) => {
+        chip.addEventListener('dragstart', (ev) => {
+          if (!ev.dataTransfer) return;
+          const data = {
+            type: ACTION_DRAG_TYPE,
+            actorUuid: this.actor.uuid,
+            actionId: String(chip.dataset.dragActionId ?? ''),
+            label: String(chip.dataset.dragLabel ?? ''),
+            img: String(chip.dataset.dragImg ?? ''),
+          };
+          ev.dataTransfer.setData('text/plain', JSON.stringify(data));
+          ev.dataTransfer.effectAllowed = 'copy';
         });
       });
 
@@ -2541,44 +2713,6 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       });
     });
 
-    // Toggle Wearable equip
-    el.querySelectorAll('[data-action="wearable-toggle"]').forEach(btn => {
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        const card = ev.currentTarget.closest('.inventory-item-card');
-        const itemId = card?.dataset?.itemId || btn.dataset?.itemId;
-        const item = this.actor.items.get(itemId);
-        if (!item || item.type !== 'item') return;
-        if (!item.system?.itemTags?.isArmor) return;
-        const equipped = Boolean(item.system?.equipped);
-        const held = Boolean(item.system?.held);
-        if (equipped) {
-          await item.update({ 'system.equipped': false, 'system.held': true });
-        } else if (held) {
-          await item.update({ 'system.equipped': true, 'system.held': false });
-        } else {
-          await item.update({ 'system.equipped': false, 'system.held': true });
-        }
-        this.render(false);
-      });
-    });
-
-    // Toggle generic item hold/stow
-    el.querySelectorAll('[data-action="item-held-toggle"]').forEach(btn => {
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        const card = ev.currentTarget.closest('.inventory-item-card');
-        const itemId = card?.dataset?.itemId || btn.dataset?.itemId;
-        const item = this.actor.items.get(itemId);
-        if (!item || item.type !== 'item') return;
-        const equipped = Boolean(item.system?.equipped);
-        if (equipped) return; // Cannot hold directly while equipped.
-        const held = Boolean(item.system?.held);
-        await item.update({ 'system.held': !held });
-        this.render(false);
-      });
-    });
-
     // Note: Quantity editing is now handled through the item sheet since we removed inline editing
     // This keeps the interface cleaner and follows the new design pattern
 
@@ -2623,6 +2757,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       const addPartBtn = el.querySelector('.anatomy-editor-add-part-btn');
       const groupsBtn = el.querySelector('.anatomy-editor-groups-btn');
       const gridBtn = el.querySelector('.anatomy-editor-grid-btn');
+      const speciesBtn = el.querySelector('.anatomy-editor-species-btn');
       const anatomyBtn = el.querySelector('.anatomy-current-btn');
 
       const applyEditState = () => {
@@ -2635,6 +2770,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         if (addPartBtn) addPartBtn.style.display = isEditing ? '' : 'none';
         if (groupsBtn) groupsBtn.style.display = isEditing ? '' : 'none';
         if (gridBtn) gridBtn.style.display = isEditing ? '' : 'none';
+        if (speciesBtn) speciesBtn.style.display = isEditing ? '' : 'none';
         if (anatomyBtn) {
           anatomyBtn.disabled = !isEditing || !this.isEditable;
         }
@@ -2675,6 +2811,13 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
         gridBtn.addEventListener('click', () => {
           if (!this._anatomyEditor.editMode) return;
           this._onAnatomyGridClick();
+        });
+      }
+
+      if (speciesBtn) {
+        speciesBtn.addEventListener('click', () => {
+          if (!this._anatomyEditor.editMode) return;
+          this._anatomyEditor.openSpeciesDialog();
         });
       }
 
@@ -3123,6 +3266,7 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
 
       row.addEventListener("mouseenter", () => {
         const circle = editorContainer?.querySelector(`[data-part-id="${partId}"]`);
+        clearAllHoverClasses();
         if (circle) {
           updateLine(row, circle);
           row.classList.add("anatomy-pointer-hover");
@@ -3147,9 +3291,15 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
     });
 
     if (editorContainer) {
+      // The highlight follows the pointer: whatever was highlighted before goes out first, so moving
+      // from one part to another (or onto empty space) never leaves a row lit.
       editorContainer.addEventListener("mouseover", (e) => {
+        clearAllHoverClasses();
         const circle = e.target.closest?.(".anatomy-editor-part-circle[data-part-id]");
-        if (!circle) return;
+        if (!circle) {
+          clearLine();
+          return;
+        }
         const partId = circle.dataset.partId;
         const row = el.querySelector(`.body-part-line[data-part-id="${partId}"]`);
         if (row) {
@@ -3160,12 +3310,12 @@ export class SpaceHolderBaseActorSheet extends foundry.applications.api.Handleba
       });
       editorContainer.addEventListener("mouseout", (e) => {
         const toEl = e.relatedTarget;
-        const stillInEditor = toEl && editorContainer.contains(toEl);
+        // Going to another part or to its list row: the next mouseover / mouseenter takes over.
+        const movedToPart = toEl?.closest?.(".anatomy-editor-part-circle[data-part-id]");
         const movedToList = toEl?.closest?.(".body-part-line[data-part-id]");
-        if (!stillInEditor && !movedToList) {
-          clearLine();
-          clearAllHoverClasses();
-        }
+        if (movedToPart || movedToList) return;
+        clearLine();
+        clearAllHoverClasses();
       });
     }
   }

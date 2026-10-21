@@ -5,14 +5,18 @@
   --sh-token-quick-hud-width: clamp(36rem, var(--sh-token-quick-hud-anchor-width, 68vw), 70rem);
   --sh-token-quick-hud-portrait: 72px;
   --sh-token-quick-hud-control: 36px;
-  --sh-token-quick-hud-gap: 6px;
+  --sh-token-quick-hud-gap: 4px;
   --sh-token-quick-hud-held-card-h: 44px;
   --sh-token-quick-hud-held-max-rows: 5;
   --sh-token-quick-hud-preview-rows: 2;
   --sh-token-quick-hud-tool: 22px;
+  --sh-token-quick-hud-sel-head: 18px;
+  --sh-token-quick-hud-sel-foot: 28px;
   --sh-token-quick-hud-active-bg: rgba(74, 110, 74, 0.35);
   --sh-token-quick-hud-active-border: rgba(74, 110, 74, 0.9);
   --sh-token-quick-hud-active-text: #9fe39f;
+  --sh-token-quick-hud-attack: var(--sh-danger);
+  --sh-token-quick-hud-attack-text: #ff9a8f;
 
   position: fixed;
   z-index: 71;
@@ -28,6 +32,20 @@
 
   &.is-empty {
     width: max-content;
+  }
+
+  // Overlay that carries card ghosts between the tray and the loadout.
+  &.sh-token-quick-hud__fx {
+    top: 0;
+    left: 0;
+    bottom: auto;
+    z-index: 72;
+    width: 0;
+    height: 0;
+    min-width: 0;
+    max-width: none;
+    overflow: visible;
+    pointer-events: none;
   }
 
   .sh-token-quick-hud__stack {
@@ -180,6 +198,11 @@
         color: currentColor;
       }
     }
+
+    // Out of combat the number is AP spent since the last combat, not AP left: no accent, no warning.
+    &.is-spent i {
+      color: var(--sh-text-muted);
+    }
   }
 
   .sh-token-quick-hud__ap-value {
@@ -244,30 +267,111 @@
     }
   }
 
-  // --- Attack button ---------------------------------------------------------
+  // --- Health summary placeholder (injury summary is not implemented yet) ----
 
-  .sh-token-quick-hud__attack {
+  .sh-token-quick-hud__health {
     display: flex;
     flex: 0 0 auto;
     flex-direction: column;
     justify-content: center;
-    gap: 4px;
-    width: 11rem;
+    gap: 6px;
+    width: 8.5rem;
+    min-width: 0;
+    padding: 6px 10px;
+    border: 1px dashed var(--sh-border-strong);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--sh-surface-2) 60%, transparent);
+    color: var(--sh-text-dim);
+    cursor: var(--cursor-default, default);
+  }
+
+  .sh-token-quick-hud__health-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--sh-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.1;
+
+    > i {
+      flex: 0 0 auto;
+      color: var(--sh-text-dim);
+      font-size: 11px;
+    }
+
+    > span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .sh-token-quick-hud__health-track {
+    display: block;
+    height: 6px;
+    border: 1px solid var(--sh-border);
+    border-radius: 3px;
+    background: repeating-linear-gradient(90deg, var(--sh-surface-3) 0 8px, transparent 8px 10px);
+  }
+
+  .sh-token-quick-hud__health-value {
+    font-family: $font-mono;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  // --- Attack button (vertical, right side of the selected-items block) -----
+  // The label on top, large; under it the price: preparation (dim, what it takes to start shooting:
+  // take in hands, reload, readying…) + the first shot (red, with the sight).
+
+  .sh-token-quick-hud__attack {
+    position: relative;
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    // Foundry's base `button` centers flex content; pin it explicitly.
+    align-items: center;
+    align-self: stretch;
+    justify-content: center;
+    gap: 6px;
+    width: 6.75rem;
     min-width: 0;
     height: auto;
+    min-height: calc(var(--sh-token-quick-hud-sel-head) + 4px + var(--sh-token-quick-hud-sel-foot) + 12px);
     margin: 0;
-    padding: 6px 10px;
-    border: 1px solid rgba(74, 110, 74, 0.8);
+    padding: 4px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--sh-token-quick-hud-attack) 78%, var(--sh-border));
     border-radius: 9px;
-    background: linear-gradient(135deg, rgba(74, 110, 74, 0.32) 0%, var(--sh-surface-3) 100%);
-    box-shadow: none;
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        color-mix(in srgb, var(--sh-token-quick-hud-attack) 14%, transparent) 0 7px,
+        transparent 7px 14px
+      ),
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--sh-token-quick-hud-attack) 32%, var(--sh-surface-2)) 0%,
+        var(--sh-surface-3) 100%
+      );
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     color: var(--sh-text);
     cursor: var(--cursor-pointer, pointer);
-    text-align: left;
+    text-align: center;
+    transition:
+      border-color 140ms ease,
+      box-shadow 140ms ease;
 
     &:hover:not(.is-disabled) {
-      border-color: rgba(143, 185, 143, 0.9);
-      background: linear-gradient(135deg, rgba(74, 110, 74, 0.45) 0%, var(--sh-surface-3) 100%);
+      border-color: var(--sh-token-quick-hud-attack);
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--sh-token-quick-hud-attack) 45%, transparent),
+        0 0 16px color-mix(in srgb, var(--sh-token-quick-hud-attack) 30%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
     }
 
     &:focus-visible {
@@ -277,50 +381,112 @@
     &.is-disabled {
       border-color: var(--sh-border);
       background: var(--sh-surface-2);
+      box-shadow: none;
       cursor: var(--cursor-default, default);
 
-      .sh-token-quick-hud__attack-head {
-        opacity: 0.5;
+      .sh-token-quick-hud__attack-label {
+        color: var(--sh-text-muted);
+      }
+
+      .sh-token-quick-hud__attack-shot {
+        color: var(--sh-text-dim);
+      }
+    }
+
+    // In combat and the pool cannot pay the attack: still clickable (the click explains why), but reads as unavailable.
+    &.is-unaffordable {
+      border-color: color-mix(in srgb, var(--sh-warning) 45%, var(--sh-border));
+      background: var(--sh-surface-2);
+
+      .sh-token-quick-hud__attack-label {
+        color: var(--sh-text-muted);
+      }
+
+      .sh-token-quick-hud__attack-cost,
+      .sh-token-quick-hud__attack-shot {
+        color: var(--sh-warning);
+      }
+    }
+
+    // Aiming: the button cancels the attack, so it reads as a stop control, not a call to fire.
+    &.is-aiming {
+      border-color: var(--sh-warning);
+      background: color-mix(in srgb, var(--sh-warning) 16%, var(--sh-surface-2));
+
+      .sh-token-quick-hud__attack-label i {
+        color: var(--sh-warning);
+      }
+
+      &:hover:not(.is-disabled) {
+        border-color: var(--sh-warning);
+        box-shadow:
+          0 0 0 1px color-mix(in srgb, var(--sh-warning) 45%, transparent),
+          0 0 16px color-mix(in srgb, var(--sh-warning) 30%, transparent),
+          inset 0 1px 0 rgba(255, 255, 255, 0.07);
       }
     }
   }
 
-  .sh-token-quick-hud__attack-head {
-    display: flex;
+  .sh-token-quick-hud__attack-label {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    min-width: 0;
+    gap: 5px;
+    max-width: 100%;
+    overflow: hidden;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    line-height: 1.1;
+    text-transform: uppercase;
+    white-space: nowrap;
 
     i {
-      color: var(--sh-accent-strong);
-      font-size: 13px;
+      flex: 0 0 auto;
+      font-size: 12px;
     }
   }
 
-  .sh-token-quick-hud__attack-label {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-size: 13px;
-    font-weight: 800;
-  }
-
-  .sh-token-quick-hud__attack-ap {
-    flex: 0 0 auto;
-    color: var(--sh-text-muted);
+  .sh-token-quick-hud__attack-cost {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
+    max-width: 100%;
     font-family: $font-mono;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
   }
 
-  .sh-token-quick-hud__attack-sub {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
+  .sh-token-quick-hud__attack-prep,
+  .sh-token-quick-hud__attack-sep {
+    color: var(--sh-text-dim);
+  }
+
+  .sh-token-quick-hud__attack-shot {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    color: var(--sh-token-quick-hud-attack-text);
+
+    i {
+      font-size: 10px;
+    }
+  }
+
+  .sh-token-quick-hud__attack-warn {
+    color: var(--sh-warning);
+    font-size: 11px;
+  }
+
+  .sh-token-quick-hud__attack-hint {
+    max-width: 100%;
     color: var(--sh-text-muted);
-    font-size: 10px;
-    line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 9px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
   }
 
   // --- General actions: flowing chips, fixed number of visible rows ---------
@@ -420,18 +586,9 @@
       border-style: dashed;
       opacity: 0.6;
 
-      &:hover,
-      &.is-selected {
+      &:hover {
         opacity: 1;
       }
-    }
-
-    &.is-selected {
-      border-color: var(--sh-border-focus);
-      background: color-mix(in srgb, var(--sh-accent) 16%, var(--sh-surface-2));
-      box-shadow:
-        0 0 0 1px var(--sh-focus-ring),
-        inset 3px 0 0 var(--sh-accent-strong);
     }
   }
 
@@ -546,10 +703,13 @@
     color: var(--sh-warning);
   }
 
+  // Ammo bar with tick marks (`--sh-ammo-ticks` segments, like the blocks of an old loading bar), so the
+  // size of the magazine can be read from it, not only the fill.
   .sh-token-quick-hud__ammo-bar {
+    position: relative;
     display: block;
     width: 34px;
-    height: 6px;
+    height: 8px;
     overflow: hidden;
     border: 1px solid var(--sh-border-strong);
     border-radius: 3px;
@@ -560,22 +720,47 @@
       height: 100%;
       background: var(--sh-accent-strong);
     }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent calc(100% / var(--sh-ammo-ticks, 1) - 1px),
+        rgba(0, 0, 0, 0.7) calc(100% / var(--sh-ammo-ticks, 1) - 1px),
+        rgba(0, 0, 0, 0.7) calc(100% / var(--sh-ammo-ticks, 1))
+      );
+    }
   }
 
+  // Slots as rings: an empty slot is a hollow ring, a loaded one has a dot inside.
   .sh-token-quick-hud__ammo-pips {
-    display: grid;
-    grid-template-columns: repeat(6, 5px);
-    gap: 2px;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
 
     > span {
-      width: 5px;
-      height: 5px;
-      border: 1px solid var(--sh-border-strong);
+      position: relative;
+      box-sizing: border-box;
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid var(--sh-border-strong);
       border-radius: 50%;
 
       &.is-filled {
         border-color: var(--sh-accent-strong);
-        background: var(--sh-accent-strong);
+
+        &::after {
+          content: '';
+          position: absolute;
+          inset: 1.5px;
+          border-radius: 50%;
+          background: var(--sh-accent-strong);
+        }
       }
     }
   }
@@ -596,123 +781,317 @@
     }
   }
 
-  // --- Selected items: chip + mode selector + item actions --------------------
+  // --- Selected items (loadout): fixed two-row card + attack button -----------
+  //   [icon] Name                          [ line tabs               ]
+  //   [icon] ⋯                  [ammo] [⟳ +] [ mode plate            ]
+  //   The icon shows × on hover (deselect); ammo, reload and modes are
+  //   line-bound, so they live together on the right.
 
   .sh-token-quick-hud__selected {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    align-items: stretch;
+    gap: var(--sh-token-quick-hud-gap);
     overflow-x: hidden;
   }
 
-  .sh-token-quick-hud__selected-group {
+  .sh-token-quick-hud__selected-list {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--sh-token-quick-hud-gap);
     min-width: 0;
+  }
 
-    & + & {
-      padding-top: 6px;
-      border-top: 1px solid var(--sh-border);
+  .sh-token-quick-hud__selected-card {
+    // Dark inset for the plate / pill on the gray card.
+    --sh-token-quick-hud-plate: var(--sh-surface-1);
+
+    display: flex;
+    flex: 0 0 auto;
+    align-items: stretch;
+    gap: 8px;
+    height: calc(
+      var(--sh-token-quick-hud-sel-head) + 4px + var(--sh-token-quick-hud-sel-foot) + 12px
+    );
+    min-width: 0;
+    padding: 5px 6px 5px 5px;
+    overflow: hidden;
+    border: 1px solid var(--sh-border);
+    border-radius: 9px;
+    background: var(--sh-surface-3);
+
+    &.is-stowed {
+      border-style: dashed;
     }
   }
 
-  .sh-token-quick-hud__selected-chip {
-    display: inline-flex;
-    flex: 0 1 auto;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    max-width: 16rem;
-    height: var(--sh-token-quick-hud-control);
-    padding: 0 2px 0 5px;
-    border: 1px solid var(--sh-border-focus);
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--sh-accent) 16%, var(--sh-surface-2));
+  .sh-token-quick-hud__selected-icon {
+    position: relative;
+    flex: 0 0 auto;
+    align-self: center;
+    width: calc(var(--sh-token-quick-hud-sel-head) + 4px + var(--sh-token-quick-hud-sel-foot));
+    height: calc(var(--sh-token-quick-hud-sel-head) + 4px + var(--sh-token-quick-hud-sel-foot));
+    overflow: hidden;
+    border-radius: 7px;
 
-    > i {
-      color: var(--sh-text-muted);
-      font-size: 12px;
+    &:hover .sh-token-quick-hud__deselect {
+      opacity: 1;
     }
   }
 
   .sh-token-quick-hud__selected-img {
-    flex: 0 0 auto;
-    width: 26px;
-    height: 26px;
+    display: block;
+    width: 100%;
+    height: 100%;
     border: 0;
-    border-radius: 6px;
     object-fit: contain;
+    background: color-mix(in srgb, var(--sh-surface-1) 70%, var(--sh-surface-3));
+  }
+
+  .sh-token-quick-hud__selected-img--placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sh-text-muted);
+
+    i {
+      font-size: 18px;
+    }
+  }
+
+  // × over the icon: appears on hover / keyboard focus.
+  .sh-token-quick-hud__deselect {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.66);
+    color: #fff;
+    opacity: 0;
+    transition:
+      opacity 120ms ease,
+      background-color 120ms ease;
+
+    &:hover {
+      background: color-mix(in srgb, var(--sh-danger) 55%, rgba(0, 0, 0, 0.66));
+    }
+
+    &:focus-visible {
+      opacity: 1;
+    }
+
+    i {
+      font-size: 16px;
+    }
+  }
+
+  .sh-token-quick-hud__selected-main {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 4.5rem;
   }
 
   .sh-token-quick-hud__selected-name {
-    flex: 1 1 auto;
+    display: block;
+    height: var(--sh-token-quick-hud-sel-head);
     min-width: 0;
     overflow: hidden;
-    font-size: 11px;
+    color: var(--sh-text);
+    font-size: 12px;
     font-weight: 700;
+    line-height: var(--sh-token-quick-hud-sel-head);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .sh-token-quick-hud__deselect {
-    display: inline-flex;
-    flex: 0 0 28px;
+  .sh-token-quick-hud__selected-foot {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--sh-text-muted);
+    gap: 4px;
+    height: var(--sh-token-quick-hud-sel-foot);
+    min-width: 0;
+    overflow: hidden;
+  }
 
-    &:hover {
-      background: var(--sh-surface-3);
-      color: var(--sh-text);
+  // Icon-only buttons: one fixed row, never wraps. Buttons that do not fit are
+  // clipped whole (hidden + inert, see `_markClippedChips`); ⋯ still has them.
+  .sh-token-quick-hud__selected-tools.sh-actions-grid {
+    --sh-action-grid-gap: 4px;
+    --sh-action-control-gap: 0;
+    --sh-action-control-min-height: var(--sh-token-quick-hud-sel-foot);
+    --sh-action-control-padding: 0;
+    --sh-action-control-radius: 7px;
+
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: center;
+    min-width: 0;
+    height: var(--sh-token-quick-hud-sel-foot);
+    overflow: hidden;
+
+    .sh-action-chip {
+      flex: 0 0 auto;
     }
+
+    .sh-action-chip.is-clipped {
+      visibility: hidden;
+    }
+
+    .sh-action-chip.is-icon .sh-action-btn {
+      position: relative;
+      justify-content: center;
+      width: var(--sh-token-quick-hud-sel-foot);
+      min-width: var(--sh-token-quick-hud-sel-foot);
+      height: var(--sh-token-quick-hud-sel-foot);
+      padding: 0;
+
+      i {
+        font-size: 12px;
+      }
+    }
+
+    .sh-action-chip.is-icon .sh-action-btn__label {
+      display: none;
+    }
+
+    .sh-action-chip.is-icon .sh-action-btn__cost {
+      position: absolute;
+      right: 2px;
+      bottom: 1px;
+      font-size: 8px;
+      line-height: 1;
+    }
+  }
+
+  .sh-token-quick-hud__item-menu.sh-token-quick-hud__tool {
+    flex: 0 0 var(--sh-token-quick-hud-sel-foot);
+    width: var(--sh-token-quick-hud-sel-foot);
+    min-width: var(--sh-token-quick-hud-sel-foot);
+    height: var(--sh-token-quick-hud-sel-foot);
+    border-radius: 7px;
 
     i {
       font-size: 12px;
     }
   }
 
-  .sh-token-quick-hud__mode-selector {
-    display: inline-flex;
+  // Line-bound cluster: tabs (top) over ammo pill + reload buttons + mode plate.
+  // The active tab is fused with the plate so the plate reads as «modes of this line».
+  .sh-token-quick-hud__fire {
+    display: flex;
     flex: 0 1 auto;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 3px;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-between;
     min-width: 0;
-    padding: 3px;
-    border: 1px solid var(--sh-border);
-    border-radius: 8px;
-    background: var(--sh-surface-2);
+    max-width: 82%;
+    margin-left: auto;
   }
 
-  .sh-token-quick-hud__mode-line {
-    padding: 0 4px;
-    color: var(--sh-text-muted);
-    font-size: 10px;
-    font-weight: 700;
-    white-space: nowrap;
+  .sh-token-quick-hud__fire-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: var(--sh-token-quick-hud-sel-foot);
+    min-width: 0;
+    max-width: 100%;
+    margin-top: auto;
+  }
+
+  // The ammo indicator takes the room that is left in the row, so a bar can be as long as the row allows.
+  .sh-token-quick-hud__ammo-pill {
+    display: inline-flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 3.5rem;
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid var(--sh-border);
+    border-radius: 999px;
+    background: var(--sh-surface-1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+
+    .sh-token-quick-hud__ammo {
+      flex: 1 1 auto;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 4px;
+      min-width: 0;
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .sh-token-quick-hud__ammo-bar {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 3rem;
+    }
+
+    // A bar asks for a long track (it shrinks when the row is tight); dots and numbers stay compact.
+    &:has(.sh-token-quick-hud__ammo-bar) {
+      width: 11rem;
+    }
+  }
+
+  .is-not-ready .sh-token-quick-hud__ammo-pill {
+    border-color: color-mix(in srgb, var(--sh-warning) 55%, var(--sh-border));
+  }
+
+  .sh-token-quick-hud__line-tabs {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 2px;
+    max-width: 100%;
+    height: var(--sh-token-quick-hud-sel-head);
+    margin-bottom: -1px;
+  }
+
+  .sh-token-quick-hud__mode-plate {
+    display: flex;
+    flex: 0 1 auto;
+    gap: 2px;
+    min-width: 0;
+    height: 100%;
+    padding: 2px;
+    overflow: hidden;
+    border: 1px solid var(--sh-border-strong);
+    border-radius: 4px 4px 8px 8px;
+    background: var(--sh-token-quick-hud-plate);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
   }
 
   .sh-token-quick-hud__mode-btn {
+    display: block;
+    flex: 0 1 auto;
     width: auto;
-    height: 28px;
+    max-width: 9rem;
+    height: 100%;
+    min-width: 0;
     padding: 0 9px;
+    overflow: hidden;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: 5px;
     background: transparent;
     box-shadow: none;
     color: var(--sh-text-muted);
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
+    text-overflow: ellipsis;
     white-space: nowrap;
 
     &:hover {
@@ -728,7 +1107,44 @@
     }
   }
 
-  .sh-token-quick-hud__selected-actions.sh-actions-grid,
+  .sh-token-quick-hud__line-tabs .sh-token-quick-hud__mode-btn {
+    padding: 0 9px 1px;
+    border-color: var(--sh-border);
+    border-radius: 5px 5px 0 0;
+    background: var(--sh-surface-2);
+    font-size: 10px;
+
+    &:hover {
+      border-color: var(--sh-border-strong);
+      background: var(--sh-surface-1);
+    }
+
+    &.is-active {
+      border-color: var(--sh-border-strong);
+      border-bottom-color: var(--sh-token-quick-hud-plate);
+      background: var(--sh-token-quick-hud-plate);
+      color: var(--sh-token-quick-hud-active-text);
+    }
+  }
+
+  // No plate under the tabs (every line has a single mode): plain segmented tabs.
+  .sh-token-quick-hud__fire.is-tabs-only {
+    .sh-token-quick-hud__line-tabs {
+      margin-bottom: 0;
+    }
+
+    .sh-token-quick-hud__line-tabs .sh-token-quick-hud__mode-btn {
+      height: 100%;
+      padding-bottom: 0;
+      border-radius: 5px;
+
+      &.is-active {
+        border-color: var(--sh-token-quick-hud-active-border);
+        background: var(--sh-token-quick-hud-active-bg);
+      }
+    }
+  }
+
   .sh-token-quick-hud__drawer-actions.sh-actions-grid {
     --sh-action-grid-gap: 6px;
     --sh-action-control-gap: 6px;
@@ -744,11 +1160,6 @@
     .sh-action-chip {
       max-width: 100%;
     }
-  }
-
-  .sh-token-quick-hud__selected-actions.sh-actions-grid {
-    flex: 1 1 auto;
-    min-width: 0;
   }
 
   .sh-token-quick-hud__empty-text {
@@ -906,7 +1317,15 @@
     }
 
     .sh-token-quick-hud__attack {
-      width: 9rem;
+      width: 6rem;
+    }
+
+    .sh-token-quick-hud__attack-label {
+      font-size: 11px;
+    }
+
+    .sh-token-quick-hud__health {
+      width: 7rem;
     }
 
     .sh-token-quick-hud__held-item {
@@ -936,7 +1355,21 @@
     }
 
     .sh-token-quick-hud__attack {
-      width: 7.5rem;
+      width: 5.5rem;
+    }
+
+    .sh-token-quick-hud__health {
+      width: 5.5rem;
+      padding: 6px;
+    }
+
+    .sh-token-quick-hud__health-track {
+      display: none;
+    }
+
+    .sh-token-quick-hud__mode-btn {
+      padding-right: 6px;
+      padding-left: 6px;
     }
 
     .sh-token-quick-hud__held-item {
@@ -970,7 +1403,8 @@
   .spaceholder.sh-token-quick-hud {
     .sh-token-quick-hud__drawer-toggle > i,
     .sh-token-quick-hud__held-item,
-    .sh-token-quick-hud__portrait {
+    .sh-token-quick-hud__portrait,
+    .sh-token-quick-hud__attack {
       transition: none;
     }
   }

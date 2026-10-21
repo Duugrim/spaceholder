@@ -1,5 +1,5 @@
-import { getEffectiveActionCost } from "../actions/action-service.mjs";
-import { getStoredActionPoints, refreshApPool } from "../actions/transaction-ledger.mjs";
+import { DEFAULT_PARAMS } from "../derived-stats.mjs";
+import { getMaxApFromAbilities, getStoredActionPoints, refreshApPool, resetApPool } from "../actions/transaction-ledger.mjs";
 import { ensureCombatActionJournalMessage } from "../actions/action-chat-journal.mjs";
 
 const MODULE_NS = "spaceholder";
@@ -552,8 +552,26 @@ export class CombatSessionManager {
     try {
       if (!combat) return;
       this._scheduleOutboxFlush(0);
+      await this._resetApPoolsAfterCombat(combat);
     } catch (e) {
       console.error("SpaceHolder | Combat delete handler failed", e);
+    }
+  }
+
+  /**
+   * The combat is over: every character's AP pool is full again. Out of combat the AP counter is AP spent
+   * since the last combat (see ap-pool.mjs), so it starts from zero. One GM does it for everyone.
+   */
+  async _resetApPoolsAfterCombat(combat) {
+    if (!game.user?.isGM || game.users?.activeGM?.id !== game.user.id) return;
+    for (const combatant of combat.combatants?.contents ?? []) {
+      const actor = combatant.actor;
+      if (actor?.type !== "character") continue;
+      try {
+        await resetApPool(actor, { source: { type: "combatEnd" } });
+      } catch (e) {
+        console.error("SpaceHolder | AP pool reset after combat failed", e);
+      }
     }
   }
 
@@ -806,7 +824,21 @@ export class CombatSessionManager {
     const sides = Array.isArray(state.sides) ? state.sides.slice() : [];
     if (!sides.some((s) => s?.id === sideId)) sides.push({ id: String(sideId), label: String(sideId) });
     state.sides = sides;
+    // Between turns the pick list (who may take the turn) was built from the old sides: rebuild it,
+    // and move on to the next side if the current one has nobody left to act.
+    const repickTurn = !!state.turnPick?.active && !state.activeTurn;
+    if (repickTurn) {
+      await this._applyTurnPickForCurrentSide(combat, state);
+      if (!state.turnPick) {
+        state.currentSide = await this._nextSideId(combat, state);
+        await this._applyTurnPickForCurrentSide(combat, state);
+      }
+    }
     if (game.user?.isGM) await combat.setFlag(MODULE_NS, FLAG_STATE, state);
+    if (repickTurn) {
+      ui.combat?.render?.(false);
+      Hooks.callAll("spaceholder.combatTurnPickMode", combat, { sideId: state.currentSide, turnPick: state.turnPick });
+    }
     await this.appendEvent({
       eventId: _randomId(),
       combatId: combat.id,
@@ -1076,11 +1108,8 @@ export class CombatSessionManager {
         if (String(action.type || "") !== "move") continue;
         action.forced = false;
         const rawBase = _num(action.baseApCost, _num(action.payload?.baseApCost, 0));
-        const combatant = combat.combatants?.get(combatantId) || null;
-        const actor = combatant?.actor || null;
-        action.apCost = actor
-          ? getEffectiveActionCost(actor, rawBase)
-          : Math.max(0, Math.floor(_num(rawBase, 0)));
+        // Movement is not scaled by coordination (action speed), so the base cost is final.
+        action.apCost = Math.max(0, Math.floor(_num(rawBase, 0)));
         table.spent = this._sumTableSpent(table);
       }
     }
@@ -1951,17 +1980,14 @@ export class CombatSessionManager {
   }
 
   _computeMaxAp(actor) {
-    const dex = _num(actor?.system?.abilities?.dex?.value, 0);
-    const intel = _num(actor?.system?.abilities?.int?.value, 0);
-    return Math.max(0, Math.floor(dex * intel));
+    return getMaxApFromAbilities(actor);
   }
 
+  /** Turn starts per round: derived for characters, the default (3) for everyone else. */
   _getMaxTurnStarts(actor) {
     const fromDerived = _num(actor?.system?.derivedStats?.turnsPerRound, NaN);
     if (Number.isFinite(fromDerived)) return Math.max(1, Math.floor(fromDerived));
-    const dex = _num(actor?.system?.abilities?.dex?.value, 0);
-    const intel = _num(actor?.system?.abilities?.int?.value, 0);
-    return Math.max(1, Math.floor((dex * intel) / 100));
+    return DEFAULT_PARAMS.turnStarts;
   }
 
   _getStartedTurnsForCombatant(state, combatantId) {

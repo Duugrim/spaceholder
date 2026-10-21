@@ -1,0 +1,63 @@
+{
+  "name": "Кирпич",
+  "type": "material",
+  "_id": "shc4b025d4214f7d",
+  "img": "systems/spaceholder/assets/icons/armor.svg/metal-scales.svg",
+  "system": {
+    "description": "<p>Кирпич (brick)</p>",
+    "materialId": "brick",
+    "category": "structure",
+    "hardness": 0.0035,
+    "integrityPerThickness": 1.5,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.18,
+    "resistance": {
+      "ballistic": 100,
+      "concussive": 90,
+      "piercing": 100,
+      "cutting": 100,
+      "thermal": 100,
+      "laser": 60,
+      "plasma": 60,
+      "electric": 100,
+      "sonic": 70,
+      "radiation": 30,
+      "chemical": 50
+    },
+    "wear": {
+      "ballistic": 30,
+      "concussive": 50,
+      "piercing": 30,
+      "cutting": 15,
+      "thermal": 15,
+      "laser": 20,
+      "plasma": 60,
+      "electric": 0,
+      "sonic": 15,
+      "radiation": 0,
+      "chemical": 20
+    },
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shce06713c564fbd",
+  "sort": 160000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shc4b025d4214f7d"
+}

@@ -81,6 +81,12 @@
           <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.AutoLoot"}}</label>
           <input type="checkbox" name="system.autoLoot" {{checked system.autoLoot}} />
         </div>
+        {{#if actor.isToken}}
+        <div class="form-group">
+          <label>{{localize "SPACEHOLDER.ItemPilesSh.Container.DeleteWhenEmpty"}}</label>
+          <input type="checkbox" name="system.deleteWhenEmpty" {{checked system.deleteWhenEmpty}} />
+        </div>
+        {{/if}}
         <div class="form-group">
           <button type="button" class="icon-btn" data-action="sh-loot-open-from-token">
             <i class="fa-solid fa-box-open"></i>

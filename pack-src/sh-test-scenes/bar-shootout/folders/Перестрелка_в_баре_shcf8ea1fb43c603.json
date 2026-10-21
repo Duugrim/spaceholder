@@ -1,0 +1,22 @@
+{
+  "_id": "shcf8ea1fb43c603",
+  "name": "Перестрелка в баре",
+  "type": "Actor",
+  "folder": null,
+  "description": "",
+  "sorting": "m",
+  "sort": 0,
+  "color": "#6e8fb3",
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "14.360",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782902000000,
+    "modifiedTime": 1782902000000,
+    "lastModifiedBy": null
+  }
+}

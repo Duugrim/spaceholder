@@ -25,6 +25,7 @@ import {
   activeDamageEntries,
   defaultDamageEntry,
   computeProjectileEnergy,
+  resolveEntriesEffort,
   damageEntriesToApplications,
   buildProjectileFromDamageEntries,
   normalizeFalloff,
@@ -36,7 +37,9 @@ import {
   uniformConeDirections,
 } from './damage-profile.mjs';
 import { normalizeTrajectoryKind, normalizeSimpleLimit } from './trajectory.mjs';
+import { CRIT_EFFECTS, normalizeCritEffect } from '../hit-quality.mjs';
 import {
+  chargeSpendableAmount,
   normalizeChargeChange,
   roundChargeValue,
 } from './charge-change.mjs';
@@ -49,6 +52,9 @@ export {
   applyChargeDelta,
   roundChargeMagnitude,
   roundChargeValue,
+  chargeCanFeedShot,
+  chargeSpendableAmount,
+  chargeGrowsWithShots,
 } from './charge-change.mjs';
 
 export const SH_WEAPON_VERSION = 3;
@@ -76,6 +82,21 @@ export const AMMO_DISPLAY_STYLE_LIST = Object.freeze(Object.values(AMMO_DISPLAY_
 
 /** Above this many slots pips fall back to the numeric counter. */
 const AMMO_PIPS_MAX = 12;
+
+/** Up to this many slots a bar gets one tick mark per slot; more are marked every few slots. */
+const AMMO_TICKS_EACH_MAX = 24;
+
+/**
+ * How many segments the ammo bar is divided into by its tick marks, so the size of the magazine can be
+ * read from the bar: one per slot up to `AMMO_TICKS_EACH_MAX`, then one per 5 (up to 60) or 10 slots.
+ * @param {number} slots capacity of the block (chamber included)
+ * @returns {number} segments, at least 1
+ */
+export function ammoBarTicks(slots) {
+  const n = Math.max(1, Math.round(Number(slots) || 0));
+  if (n <= AMMO_TICKS_EACH_MAX) return n;
+  return Math.ceil(n / (n <= 60 ? 5 : 10));
+}
 
 /** Blocks that consume item documents (vs internal counters). */
 export const ITEM_FED_BLOCK_TYPES = Object.freeze([
@@ -213,6 +234,7 @@ export function createWeaponMode(seed = {}) {
     id: _rid('mode'),
     name: '',
     fireMode: FIRE_MODES.SINGLE,
+    critEffect: CRIT_EFFECTS.DEFAULT,
     burstCount: 3,
     fireDelayAp: 5,
     ammoCost: 1,
@@ -221,6 +243,19 @@ export function createWeaponMode(seed = {}) {
     modifiers: [],
     ...seed,
   });
+}
+
+/**
+ * What a critical hit (the bullseye of the target, `hit-quality.mjs`) does for this mode. A mode
+ * that does not name an effect decides by its fire mode: a single shot picks the body part, a burst
+ * or automatic fire does nothing special.
+ * @param {{fireMode?: string, critEffect?: string}} mode
+ * @returns {string} CRIT_EFFECTS.NONE | CRIT_EFFECTS.PICK_PART
+ */
+export function resolveModeCritEffect(mode) {
+  const effect = normalizeCritEffect(mode?.critEffect);
+  if (effect !== CRIT_EFFECTS.DEFAULT) return effect;
+  return mode?.fireMode === FIRE_MODES.SINGLE || !mode?.fireMode ? CRIT_EFFECTS.PICK_PART : CRIT_EFFECTS.NONE;
 }
 
 /** @returns {object} */
@@ -287,6 +322,7 @@ export {
   normalizeDamageEntries,
   activeDamageEntries,
   computeProjectileEnergy,
+  resolveEntriesEffort,
   damageEntriesToApplications,
   buildProjectileFromDamageEntries,
   normalizeMultishot,
@@ -353,6 +389,7 @@ export function normalizeWeaponMode(raw) {
     id: shStr(raw.id) || _rid('mode'),
     name: shStr(raw.name),
     fireMode,
+    critEffect: normalizeCritEffect(raw.critEffect),
     burstCount: Math.max(2, shInt(raw.burstCount, 3, 2)),
     fireDelayAp: Math.max(0, shNum(raw.fireDelayAp, 5)),
     ammoCost: Math.max(1, shInt(raw.ammoCost, 1, 1)),
@@ -863,11 +900,11 @@ export function formatAmmoCounter(block, actor = null) {
  *
  * @param {object} block
  * @param {Actor|null} [actor]
- * @returns {{style: string, text: string, fillPct: number, pips: Array<{filled: boolean}>}}
+ * @returns {{style: string, text: string, fillPct: number, pips: Array<{filled: boolean}>, ticks: number}}
  */
 export function buildAmmoDisplay(block, actor = null) {
   const text = formatAmmoCounter(block, actor);
-  const numeric = { style: AMMO_DISPLAY_STYLES.NUMBER, text, fillPct: 0, pips: [] };
+  const numeric = { style: AMMO_DISPLAY_STYLES.NUMBER, text, fillPct: 0, pips: [], ticks: 0 };
   const style = block?.displayStyle ?? AMMO_DISPLAY_STYLES.NUMBER;
   if (!block || style === AMMO_DISPLAY_STYLES.NUMBER) return numeric;
 
@@ -888,9 +925,10 @@ export function buildAmmoDisplay(block, actor = null) {
       text,
       fillPct,
       pips: Array.from({ length: max }, (_, i) => ({ filled: i < filled })),
+      ticks: 0,
     };
   }
-  return { style: AMMO_DISPLAY_STYLES.BAR, text, fillPct, pips: [] };
+  return { style: AMMO_DISPLAY_STYLES.BAR, text, fillPct, pips: [], ticks: ammoBarTicks(max) };
 }
 
 /**
@@ -951,7 +989,8 @@ export function getBlockFillPreview(block, actor = null) {
       if (!cfg.charge?.enabled) continue;
       hasCharge = true;
       allowFractional = allowFractional || !!cfg.charge.allowFractional;
-      chargeCurrent += Math.max(0, Number(cfg.charge.current) || 0);
+      // The counter shows what is left to shoot with: a heat sink's room before it overheats.
+      chargeCurrent += Math.min(Math.max(0, Number(cfg.charge.max) || 0), chargeSpendableAmount(cfg.charge));
       chargeMax += Math.max(0, Number(cfg.charge.max) || 0);
     }
     if (hasCharge && chargeMax > 0) {

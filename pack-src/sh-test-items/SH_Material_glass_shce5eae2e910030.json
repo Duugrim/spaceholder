@@ -1,0 +1,63 @@
+{
+  "name": "Стекло",
+  "type": "material",
+  "_id": "shce5eae2e910030",
+  "img": "systems/spaceholder/assets/icons/armor.svg/kevlar.svg",
+  "system": {
+    "description": "<p>Стекло (glass)</p>",
+    "materialId": "glass",
+    "category": "structure",
+    "hardness": 0.003,
+    "integrityPerThickness": 0.2,
+    "breachCapacityPerThickness": 0,
+    "weightPerThickness": 0.25,
+    "resistance": {
+      "ballistic": 100,
+      "concussive": 60,
+      "piercing": 100,
+      "cutting": 60,
+      "thermal": 60,
+      "laser": 20,
+      "plasma": 40,
+      "electric": 100,
+      "sonic": 30,
+      "radiation": 5,
+      "chemical": 100
+    },
+    "wear": {
+      "ballistic": 150,
+      "concussive": 200,
+      "piercing": 150,
+      "cutting": 100,
+      "thermal": 60,
+      "laser": 20,
+      "plasma": 120,
+      "electric": 0,
+      "sonic": 80,
+      "radiation": 0,
+      "chemical": 5
+    },
+    "conductance": {},
+    "selfInduction": {},
+    "degradation": {}
+  },
+  "effects": [],
+  "folder": "shce06713c564fbd",
+  "sort": 190000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {},
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": null,
+    "coreVersion": "13.350",
+    "systemId": "spaceholder",
+    "systemVersion": "0.178",
+    "createdTime": 1782900000000,
+    "modifiedTime": 1782900000000,
+    "lastModifiedBy": null
+  },
+  "_key": "!items!shce5eae2e910030"
+}
