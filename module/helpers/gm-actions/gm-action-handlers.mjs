@@ -79,11 +79,14 @@ export function registerBuiltinGmActions(manager) {
         hitDirection: payload.hitDirection,
       });
       // The requester's attack log shows what reached the part, and a bullet that left the body flies on
-      // with `exitApplications` (to the next target on its line).
+      // with `exitApplications` (to the next target on its line). The penetration track draws the body's
+      // layers from `trace` and names the organs from `innerHitsBySlot`.
       return {
         slotRef: out?.slotRef ?? null,
         bodyDamage: out?.bodyDamage ?? [],
         exitApplications: out?.exitApplications ?? [],
+        innerHitsBySlot: out?.innerHitsBySlot ?? {},
+        trace: out?.trace ?? [],
       };
     },
   });

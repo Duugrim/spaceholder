@@ -15,18 +15,16 @@
  * tokens, `penetration-overlay.mjs`).
  */
 
-import { entryRays, findTrackEntry } from './penetration-track.mjs';
+import { entryRayIds, entryRays, findTrackEntry } from './penetration-track.mjs';
 import { buildShotView } from './penetration-view-model.mjs';
+import { foundryLocalizer } from '../i18n-localizer.mjs';
 import { PenetrationPlayback, bindImageFallbacks } from './penetration-view-animation.mjs';
 import { readAttackLogs } from '../shot-trail.mjs';
 
 const TEMPLATE = 'systems/spaceholder/templates/damage/penetration-view.hbs';
 const ID_PREFIX = 'spaceholder-penetration-';
 
-function _L(key, fallback = key) {
-  const value = game?.i18n?.localize?.(key);
-  return value && value !== key ? value : fallback;
-}
+const i18n = foundryLocalizer();
 
 function _safeId(id) {
   return String(id ?? '').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -80,7 +78,7 @@ export function openPenetrationView(shotId, { messageId = '', found = null } = {
       ?? `No penetration record for shot ${shotId}`);
     return null;
   }
-  const id = `${ID_PREFIX}${_safeId(entryRays(shot.entry)[0]?.id ?? shotId)}`;
+  const id = `${ID_PREFIX}${_safeId(entryRayIds(shot.entry)[0] ?? shotId)}`;
   const open = foundry.applications.instances?.get?.(id);
   if (open) {
     if (open.minimized) void open.maximize();
@@ -148,7 +146,7 @@ export class PenetrationViewApp extends foundry.applications.api.HandlebarsAppli
 
   /** @override */
   async _prepareContext() {
-    return { view: this.#view, replayLabel: _L('SPACEHOLDER.PenetrationView.Replay', 'Replay') };
+    return { view: this.#view, replayLabel: i18n.t('SPACEHOLDER.PenetrationView.Replay', 'Replay') };
   }
 
   /** @override */
@@ -290,7 +288,7 @@ export class PenetrationViewApp extends foundry.applications.api.HandlebarsAppli
     const icon = button.querySelector('i');
     icon?.classList.toggle('fa-forward-fast', playing);
     icon?.classList.toggle('fa-rotate-right', !playing);
-    const label = playing ? _L('SPACEHOLDER.PenetrationView.Skip', 'Skip') : _L('SPACEHOLDER.PenetrationView.Replay', 'Replay');
+    const label = playing ? i18n.t('SPACEHOLDER.PenetrationView.Skip', 'Skip') : i18n.t('SPACEHOLDER.PenetrationView.Replay', 'Replay');
     button.dataset.tooltip = label;
     button.setAttribute('aria-label', label);
   }

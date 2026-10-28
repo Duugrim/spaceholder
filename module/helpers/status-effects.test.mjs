@@ -163,6 +163,9 @@ assert('endOn: nothing for an unknown status or a bad own list', ends(['nope'], 
 
 assert('token change: a position change is a move', tokenChangeEvents({ x: 10 }).join() === 'move' && tokenChangeEvents({ y: 0 }).join() === 'move');
 assert('token change: a facing change is a turn', tokenChangeEvents({ rotation: 90 }).join() === 'turn');
+assert('token change: the system facing (token rotator) is a turn',
+  tokenChangeEvents({ flags: { spaceholder: { tokenpointerDirection: 45 } } }).join() === 'turn');
+assert('token change: another flag is not a turn', tokenChangeEvents({ flags: { spaceholder: { tokenpointer: { mode: 1 } } } }).length === 0);
 assert('token change: both', tokenChangeEvents({ x: 1, rotation: 5 }).join() === 'move,turn');
 assert('token change: anything else is neither', tokenChangeEvents({ name: 'A', hidden: true }).length === 0
   && tokenChangeEvents(null).length === 0 && tokenChangeEvents(undefined).length === 0);

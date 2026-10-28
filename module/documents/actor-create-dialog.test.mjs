@@ -65,7 +65,14 @@ await test('defaults match the core signature', async () => {
 await test('hidden types are removed from the types the dialog offers', async () => {
   hiddenActorTypes.add('azimuth.faction');
   await SpaceHolderActor.createDialog({}, {}, { width: 300 });
-  assert.deepEqual(coreCalls[0].args[2], { width: 300, types: ['base', 'character', 'faction', 'azimuth.globalobject'] });
+  assert.deepEqual(coreCalls[0].args[2], { width: 300, types: ['character', 'faction', 'azimuth.globalobject'] });
+});
+
+await test('hiding every creatable type leaves the dialog as it was (the base type does not count)', async () => {
+  for (const type of ['character', 'faction', 'azimuth.faction', 'azimuth.globalobject']) hiddenActorTypes.add(type);
+  const options = { width: 300 };
+  await SpaceHolderActor.createDialog({}, {}, options);
+  assert.equal(coreCalls[0].args[2], options);
 });
 
 await test('an explicit types list is filtered, not replaced', async () => {

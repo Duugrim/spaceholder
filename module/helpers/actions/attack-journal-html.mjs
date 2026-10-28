@@ -15,7 +15,7 @@ import {
   isHitImpact,
   summarizeTargets,
 } from '../weapon/attack-log.mjs';
-import { entryRays } from '../damage/penetration-track.mjs';
+import { entryRayIds } from '../damage/penetration-track.mjs';
 
 const I18N = 'SPACEHOLDER.AttackLog';
 const AIMING_MESSAGES = 'SPACEHOLDER.AimingManager.Messages';
@@ -47,7 +47,7 @@ function _F(key, data, fallback = '') {
  * @returns {string} the button, empty when the shot has no ray to open
  */
 function _penetrationButton(shot) {
-  const shotId = entryRays(shot)[0]?.id;
+  const shotId = entryRayIds(shot)[0];
   if (!shotId) return '';
   const label = _L(`${I18N}.ShowPenetration`, 'Penetration');
   return `<button type="button" class="spaceholder-action-journal__toggle" data-action="sh-journal-open-penetration" data-shot-id="${_esc(shotId)}" title="${_esc(label)}" aria-label="${_esc(label)}"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></button>`;

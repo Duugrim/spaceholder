@@ -733,15 +733,27 @@ export function entryRays(entry) {
     const track = sanitizePenetrationTrack(raw);
     if (track) tracks.set(track.shotId, track);
   }
+  return entryRayIds(entry).map((id) => ({ id, track: tracks.get(id) ?? null }));
+}
+
+/**
+ * The ray ids of a shot entry, in the order of {@link entryRays}, without validating its tracks (for a button
+ * or a lookup that needs only the ids).
+ * @param {object} entry ShotEntry
+ * @returns {string[]}
+ */
+export function entryRayIds(entry) {
   const ids = [];
   const add = (raw) => {
     const id = text(raw).replace(/\.x$/, '');
     if (id && !ids.includes(id)) ids.push(id);
   };
   for (const id of Array.isArray(entry?.ids) ? entry.ids : []) add(id);
-  for (const id of tracks.keys()) add(id);
+  for (const raw of Array.isArray(entry?.tracks) ? entry.tracks : []) {
+    if (raw && typeof raw === 'object' && raw.v === PENETRATION_TRACK_VERSION) add(raw.shotId);
+  }
   for (const record of Array.isArray(entry?.records) ? entry.records : []) add(record?.id);
-  return ids.map((id) => ({ id, track: tracks.get(id) ?? null }));
+  return ids;
 }
 
 /**
@@ -755,7 +767,7 @@ export function findTrackEntry(logs, shotId) {
   if (!wanted) return null;
   for (const log of Array.isArray(logs) ? logs : []) {
     for (const entry of Array.isArray(log?.shots) ? log.shots : []) {
-      if (entryRays(entry).some((ray) => ray.id === wanted)) return { log, entry };
+      if (entryRayIds(entry).includes(wanted)) return { log, entry };
     }
   }
   return null;

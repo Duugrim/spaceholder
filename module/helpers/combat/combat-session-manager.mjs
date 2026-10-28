@@ -238,7 +238,8 @@ export class CombatSessionManager {
       else pending.reject(new Error(String(msg.error || "Combat request failed")));
       return;
     }
-    if (msg.op === "request" && game.user?.isGM) {
+    // One GM answers, or two GMs online would both run the request (a turn pick hung twice, events doubled).
+    if (msg.op === "request" && game.user?.isGM && game.users?.activeGM?.id === game.user.id) {
       this._handleSocketRequestAsGM(msg).catch(() => {});
     }
   }

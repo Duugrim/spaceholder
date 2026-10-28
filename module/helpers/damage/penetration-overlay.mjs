@@ -146,6 +146,12 @@ export class PenetrationOverlay {
   /** @type {Map<string, {key: string, el: HTMLElement, group: object, anchor: object|null, placed?: object, playback: PenetrationPlayback|null, timers: number[]}>} `group`: the first block of the card, it says where the card hangs */
   #cards = new Map();
 
+  /** Timers of the cards still waiting for their turn to appear. */
+  #queued = new Set();
+
+  /** Bumped by `clear()`: a card whose spawn began before it is not put up. */
+  #epoch = 0;
+
   #socketBound = false;
 
   #repositioning = false;
@@ -217,13 +223,20 @@ export class PenetrationOverlay {
     if (!this.enabled || !canvas?.ready || !track) return;
     let delay = 0;
     for (const card of cardTracks(track)) {
-      setTimeout(() => void this.#spawn(card), delay);
+      const timer = setTimeout(() => {
+        this.#queued.delete(timer);
+        void this.#spawn(card);
+      }, delay);
+      this.#queued.add(timer);
       delay += card.anchor.parallel ? PARALLEL_STAGGER_MS : STAGGER_MS;
     }
   }
 
-  /** Remove every card at once. */
+  /** Remove every card at once, and the ones still waiting to appear. */
   clear() {
+    this.#epoch += 1;
+    for (const timer of this.#queued) clearTimeout(timer);
+    this.#queued.clear();
     for (const card of [...this.#cards.values()]) this.#remove(card);
   }
 
@@ -241,12 +254,17 @@ export class PenetrationOverlay {
     if (!this.enabled || !canvas?.ready) return;
     // A card that cannot be put anywhere on the scene (the token is gone, no place was recorded) is not shown.
     if (!this.#anchorOf(group)) return;
-    const old = this.#cards.get(key);
-    if (old) this.#remove(old);
+    const epoch = this.#epoch;
 
     const { groups, lanes } = buildPenetrationView(track);
     const cardStreamWidth = streamWidth(lanes, { base: 40, perLane: 10, max: 120 });
     const html = await foundry.applications.handlebars.renderTemplate(CARD_TEMPLATE, { groups, cardStreamWidth });
+    // Cleared while the card was rendered (the scene went away): do not put it up.
+    if (epoch !== this.#epoch) return;
+    // Replace the target's card only now, with nothing awaited until the new one is stored: two spawns for
+    // one token (auto fire) would otherwise both see no card and leave one on the page for good.
+    const old = this.#cards.get(key);
+    if (old) this.#remove(old);
     const el = document.createElement('div');
     el.className = 'spaceholder-penetration-overlay__card';
     el.innerHTML = html;
@@ -262,7 +280,7 @@ export class PenetrationOverlay {
     if (!root) return;
     card.playback = new PenetrationPlayback(root, { speed: PLAYBACK_SPEED, follow: false });
     const result = await card.playback.play();
-    if (result === 'cancelled' || !this.#cards.has(key)) return;
+    if (result === 'cancelled' || this.#cards.get(key) !== card) return;
     card.timers.push(setTimeout(() => this.#fade(card), LINGER_MS));
   }
 

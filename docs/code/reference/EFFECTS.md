@@ -91,7 +91,7 @@ ActiveEffect — встроенный документ актёра или пр�
 | `deleteCombat`, `deleteCombatant` | активный ГМ | снимает статусы с `combatEnd` |
 | `createActiveEffect` | активный ГМ | снимает статусы, которые запрещены появившимся |
 | `preCreateActiveEffect` | клиент, создающий эффект | отменяет создание запрещённого статуса |
-| `updateToken` (`x`/`y`, `rotation`) | клиент, двигавший токен | снимает статусы с `move` / `turn`; движение в бою вешает `moving` |
+| `updateToken` (`x`/`y`, `rotation` или `flags.spaceholder.tokenpointerDirection`) | клиент, двигавший токен | снимает статусы с `move` / `turn`; движение в бою вешает `moving` |
 | `spaceholder.combatActionTaken` (`announceCombatAction` в `combat-action-log.mjs`: `logCombatAction` и выстрел) | клиент актёра, совершившего действие | снимает статусы с `action` |
 
 Foundry 14 при перемещении сам поворачивает токен по направлению пути (если `rotation` не задан явно), поэтому обычный шаг несёт и событие `turn`. Всё идемпотентно: повторный вызов ничего не делает. Тесты: `node module/helpers/status-effects.test.mjs`, `node module/helpers/status-lifecycle.test.mjs`.

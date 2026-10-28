@@ -11,6 +11,7 @@ import {
   activeStatusIds,
   blockersOfNewEffect,
   dropBlockedStatuses,
+  effectActor,
   endStatuses,
   endStatusesInCombat,
   handleCombatAction,
@@ -96,7 +97,21 @@ for (const blocker of ['dead', 'unconscious']) {
 {
   const a = actor({ delayMs: 5 });
   const [first, second] = await Promise.all([hangStatus(a, 'moving', registry), hangStatus(a, 'moving', registry)]);
-  assert('hang: two calls at once hang it once', [first, second].sort().join() === 'added,pending' && names(a) === 'moving', { first, second });
+  assert('hang: two calls at once hang it once', [first, second].sort().join() === 'added,present' && names(a) === 'moving', { first, second });
+}
+{
+  // Two deletes in a row read the same effects: the second must wait for the first, not delete them again.
+  const a = actor({ has: ['cover', 'moving'] });
+  const del = a.deleteEmbeddedDocuments;
+  a.deleteEmbeddedDocuments = async (name, ids) => {
+    if (ids.some((id) => !a.effects.some((e) => e.id === id))) throw new Error('does not exist');
+    await new Promise((r) => setTimeout(r, 5));
+    return del(name, ids);
+  };
+  const counts = await Promise.all([endStatuses(a, 'move', registry), endStatuses(a, 'move', registry)]);
+  assert('end: two calls at once delete once', counts.join() === '1,0' && names(a) === 'moving', counts);
+  const [hung, dropped] = await Promise.all([hangStatus(a, 'combatReady', registry), endStatuses(a, 'combatEnd', registry)]);
+  assert('steps on one actor run in order: hang, then end', hung === 'added' && dropped === 2 && names(a) === '', { hung, dropped });
 }
 {
   const reg = freshRegistry();
@@ -134,6 +149,9 @@ for (const blocker of ['dead', 'unconscious']) {
   assert('veto: combat readiness cannot be put on an unconscious actor', blockersOfNewEffect(pending, registry).join() === 'unconscious');
   assert('veto: another status can', blockersOfNewEffect({ parent, statuses: new Set(['cover']) }, registry).length === 0);
   assert('veto: an effect of an item is not judged', blockersOfNewEffect({ parent: { documentName: 'Item' }, statuses: new Set(['combatReady']) }, registry).length === 0);
+  assert('owner: an effect on an actor belongs to it', effectActor({ parent }) === parent);
+  assert('owner: an effect on an item belongs to the item\'s actor', effectActor({ parent: { documentName: 'Item', parent } }) === parent);
+  assert('owner: an effect of a world item has no actor', effectActor({ parent: { documentName: 'Item', parent: null } }) === null && effectActor(null) === null);
   assert('active ids: read from the effects, disabled ones left out',
     [...activeStatusIds(actor({ has: ['cover', effect(['hidden'], { active: false })] }))].join() === 'cover');
 }

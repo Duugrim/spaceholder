@@ -71,6 +71,9 @@ function _sanitizeAimingArcSystemData(systemData) {
   systemData.aimingArc = aimingArc;
 }
 
+/** Foundry's base document type (`CONST.BASE_DOCUMENT_TYPE`): never offered for creation. */
+const BASE_DOCUMENT_TYPE = 'base';
+
 /**
  * Extend the base Actor document by defining a custom roll data structure which is ideal for the Simple system.
  * @extends {Actor}
@@ -82,7 +85,9 @@ export class SpaceHolderActor extends Actor {
    * @override
    */
   static async createDialog(data = {}, createOptions = {}, dialogOptions = {}, renderOptions = {}) {
-    const allowed = withoutHiddenTypes(dialogOptions?.types ?? this.TYPES, hiddenActorTypes);
+    // The types the core dialog would offer: all but the base type (`CONST.BASE_DOCUMENT_TYPE`), as core does.
+    const offered = dialogOptions?.types ?? this.TYPES.filter((type) => type !== BASE_DOCUMENT_TYPE);
+    const allowed = withoutHiddenTypes(offered, hiddenActorTypes);
     const options = allowed ? { ...dialogOptions, types: allowed } : dialogOptions;
     return super.createDialog(data, createOptions, options, renderOptions);
   }

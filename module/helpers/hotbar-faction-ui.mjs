@@ -209,7 +209,6 @@ class HotbarFactionUI {
 
     // Buttons and indicators that integrating packages add to this block (they replace the empty placeholder slot)
     const extras = await collectHotbarFactionItems({ user, isGM, active, allowedUuids });
-    this._extensionHandlers = extras.handlers;
     const ownQuickActions = extras.quickActions.length
       ? quickActions.filter((a) => a.action !== 'placeholder')
       : quickActions;
@@ -223,6 +222,8 @@ class HotbarFactionUI {
       toggleLabel,
       indicators: extras.indicators,
       quickActions: [...ownQuickActions, ...extras.quickActions],
+      // Click handlers of the extension buttons: taken by the render that puts this context on the page.
+      handlers: extras.handlers,
     };
   }
 
@@ -243,20 +244,23 @@ class HotbarFactionUI {
 
     const ctx = await this._buildContext();
 
+    // stale async guard
+    if (seq !== this._renderSeq) return;
+
     // If no UI needed, remove existing.
     if (!ctx) {
       this.destroy();
       return;
     }
 
-    // stale async guard
+    const { handlers, ...data } = ctx;
+    const html = await foundry.applications.handlebars.renderTemplate(TEMPLATE_PATH, data);
     if (seq !== this._renderSeq) return;
-
-    const html = await foundry.applications.handlebars.renderTemplate(TEMPLATE_PATH, ctx);
     const wrap = document.createElement('div');
     wrap.innerHTML = String(html || '').trim();
     const nextEl = wrap.firstElementChild;
     if (!nextEl) return;
+    this._extensionHandlers = handlers;
 
     // Ensure correct placement: inside hotbar, before action-bar (so it's next to it).
     const existing = this.element;

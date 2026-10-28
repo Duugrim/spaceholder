@@ -155,15 +155,22 @@ export function endEventsOf(statusIds, ownEndOn, registry) {
   return events;
 }
 
+/** Flag of the token that holds the system's facing (`flags.spaceholder.tokenpointerDirection`). */
+const FACING_FLAG = 'tokenpointerDirection';
+
 /**
  * Events a token update stands for.
  * @param {object|null|undefined} changes the `changes` of `updateToken`
  * @returns {string[]} {@link STATUS_EVENTS} `MOVE` when the position changed, `TURN` when the facing did
+ *   (Foundry's `rotation`, or the system's facing the token rotator writes)
  */
 export function tokenChangeEvents(changes) {
   const events = [];
   if (!changes || typeof changes !== 'object') return events;
   if (Object.hasOwn(changes, 'x') || Object.hasOwn(changes, 'y')) events.push(STATUS_EVENTS.MOVE);
-  if (Object.hasOwn(changes, 'rotation')) events.push(STATUS_EVENTS.TURN);
+  const facing = changes.flags?.spaceholder;
+  if (Object.hasOwn(changes, 'rotation') || (facing && typeof facing === 'object' && Object.hasOwn(facing, FACING_FLAG))) {
+    events.push(STATUS_EVENTS.TURN);
+  }
   return events;
 }

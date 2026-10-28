@@ -10,8 +10,9 @@
  *    the combat is over or the actor left it.
  *
  * Moves are handled where they are made (the user who dragged the token owns the actor); everything that
- * hooks fire on every client is done by the active GM only. All steps are idempotent, so two GMs racing
- * leave the same state.
+ * hooks fire on every client is done by the active GM only. The steps on one actor run one after another
+ * (each reads the effects the last one left), so hooks that fire in a row — one per waypoint of a drag, one
+ * per shot of a burst — neither hang a status twice nor delete one that is already gone.
  */
 
 import {
@@ -26,8 +27,26 @@ import {
 const FLAG_SCOPE = 'spaceholder';
 const FLAG_END_ON = 'endOn';
 
-/** Statuses being hung right now, so two calls in a row do not hang one twice (`toggleStatusEffect` is async). */
-const _hanging = new Set();
+/** The tail of the status steps queued for each actor (by uuid). */
+const _queues = new Map();
+
+/**
+ * Run a step on the actor's statuses after the steps queued before it have finished.
+ * @template T
+ * @param {Actor} actor
+ * @param {() => Promise<T>} step
+ * @returns {Promise<T>}
+ */
+function _serial(actor, step) {
+  const key = String(actor.uuid ?? '');
+  const run = (_queues.get(key) ?? Promise.resolve()).then(step);
+  const tail = run.catch(() => {});
+  _queues.set(key, tail);
+  tail.then(() => {
+    if (_queues.get(key) === tail) _queues.delete(key);
+  });
+  return run;
+}
 
 /**
  * Ids of the statuses an actor has, read from its effects (not from `Actor#statuses`, which lags behind
@@ -50,23 +69,18 @@ export function activeStatusIds(actor) {
  * @param {Actor|null|undefined} actor
  * @param {string} statusId
  * @param {object} [registry] `CONFIG.statusEffects`
- * @returns {Promise<'added'|'present'|'blocked'|'skipped'|'pending'|'unknown'>}
+ * @returns {Promise<'added'|'present'|'blocked'|'skipped'|'unknown'>}
  */
 export async function hangStatus(actor, statusId, registry = CONFIG.statusEffects) {
   if (!actor || !registry?.[statusId]) return 'unknown';
   if (!statusFitsActorType(statusId, actor.type, registry)) return 'skipped';
-  const active = activeStatusIds(actor);
-  if (active.has(statusId)) return 'present';
-  if (activeBlockers(statusId, active, registry).length) return 'blocked';
-  const key = `${actor.uuid}|${statusId}`;
-  if (_hanging.has(key)) return 'pending';
-  _hanging.add(key);
-  try {
+  return _serial(actor, async () => {
+    const active = activeStatusIds(actor);
+    if (active.has(statusId)) return 'present';
+    if (activeBlockers(statusId, active, registry).length) return 'blocked';
     await actor.toggleStatusEffect(statusId, { active: true });
     return 'added';
-  } finally {
-    _hanging.delete(key);
-  }
+  });
 }
 
 /**
@@ -77,14 +91,17 @@ export async function hangStatus(actor, statusId, registry = CONFIG.statusEffect
  * @returns {Promise<number>} how many effects were removed
  */
 export async function endStatuses(actor, event, registry = CONFIG.statusEffects) {
-  const ids = [];
-  for (const effect of actor?.effects ?? []) {
-    const ends = endEventsOf(effect.statuses, effect.getFlag?.(FLAG_SCOPE, FLAG_END_ON), registry);
-    if (ends.has(event)) ids.push(effect.id);
-  }
-  if (!ids.length) return 0;
-  await actor.deleteEmbeddedDocuments('ActiveEffect', ids);
-  return ids.length;
+  if (!actor) return 0;
+  return _serial(actor, async () => {
+    const ids = [];
+    for (const effect of actor.effects ?? []) {
+      const ends = endEventsOf(effect.statuses, effect.getFlag?.(FLAG_SCOPE, FLAG_END_ON), registry);
+      if (ends.has(event)) ids.push(effect.id);
+    }
+    if (!ids.length) return 0;
+    await actor.deleteEmbeddedDocuments('ActiveEffect', ids);
+    return ids.length;
+  });
 }
 
 /**
@@ -94,15 +111,29 @@ export async function endStatuses(actor, event, registry = CONFIG.statusEffects)
  * @returns {Promise<number>} how many effects were removed
  */
 export async function dropBlockedStatuses(actor, registry = CONFIG.statusEffects) {
-  const active = activeStatusIds(actor);
-  const ids = [];
-  for (const effect of actor?.effects ?? []) {
-    if (!effect.active) continue;
-    if ([...(effect.statuses ?? [])].some((id) => activeBlockers(id, active, registry).length)) ids.push(effect.id);
-  }
-  if (!ids.length) return 0;
-  await actor.deleteEmbeddedDocuments('ActiveEffect', ids);
-  return ids.length;
+  if (!actor) return 0;
+  return _serial(actor, async () => {
+    const active = activeStatusIds(actor);
+    const ids = [];
+    for (const effect of actor.effects ?? []) {
+      if (!effect.active) continue;
+      if ([...(effect.statuses ?? [])].some((id) => activeBlockers(id, active, registry).length)) ids.push(effect.id);
+    }
+    if (!ids.length) return 0;
+    await actor.deleteEmbeddedDocuments('ActiveEffect', ids);
+    return ids.length;
+  });
+}
+
+/**
+ * The actor an effect belongs to: its parent, or the actor of the item it sits on.
+ * @param {ActiveEffect|null|undefined} effect
+ * @returns {Actor|null}
+ */
+export function effectActor(effect) {
+  let doc = effect?.parent ?? null;
+  while (doc && doc.documentName !== 'Actor') doc = doc.parent ?? null;
+  return doc;
 }
 
 /**
@@ -198,8 +229,9 @@ export function installStatusLifecycle() {
 
   // A blocker appeared: what it forbids comes off.
   Hooks.on('createActiveEffect', (effect) => {
-    if (!isActiveGm() || !effect.actor) return;
-    dropBlockedStatuses(effect.actor).catch(logFailure('dropping blocked statuses'));
+    const actor = effectActor(effect);
+    if (!isActiveGm() || !actor) return;
+    dropBlockedStatuses(actor).catch(logFailure('dropping blocked statuses'));
   });
 
   // The turn starts: the picking GM's client fires this hook once per pick.

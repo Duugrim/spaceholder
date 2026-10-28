@@ -24,7 +24,7 @@ import {
   preflightLineShotReadiness,
 } from './weapon/weapon-ammo-runtime.mjs';
 import { spendAp } from './actions/transaction-ledger.mjs';
-import { announceCombatAction, beginCombatAction } from './actions/combat-action-log.mjs';
+import { announceCombatAction, beginCombatAction, combatantForActor } from './actions/combat-action-log.mjs';
 import { reportAttack } from './actions/attack-report.mjs';
 import { shotApCost } from './weapon/attack-chain.mjs';
 import { addShot, createAttackLog, formatNumber } from './weapon/attack-log.mjs';
@@ -1505,8 +1505,10 @@ export class AimingManager {
         return false;
       }
       await persistWeaponData(weaponItem, weapon);
-      // The shot will happen: the actor is no longer just moving.
-      announceCombatAction({ actor, tokenDoc: token.document ?? null, actionId: 'weaponV3.shot' });
+      // The shot will happen: in a fight the actor is no longer just moving.
+      if (combatantForActor(actor, token.document ?? null)) {
+        announceCombatAction({ actor, tokenDoc: token.document ?? null, actionId: 'weaponV3.shot' });
+      }
 
       // --- Снаряд: усилие стрелка (STR) → урон, затем модификаторы и множитель энергии ---
       // Записи с `effortShare` (ближнее оружие) получают урон от силы атакующего; у боеприпасов доля 0.

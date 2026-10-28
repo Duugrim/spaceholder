@@ -140,6 +140,21 @@ await test('a section whose activate throws does not stop the others', () => {
   assert.equal(errors.length, 1);
 });
 
+await test('a section whose element lookup throws does not stop the others', () => {
+  const calls = [];
+  registerFactionSheetSection({ id: 'bad"id', render: () => '', activate: () => calls.push('bad') });
+  registerFactionSheetSection({ id: 'good', render: () => '', activate: () => calls.push('good') });
+  const root = {
+    querySelector: (selector) => {
+      if (selector.includes('bad')) throw new SyntaxError('not a valid selector');
+      return {};
+    },
+  };
+  activateFactionSheetSections(root, {});
+  assert.deepEqual(calls, ['good']);
+  assert.equal(errors.length, 1);
+});
+
 // ---- hotbar items ----
 await test('quick actions get a prefixed action and a handler; indicators are collected', async () => {
   const clicked = [];
@@ -250,6 +265,13 @@ await test('operation markers: only registered option names count', () => {
   assert.ok(!isRegisteredJournalOperation('x'));
   off();
   assert.ok(!isRegisteredJournalOperation({ pkgJournalCheck: true }));
+  const first = registerJournalOperationMarker('shared');
+  const second = registerJournalOperationMarker('shared');
+  first();
+  first();
+  assert.ok(isRegisteredJournalOperation({ shared: true }), 'a marker stays while another registration holds it');
+  second();
+  assert.ok(!isRegisteredJournalOperation({ shared: true }));
   assert.throws(() => registerJournalOperationMarker(''), /marker/);
   assert.throws(() => registerJournalOperationMarker(undefined), /marker/);
 });

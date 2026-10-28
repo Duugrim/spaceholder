@@ -124,9 +124,11 @@ export function activateFactionSheetSections(root, args) {
   if (!root?.querySelector) return;
   for (const section of factionSheetSections.list()) {
     if (!section.activate) continue;
-    const container = root.querySelector(`[data-faction-section="${section.id}"]`);
-    if (!container) continue;
     try {
+      // An id with quotes or brackets would break the selector: escape it, and keep a bad one inside the guard.
+      const id = globalThis.CSS?.escape ? globalThis.CSS.escape(section.id) : section.id;
+      const container = root.querySelector(`[data-faction-section="${id}"]`);
+      if (!container) continue;
       section.activate(container, args);
     } catch (err) {
       logProviderError('faction sheet section activate', section.id, err);
@@ -235,7 +237,8 @@ export async function collectHotbarFactionItems(ctx) {
  *           the journal-check workflow skips it and the journal directory hides it.
  */
 const serviceJournalPredicates = createRegistry();
-const journalOperationMarkers = new Set();
+/** Marker name → how many registrations hold it (two packages may name the same marker). */
+const journalOperationMarkers = new Map();
 
 /**
  * @param {ServiceJournalPredicate} spec
@@ -277,8 +280,15 @@ export function isServiceJournal(doc) {
 export function registerJournalOperationMarker(key) {
   const name = typeof key === 'string' ? key.trim() : '';
   if (!name) throw new TypeError('SpaceHolder | integration: a journal operation marker needs a non-empty name');
-  journalOperationMarkers.add(name);
-  return () => journalOperationMarkers.delete(name);
+  journalOperationMarkers.set(name, (journalOperationMarkers.get(name) ?? 0) + 1);
+  let registered = true;
+  return () => {
+    if (!registered) return;
+    registered = false;
+    const left = (journalOperationMarkers.get(name) ?? 0) - 1;
+    if (left > 0) journalOperationMarkers.set(name, left);
+    else journalOperationMarkers.delete(name);
+  };
 }
 
 /**
@@ -287,7 +297,7 @@ export function registerJournalOperationMarker(key) {
  */
 export function isRegisteredJournalOperation(options) {
   if (!options || typeof options !== 'object') return false;
-  for (const name of journalOperationMarkers) if (options[name]) return true;
+  for (const name of journalOperationMarkers.keys()) if (options[name]) return true;
   return false;
 }
 
