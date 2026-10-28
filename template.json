@@ -1,6 +1,6 @@
 {
   "Actor": {
-    "types": ["globalobject", "character", "npc", "loot", "faction"],
+    "types": ["character", "npc", "loot", "faction"],
     "templates": {
       "base": {
         "anatomy": {
@@ -92,25 +92,6 @@
       "autoLoot": false,
       "deleteWhenEmpty": false
     },
-    "globalobject": {
-      "abilities": {
-        "end": { "value": 100 },
-        "str": { "value": 100 },
-        "agi": { "value": 100 },
-        "cor": { "value": 100 },
-        "per": { "value": 100 },
-        "int": { "value": 100 },
-        "luc": { "value": 100 }
-      },
-      "gRange": 0,
-      "gPower": 0,
-      "gInfluenceEnabled": true,
-      "gLink": "",
-      "gFaction": "",
-      "gActors": [],
-      "ppCost": 1,
-      "biography": ""
-    },
     "faction": {
       "abilities": {
         "end": { "value": 100 },
@@ -123,8 +104,6 @@
       },
       "fLink": "",
       "fColor": "#666666",
-      "ppModifier": 1,
-      "ppSpends": [],
       "biography": ""
     }
   },

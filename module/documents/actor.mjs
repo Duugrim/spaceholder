@@ -17,6 +17,7 @@ import {
   injuryCategoryForPart,
 } from '../helpers/anatomy-groups.mjs';
 import { buildProjectileApplications, composeProjectileApplications } from './item.mjs';
+import { hiddenActorTypes, withoutHiddenTypes } from '../helpers/integration-registry.mjs';
 
 /** Modifier target ids renamed over time → current id. */
 const LEGACY_MODIFIER_TARGET_IDS = Object.freeze({
@@ -75,6 +76,17 @@ function _sanitizeAimingArcSystemData(systemData) {
  * @extends {Actor}
  */
 export class SpaceHolderActor extends Actor {
+  /**
+   * The create dialog without the actor types that integrating packages hid
+   * (`CONFIG.SPACEHOLDER.hiddenActorTypes`, e.g. a faction type the package does not use in this system).
+   * @override
+   */
+  static async createDialog(data = {}, createOptions = {}, dialogOptions = {}, renderOptions = {}) {
+    const allowed = withoutHiddenTypes(dialogOptions?.types ?? this.TYPES, hiddenActorTypes);
+    const options = allowed ? { ...dialogOptions, types: allowed } : dialogOptions;
+    return super.createDialog(data, createOptions, options, renderOptions);
+  }
+
   /** @override */
   prepareBaseData() {
     // CRITICAL: must invoke super to run Foundry v14's `_clearData`, which

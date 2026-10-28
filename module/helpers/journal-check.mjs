@@ -1,59 +1,10 @@
 // Journal Check helper for SpaceHolder system (Foundry v13)
 // Adds multi-state workflow flags to JournalEntry and JournalEntryPage.
 
+import { isRegisteredJournalOperation, isServiceJournal } from './integration-registry.mjs';
+
 const MODULE_NS = 'spaceholder';
 const FLAG_ROOT = 'journalCheck';
-const TIMELINE_FLAG_ROOT = 'timeline';
-const TIMELINE_V2_FLAG_ROOT = 'timelineV2';
-const EVENTS_FLAG_ROOT = 'events';
-
-function _getTimelineFlagObj(doc) {
-  try {
-    return doc?.getFlag?.(MODULE_NS, TIMELINE_FLAG_ROOT) ?? doc?.flags?.[MODULE_NS]?.[TIMELINE_FLAG_ROOT] ?? {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function _getTimelineV2FlagObj(doc) {
-  try {
-    return doc?.getFlag?.(MODULE_NS, TIMELINE_V2_FLAG_ROOT) ?? doc?.flags?.[MODULE_NS]?.[TIMELINE_V2_FLAG_ROOT] ?? {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function _getEventsFlagObj(doc) {
-  try {
-    return doc?.getFlag?.(MODULE_NS, EVENTS_FLAG_ROOT) ?? doc?.flags?.[MODULE_NS]?.[EVENTS_FLAG_ROOT] ?? {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function _isTimelineContainer(entry) {
-  const v1 = _getTimelineFlagObj(entry);
-  if (v1?.isContainer) return true;
-
-  const v2 = _getTimelineV2FlagObj(entry);
-  if (v2?.isContainer) return true;
-
-  const ev = _getEventsFlagObj(entry);
-  return !!ev?.isContainer;
-}
-
-function _isTimelinePage(page) {
-  const v1 = _getTimelineFlagObj(page);
-  if (v1?.isEntry) return true;
-
-  const v2 = _getTimelineV2FlagObj(page);
-  if (v2?.isIndex || v2?.isDetail) return true;
-
-  const ev = _getEventsFlagObj(page);
-  if (ev?.isEvent) return true;
-
-  return _isTimelineContainer(page?.parent);
-}
 
 const SETTING_SHOW_ICONS = 'journalcheck.showIcons';
 const SETTING_GM_SKIP = 'journalcheck.gmSkipProposed';
@@ -123,7 +74,8 @@ export function computeEntryStatusFromPages(entry) {
 }
 
 function _isOurUpdate(options) {
-  return !!options?.spaceholderJournalCheck;
+  // Own marker, or one that an integrating package registered for its own journal changes
+  return !!options?.spaceholderJournalCheck || isRegisteredJournalOperation(options);
 }
 
 function _isUserGM(userId) {
@@ -1210,7 +1162,7 @@ function _refreshEntryIconInDirectory(entry) {
   const show = !!_getSetting(SETTING_SHOW_ICONS, true);
   const entryId = entry?.id;
   if (!entryId) return;
-  if (_isTimelineContainer(entry)) return;
+  if (isServiceJournal(entry)) return;
 
   const roots = new Set();
   const uiRoot = ui?.journal?.element;
@@ -1243,7 +1195,7 @@ function _renderDirectoryEntryIcons(root) {
     const entryId = li.dataset.entryId;
     const entry = game.journal?.get?.(entryId) ?? null;
     if (!entry) continue;
-    if (_isTimelineContainer(entry)) continue;
+    if (isServiceJournal(entry)) continue;
 
     const anchor = li.querySelector('a.entry-name');
     if (!anchor) continue;
@@ -1262,7 +1214,7 @@ function _renderJournalSheetPageIcons(app, root) {
   if (!show) return;
 
   const entry = app?.entry;
-  if (!entry || _isTimelineContainer(entry)) return;
+  if (!entry || isServiceJournal(entry)) return;
 
   const pages = entry?.pages?.contents ?? [];
   if (pages.length <= 1) return;
@@ -1320,7 +1272,7 @@ function _addEntryContextOptions(app, options) {
       const id = li?.closest?.('[data-entry-id]')?.dataset?.entryId;
       const entry = id ? (game.journal?.get?.(id) ?? null) : null;
       if (!entry) return null;
-      if (_isTimelineContainer(entry)) return null;
+      if (isServiceJournal(entry)) return null;
       return entry;
     };
 
@@ -1496,13 +1448,13 @@ function _addPageContextOptions(app, options) {
 
     const entry = app.entry;
     if (!entry) return;
-    if (_isTimelineContainer(entry)) return;
+    if (isServiceJournal(entry)) return;
 
     const getPage = (li) => {
       const id = li?.dataset?.pageId;
       const page = id ? (entry.pages?.get?.(id) ?? null) : null;
       if (!page) return null;
-      if (_isTimelinePage(page)) return null;
+      if (isServiceJournal(page)) return null;
       return page;
     };
 
@@ -1689,7 +1641,7 @@ export function installJournalCheckHooks() {
   // Keep Journal Directory icons in sync even when the directory does not re-render on flag updates.
   Hooks.on('updateJournalEntry', (entry /*, changed, options, userId */) => {
     try {
-      if (_isTimelineContainer(entry)) return;
+      if (isServiceJournal(entry)) return;
       _refreshEntryIconInDirectory(entry);
     } catch (e) {
       console.error('SpaceHolder | JournalCheck: failed to refresh directory icon on update', e);
@@ -1701,7 +1653,7 @@ export function installJournalCheckHooks() {
     try {
       const entry = page?.parent;
       if (!entry) return;
-      if (_isTimelineContainer(entry)) return;
+      if (isServiceJournal(entry)) return;
       _refreshEntryIconInDirectory(entry);
     } catch (e) {
       console.error('SpaceHolder | JournalCheck: failed to refresh directory icon on page update', e);
@@ -1724,7 +1676,7 @@ export function installJournalCheckHooks() {
 
   Hooks.on('createJournalEntryPage', async (page, ...args) => {
     try {
-      if (_isTimelinePage(page)) return;
+      if (isServiceJournal(page)) return;
       const { options, userId } = parseCreateDeleteArgs(args);
       if (_isOurUpdate(options)) return;
       if (!_currentUserIsActor(userId)) return;
@@ -1739,7 +1691,7 @@ export function installJournalCheckHooks() {
 
   Hooks.on('deleteJournalEntryPage', async (page, ...args) => {
     try {
-      if (_isTimelinePage(page)) return;
+      if (isServiceJournal(page)) return;
       const { options, userId } = parseCreateDeleteArgs(args);
       if (_isOurUpdate(options)) return;
       if (!_currentUserIsActor(userId)) return;

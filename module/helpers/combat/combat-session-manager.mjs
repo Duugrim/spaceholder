@@ -618,6 +618,7 @@ export class CombatSessionManager {
     } else {
       this._queueOutboxPayload(payload);
     }
+    if (bumpLogicalRound) Hooks.callAll("spaceholder.combatRoundStarted", combat, { round: state.round });
   }
 
   _queueOutboxPayload(payload) {

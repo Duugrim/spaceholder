@@ -7,11 +7,7 @@ import {
   setUserActiveFactionUuid,
 } from './user-factions.mjs';
 
-import {
-  computeFactionMaxPoints,
-  computeFactionSpentPoints,
-  isProgressionEnabled,
-} from './progression-points.mjs';
+import { collectHotbarFactionItems } from './integration-registry.mjs';
 
 const UI_ID = 'spaceholder-hotbar-faction-ui';
 const TEMPLATE_PATH = 'systems/spaceholder/templates/hud/hotbar-faction-ui.hbs';
@@ -47,13 +43,6 @@ function _areFactionsChanged(changes) {
   }
 }
 
-function _formatPoints(n) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return '0';
-  if (Number.isInteger(v)) return String(v);
-  return v.toFixed(1);
-}
-
 async function _resolveActorByUuid(rawUuid) {
   const uuid = normalizeUuid(rawUuid);
   if (!uuid) return null;
@@ -76,6 +65,9 @@ class HotbarFactionUI {
     this.open = false;
     this._renderSeq = 0;
     this._scheduled = null;
+
+    // Click handlers of the buttons that integrating packages added (data-action → handler), rebuilt on every render
+    this._extensionHandlers = new Map();
 
     this._onDocPointerDown = this._onDocPointerDown.bind(this);
     this._onRootClick = this._onRootClick.bind(this);
@@ -196,33 +188,7 @@ class HotbarFactionUI {
       ? active.name
       : (isGM ? noFactionLabel : _t('SPACEHOLDER.HotbarFaction.Faction'));
 
-    // PP display
-    let ppText = '';
-    let ppTooltip = '';
-
-    if (isProgressionEnabled() && active.uuid) {
-      const factionActor = await _resolveActorByUuid(active.uuid);
-      if (factionActor?.documentName === 'Actor' && factionActor?.type === 'faction') {
-        const max = computeFactionMaxPoints(factionActor);
-        const spent = computeFactionSpentPoints(factionActor);
-        const spentTotal = Number(spent?.spentTotal) || 0;
-
-        ppText = `${_formatPoints(spentTotal)}/${_formatPoints(max)}`;
-        ppTooltip = _t('SPACEHOLDER.HotbarFaction.PP');
-      }
-    }
-
-    const influenceEnabled = !!game?.spaceholder?.influenceManager?.enabled;
-    const canOpenTimeline = isGM || allowedUuids.length > 0;
     const quickActions = [
-      {
-        key: 'timeline',
-        action: 'open-timeline',
-        icon: 'fa-solid fa-timeline',
-        label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenTimeline'),
-        disabled: !canOpenTimeline,
-        active: false,
-      },
       {
         key: 'journal-log',
         action: 'open-journal-update-log',
@@ -230,30 +196,6 @@ class HotbarFactionUI {
         label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenJournalLog'),
         disabled: false,
         active: false,
-      },
-      {
-        key: 'progression-points',
-        action: 'open-progression-points',
-        icon: 'fa-solid fa-chart-line',
-        label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenProgressionPoints'),
-        disabled: false,
-        active: false,
-      },
-      {
-        key: 'events',
-        action: 'open-events',
-        icon: 'fa-solid fa-bolt',
-        label: _t('SPACEHOLDER.HotbarFaction.Tools.OpenEvents'),
-        disabled: false,
-        active: false,
-      },
-      {
-        key: 'influence',
-        action: 'toggle-influence',
-        icon: 'fa-solid fa-flag',
-        label: _t('SPACEHOLDER.HotbarFaction.Tools.ToggleInfluence'),
-        disabled: false,
-        active: influenceEnabled,
       },
       {
         key: 'placeholder-1',
@@ -265,6 +207,13 @@ class HotbarFactionUI {
       },
     ];
 
+    // Buttons and indicators that integrating packages add to this block (they replace the empty placeholder slot)
+    const extras = await collectHotbarFactionItems({ user, isGM, active, allowedUuids });
+    this._extensionHandlers = extras.handlers;
+    const ownQuickActions = extras.quickActions.length
+      ? quickActions.filter((a) => a.action !== 'placeholder')
+      : quickActions;
+
     return {
       active,
       choices,
@@ -272,9 +221,8 @@ class HotbarFactionUI {
       showNoFaction,
       noFactionLabel,
       toggleLabel,
-      ppText,
-      ppTooltip,
-      quickActions,
+      indicators: extras.indicators,
+      quickActions: [...ownQuickActions, ...extras.quickActions],
     };
   }
 
@@ -362,6 +310,19 @@ class HotbarFactionUI {
 
     const action = String(btn.dataset.action || '').trim();
 
+    // A button that an integrating package added
+    const extensionHandler = this._extensionHandlers.get(action);
+    if (extensionHandler) {
+      ev.preventDefault();
+      if (btn.disabled) return;
+      try {
+        await extensionHandler(ev, btn);
+      } catch (e) {
+        console.error('SpaceHolder | HotbarFactionUI: extension button failed', e);
+      }
+      return;
+    }
+
     if (action === 'toggle') {
       ev.preventDefault();
       if (btn.disabled) return;
@@ -399,17 +360,6 @@ class HotbarFactionUI {
       this.scheduleRender();
     }
 
-    if (action === 'open-timeline') {
-      ev.preventDefault();
-      if (btn.disabled) return;
-      try {
-        game?.spaceholder?.openTimelineV2App?.();
-      } catch (_) {
-        // ignore
-      }
-      return;
-    }
-
     if (action === 'open-journal-update-log') {
       ev.preventDefault();
       if (btn.disabled) return;
@@ -421,55 +371,18 @@ class HotbarFactionUI {
       return;
     }
 
-    if (action === 'open-progression-points') {
-      ev.preventDefault();
-      if (btn.disabled) return;
-      try {
-        game?.spaceholder?.openProgressionPointsApp?.();
-      } catch (_) {
-        // ignore
-      }
-      return;
-    }
-
-    if (action === 'open-events') {
-      ev.preventDefault();
-      if (btn.disabled) return;
-      try {
-        game?.spaceholder?.openEventsApp?.();
-      } catch (_) {
-        // ignore
-      }
-      return;
-    }
-
-    if (action === 'toggle-influence') {
-      ev.preventDefault();
-      if (btn.disabled) return;
-      try {
-        const manager = game?.spaceholder?.influenceManager;
-        if (!manager) {
-          ui.notifications?.warn?.(_t('SPACEHOLDER.TokenControls.Messages.Unavailable'));
-          return;
-        }
-        const enabled = manager.toggle({ debug: false });
-        ui.notifications?.info?.(
-          enabled
-            ? _t('SPACEHOLDER.TokenControls.Messages.InfluenceShown')
-            : _t('SPACEHOLDER.TokenControls.Messages.InfluenceHidden')
-        );
-        this.scheduleRender();
-      } catch (_) {
-        // ignore
-      }
-      return;
-    }
-
     if (action === 'placeholder') {
       ev.preventDefault();
       return;
     }
   }
+}
+
+/**
+ * Redraw the faction block of the hotbar soon (debounced). For integrating packages whose buttons or indicators changed.
+ */
+export function requestHotbarFactionRender() {
+  _uiInstance?.scheduleRender({ hotbarApp: ui?.hotbar });
 }
 
 export function installHotbarFactionUiHooks() {
@@ -513,37 +426,13 @@ export function installHotbarFactionUiHooks() {
     }
   });
 
-  // PP depends on journal pages (author/points/status) and on faction/globalobject actors.
+  // The block shows the active faction's name and image
   Hooks.on('updateActor', (actor) => {
     try {
-      const t = String(actor?.type || '');
-      if (t !== 'faction' && t !== 'globalobject') return;
+      if (actor?.type !== 'faction') return;
       _uiInstance.scheduleRender({ hotbarApp: ui?.hotbar });
     } catch (_) {
       // ignore
     }
   });
-
-  Hooks.on('updateJournalEntryPage', () => {
-    try {
-      if (!isProgressionEnabled()) return;
-      _uiInstance.scheduleRender({ hotbarApp: ui?.hotbar });
-    } catch (_) {
-      // ignore
-    }
-  });
-
-  // Global Objects spend points depend on tokens existing on Global Map scenes.
-  const tokenBump = () => {
-    try {
-      if (!isProgressionEnabled()) return;
-      _uiInstance.scheduleRender({ hotbarApp: ui?.hotbar });
-    } catch (_) {
-      // ignore
-    }
-  };
-
-  Hooks.on('createToken', tokenBump);
-  Hooks.on('updateToken', tokenBump);
-  Hooks.on('deleteToken', tokenBump);
 }

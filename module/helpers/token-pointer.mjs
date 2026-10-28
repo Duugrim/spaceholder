@@ -2,6 +2,8 @@
 // Implements a UI direction indicator (arrow/line) that rotates with movement
 // Does not rotate the token by default. Optionally mirrors horizontally on left/right movement.
 
+import { isTokenPointerOffType } from './integration-registry.mjs';
+
 export class TokenPointer {
   constructor() {
     // Defaults (used as fallback for tokens without flags)
@@ -134,10 +136,10 @@ export class TokenPointer {
       const distanceFactor = Number(fp.distance ?? this.distance);
       const scaleFactor = Number(fp.scale ?? this.scale) || 1.0;
 
-      // Default mode: for Global Object tokens we hide the pointer unless explicitly enabled
+      // Default mode: for actor types in `tokenPointerOffTypes` (global objects) we hide the pointer unless explicitly enabled
       const actorType = token.actor?.type ?? token.document?.actor?.type ?? null;
       const hasMode = fp.mode !== undefined && fp.mode !== null;
-      const defaultMode = actorType === 'globalobject' ? 0 : this.mode;
+      const defaultMode = isTokenPointerOffType(actorType) ? 0 : this.mode;
       const mode = Number(hasMode ? fp.mode : defaultMode);
 
       const pointerType = fp.pointerType ?? this.pointerType;
@@ -527,7 +529,7 @@ export function installTokenPointerHooks() {
 
       const actorType = doc?.actor?.type ?? doc?.parent?.type ?? null;
       const hasMode = fp?.mode !== undefined && fp?.mode !== null;
-      const fallbackMode = actorType === 'globalobject' ? 0 : (game.spaceholder?.tokenpointer?.mode ?? 2);
+      const fallbackMode = isTokenPointerOffType(actorType) ? 0 : (game.spaceholder?.tokenpointer?.mode ?? 2);
 
       const ctx = {
         tab,

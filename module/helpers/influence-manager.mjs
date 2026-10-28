@@ -1,12 +1,33 @@
 // Influence Manager для SpaceHolder - управление сферами влияния
-// Собирает данные с Global Objects и рисует объединённые территории
+// Рисует объединённые территории по источникам, которые отдаёт подключённый пакет (`setSourceProvider`)
 
 // Порог, при котором влияние считается «достаточным» для отрисовки зон (Marching Squares).
 // Должен совпадать везде, где UI/рендер проверяют «видимость» влияния.
 const INFLUENCE_RENDER_THRESHOLD = 0.3;
 
+/**
+ * Источник влияния, который отдаёт провайдер.
+ * @typedef {object} InfluenceSource
+ * @property {TokenDocument|null} [token]  Токен-источник; по нему считается центр, если нет `position`.
+ * @property {{x: number, y: number}} [position]  Центр в пикселях сцены (для источников без токена).
+ * @property {number} rangeCells  Радиус в клетках сцены.
+ * @property {number} [power=1]  Сила.
+ * @property {string} faction  UUID фракции (стороны). Без фракции источник не учитывается.
+ */
+
+/**
+ * Откуда менеджер берёт источники и что считает поводом для перерисовки.
+ * @typedef {object} InfluenceSourceProvider
+ * @property {(ctx: {scene: Scene, gridSize: number}) => InfluenceSource[]} collect
+ * @property {(tokenDoc: TokenDocument) => boolean} [isSourceToken]  Создание/движение/удаление такого токена меняет зоны.
+ * @property {(actor: Actor, change: object) => boolean} [isSourceActorChange]  Такое изменение актёра меняет зоны.
+ */
+
 export class InfluenceManager {
   constructor() {
+    // Провайдер источников; null — источников нет, зоны пусты
+    this._sourceProvider = null;
+
     // Контейнер для графики
     this.influenceContainer = null;
 
@@ -37,6 +58,57 @@ export class InfluenceManager {
   initialize() {
     this._createContainer();
     this._installHooks();
+  }
+
+  /**
+   * Подключить источники влияния извне (пакет, который знает свои объекты).
+   * `null` отключает источники: зон нет.
+   * @param {InfluenceSourceProvider|null} provider
+   */
+  setSourceProvider(provider) {
+    if (provider !== null && typeof provider?.collect !== 'function') {
+      throw new TypeError('InfluenceManager.setSourceProvider: provider needs a collect() function');
+    }
+    this._sourceProvider = provider;
+    if (this.enabled) this._scheduleRedraw({ reason: 'sourceProvider', delayMs: 0 });
+  }
+
+  /**
+   * Попросить перерисовать зоны (например, когда у пакета изменились данные источников).
+   * Ничего не делает, пока влияние выключено.
+   * @param {object} [opts]
+   * @param {string} [opts.reason]
+   * @param {number} [opts.delayMs]
+   */
+  requestRedraw({ reason = 'requested', delayMs } = {}) {
+    if (!this.enabled) return;
+    this._scheduleRedraw({ reason, ...(delayMs === undefined ? {} : { delayMs }) });
+  }
+
+  /**
+   * Токен, чьё создание/движение/удаление меняет зоны?
+   * @private
+   */
+  _isSourceToken(tokenDoc) {
+    try {
+      return !!this._sourceProvider?.isSourceToken?.(tokenDoc);
+    } catch (e) {
+      console.error('InfluenceManager: isSourceToken failed:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Изменение актёра, которое меняет зоны?
+   * @private
+   */
+  _isSourceActorChange(actor, change) {
+    try {
+      return !!this._sourceProvider?.isSourceActorChange?.(actor, change);
+    } catch (e) {
+      console.error('InfluenceManager: isSourceActorChange failed:', e);
+      return false;
+    }
   }
 
   /**
@@ -119,10 +191,10 @@ export class InfluenceManager {
       this._scheduleRedraw({ reason: 'canvasReady', delayMs: 0 });
     });
 
-    // Движение токена (пересчёт только если двигается globalobject)
+    // Движение токена (пересчёт только если двигается источник влияния)
     Hooks.on('updateToken', (tokenDoc, change, options) => {
       if (!this.enabled) return;
-      if (!tokenDoc?.actor || tokenDoc.actor.type !== 'globalobject') return;
+      if (!this._isSourceToken(tokenDoc)) return;
       if (!this._isTokenMoveChange(change)) return;
 
       // Нам не нужен пересчёт "в процессе". Ждём, пока токен доедет до целевых координат,
@@ -130,24 +202,23 @@ export class InfluenceManager {
       this._watchTokenMoveAndRedraw(tokenDoc, change, options);
     });
 
-    // Создание/удаление токена globalobject тоже влияет на зоны
+    // Создание/удаление токена-источника тоже влияет на зоны
     Hooks.on('createToken', (tokenDoc) => {
       if (!this.enabled) return;
-      if (tokenDoc?.actor?.type !== 'globalobject') return;
+      if (!this._isSourceToken(tokenDoc)) return;
       this._scheduleRedraw({ reason: 'tokenCreate', delayMs: 0 });
     });
 
     Hooks.on('deleteToken', (tokenDoc) => {
       if (!this.enabled) return;
-      if (tokenDoc?.actor?.type !== 'globalobject') return;
+      if (!this._isSourceToken(tokenDoc)) return;
       this._scheduleRedraw({ reason: 'tokenDelete', delayMs: 0 });
     });
 
-    // Изменение параметров актора globalobject (range/power/side/faction)
+    // Изменение параметров актёра-источника (range/power/side/faction)
     Hooks.on('updateActor', (actor, change) => {
       if (!this.enabled) return;
-      if (actor?.type !== 'globalobject') return;
-      if (!this._isInfluenceActorChange(change)) return;
+      if (!this._isSourceActorChange(actor, change)) return;
       this._scheduleRedraw({ reason: 'actorUpdate' });
     });
   }
@@ -160,28 +231,6 @@ export class InfluenceManager {
     if (!change || typeof change !== 'object') return false;
     return Object.prototype.hasOwnProperty.call(change, 'x')
       || Object.prototype.hasOwnProperty.call(change, 'y');
-  }
-
-  /**
-   * Это updateActor, который может менять влияние?
-   * @private
-   */
-  _isInfluenceActorChange(change) {
-    if (!change || typeof change !== 'object') return false;
-
-    // Вложенная форма: {system: {gRange: ...}}
-    const sys = change.system;
-    if (sys && typeof sys === 'object') {
-      if ('gRange' in sys || 'gPower' in sys || 'gFaction' in sys || 'gInfluenceEnabled' in sys) return true;
-    }
-
-    // Dotted форма: {"system.gRange": ...}
-    for (const k of Object.keys(change)) {
-      if (k === 'system.gRange' || k === 'system.gPower' || k === 'system.gFaction' || k === 'system.gInfluenceEnabled') return true;
-      if (k.startsWith('system.gRange') || k.startsWith('system.gPower') || k.startsWith('system.gFaction') || k.startsWith('system.gInfluenceEnabled')) return true;
-    }
-
-    return false;
   }
 
   /**
@@ -368,7 +417,7 @@ export class InfluenceManager {
   }
   
   /**
-   * Собрать данные со всех Global Objects на сцене
+   * Собрать источники влияния на сцене (у провайдера; без провайдера — пусто).
    * @returns {Array} Массив объектов {token, gRange, gPower, gFaction, position}
    */
   collectGlobalObjects() {
@@ -380,42 +429,32 @@ export class InfluenceManager {
     // Размер клетки сцены в пикселях
     const gridSize = canvas.grid.size || 100;
 
-    // Важно: берём TokenDocument'ы сцены, а не canvas.tokens.placeables.
-    // Это избавляет от ситуации, когда Token-объект на канвасе ещё не успел синхронизироваться,
-    // и мы получаем координаты "на шаг позади".
-    const tokenDocs = scene.tokens?.contents || Array.from(scene.tokens || []);
+    let sources;
+    try {
+      sources = this._sourceProvider?.collect({ scene, gridSize }) ?? [];
+    } catch (e) {
+      console.error('InfluenceManager: source provider failed:', e);
+      return objects;
+    }
 
-    for (const tokenDoc of tokenDocs) {
-      const actor = tokenDoc?.actor;
-      if (actor?.type !== 'globalobject') continue;
-
-      const system = actor.system;
-      if (!system) continue;
-
-      const rawEnabled = system.gInfluenceEnabled;
-      const influenceEnabled = (rawEnabled === undefined || rawEnabled === null)
-        ? true
-        : (typeof rawEnabled === 'string'
-          ? !['false', '0', 'off', 'no'].includes(rawEnabled.trim().toLowerCase())
-          : Boolean(rawEnabled));
-      if (!influenceEnabled) continue;
-
-      // gRange задаётся в клетках → переводим в пиксели
-      // Например: gRange=5 и gridSize=100 → 500 пикселей
-      const rangeInCells = Number(system.gRange ?? 0) || 0;
-      const rangeInPixels = rangeInCells * gridSize;
-
-      // Фракция: UUID связанного Journal (system.gFaction).
-      // Если не задана — это НЕ источник влияния.
-      const factionKey = this._normalizeUuid(system.gFaction);
+    for (const source of sources) {
+      // Фракция: UUID. Если не задана — это НЕ источник влияния.
+      const factionKey = this._normalizeUuid(source?.faction);
       if (!factionKey) continue;
 
-      const gPower = Number(system.gPower ?? 1) || 1;
+      // Радиус задаётся в клетках → переводим в пиксели
+      // Например: 5 клеток и gridSize=100 → 500 пикселей
+      const rangeInCells = Number(source.rangeCells ?? 0) || 0;
+      const rangeInPixels = rangeInCells * gridSize;
+
+      const tokenDoc = source.token ?? null;
+      const center = source.position ?? (tokenDoc ? this._getTokenDocCenter(tokenDoc) : null);
+      if (!center) continue;
+
+      const gPower = Number(source.power ?? 1) || 1;
       const gRange = Number(rangeInPixels) || 0;
       const gRangeSq = gRange > 0 ? (gRange * gRange) : 0;
       const gInvRangeSq = gRangeSq > 0 ? (1 / gRangeSq) : 0;
-
-      const center = this._getTokenDocCenter(tokenDoc);
 
       objects.push({
         token: tokenDoc,
@@ -425,8 +464,8 @@ export class InfluenceManager {
         gPower,
         gFaction: factionKey,
         position: {
-          x: center.x,
-          y: center.y
+          x: Number(center.x) || 0,
+          y: Number(center.y) || 0
         }
       });
     }

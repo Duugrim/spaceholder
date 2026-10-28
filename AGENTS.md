@@ -6,8 +6,8 @@
 
 # ВАЖНО!
 
-Always think, reason, and plan in English. 
-Even if the user asks a question in another language, execute all internal reasoning, steps, tool calls, and final responses strictly in English. 
+Always think and reason in English. 
+Even if the user asks a question in another language, execute all internal reasoning, steps, and tool calls strictly in English. 
 Keep technical explanations concise and aligned with official documentation.
 
 ---
@@ -34,27 +34,23 @@ SpaceHolder — игровая система (Foundry VTT v14+) с ES-моду�
     - `shot-trail.mjs` — запись выстрела (`ShotRecord`: рисуется стрелком сразу, остальным клиентам идёт по сокету, хранится внутри записи об атаке в чате), чтение следов из сообщений (`readShotRecords`), кривая затухания, настройка `shotTrailFadeSeconds`. Тест: `node module/helpers/shot-trail.test.mjs`.
     - `weapon/attack-log.mjs` — запись об атаке (всё, что выстрелено с начала стрельбы до выхода из прицеливания: выстрелы, попадания по токенам, сводка по целям). `actions/attack-journal-html.mjs` рисует её строкой журнала действий, `actions/attack-report.mjs` пишет в чат (в бою — раскрываемая строка журнала + таблица боя, иначе отдельное сообщение). Тесты: `node module/helpers/weapon/attack-log.test.mjs`, `node module/helpers/actions/attack-journal-html.test.mjs`.
   - Зоны влияния:
-    - `influence-manager.mjs` — расчёт/отрисовка influence-зон глобальных объектов.
-  - Таймлайн:
-    - `timeline-v2.mjs` — данные/инфраструктура (контейнеры/страницы/флаги/сокеты/настройки).
-    - `timeline-v2-app.mjs` — UI (Application V2) для Timeline V2.
-  - Иконки:
-    - `icon-library/*` — индексация/миграции/"bake" SVG.
-    - `icon-picker/*` — UI выбора, перекраска и применение к Actor/Token.
-  - Глобальная карта:
-    - `global-map/*` — обработка/рендер/инструменты/Editor UI.
-    - `global-map/terrain3d/*` — канонический heightmap + Three.js вид сверху / осмотр из точки.
+    - `influence-manager.mjs` — расчёт/отрисовка зон влияния. Источников сам не ищет и сам не включается: источники отдаёт подключённый пакет (`setSourceProvider`), показывает и прячет зоны тоже пакет (`enable`/`disable`/`toggle`). Без пакета зон нет.
+  - Модуль Azimuth (**вынесено из системы**: глобальная карта и 3D-рельеф, хронология, события, очки прогресса, тип «глобальный объект»; живёт в `Data/modules/azimuth`, свой репозиторий, работает и без SpaceHolder):
+    - `azimuth-link.mjs` — половина связи со стороны системы (на `setup`, если модуль активен): подключает провайдера источников влияния и спрашивает у `game.azimuth`, какие журналы служебные; проверяет версию API (`EXPECTED_AZIMUTH_API_VERSION`) и предупреждает ГМа при несовпадении. Тест: `node module/helpers/azimuth-link.test.mjs` (если модуль лежит рядом — сквозная проверка обеих половин на настоящем коде).
   - Пользователи и фракции:
     - `user-factions.mjs` — привязка пользователей/токенов/акторов к фракциям (через флаги).
     - `faction-display.mjs`, `hotbar-faction-ui.mjs` — UI-хелперы для фракций.
-  - Журналы/прогрессия:
-    - `journal-check.mjs` — workflow статусов Journal (draft/proposed/approved/denied), bulk-действия.
-    - `progression-points.mjs`, `progression-points-app.mjs` — система progression points и UI.
+  - Подключение внешних пакетов:
+    - `integration-registry.mjs` — точки расширения для модуля Azimuth: скрытые типы актёров, типы без указателя токена, разделы листа фракции, кнопки и счётчики блока фракции в хотбаре, служебные журналы и маркеры операций `journal-check`; публикуются как `game.spaceholder.integration`, провайдера источников влияния принимает `influenceManager.setSourceProvider`. См. `docs/code/reference/AZIMUTH_INTEGRATION.md`. Тесты: `node module/helpers/integration-registry.test.mjs`, `influence-manager.test.mjs`, `journal-check-integration.test.mjs`, `integration-templates.test.mjs`, `azimuth-link.test.mjs`, `node module/documents/actor-create-dialog.test.mjs`.
+  - Журналы:
+    - `journal-check.mjs` — workflow статусов Journal (draft/proposed/approved/denied), bulk-действия. Служебные журналы пакетов (хронология, события) пропускает по реестру `integration-registry.mjs`.
   - Токены:
     - `token-pointer.mjs` — рендер/настройки указателя токена.
     - `token-rotator.mjs` — вращение токена, снап, хоткеи.
   - Прочее:
     - `effects.mjs` — управление ActiveEffect.
+    - `status-effects.mjs` — статусы системы (`CONFIG.statusEffects`: «Боеготовность», «Движется», «В укрытии», «Скрыт за укрытием»), регистрируются на `init`; у записи два правила: `blockedBy` (что запрещает статус) и `endOn` (после чего он снимается). `actor.toggleStatusEffect(id)` вешает/снимает, `actor.statuses.has(id)` читает. Чистые правила + реестр; тест: `node module/helpers/status-effects.test.mjs`.
+    - `status-lifecycle.mjs` — статусы, которые система вешает и снимает сама: «Боеготовность» в начале хода (`spaceholder.combatTurnPicked`), «Движется» при движении в бою, снятие по `endOn` (движение/поворот токена, другое действие — `spaceholder.combatActionTaken` из `announceCombatAction`, новый раунд — `spaceholder.combatRoundStarted`, конец боя), запрет по `blockedBy`. Устройство эффектов Foundry 14 и как добавить статус — `docs/code/reference/EFFECTS.md`. Тест: `node module/helpers/status-lifecycle.test.mjs`.
     - `settings-menus.mjs`, `token-controls.mjs`, `journal-directory.mjs`, `journal-update-log-app.mjs` и др.
     - `skills/*` — дерево физических навыков, extras, `getSkillEffect` (пока не в формуле попадания).
     - `anatomy-groups.mjs` — группы, faces, ткань части (`partTissue`: оболочка, глубина, `organDepth`, удар родителю, кровоток), inners (органы: HP, `bleed`, тег `vital`, состояние `computeInnerState`), `getGroupAbility`, `computeDeathState` (мёртв / при смерти). Тест: `node module/helpers/anatomy-groups.test.mjs`.
@@ -65,15 +61,16 @@ SpaceHolder — игровая система (Foundry VTT v14+) с ES-моду�
     - `actor-death.mjs` — статусы на токене по `system.health.dead`: «dead» (потерян корень или уничтожен `vital`-орган), «unconscious» при смерти (повреждён `vital`-орган или смертельное кровотечение); работает только на клиенте активного ГМа. Тест: `node module/helpers/actor-death.test.mjs`.
     - `hit-quality.mjs` — качество попадания по центровости: зона полного попадания, «яблочко» (крит), равномерное падение множителя энергии к краю хитбокса, эффект крита режима (`critEffect`: `resolveModeCritEffect` в `weapon-model.mjs`). Множитель режет энергию снаряда (`applyEnergyScaleToApplications`), урон следует за энергией по закону брони (`damageRatioForEnergyRatio`); углового `armorScale` нет. Зона дуги сюда не входит. Тесты: `node module/helpers/hit-quality.test.mjs`, `node module/helpers/aiming-hit-quality.test.mjs`. См. `docs/code/reference/SHOOTING_SYSTEM.md` («Качество попадания»).
     - `hit-luck.mjs` — зоны дуги прицеливания (`normalizeLuckZone`), `clockToHitFace`, `walkProjectileCollisions` (ход снаряда по столкновениям со стенами и планом пробития; пролёт мимо токена — через хук `judgeToken`, его подключает `createShot`).
-    - `shot-confidence.mjs` — уверенность выстрела против сопротивления попаданию цели (чистые функции): зона дуги → число (красная 1, оранжевая 2, жёлтая 3, зелёная 5, фиолетовая 6), сопротивление = максимум по состояниям цели (в бою 1, движется 2, в укрытии 3, спрятана 5) + модификатор `system.hitResistanceMod` (эффекты); попадает, если уверенность **строго больше**; иначе снаряд пролетает мимо (`createTokenJudge` → `judgeToken`). Подключено в `ShotManager.createShot({ confidence })`; пока определяется только состояние «в бою». Тест: `node module/helpers/shot-confidence.test.mjs`. См. `docs/code/reference/SHOOTING_SYSTEM.md` («Уверенность и сопротивление»).
+    - `shot-confidence.mjs` — уверенность выстрела против сопротивления попаданию цели (чистые функции): зона дуги → число (красная 1, оранжевая 2, жёлтая 3, зелёная 5, фиолетовая 6), сопротивление = максимум по состояниям цели — это статусы актёра (боеготовность 1, движется 2, в укрытии 3, скрыт за укрытием 5) + модификатор `system.hitResistanceMod` (эффекты); попадает, если уверенность **строго больше**; иначе снаряд пролетает мимо (`createTokenJudge` → `judgeToken`). Подключено в `ShotManager.createShot({ confidence })`; состояния берутся из `actor.statuses` (вешает и снимает `status-lifecycle.mjs`). Тест: `node module/helpers/shot-confidence.test.mjs`. См. `docs/code/reference/SHOOTING_SYSTEM.md` («Уверенность и сопротивление»).
     - `hitbox-scale.mjs` — масштаб хитбокса цели (`system.hitboxScale`, %), применяется в `ShotManager._targetHitRadius`.
     - `derived-stats.mjs` — формулы производных характеристик актёра (чистые функции: HP-множитель, подъём/перенос, скорости, прыжки, счёты, ОД, героизм и др.; `computeDerivedStats`). Вызывается из `SpaceHolderActor._prepareDerivedCharacterStats`. Шкала: 100 = средний человек; STR абсолютная, END/AGI относительные к виду. Тест: `node module/helpers/derived-stats.test.mjs`. См. `docs/code/reference/DERIVED_STATS.md`.
     - `ability-scale-migration.mjs` — одноразовая миграция мира на шкалу 100 и `dex` → `agi` (запускается на `ready` у ГМа). Тест: `node module/helpers/ability-scale-migration.test.mjs`.
+    - `damage/penetration-track.mjs` + `penetration-shot.mjs` + `penetration-view-model.mjs` + `penetration-view-app.mjs` + `penetration-view-animation.mjs` + `penetration-overlay.mjs`, `weapon/shot-info.mjs` — визуализатор пробития: запись луча (слои стен, брони и ткани с энергией и уроном до и после, картинка и место цели; её собирает `AimingManager._collectRay`, лежит в `ShotEntry.tracks` лога атаки — то есть в сообщении чата, больше нигде), выстрел целиком (`penetration-shot.mjs`, `mergeShot`: записи лучей → блоки «стена / часть тела цели», линия на каждый снаряд дроби; взрыв — список целей), модель вида (блоки, ряды, поток энергии по линиям, превью), окно App V2 на выстрел с анимацией прохода и фактами о попадании и выстреле (`shot-info.mjs`), карточки поверх токенов — по одной на цель (сокет, настройка клиента `penetrationOverlay`); в журнале чата — одна кнопка «Пробитие» на выстрел, построчного дампа попаданий там нет. Тесты: `node module/helpers/damage/penetration-track.test.mjs`, `penetration-shot.test.mjs`, `penetration-view-model.test.mjs`, `penetration-overlay.test.mjs`, `node module/helpers/weapon/shot-info.test.mjs`. См. `docs/code/reference/PENETRATION_VIEW.md`.
     - `walls/*` — пробитие стен выстрелами: `wall-data.mjs` (флаги `flags.spaceholder.wall`, `isShotBlockingWall`), `wall-spans.mjs` (спаны материала вдоль луча, углы/толстые стены), `wall-penetration.mjs` (`planWallPasses`, правила брони v3), `wall-config.mjs` (конфиг стены + настройка). См. `docs/code/reference/WALL_PENETRATION.md`.
     - `gm-actions/*` — единый путь действий с правами ГМа (урон по чужим токенам, запись журнала раунда игроком не в его ход и др.): живой запрос ГМу, очередь в отсутствие ГМа, окно «Действия игроков в ваше отсутствие», заметка в чате. См. `docs/code/reference/GM_ACTIONS.md`.
     - `actions/ap-pool.mjs` (правила, чисто) + `actions/transaction-ledger.mjs` (`spendAp`, `resetApPool`, `describeApCounter`) — пул ОД: **в бою жёсткий лимит** (не хватает ОД — действие не происходит), **вне боя счётчик «потрачено с последнего боя»** (значение уходит в минус); сброс при конце боя. `actions/combat-action-log.mjs` — запись действия в лог боя (таблица + журнал в чате). Тесты: `node module/helpers/actions/ap-pool.test.mjs`, `node module/helpers/actions/transaction-ledger.test.mjs`. См. `docs/code/reference/COMBAT_SYSTEM_V1.md` («AP rules»).
   - **`helpers/legacy/`** — старый/экспериментальный код (не расширять без причины).
-- **`module/data/`** — данные системы (JSON): `data/payloads/*`, `data/globalmaps/*` (анатомии см. ниже).
+- **`module/data/`** — данные системы (JSON): `data/payloads/*` (анатомии см. ниже; данные глобальной карты ушли в модуль Azimuth).
 - **`data/anatomy/`** (в корне системы) — стандартные анатомии: `registry.json` и JSON-файлы шаблонов (тот же формат для всех). Путь в рантайме: `systems/spaceholder/data/anatomy/`.
 - **`data/skills/`** — пресет дерева физических навыков (`physical-tree.json`; рантайм — `module/helpers/skills/physical-tree.mjs`).
 - Анатомии, созданные в мире, хранятся **только в папке мира** как JSON-файлы: `worlds/<worldId>/spaceholder/anatomy/<id>.json` (тот же формат, что и в `data/anatomy/`). Загрузка по необходимости через `loadWorldPresets()` (FilePicker browse + fetch).
@@ -155,22 +152,9 @@ Add `| cmd /c "findstr pattern"` to filter results.
   - `game.spaceholder.SpaceHolderItem`
 - Макросы:
   - `game.spaceholder.rollItemMacro(itemUuid)`
-- Иконки:
-  - `await game.spaceholder.pickIcon({ root?, defaultColor?, title?, factionColor?, initialPath?, initialOpts? }) → string | null`
-  - `await game.spaceholder.applyIconPathToActorOrToken({ path, actor, tokenDoc?, applyTo: 'actor'|'token'|'both' }) → boolean`
-  - `await game.spaceholder.pickAndApplyIconToActorOrToken(...) → string | null`
-  - `await game.spaceholder.promptPickAndApplyIconToActorOrToken(...) → string | null`
-  - `await game.spaceholder.getIconLibraryIndex({ root?, force?, extensions? }) → icon[]`
-  - `game.spaceholder.getIconLibraryCacheInfo() → { root, hasIcons, count, at }`
-  - миграции generated SVG:
-    - `game.spaceholder.migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke(opts)`
-    - `game.spaceholder.migrateIconLibraryGeneratedSvgsInsetBackgroundStroke(opts)`
-- Influence:
-  - `game.spaceholder.showInfluence(debug?)`, `hideInfluence()`, `toggleInfluence(debug?)`
 - Фракции пользователей:
   - `game.spaceholder.getUserFactionUuids(user)`
   - `game.spaceholder.getUsersForFaction(factionUuid)`
-  - `game.spaceholder.getUsersForToken(tokenLike)`
   - `game.spaceholder.normalizeUuid(raw)`
   - Вложенное хранилище предметов:
     - `game.spaceholder.nestedItemStorage.addItemToNestedStorage({ containerItem, item, quantity?, consumeSource?, parentPath? })`
@@ -189,20 +173,23 @@ Add `| cmd /c "findstr pattern"` to filter results.
     - `await game.spaceholder.openHackMinigame()` — диалог генерации → Application V2
     - `await game.spaceholder.openLockpickMinigame()` — диалог генерации → Application V2 (взлом замков)
     - Доступ к инстансам/подсистемам (если экспортируются):
-    - `game.spaceholder.tokenpointer`, `drawManager`, `shotManager`, `influenceManager`
-    - `game.spaceholder.globalMapProcessing`, `globalMapRenderer`, `globalMapTools`
-    - `game.spaceholder.globalMapTerrain` — 3D-рельеф (heightmap/splat, overlay, редактор)
-    - `await game.spaceholder.openLookFromPoint({ x, y } | { token })` — окно осмотра с точки на террейне
+    - `game.spaceholder.tokenpointer`, `drawManager`, `shotManager`, `influenceManager` (`enable`/`disable`/`toggle`, `enabled`)
 - Действия и атака:
   - `game.spaceholder.collectActorActions(actor, ctx?)`, `executeActorAction(actor, action, ctx?)`
   - `await game.spaceholder.runActorAction(actorUuid, actionId)` — выполнить действие по id (макросы хотбара)
   - `await game.spaceholder.runItemAttack(itemUuid, { lineId?, modeId? })` — атака предметом по UUID (макросы хотбара «Атака»; без `lineId`+`modeId` — активные линия/режим, оружие не в руках берётся цепочкой)
   - `item.canAttack` / `await item.attack({ token, lineId?, modeId? })` (`SpaceHolderItem`) — атака предметом активными (или заданными) линией/режимом
+  - Математика пробития: `game.spaceholder.openPenetrationView(shotId, { messageId? })` — окно выстрела — одно на выстрел, всё в нём (дробь — линии в потоке, взрыв — список целей): слои, поток энергии, анимация, превью и факты о попадании (ид — `shot_…` любого луча выстрела, он же `id` записи следа; данные берутся из лога атаки в чате); `game.spaceholder.findPenetrationTrack(shotId)` — запись пробития луча или `null`; `game.spaceholder.penetrationOverlay.showShot(track, { broadcast? })` — карточки поверх токенов (`track` — `mergeShot().track`)
   - Прицеливание: `game.spaceholder.aimingManager.isAimingActor(actor)`, `stopAiming()`; хук `spaceholder.aimingChanged` (`{ aiming, token }`) при старте/конце прицеливания — на него подписан быстрый HUD (кнопка «Атаковать» ↔ «Отмена»)
 - Действия с правами ГМа (`docs/code/reference/GM_ACTIONS.md`):
   - `await game.spaceholder.gmActions.request(type, payload, { label?, chatMessageId? })` → `{ status: 'done', id, result }` | `{ status: 'queued', id }`
   - `game.spaceholder.gmActions.register(type, { category?, handler, validate? })` — на каждом клиенте
   - `game.spaceholder.gmActions.listQueue()`, `openQueue()` (ГМ)
+- Подключение внешних пакетов (`docs/code/reference/AZIMUTH_INTEGRATION.md`):
+  - `game.spaceholder.integration.apiVersion` (1); `CONFIG.SPACEHOLDER.hiddenActorTypes`, `CONFIG.SPACEHOLDER.tokenPointerOffTypes` — `Set` типов актёров (те же объекты лежат в `integration`)
+  - `integration.registerFactionSheetSection({ id, render, activate? })`, `integration.registerHotbarFactionItems({ id, quickActions?, indicators? })`, `integration.requestHotbarFactionRender()`
+  - `integration.registerServiceJournalPredicate({ id, test })`, `integration.registerJournalOperationMarker(key)`, `integration.getJournalPageStatus(page)`
+  - `integration.setInfluenceSourceProvider(provider | null)`, `integration.requestInfluenceRedraw({ reason?, delayMs? })`
 - Навыки (структура; в aiming/shot не подключено):
   - `game.spaceholder.getSkillEffect(actor, nodeId)` — взвешенное среднее 0–10 по цепочке от корня (нули не схлопываются)
   - `game.spaceholder.getSkillLevel(actor, nodeId)` — уровень узла пресета или extra (0–10)
@@ -213,16 +200,13 @@ Add `| cmd /c "findstr pattern"` to filter results.
 
 Если добавляете новый публичный метод, считайте это как изменение внешнего API: документируйте в этом файле и старайтесь держать сигнатуру стабильной.
 
-## Икон-библиотека и Icon Picker (важные правила)
+## Иконки (Iconic)
 
-(Актуально по `WARP.md`)
+Выбор и правка SVG-иконок (портрет, токен, иконка предмета) — отдельный модуль **Iconic** (`Data/modules/iconic`, свой репозиторий). В системе кода иконок нет: ни связи с модулем, ни кнопок на листах. Iconic открывается из меню окна «⋮» листа, кнопки заголовка (листы Application V1) и контекстного меню каталогов Акторы/Предметы; сам находит цвет фракции по `system.fColor` и `system.gFaction`.
 
-- Иконки лежат в папке мира (Data): `<root>/source/**.svg`.
-- Перекрашенные/"запечённые" версии автоматически сохраняются в `<root>/generated/`.
-- По умолчанию `<root>` = `worlds/<worldId>/spaceholder/icon-library`.
-  - Можно переопределить через world setting `spaceholder.iconLibrary.root` (setting скрыт из UI; менять через консоль).
-- Подпапки внутри `source/` считаются категориями (category = относительный путь).
-- Сейчас поддерживается только `.svg`.
+- Запечённый результат лежит в папке мира `worlds/<мир>/iconic/generated`. Старые файлы `worlds/<мир>/spaceholder/icon-library/generated` остаются обычными картинками, Iconic открывает их на правку (метка `spaceholder-bake` читается).
+- Выбор иконки маркера в редакторе событий таймлайна — обычный выбор файла Foundry (таймлайн переезжает в Azimuth, у него своя связь с Iconic).
+- Не возвращать в систему редактор иконок, формы фона, запекание и кнопки вызова Iconic: новое делается в модуле.
 
 ## Стиль кода и соглашения
 
@@ -327,9 +311,8 @@ Add `| cmd /c "findstr pattern"` to filter results.
 ## Паттерны проекта, на которые стоит ориентироваться
 
 - **Большие подсистемы живут в `module/helpers/*`**, а вход в них — из `module/spaceholder.mjs`.
-- **Флаги (`flags.spaceholder.*`) активно используются** для хранения состояния (фракции, токен-указатель, journal-check, timeline v2 и т.п.).
-- **Timeline V2** имеет инфраструктуру контейнеров/страниц и сокет-операции для GM-действий (`timeline-v2.mjs`).
-- **Global Map** — отдельный пакет модулей (`helpers/global-map/*`) с UI и обработкой данных.
+- **Флаги (`flags.spaceholder.*`) активно используются** для хранения состояния (фракции, токен-указатель, journal-check и т.п.).
+- **Глобальная карта, хронология, события, очки прогресса** — в модуле Azimuth (`Data/modules/azimuth`, свой репозиторий и свои тесты `npm test`), в системе их кода нет. Связь двусторонняя: система открывает реестры (`integration-registry.mjs`) и спрашивает модуль о том, что ему принадлежит; модуль наполняет реестры тем, что относится к интерфейсу системы. Подробно — `docs/code/reference/AZIMUTH_INTEGRATION.md`.
 - **`helpers/legacy/*`**: не расширяйте и не рефакторьте по пути, если задача не про это.
 
 ## Наследие исходного форка (низкий приоритет)

@@ -15,7 +15,6 @@
     "SheetLabels": {
       "Actor": "SpaceHolder Actor Sheet",
       "Loot": "SpaceHolder Loot Sheet",
-      "GlobalObject": "SpaceHolder Global Object Sheet",
       "Faction": "SpaceHolder Faction Sheet",
       "Item": "SpaceHolder Item Sheet"
     },
@@ -889,6 +888,10 @@
           "Hint": "How much of the projectile's energy is left for a hit on the very edge of the hitbox. The damage follows the energy: armour is pierced worse, and a target without armour takes less damage."
         }
       },
+      "PenetrationOverlay": {
+        "Name": "Penetration over the tokens",
+        "Hint": "Show semi-transparent cards over the tokens a shot goes through, with the layers the projectile pierces. They fade after a few seconds; the button of the shot in chat opens the details. Affects only your client."
+      },
       "ShotTrailFade": {
         "Name": "Shot trail lifetime (seconds)",
         "Hint": "How long a shot's trajectory stays on the canvas while it fades out. Applies only to your client."
@@ -908,12 +911,6 @@
         "Thickness": "Thickness, mm",
         "ThicknessHint": "In millimetres, like armour. Thin: wall thickness. Solid: depth assumed when no far face is found (0 = unbounded, nothing gets through).",
         "SolidNeedsDirection": "A solid wall needs a Direction (Left or Right). Until it has one, this wall counts as thin."
-      },
-      "Chat": {
-        "Penetrated": "Wall: {material}, {thickness} mm — penetrated, damage {before} → {after}",
-        "Stopped": "Wall: {material}, {thickness} mm — stopped the shot",
-        "Unbounded": "Wall: {material} — solid mass, stopped the shot",
-        "Opaque": "Wall without a material — stopped the shot"
       }
     },
     "Organs": {
@@ -975,93 +972,18 @@
       "Full": "full hit",
       "Glancing": "glancing"
     },
-    "IconPicker": {
-      "Title": "Icon Picker",
-      "SearchPlaceholder": "Search…",
-      "Category": "Category",
-      "CategoryAll": "All",
-      "Color": "Color",
-      "Empty": "No icon selected.",
-      "Placeholders": {
-        "Hex": "#rrggbb"
-      },
-      "Buttons": {
-        "Select": "Select",
-        "PickFile": "Choose file"
-      },
-      "Tooltips": {
-        "Open": "Choose icon",
-        "Color": "Pick color",
-        "Hex": "Hex (#rrggbb)",
-        "Refresh": "Refresh list",
-        "SwapColors": "Swap icon/background colors",
-        "InvertIcon": "Invert icon color",
-        "InvertBackground": "Invert background color",
-        "UseFactionColor": "Use faction color",
-        "IconScale": "Icon size",
-        "BackgroundEnabled": "Toggle background",
-        "BackgroundStroke": "Background stroke",
-        "IconStroke": "Icon stroke"
-      },
-      "Sections": {
-        "Background": "Background",
-        "Icon": "Icon"
-      },
-      "Background": {
-        "Enabled": "Background",
-        "Color": "Background color",
-        "Shape": "Shape",
-        "Inset": "Inset (%)",
-        "Radius": "Radius (%)",
-        "Opacity": "Opacity (%)",
-        "Stroke": "Stroke",
-        "StrokeColor": "Stroke color",
-        "StrokeWidth": "Stroke width (%)",
-        "StrokeOpacity": "Stroke opacity (%)",
-        "Shapes": {
-          "Square": "Square",
-          "Rounded": "Rounded",
-          "Circle": "Circle",
-          "Hex": "Hex"
-        }
-      },
-      "Icon": {
-        "Scale": "Size (%)",
-        "Stroke": "Stroke",
-        "StrokeColor": "Stroke color",
-        "StrokeWidth": "Stroke width (%)",
-        "StrokeOpacity": "Stroke opacity (%)",
-        "Opacity": "Opacity (%)"
-      },
-      "ApplyDialog": {
-        "Title": "Apply icon",
-        "Hint": "Update:",
-        "Actor": "Actor image",
-        "Token": "Token image",
-        "Both": "Both"
-      },
-      "Errors": {
-        "LoadFailed": "Failed to load icons list",
-        "RefreshFailed": "Failed to refresh icons list",
-        "BakeFailed": "Failed to create icon",
-        "ApplyFailed": "Failed to apply icon",
-        "OnlySvg": "Please choose an SVG file"
-      }
-    },
     "Common": {
       "Optional": "(optional)"
+    },
+    "Azimuth": {
+      "Unsupported": "The Azimuth module is active but does not match this version of the SpaceHolder system, so it is not connected (no map zones, no timeline buttons in the faction block). Update the system and the module together."
     },
     "HotbarFaction": {
       "Faction": "Faction",
       "NoFaction": "No faction",
-      "PP": "Faction progression points",
       "QuickActions": "Quick actions",
       "Tools": {
-        "OpenTimeline": "Open timeline",
-        "OpenEvents": "Open events",
         "OpenJournalLog": "Journal update log",
-        "OpenProgressionPoints": "Received PP",
-        "ToggleInfluence": "Toggle influence display",
         "Placeholder": "Placeholder"
       }
     },
@@ -1236,21 +1158,115 @@
       "Summary": "Shots: {shots} · Hits: {hits}",
       "NoHits": "No hits",
       "ShowShots": "Show shots",
-      "ShowHits": "Show hits",
       "ShotTitle": "Shot {n}",
       "ShotHits": "hits: {count}",
-      "HitLine": "Shot {shot} · from {clock} o'clock · centrality {centrality} · energy ×{energy} ({quality})",
-      "HitLinePlain": "Shot {shot} · from {clock} o'clock",
-      "HitPicked": "picked: {group}",
-      "AreaHitLine": "Shot {shot} · AoE · from {clock} o'clock · coverage {coverage}% · {mode} · effect ×{scale}",
-      "ImpactResult": "{part}: {damage}",
-      "SameWound": "{part}: same wound",
-      "NoWound": "no wound",
-      "OrganReached": "organ hit: {organs}",
-      "ThroughBody": "through {name}",
-      "BulletGoesOn": "the bullet goes on: {damage}",
-      "DamageQueued": "awaits the GM",
-      "DamageFailed": "damage not applied"
+      "ShowPenetration": "Penetration"
+    },
+    "PenetrationView": {
+      "Title": "Penetration: {projectile}",
+      "Projectile": "Projectile",
+      "MuzzleEnergy": "Energy {value}",
+      "Replay": "Replay",
+      "Skip": "Skip",
+      "Thickness": "{value} mm",
+      "NotFound": "No penetration record for shot {id}",
+      "Pending": "Damage awaits the GM",
+      "ShotN": "Shot {n}",
+      "Empty": "The projectile met nothing",
+      "Fold": "Fold all",
+      "Unfold": "Unfold all",
+      "FoldGroup": "Fold or unfold the layers",
+      "Group": {
+        "Wall": "Wall",
+        "Body": "Target",
+        "Lanes": "×{count}",
+        "LanesTip": "Projectiles: {count}"
+      },
+      "Layer": {
+        "wall": "Wall",
+        "armor": "Armor",
+        "tissue": "Tissue"
+      },
+      "Verdict": {
+        "Pass": "Pierced",
+        "Hold": "Stopped",
+        "Skip": "Bypassed",
+        "Gap": "Gap",
+        "Through": "Through",
+        "Lodged": "Lodged",
+        "Lanes": "{pass} of {total}"
+      },
+      "Scale": "×{value}",
+      "ScaleQuality": "{quality} ×{value}",
+      "Tip": {
+        "Pass": "{projectile} pierces {layer}, energy {before} ({beforePct}%) → {after} ({afterPct}%)",
+        "PassPlain": "{projectile} pierces {layer}, energy {before} → {after}",
+        "Hold": "{layer} stops {projectile}, energy {before} ({beforePct}%) → 0",
+        "HoldPlain": "{layer} stops {projectile}, energy {before} → 0",
+        "TissuePass": "{projectile} goes through {layer}, energy {before} ({beforePct}%) → {after} ({afterPct}%)",
+        "TissuePassPlain": "{projectile} goes through {layer}, energy {before} → {after}",
+        "TissueHold": "{projectile} lodges in {layer}, energy {before} ({beforePct}%) → 0",
+        "TissueHoldPlain": "{projectile} lodges in {layer}, energy {before} → 0",
+        "TissueShell": "{layer}: the shell stops {projectile}, energy {before} ({beforePct}%) → 0",
+        "TissueShellPlain": "{layer}: the shell stops {projectile}, energy {before} → 0",
+        "Skip": "{projectile} does not touch {layer}: the layer is damaged",
+        "Gap": "{projectile} goes through a gap in the coverage: {layer} is missed (coverage {coverage}%)",
+        "WallOpaque": "{layer}: a wall without material stops the shot",
+        "WallUnbounded": "{layer}: no far face, the shot is stopped",
+        "LanesPass": "{layer}: all {total} projectiles pierce it",
+        "LanesHold": "{layer} stops all {total} projectiles",
+        "LanesMixed": "{layer}: {pass} of {total} projectiles pierce it, {hold} stopped"
+      },
+      "Row": {
+        "Energy": "Energy",
+        "Lane": "Projectile {n}",
+        "Resist": "Layer resistance",
+        "Short": "Energy short by",
+        "Damage": "Damage ({type})",
+        "OtherType": "{type}",
+        "Lost": "Lost before the layer",
+        "Wear": "Layer wear",
+        "WearValue": "{wear}, integrity {integrity}",
+        "Conduct": "Hands on a blow",
+        "Deposit": "Tissue takes damage",
+        "Organs": "Organs hit"
+      },
+      "Hit": {
+        "Side": "Side of the hit",
+        "SideValue": "{face} · {clock} o'clock",
+        "Front": "in front",
+        "Back": "behind",
+        "Centrality": "Centrality",
+        "Energy": "Energy",
+        "Quality": "Hit",
+        "Picked": "Group picked",
+        "Part": "Body part",
+        "Damage": "Damage",
+        "NoWound": "no wound",
+        "Organs": "Organs",
+        "Through": "The bullet came out of",
+        "ThroughValue": "{name}",
+        "GoesOn": "Goes on",
+        "Status": "Status",
+        "SameWound": "same wound",
+        "Queued": "awaits the GM",
+        "Failed": "damage not applied",
+        "Coverage": "Coverage",
+        "Mode": "Mode",
+        "EffectScale": "Effect",
+        "Pellets": "Projectiles",
+        "Count": "{label} ×{count}"
+      },
+      "Shot": {
+        "Title": "Shot",
+        "Result": "Result",
+        "Ap": "AP",
+        "ApBase": "{ap} (base {base})",
+        "Rays": "Rays",
+        "Luck": "Arc",
+        "Spread": "Spread",
+        "Passes": "Flew past"
+      }
     },
     "ActionChatJournal": {
       "Title": "Round {round} — Actions",
@@ -1499,7 +1515,14 @@
       "Toggle": "Toggle Effect",
       "Temporary": "Temporary Effects",
       "Passive": "Passive Effects",
-      "Inactive": "Inactive Effects"
+      "Inactive": "Inactive Effects",
+      "Statuses": {
+        "combatReady": "Combat Ready",
+        "moving": "Moving",
+        "cover": "In Cover",
+        "hidden": "Hidden Behind Cover"
+      },
+      "Blocked": "{status} cannot be applied: {blockers}."
     },
     "AimingDialog": {
       "Title": "Aiming Setup",
@@ -1587,10 +1610,7 @@
       "Messages": {
         "SelectToken": "Select a token for aiming setup",
         "SelectOneToken": "Select only one token for aiming",
-        "InfluenceShown": "Influence displayed",
-        "InfluenceHidden": "Influence hidden",
         "LoadError": "Failed to load aiming module",
-        "Unavailable": "Influence manager unavailable",
         "ToggleAimingArcHoverFailed": "Failed to toggle aiming arc hover mode"
       }
     },
@@ -1819,7 +1839,7 @@
         "DiagnosticAreaHit": "{name} · AoE · from {clock} o'clock · coverage {coverage}% · {mode} · effect ×{scale}",
         "DiagnosticPass": "{name} · confidence {confidence} ({zone}) is not above resistance {resistance}{reasons} — flies past",
         "ResistanceStates": {
-          "combat": "in combat",
+          "combatReady": "combat ready",
           "moving": "moving",
           "cover": "in cover",
           "hidden": "hidden behind cover"
@@ -1830,176 +1850,6 @@
       "Errors": {
         "PayloadManifestLoad": "Error loading payloads manifest:",
         "PayloadLoad": "Error loading payload"
-      }
-    },
-    "Timeline": {
-      "App": {
-        "Title": "Timeline",
-        "Loading": "Loading…",
-        "EmptyState": "No entries yet."
-      },
-      "Fields": {
-        "Faction": "Faction",
-        "Origin": "On behalf of",
-        "Year": "Year",
-        "Title": "Title",
-        "Global": "Globally",
-        "Content": "Content"
-      },
-      "Origin": {
-        "Faction": "Factions",
-        "World": "World"
-      },
-      "Buttons": {
-        "Add": "Add",
-        "Edit": "Edit",
-        "Delete": "Delete",
-        "MoveUp": "Up",
-        "MoveDown": "Down",
-        "ToggleGlobal": "Global",
-        "ToggleHidden": "Hidden",
-        "Expand": "Content",
-        "Save": "Save",
-        "Cancel": "Cancel",
-        "Yes": "Yes",
-        "No": "No"
-      },
-      "Groups": {
-        "Actions": "Actions",
-        "Order": "Order",
-        "Visibility": "Visibility",
-        "Editing": "Editing",
-        "Content": "Content"
-      }
-    },
-    "TimelineV2": {
-      "App": {
-        "Title": "Timeline",
-        "Loading": "Loading…",
-        "EmptyState": "No entries yet."
-      },
-      "Fields": {
-        "Date": "Date",
-        "StartDate": "Start date",
-        "EndDate": "End date",
-        "HasDuration": "Has duration",
-        "Duration": "Duration",
-        "Title": "Title",
-        "Faction": "Faction",
-        "Origin": "Origin",
-        "Icon": "Icon",
-        "Global": "Global",
-        "Content": "Content"
-      },
-      "Origin": {
-        "Faction": "Faction",
-        "World": "World"
-      },
-      "Buttons": {
-        "Add": "Add",
-        "Save": "Save",
-        "Cancel": "Cancel",
-        "HideUnknown": "Hide unknown",
-        "ActiveFactions": "My factions",
-        "ActiveFactionsAuto": "Auto",
-        "Pin": "Pin",
-        "Unpin": "Unpin",
-        "Open": "Open",
-        "Edit": "Edit",
-        "Delete": "Delete",
-        "Close": "Close",
-        "Drag": "Drag",
-        "ZoomIn": "Zoom in",
-        "ZoomOut": "Zoom out",
-        "PickDate": "Pick date",
-        "PickEndDate": "Pick end date",
-        "PickIcon": "Pick icon",
-        "ClearIcon": "Clear icon"
-      },
-      "Errors": {
-        "EndDateInvalid": "End date must be after start date"
-      },
-      "Groups": {
-        "ActiveFactions": "My factions",
-        "Details": "Details"
-      }
-    },
-    "Events": {
-      "App": {
-        "Title": "Events",
-        "Loading": "Loading…",
-        "Empty": "No events yet."
-      },
-      "Tabs": {
-        "Drafts": "Drafts",
-        "Events": "Faction events"
-      },
-      "Fields": {
-        "Title": "Title",
-        "Description": "Description",
-        "Date": "Date",
-        "Icon": "Icon",
-        "Faction": "Faction",
-        "Status": "Status",
-        "Options": "Options",
-        "SelectedOption": "Selected option",
-        "NoOption": "No option",
-        "FreeText": "Free response",
-        "Outcome": "Outcome",
-        "ResponseMode": "Response mode",
-        "Finished": "Finished",
-        "Sort": "Sort"
-      },
-      "Buttons": {
-        "CreateTemplate": "Create draft",
-        "CreateEvent": "Create event",
-        "SendToFaction": "Send to faction",
-        "Respond": "Respond",
-        "Resolve": "Resolve",
-        "PickDate": "Pick date",
-        "PickIcon": "Pick icon",
-        "ClearIcon": "Clear icon",
-        "ToTimeline": "Create timeline entry",
-        "SubmitResponse": "Submit response"
-      },
-      "Status": {
-        "Created": "Created",
-        "Answered": "Answered",
-        "Resolved": "Resolved",
-        "Finished": "Finished"
-      },
-      "Filters": {
-        "AllStatuses": "All statuses",
-        "AllFactions": "All factions"
-      },
-      "Sort": {
-        "DateDesc": "Date: new first",
-        "DateAsc": "Date: old first",
-        "Status": "Status",
-        "Title": "Title"
-      },
-      "Hints": {
-        "OptionsFormat": "One option per line. Use \"label | outcome\" format to predefine auto-outcome.",
-        "DropRefs": "You can drag Actor/Journal into text fields to insert @UUID links."
-      },
-      "ResponseMode": {
-        "ChoiceOnly": "Choice only",
-        "TextOnly": "Text only",
-        "Either": "Choice or text",
-        "Both": "Choice and text"
-      },
-      "Notifications": {
-        "Sent": "Event was sent to faction",
-        "TimelineCreated": "Timeline entry created from event"
-      },
-      "Confirm": {
-        "DeleteTitle": "Delete event?",
-        "DeleteContent": "This action cannot be undone."
-      },
-      "Errors": {
-        "FactionRequired": "Faction is required",
-        "TitleRequired": "Title is required",
-        "ResponseInvalid": "Response does not satisfy current response mode"
       }
     },
     "Journal": {
@@ -2017,9 +1867,7 @@
         }
       },
       "Placeholders": {
-        "Untitled": "(untitled)",
-        "Deleted": "(deleted)",
-        "Unknown": "Unknown"
+        "Deleted": "(deleted)"
       },
       "Defaults": {
         "GMName": "GM"
@@ -2036,505 +1884,6 @@
       },
       "Messages": {
         "InvalidType": "Expected an Actor of type \"faction\""
-      }
-    },
-    "Token": {
-      "VisionEnabled": "Vision Enabled",
-      "VisionRange": "Vision Range"
-    },
-    "GlobalObject": {
-      "InfluenceEnabled": "Influence enabled",
-      "InfluenceEnabledHint": "Disable this object's influence without changing its radius"
-    },
-    "GlobalMap": {
-      "Title": "Global Map",
-      "Controls": {
-        "InspectMap": "Inspect map",
-        "InspectCell": "Inspect cell",
-        "ImportMap": "Import map",
-        "CreateTestGrid": "Create test grid",
-        "ToggleVisibility": "Toggle visibility",
-        "SaveToFile": "Save to file",
-        "LoadFromFile": "Load from file",
-        "BakeToBackground": "Bake to scene background",
-        "EditMap": "Edit map",
-        "ClearMap": "Clear map",
-        "ToggleBiomesMode": "Toggle biomes mode",
-        "ToggleHeightsMode": "Toggle heights mode"
-      },
-      "Common": {
-        "Unknown": "Unknown",
-        "JournalUuid": "Journal UUID"
-      },
-      "ClientSettings": {
-        "RotateRiverLabels": {
-          "Name": "Global Map: Rotate river labels",
-          "Hint": "Rotate river labels along river direction (client-side)"
-        },
-        "AppearanceAnimations": {
-          "Name": "Global Map: Appearance animations",
-          "Hint": "Animate appearance/disappearance of global map overlays (client-side)"
-        },
-        "AppearanceAnimationDuration": {
-          "Name": "Global Map: Appearance animation duration",
-          "Hint": "Fade in/out duration in milliseconds (client-side)"
-        }
-      },
-      "Permissions": {
-        "GMOrAssistantOnly": "Only a GM or Assistant GM can {action}.",
-        "GMOnly": "Only a GM can {action}.",
-        "Actions": {
-          "UseTool": "use this tool",
-          "ImportMap": "import a map",
-          "CreateTestGrid": "create a test grid",
-          "SaveMap": "save the map",
-          "BakeBackground": "bake the map into the scene background",
-          "EditMap": "edit the map",
-          "ClearMap": "clear the map",
-          "ToggleBiomesMode": "toggle biomes mode",
-          "ToggleHeightsMode": "toggle heights mode",
-          "BindJournals": "bind journals",
-          "OpenBiomeEditor": "open biome list"
-        }
-      },
-      "ImportDialog": {
-        "Title": "Import global map",
-        "Label": "Map file",
-        "ChooseFile": "Choose file",
-        "FilePathPlaceholder": "Path to map file (optional)",
-        "Note": "Leave empty to create a flat 20×20 map."
-      },
-      "BakeDialog": {
-        "Title": "Bake map to background",
-        "Fields": {
-          "Scale": "Scale",
-          "Format": "Format",
-          "Quality": "Quality"
-        },
-        "Scale": {
-          "Option": "{scale}×",
-          "OptionMax": "{scale}× (max)"
-        },
-        "MaxInfo": "Max safe scale: {scale}× (texture limit: {maxSize}px)",
-        "Format": {
-          "Webp": "WebP (recommended)",
-          "Png": "PNG"
-        },
-        "Notes": {
-          "ScaleDown": "If you hit texture size limits, the export will be downscaled automatically.",
-          "PngIgnoresQuality": "PNG ignores quality."
-        }
-      },
-      "Confirm": {
-        "ClearMap": {
-          "Title": "Clear map?",
-          "Content": "This will remove the loaded map. Continue?"
-        }
-      },
-      "Save": {
-        "Parts": {
-          "Map": "map",
-          "Rivers": "rivers",
-          "Regions": "regions"
-        }
-      },
-      "Notifications": {
-        "ProcessingMap": "Processing map...",
-        "MapCreated": "Map created",
-        "MapSaved": "Global map saved",
-        "MapLoadedFromFile": "Map loaded from file",
-        "MapRefreshed": "Map refreshed",
-        "MapCleared": "Map cleared",
-        "BiomesModeSet": "Biomes: {mode}",
-        "HeightsModeSet": "Heights: {mode}",
-        "ExportingMap": "Exporting map...",
-        "SceneBackgroundUpdated": "Scene background updated",
-        "CreatingBiomeTestGrid": "Creating biome test grid...",
-        "TestGridCreated": "Test grid created"
-      },
-      "Warnings": {
-        "TextureLimit": " (texture limit: {maxSize}px)",
-        "ScaleLimited": "Scale limited to {scale}×{maxInfo}",
-        "MapFileNotFound": "Map file not found",
-        "ImportMapFirst": "Import a map first"
-      },
-      "Errors": {
-        "FetchFailed": "Failed to fetch file: {statusText}",
-        "ErrorWithMessage": "Error: {message}",
-        "NoActiveScene": "No active scene",
-        "NoLoadedMap": "No loaded map",
-        "UploadFailed": "Upload failed",
-        "BakeFailed": "Failed to bake background: {message}",
-        "NoMapToSave": "No map to save",
-        "FailedToSave": "Failed to save: {what}",
-        "SaveGridFailed": "Failed to save grid: {message}",
-        "NoGridDataToSave": "No grid data to save",
-        "NoBiomesAvailable": "No biomes available (registry not loaded?)",
-        "InvalidPackCellsData": "Invalid PackCells data: {error}",
-        "DropUuidNotFound": "Failed to extract UUID from drag-and-drop",
-        "DocNotFoundByUuid": "Document not found by UUID",
-        "ExpectedJournalDoc": "Expected a Journal (JournalEntry/JournalEntryPage)",
-        "BiomeResolverOverridesNotSupported": "BiomeResolver does not support saving overrides",
-        "SaveBiomeJournalFailed": "Failed to save biome journal: {message}",
-        "SaveRegionJournalFailed": "Failed to save region journal: {message}",
-        "OpenTimelineFailed": "Failed to open timeline",
-        "OpenBiomeEditorFailed": "Failed to open biome list",
-        "CreateTestGridFailed": "Failed to create test grid",
-        "RefreshMapFailed": "Failed to refresh map",
-        "PackCells": {
-          "MissingInfoAndCells": "Missing required structure: info and cells",
-          "CellsArrayMissingOrEmpty": "Cells array is missing or empty",
-          "CellsMissingPosition": "Cells missing position (p) data",
-          "CellsMissingHeightOrBiome": "Cells must have height (h/height/elevation) or biome data"
-        }
-      },
-      "Biomes": {
-        "EditorTitle": "Biomes",
-        "OverridesFileLabel": "Overrides file:",
-        "Columns": {
-          "Preview": "Preview",
-          "Id": "ID",
-          "Rank": "Rank",
-          "Name": "Name",
-          "Link": "Link",
-          "Actions": "Actions"
-        },
-        "Fields": {
-          "Id": "ID",
-          "Name": "Name",
-          "Rank": "Rank",
-          "Color": "Color",
-          "Pattern": "Pattern",
-          "PatternColor": "Pattern color"
-        },
-        "Actions": {
-          "New": "New biome",
-          "ResetOverrides": "Reset overrides",
-          "Auto": "Auto"
-        },
-        "Auto": "(auto)",
-        "Pattern": {
-          "Advanced": "Pattern (advanced)",
-          "Spacing": "Spacing",
-          "LineWidth": "Line width",
-          "Opacity": "Opacity",
-          "Darken": "Darken"
-        },
-        "PatternTypes": {
-          "None": "(none)",
-          "Diagonal": "Diagonal lines",
-          "Crosshatch": "Crosshatch",
-          "Vertical": "Vertical lines",
-          "Horizontal": "Horizontal lines",
-          "Dots": "Dots",
-          "Circles": "Circles",
-          "Waves": "Waves",
-          "Hexagons": "Hexagons",
-          "Spots": "Spots"
-        },
-        "WindowTitle": "Biomes (Global Map)",
-        "EditWindowTitle": "Biome",
-        "EditWindowTitleWithId": "Biome {id}",
-        "DefaultNameFallback": "Biome {id}",
-        "DefaultNewName": "New biome {id}",
-        "Notifications": {
-          "Saved": "Biomes saved (biome-overrides.json)",
-          "OverridesCleared": "Overrides cleared"
-        },
-        "Errors": {
-          "IdLimitReached": "Limit reached: no free IDs left (0..255)",
-          "SaveFailed": "Failed to save biomes: {message}",
-          "ResetOverridesFailed": "Failed to clear overrides: {message}"
-        },
-        "Confirm": {
-          "DeleteTitle": "Delete biome?",
-          "DeleteContent": "<p>Delete biome <b>{name}</b> (ID: <b>{id}</b>)?</p>",
-          "DeleteUsedWarning": "<p><b>{count}</b> cells of the current map use this biome. The next time the map is loaded they will be replaced with the default biome, and saving the map makes that permanent.</p>",
-          "ResetOverridesTitle": "Reset biome-overrides.json?",
-          "ResetOverridesContent": "<p>This will clear the overrides file and restore default biomes (after reloading the list).</p>"
-        }
-      },
-      "Tools": {
-        "Title": "Global Map Tools",
-        "Tabs": {
-          "Global": "Global"
-        },
-        "Common": {
-          "ToolLabel": "Tool",
-          "ModeLabel": "Mode",
-          "Radius": "Radius",
-          "Strength": "Strength",
-          "Min": "Min",
-          "Max": "Max",
-          "Range": "Range",
-          "Labels": "Labels",
-          "Rename": "Rename",
-          "Finish": "Finish",
-          "Open": "Open",
-          "Alpha": "Alpha",
-          "Width": "Width",
-          "Exit": "Exit"
-        },
-        "Brush": {
-          "Activate": "Activate",
-          "Deactivate": "Deactivate",
-          "SingleCellMode": "Single cell mode"
-        },
-        "Filters": {
-          "FilterByHeight": "Filter by height",
-          "FilterByBiome": "Filter by biome"
-        },
-        "Heights": {
-          "RaiseTerrain": "Raise terrain",
-          "LowerTerrain": "Lower terrain",
-          "Smooth": "Smooth",
-          "Roughen": "Roughen",
-          "Flatten": "Flatten",
-          "ContourOpacity": "Contour opacity",
-          "ContourOpacityHint": "Adjust contour overlay transparency",
-          "TargetHeight": "Target height",
-          "FlattenPipetteHint": "Alt+Click a cell to pick its height",
-          "BiomeFilterHint": "Only affect selected biomes"
-        },
-        "Biomes": {
-          "SetBiome": "Set biome",
-          "PaletteLabel": "Palette",
-          "PaletteHint": "Click a biome to select it",
-          "BiomeFilterExcludeHint": "Click biomes to exclude (red = excluded)",
-          "OpenEditor": "Biome list",
-          "OverridesFileNote": "Overrides file:",
-          "SelectOption": "{name} (ID: {id})",
-          "CellTitle": "{name} (ID: {id}, rank: {rank})"
-        },
-        "Rivers": {
-          "RiverLabel": "River",
-          "None": "(none)",
-          "Save": "Save",
-          "DefaultName": "River {n}",
-          "DefaultPointWidth": "Default point width",
-          "SelectedPointWidth": "Selected point width",
-          "SnapToEndpoints": "Snap to endpoints",
-          "Modes": {
-            "DrawPoints": "Draw points"
-          },
-          "Help": {
-            "Draw": "Draw: Click to add points.",
-            "Edit": "Edit: Drag points. Ctrl+Click deletes. Alt+Click inserts."
-          },
-          "Confirm": {
-            "DeleteTitle": "Delete river?",
-            "DeleteContent": "<p>Delete river <b>{name}</b>?</p>"
-          },
-          "Prompt": {
-            "RenameTitle": "Rename river"
-          }
-        },
-        "Regions": {
-          "RegionLabel": "Region",
-          "None": "(none)",
-          "Save": "Save",
-          "DefaultName": "Region {n}",
-          "JournalUuidPlaceholder": "UUID of JournalEntry or JournalEntryPage",
-          "Modes": {
-            "DrawPoints": "Draw points"
-          },
-          "Help": {
-            "Draw": "Draw: Click to add points. Finish closes the region.",
-            "Edit": "Edit: Drag points. Ctrl+Click deletes. Alt+Click inserts."
-          },
-          "Smoothing": {
-            "Label": "Smoothing",
-            "Note": "Applied when rendering region outlines.",
-            "Options": {
-              "OffExact": "Off (exact)",
-              "Low": "Low",
-              "Medium": "Medium",
-              "High": "High",
-              "VeryHigh": "Very high"
-            }
-          },
-          "Style": {
-            "Fill": "Fill",
-            "Stroke": "Stroke"
-          },
-          "Confirm": {
-            "DeleteTitle": "Delete region?",
-            "DeleteContent": "<p>Delete region <b>{name}</b>?</p>"
-          },
-          "Prompt": {
-            "RenameTitle": "Rename region"
-          }
-        },
-        "Global": {
-          "Smoothing": "Smoothing",
-          "Smooth1": "Smooth (1 pass)",
-          "Smooth3": "Smooth (3 passes)"
-        },
-        "Replace": {
-          "Title": "Replace",
-          "Filters": {
-            "Title": "Filters",
-            "HeightRange": "Height range",
-            "SourceBiome": "Source biome"
-          },
-          "Actions": {
-            "Title": "Actions",
-            "SetHeight": "Set height",
-            "SetBiome": "Set biome"
-          },
-          "Preview": {
-            "Matches": "Matches",
-            "Cells": "cells"
-          },
-          "Replace": "Replace",
-          "FlattenAll": "Flatten all",
-          "Confirm": {
-            "FlattenAllTitle": "Flatten entire map?",
-            "FlattenAllContent": "<p>This will set all cells to height <b>{height}%</b>. Continue?</p>"
-          },
-          "Errors": {
-            "SelectAtLeastOneFilter": "Select at least one filter",
-            "SelectAtLeastOneAction": "Select at least one action",
-            "SelectTargetBiome": "Select target biome",
-            "SelectSourceBiome": "Select at least one source biome",
-            "NoBiomesArrayAvailable": "No biomes array available (legacy map?)"
-          },
-          "Notifications": {
-            "ReplacedByHeight": "Replaced {count} cells (height {min}–{max} → {to})",
-            "ReplacedByBiome": "Replaced {count} cells by biome",
-            "ReplacedByCombined": "Replaced {count} cells",
-            "MapFlattened": "Flattened {count} cells to height {height}%"
-          }
-        },
-        "Notifications": {
-          "RiversSaved": "Rivers saved",
-          "RegionsSaved": "Regions saved",
-          "GlobalSmoothed": "Global smooth applied ({passes} pass(es), strength {strength})"
-        },
-        "Warnings": {
-          "EditorDisabledSceneChanged": "Scene changed while editing: tools disabled"
-        },
-        "Errors": {
-          "SaveRiversFailed": "Failed to save rivers: {message}",
-          "SaveRegionsFailed": "Failed to save regions: {message}",
-          "RegionNeedsAtLeast3Points": "Region needs at least 3 points",
-          "RegionAlreadyClosed": "Region is already closed",
-          "OpenBiomeEditorFailed": "Failed to open biome editor: {message}"
-        }
-      },
-      "Edge": {
-        "Menu": "Menu",
-        "Tools": "Tools",
-        "Faction": "Faction",
-        "Link": "Link",
-        "Token": "Token",
-        "Visibility": "Visibility",
-        "Timeline": "Timeline",
-        "RefreshMap": "Refresh map",
-        "View3d": "3D terrain",
-        "Selection": {
-          "MultipleTokens": "Multiple tokens",
-          "MultipleFactions": "Multiple factions"
-        },
-        "InspectorUpdates": {
-          "On": "Updates: on",
-          "Off": "Updates: off"
-        },
-        "Flyout": {
-          "Import": "Import map",
-          "Save": "Save map",
-          "Bake": "Bake background",
-          "TestGrid": "Test grid",
-          "Edit": "Edit map",
-          "BiomeList": "Biome list",
-          "Clear": "Clear map"
-        },
-        "Settings": {
-          "Biomes": "Biomes",
-          "Heights": "Heights",
-          "RiverLabelsShort": "Rivers",
-          "RiverLabels": "River labels",
-          "RiverLabelRotate": "Rotate labels",
-          "Regions": "Regions",
-          "RegionsWhen": "Regions",
-          "Smooth": "Smoothing",
-          "AppearanceAnim": "Appearance animation",
-          "DurationMs": "Duration (ms)",
-          "Ms": "ms"
-        },
-        "Modes": {
-          "Common": {
-            "Off": "Off",
-            "On": "On",
-            "HoverShort": "Hover",
-            "Always": "Always"
-          },
-          "Biomes": {
-            "Fancy": "Fancy",
-            "Debug": "Fancy + debug",
-            "Cells": "Cells"
-          },
-          "Heights": {
-            "BW": "B/W contours",
-            "Contours": "Contours",
-            "Cells": "Cell grid"
-          },
-          "Regions": {
-            "NameShort": "Name",
-            "NameBorder": "Name + border",
-            "Full": "Full"
-          }
-        },
-        "Inspector": {
-          "Title": "Inspector",
-          "Settings": "Inspector settings",
-          "AutoUpdate": "Auto update",
-          "Data": "Data",
-          "Biome": "Biome",
-          "BiomeJournal": "Biome journal",
-          "OpenBiomeJournal": "Open biome journal",
-          "Region": "Region",
-          "RegionJournal": "Region journal",
-          "OpenRegionJournal": "Open region journal",
-          "Influence": "Influence",
-          "InfluenceJournal": "Influence journal",
-          "OpenInfluenceJournal": "Open influence journal"
-        }
-      },
-      "Terrain3d": {
-        "Setting": {
-          "Name": "3D terrain view",
-          "Hint": "Show the global map as a 3D heightfield"
-        },
-        "Tools": {
-          "Select": "Select / move tokens",
-          "Look": "Look from point",
-          "Raise": "Raise",
-          "Lower": "Lower",
-          "Smooth": "Smooth",
-          "Flatten": "Flatten",
-          "Noise": "Noise",
-          "Paint": "Paint biome",
-          "Radius": "Radius",
-          "Strength": "Strength",
-          "FlattenTo": "Flatten to",
-          "Biome": "Biome",
-          "Save": "Save terrain",
-          "Hint": "Drag the handle to move. Sculpt on the 3D map.",
-          "Drag": "Drag to move panel"
-        },
-        "LookFrom": {
-          "Title": "Look from point",
-          "Hint": "Drag to look. WASD to move.",
-          "NeedPoint": "Select a token or click the terrain"
-        },
-        "Notifications": {
-          "Saved": "Terrain saved"
-        },
-        "Errors": {
-          "NoData": "No terrain data",
-          "SaveFailed": "Failed to save terrain: {message}"
-        }
       }
     },
     "ArmorTester": {
@@ -2684,7 +2033,6 @@
       "character": "Character",
       "npc": "NPC",
       "loot": "Loot",
-      "globalobject": "Global Object",
       "faction": "Faction"
     },
     "Item": {

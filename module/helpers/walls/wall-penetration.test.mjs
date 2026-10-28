@@ -254,6 +254,31 @@ assert('totalApplicationsDamage sums every item', near(totalApplicationsDamage(b
   }
 }
 
+// --- walls in front of a token (the penetration view puts them in front of it) -----------------------------
+{
+  const walk = (collisions, wallPlan, onHit = 'stop') => walkProjectileCollisions(collisions, onHit, { passedTokens: new Set(), passedThrough: [] }, wallPlan);
+  const tokenAt = (id, distance) => ({ type: 'token', object: { id }, point: P(distance, 0), distance, details: {} });
+  const a = crossing(100);
+  const b = crossing(300);
+  const A = tokenAt('A', 200);
+  const B = tokenAt('B', 500);
+  const p = plan([a, b]);
+
+  const [first] = walk([a.collision, A, b.collision, B], p);
+  assert('walls before a token: only the walls between the shooter and the token', first.object.id === 'A'
+    && first.details.wallsBefore?.length === 1 && first.details.wallsBefore[0] === p.events[0], first.details);
+
+  const reached = walk([a.collision, A, b.collision, B], p, 'next');
+  assert('walls before a token: each wall goes to the first token behind it (piercing shot)',
+    reached.length === 2 && reached[0].details.wallsBefore.length === 1 && reached[1].details.wallsBefore.length === 1
+    && reached[1].details.wallsBefore[0] === p.events[1], reached.map((r) => r.details.wallsBefore?.length));
+
+  const [bare] = walk([tokenAt('A2', 50)], plan([a]));
+  assert('walls before a token: none when no wall lies in front of it', bare.details.wallsBefore === undefined, bare.details);
+  const [noPlan] = walk([tokenAt('A3', 50)], null);
+  assert('walls before a token: without a plan there is nothing to attach', noPlan.details.wallsBefore === undefined);
+}
+
 if (failed) {
   console.error(`\n${failed} wall-penetration test(s) failed`);
   process.exit(1);

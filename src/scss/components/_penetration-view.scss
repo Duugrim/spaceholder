@@ -1,0 +1,939 @@
+// Penetration view: the layers a projectile went through as rows (walls, armour, tissue) with the projectile's
+// energy running down them as a stream that narrows at every layer, a bullet that travels down the stream, a
+// preview pane with the numbers; and the same rows, compact and semi-transparent, as cards over the tokens.
+// Classes are unique to the feature.
+//
+// Colour carries meaning, one token per state: the kind of layer is the left edge of a row (`--kind`), the
+// outcome is the colour of its verdict (`--verdict`: orange = the projectile got through, green = the layer
+// held, grey = it took no part), the projectile's energy is always orange.
+
+$sh-pv-wall: #a38f68;
+$sh-pv-armor: #6f93b8;
+$sh-pv-tissue: #b86a6a;
+
+.spaceholder-penetration-window {
+  .window-content {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    background: $sh-surface-1;
+  }
+}
+
+.spaceholder-penetration {
+  // The energy column of a row: the numbers (`--num-w`), the stream next to them (`--stream-w`).
+  --num-w: 46px;
+  --stream-w: 64px;
+  --flow-w: calc(var(--num-w) + var(--stream-w));
+  --row-h: 36px;
+  --head-h: 42px;
+  --part-h: 34px;
+  // The line with the name of a piece of gear above its first layer.
+  --piece-h: 16px;
+  --img: 30px;
+
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  font-size: 12px;
+  color: $sh-text;
+
+  // Every target folded: no numbers to write, so no room is kept for them.
+  &.is-folded {
+    --num-w: 6px;
+  }
+
+  // ===== Bar: projectile, shot, muzzle energy, rays, replay =====
+  &__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 8px 5px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid $sh-border;
+  }
+
+  &__projectile {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    i {
+      flex: 0 0 auto;
+      color: $sh-orange;
+    }
+  }
+
+  &__shot-label {
+    flex: 0 0 auto;
+    color: $sh-text-dim;
+  }
+
+  &__energy {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: $sh-orange;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__tool {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    border: 1px solid $sh-border;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: $sh-text-muted;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: $sh-text;
+    }
+  }
+
+  // ===== Body: the stack of rows and the preview pane =====
+  &__body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  // The positioned container of the rows: the bullet is placed in it by the offsets of the rows.
+  &__stack {
+    position: relative;
+    // Room for the names beside the energy column, however many lanes it has.
+    flex: 0 0 max(440px, calc(var(--flow-w) + 300px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-right: 1px solid $sh-border;
+  }
+
+  // The last number sits on the lower edge of the last row: room for it.
+  &__groups {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-bottom: 10px;
+  }
+
+  &__empty {
+    padding: 20px 14px;
+    color: $sh-text-dim;
+  }
+
+  // The bullets of a block travel down the stack together: the pack is moved, each bullet stands in its lane.
+  &__pack {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 2;
+    height: 26px;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  // A streak: bright head, fading tail, in the middle of the lane of its projectile (`--lane` of `--lanes`). It narrows
+  // as the projectile loses energy (`--bullet-energy`, 0–100) and as the lanes get narrower.
+  &__bullet {
+    --bullet-w: max(2px, calc((3px + var(--bullet-energy, 100) * 0.07px) / var(--lanes, 1)));
+
+    position: absolute;
+    top: 0;
+    left: calc(var(--num-w) + var(--stream-w) * (var(--lane, 0) + 0.5) / var(--lanes, 1) + 3px);
+    width: var(--bullet-w);
+    margin-left: calc(var(--bullet-w) / -2);
+    height: 26px;
+    border-radius: 3px 3px 7px 7px;
+    background: linear-gradient(to bottom, rgba($sh-orange, 0), #ffd9b8);
+    box-shadow: 0 0 6px rgba($sh-orange, 0.8);
+    pointer-events: none;
+    transition: width 0.4s ease-out, opacity 0.3s ease-out;
+
+    &[hidden] {
+      display: none;
+    }
+
+    // Stopped by a layer: it fades out where it is, then the dash takes its place.
+    &.is-stopped {
+      opacity: 0;
+    }
+  }
+
+  // The red dash that says a projectile stopped: at the bottom of the row that held it, in the lane of the projectile,
+  // the point of the stream resting on it.
+  &__stopmark {
+    --mark-w: min(16px, calc(var(--stream-w) / var(--lanes, 1) * 0.8));
+
+    position: absolute;
+    top: 0;
+    left: calc(var(--num-w) + var(--stream-w) * (var(--lane, 0) + 0.5) / var(--lanes, 1) + 3px);
+    z-index: 2;
+    width: var(--mark-w);
+    height: 3px;
+    margin-left: calc(var(--mark-w) / -2);
+    border-radius: 2px;
+    background: $sh-danger;
+    box-shadow: 0 0 6px rgba($sh-danger, 0.8);
+    pointer-events: none;
+    animation: sh-pv-mark 0.28s ease-out both;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  // The line from the red dash of a stopped projectile to the row of the layer that stopped it: from the right edge of
+  // the dash to the left edge of the row's name, at the middle of the row.
+  &__stopline {
+    position: absolute;
+    z-index: 1;
+    overflow: visible;
+    pointer-events: none;
+    animation: sh-pv-line 0.35s ease-out both;
+
+    line {
+      stroke: rgba($sh-danger, 0.75);
+      stroke-width: 1px;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+    }
+  }
+
+  // ===== Groups: a wall, or a body the projectile reached =====
+  // No borders between rows or groups: the energy stream runs through all of them without a hole. The thin
+  // separators are drawn beside the stream column (`::after` of a row, `::before` of a group head). A group is
+  // not positioned: the offsets of the rows the bullet is placed by are those in the stack.
+  &__group {
+    display: block;
+  }
+
+  // A row (and the note under a head) takes only the lanes of the column it needs: `--m` of `--lanes`. The lanes end
+  // from the right, so the rows below them are narrower on the left and their text moves left, into the room.
+  &__pending,
+  &__row {
+    --flow-w: calc(var(--num-w) + var(--stream-w) * var(--m, var(--lanes, 1)) / var(--lanes, 1));
+  }
+
+  &__pending {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px 6px calc(var(--flow-w) + 11px);
+    font-size: 11px;
+    font-weight: 600;
+    color: $sh-warning;
+  }
+
+  &__strips {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  // ===== Row: the head of a group and a layer, all of one height =====
+  &__row {
+    --kind: #{$sh-text-dim};
+    --verdict: #{$sh-text-dim};
+
+    position: relative;
+    // Foundry gives every list item a bottom margin (`ol li`): a row has none, or the stream would have a hole.
+    margin: 0;
+    display: grid;
+    grid-template-columns: var(--flow-w) minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 8px;
+    height: var(--row-h);
+    padding-right: 10px;
+    border-left: 3px solid var(--kind);
+    background: rgba(255, 255, 255, 0.035);
+    transition: opacity 0.25s, background-color 0.2s;
+    cursor: default;
+    outline: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: var(--flow-w);
+      height: 1px;
+      background: rgba(255, 255, 255, 0.05);
+      pointer-events: none;
+    }
+
+    &:hover,
+    &.is-selected {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    &.is-pinned {
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+    }
+
+    &--head {
+      --kind: transparent;
+
+      height: var(--head-h);
+      background: rgba(255, 255, 255, 0.055);
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: var(--flow-w);
+        height: 1px;
+        background: $sh-border;
+        pointer-events: none;
+      }
+    }
+
+    &.is-wall {
+      --kind: #{$sh-pv-wall};
+    }
+
+    &.is-armor {
+      --kind: #{$sh-pv-armor};
+    }
+
+    &.is-tissue {
+      --kind: #{$sh-pv-tissue};
+    }
+
+    &.is-pass {
+      --verdict: #{$sh-orange};
+    }
+
+    &.is-hold {
+      --verdict: #{$sh-accent-strong};
+    }
+  }
+
+  &__strip:last-child::after {
+    display: none;
+  }
+
+  // A piece of gear (armour, clothes): its name stands above its first layer, a bracket `[` runs along its layers.
+  // The rows of one piece keep their text where the widest of them has it (`--mr`), so the bracket is straight.
+  &__strip.in-piece {
+    --pad: calc(var(--stream-w) * (var(--mr, var(--m)) - var(--m)) / var(--lanes, 1));
+
+    // The bracket: the vertical bar of the row, with a short stroke at the top of the first layer and at the bottom
+    // of the last one.
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: calc(var(--flow-w) + var(--pad) + 1px);
+      width: 6px;
+      border-left: 1.5px solid var(--kind);
+      opacity: 0.75;
+      pointer-events: none;
+    }
+
+    &.is-piece-start::before {
+      top: var(--piece-h);
+      border-top: 1.5px solid var(--kind);
+      border-top-left-radius: 3px;
+    }
+
+    &.is-piece-end::before {
+      border-bottom: 1.5px solid var(--kind);
+      border-bottom-left-radius: 3px;
+    }
+
+    .spaceholder-penetration__label {
+      margin-left: calc(var(--pad) + 3px);
+    }
+  }
+
+  // The first layer of a run is a line taller. The line is a grid row of its own, not padding: the stream (the energy
+  // column) spans both grid rows, or it would have a hole above the layer.
+  &__strip.is-piece-start {
+    height: calc(var(--row-h) + var(--piece-h));
+    grid-template-rows: var(--piece-h) minmax(0, 1fr);
+
+    > .spaceholder-penetration__flow {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+    }
+
+    > .spaceholder-penetration__label {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    > .spaceholder-penetration__verdict {
+      grid-column: 3;
+      grid-row: 2;
+    }
+  }
+
+  &__piece {
+    position: absolute;
+    top: 0;
+    right: 10px;
+    left: calc(var(--flow-w) + var(--pad, 0px) + 1px);
+    height: var(--piece-h);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: var(--piece-h);
+    color: $sh-text-dim;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  // A part of the body of a target that took several: a row of its own above its layers, its lanes narrow here.
+  &__row--part {
+    --kind: transparent;
+
+    height: var(--part-h);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  &__group:first-child &__row--head::before {
+    display: none;
+  }
+
+  // The energy column: one column of numbers (`__flow-values`: what enters the first layer of a target, what leaves
+  // every layer — each sits on the boundary between two rows) and, next to it, the stream: an outline as wide as
+  // the energy at the top and at the bottom of the row. It is drawn light so the bullet, which travels down its
+  // middle, stays the brightest thing in the window: a dashed outline is the route, a translucent orange one is
+  // drawn as the bullet reaches the row.
+  &__flow {
+    display: flex;
+    align-self: stretch;
+    min-width: 0;
+  }
+
+  &__flow-values {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: var(--num-w);
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  &__flow-value {
+    position: absolute;
+    right: 6px;
+    z-index: 1;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: rgba(10, 10, 10, 0.78);
+    color: $sh-text;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 15px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    &.is-top {
+      top: 0;
+      transform: translateY(-50%);
+    }
+
+    &.is-bottom {
+      bottom: 0;
+      transform: translateY(50%);
+    }
+  }
+
+  &__flow-stream {
+    position: relative;
+    flex: 0 0 calc(var(--flow-w) - var(--num-w));
+    margin-left: var(--num-w);
+  }
+
+  &__flow-svg {
+    position: absolute;
+    top: -0.5px;
+    left: 0;
+    width: 100%;
+    height: calc(100% + 1px);
+    overflow: visible;
+    pointer-events: none;
+
+    path {
+      vector-effect: non-scaling-stroke;
+    }
+
+    &--route path {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.22);
+      stroke-width: 1px;
+      stroke-dasharray: 3 3;
+    }
+
+    &--live {
+      clip-path: inset(0 0 0 0);
+      transition: clip-path 0.45s linear;
+
+      .spaceholder-penetration__flow-fill {
+        fill: rgba($sh-orange, 0.16);
+        stroke: none;
+      }
+
+      .spaceholder-penetration__flow-edge {
+        fill: none;
+        stroke: rgba($sh-orange, 0.8);
+        stroke-width: 1.5px;
+        stroke-linecap: round;
+      }
+    }
+  }
+
+  &__who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 600;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  // The name of the target on the first line, what part of it was hit (and how) on the second: neither is cut for the other.
+  &__who-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  &__img {
+    flex: 0 0 auto;
+    width: var(--img);
+    height: var(--img);
+    border-radius: 4px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.08);
+
+    &--big {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+    }
+  }
+
+  &__img-fallback {
+    flex: 0 0 auto;
+    width: var(--img);
+    text-align: center;
+    color: $sh-text-dim;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  &__group-title,
+  &__part-name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: $sh-text;
+  }
+
+  // The second line: the parts of the body that were hit, how the hit was, what became of it.
+  &__group-sub {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    font-weight: 400;
+    color: $sh-text-dim;
+  }
+
+  // The right end of a head: the fold button.
+  &__head-end {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  // What became of the hit: for a folded target, on its second line.
+  &__summary {
+    margin-left: 6px;
+    color: $sh-text-muted;
+
+    &.is-warn {
+      color: $sh-warning;
+    }
+
+    &.is-danger {
+      color: $sh-danger;
+    }
+  }
+
+  // How many projectiles of the volley this target (or part) took.
+  &__lanes {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 5px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.1);
+    color: $sh-text-muted;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__fold {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: $sh-text-dim;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: $sh-text;
+    }
+
+    i {
+      transition: transform 0.2s;
+    }
+  }
+
+  &__group.is-collapsed &__fold i {
+    transform: rotate(-90deg);
+  }
+
+  // Folded to its head: the layers are not on the screen, the head is a line of a list of targets — what became of
+  // the hit is written on it. An open block has its layers to tell that.
+  &__group.is-collapsed &__strips,
+  &__group.is-collapsed &__row--part,
+  &__group.is-collapsed &__pending {
+    display: none;
+  }
+
+  // The head of a block has two sets of outlines: the lanes narrowing to the first layer (open), and to what they
+  // carry out of the block (folded).
+  &__group.is-collapsed &__flow-svg--open,
+  &__group:not(.is-collapsed) &__flow-svg--folded {
+    display: none;
+  }
+
+  &__group:not(.is-collapsed) &__summary {
+    display: none;
+  }
+
+  // How much of the projectile's energy reached the body, and how the hit was (a glancing one…).
+  &__chip-text {
+    color: $sh-orange;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__chip-quality {
+    margin-right: 0.35em;
+  }
+
+  &__label {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+
+    i {
+      flex: 0 0 auto;
+      align-self: center;
+      color: var(--kind);
+    }
+  }
+
+  &__name {
+    min-width: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__thickness {
+    flex: 0 0 auto;
+    color: $sh-text-dim;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  &__verdict {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    font-weight: 600;
+    color: var(--verdict);
+    white-space: nowrap;
+
+    i {
+      font-size: 11px;
+    }
+  }
+
+  // ===== Preview pane =====
+  &__preview {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+  }
+
+  &__details {
+    flex: 1 1 auto;
+    padding: 12px 14px;
+  }
+
+  &__detail {
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  &__detail-who {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+
+    > span {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+  }
+
+  &__detail-head {
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  &__detail-who &__detail-head {
+    margin-bottom: 0;
+  }
+
+  &__detail-source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: $sh-text-dim;
+
+    i {
+      color: $sh-pv-armor;
+    }
+  }
+
+  &__rows {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 4px 14px;
+    margin: 0;
+
+    dt {
+      color: $sh-text-dim;
+    }
+
+    dd {
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+
+      &.is-danger {
+        color: $sh-danger;
+      }
+
+      &.is-warn {
+        color: $sh-warning;
+      }
+    }
+  }
+
+  // What is known of the shot itself: below the details, quieter.
+  &__shot {
+    padding: 10px 14px 12px;
+    border-top: 1px solid $sh-border;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 11px;
+  }
+
+  &__shot-title {
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: $sh-text-muted;
+  }
+
+  &__passes {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 8px;
+    color: $sh-text-dim;
+  }
+
+  &__passes-title {
+    font-weight: 600;
+  }
+
+  // ===== Animation: rows the bullet has not reached yet wait, dimmed, their stream not filled =====
+  &.is-animating &__row.is-pending {
+    opacity: 0.4;
+  }
+
+  &.is-animating &__row.is-pending &__flow-svg--live {
+    clip-path: inset(0 0 100% 0);
+    transition: none;
+  }
+
+  &.is-animating &__row.is-pending &__flow-values {
+    opacity: 0;
+    transition: none;
+  }
+
+  &.is-animating &__row.is-reached {
+    animation: sh-pv-reach 0.5s ease-out;
+  }
+}
+
+// ===== Overlay: a card over a token, compact and semi-transparent =====
+.spaceholder-penetration--overlay {
+  --num-w: 0px;
+  --stream-w: 40px;
+  --row-h: 24px;
+  --head-h: 38px;
+  --part-h: 30px;
+  --piece-h: 13px;
+  --img: 20px;
+
+  flex: none;
+  width: 290px;
+  font-size: 11px;
+  background: rgba(10, 10, 10, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+
+  .spaceholder-penetration__stack {
+    flex: none;
+    overflow: visible;
+    border-right: 0;
+  }
+
+  .spaceholder-penetration__row,
+  .spaceholder-penetration__row--head {
+    background: transparent;
+    column-gap: 6px;
+    padding-right: 8px;
+  }
+
+  .spaceholder-penetration__row--head {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .spaceholder-penetration__verdict-label,
+  .spaceholder-penetration__flow-values,
+  .spaceholder-penetration__chip-quality,
+  .spaceholder-penetration__summary,
+  .spaceholder-penetration__fold {
+    display: none;
+  }
+
+  .spaceholder-penetration__pending {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+}
+
+.spaceholder-penetration-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-index-app, 30) + 1);
+  pointer-events: none;
+
+  &__card {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+
+    &.is-visible {
+      opacity: 1;
+    }
+
+    &.is-fading {
+      opacity: 0;
+      transition-duration: 0.7s;
+    }
+  }
+}
+
+@keyframes sh-pv-reach {
+  from {
+    background-color: rgba(255, 255, 255, 0.24);
+  }
+}
+
+@keyframes sh-pv-line {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sh-pv-mark {
+  from {
+    opacity: 0;
+    transform-origin: center;
+    scale: 0.2 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spaceholder-penetration {
+    &__flow-svg--live,
+    &__flow-values,
+    &__bullet,
+    &__row {
+      transition: none;
+    }
+
+    &.is-animating &__row.is-reached,
+    &__stopmark,
+    &__stopline {
+      animation: none;
+    }
+  }
+}

@@ -7,15 +7,6 @@
     <div class="sh-item-header__top">
       <div class="sh-portrait sh-item-header__portrait">
         <img class="profile-img" src="{{itemImgSrc}}" data-edit="img" title="{{item.name}}" height="150" width="150" alt=""/>
-        {{#if editable}}
-          <button
-            type="button"
-            class="icon-btn sh-portrait__pick"
-            data-action="sh-icon-pick"
-            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
-            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
-          ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
-        {{/if}}
       </div>
       <div class="sh-item-header__typeIconWrap">
         <span class="sh-item-header__typeIconPh" aria-hidden="true"><i class="{{itemTypeIconClass}}"></i></span>

@@ -11,6 +11,7 @@
  */
 
 import { normalizeLuckZone } from './hit-luck.mjs';
+import { STATUS_IDS } from './status-effects.mjs';
 
 /**
  * Confidence of a shot per aiming-arc zone. 4 is left out on purpose. Purple (the shooter's crit
@@ -25,18 +26,18 @@ export const SHOT_CONFIDENCE_BY_ZONE = Object.freeze({
 });
 
 /**
- * Resistance a state of the target gives. States do not add up: the highest one counts
- * (a man in cover who is also running is as hard to hit as the harder of the two).
- * Only `combat` is detected for now; the rest wait for the target-state card.
+ * Resistance a state of the target gives. A state is a status of the actor (`status-effects.mjs`, ids are
+ * the keys); the shot manager passes the ids of the statuses the actor has. States do not add up: the highest
+ * one counts (a man in cover who is also running is as hard to hit as the harder of the two).
  */
 export const HIT_RESISTANCE_STATES = Object.freeze({
-  combat: 1,
-  moving: 2,
-  cover: 3,
-  hidden: 5,
+  [STATUS_IDS.COMBAT_READY]: 1,
+  [STATUS_IDS.MOVING]: 2,
+  [STATUS_IDS.COVER]: 3,
+  [STATUS_IDS.HIDDEN]: 5,
 });
 
-/** Resistance of a target in none of the states (not in combat, standing). */
+/** Resistance of a target in none of the states (not yet in the fight, standing in the open). */
 export const HIT_RESISTANCE_BASE = 0;
 
 /**
@@ -58,8 +59,8 @@ export function normalizeHitResistanceMod(raw) {
 }
 
 /**
- * @param {{ states?: string[], modifier?: unknown }} [args] ids from {@link HIT_RESISTANCE_STATES}
- *   (unknown ids are ignored) and the actor's flat modifier
+ * @param {{ states?: Iterable<string>, modifier?: unknown }} [args] ids of the actor's statuses (those
+ *   not in {@link HIT_RESISTANCE_STATES} are ignored) and the actor's flat modifier
  * @returns {{ value: number, base: number, modifier: number, states: string[] }} `value` is never
  *   below 0; `states` are the known ones that apply
  */

@@ -733,6 +733,30 @@ function integrityLoss(result, idx) {
     JSON.stringify(result.bodyHits));
 }
 
+/* ================================================================== *
+ *  Tags: whose events are these (the pellets of a volley)             *
+ * ================================================================== */
+
+{
+  // Three pellets in a parallel phase against 1 unit of steel: pellet 0 and 1 are strong enough, pellet 2 is held.
+  const layers = [makeLayer('steel-plate', 1)];
+  const pellet = (tag, armorPen) => ({ type: 'ballistic', damage: 10, armorPen, armorDamageFactor: 1, hardness: 1, tag });
+  const result = resolveDamagePackage({
+    layers,
+    applications: [{ mode: 'parallel', items: [pellet(0, 2), pellet(1, 2), pellet(2, 0.5)] }],
+    resolveMaterial,
+  });
+  const events = result.trace.filter((e) => e.kind === 'penetrate' || e.kind === 'hold');
+  assert('Tag: the events of an item carry its tag, in the order the items ran',
+    events.map((e) => `${e.kind}:${e.tag}`).join() === 'penetrate:0,penetrate:1,hold:2', events.map((e) => `${e.kind}:${e.tag}`));
+  assert('Tag: the body hits of an item carry it too (the held pellet has none)',
+    result.bodyHits.map((h) => h.tag).join() === '0,1', result.bodyHits);
+  const plain = resolveDamagePackage({ layers: [makeLayer('steel-plate', 1)], applications: [{ mode: 'sequential', items: [{ type: 'ballistic', damage: 10, armorPen: 2, hardness: 1 }] }], resolveMaterial });
+  assert('Tag: an item without a tag leaves events and hits without one', plain.trace.every((e) => !('tag' in e)) && plain.bodyHits.every((h) => !('tag' in h)));
+  const kept = normalizeApplications([{ mode: 'parallel', items: [pellet(3, 2), { ...pellet(0, 2), tag: 'x' }, { ...pellet(0, 2), tag: undefined }] }]);
+  assert('Tag: normalizeApplications keeps an integer tag and drops anything else', kept[0].items.map((i) => i.tag).join() === '3,,', kept[0].items.map((i) => i.tag));
+}
+
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) failed.`);
   process.exit(1);

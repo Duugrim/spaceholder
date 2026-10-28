@@ -1096,7 +1096,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": -50
+        }
+      }
     },
     {
       "_id": "shc32f353e8a6402",
@@ -1127,7 +1131,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": -45
+        }
+      }
     },
     {
       "_id": "shc2b7d466fb93be",
@@ -1158,7 +1166,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 40
+        }
+      }
     },
     {
       "_id": "shc9cff2786c25fb",
@@ -1189,7 +1201,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 0
+        }
+      }
     },
     {
       "_id": "shc2cd02f35096d9",
@@ -1220,7 +1236,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 115
+        }
+      }
     },
     {
       "_id": "shc37d5791c65817",
@@ -1251,7 +1271,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 145
+        }
+      }
     },
     {
       "_id": "shc52407e8ef93eb",
@@ -1282,7 +1306,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 180
+        }
+      }
     },
     {
       "_id": "shc907370f51df74",
@@ -1313,7 +1341,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 135
+        }
+      }
     },
     {
       "_id": "shcb94741075aa3f",
@@ -1344,7 +1376,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 160
+        }
+      }
     },
     {
       "_id": "shc1a053759acd5d",
@@ -1375,7 +1411,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": -45
+        }
+      }
     },
     {
       "_id": "shc7e75b816641db",
@@ -1406,7 +1446,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": -120
+        }
+      }
     },
     {
       "_id": "shc9c62f386dcf44",
@@ -1437,7 +1481,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": -115
+        }
+      }
     },
     {
       "_id": "shc0e8f889046294",
@@ -1468,7 +1516,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": -145
+        }
+      }
     },
     {
       "_id": "shc11eccb231b949",
@@ -1499,7 +1551,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": -85
+        }
+      }
     },
     {
       "_id": "shc9bf44af2d4cef",
@@ -1530,7 +1586,11 @@
       },
       "rotation": 0,
       "hidden": false,
-      "flags": {}
+      "flags": {
+        "spaceholder": {
+          "tokenpointerDirection": 145
+        }
+      }
     }
   ],
   "notes": [

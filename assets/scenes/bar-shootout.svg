@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="3200" height="2200" viewBox="0 0 3200 2200">
 <rect x="0" y="0" width="3200" height="2200" fill="#55524c" />
+<rect x="2600" y="0" width="600" height="1750" fill="#4b4843" />
 <rect x="0" y="1600" width="3200" height="150" fill="#9a958c" />
 <rect x="0" y="1750" width="3200" height="450" fill="#3b3f45" />
 <line x1="100" y1="1989.9999999999998" x2="320" y2="1989.9999999999998" stroke="#d8d2a8" stroke-width="12" />
@@ -12,7 +13,6 @@
 <line x1="2500" y1="1989.9999999999998" x2="2720" y2="1989.9999999999998" stroke="#d8d2a8" stroke-width="12" />
 <line x1="2900" y1="1989.9999999999998" x2="3120" y2="1989.9999999999998" stroke="#d8d2a8" stroke-width="12" />
 <line x1="0" y1="1750" x2="3200" y2="1750" stroke="#6d6a64" stroke-width="10" />
-<rect x="2600" y="0" width="600" height="1750" fill="#4b4843" />
 <rect x="200" y="200" width="1600" height="1400" fill="#8a6a48" />
 <line x1="200" y1="250" x2="1800" y2="250" stroke="#7b5d3e" stroke-width="3" />
 <line x1="200" y1="300" x2="1800" y2="300" stroke="#7b5d3e" stroke-width="3" />
@@ -389,35 +389,46 @@
 <rect x="1365" y="1840" width="25" height="100" fill="#d63a2f" />
 <rect x="2050" y="1980" width="440" height="180" fill="#7a2f2f" rx="30" stroke="#222" stroke-width="6"/>
 <rect x="2170" y="2005" width="190" height="130" fill="#2a3540" rx="14"/>
-<line x1="200" y1="200" x2="2600" y2="200" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="200" y1="200" x2="200" y2="600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="200" y1="600" x2="200" y2="900" stroke="#9fd3e6" stroke-width="12" stroke-linecap="square"/>
-<line x1="200" y1="900" x2="200" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="2600" y1="200" x2="2600" y2="900" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="2600" y1="900" x2="2600" y2="1000" stroke="#5a3a1c" stroke-width="18" stroke-linecap="square"/>
-<line x1="2600" y1="1000" x2="2600" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="200" y1="1600" x2="300" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="300" y1="1600" x2="700" y2="1600" stroke="#9fd3e6" stroke-width="12" stroke-linecap="square"/>
-<line x1="700" y1="1600" x2="900" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="900" y1="1600" x2="1000" y2="1600" stroke="#7a4e28" stroke-width="14" stroke-linecap="square"/>
-<line x1="1000" y1="1600" x2="1100" y2="1600" stroke="#7a4e28" stroke-width="14" stroke-linecap="square"/>
-<line x1="1100" y1="1600" x2="1300" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
-<line x1="1300" y1="1600" x2="1700" y2="1600" stroke="#9fd3e6" stroke-width="12" stroke-linecap="square"/>
-<line x1="1700" y1="1600" x2="2600" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
 <line x1="1800" y1="200" x2="1800" y2="400" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
-<line x1="1800" y1="400" x2="1800" y2="500" stroke="#7a4e28" stroke-width="14" stroke-linecap="square"/>
 <line x1="1800" y1="500" x2="1800" y2="1200" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
-<line x1="1800" y1="1200" x2="1800" y2="1300" stroke="#7a4e28" stroke-width="14" stroke-linecap="square"/>
 <line x1="1800" y1="1300" x2="1800" y2="1600" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
 <line x1="1800" y1="700" x2="2200" y2="700" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
-<line x1="2200" y1="700" x2="2300" y2="700" stroke="#7a4e28" stroke-width="14" stroke-linecap="square"/>
 <line x1="2300" y1="700" x2="2600" y2="700" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
 <line x1="1800" y1="1100" x2="1900" y2="1100" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
-<line x1="1900" y1="1100" x2="2000" y2="1100" stroke="#7a4e28" stroke-width="14" stroke-linecap="square"/>
 <line x1="2000" y1="1100" x2="2600" y2="1100" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
 <line x1="2200" y1="1100" x2="2200" y2="1300" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
-<line x1="2200" y1="1300" x2="2200" y2="1400" stroke="#7a4e28" stroke-width="14" stroke-linecap="square"/>
 <line x1="2200" y1="1400" x2="2200" y2="1600" stroke="#4a403a" stroke-width="12" stroke-linecap="square"/>
+<line x1="200" y1="200" x2="2600" y2="200" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="200" y1="200" x2="200" y2="600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="200" y1="900" x2="200" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="2600" y1="200" x2="2600" y2="900" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="2600" y1="1000" x2="2600" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="200" y1="1600" x2="300" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="700" y1="1600" x2="900" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="1100" y1="1600" x2="1300" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="1700" y1="1600" x2="2600" y2="1600" stroke="#2a2420" stroke-width="26" stroke-linecap="square"/>
+<line x1="200" y1="600" x2="200" y2="900" stroke="#2a2420" stroke-width="26" />
+<line x1="200" y1="600" x2="200" y2="900" stroke="#9fd3e6" stroke-width="10" />
+<line x1="2600" y1="900" x2="2600" y2="1000" stroke="#2a2420" stroke-width="26" />
+<line x1="2600" y1="903" x2="2600" y2="997" stroke="#5a3a1c" stroke-width="20" />
+<line x1="300" y1="1600" x2="700" y2="1600" stroke="#2a2420" stroke-width="26" />
+<line x1="300" y1="1600" x2="700" y2="1600" stroke="#9fd3e6" stroke-width="10" />
+<line x1="900" y1="1600" x2="1000" y2="1600" stroke="#2a2420" stroke-width="26" />
+<line x1="903" y1="1600" x2="997" y2="1600" stroke="#7a4e28" stroke-width="16" />
+<line x1="1000" y1="1600" x2="1100" y2="1600" stroke="#2a2420" stroke-width="26" />
+<line x1="1003" y1="1600" x2="1097" y2="1600" stroke="#7a4e28" stroke-width="16" />
+<line x1="1300" y1="1600" x2="1700" y2="1600" stroke="#2a2420" stroke-width="26" />
+<line x1="1300" y1="1600" x2="1700" y2="1600" stroke="#9fd3e6" stroke-width="10" />
+<line x1="1800" y1="400" x2="1800" y2="500" stroke="#4a403a" stroke-width="12" />
+<line x1="1800" y1="403" x2="1800" y2="497" stroke="#7a4e28" stroke-width="7" />
+<line x1="1800" y1="1200" x2="1800" y2="1300" stroke="#4a403a" stroke-width="12" />
+<line x1="1800" y1="1203" x2="1800" y2="1297" stroke="#7a4e28" stroke-width="7" />
+<line x1="2200" y1="700" x2="2300" y2="700" stroke="#4a403a" stroke-width="12" />
+<line x1="2203" y1="700" x2="2297" y2="700" stroke="#7a4e28" stroke-width="7" />
+<line x1="1900" y1="1100" x2="2000" y2="1100" stroke="#4a403a" stroke-width="12" />
+<line x1="1903" y1="1100" x2="1997" y2="1100" stroke="#7a4e28" stroke-width="7" />
+<line x1="2200" y1="1300" x2="2200" y2="1400" stroke="#4a403a" stroke-width="12" />
+<line x1="2200" y1="1303" x2="2200" y2="1397" stroke="#7a4e28" stroke-width="7" />
 <text x="1000" y="1680" font-family="Verdana, sans-serif" font-size="90" font-weight="bold" fill="#ff5fa2" text-anchor="middle" opacity="0.9">БАР</text>
 <text x="2200" y="630" font-family="Verdana, sans-serif" font-size="48" font-weight="bold" fill="#000" text-anchor="middle" opacity="0.25">КУХНЯ</text>
 <text x="2100" y="1040" font-family="Verdana, sans-serif" font-size="48" font-weight="bold" fill="#000" text-anchor="middle" opacity="0.3">СКЛАД</text>

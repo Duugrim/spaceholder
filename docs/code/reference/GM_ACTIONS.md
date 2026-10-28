@@ -95,4 +95,4 @@ game.spaceholder.gmActions.openQueue();   // окно очереди (ГМ)
 
 ## Что не переведено
 
-В системе остались отдельные копии «запрос ГМу по сокету» (каждая ждёт 8 с и падает, очереди нет): `item-piles-sh/socket-adapter.mjs`, `timeline-v2.mjs`, `minigames/lockpick/lockpick-chat.mjs`, `combat/combat-session-manager.mjs`. Их можно перевести на `register` + `request`, получив очередь и заметки в чате; пока работают как раньше.
+В системе остались отдельные копии «запрос ГМу по сокету» (каждая ждёт 8 с и падает, очереди нет): `item-piles-sh/socket-adapter.mjs`, `minigames/lockpick/lockpick-chat.mjs`, `combat/combat-session-manager.mjs`. Их можно перевести на `register` + `request`, получив очередь и заметки в чате; пока работают как раньше.

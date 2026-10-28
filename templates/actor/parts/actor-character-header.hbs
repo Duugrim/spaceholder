@@ -7,15 +7,6 @@
     <div class="sh-character-header__top">
       <div class="sh-portrait sh-character-header__portrait">
         <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="166" width="166" alt=""/>
-        {{#if editable}}
-          <button
-            type="button"
-            class="icon-btn sh-portrait__pick"
-            data-action="sh-icon-pick"
-            data-tooltip="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
-            aria-label="{{localize 'SPACEHOLDER.IconPicker.Tooltips.Open'}}"
-          ><i class="fa-solid fa-icons" aria-hidden="true"></i></button>
-        {{/if}}
       </div>
       {{#if system.gFaction}}
         <div class="sh-character-header__factionCluster">

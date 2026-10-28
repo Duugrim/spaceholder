@@ -55,6 +55,20 @@
           }
         ],
         "face": "back"
+      },
+      {
+        "slotRef": "lowerTorso",
+        "layers": [
+          {
+            "material": "ceramic-plate",
+            "thickness": 4
+          },
+          {
+            "material": "kevlar",
+            "thickness": 2
+          }
+        ],
+        "face": "back"
       }
     ],
     "defaultActions": {

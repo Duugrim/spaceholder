@@ -1,0 +1,11 @@
+{{!-- A card of the overlay over a token: the blocks of a penetration track that belong to the target (the parts of its
+      body that were hit), semi-transparent, for a few seconds. --}}
+<div class="spaceholder-penetration spaceholder-penetration--overlay" style="--stream-w: {{cardStreamWidth}}px;">
+  <div class="spaceholder-penetration__stack">
+    <div class="spaceholder-penetration__groups">
+      {{#each groups}}
+      {{> "systems/spaceholder/templates/damage/parts/penetration-group.hbs"}}
+      {{/each}}
+    </div>
+  </div>
+</div>

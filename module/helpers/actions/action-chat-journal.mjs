@@ -1468,6 +1468,13 @@ async function _applyJournalUndoClick(btn, message) {
   }
 }
 
+/** The penetration button of an attack row: open the view of its shot (the track is in this message). */
+function _openPenetrationFromControl(control) {
+  const shotId = control.getAttribute("data-shot-id") || "";
+  const message = _getChatMessageForJournalControl(control);
+  game.spaceholder?.openPenetrationView?.(shotId, { messageId: message?.id ?? "" });
+}
+
 let _delegatedJournalUiInstalled = false;
 let _undoPreviewHoverBtn = null;
 
@@ -1485,6 +1492,13 @@ function _installDelegatedJournalUiOnce() {
         ev.preventDefault();
         ev.stopPropagation();
         _applyJournalToggleClick(toggle);
+        return;
+      }
+      const penetration = t.closest('[data-action="sh-journal-open-penetration"]');
+      if (penetration?.closest?.('[data-spaceholder-action-journal="1"]')) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        _openPenetrationFromControl(penetration);
         return;
       }
       const panelToggle = t.closest('[data-action="sh-journal-toggle-panel"]');

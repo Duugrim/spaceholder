@@ -45,6 +45,16 @@
         "face": "back"
       },
       {
+        "slotRef": "lowerTorso",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 2
+          }
+        ],
+        "face": "back"
+      },
+      {
         "slotRef": "leftThigh",
         "layers": [
           {
