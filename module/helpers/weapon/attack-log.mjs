@@ -11,10 +11,13 @@
  * - `AttackLog`: `{ v, id, startedAt, endedAt, actorUuid, actorName, tokenUuid, tokenName, weaponUuid,
  *   weaponName, lineName, modeName, fireMode, shots: ShotEntry[] }`
  * - `ShotEntry`: one trigger pull — `{ n, at, apCost, baseApCost, rays, luck, spread, passes: string[],
- *   walls: string[], impacts: Impact[], records: ShotRecord[] }` — a multishot volley is several rays of
- *   one shot; `records` are the rays' trails (`shot-trail.mjs`), kept for redrawing
+ *   impacts: Impact[], ids: string[], records: ShotRecord[], tracks: PenetrationTrack[] }` — a
+ *   multishot volley is several rays of one shot, `ids` their ids (`shot_…`; the penetration view opens by one
+ *   of them); `records` are the rays' trails (`shot-trail.mjs`), kept for redrawing;
+ *   `tracks` are the rays' penetration tracks (`damage/penetration-track.mjs`: the layers the projectile went
+ *   through and what became of its energy in each), keyed by the same shot id as the trail record
  * - `Impact`: one token the shot reached: `{ tokenUuid, name, kind: 'line'|'area', outcome:
- *   'hit'|'area'|'pass', clock, centrality, energyScale, quality: 'crit'|'full'|'glancing', qualityLabel,
+ *   'hit'|'area'|'pass', shotId, clock, centrality, energyScale, quality: 'crit'|'full'|'glancing', qualityLabel,
  *   crit, pickedGroup, coverage, coverageMode, effectScale, partName, organs: string[], damage: [{type, amount}],
  *   queued, failed, through, exit }` — a line hit carries the hit quality (`hit-quality.mjs`: how centrally the hitbox was met
  *   and the share of the projectile's energy that reached the target); `pass` is a projectile that flew
@@ -22,6 +25,8 @@
  *   the name of the target it left before it reached this one (the impacts of a ray are in flight order).
  *   A ray's extra trail (the bullet that flew on) is one more record in `records`
  */
+
+import { MAX_TRACKS_PER_LOG } from '../damage/penetration-track.mjs';
 
 export const ATTACK_LOG_VERSION = 1;
 
@@ -87,7 +92,9 @@ export function createAttackLog(meta = {}) {
  */
 export function addShot(log, entry = {}) {
   const kept = collectAttackRecords(log).length;
+  const keptTracks = collectAttackTracks(log).length;
   const records = (Array.isArray(entry.records) ? entry.records : []).filter(Boolean);
+  const tracks = (Array.isArray(entry.tracks) ? entry.tracks : []).filter(Boolean);
   const shot = {
     n: log.shots.length + 1,
     at: toNumber(entry.at, Date.now()),
@@ -97,9 +104,10 @@ export function addShot(log, entry = {}) {
     luck: entry.luck ?? null,
     spread: entry.spread ?? null,
     passes: Array.isArray(entry.passes) ? entry.passes : [],
-    walls: Array.isArray(entry.walls) ? entry.walls : [],
     impacts: Array.isArray(entry.impacts) ? entry.impacts : [],
+    ids: (Array.isArray(entry.ids) ? entry.ids : []).filter((id) => typeof id === 'string' && id),
     records: records.slice(0, Math.max(0, MAX_RECORDED_TRAILS - kept)),
+    tracks: tracks.slice(0, Math.max(0, MAX_TRACKS_PER_LOG - keptTracks)),
   };
   log.shots.push(shot);
   return shot;
@@ -182,6 +190,15 @@ export function summarizeTargets(log) {
  */
 export function collectAttackRecords(log) {
   return (log?.shots ?? []).flatMap((shot) => (Array.isArray(shot.records) ? shot.records : [])).filter(Boolean);
+}
+
+/**
+ * The penetration tracks stored in the log, oldest first (to open them by shot id).
+ * @param {object} log
+ * @returns {object[]}
+ */
+export function collectAttackTracks(log) {
+  return (log?.shots ?? []).flatMap((shot) => (Array.isArray(shot.tracks) ? shot.tracks : [])).filter(Boolean);
 }
 
 /* -------------------------------------------- */

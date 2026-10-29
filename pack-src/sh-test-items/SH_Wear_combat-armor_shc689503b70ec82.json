@@ -43,6 +43,16 @@
           }
         ],
         "face": "back"
+      },
+      {
+        "slotRef": "lowerTorso",
+        "layers": [
+          {
+            "material": "combat-composite",
+            "thickness": 6
+          }
+        ],
+        "face": "back"
       }
     ],
     "defaultActions": {

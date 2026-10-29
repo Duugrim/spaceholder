@@ -103,6 +103,8 @@ export function passSpan({ span, applications, resolveMaterial, random }) {
  * @property {string} [reason] `stopped` | `unbounded` | `opaque` when not penetrated
  * @property {number} damageBefore total damage entering the wall
  * @property {number} damageAfter total damage leaving it
+ * @property {object[]} [trace] the resolver's trace of the pass (`penetrate` / `hold` events with the energy
+ *   before and after) — what the penetration view shows (`damage/penetration-track.mjs`)
  */
 
 /**
@@ -204,7 +206,7 @@ export function planWallPasses({
     }
     const res = passSpan({ span, applications: current, resolveMaterial, random });
     if (!res.penetrated) {
-      events.push({ ...event, reason: 'stopped' });
+      events.push({ ...event, reason: 'stopped', trace: res.trace });
       block = { kind: 'stopped', span, collision: stopCollision(span, pointAt) };
       break;
     }
@@ -215,6 +217,7 @@ export function planWallPasses({
       exitPoint: pointAt(Math.min(span.end, rayLen)),
       penetrated: true,
       damageAfter: totalApplicationsDamage(res.applications),
+      trace: res.trace,
     });
   }
 

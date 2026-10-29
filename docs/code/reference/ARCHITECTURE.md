@@ -27,7 +27,7 @@ tags:
   - Grid defaults в `grid`. **`primaryTokenAttribute` и `secondaryTokenAttribute` явно `null`** (заглушки в `system.json`): в core ожидается путь к объекту с `value` и `max`; `system.health` у нас — части тела и травмы, не одна шкала. Когда появится подходящий ресурс (например агрегированное HP или `actionPoints`), сюда можно подставить строку пути. Пока баров по умолчанию нет — при необходимости настраиваются на токене вручную.
   - Языки: `en` (`lang/en.json`). URL/manifest/download — заглушки (для релизов потребуют обновления).
 - `template.json`:
-  - Определяет схемы данных для Actor (`globalobject`, `character`, `npc`, `loot`, `faction`) и Item (`item`, `feature`, `spell`).
+  - Определяет схемы данных для Actor (`character`, `npc`, `loot`, `faction`; тип «глобальный объект» живёт в модуле Azimuth) и Item (`item`, `feature`, `spell`).
   - Блок `system.health` (и прочие поля веток типов) задаёт структуру для вычислений на уровне Actor; актуальный состав ключей — по файлу в репозитории.
 - `package.json`:
   - Dev-инфраструктура только для стилей: `sass` компилирует `src/scss/spaceholder.scss` → `css/spaceholder.css`.

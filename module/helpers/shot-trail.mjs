@@ -286,12 +286,12 @@ export function sanitizeShotRecord(raw) {
 }
 
 /**
- * Every shot record a chat message carries: the attack log of a standalone attack message, the attack
- * rows of a combat action journal (also those nested as reactions), or a lone record. Validated.
+ * The attack logs a chat message carries: that of a standalone attack message, and the attack rows of a combat
+ * action journal (also those nested as reactions). Not validated — the caller reads what it needs from them.
  * @param {object} message ChatMessage (or anything with `flags`)
- * @returns {object[]} clean ShotRecords
+ * @returns {object[]} raw AttackLogs
  */
-export function readShotRecords(message) {
+export function readAttackLogs(message) {
   const flags = message?.flags?.[SHOT_FLAG_SCOPE];
   if (!flags || typeof flags !== 'object') return [];
 
@@ -303,7 +303,20 @@ export function readShotRecords(message) {
       for (const reaction of Array.isArray(segment?.reactions) ? segment.reactions : []) logs.push(reaction?.attack);
     }
   }
+  return logs.filter((log) => log && typeof log === 'object');
+}
 
+/**
+ * Every shot record a chat message carries: the attack log of a standalone attack message, the attack
+ * rows of a combat action journal (also those nested as reactions), or a lone record. Validated.
+ * @param {object} message ChatMessage (or anything with `flags`)
+ * @returns {object[]} clean ShotRecords
+ */
+export function readShotRecords(message) {
+  const flags = message?.flags?.[SHOT_FLAG_SCOPE];
+  if (!flags || typeof flags !== 'object') return [];
+
+  const logs = readAttackLogs(message);
   const records = [];
   const lone = sanitizeShotRecord(flags[SHOT_FLAG_KEY]);
   if (lone) records.push(lone);

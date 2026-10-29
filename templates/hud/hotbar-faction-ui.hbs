@@ -36,13 +36,13 @@
       {{/if}}
     </button>
 
-    {{#if ppText}}
+    {{#each indicators as |i|}}
       <div
         class="sh-hotbar-faction__pp"
-        data-tooltip="{{ppTooltip}}"
-        aria-label="{{ppTooltip}}"
-      >{{ppText}}</div>
-    {{/if}}
+        data-tooltip="{{i.tooltip}}"
+        aria-label="{{i.tooltip}}"
+      >{{i.text}}</div>
+    {{/each}}
   </div>
 
   {{#if canToggle}}

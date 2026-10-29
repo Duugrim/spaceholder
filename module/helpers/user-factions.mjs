@@ -155,31 +155,6 @@ export async function ensureUserActiveFaction(user) {
 }
 
 /**
- * Получить фракцию(и) актора.
- * Пока используем только globalobject + system.gFaction.
- * @param {Actor} actor
- * @returns {string[]}
- */
-export function getActorFactionUuids(actor) {
-  if (!actor) return [];
-  if (actor.type !== 'globalobject') return [];
-  const uuid = normalizeUuid(actor.system?.gFaction);
-  return uuid ? [uuid] : [];
-}
-
-/**
- * Получить фракцию(и) токена.
- * Принимает TokenDocument или Token (placeable).
- * @param {TokenDocument|Token} tokenLike
- * @returns {string[]}
- */
-export function getTokenFactionUuids(tokenLike) {
-  const doc = tokenLike?.document ?? tokenLike;
-  const actor = doc?.actor;
-  return getActorFactionUuids(actor);
-}
-
-/**
  * Найти пользователей, у которых назначена указанная фракция.
  * @param {string} factionUuid
  * @returns {User[]}
@@ -190,22 +165,6 @@ export function getUsersForFaction(factionUuid) {
 
   const users = Array.from(game?.users?.values?.() ?? game?.users?.contents ?? []);
   return users.filter((u) => getUserFactionUuids(u).includes(key));
-}
-
-/**
- * Найти пользователей по фракции токена.
- * @param {TokenDocument|Token} tokenLike
- * @returns {User[]}
- */
-export function getUsersForToken(tokenLike) {
-  const factions = getTokenFactionUuids(tokenLike);
-  if (!factions.length) return [];
-  // На будущее (если актёров будет многофракционность) — объединяем по любому совпадению.
-  const users = new Set();
-  for (const f of factions) {
-    for (const u of getUsersForFaction(f)) users.add(u);
-  }
-  return Array.from(users);
 }
 
 /**

@@ -45,6 +45,16 @@
         "face": "back"
       },
       {
+        "slotRef": "lowerTorso",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ],
+        "face": "back"
+      },
+      {
         "slotRef": "leftThigh",
         "layers": [
           {
@@ -76,6 +86,26 @@
       },
       {
         "slotRef": "rightShin",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ],
+        "face": "front"
+      },
+      {
+        "slotRef": "leftShoulder",
+        "layers": [
+          {
+            "material": "cloth-heavy",
+            "thickness": 1
+          }
+        ],
+        "face": "front"
+      },
+      {
+        "slotRef": "rightShoulder",
         "layers": [
           {
             "material": "cloth-heavy",

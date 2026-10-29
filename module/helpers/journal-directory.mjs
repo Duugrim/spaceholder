@@ -4,34 +4,14 @@
  * Добавляет кнопку «Очистить журналы» рядом с Create Entry / Create Folder.
  */
 
+import { isServiceJournal } from './integration-registry.mjs';
+
 let _hooksInstalled = false;
 
 /**
  * Установить хуки для Journal Directory.
  */
-function _isTimelineContainer(entry) {
-  try {
-    const f1 = entry?.getFlag?.('spaceholder', 'timeline') ?? entry?.flags?.spaceholder?.timeline ?? {};
-    const f2 = entry?.getFlag?.('spaceholder', 'timelineV2') ?? entry?.flags?.spaceholder?.timelineV2 ?? {};
-    const fe = entry?.getFlag?.('spaceholder', 'events') ?? entry?.flags?.spaceholder?.events ?? {};
-    return !!(f1?.isContainer || f2?.isContainer || fe?.isContainer);
-  } catch (_) {
-    return false;
-  }
-}
-
-function _isTimelineFolder(folder) {
-  try {
-    const f1 = folder?.getFlag?.('spaceholder', 'timeline') ?? folder?.flags?.spaceholder?.timeline ?? {};
-    const f2 = folder?.getFlag?.('spaceholder', 'timelineV2') ?? folder?.flags?.spaceholder?.timelineV2 ?? {};
-    const fe = folder?.getFlag?.('spaceholder', 'events') ?? folder?.flags?.spaceholder?.events ?? {};
-    return !!(f1?.isFolder || f2?.isFolder || fe?.isFolder);
-  } catch (_) {
-    return false;
-  }
-}
-
-function _hideTimelineFoldersFromDirectory(root) {
+function _hideServiceFoldersFromDirectory(root) {
   if (!root) return;
 
   const items = root.querySelectorAll('.directory-item.folder[data-folder-id]');
@@ -42,13 +22,13 @@ function _hideTimelineFoldersFromDirectory(root) {
     const folder = game?.folders?.get?.(folderId) ?? null;
     if (!folder) continue;
 
-    if (_isTimelineFolder(folder)) {
+    if (isServiceJournal(folder)) {
       li.remove();
     }
   }
 }
 
-function _hideTimelineContainersFromDirectory(root) {
+function _hideServiceJournalsFromDirectory(root) {
   if (!root) return;
 
   // Foundry directory items for journal entries use data-entry-id.
@@ -60,7 +40,7 @@ function _hideTimelineContainersFromDirectory(root) {
     const entry = game?.journal?.get?.(entryId) ?? null;
     if (!entry) continue;
 
-    if (_isTimelineContainer(entry)) {
+    if (isServiceJournal(entry)) {
       li.remove();
     }
   }
@@ -75,10 +55,10 @@ Hooks.on('renderJournalDirectory', (app, html /*, data */) => {
       const root = html instanceof HTMLElement ? html : html?.[0];
       if (!root) return;
 
-      // Hide timeline containers and their folder from non-GM even if they have edit rights.
+      // Hide the journals that connected packages keep for themselves (timeline, events) from non-GM, even with edit rights.
       if (!game?.user?.isGM) {
-        _hideTimelineFoldersFromDirectory(root);
-        _hideTimelineContainersFromDirectory(root);
+        _hideServiceFoldersFromDirectory(root);
+        _hideServiceJournalsFromDirectory(root);
         return;
       }
 

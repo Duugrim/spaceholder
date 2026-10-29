@@ -1,0 +1,22 @@
+{{!-- The energy column of a row of the penetration view (context: a block or a layer, both have `flow`): at the left
+      the numbers on the boundaries between rows (what enters the first layer of a block, what leaves each layer),
+      next to them the stream — an outline whose width at the top and at the bottom of the row is the energy entering
+      and leaving it, one lane in it for each projectile. The pale dashed outline is the route; the live one is
+      drawn as the bullet reaches the row. The head of a block has two sets of outlines: the lanes narrowing to the
+      first layer (the block is open) and to what they carry out of the block (it is folded). --}}
+<span class="spaceholder-penetration__flow{{#if flow}} has-flow{{/if}}">
+  <span class="spaceholder-penetration__flow-values" aria-hidden="true">
+    {{#if flow.valueIn}}<span class="spaceholder-penetration__flow-value is-top">{{flow.valueIn}}</span>{{/if}}
+    {{#if flow.valueOut}}<span class="spaceholder-penetration__flow-value is-bottom">{{flow.valueOut}}</span>{{/if}}
+  </span>
+  <span class="spaceholder-penetration__flow-stream">
+    {{#if flow}}
+    <svg class="spaceholder-penetration__flow-svg spaceholder-penetration__flow-svg--route{{#if flow.folded}} spaceholder-penetration__flow-svg--open{{/if}}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="{{flow.edges}}"/></svg>
+    <svg class="spaceholder-penetration__flow-svg spaceholder-penetration__flow-svg--live{{#if flow.folded}} spaceholder-penetration__flow-svg--open{{/if}}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spaceholder-penetration__flow-fill" d="{{flow.shape}}"/><path class="spaceholder-penetration__flow-edge" d="{{flow.edges}}"/></svg>
+    {{#if flow.folded}}
+    <svg class="spaceholder-penetration__flow-svg spaceholder-penetration__flow-svg--route spaceholder-penetration__flow-svg--folded" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="{{flow.folded.edges}}"/></svg>
+    <svg class="spaceholder-penetration__flow-svg spaceholder-penetration__flow-svg--live spaceholder-penetration__flow-svg--folded" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spaceholder-penetration__flow-fill" d="{{flow.folded.shape}}"/><path class="spaceholder-penetration__flow-edge" d="{{flow.folded.edges}}"/></svg>
+    {{/if}}
+    {{/if}}
+  </span>
+</span>

@@ -144,6 +144,20 @@ export function residualDamageAfterArmor(amount, energyBefore, eAR, reductionPct
   return { energyAfter, residual };
 }
 
+/**
+ * Which layer a trace event is about: its place in the stack, material, thickness (mm) and the stack key a
+ * caller gave it (armour layers are keyed `armor:<itemId>:<coverageIdx>:<layerIdx>`), so a viewer can name
+ * the armour piece (`penetration-track.mjs`).
+ */
+function _layerRef(layer, index) {
+  return {
+    layerIndex: index,
+    material: layer.material,
+    thickness: Math.max(0, Number(layer.thickness) || 0),
+    ...(layer.key ? { layerKey: String(layer.key) } : {})
+  };
+}
+
 function _wearCoefficient(material, type) {
   return Math.max(0, Number(material?.wear?.[type] ?? 0) || 0) / 100;
 }
@@ -186,6 +200,9 @@ export function normalizeApplications(raw) {
     const energy = Number(item.energy);
     if (Number.isFinite(energy) && energy >= 0) out.energy = energy;
     if (item.transferred === true) out.transferred = true;
+    // An opaque label of the projectile (the pellet of a volley, say): it goes to the trace events and the body
+    // hits the item makes, so a viewer can tell whose they are (`penetration-track.mjs`).
+    if (Number.isInteger(item.tag)) out.tag = item.tag;
     const reduction = Number(item.armorDamageReduction);
     if (Number.isFinite(reduction) && reduction >= 0) out.armorDamageReduction = reduction;
     return out;
@@ -320,7 +337,7 @@ function passTransferred(type, amount, layers, startIdx, ctx, matCache, trace) {
     if (k <= 0) continue;
     const before = current;
     current *= Math.exp(-k * Math.max(0, Number(layer.thickness) || 0));
-    trace.push({ kind: 'damp', layerIndex: i, material: layer.material, type, before, after: current });
+    trace.push({ kind: 'damp', ..._layerRef(layer, i), type, before, after: current });
   }
   const bodyHits = [];
   if (_isPositive(current)) {
@@ -394,7 +411,7 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
     const evalRes = evaluateLayerForHit(layer, armour.eARBase, mode, ctx.random);
 
     if (!evalRes.active) {
-      trace.push({ kind: 'bypass', layerIndex: cursor, material: layer.material, type: currentType, amount: currentAmount, mode });
+      trace.push({ kind: 'bypass', ..._layerRef(layer, cursor), type: currentType, amount: currentAmount, energy: currentEnergy, mode });
       cursor += 1;
       continue;
     }
@@ -438,7 +455,7 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
     const conducted = _conductedShares(material, currentType, absorbedDamage);
     if (conducted.length) {
       trace.push({
-        kind: 'conduct', layerIndex: cursor, material: layer.material,
+        kind: 'conduct', ..._layerRef(layer, cursor),
         fromType: currentType, items: conducted.map((c) => ({ ...c })), absorbed: absorbedDamage
       });
     }
@@ -446,7 +463,7 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
     if (penetrated) {
       layer.breachLoss = Math.min(layer.breachCapacity, layer.breachLoss + wearDeltaT);
       trace.push({
-        kind: 'penetrate', layerIndex: cursor, material: layer.material, type: currentType,
+        kind: 'penetrate', ..._layerRef(layer, cursor), type: currentType,
         incoming: structAmount, ar: armour.ar, eARBase: armour.eARBase, eAR,
         energyBefore, energyAfter, energyAbsorbed, residual, wear: wearDeltaT,
         armorPen, hardnessProj: Hp, hardnessMat: armour.materialHardness,
@@ -464,7 +481,7 @@ function applyHitOnStack(type, amount, layers, startIdx, mods, ctx, matCache, tr
 
     // ---- Held → record event, hand on the shock, apply selfInduction. ----
     trace.push({
-      kind: 'hold', layerIndex: cursor, material: layer.material, type: currentType,
+      kind: 'hold', ..._layerRef(layer, cursor), type: currentType,
       incoming: structAmount, ar: armour.ar, eARBase: armour.eARBase, eAR,
       energyBefore, energyAfter, energyAbsorbed, wear: wearDeltaT,
       armorPen, hardnessProj: Hp, hardnessMat: armour.materialHardness,
@@ -568,7 +585,7 @@ function _applySelfInduction({ layer, material, fromType, xStruct, armorDamageFa
   }
 
   trace.push({
-    kind: 'self-induce', layerIndex: cursor, material: layer.material,
+    kind: 'self-induce', ..._layerRef(layer, cursor),
     fromType, entries: traceEntries, integrityAfter: layer.integrity
   });
 
@@ -623,6 +640,16 @@ export function resolveDamagePackage(input) {
   const bodyDamage = [];
   let position = 0;
 
+  // The events and body hits an item made are labelled with its `tag` right after it ran.
+  let stampedUpTo = 0;
+  const stamp = (item, result) => {
+    if (Number.isInteger(item.tag)) {
+      for (let k = stampedUpTo; k < trace.length; k += 1) trace[k].tag = item.tag;
+      for (const hit of result.bodyHits) hit.tag = item.tag;
+    }
+    stampedUpTo = trace.length;
+  };
+
   for (let phaseIdx = 0; phaseIdx < phases.length; phaseIdx += 1) {
     const phase = phases[phaseIdx];
     let phaseDeepest = position;
@@ -642,6 +669,7 @@ export function resolveDamagePackage(input) {
           initialEnergy: item.energy
         };
         const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true, item.transferred === true);
+        stamp(item, result);
         bodyDamage.push(...result.bodyHits);
         phaseDeepest = Math.max(phaseDeepest, result.deepestLayerReached);
       }
@@ -661,6 +689,7 @@ export function resolveDamagePackage(input) {
           initialEnergy: item.energy
         };
         const result = applyHitOnStack(item.type, item.damage, layers, startIdx, mods, ctx, matCache, trace, true, item.transferred === true);
+        stamp(item, result);
         bodyDamage.push(...result.bodyHits);
         cursor = result.deepestLayerReached;
       }

@@ -122,6 +122,13 @@ const hit = (name, extra = {}) => ({ tokenUuid: `Token.${name}`, name, kind: 'li
   assert('clock: junk is safe', formatClock(undefined) === '?');
 }
 
+{
+  const l = createAttackLog({});
+  const s = addShot(l, { ids: ['shot_a', '', 5, 'shot_b'], tracks: [{ v: 1 }] });
+  assert('addShot: keeps the ids of the rays of a shot (strings only)', s.ids.join() === 'shot_a,shot_b', s.ids);
+  assert('addShot: a shot without ids has an empty list', addShot(l, {}).ids.length === 0);
+}
+
 if (failed > 0) {
   console.log(`\n${failed} test(s) failed`);
   process.exit(1);

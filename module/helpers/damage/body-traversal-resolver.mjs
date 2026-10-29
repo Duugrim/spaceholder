@@ -116,6 +116,7 @@ function bodyHitsToApplications(hits) {
     const hRaw = Number(h.hardness ?? 1);
     const hardness = Number.isFinite(hRaw) && hRaw > EPS ? hRaw : 1;
     const item = { type: h.type, damage: amount, armorPen, armorDamageFactor, hardness };
+    if (Number.isInteger(h.tag)) item.tag = h.tag;
     if (Number.isFinite(h.energy) && h.energy >= 0) item.energy = h.energy;
     if (Number.isFinite(h.armorDamageReduction)) item.armorDamageReduction = h.armorDamageReduction;
     if (h.transferred) item.transferred = true;
@@ -135,6 +136,7 @@ function applicationsToBodyHits(apps) {
         armorPen: item.armorPen,
         armorDamageFactor: item.armorDamageFactor,
         hardness: item.hardness,
+        ...(Number.isInteger(item.tag) ? { tag: item.tag } : {}),
         ...(Number.isFinite(item.energy) ? { energy: item.energy } : {}),
         ...(Number.isFinite(item.armorDamageReduction) ? { armorDamageReduction: item.armorDamageReduction } : {}),
         ...(item.transferred ? { transferred: true } : {})
@@ -158,6 +160,7 @@ function buildArmorStack({ sources, order, resolveMaterial, chance }) {
   const mat = typeof resolveMaterial === 'function' ? resolveMaterial : () => ({ materialId: '' });
   const flat = [];
   const gaps = [];
+  const gapLayers = [];
   const list = order === 'rev' ? [...sources].reverse() : sources;
   for (const src of list) {
     const idx = src.layers.map((_, i) => i);
@@ -169,13 +172,20 @@ function buildArmorStack({ sources, order, resolveMaterial, chance }) {
       const coverage = layerCoverage(layer);
       if (coverage < 100 && chance({ kind: 'gap', id: key, chance: 1 - coverage / 100 })) {
         gaps.push(key);
+        // `before`: the number of layers in front of the gap, to put it in its place in the trace.
+        gapLayers.push({ layerKey: key, material: layer.material, thickness: Math.max(0, Number(layer.thickness) || 0), coverage, before: flat.length });
         continue;
       }
       const md = mat(layer.material);
       flat.push(ensureLayerDefaults({ ...layer, key }, md ?? { materialId: layer.material }));
     }
   }
-  return { flat, gaps };
+  return { flat, gaps, gapLayers };
+}
+
+/** Trace events for the armour layers an incoming/outgoing pass missed through a coverage gap. */
+function gapTrace(stack, slotRef, phase) {
+  return stack.gapLayers.map((gap) => ({ kind: 'gap', slotRef, phase, ...gap }));
 }
 
 /**
@@ -417,6 +427,7 @@ export function resolveBodyTraversal({
     if (external) {
       const stack = buildArmorStack({ sources: sourcesForFace(currentArmorSrcs, incomingFace), order: 'fwd', resolveMaterial: mat, chance });
       gaps.push(...stack.gaps);
+      trace.push(...gapTrace(stack, slotRef, 'entry'));
       if (stack.flat.length) {
         const res = resolveDamagePackage({ layers: stack.flat, applications: node.applications, resolveMaterial: mat, random: rng });
         hits = res.bodyHits.slice();
@@ -468,6 +479,8 @@ export function resolveBodyTraversal({
       if (pass.exit) exits.push(pass.exit);
       trace.push({
         kind: 'tissue', slotRef, phase: 'tissue', type: hit.type, shell: shellR,
+        material: tissue.material, shellThickness: tissue.shellThickness, damage: amount,
+        ...(Number.isInteger(hit.tag) ? { tag: hit.tag } : {}),
         energyBefore: pass.energyBefore, energyAfter: pass.energyAfter, deposit: pass.deposit,
         reached: pass.reached, inShell: pass.inShell, exit: pass.exit?.amount ?? 0
       });
@@ -489,6 +502,7 @@ export function resolveBodyTraversal({
         if (oppositeFace) {
           const stack = buildArmorStack({ sources: sourcesForFace(currentArmorSrcs, oppositeFace), order: 'rev', resolveMaterial: mat, chance });
           gaps.push(...stack.gaps);
+          trace.push(...gapTrace(stack, slotRef, 'exit'));
           if (stack.flat.length) {
             const res = resolveDamagePackage({ layers: stack.flat, applications: bodyHitsToApplications(exits), resolveMaterial: mat, random: rng });
             currentArmorSrcs = reconstituteArmor(currentArmorSrcs, res.layers);

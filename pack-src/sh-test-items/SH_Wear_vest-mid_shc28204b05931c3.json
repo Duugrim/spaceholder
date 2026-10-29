@@ -58,6 +58,21 @@
           }
         ],
         "face": "back"
+      },
+      {
+        "slotRef": "lowerTorso",
+        "layers": [
+          {
+            "material": "steel-plate",
+            "thickness": 3,
+            "coverage": 75
+          },
+          {
+            "material": "kevlar",
+            "thickness": 1
+          }
+        ],
+        "face": "back"
       }
     ],
     "defaultActions": {

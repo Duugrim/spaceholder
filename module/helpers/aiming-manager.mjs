@@ -24,7 +24,7 @@ import {
   preflightLineShotReadiness,
 } from './weapon/weapon-ammo-runtime.mjs';
 import { spendAp } from './actions/transaction-ledger.mjs';
-import { beginCombatAction } from './actions/combat-action-log.mjs';
+import { announceCombatAction, beginCombatAction, combatantForActor } from './actions/combat-action-log.mjs';
 import { reportAttack } from './actions/attack-report.mjs';
 import { shotApCost } from './weapon/attack-chain.mjs';
 import { addShot, createAttackLog, formatNumber } from './weapon/attack-log.mjs';
@@ -43,8 +43,34 @@ import { availableHitGroups, groupSlotRefs, isPartAlive } from './anatomy-groups
 import { GM_ACTION_TYPES } from './gm-actions/gm-action-handlers.mjs';
 import { composeProjectileApplications } from '../documents/item.mjs';
 import { materialsManager } from './damage/materials-manager.mjs';
+import { MAX_LANES, assembleRayTrack } from './damage/penetration-track.mjs';
+import { mergeShot } from './damage/penetration-shot.mjs';
 
 let _payloadLibraryCache = null;
+
+/**
+ * What the penetration track needs of an impact besides what the attack log keeps of it: the walls in front of
+ * the token, the share of the projectile energy that reached it and the results of its damage (with their
+ * traces). Kept apart from the impact because it is large and the log stores the impact.
+ * @type {WeakMap<object, {walls?: object[], scale?: number, pending?: boolean, bodies?: object[]}>}
+ */
+const IMPACT_TRACE = new WeakMap();
+
+/** The picture of a token for the penetration view: its texture, or the actor's image when that is a video. */
+function _tokenImage(token) {
+  const src = String(token?.document?.texture?.src ?? '');
+  const video = /\.(webm|mp4|m4v|ogv)(\?|$)/i.test(src);
+  return !src || video ? String(token?.actor?.img ?? '') : src;
+}
+
+function _impactTrace(impact) {
+  let note = IMPACT_TRACE.get(impact);
+  if (!note) {
+    note = {};
+    IMPACT_TRACE.set(impact, note);
+  }
+  return note;
+}
 
 /** Canonical id inside straight-line.json (manifest filename uses hyphens). */
 const DEFAULT_WEAPON_PAYLOAD_ID = 'straight_line';
@@ -985,35 +1011,6 @@ export class AimingManager {
   }
 
   /**
-   * Chat lines for the walls a shot met (penetrated or stopped by).
-   * @private
-   * @param {object} shot
-   * @returns {string[]}
-   */
-  _wallDiagnosticLines(shot) {
-    const i18n = game.i18n;
-    const fmt = (n) => this._fmt(n);
-    const lines = [];
-    for (const event of Array.isArray(shot?.wallPasses) ? shot.wallPasses : []) {
-      const material = String(materialsManager.getMaterial(event.material)?.name || event.material || '');
-      const thickness = Number.isFinite(event.thickness) ? fmt(event.thickness) : '∞';
-      let key;
-      if (event.penetrated) key = 'Penetrated';
-      else if (event.reason === 'opaque') key = 'Opaque';
-      else if (event.reason === 'unbounded') key = 'Unbounded';
-      else key = 'Stopped';
-      const fallback = `${material} ${thickness}: ${key.toLowerCase()}`;
-      lines.push(i18n?.format?.(`SPACEHOLDER.Walls.Chat.${key}`, {
-        material,
-        thickness,
-        before: fmt(event.damageBefore),
-        after: fmt(event.damageAfter),
-      }) || fallback);
-    }
-    return lines;
-  }
-
-  /**
    * The attack log of the current aiming session — everything shot until aiming is left — started at the
    * first shot. The session counts the shots still in flight, so the attack is reported to chat only after
    * the last of them has landed (`_closeAttack`).
@@ -1129,12 +1126,13 @@ export class AimingManager {
    * @private
    * @param {string} uid
    * @param {object[]} impacts from `_resolveHitImpacts`
-   * @param {{autoRender: boolean}} opts a trail drawn without «auto render» is stored but not shown
-   * @returns {{luck: object|null, spread: object|null, passes: string[], walls: string[], impacts: object[],
-   *   record: object|null, extension: object|null}} `extension` is the rest of the trail when the bullet
-   *   left the body and flew on
+   * @param {{autoRender: boolean, projectile?: string}} opts a trail drawn without «auto render» is stored but
+   *   not shown; `projectile` is what the penetration view calls the projectile (the ammo)
+   * @returns {{uid: string, luck: object|null, spread: object|null, passes: string[], impacts: object[],
+   *   record: object|null, extension: object|null, track: object|null}} `extension` is the rest of the trail
+   *   when the bullet left the body and flew on; `track` the penetration track of the ray
    */
-  _collectRay(uid, impacts, { autoRender }) {
+  _collectRay(uid, impacts, { autoRender, projectile = '' }) {
     const shot = uid ? game.spaceholder?.shotManager?.shotSystem?.getShot?.(uid) : null;
     const passes = [];
     for (const pass of Array.isArray(shot?.passedThrough) ? shot.passedThrough : []) {
@@ -1149,14 +1147,134 @@ export class AimingManager {
     // A trail drawn without «auto render» is stored but not shown; the same goes for its continuation.
     const stored = (record) => (record ? (autoRender ? record : { ...record, quiet: true }) : null);
     return {
+      uid,
       luck,
       spread,
       passes,
-      walls: this._wallDiagnosticLines(shot),
       impacts,
       record: stored(shot?.record),
       extension: stored(shot?.extension),
+      track: this._penetrationTrack(uid, shot, impacts, projectile),
     };
+  }
+
+  /**
+   * The penetration track of one ray: the walls and bodies it went through in flight order, with the energy
+   * that went into each layer (`damage/penetration-track.mjs`).
+   * @private
+   * @param {string} uid the ray (the shot id)
+   * @param {object|null} shot
+   * @param {object[]} impacts
+   * @param {string} projectile
+   * @returns {object|null}
+   */
+  _penetrationTrack(uid, shot, impacts, projectile) {
+    if (!uid) return null;
+    try {
+      return assembleRayTrack({
+        shotId: uid,
+        projectile,
+        energy: shot?.muzzleEnergy ?? null,
+        hits: (Array.isArray(impacts) ? impacts : []).map((impact, index) => {
+          const note = IMPACT_TRACE.get(impact) ?? {};
+          return {
+            title: impact.name,
+            index,
+            img: note.img,
+            tokenId: note.tokenId,
+            at: note.at,
+            walls: note.walls,
+            scale: note.scale,
+            // Only a glancing hit is named: a lower share from distance alone is just the number.
+            quality: impact.quality === 'glancing' ? impact.qualityLabel : '',
+            pending: note.pending,
+            bodies: note.bodies,
+            lanes: note.lanes,
+            parallel: note.parallel,
+          };
+        }),
+        walls: shot?.wallPasses,
+        names: { materialName: (slug) => this._materialName(slug) },
+      });
+    } catch (error) {
+      console.warn('AimingManager: could not record the penetration track', error);
+      return null;
+    }
+  }
+
+  /** @private */
+  _materialName(slug) {
+    return String(materialsManager.getMaterial(slug)?.name || slug || '');
+  }
+
+  /**
+   * Names the penetration track gives the layers of a body: its owner, parts, armour pieces, organs.
+   * @private
+   * @param {Actor} actor
+   * @param {string} [target] name of the token
+   */
+  _trackNames(actor, target = '') {
+    const bodyParts = actor?.system?.health?.bodyParts ?? {};
+    return {
+      target: String(target || actor?.name || ''),
+      partName: (slotRef) => String(bodyParts[slotRef]?.displayName ?? bodyParts[slotRef]?.name ?? slotRef ?? ''),
+      materialName: (slug) => this._materialName(slug),
+      // Armour layers are keyed `armor:<itemId>:<coverageIdx>:<layerIdx>`.
+      sourceName: (layerKey) => {
+        const itemId = String(layerKey ?? '').split(':')[1];
+        return itemId ? String(actor?.items?.get?.(itemId)?.name ?? '') : '';
+      },
+      innerName: (slotRef, innerId) => {
+        const inner = (bodyParts[slotRef]?.inners ?? []).find((o) => o?.id === innerId);
+        return String(inner?.displayName ?? inner?.name ?? innerId ?? '');
+      },
+    };
+  }
+
+  /**
+   * Keep the results of an applied wound for the penetration track: the traces of the damage that went into
+   * the body, or that the damage waits for the GM.
+   * @private
+   * @param {object} impact
+   * @param {Actor} targetActor
+   * @param {Array<{partId: string, result: object|null}>} results
+   */
+  _noteBodies(impact, targetActor, results) {
+    // The track is a record on the side: whatever goes wrong here must not turn the applied wound into a failed one.
+    try {
+      const note = _impactTrace(impact);
+      const names = this._trackNames(targetActor, impact.name);
+      note.bodies = [];
+      for (const { result } of results) {
+        if (result?.status === 'queued') {
+          note.pending = true;
+          continue;
+        }
+        const out = result?.status === 'done' ? result.result : result;
+        if (Array.isArray(out?.trace) && out.trace.length) note.bodies.push({ result: out, names });
+      }
+    } catch (error) {
+      console.warn('AimingManager: could not keep the damage trace for the penetration track', error);
+    }
+  }
+
+  /**
+   * Show a trigger pull over the tokens: the rays merged into the blocks they met, a card per target.
+   * @private
+   * @param {ReturnType<AimingManager['_collectRay']>[]} rays
+   * @param {{broadcast?: boolean}} [opts] `broadcast`: the other clients see it too
+   */
+  _showPenetration(rays, { broadcast = false } = {}) {
+    // A picture on the side: whatever goes wrong here must not break the shot.
+    try {
+      const { track } = mergeShot({
+        rays: rays.map((ray) => ({ id: ray.uid, track: ray.track })),
+        impacts: rays.flatMap((ray) => ray.impacts),
+      });
+      game.spaceholder?.penetrationOverlay?.showShot(track, { broadcast });
+    } catch (error) {
+      console.warn('AimingManager: could not show the penetration of the shot', error);
+    }
   }
 
   /**
@@ -1176,9 +1294,10 @@ export class AimingManager {
       luck: first.luck ?? null,
       spread: first.spread ?? null,
       passes: rays.flatMap((r) => r.passes),
-      walls: rays.flatMap((r) => r.walls),
       impacts: rays.flatMap((r) => r.impacts),
+      ids: rays.map((r) => r.uid).filter(Boolean),
       records: rays.flatMap((r) => [r.record, r.extension]).filter(Boolean),
+      tracks: rays.map((r) => r.track).filter(Boolean),
     });
   }
 
@@ -1234,7 +1353,9 @@ export class AimingManager {
 
       const impacts = await this._resolveHitImpacts(uid, { projectile: payload });
       this._showExtensions([uid]);
-      this._logShot(session, [this._collectRay(uid, impacts, { autoRender })]);
+      const ray = this._collectRay(uid, impacts, { autoRender });
+      this._showPenetration([ray], { broadcast: autoRender });
+      this._logShot(session, [ray]);
 
       // Не останавливаем прицеливание автоматически - пользователь может продолжить
     } finally {
@@ -1384,6 +1505,10 @@ export class AimingManager {
         return false;
       }
       await persistWeaponData(weaponItem, weapon);
+      // The shot will happen: in a fight the actor is no longer just moving.
+      if (combatantForActor(actor, token.document ?? null)) {
+        announceCombatAction({ actor, tokenDoc: token.document ?? null, actionId: 'weaponV3.shot' });
+      }
 
       // --- Снаряд: усилие стрелка (STR) → урон, затем модификаторы и множитель энергии ---
       // Записи с `effortShare` (ближнее оружие) получают урон от силы атакующего; у боеприпасов доля 0.
@@ -1471,7 +1596,9 @@ export class AimingManager {
         critEffect: resolveModeCritEffect(eff.mode),
       }, { coneDegrees: multishot.enabled ? multishot.coneDegrees : 0 });
       this._showExtensions(uids);
-      const rays = uids.map((uid, i) => this._collectRay(uid, volleyImpacts[i], { autoRender }));
+      const projectileName = String(firstRound?.name || weaponItem?.name || '');
+      const rays = uids.map((uid, i) => this._collectRay(uid, volleyImpacts[i], { autoRender, projectile: projectileName }));
+      this._showPenetration(rays, { broadcast: autoRender });
       this._logShot(session, rays, { apCost, baseApCost });
 
       // Камера осталась пустой без автоподачи → серия прерывается затвором.
@@ -1624,7 +1751,14 @@ export class AimingManager {
       if (!hit.details || typeof hit.details !== 'object') hit.details = {};
       hit.details.hitQuality = quality;
     }
-    const impact = this._impactOf(hit, quality, { outcome: isArea ? 'area' : 'hit' });
+    const impact = this._impactOf(hit, quality, { outcome: isArea ? 'area' : 'hit', shotId: uid });
+    const note = _impactTrace(impact);
+    note.walls = Array.isArray(hit.details?.wallsBefore) ? hit.details.wallsBefore : [];
+    note.img = _tokenImage(hit.object);
+    note.tokenId = String(hit.object?.id ?? '');
+    note.at = hit.point ? { x: hit.point.x, y: hit.point.y } : undefined;
+    // A blast reaches every target at once: its groups are no continuation of one another.
+    note.parallel = isArea;
     const targetActor = hit.object.actor ?? null;
     if (!canApply || typeof targetActor?.applyDamagePackage !== 'function') return { impact, entry: null };
     // AoE: the share of the blast the target is exposed to (only `proportional` goes below 1).
@@ -1635,6 +1769,7 @@ export class AimingManager {
     const falloff = isArea || carry ? 1 : shotManager.falloffAt(shot, hit.point);
     // A glancing hit reaches the target with part of the projectile's energy.
     const energyScale = (quality?.multiplier ?? 1) * falloff;
+    _impactTrace(impact).scale = isArea ? effectScale : energyScale;
     const applications = shotManager.buildScaledApplications(projectile, {
       actor: targetActor,
       builderContext,
@@ -1717,7 +1852,15 @@ export class AimingManager {
 
     let damageSpec;
     if (wound.length > 1) {
-      damageSpec = { applications: [{ mode: 'parallel', items: wound.flatMap((e) => e.applications[0]?.items ?? []) }] };
+      // Every item says which pellet it is: the penetration view draws a line for each. Beyond the lanes it keeps,
+      // the rest of the pellets share the last one.
+      const lane = (i) => Math.min(i, MAX_LANES - 1);
+      damageSpec = {
+        applications: [{
+          mode: 'parallel',
+          items: wound.flatMap((e, i) => (e.applications[0]?.items ?? []).map((item) => ({ ...item, tag: lane(i) }))),
+        }],
+      };
     } else if (blast && partIds.length > 1) {
       damageSpec = { applications: applyEnergyScaleToApplications(first.applications, 1 / partIds.length) };
     } else if (first.unscaled) {
@@ -1741,6 +1884,9 @@ export class AimingManager {
         results.push({ partId, result });
       }
       Object.assign(impact, this._damageOutcome(targetActor, results));
+      this._noteBodies(impact, targetActor, results);
+      // The rays of the pellets of the wound, in the order their items were labelled.
+      if (wound.length > 1) _impactTrace(impact).lanes = wound.slice(0, MAX_LANES).map((e) => e.uid);
     } catch (e) {
       console.error('AimingManager: applying damage failed', e);
       impact.failed = true;

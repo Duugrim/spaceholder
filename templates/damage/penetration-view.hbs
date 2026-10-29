@@ -1,0 +1,85 @@
+<div class="spaceholder-penetration{{#if view.folded}} is-folded{{/if}}" style="--stream-w: {{view.streamWidth}}px;">
+  <div class="spaceholder-penetration__bar">
+    <span class="spaceholder-penetration__projectile"><i class="fa-solid fa-bullseye" aria-hidden="true"></i>{{view.projectile}}</span>
+    {{#if view.shotLabel}}<span class="spaceholder-penetration__shot-label">{{view.shotLabel}}</span>{{/if}}
+    {{#if view.energyLabel}}<span class="spaceholder-penetration__energy">{{view.energyLabel}}</span>{{/if}}
+    {{#if view.foldable}}
+    <button type="button" class="spaceholder-penetration__tool spaceholder-penetration__fold-all{{#if view.folded}} is-folded{{/if}}" data-action="foldAll" data-tooltip="{{#if view.folded}}{{view.unfoldLabel}}{{else}}{{view.foldLabel}}{{/if}}" data-fold="{{view.foldLabel}}" data-unfold="{{view.unfoldLabel}}" aria-label="{{view.foldLabel}}"><i class="fa-solid {{#if view.folded}}fa-angles-down{{else}}fa-angles-up{{/if}}" aria-hidden="true"></i></button>
+    {{/if}}
+    <button type="button" class="spaceholder-penetration__tool spaceholder-penetration__replay" data-action="replay" data-tooltip="{{replayLabel}}" aria-label="{{replayLabel}}"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i></button>
+  </div>
+  <div class="spaceholder-penetration__body">
+    <div class="spaceholder-penetration__stack">
+      <div class="spaceholder-penetration__groups">
+        {{#each view.groups}}
+        {{> "systems/spaceholder/templates/damage/parts/penetration-group.hbs"}}
+        {{else}}
+        <div class="spaceholder-penetration__empty">{{view.emptyLabel}}</div>
+        {{/each}}
+      </div>
+    </div>
+    <aside class="spaceholder-penetration__preview">
+      <div class="spaceholder-penetration__details">
+        {{#each view.groups}}
+        <section class="spaceholder-penetration__detail" data-detail="{{key}}" hidden>
+          <div class="spaceholder-penetration__detail-who">
+            {{#if img}}<img class="spaceholder-penetration__img spaceholder-penetration__img--big" src="{{img}}" alt="" draggable="false"><i class="fa-solid {{icon}} spaceholder-penetration__img-fallback" aria-hidden="true" hidden></i>{{else}}<i class="fa-solid {{icon}} spaceholder-penetration__img-fallback" aria-hidden="true"></i>{{/if}}
+            <span>
+              <span class="spaceholder-penetration__detail-head">{{title}}</span>
+              {{#if subtitle}}<span class="spaceholder-penetration__group-sub">{{subtitle}}</span>{{/if}}
+            </span>
+          </div>
+          {{#if info.length}}
+          <dl class="spaceholder-penetration__rows">
+            {{#each info}}<dt>{{label}}</dt><dd{{#if tone}} class="is-{{tone}}"{{/if}}>{{value}}</dd>{{/each}}
+          </dl>
+          {{/if}}
+        </section>
+        {{#each parts}}
+        {{#if multi}}
+        <section class="spaceholder-penetration__detail" data-detail="{{key}}" hidden>
+          <div class="spaceholder-penetration__detail-who">
+            {{#if img}}<img class="spaceholder-penetration__img spaceholder-penetration__img--big" src="{{img}}" alt="" draggable="false"><i class="fa-solid {{icon}} spaceholder-penetration__img-fallback" aria-hidden="true" hidden></i>{{else}}<i class="fa-solid {{icon}} spaceholder-penetration__img-fallback" aria-hidden="true"></i>{{/if}}
+            <span>
+              <span class="spaceholder-penetration__detail-head">{{title}}</span>
+              <span class="spaceholder-penetration__group-sub">{{partName}}</span>
+            </span>
+          </div>
+          {{#if info.length}}
+          <dl class="spaceholder-penetration__rows">
+            {{#each info}}<dt>{{label}}</dt><dd{{#if tone}} class="is-{{tone}}"{{/if}}>{{value}}</dd>{{/each}}
+          </dl>
+          {{/if}}
+        </section>
+        {{/if}}
+        {{#each stages}}
+        <section class="spaceholder-penetration__detail" data-detail="{{key}}" hidden>
+          <div class="spaceholder-penetration__detail-head">{{detail.headline}}</div>
+          {{#if detail.source}}<div class="spaceholder-penetration__detail-source"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>{{detail.source}}</div>{{/if}}
+          {{#if detail.rows.length}}
+          <dl class="spaceholder-penetration__rows">
+            {{#each detail.rows}}<dt>{{label}}</dt><dd>{{value}}</dd>{{/each}}
+          </dl>
+          {{/if}}
+        </section>
+        {{/each}}
+        {{/each}}
+        {{/each}}
+      </div>
+      {{#if view.shot.rows.length}}
+      <section class="spaceholder-penetration__shot">
+        <div class="spaceholder-penetration__shot-title">{{view.shot.title}}</div>
+        <dl class="spaceholder-penetration__rows">
+          {{#each view.shot.rows}}<dt>{{label}}</dt><dd>{{value}}</dd>{{/each}}
+        </dl>
+        {{#if view.shot.passes.length}}
+        <div class="spaceholder-penetration__passes">
+          <span class="spaceholder-penetration__passes-title">{{view.shot.passesLabel}}</span>
+          {{#each view.shot.passes}}<span class="spaceholder-penetration__pass">{{this}}</span>{{/each}}
+        </div>
+        {{/if}}
+      </section>
+      {{/if}}
+    </aside>
+  </div>
+</div>

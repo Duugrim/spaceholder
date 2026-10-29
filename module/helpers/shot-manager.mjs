@@ -16,8 +16,8 @@ import {
 import { clockToHitFace, followProjectileThroughBodies, walkProjectileCollisions } from './hit-luck.mjs';
 import { hitboxScaleFactor } from './hitbox-scale.mjs';
 import { computeHitResistance, createTokenJudge } from './shot-confidence.mjs';
-import { isActorInActiveCombat } from './actions/transaction-ledger.mjs';
 import { materialsManager } from './damage/materials-manager.mjs';
+import { applicationsEnergy } from './damage/penetration-track.mjs';
 import { planWallPasses } from './walls/wall-penetration.mjs';
 import { getPxPerThicknessUnit, isShotBlockingWall, wallCrossingFromCollision } from './walls/wall-data.mjs';
 import { buildShotRecord, makeShotId, trailNowMs } from './shot-trail.mjs';
@@ -81,6 +81,8 @@ class ShotSystem {
       // Пробитие стен: снаряд, который сейчас летит (applications с остатком энергии);
       // null — стены останавливают выстрел как раньше. Отчёты по стенам — для чата.
       penetration: null,
+      // Energy of the projectile at the muzzle (the reference of the penetration view's percentages).
+      muzzleEnergy: null,
       wallPasses: [],
       // Токены, мимо которых снаряд пролетел (см. walkProjectileCollisions), и их же как диагностика для чата.
       passedTokens: new Set(),
@@ -372,9 +374,9 @@ export class ShotManager {
   }
 
   /**
-   * How hard `token` is to hit right now (see `shot-confidence.mjs`): the states of its actor that
-   * apply (for now: being in the running combat) plus the flat modifier `system.hitResistanceMod`
-   * that effects fill. A token without an actor has no resistance.
+   * How hard `token` is to hit right now (see `shot-confidence.mjs`): the statuses of its actor that
+   * count as states (`HIT_RESISTANCE_STATES`: combat ready, moving, cover, hidden) plus the flat
+   * modifier `system.hitResistanceMod` that effects fill. A token without an actor has no resistance.
    * @private
    * @param {Token|null|undefined} token
    * @returns {ReturnType<typeof computeHitResistance>}
@@ -382,7 +384,7 @@ export class ShotManager {
   _hitResistanceFor(token) {
     const actor = token?.actor ?? null;
     return computeHitResistance({
-      states: isActorInActiveCombat(actor) ? ['combat'] : [],
+      states: actor?.statuses ?? [],
       modifier: actor?.system?.hitResistanceMod,
     });
   }
@@ -2530,6 +2532,7 @@ export class ShotManager {
     const penetrationApps = penetration?.applications;
     if (Array.isArray(penetrationApps) && penetrationApps.length) {
       shot.penetration = { applications: penetrationApps, energyLevel: 1 };
+      shot.muzzleEnergy = applicationsEnergy(penetrationApps);
     }
     // Distance falloff of the projectile, measured from the muzzle (walls on the way and the targets).
     shot.falloff = normalizeFalloff(penetration?.falloff);

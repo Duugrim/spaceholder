@@ -5,7 +5,6 @@ import {
 import { enrichHTMLWithFactionIcons } from '../helpers/faction-display.mjs';
 import { anatomyManager } from '../anatomy-manager.mjs';
 import { getCoverageFace } from '../helpers/body-part-coverage.mjs';
-import { pickIcon } from '../helpers/icon-picker/icon-picker.mjs';
 import { migrateItemWeaponData } from '../documents/item.mjs';
 import { materialsManager } from '../helpers/damage/materials-manager.mjs';
 import {
@@ -668,32 +667,6 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
   }
 
   /**
-   * Иконка из библиотеки SVG (только поле `img` предмета).
-   * @private
-   */
-  async _onItemIconPickClick(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!this.isEditable) return;
-
-    const initialPath = String(this.item?.img ?? '').trim() || null;
-    const title = game.i18n?.localize?.('SPACEHOLDER.IconPicker.Title') ?? null;
-    const path = await pickIcon({ initialPath, defaultColor: '#ffffff', title: title || undefined });
-    if (!path) return;
-
-    try {
-      await this.item.update({ img: path });
-    } catch (e) {
-      console.error('SpaceHolder | item icon pick update failed', e);
-    }
-    try {
-      this.render(false);
-    } catch (_) {
-      /* ignore */
-    }
-  }
-
-  /**
    * Акцент шапки предмета по типу документа (детерминированный оттенок).
    * @param {string} itemType
    * @returns {string}
@@ -776,11 +749,6 @@ export class SpaceHolderBaseItemSheet extends foundry.applications.api.Handlebar
     const profileHandler = (this._onProfileImageClickBound ??= this._onProfileImageClick.bind(this));
     this.element?.querySelectorAll('img.profile-img[data-edit], img.profile-img').forEach((img) => {
       img.addEventListener('click', profileHandler);
-    });
-
-    const iconPickHandler = this._onItemIconPickClickBound ??= this._onItemIconPickClick.bind(this);
-    this.element?.querySelectorAll('[data-action="sh-icon-pick"]').forEach((btn) => {
-      btn.addEventListener('click', iconPickHandler);
     });
 
     // Повторно применяем активную вкладку после каждого рендера (как в листе персонажа)

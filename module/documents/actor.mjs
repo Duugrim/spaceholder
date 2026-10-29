@@ -17,6 +17,7 @@ import {
   injuryCategoryForPart,
 } from '../helpers/anatomy-groups.mjs';
 import { buildProjectileApplications, composeProjectileApplications } from './item.mjs';
+import { hiddenActorTypes, withoutHiddenTypes } from '../helpers/integration-registry.mjs';
 
 /** Modifier target ids renamed over time → current id. */
 const LEGACY_MODIFIER_TARGET_IDS = Object.freeze({
@@ -70,11 +71,27 @@ function _sanitizeAimingArcSystemData(systemData) {
   systemData.aimingArc = aimingArc;
 }
 
+/** Foundry's base document type (`CONST.BASE_DOCUMENT_TYPE`): never offered for creation. */
+const BASE_DOCUMENT_TYPE = 'base';
+
 /**
  * Extend the base Actor document by defining a custom roll data structure which is ideal for the Simple system.
  * @extends {Actor}
  */
 export class SpaceHolderActor extends Actor {
+  /**
+   * The create dialog without the actor types that integrating packages hid
+   * (`CONFIG.SPACEHOLDER.hiddenActorTypes`, e.g. a faction type the package does not use in this system).
+   * @override
+   */
+  static async createDialog(data = {}, createOptions = {}, dialogOptions = {}, renderOptions = {}) {
+    // The types the core dialog would offer: all but the base type (`CONST.BASE_DOCUMENT_TYPE`), as core does.
+    const offered = dialogOptions?.types ?? this.TYPES.filter((type) => type !== BASE_DOCUMENT_TYPE);
+    const allowed = withoutHiddenTypes(offered, hiddenActorTypes);
+    const options = allowed ? { ...dialogOptions, types: allowed } : dialogOptions;
+    return super.createDialog(data, createOptions, options, renderOptions);
+  }
+
   /** @override */
   prepareBaseData() {
     // CRITICAL: must invoke super to run Foundry v14's `_clearData`, which

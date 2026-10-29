@@ -296,6 +296,28 @@ const oneBody = (opts) => ({ bodyParts: { body: part('body', opts) } });
   assert('P2: without bluntToParent the neck is untouched', !none.bodyDamageBySlot.neck);
 }
 
+/* ================================================================== *
+ *  7. Tags: the pellets of a volley, through armour and tissue         *
+ * ================================================================== */
+
+{
+  const anatomy = { bodyParts: { chest: part('chest') } };
+  const pellet = (tag, energy) => ({ type: 'ballistic', damage: 10, armorPen: 1, hardness: 1, energy, tag });
+  const res = resolveBodyTraversal({
+    anatomy,
+    startSlotRef: 'chest',
+    applications: [{ mode: 'parallel', items: [pellet(0, 40), pellet(1, 30), pellet(2, 1)] }],
+    armorBySlot: { chest: [{ itemId: 'vest', coverageIdx: 0, layers: [makeLayer('steel-plate', 1)] }] },
+    resolveMaterial,
+    random: rng(0.5),
+  });
+  const armour = res.trace.filter((e) => e.phase === 'entry' && (e.kind === 'penetrate' || e.kind === 'hold'));
+  const tissue = res.trace.filter((e) => e.kind === 'tissue');
+  assert('T1: the events of the armour are labelled by pellet (0 and 1 get through the plate, 2 is held)',
+    armour.map((e) => `${e.kind}:${e.tag}`).join() === 'penetrate:0,penetrate:1,hold:2', armour.map((e) => `${e.kind}:${e.tag}`));
+  assert('T2: the tissue events carry the tag of the pellet that reached it', tissue.map((e) => e.tag).join() === '0,1', tissue.map((e) => e.tag));
+}
+
 if (failed) {
   console.error(`\n${failed} assertion(s) failed.`);
   process.exit(1);

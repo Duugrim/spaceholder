@@ -114,16 +114,19 @@ const POLICE_KIT = [
   { prefix: 'SH_Wear_helm-heavy_', equipped: true },
 ];
 
-/** Fighters: side, name, cell (token top-left), loadout (indices for `attachTo` count from 0). */
+/**
+ * Fighters: side, name, cell (token top-left), look (the point in cells the fighter faces: the token's
+ * `tokenpointerDirection` is derived from it), loadout (indices for `attachTo` count from 0).
+ */
 const FIGHTERS = [
   // heroes — badly equipped: mostly no armour, a medium vest at most
-  { key: 'hero-glock', side: 'heroes', name: 'Герой (Глок)', cell: [4, 9], bio: 'Глок, без брони.', loadout: [
+  { key: 'hero-glock', side: 'heroes', name: 'Герой (Глок)', cell: [4, 9], look: [8, 5], bio: 'Глок, без брони.', loadout: [
     { prefix: 'SH_Wpn_glock_', held: true },
     { prefix: 'SH_Ammo_9mm_mag_s_', attachTo: 0 },
     { prefix: 'SH_Ammo_9mm_mag_s_', quantity: 2 },
     { prefix: 'SH_Wear_casual_', equipped: true },
   ] },
-  { key: 'hero-shotgun', side: 'heroes', name: 'Герой (дробовик)', cell: [8, 9], bio: 'Помповый дробовик (дробь, есть пули), средний жилет.', loadout: [
+  { key: 'hero-shotgun', side: 'heroes', name: 'Герой (дробовик)', cell: [8, 9], look: [11.5, 6.5], bio: 'Помповый дробовик (дробь, есть пули), средний жилет.', loadout: [
     { prefix: 'SH_Wpn_pump_', held: true },
     { prefix: 'SH_Ammo_12ga-buck_round_', quantity: 6, attachTo: 0 },
     { prefix: 'SH_Ammo_12ga-buck_round_', quantity: 1, attachTo: 0, chamber: true },
@@ -132,7 +135,7 @@ const FIGHTERS = [
     { prefix: 'SH_Wear_street_', equipped: true },
     { prefix: 'SH_Wear_vest-mid_', equipped: true },
   ] },
-  { key: 'hero-revolver', side: 'heroes', name: 'Герой (револьвер)', cell: [5, 12], bio: 'Револьвер .44, лёгкий жилет.', loadout: [
+  { key: 'hero-revolver', side: 'heroes', name: 'Герой (револьвер)', cell: [5, 12], look: [10, 16], bio: 'Револьвер .44, лёгкий жилет.', loadout: [
     { prefix: 'SH_Wpn_revolver44_', held: true },
     { prefix: 'SH_Ammo_44mag_round_', quantity: 6, attachTo: 0 },
     { prefix: 'SH_Ammo_44mag_round_', quantity: 1, attachTo: 0, chamber: true },
@@ -140,14 +143,14 @@ const FIGHTERS = [
     { prefix: 'SH_Wear_work_', equipped: true },
     { prefix: 'SH_Wear_vest-light_', equipped: true },
   ] },
-  { key: 'hero-knife', side: 'heroes', name: 'Герой (нож)', cell: [11, 12], bio: 'Нож в руке, Глок на поясе, без брони.', loadout: [
+  { key: 'hero-knife', side: 'heroes', name: 'Герой (нож)', cell: [11, 12], look: [16.5, 12.5], bio: 'Нож в руке, Глок на поясе, без брони.', loadout: [
     { prefix: 'SH_Wpn_knife_', held: true },
     { prefix: 'SH_Wpn_glock_' },
     { prefix: 'SH_Ammo_9mm_mag_s_', attachTo: 1 },
     { prefix: 'SH_Wear_casual_', equipped: true },
   ] },
   // bandits — everyone in leather at least, some in heavy armour
-  { key: 'bandit-boss', side: 'bandits', name: 'Главарь (АК)', cell: [7, 3], bio: 'АК, кожанка, тяжёлый жилет, средняя каска. Стоит за стойкой.', loadout: [
+  { key: 'bandit-boss', side: 'bandits', name: 'Главарь (АК)', cell: [7, 3], look: [4.5, 9.5], bio: 'АК, кожанка, тяжёлый жилет, средняя каска. Стоит за стойкой.', loadout: [
     { prefix: 'SH_Wpn_ak_', held: true },
     { prefix: 'SH_Ammo_7.62x39_mag_s_', attachTo: 0 },
     { prefix: 'SH_Ammo_7.62x39_mag_s_', quantity: 2 },
@@ -155,27 +158,27 @@ const FIGHTERS = [
     { prefix: 'SH_Wear_vest-heavy_', equipped: true },
     { prefix: 'SH_Wear_helm-mid_', equipped: true },
   ] },
-  { key: 'bandit-uzi', side: 'bandits', name: 'Бандит (УЗИ)', cell: [14, 5], bio: 'УЗИ, кожанка.', loadout: [
+  { key: 'bandit-uzi', side: 'bandits', name: 'Бандит (УЗИ)', cell: [14, 5], look: [8.5, 9.5], bio: 'УЗИ, кожанка.', loadout: [
     { prefix: 'SH_Wpn_uzi_', held: true },
     { prefix: 'SH_Ammo_9mm_mag_s_', attachTo: 0 },
     { prefix: 'SH_Ammo_9mm_mag_s_', quantity: 2 },
     { prefix: 'SH_Wear_leather-jacket_', equipped: true },
   ] },
-  { key: 'bandit-sawed', side: 'bandits', name: 'Бандит (обрез)', cell: [16, 12], bio: 'Обрез (дробь), кожанка. У двери в коридор.', loadout: [
+  { key: 'bandit-sawed', side: 'bandits', name: 'Бандит (обрез)', cell: [16, 12], look: [11.5, 12.5], bio: 'Обрез (дробь), кожанка. У двери в коридор.', loadout: [
     { prefix: 'SH_Wpn_sawed_', held: true },
     { prefix: 'SH_Ammo_12ga-buck_round_', quantity: 2, attachTo: 0 },
     { prefix: 'SH_Ammo_12ga-buck_round_', quantity: 1, attachTo: 0, chamber: true },
     { prefix: 'SH_Ammo_12ga-buck_round_', quantity: 10 },
     { prefix: 'SH_Wear_leather-jacket_', equipped: true },
   ] },
-  { key: 'bandit-thug', side: 'bandits', name: 'Громила (булава)', cell: [11, 6], abilities: { str: 130, end: 120 }, bio: 'Булава, Глок на поясе, кожанка, тяжёлый жилет. СИЛ 130, ВЫН 120.', loadout: [
+  { key: 'bandit-thug', side: 'bandits', name: 'Громила (булава)', cell: [11, 6], look: [8.5, 9.5], abilities: { str: 130, end: 120 }, bio: 'Булава, Глок на поясе, кожанка, тяжёлый жилет. СИЛ 130, ВЫН 120.', loadout: [
     { prefix: 'SH_Wpn_mace_', held: true },
     { prefix: 'SH_Wpn_glock_' },
     { prefix: 'SH_Ammo_9mm_mag_s_', attachTo: 1 },
     { prefix: 'SH_Wear_leather-jacket_', equipped: true },
     { prefix: 'SH_Wear_vest-heavy_', equipped: true },
   ] },
-  { key: 'bandit-ap', side: 'bandits', name: 'Бандит (Глок ББ)', cell: [21, 4], bio: 'Глок с бронебойными патронами, кожанка, лёгкий жилет. На кухне — стреляет через гипсокартон.', loadout: [
+  { key: 'bandit-ap', side: 'bandits', name: 'Бандит (Глок ББ)', cell: [21, 4], look: [8.5, 9.5], bio: 'Глок с бронебойными патронами, кожанка, лёгкий жилет. На кухне — стреляет через гипсокартон.', loadout: [
     { prefix: 'SH_Wpn_glock_', held: true },
     { prefix: 'SH_Ammo_9mm-ap_mag_s_', attachTo: 0 },
     { prefix: 'SH_Ammo_9mm-ap_mag_s_', quantity: 1 },
@@ -183,7 +186,7 @@ const FIGHTERS = [
     { prefix: 'SH_Wear_vest-light_', equipped: true },
   ] },
   // police — combat armour, assault squad
-  { key: 'police-lead', side: 'police', name: 'Командир (AR)', cell: [5, 20], bio: 'AR, Глок, боевая броня, тяжёлый шлем.', loadout: [
+  { key: 'police-lead', side: 'police', name: 'Командир (AR)', cell: [5, 20], look: [10, 16], bio: 'AR, Глок, боевая броня, тяжёлый шлем.', loadout: [
     { prefix: 'SH_Wpn_ar_', held: true },
     { prefix: 'SH_Ammo_5.56_mag_s_', attachTo: 0 },
     { prefix: 'SH_Ammo_5.56_mag_s_', quantity: 3 },
@@ -191,27 +194,36 @@ const FIGHTERS = [
     { prefix: 'SH_Ammo_9mm_mag_s_', attachTo: 3 },
     ...POLICE_KIT,
   ] },
-  ...[[1, [7, 20]], [2, [12, 20]], [3, [27, 10]]].map(([n, cell]) => ({
-    key: `police-ar-${n}`, side: 'police', name: `Штурмовик ${n} (AR)`, cell, bio: 'AR, боевая броня, тяжёлый шлем.', loadout: [
+  ...[[1, [7, 20], [5, 16]], [2, [12, 20], [10.5, 16]], [3, [27, 10], [26, 9.5]]].map(([n, cell, look]) => ({
+    key: `police-ar-${n}`, side: 'police', name: `Штурмовик ${n} (AR)`, cell, look, bio: 'AR, боевая броня, тяжёлый шлем.', loadout: [
       { prefix: 'SH_Wpn_ar_', held: true },
       { prefix: 'SH_Ammo_5.56_mag_s_', attachTo: 0 },
       { prefix: 'SH_Ammo_5.56_mag_s_', quantity: 3 },
       ...POLICE_KIT,
     ],
   })),
-  { key: 'police-saiga', side: 'police', name: 'Штурмовик 4 (Сайга)', cell: [14, 20], bio: 'Сайга (пули, есть магазины дроби), боевая броня, тяжёлый шлем.', loadout: [
+  { key: 'police-saiga', side: 'police', name: 'Штурмовик 4 (Сайга)', cell: [14, 20], look: [15, 16], bio: 'Сайга (пули, есть магазины дроби), боевая броня, тяжёлый шлем.', loadout: [
     { prefix: 'SH_Wpn_saiga_', held: true },
     { prefix: 'SH_Ammo_12ga-slug_mag_s_', attachTo: 0 },
     { prefix: 'SH_Ammo_12ga-buck_mag_s_', quantity: 2 },
     ...POLICE_KIT,
   ] },
-  { key: 'police-p90', side: 'police', name: 'Штурмовик 5 (P90)', cell: [27, 8], bio: 'P90, боевая броня, тяжёлый шлем. У заднего выхода.', loadout: [
+  { key: 'police-p90', side: 'police', name: 'Штурмовик 5 (P90)', cell: [27, 8], look: [26, 9.5], bio: 'P90, боевая броня, тяжёлый шлем. У заднего выхода.', loadout: [
     { prefix: 'SH_Wpn_p90_', held: true },
     { prefix: 'SH_Ammo_5.7_mag_s_', attachTo: 0 },
     { prefix: 'SH_Ammo_5.7_mag_s_', quantity: 2 },
     ...POLICE_KIT,
   ] },
 ];
+
+/**
+ * The token facing the system reads (`flags.spaceholder.tokenpointerDirection`, not Foundry's `rotation`):
+ * degrees, 0 = right, 90 = down, -90 = up; 5° steps, like the token rotator.
+ */
+function facingTowards(cell, look) {
+  const degrees = Math.atan2(look[1] - (cell[1] + 0.5), look[0] - (cell[0] + 0.5)) * (180 / Math.PI);
+  return Math.round(degrees / 5) * 5 || 0;
+}
 
 /* ---- backdrop ---------------------------------------------------- */
 
@@ -226,13 +238,13 @@ function barBackdropSvg() {
   const circle = (cx, cy, r, fill, extra = '') => out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" ${extra}/>`);
   const text = (x, y, s, size, fill, extra = '') => out.push(`<text x="${x}" y="${y}" font-family="Verdana, sans-serif" font-size="${size}" font-weight="bold" fill="${fill}" text-anchor="middle" ${extra}>${s}</text>`);
 
-  // ground: back lot, alley, sidewalk, road
+  // ground, back to front: back lot, alley, sidewalk (runs across the alley mouth), road, curb
   rect(0, 0, W, H, '#55524c');
+  rect(px(26), 0, px(6), px(17.5), '#4b4843');
   rect(0, px(16), W, px(1.5), '#9a958c');
   rect(0, px(17.5), W, H - px(17.5), '#3b3f45');
   for (let x = 100; x < W; x += 400) line(x, px(19.9), x + 220, px(19.9), '#d8d2a8', 12);
   line(0, px(17.5), W, px(17.5), '#6d6a64', 10);
-  rect(px(26), 0, px(6), px(17.5), '#4b4843');
 
   // floors
   rect(px(2), px(2), px(16), px(14), '#8a6a48');
@@ -294,11 +306,32 @@ function barBackdropSvg() {
   car(1150, 1800, '#e8e8e8', true);
   car(2050, 1980, '#7a2f2f', false);
 
-  // walls (drawn; the scene's walls do the work)
-  const wallStroke = { brick: ['#2a2420', 26], drywall: ['#4a403a', 12], door: ['#7a4e28', 14], heavyDoor: ['#5a3a1c', 18], window: ['#9fd3e6', 12], counter: null };
-  for (const [x1, y1, x2, y2, kind] of BAR_WALLS) {
-    const style = wallStroke[kind];
-    if (style) line(px(x1), px(y1), px(x2), px(y2), style[0], style[1], 'stroke-linecap="square"');
+  // walls (drawn; the scene's walls do the work). Painted back to front in fixed layers, never in list order,
+  // so every joint reads the same: partitions, exterior walls over their ends, then the openings on top.
+  const SOLID_PAINT = { drywall: { color: '#4a403a', width: 12 }, brick: { color: '#2a2420', width: 26 } };
+  // an opening is a frame in its host wall's colour (hides the host's square end caps) with the leaf or glass inset in it
+  const OPENING_PAINT = {
+    window: { leaf: '#9fd3e6', ratio: 0.4, inset: 0 },
+    door: { leaf: '#7a4e28', ratio: 0.62, inset: 3 },
+    heavyDoor: { leaf: '#5a3a1c', ratio: 0.78, inset: 3 },
+  };
+  const isHorizontal = (seg) => seg[1] === seg[3];
+  const sharesEnd = (a, b) => [[a[0], a[1]], [a[2], a[3]]].some(([x, y]) => (x === b[0] && y === b[1]) || (x === b[2] && y === b[3]));
+  const hostOf = (seg) => BAR_WALLS.find((other) => SOLID_PAINT[other[4]] && isHorizontal(other) === isHorizontal(seg) && sharesEnd(seg, other))?.[4] ?? 'brick';
+
+  for (const kind of ['drywall', 'brick']) {
+    const { color, width } = SOLID_PAINT[kind];
+    for (const [x1, y1, x2, y2] of BAR_WALLS.filter((seg) => seg[4] === kind)) line(px(x1), px(y1), px(x2), px(y2), color, width, 'stroke-linecap="square"');
+  }
+  for (const seg of BAR_WALLS) {
+    const paint = OPENING_PAINT[seg[4]];
+    if (!paint) continue;
+    const host = SOLID_PAINT[hostOf(seg)];
+    const [x1, y1, x2, y2] = seg.slice(0, 4).map(px);
+    const ux = Math.sign(x2 - x1);
+    const uy = Math.sign(y2 - y1);
+    line(x1, y1, x2, y2, host.color, host.width);
+    line(x1 + ux * paint.inset, y1 + uy * paint.inset, x2 - ux * paint.inset, y2 - uy * paint.inset, paint.leaf, Math.round(host.width * paint.ratio));
   }
 
   // labels
@@ -329,7 +362,7 @@ function factionDoc(sideKey, folder, sort) {
     img: 'icons/svg/combat.svg',
     system: {
       abilities: Object.fromEntries(['end', 'str', 'agi', 'cor', 'per', 'int', 'luc'].map((k) => [k, { value: 100 }])),
-      fLink: '', fColor: side.color, ppModifier: 1, ppSpends: [],
+      fLink: '', fColor: side.color,
       biography: `<p>Сторона сцены «${BAR.name}».</p>`,
     },
     prototypeToken: makePrototypeToken({ name: side.name, src: 'icons/svg/combat.svg', disposition: side.disposition }),
@@ -434,7 +467,7 @@ function buildBarAdventure() {
     texture: { ...actor.prototypeToken.texture },
     rotation: 0,
     hidden: false,
-    flags: {},
+    flags: { spaceholder: { tokenpointerDirection: facingTowards(spec.cell, spec.look) } },
   }));
 
   const scene = {

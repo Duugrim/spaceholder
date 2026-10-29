@@ -48,7 +48,8 @@ export function clockToHitFace(clock) {
  * - `stop` / `need` end the walk at the first token that is really hit, `next` keeps piercing
  *   until a wall.
  * Tokens behind passed walls get `details.carry`: the projectile (applications) that is left after
- * those walls.
+ * those walls, and `details.wallsBefore`: the wall events (`planWallPasses`) the projectile met on its way
+ * to this token since the previous one — the penetration view puts them in front of the token.
  *
  * @param {Array<{type: string, object?: any, point?: object, details?: object}>} collisions
  *   sorted by distance from the segment start
@@ -67,6 +68,7 @@ export function clockToHitFace(clock) {
 export function walkProjectileCollisions(collisions, onHit, passState, wallPlan = null, { judgeToken = null } = {}) {
   const reached = [];
   const firstOnly = onHit !== 'next';
+  let walked = -Infinity;
   for (const collision of collisions) {
     if (collision.type === 'wall') {
       const step = wallPlan?.stepFor?.(collision) ?? null;
@@ -87,6 +89,10 @@ export function walkProjectileCollisions(collisions, onHit, passState, wallPlan 
     }
     const carry = wallPlan?.carryAt?.(collision.distance) ?? null;
     if (carry) collision.details = { ...collision.details, carry };
+    const wallsBefore = (Array.isArray(wallPlan?.events) ? wallPlan.events : [])
+      .filter((event) => event.entryDistance > walked && event.entryDistance <= collision.distance + 1e-6);
+    if (wallsBefore.length) collision.details = { ...collision.details, wallsBefore };
+    if (Number.isFinite(collision.distance)) walked = collision.distance;
     reached.push(collision);
     if (firstOnly) break;
   }

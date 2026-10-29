@@ -9,6 +9,18 @@ import { appendCombatActionJournalLine } from './action-chat-journal.mjs';
 
 const MODULE_NS = 'spaceholder';
 
+/** Hook fired when an actor takes an action in combat (anything but a move); see `status-lifecycle.mjs`. */
+export const COMBAT_ACTION_HOOK = 'spaceholder.combatActionTaken';
+
+/**
+ * Tell the system that `actor` has just taken an action (its AP is spent, it is going to happen). Statuses
+ * that end on an action come off. Moves do not come through here.
+ * @param {{ actor: Actor, tokenDoc?: TokenDocument|null, actionId?: string }} action
+ */
+export function announceCombatAction({ actor, tokenDoc = null, actionId = '' }) {
+  Hooks.callAll(COMBAT_ACTION_HOOK, { actor, tokenDoc, actionId });
+}
+
 /** @returns {Combat|null} the started combat, if any */
 export function activeCombat() {
   return game?.combat?.started ? game.combat : null;
@@ -87,6 +99,7 @@ export async function logCombatAction({
     : combatant;
   const anchorActor = anchorCombatant?.actor || actor;
   const isReaction = !!(combat && combatant && activeTurnId && activeTurnId !== combatant.id);
+  if (combat && combatant) announceCombatAction({ actor, tokenDoc, actionId });
 
   let combatEventId = null;
   if (combat && combatant && game.spaceholder?.combatSessionManager?.logAction) {

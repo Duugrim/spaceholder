@@ -45,17 +45,18 @@ export const preloadHandlebarsTemplates = async function () {
     'systems/spaceholder/templates/item/parts/item-container.hbs',
     'systems/spaceholder/templates/item/parts/item-container-footer.hbs',
     'systems/spaceholder/templates/item/parts/item-material-attributes.hbs',
-    // Icon picker (ApplicationV2)
-    'systems/spaceholder/templates/icon-picker/icon-picker.hbs',
     // Damage tools
     'systems/spaceholder/templates/damage/armor-penetration-tester-app.hbs',
+    'systems/spaceholder/templates/damage/penetration-view.hbs',
+    'systems/spaceholder/templates/damage/penetration-overlay-card.hbs',
+    'systems/spaceholder/templates/damage/parts/penetration-group.hbs',
+    'systems/spaceholder/templates/damage/parts/penetration-flow.hbs',
     // Minigames
     'systems/spaceholder/templates/minigames/hack-minigame-app.hbs',
     'systems/spaceholder/templates/minigames/lockpick-minigame-app.hbs',
     // HUD: Hotbar faction selector
     'systems/spaceholder/templates/hud/hotbar-faction-ui.hbs',
     'systems/spaceholder/templates/hud/token-quick-hud.hbs',
-    'systems/spaceholder/templates/global-map/terrain-look-from.hbs',
     // GM actions
     'systems/spaceholder/templates/gm-actions/queue-dialog.hbs',
   ]);

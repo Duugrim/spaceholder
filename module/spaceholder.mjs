@@ -2,7 +2,7 @@
 import { SpaceHolderActor } from './documents/actor.mjs';
 import { SpaceHolderItem } from './documents/item.mjs';
 // Import sheet classes (Application V2)
-import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderLootSheet, SpaceHolderGlobalObjectSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
+import { SpaceHolderCharacterSheet, SpaceHolderNPCSheet, SpaceHolderLootSheet, SpaceHolderFactionSheet } from './sheets/actor-sheet.mjs';
 import { SpaceHolderItemSheet_Item, SpaceHolderItemSheet_Feature, SpaceHolderItemSheet_Spell, SpaceHolderItemSheet_Generic, SpaceHolderItemSheet_Material } from './sheets/item-sheet.mjs';
 // Import helper/utility classes and constants.
 import { preloadHandlebarsTemplates } from './helpers/templates.mjs';
@@ -12,38 +12,22 @@ import { anatomyManager } from './anatomy-manager.mjs';
 // Damage / armour system
 import { materialsManager, ensureLayerDefaults } from './helpers/damage/materials-manager.mjs';
 import { openArmorPenetrationTesterApp } from './helpers/damage/armor-penetration-tester-app.mjs';
+import { findPenetrationTrack, openPenetrationView } from './helpers/damage/penetration-view-app.mjs';
+import { PenetrationOverlay, registerPenetrationOverlaySettings } from './helpers/damage/penetration-overlay.mjs';
 import { WearableCoverageEditor } from './helpers/wearable-coverage-editor.mjs';
 // Token pointer integration
 import { TokenPointer, registerTokenPointerSettings, installTokenPointerHooks, installTokenPointerTabs } from './helpers/token-pointer.mjs';
 import { registerTokenRotatorSettings, installTokenRotator } from './helpers/token-rotator.mjs';
 import { registerSpaceholderSettingsMenus } from './helpers/settings-menus.mjs';
-// Icon library + picker
-import { registerIconLibrarySettings, getIconIndexCacheInfo as getIconLibraryCacheInfo, getIconIndex as getIconLibraryIndex } from './helpers/icon-library/icon-library.mjs';
-import {
-  registerIconLibraryMigrationSettings,
-  migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke,
-  migrateIconLibraryGeneratedSvgsInsetBackgroundStroke,
-} from './helpers/icon-library/icon-migrations.mjs';
 import { registerAbilityScaleMigrationSetting, migrateAbilityScale } from './helpers/ability-scale-migration.mjs';
-import { pickIcon } from './helpers/icon-picker/icon-picker.mjs';
-import { applyIconPathToActorOrToken, pickAndApplyIconToActorOrToken, promptPickAndApplyIconToActorOrToken } from './helpers/icon-picker/icon-apply.mjs';
-// User -> Factions mapping (used by timeline and other faction-aware features)
-import { installUserFactionsHooks, getUsersForToken as getUsersForTokenByFaction, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
+// User -> Factions mapping (sides in combat, item piles, sheet headers)
+import { installUserFactionsHooks, getUsersForFaction as getUsersForFactionByUuid, getUserFactionUuids as getUserFactionUuidsForUser, normalizeUuid as normalizeUuidValue } from './helpers/user-factions.mjs';
 // Journal Directory helpers
 import { installJournalDirectoryHooks } from './helpers/journal-directory.mjs';
 // Journal Check (workflow statuses)
-import { registerJournalCheckSettings, installJournalCheckHooks } from './helpers/journal-check.mjs';
-// Progression Points (PP)
-import { registerProgressionPointsSettings, installProgressionPointsHooks } from './helpers/progression-points.mjs';
-import { openProgressionPointsApp } from './helpers/progression-points-app.mjs';
+import { registerJournalCheckSettings, installJournalCheckHooks, getStatus as getJournalPageStatus } from './helpers/journal-check.mjs';
 // Journal Update Log window
 import { openJournalUpdateLogApp } from './helpers/journal-update-log-app.mjs';
-// Timeline V2
-import { registerTimelineV2Settings, installTimelineV2SocketHandlers, installTimelineV2Hooks } from './helpers/timeline-v2.mjs';
-import { openTimelineV2App, openTimelineV2CreateEventEditor } from './helpers/timeline-v2-app.mjs';
-// Events
-import { installEventsSocketHandlers, installEventsHooks } from './helpers/events.mjs';
-import { openEventsApp } from './helpers/events-app.mjs';
 // Aiming system integration - OLD SYSTEM DISABLED 2025-10-28
 // import { AimingSystem, registerAimingSystemSettings, installAimingSystemHooks } from './helpers/old-aiming-system.mjs';
 // import { injectAimingStyles } from './helpers/old-ray-renderer.mjs';
@@ -52,22 +36,15 @@ import { AimingManager } from './helpers/aiming-manager.mjs';
 import { DrawManager } from './helpers/draw-manager.mjs';
 // Shot manager for shot calculation
 import { ShotManager } from './helpers/shot-manager.mjs';
-// Influence manager for global objects influence zones
+// Influence manager: draws zones from the sources a connected package provides
 import { InfluenceManager } from './helpers/influence-manager.mjs';
 
-// NEW: Global map system (replacement for height/biome maps)
-import { GlobalMapProcessing } from './helpers/global-map/global-map-processing.mjs';
-import { GlobalMapRenderer } from './helpers/global-map/global-map-renderer.mjs';
-import { GlobalMapTools } from './helpers/global-map/global-map-tools.mjs';
-import { registerGlobalMapUI } from './helpers/global-map/global-map-ui.mjs';
-import { installGlobalMapSceneConfigHooks } from './helpers/global-map/global-map-scene-config.mjs';
 import { installWallConfigHooks } from './helpers/walls/wall-config.mjs';
 import { registerShotTrailSettings } from './helpers/shot-trail.mjs';
-import { installGlobalMapEdgeUiHooks } from './helpers/global-map/global-map-edge-ui.mjs';
-import { installGlobalMapFactionVision } from './helpers/global-map/global-map-faction-vision.mjs';
-import { createGlobalMapTerrain3D } from './helpers/global-map/terrain3d/terrain3d.mjs';
-// Hotbar: faction selector + PP indicator
-import { installHotbarFactionUiHooks } from './helpers/hotbar-faction-ui.mjs';
+// Hotbar: faction selector (packages add their buttons and counters)
+import { installHotbarFactionUiHooks, requestHotbarFactionRender } from './helpers/hotbar-faction-ui.mjs';
+import { hiddenActorTypes, tokenPointerOffTypes, createIntegrationApi } from './helpers/integration-registry.mjs';
+import { installAzimuthLink, warnIfAzimuthUnsupported } from './helpers/azimuth-link.mjs';
 import { installTokenQuickHudHooks, registerTokenQuickHudSettings } from './helpers/token-quick-hud.mjs';
 // import './helpers/old-aiming-socket-manager.mjs'; // Socket менеджер - DISABLED
 // Token Controls integration
@@ -106,12 +83,14 @@ import { installHackChatHooks } from './helpers/minigames/hack/hack-chat.mjs';
 import { installLockpickChatHooks } from './helpers/minigames/lockpick/lockpick-chat.mjs';
 import { installGmActions } from './helpers/gm-actions/index.mjs';
 import { installActorDeathSync } from './helpers/actor-death.mjs';
+import { installStatusLifecycle } from './helpers/status-lifecycle.mjs';
 import { MovementManager } from './helpers/actions/movement-manager.mjs';
 import { CombatSessionManager } from './helpers/combat/combat-session-manager.mjs';
 import { installTurnPickOverlay } from './helpers/combat/turn-pick-overlay.mjs';
 import { registerItemPilesShSettings, initializeItemPilesSh } from './helpers/item-piles-sh/index.mjs';
 import { ITEM_PILES_SH } from './helpers/item-piles-sh/constants.mjs';
 import { registerSpaceholderActiveEffectModels } from './helpers/register-active-effect-models.mjs';
+import { registerSpaceholderStatusEffects } from './helpers/status-effects.mjs';
 import {
   addItemToNestedStorage,
   extractNestedItemToActor,
@@ -138,21 +117,19 @@ import { coverageKey, getCoverageFace, parseCoverageKey } from './helpers/body-p
 
 Hooks.once('init', function () {
   registerSpaceholderActiveEffectModels();
+  registerSpaceholderStatusEffects();
 
   // Register SpaceHolder settings and menus early
-  registerIconLibrarySettings();
-  registerIconLibraryMigrationSettings();
   registerAbilityScaleMigrationSetting();
   registerTokenPointerSettings();
   registerTokenRotatorSettings();
   registerTokenControlButtons();
   registerSpaceholderSettingsMenus();
   registerJournalCheckSettings();
-  registerProgressionPointsSettings();
-  registerTimelineV2Settings();
   registerItemPilesShSettings();
   registerTokenQuickHudSettings();
   registerShotTrailSettings();
+  registerPenetrationOverlaySettings();
   registerHitQualitySettings();
   installTokenPointerTabs();
   // Legacy world anatomy keys: used only for one-time migration into world folder files
@@ -176,30 +153,15 @@ Hooks.once('init', function () {
     anatomyManager,
     materialsManager,
     openArmorPenetrationTester: openArmorPenetrationTesterApp,
+    // The layers a shot went through and what became of its energy in each (the id is the shot's `shot_…`)
+    openPenetrationView,
+    findPenetrationTrack,
     openJournalUpdateLogApp,
-    openProgressionPointsApp,
-    openTimelineV2App,
-    openTimelineV2CreateEventEditor,
-    openEventsApp,
-    // Icon library / picker
-    pickIcon,
-    applyIconPathToActorOrToken,
-    pickAndApplyIconToActorOrToken,
-    promptPickAndApplyIconToActorOrToken,
-    migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke: (opts = {}) => migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke(opts),
-    migrateIconLibraryGeneratedSvgsInsetBackgroundStroke: (opts = {}) => migrateIconLibraryGeneratedSvgsInsetBackgroundStroke(opts),
-    getIconLibraryIndex: (opts = {}) => getIconLibraryIndex(opts),
-    getIconLibraryCacheInfo: () => getIconLibraryCacheInfo(),
     // Abilities moved to the 100 scale (`dex` → `agi`); runs once per world on ready, callable by hand
     migrateAbilityScale: (opts = {}) => migrateAbilityScale(opts),
-    // Helper functions for influence zones
-    showInfluence: (debug = false) => game.spaceholder.influenceManager?.enable({ debug }),
-    hideInfluence: () => game.spaceholder.influenceManager?.disable(),
-    toggleInfluence: (debug = false) => game.spaceholder.influenceManager?.toggle({ debug }),
     // User -> Factions helpers
     getUserFactionUuids: (user) => getUserFactionUuidsForUser(user),
     getUsersForFaction: (factionUuid) => getUsersForFactionByUuid(factionUuid),
-    getUsersForToken: (tokenLike) => getUsersForTokenByFaction(tokenLike),
     normalizeUuid: (raw) => normalizeUuidValue(raw),
     // Actions system (MVP)
     collectActorActions: (actor, ctx = {}) => collectActorActions(actor, ctx),
@@ -230,15 +192,19 @@ Hooks.once('init', function () {
     endCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.endTurn?.(args),
     pickCombatTurn: (args = {}) => game.spaceholder.combatSessionManager?.pickTurn?.(args),
     undoCombatAction: (args = {}) => game.spaceholder.combatSessionManager?.undoLastAction?.(args),
-    // Global map helpers (new system)
-    openLookFromPoint: (opts = {}) => game.spaceholder.globalMapTerrain?.openLookFrom?.(opts),
     getSkillEffect: (actor, nodeId) => getSkillEffect(actor, nodeId),
     getSkillLevel: (actor, nodeId) => getSkillLevel(actor, nodeId),
     getSkillPath: (nodeId) => getSkillPath(nodeId),
     getGroupAbility: (actor, groupId) => getGroupAbility(actor, groupId),
     getAnatomyGroups: (actor) => getAnatomyGroups(actor),
     getGroupsByType: (actor, type) => getGroupsByType(actor, type),
-    getPartGroups: (actor, slotRef) => getPartGroups(actor, slotRef), 
+    getPartGroups: (actor, slotRef) => getPartGroups(actor, slotRef),
+    // Extension points for packages that work alongside the system (the Azimuth module)
+    integration: createIntegrationApi({
+      requestHotbarFactionRender,
+      getJournalPageStatus,
+      getInfluenceManager: () => game.spaceholder.influenceManager,
+    }),
     // DEPRECATED: Old height/biome map helpers - no longer used
     // (kept structure for reference during migration)
     // item-piles-sh API is attached in ready hook after bootstrap.
@@ -260,6 +226,10 @@ Hooks.once('init', function () {
   
   // Initialize Draw Manager
   game.spaceholder.drawManager = new DrawManager();
+
+  // Cards over the tokens a shot goes through (the penetration view in short)
+  game.spaceholder.penetrationOverlay = new PenetrationOverlay();
+  game.spaceholder.penetrationOverlay.install();
   
   // Initialize Shot Manager
   game.spaceholder.shotManager = new ShotManager();
@@ -276,52 +246,21 @@ Hooks.once('init', function () {
   // game.spaceholder.terrainFieldManager = new TerrainFieldManager();
   console.log('SpaceHolder | Old height/biome map systems DISABLED. Migration in progress.');
   
-  // NEW: Global map system
-  game.spaceholder.globalMapProcessing = new GlobalMapProcessing();
-  game.spaceholder.globalMapRenderer = new GlobalMapRenderer();
-  game.spaceholder.globalMapTools = new GlobalMapTools(game.spaceholder.globalMapRenderer, game.spaceholder.globalMapProcessing);
-  game.spaceholder.globalMapTerrain = createGlobalMapTerrain3D();
-  game.spaceholder.globalMapTerrain.install();
-  
-  // Initialize asynchronously (load configs)
-  (async () => {
-    await game.spaceholder.globalMapProcessing.initialize();
-    await game.spaceholder.globalMapRenderer.initialize();
-    console.log('SpaceHolder | Global map system initialized');
-  })();
-  
-  // Register global map UI controls
-  Hooks.on('getSceneControlButtons', (controls) => {
-    registerGlobalMapUI(controls, game.spaceholder);
-  });
-  // Scene config hooks for global map flag
-  installGlobalMapSceneConfigHooks();
+  // Wall config (shot penetration)
   installWallConfigHooks();
-  // Edge UI (fixed panel) for global map scenes
-  installGlobalMapEdgeUiHooks();
-  // Global Map: vision sources by faction instead of OBSERVER
-  installGlobalMapFactionVision();
   // Install Token Pointer hooks
   installTokenPointerHooks();
   // Install Token Rotator keybindings and hooks
   installTokenRotator();
   // Install User -> Factions hooks (UserConfig UI)
   installUserFactionsHooks();
-  // Hotbar: faction selector + PP indicator
+  // Hotbar: faction selector
   installHotbarFactionUiHooks();
   installTokenQuickHudHooks();
   // Install Journal Directory hooks (Clear Journals button)
   installJournalDirectoryHooks();
   // Install Journal Check hooks (statuses + UI)
   installJournalCheckHooks();
-  // Install Progression Points hooks (PP)
-  installProgressionPointsHooks();
-  // Timeline V2: socket + hooks
-  installTimelineV2SocketHandlers();
-  installTimelineV2Hooks();
-  // Events: socket + hooks
-  installEventsSocketHandlers();
-  installEventsHooks();
   // Install Aiming System hooks - OLD SYSTEM DISABLED
   // installAimingSystemHooks();
   // Install Token Controls hooks
@@ -330,6 +269,12 @@ Hooks.once('init', function () {
 
   // Add custom constants for configuration.
   CONFIG.SPACEHOLDER = SPACEHOLDER;
+  // Sets that integrating packages add actor types to (same objects as `game.spaceholder.integration`)
+  CONFIG.SPACEHOLDER.hiddenActorTypes = hiddenActorTypes;
+  CONFIG.SPACEHOLDER.tokenPointerOffTypes = tokenPointerOffTypes;
+
+  // The Azimuth module (map, timeline, events): connect once every package has initialised
+  Hooks.once('setup', () => installAzimuthLink());
 
   /**
    * Set an initiative formula for the system
@@ -369,11 +314,6 @@ Hooks.once('init', function () {
     types: ['loot'],
     makeDefault: true,
     label: 'SPACEHOLDER.SheetLabels.Loot',
-  });
-  foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderGlobalObjectSheet, {
-    types: ['globalobject'],
-    makeDefault: true,
-    label: 'SPACEHOLDER.SheetLabels.GlobalObject',
   });
   foundry.documents.collections.Actors.registerSheet('spaceholder', SpaceHolderFactionSheet, {
     types: ['faction'],
@@ -956,21 +896,6 @@ Hooks.once('ready', async function () {
     console.error('SpaceHolder | charge personal-time hooks failed', e);
   }
 
-  // Migrate existing baked icons to match current SVG bake behavior.
-  // (GM-only; best-effort; runs once per world)
-  try {
-    if (game?.user?.isGM) {
-      setTimeout(() => {
-        (async () => {
-          try { await migrateIconLibraryGeneratedSvgsRemoveNonScalingStroke(); } catch (_) { /* ignore */ }
-          try { await migrateIconLibraryGeneratedSvgsInsetBackgroundStroke(); } catch (_) { /* ignore */ }
-        })();
-      }, 0);
-    }
-  } catch (_) {
-    // ignore
-  }
-
   // Initialize anatomy manager
   try {
     await anatomyManager.initialize();
@@ -1037,6 +962,8 @@ Hooks.once('ready', async function () {
     ui.notifications.error('Failed to initialize shot manager. Check console for details.');
   }
   
+  warnIfAzimuthUnsupported();
+
   // Initialize influence manager
   try {
     game.spaceholder.influenceManager.initialize();
@@ -1071,6 +998,7 @@ Hooks.once('ready', async function () {
   installLockpickChatHooks();
   installGmActions();
   installActorDeathSync();
+  installStatusLifecycle();
   (async () => {
     for (const a of game.actors ?? []) {
       if (a?.type !== "character" || !a.isOwner) continue;

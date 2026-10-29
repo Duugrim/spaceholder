@@ -43,6 +43,16 @@
           }
         ],
         "face": "back"
+      },
+      {
+        "slotRef": "lowerTorso",
+        "layers": [
+          {
+            "material": "kevlar",
+            "thickness": 1
+          }
+        ],
+        "face": "back"
       }
     ],
     "defaultActions": {

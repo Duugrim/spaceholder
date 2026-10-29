@@ -1,6 +1,8 @@
 // Token Rotator helper for SpaceHolder system
 // Implements rotation of tokens by holding a hotkey and moving the cursor (inspired by Alternative Rotation)
 
+import { isTokenPointerOffType } from './integration-registry.mjs';
+
 const MODULE_NS = 'spaceholder';
 const PREF = 'tokenrotator';
 const TAU = Math.PI * 2;
@@ -113,7 +115,7 @@ function updateRotations() {
           const fp = tok.document.getFlag('spaceholder', 'tokenpointer') ?? {};
           const actorType = tok.actor?.type ?? tok.document?.actor?.type ?? null;
           const hasMode = fp.mode !== undefined && fp.mode !== null;
-          const fallbackMode = actorType === 'globalobject' ? 0 : (tp?.mode ?? 2);
+          const fallbackMode = isTokenPointerOffType(actorType) ? 0 : (tp?.mode ?? 2);
           const mode = Number(hasMode ? fp.mode : fallbackMode);
           if (mode === 0) tok.tokenPointerIndicator.graphics.visible = false;
           else if (mode === 1) tok.tokenPointerIndicator.graphics.visible = !!tok.hover;

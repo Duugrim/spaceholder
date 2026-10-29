@@ -67,6 +67,24 @@
           }
         ],
         "face": "back"
+      },
+      {
+        "slotRef": "lowerTorso",
+        "layers": [
+          {
+            "material": "steel-plate",
+            "thickness": 6
+          },
+          {
+            "material": "kevlar",
+            "thickness": 1
+          },
+          {
+            "material": "foam",
+            "thickness": 4
+          }
+        ],
+        "face": "back"
       }
     ],
     "defaultActions": {

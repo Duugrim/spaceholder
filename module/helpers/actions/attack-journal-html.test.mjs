@@ -43,33 +43,28 @@ function assert(label, cond, detail) {
 
 const renderApChip = (ap) => `<span class="chip">${ap}</span>`;
 const render = (log, extra = {}) => renderAttackRowHtml({ id: log.id, kind: 'attack', label: 'Attack: AK-74', attack: log, ...extra }, { renderApChip });
+const buttons = (html) => [...html.matchAll(/data-action="sh-journal-open-penetration" data-shot-id="([^"]+)"/g)].map((m) => m[1]);
+
+const hit = (name, over = {}) => ({
+  tokenUuid: `Token.${name}`, name, kind: 'line', outcome: 'hit', clock: 3, centrality: 0.82, energyScale: 1,
+  quality: 'full', qualityLabel: 'full hit', partName: 'Torso', damage: [{ type: 'ballistic', amount: 12 }], ...over,
+});
 
 /* -------------------------------------------- */
-/*  A burst: hits on the orc (full, crit, glancing), one on a bandit, one fly-past */
+/*  A burst: several shots                      */
 /* -------------------------------------------- */
 
 const log = createAttackLog({ weapon: { name: 'AK-74' }, lineName: 'Barrel', modeName: 'Burst', fireMode: 'burst' });
 addShot(log, {
-  apCost: 15,
-  baseApCost: 20,
+  apCost: 15, baseApCost: 20, ids: ['shot_1a'],
   luck: { zone: 'green', zoneLabel: 'Green zone', confidence: 5, clamped: false },
   spread: { deltaDeg: 0.4, maxDeg: 1.5 },
-  impacts: [{
-    tokenUuid: 'Token.o', name: 'Orc <b>Boss</b>', kind: 'line', outcome: 'hit', clock: 3, centrality: 0.82, energyScale: 1,
-    quality: 'full', qualityLabel: 'full hit', crit: false, partName: 'Torso', damage: [{ type: 'pierce', amount: 12 }],
-  }],
+  impacts: [hit('Orc <b>Boss</b>', { shotId: 'shot_1a' })],
 });
 addShot(log, {
-  apCost: 6,
-  baseApCost: 8,
+  apCost: 6, baseApCost: 8, ids: ['shot_2a', 'shot_2b'],
   passes: ['Crate · confidence 1 (Red zone) is not above resistance 1 (in combat) — flies past'],
-  walls: ['Concrete 30: penetrated'],
-  impacts: [
-    { tokenUuid: 'Token.o', name: 'Orc <b>Boss</b>', kind: 'line', outcome: 'hit', clock: 4, centrality: 0.3, energyScale: 0.4, quality: 'glancing', qualityLabel: 'glancing', crit: false, partName: 'Arm', damage: [] },
-    { tokenUuid: 'Token.o', name: 'Orc <b>Boss</b>', kind: 'line', outcome: 'hit', clock: 12, centrality: 0.97, energyScale: 1, quality: 'crit', qualityLabel: 'crit', crit: true, pickedGroup: 'Head', partName: 'Skull', organs: ['Brain'], damage: [{ type: 'pierce', amount: 9 }] },
-    { tokenUuid: 'Token.o', name: 'Orc <b>Boss</b>', kind: 'line', outcome: 'hit', clock: 5, partName: 'Leg', damage: [{ type: 'cutting', amount: 3 }] },
-    { tokenUuid: 'Token.b', name: 'Bandit', kind: 'area', outcome: 'area', clock: 9, coverage: 0.5, coverageMode: 'proportional', effectScale: 0.5, queued: true, partName: 'Leg' },
-  ],
+  impacts: [hit('Orc <b>Boss</b>', { shotId: 'shot_2a' }), hit('Orc <b>Boss</b>', { shotId: 'shot_2a', clock: 12, crit: true, pickedGroup: 'Head' }), hit('Bandit', { shotId: 'shot_2b', kind: 'area', outcome: 'area', queued: true })],
 });
 addShot(log, { apCost: 6, baseApCost: 8, impacts: [] });
 
@@ -77,49 +72,43 @@ const html = render(log);
 
 assert('the row is an attack row with the label', html.includes('spaceholder-action-journal__row--attack') && html.includes('Attack: AK-74'));
 assert('the AP chip carries the total', html.includes('<span class="chip">27</span>'), html.match(/chip">\d+/g));
-assert('the summary line has the mode and the totals', html.includes('Barrel / Burst · Shots: 3 · Hits: 5'), html.match(/attack-meta">[^<]*/)?.[0]);
+assert('the summary line has the mode and the totals', html.includes('Barrel / Burst · Shots: 3 · Hits: 4'), html.match(/attack-meta">[^<]*/)?.[0]);
 assert('targets: names escaped, hit counts shown',
-  html.includes('Orc &lt;b&gt;Boss&lt;/b&gt;') && !html.includes('<b>Boss</b>') && html.includes('×4') && html.includes('Bandit') && html.includes('×1'));
-assert('hit parameters sit in a collapsed panel',
-  html.includes('Shot 1 · from 3 o&#39;clock') || html.includes("Shot 1 · from 3 o'clock"));
-assert('hit line: centrality, the energy that reached the target and the quality', html.includes('centrality 0.82 · energy ×1 (full hit)'));
-assert('hit line: a glancing hit shows the energy it lost', html.includes('centrality 0.3 · energy ×0.4 (glancing)'));
-assert('hit line: a crit says so and which group was picked', html.includes('(crit) · picked: Head · Skull: 9 pierce'));
-assert('hit line: a blow with no centrality has no quality part', html.includes('Shot 2 · from 5 o&#39;clock · Leg: 3 cutting') || html.includes("Shot 2 · from 5 o'clock · Leg: 3 cutting"));
-assert('hit line: the part and the damage that reached it', html.includes('Torso: 12 pierce'));
-assert('a hit with an empty damage list says there was no wound', html.includes('Arm: no wound'));
-assert('a hit that reached an organ names it', html.includes('Skull: 9 pierce · organ hit: Brain'), html.match(/Skull[^<]*/)?.[0]);
-assert('an area hit shows coverage and mode', html.includes('AoE') && html.includes('coverage 50% · proportional · effect ×0.5'));
-assert('damage waiting for the GM is marked', html.includes('awaits the GM'));
-assert('every panel starts collapsed', (html.match(/data-collapsed="1"/g) ?? []).length >= 3 && !html.includes('data-collapsed="0"'));
-assert('every toggle names an existing panel',
-  [...html.matchAll(/data-target="([^"]+)"/g)].every(([, id]) => html.includes(`id="${id}"`)));
-assert('the shots panel lists every shot with its AP',
-  html.includes('Shot 1 · hits: 1') && html.includes('Shot 3 · miss') && html.includes('attack-shot-ap">15<'));
-assert('the shot diagnostics are kept: luck, spread, fly-past, walls',
-  html.includes('Confidence: Green zone 5') && html.includes('Spread: +0.4° / 1.5°') && html.includes('flies past') && html.includes('Concrete 30: penetrated'));
+  html.includes('Orc &lt;b&gt;Boss&lt;/b&gt;') && !html.includes('<b>Boss</b>') && html.includes('×3') && html.includes('Bandit') && html.includes('×1'));
+assert('the dump of the hits and of the shots is not in the journal any more (it is in the penetration view)',
+  !/centrality|energy ×|o'clock|Spread|Confidence|flies past|picked|awaits the GM|Show hits/i.test(html), html.match(/centrality|energy ×|o'clock|Spread|Confidence|flies past|picked|awaits the GM|Show hits/i));
+assert('a target has no panel of hits to open', !html.includes('attack-hits') && (html.match(/data-target="/g) ?? []).length === 1, html.match(/data-target="[^"]+"/g));
+assert('several shots: the chevron opens the list of shots, collapsed', html.includes('toggle--chevron') && html.includes('title="Show shots"') && html.includes('data-collapsed="1"') && !html.includes('data-collapsed="0"'));
+assert('the shots panel lists every shot with its hits and AP',
+  html.includes('Shot 1 · hits: 1') && html.includes('Shot 2 · hits: 3') && html.includes('Shot 3 · miss') && html.includes('attack-shot-ap">15<'), html.match(/attack-shot-title">[^<]*/g));
+assert('one button per shot: it names the first ray, a shot with several rays still has one', JSON.stringify(buttons(html)) === JSON.stringify(['shot_1a', 'shot_2a']), buttons(html));
+assert('a shot without a ray to open has no button but is listed', html.includes('Shot 3 · miss'));
+assert('the button is named, no instruction', html.includes('title="Penetration"') && html.includes('aria-label="Penetration"') && html.includes('fa-layer-group'));
+assert('the toggle names an existing panel', [...html.matchAll(/data-target="([^"]+)"/g)].every(([, id]) => html.includes(`id="${id}"`)));
 assert('panel ids are unique', (() => {
   const ids = [...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   return new Set(ids).size === ids.length;
 })());
 
 /* -------------------------------------------- */
-/*  A bullet that went through the first target */
+/*  One shot: the button is in the row          */
 /* -------------------------------------------- */
 
 {
-  const through = createAttackLog({ weapon: { name: 'Anti-materiel rifle' } });
-  addShot(through, {
-    apCost: 20,
-    impacts: [
-      { tokenUuid: 'Token.a', name: 'Guard', kind: 'line', outcome: 'hit', clock: 12, centrality: 0.8, energyScale: 1, quality: 'full', qualityLabel: 'full hit', partName: 'Torso', damage: [{ type: 'ballistic', amount: 240.6 }], exit: 39.43 },
-      { tokenUuid: 'Token.b', name: 'Clerk', kind: 'line', outcome: 'hit', clock: 12, centrality: 0.7, energyScale: 1, quality: 'full', qualityLabel: 'full hit', partName: 'Torso', damage: [{ type: 'ballistic', amount: 36.08 }], through: 'Guard' },
-    ],
-  });
-  const out = render(through);
-  assert('a bullet that went through: both targets are in the summary', out.includes('Guard') && out.includes('Clerk') && out.includes('Hits: 2'), out.match(/attack-meta">[^<]*/)?.[0]);
-  assert('hit line: the target the bullet left shows what went on', out.includes('Torso: 240.6 ballistic · the bullet goes on: 39.43'), out.match(/Torso: 240[^<]*/)?.[0]);
-  assert('hit line: the target behind says which one the bullet came through', out.includes('through Guard · Torso: 36.08 ballistic'), out.match(/through Guard[^<]*/)?.[0]);
+  const single = createAttackLog({ weapon: { name: 'Pistol' } });
+  addShot(single, { apCost: 12, ids: ['shot_only'], impacts: [hit('Guard', { shotId: 'shot_only' })] });
+  const out = render(single);
+  assert('one shot: the button is in the row, no chevron and no panel', JSON.stringify(buttons(out)) === JSON.stringify(['shot_only'])
+    && out.includes('spaceholder-action-journal__tools"><button') && !out.includes('data-target') && !out.includes('attack-shots'), out.match(/__tools">[^]{0,120}/)?.[0]);
+  assert('one shot: the summary is still there', out.includes('Shots: 1 · Hits: 1') && out.includes('Guard') && out.includes('×1'));
+
+  const older = createAttackLog({ weapon: { name: 'Pistol' } });
+  addShot(older, { apCost: 12, tracks: [{ v: 1, shotId: 'shot_old', groups: [{ kind: 'wall', stages: [{ kind: 'wall', verdict: 'hold', name: 'W', items: [] }] }] }], impacts: [] });
+  assert('an entry without ids is opened by the ray of its track', JSON.stringify(buttons(render(older))) === JSON.stringify(['shot_old']), buttons(render(older)));
+
+  const bare = createAttackLog({ weapon: { name: 'Pistol' } });
+  addShot(bare, { apCost: 12, impacts: [] });
+  assert('an entry with no ray at all has no button', buttons(render(bare)).length === 0 && render(bare).includes('__tools"></span>'));
 }
 
 /* -------------------------------------------- */
@@ -128,10 +117,10 @@ assert('panel ids are unique', (() => {
 
 {
   const miss = createAttackLog({ weapon: { name: 'Pistol' } });
-  addShot(miss, { apCost: 12, impacts: [] });
+  addShot(miss, { apCost: 12, ids: ['shot_miss'], impacts: [] });
   const out = render(miss);
   assert('no hits: says so, no target list', out.includes('No hits') && !out.includes('attack-targets'));
-  assert('no hits: the shot is still listed', out.includes('Shot 1 · miss'));
+  assert('no hits: the shot can still be opened (the arc, what it flew past)', buttons(out).join() === 'shot_miss');
 }
 {
   const out = render(log, { id: 'reaction-1' });

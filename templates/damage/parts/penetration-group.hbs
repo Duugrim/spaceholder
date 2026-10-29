@@ -1,0 +1,56 @@
+{{!-- One group of the penetration view: a wall, or a target — its head, and for every part of the body that was hit its
+      layers (with a row of its own for the part when there are several). Shared by the window and the overlay over
+      the tokens. The energy column (`penetration-flow.hbs`) runs down the left of every row: the numbers on the
+      boundaries between rows and the stream between them — one lane in it for each projectile (`slots` lanes; the
+      lanes of a target go down to its different parts). A row takes only the lanes it needs (`used`, `--m`): the
+      lanes end from the right, and the rows below them get the room back — the row's text moves left. The layers of
+      one piece of gear (`in-piece`) have a bracket along them, and the name of the piece stands above the first. The rows
+      carry what the animation needs: `data-here` (the
+      lanes that meet the row), `data-stops` (the lanes the layer holds; the head: `data-stops-folded`, those held
+      anywhere in the group), `data-widths` (the energy of each lane after the row). --}}
+<section class="spaceholder-penetration__group is-{{kind}}{{#if multi}} is-multi{{/if}}{{#if collapsed}} is-collapsed{{/if}}" data-group="{{key}}" data-lanes="{{slots}}" style="--lanes: {{slots}}; --m: {{used}};">
+  <header class="spaceholder-penetration__row spaceholder-penetration__row--head" data-select="{{key}}" data-here="{{here}}" data-stops-folded="{{stopsFolded}}" data-widths="{{widths}}" tabindex="0">
+    {{> "systems/spaceholder/templates/damage/parts/penetration-flow.hbs"}}
+    <span class="spaceholder-penetration__who">
+      {{#if img}}<img class="spaceholder-penetration__img" src="{{img}}" alt="" loading="lazy" draggable="false"><i class="fa-solid {{icon}} spaceholder-penetration__img-fallback" aria-hidden="true" hidden></i>{{else}}<i class="fa-solid {{icon}} spaceholder-penetration__img-fallback" aria-hidden="true"></i>{{/if}}
+      <span class="spaceholder-penetration__who-text">
+        <span class="spaceholder-penetration__group-title">{{title}}{{#if lanesLabel}} <span class="spaceholder-penetration__lanes" data-tooltip="{{lanesTip}}">{{lanesLabel}}</span>{{/if}}</span>
+        {{#if subtitle}}<span class="spaceholder-penetration__group-sub">{{subtitle}}{{#if chipScale}} <span class="spaceholder-penetration__chip-text">{{#if chipQuality}}<span class="spaceholder-penetration__chip-quality">{{chipQuality}}</span>{{/if}}{{chipScale}}</span>{{/if}}{{#if summary}} <span class="spaceholder-penetration__summary{{#if summaryTone}} is-{{summaryTone}}{{/if}}">{{summary}}</span>{{/if}}</span>{{/if}}
+      </span>
+    </span>
+    <span class="spaceholder-penetration__head-end">
+      {{#if foldable}}<button type="button" class="spaceholder-penetration__fold" data-action="fold" data-group="{{key}}" data-tooltip="{{foldLabel}}" aria-label="{{foldLabel}}"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>{{/if}}
+    </span>
+  </header>
+  {{#if pending}}
+  <div class="spaceholder-penetration__pending"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>{{pendingLabel}}</div>
+  {{/if}}
+  {{#each parts}}
+  {{#if multi}}
+  <div class="spaceholder-penetration__row spaceholder-penetration__row--part" data-select="{{key}}" data-here="{{here}}" data-widths="{{widths}}" style="--m: {{used}};" tabindex="0">
+    {{> "systems/spaceholder/templates/damage/parts/penetration-flow.hbs"}}
+    <span class="spaceholder-penetration__who">
+      <span class="spaceholder-penetration__who-text">
+        <span class="spaceholder-penetration__part-name">{{partName}}{{#if lanesLabel}} <span class="spaceholder-penetration__lanes" data-tooltip="{{lanesTip}}">{{lanesLabel}}</span>{{/if}}</span>
+        {{#if chipScale}}<span class="spaceholder-penetration__group-sub"><span class="spaceholder-penetration__chip-text">{{#if chipQuality}}<span class="spaceholder-penetration__chip-quality">{{chipQuality}}</span>{{/if}}{{chipScale}}</span></span>{{/if}}
+      </span>
+    </span>
+    <span></span>
+  </div>
+  {{/if}}
+  <ol class="spaceholder-penetration__strips">
+    {{#each stages}}
+    <li class="spaceholder-penetration__row spaceholder-penetration__strip is-{{kind}} is-{{verdict}}{{#if inPiece}} in-piece{{#if pieceStart}} is-piece-start{{/if}}{{#if pieceEnd}} is-piece-end{{/if}}{{/if}}" data-select="{{key}}" data-index="{{index}}" data-here="{{here}}" data-stops="{{stops}}" data-widths="{{widths}}" style="--m: {{used}};{{#if inPiece}} --mr: {{pieceUsed}};{{/if}}" tabindex="0">
+      {{> "systems/spaceholder/templates/damage/parts/penetration-flow.hbs"}}
+      {{#if pieceName}}<span class="spaceholder-penetration__piece">{{pieceName}}</span>{{/if}}
+      <span class="spaceholder-penetration__label">
+        <i class="fa-solid {{icon}}" aria-hidden="true"></i>
+        <span class="spaceholder-penetration__name">{{name}}</span>
+        {{#if thicknessLabel}}<span class="spaceholder-penetration__thickness">{{thicknessLabel}}</span>{{/if}}
+      </span>
+      <span class="spaceholder-penetration__verdict"><i class="fa-solid {{verdictIcon}}" aria-hidden="true"></i><span class="spaceholder-penetration__verdict-label">{{verdictLabel}}</span></span>
+    </li>
+    {{/each}}
+  </ol>
+  {{/each}}
+</section>
